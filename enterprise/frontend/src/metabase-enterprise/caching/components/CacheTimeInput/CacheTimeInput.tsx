@@ -1,4 +1,4 @@
-import React, { FocusEvent, useCallback } from "react";
+import { FocusEvent, useCallback } from "react";
 import { t } from "ttag";
 import {
   TimeInputMessage,

@@ -64,7 +64,7 @@ describe("scenarios > collection items listing", () => {
       cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
 
-      cy.findByTestId("next-page-btn").click();
+      cy.findByLabelText("Next page").click();
       cy.wait("@getCollectionItems");
 
       // Second page
@@ -75,9 +75,9 @@ describe("scenarios > collection items listing", () => {
         "have.length",
         TOTAL_ITEMS - PAGE_SIZE,
       );
-      cy.findByTestId("next-page-btn").should("be.disabled");
+      cy.findByLabelText("Next page").should("be.disabled");
 
-      cy.findByTestId("previous-page-btn").click();
+      cy.findByLabelText("Previous page").click();
 
       // First page
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -149,6 +149,7 @@ describe("scenarios > collection items listing", () => {
         const dashboardsFirst = _.chain(sortedNames)
           .sortBy(name => name.toLowerCase().includes("question"))
           .sortBy(name => name.toLowerCase().includes("collection"))
+          .sortBy(name => name.toLowerCase().includes("instance analytics"))
           .value();
         expect(actualNames, "sorted dashboards first").to.deep.equal(
           dashboardsFirst,
@@ -211,6 +212,7 @@ describe("scenarios > collection items listing", () => {
           .reverse()
           .sortBy(name => name.toLowerCase().includes("collection"))
           .sortBy(name => name.toLowerCase().includes("personal"))
+          .sortBy(name => name.toLowerCase().includes("instance analytics"))
           .value();
         expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
       });
@@ -230,7 +232,7 @@ describe("scenarios > collection items listing", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
 
-      cy.findByTestId("next-page-btn").click();
+      cy.findByLabelText("Next page").click();
       cy.wait("@getCollectionItems");
 
       toggleSortingFor(/Last edited at/i);

@@ -11,7 +11,8 @@
    [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers)
@@ -221,9 +222,9 @@
 (deftest bin-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "Binning should be allowed on nested queries that have result metadata"
-      (mt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
-                                (mt/mbql-query nil
-                                  {:source-query {:source-table $$venues}}))]
+      (t2.with-temp/with-temp [Card card (qp.test-util/card-with-source-metadata-for-query
+                                          (mt/mbql-query nil
+                                            {:source-query {:source-table $$venues}}))]
         (let [query (nested-venues-query card)]
           (mt/with-native-query-testing-context query
             (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
@@ -246,14 +247,14 @@
       ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`
       ;; middleware is doing the right thing
       (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
-        (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
+        (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
           (mt/with-temp-vals-in-db Card (:id card) {:result_metadata nil}
             (is (thrown-with-msg?
                  Exception
                  #"Cannot update binned field: query is missing source-metadata"
                  (qp.test/rows
-                   (qp/process-query
-                    (nested-venues-query card)))))))))))
+                  (qp/process-query
+                   (nested-venues-query card)))))))))))
 
 (deftest field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)

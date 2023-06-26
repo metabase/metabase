@@ -4,6 +4,7 @@ import {
   showDashboardCardActions,
   visitDashboard,
   addOrUpdateDashboardCard,
+  getDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -30,12 +31,11 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // connect that to people.state
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Column to filter on")
-        .parent()
-        .within(() => {
-          cy.findByText("Select…").click();
-        });
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("Select…").click();
+      });
+
       popover().within(() => {
         cy.findByText("State").click();
       });
@@ -51,12 +51,10 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // connect that to person.city
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Column to filter on")
-        .parent()
-        .within(() => {
-          cy.findByText("Select…").click();
-        });
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("Select…").click();
+      });
       popover().within(() => {
         cy.findByText("City").click();
       });
@@ -183,7 +181,7 @@ describe("scenarios > dashboard > chained filter", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                size_x: 8,
+                size_x: 11,
                 size_y: 6,
                 parameter_mappings: [
                   {

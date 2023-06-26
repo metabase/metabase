@@ -5,8 +5,8 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [hawk.core :as hawk]
    [humane-are.core :as humane-are]
+   [mb.hawk.core :as hawk]
    [metabase.bootstrap]
    [metabase.config :as config]
    [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
@@ -90,9 +90,9 @@
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."
   [options]
-  (hawk.core/find-and-run-tests-repl (merge (default-options) options)))
+  (hawk/find-and-run-tests-repl (merge (default-options) options)))
 
 (defn find-and-run-tests-cli
   "Entrypoint for `clojure -X:test`."
   [options]
-  (hawk.core/find-and-run-tests-cli (merge (default-options) options)))
+  (hawk/find-and-run-tests-cli (merge (default-options) options)))

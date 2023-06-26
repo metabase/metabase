@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import Toggle from "metabase/core/components/Toggle";
 import Fields from "metabase/entities/fields";

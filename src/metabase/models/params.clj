@@ -24,7 +24,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -139,7 +138,7 @@
                               ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `list` instead of `auto-list`.)
-                              (hydrate :has_field_values)))))
+                              (t2/hydrate :has_field_values)))))
 
 (mi/define-batched-hydration-method add-name-field
   :name_field
@@ -180,7 +179,7 @@
   [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
     (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                        (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
+                        (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field])
                         remove-dimensions-nonpublic-columns))))
 
 
@@ -254,7 +253,7 @@
   (dashboard->param-field-values dashboard))
 
 (defmethod param-fields :model/Dashboard [dashboard]
-  (-> (hydrate dashboard [:ordered_cards :card])
+  (-> (t2/hydrate dashboard [:ordered_cards :card])
       :ordered_cards
       dashcards->param-field-ids
       param-field-ids->fields))

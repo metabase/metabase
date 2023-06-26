@@ -6,6 +6,7 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
+  moveColumnDown,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -68,6 +69,22 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
       cy.get("@table").contains("Total").should("not.exist");
+    });
+
+    it("should allow you to re-order columns even when one has been removed (metabase2#9287)", () => {
+      cy.viewport(1600, 800);
+
+      openOrdersTable();
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByTestId("Subtotal-hide-button").click();
+      cy.findByTestId("Tax-hide-button").click();
+
+      getSidebarColumns().eq("3").as("total").contains("Total");
+
+      moveColumnDown(cy.get("@total"), -2);
+
+      getSidebarColumns().eq("1").should("contain.text", "Total");
     });
 
     it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
@@ -181,14 +198,14 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
-      popover().within(() => cy.icon("gear").click()); // open subtotal column settings
+      popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Separator style"); // shows subtotal column settings
 
       cy.get(".TableInteractive").findByText("Created At").click(); // open created_at column header actions
-      popover().within(() => cy.icon("gear").click()); // open created_at column settings
+      popover().icon("gear").click(); // open created_at column settings
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Date style"); // shows created_at column settings
     });

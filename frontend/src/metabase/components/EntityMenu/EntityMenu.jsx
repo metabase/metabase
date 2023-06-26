@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import { Motion, spring } from "react-motion";
 import cx from "classnames";
 
@@ -24,7 +24,7 @@ class EntityMenu extends Component {
   constructor(props, context) {
     super(props, context);
 
-    this.rootRef = React.createRef();
+    this.rootRef = createRef();
   }
 
   toggleMenu = () => {
@@ -54,6 +54,7 @@ class EntityMenu extends Component {
       className,
       openClassNames,
       closedClassNames,
+      minWidth,
       tooltip,
       trigger,
       renderTrigger,
@@ -127,7 +128,7 @@ class EntityMenu extends Component {
                 >
                   <Card>
                     {menuItemContent || (
-                      <ol className="p1" style={{ minWidth: 184 }}>
+                      <ol className="p1" style={{ minWidth: minWidth ?? 184 }}>
                         {items.map(item => {
                           if (!item) {
                             return null;

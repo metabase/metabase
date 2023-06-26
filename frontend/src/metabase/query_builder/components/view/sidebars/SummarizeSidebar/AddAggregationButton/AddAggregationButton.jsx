@@ -1,17 +1,17 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
 const propTypes = {
   query: PropTypes.object,
-  shouldShowLabel: PropTypes.boolean,
+  shouldShowLabel: PropTypes.bool,
   updateAndRunQuery: PropTypes.func.isRequired,
 };
 
@@ -26,8 +26,11 @@ export const AddAggregationButton = ({
     <PopoverWithTrigger
       triggerElement={
         <Tooltip tooltip={LABEL} isEnabled={!shouldShowLabel}>
-          <AddAggregationButtonRoot data-testid="add-aggregation-button">
-            <Icon name="add" size="12" mr={shouldShowLabel ? 1 : "none"} />
+          <AddAggregationButtonRoot
+            aria-label={t`Add aggregation`}
+            data-testid="add-aggregation-button"
+          >
+            <Icon name="add" className={cx({ mr1: shouldShowLabel })} />
             {shouldShowLabel ? LABEL : null}
           </AddAggregationButtonRoot>
         </Tooltip>

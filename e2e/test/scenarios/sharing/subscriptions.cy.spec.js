@@ -9,6 +9,7 @@ import {
   visitDashboard,
   sendEmailAndAssert,
   addOrUpdateDashboardCard,
+  addTextBox,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -41,13 +42,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       visitDashboard(DASHBOARD_ID);
     });
-    cy.icon("pencil").click();
-    cy.icon("string").click();
-    cy.findByPlaceholderText(
-      "You can use Markdown here, and include variables {{like_this}}",
-    )
-      .click()
-      .type("Foo");
+    addTextBox("Foo");
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
@@ -247,11 +242,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       const TEXT_CARD = "FooBar";
 
       visitDashboard(1);
-      cy.icon("pencil").click();
-      cy.icon("string").click();
-      cy.findByPlaceholderText(
-        "You can use Markdown here, and include variables {{like_this}}",
-      ).type(TEXT_CARD);
+      addTextBox(TEXT_CARD);
       cy.button("Save").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You're editing this dashboard.").should("not.exist");

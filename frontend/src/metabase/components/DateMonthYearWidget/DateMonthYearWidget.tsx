@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import moment from "moment-timezone";
 import _ from "underscore";
 import cx from "classnames";
@@ -18,7 +18,7 @@ type State = {
   year: number;
 };
 
-class DateMonthYearWidget extends React.Component<Props, State> {
+class DateMonthYearWidget extends Component<Props, State> {
   state: State = {
     month: null,
     year: moment().year(),

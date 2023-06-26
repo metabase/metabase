@@ -15,6 +15,7 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.db.setup :as db.setup]
@@ -835,38 +836,6 @@
                    "F2 D1"}
                  (t2/select-fn-set :name Dimension {:order-by [[:id :asc]]}))))))))
 
-(deftest clean-up-gtap-table-test
-  (testing "Migrations v46.00-064 to v46.00-067: rename `group_table_access_policy` table, add `permission_id` FK,
-           and clean up orphaned rows"
-    (impl/test-migrations ["v46.00-064" "v46.00-067"] [migrate!]
-      (let [db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
-                                                                                :engine     "h2"
-                                                                                :created_at :%now
-                                                                                :updated_at :%now
-                                                                                :details    "{}"}))
-            table-id (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                             :name       "Table"
-                                                                             :created_at :%now
-                                                                             :updated_at :%now
-                                                                             :active     true}))
-            _        (t2/query-one {:insert-into :group_table_access_policy
-                                    :values      [{:group_id             1
-                                                   :table_id             table-id
-                                                   :attribute_remappings "{\"foo\", 1}"}
-                                                  {:group_id             2
-                                                   :table_id             table-id
-                                                   :attribute_remappings "{\"foo\", 1}"}]})
-            perm-id  (first (t2/insert-returning-pks! (t2/table-name Permissions) {:group_id 1
-                                                                                   :object   "/db/1/schema/PUBLIC/table/1/query/segmented/"}))]
-        ;; Two rows are present in `group_table_access_policy`
-        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}"}
-                {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}"}]
-               (mdb.query/query {:select [:*] :from [:group_table_access_policy]})))
-        (migrate!)
-        ;; Only the sandbox with a corresponding `Permissions` row is present, and the table is renamed to `sandboxes`
-        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
-               (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
-
 (deftest able-to-delete-db-with-actions-test
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
            fix the bug of unable to delete database with actions"
@@ -996,14 +965,14 @@
           mysql-field-2-id :type/Text)
         ;; TODO: this is commented out temporarily because it flakes for MySQL
         #_(testing "Rollback restores the original state"
-          (migrate! :down 46)
-          (let [new-base-types (t2/select-pk->fn :base_type Field)]
-            (are [field-id expected] (= expected (get new-base-types field-id))
-              pg-field-1-id :type/Structured
-              pg-field-2-id :type/Structured
-              pg-field-3-id :type/Text
-              mysql-field-1-id :type/SerializedJSON
-              mysql-field-2-id :type/Text)))))))
+           (migrate! :down 46)
+           (let [new-base-types (t2/select-pk->fn :base_type Field)]
+             (are [field-id expected] (= expected (get new-base-types field-id))
+               pg-field-1-id :type/Structured
+               pg-field-2-id :type/Structured
+               pg-field-3-id :type/Text
+               mysql-field-1-id :type/SerializedJSON
+               mysql-field-2-id :type/Text)))))))
 
 (deftest migrate-google-auth-test
   (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"
@@ -1054,3 +1023,96 @@
              (mdb.query/query {:select   [:first_name :sso_source]
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
+
+(deftest migrate-grid-from-18-to-24-test
+  (impl/test-migrations ["v47.00-031" "v47.00-032"] [_migrate!]
+    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+          migrate!     (partial db.setup/migrate! db-type data-source)
+          user         (create-raw-user! (tu.random/random-email))
+          dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
+                                                                          :creator_id (:id user)}))
+          ;; this layout is from magic dashboard for order table
+          cases        [{:row 15 :col 0  :size_x 12 :size_y 8}
+                        {:row 7  :col 12 :size_x 6  :size_y 8}
+                        {:row 2  :col 5  :size_x 5  :size_y 3}
+                        {:row 25 :col 0  :size_x 7  :size_y 10}
+                        {:row 2  :col 0  :size_x 5  :size_y 3}
+                        {:row 7  :col 6  :size_x 6  :size_y 8}
+                        {:row 25 :col 7  :size_x 11 :size_y 10}
+                        {:row 7  :col 0  :size_x 6  :size_y 4}
+                        {:row 23 :col 0  :size_x 18 :size_y 2}
+                        {:row 5  :col 0  :size_x 18 :size_y 2}
+                        {:row 0  :col 0  :size_x 18 :size_y 2}
+                        ;; these 2 last cases is a specical case where the last card has (width, height) = (1, 1)
+                        ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove these cards
+                        {:row 36 :col 0  :size_x 17 :size_y 1}
+                        {:row 36 :col 17 :size_x 1  :size_y 1}]
+          dashcard-ids (t2/insert-returning-pks! :model/DashboardCard
+                                                 (map #(merge % {:dashboard_id dashboard-id
+                                                                 :visualization_settings {}
+                                                                 :parameter_mappings     {}}) cases))]
+      (testing "forward migration migrate correclty"
+        (migrate! :up)
+        (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
+                                                :model/DashboardCard :id [:in dashcard-ids]
+                                                 {:order-by [[:id :asc]]})]
+          (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
+                  {:row 7  :col 16 :size_x 8  :size_y 8}
+                  {:row 2  :col 7  :size_x 6  :size_y 3}
+                  {:row 25 :col 0  :size_x 9  :size_y 10}
+                  {:row 2  :col 0  :size_x 7  :size_y 3}
+                  {:row 7  :col 8  :size_x 8  :size_y 8}
+                  {:row 25 :col 9  :size_x 15 :size_y 10}
+                  {:row 7  :col 0  :size_x 8  :size_y 4}
+                  {:row 23 :col 0  :size_x 24 :size_y 2}
+                  {:row 5  :col 0  :size_x 24 :size_y 2}
+                  {:row 0  :col 0  :size_x 24 :size_y 2}
+                  {:row 36 :col 0  :size_x 23 :size_y 1}
+                  {:row 36 :col 23 :size_x 1  :size_y 1}]
+                 migrated-to-24))
+          (is (true? (custom-migrations-test/no-cards-are-overlap? migrated-to-24)))
+          (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? migrated-to-24 24)))))
+
+      (testing "downgrade works correctly"
+        (migrate! :down 46)
+        (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
+                                                 :model/DashboardCard :id [:in dashcard-ids]
+                                                 {:order-by [[:id :asc]]})]
+          (is (= cases rollbacked-to-18))
+          (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
+          (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
+
+(deftest backfill-permission-id-test
+  (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
+    (impl/test-migrations ["v46.00-088" "v46.00-090"] [migrate!]
+      (let [db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
+                                                                                :engine     "h2"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :details    "{}"}))
+            table-id (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                             :schema     "SchemaName"
+                                                                             :name       "Table"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now
+                                                                             :active     true}))
+            _        (t2/query-one {:insert-into :sandboxes
+                                    :values      [{:group_id             1
+                                                   :table_id             table-id
+                                                   :attribute_remappings "{\"foo\", 1}"}
+                                                  {:group_id             2
+                                                   :table_id             table-id
+                                                   :attribute_remappings "{\"foo\", 1}"}]})
+            perm-id  (first (t2/insert-returning-pks! (t2/table-name Permissions)
+                                                      [{:group_id 1
+                                                        :object   "/db/1/schema/SchemaName/table/1/query/segmented/"}
+                                                       {:group_id 1
+                                                        :object   "/db/1/schema//table/1/query/segmented/"}]))]
+        ;; Two rows are present in `sandboxes`
+        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}
+                {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}]
+               (mdb.query/query {:select [:*] :from [:sandboxes]})))
+        (migrate!)
+        ;; Only the sandbox with a corresponding `Permissions` row is present
+        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
+               (mdb.query/query {:select [:*] :from [:sandboxes]})))))))

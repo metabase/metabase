@@ -32,6 +32,21 @@ export interface NativeDatasetQuery {
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
+interface PublicStructuredDatasetQuery {
+  type: "query";
+}
+
+interface PublicNativeDatasetQuery {
+  type: "native";
+  native: {
+    "template-tags"?: TemplateTags;
+  };
+}
+
+export type PublicDatasetQuery =
+  | PublicStructuredDatasetQuery
+  | PublicNativeDatasetQuery;
+
 export type DatetimeUnit =
   | "default"
   | "minute"
@@ -285,7 +300,7 @@ export type ForeignFieldReference = [
 export type ExpressionReference = [
   "expression",
   ExpressionName,
-  ReferenceOptions | null,
+  (ReferenceOptions | null)?,
 ];
 
 export type FieldLiteral = [

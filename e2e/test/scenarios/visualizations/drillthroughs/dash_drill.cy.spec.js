@@ -103,7 +103,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             name: DASHBOARD_NAME,
           },
           cardDetails: {
-            size_x: 16,
+            size_x: 21,
             size_y: 12,
           },
         }).then(({ body: { dashboard_id, card_id } }) => {

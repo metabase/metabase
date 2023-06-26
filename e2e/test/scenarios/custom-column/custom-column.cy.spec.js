@@ -8,6 +8,8 @@ import {
   visitQuestionAdhoc,
   enterCustomColumnDetails,
   filter,
+  getNotebookStep,
+  checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -47,23 +49,22 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize").click();
+    cy.button("Summarize").click();
     popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // Check no binning options are shown.
-    popover()
-      .findByText("Half Price")
-      .closest(".List-item")
-      .find(".Field-extra")
-      .should("be.empty");
-    popover().findByText("Half Price").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
 
-    cy.get("[data-testid='step-summarize-0-0']")
-      .findByText("Half Price")
-      .should("be.visible");
+    popover()
+      .findByRole("option", { name: "Half Price" })
+      .within(() => {
+        cy.findByLabelText("Binning strategy").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("not.exist");
+      })
+      .click();
+
+    getNotebookStep("summarize").findByText("Half Price").should("be.visible");
   });
 
   it("should not show temporal units for a date/time custom column", () => {
@@ -76,20 +77,21 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize").click();
+    cy.button("Summarize").click();
     popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
     popover()
-      .findByText("Product Date")
-      .closest(".List-item")
-      .find(".Field-extra")
-      .should("be.empty");
-    popover().findByText("Product Date").click();
+      .findByRole("option", { name: "Product Date" })
+      .within(() => {
+        cy.findByLabelText("Binning strategy").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("not.exist");
+      })
+      .click();
 
-    cy.get("[data-testid='step-summarize-0-0']")
+    getNotebookStep("summarize")
       .findByText("Product Date")
       .should("be.visible");
   });
@@ -104,22 +106,21 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize").click();
+    cy.button("Summarize").click();
     popover().findByText("Count of rows").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
     popover()
-      .findByText("UserLAT")
-      .closest(".List-item")
-      .find(".Field-extra")
-      .should("be.empty");
-    popover().findByText("UserLAT").click();
+      .findByRole("option", { name: "UserLAT" })
+      .within(() => {
+        cy.findByLabelText("Binning strategy").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("not.exist");
+      })
+      .click();
 
-    cy.get("[data-testid='step-summarize-0-0']")
-      .findByText("UserLAT")
-      .should("be.visible");
+    getNotebookStep("summarize").findByText("UserLAT").should("be.visible");
   });
 
   // flaky test (#19454)
@@ -655,6 +656,17 @@ describe("scenarios > question > custom column", () => {
     // Shift+Tab and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
+  });
+
+  it("should render custom expression helper near the custom expression field", async () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    popover().within(() => {
+      enterCustomColumnDetails({ formula: "floor" });
+
+      checkExpressionEditorHelperPopoverPosition();
+    });
   });
 });
 

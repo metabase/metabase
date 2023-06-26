@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 import InputBlurChange from "metabase/components/InputBlurChange";
 

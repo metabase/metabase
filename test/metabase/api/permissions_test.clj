@@ -51,7 +51,7 @@
         (check-default-groups-returned id->group))
 
       (testing "should return empty groups"
-        (mt/with-temp PermissionsGroup [group]
+        (t2.with-temp/with-temp [PermissionsGroup group]
           (let [id->group (m/index-by :id (fetch-groups))]
             (check-default-groups-returned id->group)
             (testing "empty group should be returned"
@@ -61,7 +61,7 @@
                            (get id->group (:id group)))))))))
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 "permissions/group"))))))
+             (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
@@ -142,7 +142,7 @@
 (deftest fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
-      (mt/with-temp Database [{db-id :id}]
+      (t2.with-temp/with-temp [Database {db-id :id}]
         (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph")]
           (is (partial= {:groups {(u/the-id (perms-group/admin))
                                   {db-id {:data {:native "write" :schemas "all"}}}}}
@@ -154,7 +154,7 @@
 (deftest fetch-perms-graph-v2-test
   (testing "GET /api/permissions/graph-v2"
     (testing "make sure we can fetch the perms graph from the API"
-      (mt/with-temp Database [{db-id :id}]
+      (t2.with-temp/with-temp [Database {db-id :id}]
         (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph-v2")]
           (is (partial= {:groups {(u/the-id (perms-group/admin))
                                   {db-id {:data {:native "write" :schemas "all"}}}}}
@@ -167,7 +167,7 @@
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
       (let [db-id (mt/id :venues)]
-        (mt/with-temp PermissionsGroup [group]
+        (t2.with-temp/with-temp [PermissionsGroup group]
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
@@ -180,7 +180,7 @@
                  (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)])))))
 
       (testing "Table-specific perms"
-        (mt/with-temp PermissionsGroup [group]
+        (t2.with-temp/with-temp [PermissionsGroup group]
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
@@ -223,7 +223,7 @@
     (testing "permissions when group has no permissions"
       (mt/with-temp* [PermissionsGroup [group]]
         (mt/user-http-request :crowberto :put 200 "permissions/graph"
-         (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
+                              (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
         (is (empty? (t2/select Permissions :group_id (u/the-id group))))
         (is (= nil (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
         (is (= nil (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))

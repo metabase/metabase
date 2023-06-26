@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import { usePrevious } from "react-use";
 
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
-import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import type { Expression } from "metabase-types/api";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import { FieldDimension } from "metabase-lib/Dimension";
@@ -257,7 +258,7 @@ export default function FilterPopover({
             data-ui-tag="add-filter"
             primaryColor={primaryColor}
             disabled={!filter.isValid()}
-            ml="auto"
+            className="ml-auto"
             onClick={() => handleCommit()}
           >
             {isNew ? t`Add filter` : t`Update filter`}

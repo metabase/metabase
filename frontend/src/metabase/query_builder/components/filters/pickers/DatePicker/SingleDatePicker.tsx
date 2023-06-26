@@ -1,4 +1,3 @@
-import React from "react";
 import { SelectAll } from "metabase/components/Calendar";
 import Filter from "metabase-lib/queries/structured/Filter";
 import {

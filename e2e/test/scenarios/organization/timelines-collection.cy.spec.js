@@ -252,7 +252,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
-      getModal().within(() => cy.button("Move").click());
+      getModal().button("Move").click();
       cy.wait("@updateEvent");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("not.exist");
@@ -284,7 +284,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").click();
-      getModal().within(() => cy.button("Move").click());
+      getModal().button("Move").click();
       cy.wait("@updateEvent");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC2").should("not.exist");
@@ -568,7 +568,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@updateTimeline");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No timelines found");
-      getModal().within(() => cy.icon("chevronleft").click());
+      getModal().icon("chevronleft").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
     });
@@ -599,7 +599,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@deleteTimeline");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No timelines found");
-      getModal().within(() => cy.icon("chevronleft").click());
+      getModal().icon("chevronleft").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analytics events");
     });
@@ -749,11 +749,7 @@ const getModal = () => {
 };
 
 const openMenu = name => {
-  return cy
-    .findByText(name)
-    .parent()
-    .parent()
-    .within(() => cy.icon("ellipsis").click());
+  return cy.findByText(name).parent().parent().icon("ellipsis").click();
 };
 
 const setFormattingSettings = settings => {

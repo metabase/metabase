@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { CollectionId, User } from "metabase-types/api";

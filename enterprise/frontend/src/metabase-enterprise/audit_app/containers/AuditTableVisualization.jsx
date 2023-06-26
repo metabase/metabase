@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,7 +12,7 @@ import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 import Table from "metabase/visualizations/visualizations/Table";
 
 import EmptyState from "metabase/components/EmptyState";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import CheckBox from "metabase/core/components/CheckBox";
 import NoResults from "assets/img/no_results.svg";
 import { getRowValuesByColumns, getColumnName } from "../lib/mode";
@@ -38,7 +38,7 @@ const propTypes = {
 
 const ROW_ID_IDX = 0;
 
-export default class AuditTableVisualization extends React.Component {
+export default class AuditTableVisualization extends Component {
   static identifier = "audit-table";
   static noHeader = true;
   static hidden = true;

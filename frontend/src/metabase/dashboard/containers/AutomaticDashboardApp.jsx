@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -13,7 +13,7 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -32,6 +32,7 @@ import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import * as Q from "metabase-lib/queries/utils/query";
 import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
+import { isSegment } from "metabase-lib/queries/utils/filter";
 
 import {
   ItemContent,
@@ -56,7 +57,7 @@ const mapDispatchToProps = {
   invalidateCollections: Collections.actions.invalidateLists,
 };
 
-class AutomaticDashboardAppInner extends React.Component {
+class AutomaticDashboardAppInner extends Component {
   state = {
     savedDashboardId: null,
   };
@@ -221,7 +222,7 @@ const TransientFilter = ({ filter, metadata }) => {
     <div className="mr3">
       <Icon
         size={12}
-        name={getIconForFilter(dimension.field())}
+        name={getIconForFilter(filter, dimension)}
         className="mr1"
       />
       <Filter filter={filter} metadata={metadata} />
@@ -229,8 +230,14 @@ const TransientFilter = ({ filter, metadata }) => {
   );
 };
 
-const getIconForFilter = field => {
-  if (field.isDate()) {
+const getIconForFilter = (filter, dimension) => {
+  const field = dimension?.field();
+
+  if (isSegment(filter)) {
+    return "star";
+  } else if (!field) {
+    return "label";
+  } else if (field.isDate()) {
     return "calendar";
   } else if (field.isLocation()) {
     return "location";
@@ -268,25 +275,22 @@ const SuggestionsList = ({ suggestions, section }) => (
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
             <Link
-              hover={{ color: color("brand") }}
               key={itemIndex}
               to={item.url}
-              className="block hover-parent hover--visibility"
+              className="mb1 block hover-parent hover--visibility text-brand-hover"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
-              mb={1}
             >
-              <Card p={2} hoverable>
+              <Card className="p2" hoverable>
                 <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
-                    mr={1}
-                    size={22}
+                    className="mr1"
                   />
                   <h4 className="text-wrap">{item.title}</h4>
                   <ItemDescription className="hover-child">
                     <Tooltip tooltip={item.description}>
-                      <Icon name="question" color={color("bg-dark")} />
+                      <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>
                   </ItemDescription>
                 </ItemContent>

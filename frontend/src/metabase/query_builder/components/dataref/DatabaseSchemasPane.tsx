@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { ngettext, msgid } from "ttag";
 
 import Search from "metabase/entities/search";

@@ -25,7 +25,7 @@ export const HeaderActions = styled.div`
 `;
 
 interface CollectionHeaderButtonProps {
-  to: string;
+  to?: string;
 }
 
 export const CollectionHeaderButton = styled(
@@ -47,5 +47,5 @@ export const CollectionHeaderButton = styled(
 
 CollectionHeaderButton.defaultProps = {
   onlyIcon: true,
-  iconSize: 16,
+  iconSize: 20,
 };

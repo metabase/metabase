@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { isValidElement, useMemo } from "react";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
 import {
@@ -55,7 +55,7 @@ const TooltipRow = ({ name, value, column, settings }: TooltipRowProps) => (
       <TooltipTableCell />
     )}
     <TooltipTableCell className="text-bold text-left">
-      {React.isValidElement(value)
+      {isValidElement(value)
         ? value
         : formatValueForTooltip({ value, column, settings })}
     </TooltipTableCell>

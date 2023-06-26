@@ -1,9 +1,10 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 
-import DataStep from "../steps/DataStep";
+import { IconName } from "metabase/core/components/Icon";
+import { DataStep } from "../steps/DataStep";
 import JoinStep from "../steps/JoinStep";
 import ExpressionStep from "../steps/ExpressionStep";
 import FilterStep from "../steps/FilterStep";
@@ -17,7 +18,7 @@ import { NotebookStepUiComponentProps } from "../types";
 
 export type StepUIItem = {
   title: string;
-  icon?: string;
+  icon?: IconName;
   priority?: number;
   transparent?: boolean;
   compact?: boolean;
@@ -80,7 +81,7 @@ export const STEP_UI: Record<string, StepUIItem> = {
   },
   sort: {
     title: t`Sort`,
-    icon: "smartscalar",
+    icon: "sort",
     component: SortStep,
     compact: true,
     transparent: true,

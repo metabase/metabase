@@ -10,11 +10,12 @@
     :as dashboard-card
     :refer [DashboardCard]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-   [metabase.models.interface-test :as i.test]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -113,8 +114,7 @@
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Card      [{card-id :id} {:name "Test Card"}]]
       (let [dashboard-card (first (dashboard-card/create-dashboard-cards!
-                                    [{:creator_id             (mt/user->id :rasta)
-                                      :dashboard_id           dashboard-id
+                                    [{:dashboard_id           dashboard-id
                                       :card_id                card-id
                                       :size_x                 4
                                       :size_y                 3
@@ -267,22 +267,22 @@
                     Dashboard [dashboard]]
       (card-test/test-visualization-settings-normalization
        (fn [original expected]
-         (mt/with-temp DashboardCard [dashcard {:dashboard_id           (u/the-id dashboard)
-                                                :card_id                (u/the-id card)
-                                                :visualization_settings original}]
+         (t2.with-temp/with-temp [DashboardCard dashcard {:dashboard_id           (u/the-id dashboard)
+                                                          :card_id                (u/the-id card)
+                                                          :visualization_settings original}]
            (is (= expected
                   (t2/select-one-fn :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))
 
 (deftest normalize-parameter-mappings-test-2
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
     (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
-           ((i.test/type-fn :parameters-list :out)
+           ((:out mi/transform-parameters-list)
             (json/generate-string
              [{:target [:dimension [:fk-> 23 30]]}]))))
 
     (testing "...but parameter mappings we should not normalize things like :target"
       (is (= [{:card-id 123, :hash "abc", :target "foo"}]
-             ((i.test/type-fn :parameters-list :out)
+             ((:out mi/transform-parameters-list)
               (json/generate-string
                [{:card-id 123, :hash "abc", :target "foo"}])))))))
 
@@ -290,7 +290,7 @@
   (testing (str "we should keep empty parameter mappings as empty instead of making them nil (if `normalize` removes "
                 "them because they are empty) (I think this is to prevent NPEs on the FE? Not sure why we do this)")
     (is (= []
-           ((i.test/type-fn :parameters-list :out)
+           ((:out mi/transform-parameters-list)
             (json/generate-string []))))))
 
 (deftest identity-hash-test

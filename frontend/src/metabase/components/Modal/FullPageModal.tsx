@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import { Motion, spring } from "react-motion";
 import { getScrollX, getScrollY } from "metabase/lib/dom";
 import SandboxedPortal from "metabase/components/SandboxedPortal";

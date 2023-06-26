@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-import React from "react";
 import { dissoc } from "icepick";
 import { t } from "ttag";
 

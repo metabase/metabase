@@ -6,6 +6,10 @@ export function popover() {
   return cy.get(POPOVER_ELEMENT);
 }
 
+export function main() {
+  return cy.get("main");
+}
+
 export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }
@@ -67,9 +71,7 @@ export function filterWidget() {
 }
 
 export const openQuestionActions = () => {
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon("ellipsis").click();
-  });
+  cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 };
 
 export const collectionTable = () => {

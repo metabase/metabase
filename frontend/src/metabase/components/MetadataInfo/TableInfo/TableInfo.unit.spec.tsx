@@ -1,4 +1,3 @@
-import React from "react";
 import { getMetadata } from "metabase/selectors/metadata";
 import { TableId, Table } from "metabase-types/api";
 import {

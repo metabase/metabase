@@ -21,7 +21,7 @@
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
-   (metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues)))
+   (metabase.driver.common.parameters Date)))
 
 (set! *warn-on-reflection* true)
 
@@ -39,10 +39,6 @@
     (sequential? x)
     (format "{$in: [%s]}" (str/join ", " (map (partial param-value->str field) x)))
 
-    ;; MultipleValues get converted as sequences
-    (instance? MultipleValues x)
-    (recur field (:values x))
-
     ;; Date = the Parameters Date type, not an java.util.Date or java.sql.Date type
     ;; convert to a `Temporal` instance and recur
     (instance? Date x)
@@ -59,10 +55,6 @@
     ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
     (instance? Temporal x)
     (format "ISODate(\"%s\")" (u.date/format x))
-
-    ;; there's a special record type for sequences of numbers; pull the sequence it wraps out and recur
-    (instance? CommaSeparatedNumbers x)
-    (recur field (:numbers x))
 
     ;; for everything else, splice it in as its string representation
     :else

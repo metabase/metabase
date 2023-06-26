@@ -1,5 +1,3 @@
-import React from "react";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   PermissionsSidebarContent,

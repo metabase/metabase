@@ -1,4 +1,4 @@
-import React, { MouseEvent, useMemo } from "react";
+import { MouseEvent, useMemo } from "react";
 import _ from "underscore";
 import { getEventTarget } from "metabase/lib/dom";
 import Tooltip from "metabase/core/components/Tooltip";

@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockMetric } from "metabase-types/api/mocks";
 import { setupMetricsEndpoints } from "__support__/server-mocks";

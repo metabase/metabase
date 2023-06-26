@@ -709,8 +709,7 @@
   considered relevant when comparing clauses for equality."
   [field-or-ref]
   (update-field-options field-or-ref (partial into {} (remove (fn [[k _]]
-                                                                (when (keyword? k)
-                                                                  (namespace k)))))))
+                                                                (qualified-keyword? k))))))
 
 (defn referenced-field-ids
   "Find all the `:field` references with integer IDs in `coll`, which can be a full MBQL query, a snippet of MBQL, or a

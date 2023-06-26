@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 
@@ -101,7 +100,7 @@ async function setup({
     collections.push(personalCollection);
   }
 
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections });
   setupDatabasesEndpoints(databases);
   fetchMock.get("path:/api/bookmark", []);
 

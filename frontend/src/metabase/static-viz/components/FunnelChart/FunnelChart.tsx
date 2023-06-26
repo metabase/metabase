@@ -1,4 +1,4 @@
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import { Line, Polygon } from "@visx/shape";
 import { Group } from "@visx/group";
 import { Text } from "metabase/static-viz/components/Text";

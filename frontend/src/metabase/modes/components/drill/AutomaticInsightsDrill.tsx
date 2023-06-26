@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import type {
   ClickActionBase,
@@ -47,7 +46,7 @@ export const AutomaticInsightsDrill = ({
       title: t`Compare to the rest`,
       section: "auto-popover",
       icon: "segment",
-      url: () => compareToRestDrillUrl({ question, clicked }),
+      url: () => compareToRestDrillUrl({ question, clicked }) as string,
     },
   ];
 

@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useMemo, useState } from "react";
+import { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { Link } from "react-router";
 import { isNotNull } from "metabase/core/utils/types";

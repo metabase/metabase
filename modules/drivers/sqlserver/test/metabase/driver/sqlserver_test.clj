@@ -18,7 +18,8 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -189,26 +190,30 @@
       ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal
       ;; QP pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things
       ;; are working we need to add to in from of the query we're trying to check
-      (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db)))]
-        (.setAutoCommit conn false)
-        (try
-          (doseq [[sql & params] [["DROP TABLE IF EXISTS temp;"]
-                                  ["CREATE TABLE temp (d DATETIME2);"]
-                                  ["INSERT INTO temp (d) VALUES (?)" #t "2019-02-08T00:00:00Z"]
-                                  ["SET LANGUAGE Italian;"]]]
-            (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)]
-              (.execute stmt)))
-          (let [[sql & params] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
-                                             :from   [:temp]}
-                                 :quoting :ansi, :allow-dashed-names? true)]
-            (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
-                        rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
-              (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
-                (is (= [#t "2019-02-01"]
-                       (row-thunk))))))
-          ;; rollback transaction so `temp` table gets discarded
-          (finally
-            (.rollback conn)))))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sqlserver
+       (mt/db)
+       {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
+       (fn [^java.sql.Connection conn]
+         (.setAutoCommit conn false)
+         (try
+           (doseq [[sql & params] [["DROP TABLE IF EXISTS temp;"]
+                                   ["CREATE TABLE temp (d DATETIME2);"]
+                                   ["INSERT INTO temp (d) VALUES (?)" #t "2019-02-08T00:00:00Z"]
+                                   ["SET LANGUAGE Italian;"]]]
+             (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)]
+               (.execute stmt)))
+           (let [[sql & params] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
+                                              :from   [:temp]}
+                                             :quoting :ansi, :allow-dashed-names? true)]
+             (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
+                         rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
+               (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
+                 (is (= [#t "2019-02-01"]
+                        (row-thunk))))))
+           ;; rollback transaction so `temp` table gets discarded
+           (finally
+             (.rollback conn))))))))
 
 (deftest unprepare-test
   (mt/test-driver :sqlserver
@@ -231,13 +236,17 @@
           #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
-              (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) nil)
-                          stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
-                          rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
-                (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
-                  (is (= [expected]
-                         (row-thunk))
-                      (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))
+              (sql-jdbc.execute/do-with-connection-with-options
+               :sqlserver
+               (mt/db)
+               nil
+               (fn [^java.sql.Connection conn]
+                 (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
+                             rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
+                   (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
+                     (is (= [expected]
+                            (row-thunk))
+                         (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))))
 
 (defn- pretty-sql [s]
   (str/replace s #"\"" ""))
@@ -305,15 +314,15 @@
 (deftest max-results-bare-rows-test
   (mt/test-driver :sqlserver
     (testing "Should support overriding the ROWCOUNT for a specific SQL Server DB (#9940)"
-      (mt/with-temp Database [db {:name    "SQL Server with ROWCOUNT override"
-                                  :engine  "sqlserver"
-                                  :details (-> (:details (mt/db))
-                                               ;; SQL server considers a ROWCOUNT of 0 to be unconstrained
-                                               ;; we are putting this in the details map, since that's where connection
-                                               ;; properties go in a client save operation, but it will be MOVED to the
-                                               ;; settings map instead (which is where DB-local settings go), via the
-                                               ;; driver/normalize-db-details implementation for :sqlserver
-                                               (assoc :rowcount-override 0))}]
+      (t2.with-temp/with-temp [Database db {:name    "SQL Server with ROWCOUNT override"
+                                            :engine  "sqlserver"
+                                            :details (-> (:details (mt/db))
+                                                         ;; SQL server considers a ROWCOUNT of 0 to be unconstrained
+                                                         ;; we are putting this in the details map, since that's where connection
+                                                         ;; properties go in a client save operation, but it will be MOVED to the
+                                                         ;; settings map instead (which is where DB-local settings go), via the
+                                                         ;; driver/normalize-db-details implementation for :sqlserver
+                                                         (assoc :rowcount-override 0))}]
         ;; TODO FIXME -- This query probably shouldn't be returning ANY rows given that we're setting the LIMIT to zero.
         ;; For now I've had to keep a bug where it always returns at least one row regardless of the limit. See comments
         ;; in [[metabase.query-processor.middleware.limit/limit-xform]].
@@ -339,10 +348,10 @@
                                        "SELECT V FROM @DATA\n"
                                        "\n"
                                        "SELECT COUNT(1) FROM @TEMP\n")}
-                         mt/native-query
-                         ;; add default query constraints to ensure the default limit of 2000 is overridden by the
-                         ;; `:rowcount-override` connection property we defined in the details above
-                         (assoc :constraints (qp.constraints/default-query-constraints))
-                         qp/process-query
-                         mt/rows
-                         ffirst))))))))
+                          mt/native-query
+                          ;; add default query constraints to ensure the default limit of 2000 is overridden by the
+                          ;; `:rowcount-override` connection property we defined in the details above
+                          (assoc :constraints (qp.constraints/default-query-constraints))
+                          qp/process-query
+                          mt/rows
+                          ffirst))))))))

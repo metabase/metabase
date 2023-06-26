@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen, within } from "@testing-library/react";
 import { checkNotNull } from "metabase/core/utils/types";
 import { createMockMetadata } from "__support__/metadata";
@@ -7,7 +6,7 @@ import {
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
 import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";

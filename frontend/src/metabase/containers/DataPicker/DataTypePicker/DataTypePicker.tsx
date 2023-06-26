@@ -1,5 +1,3 @@
-import React from "react";
-
 import type { DataTypeInfoItem } from "../utils";
 import type { DataPickerDataType } from "../types";
 

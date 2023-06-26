@@ -69,7 +69,6 @@
 (derive :entity/ProductTable :entity/GenericTable)
 (derive :entity/SubscriptionTable :entity/GenericTable)
 (derive :entity/EventTable :entity/GenericTable)
-(derive :entity/GoogleAnalyticsTable :entity/GenericTable)
 
 
 ;;; Numeric Types

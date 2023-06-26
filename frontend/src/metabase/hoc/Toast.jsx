@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import { addUndo } from "metabase/redux/undo";
@@ -12,7 +12,7 @@ const mapDispatchToProps = {
  * @deprecated HOCs are deprecated
  */
 const withToaster = ComposedComponent => {
-  class ToastedComponent extends React.Component {
+  class ToastedComponent extends Component {
     _triggerToast = (message, options = {}) => {
       const { addUndo } = this.props;
       addUndo({ message, ...options });

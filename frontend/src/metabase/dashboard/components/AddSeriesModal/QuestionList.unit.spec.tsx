@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import React from "react";
 import { screen, render } from "@testing-library/react";
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";

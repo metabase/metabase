@@ -1,3 +1,5 @@
+import { DashboardId } from "./dashboard";
+
 export type UserId = number;
 
 export type UserAttribute = string;
@@ -27,7 +29,7 @@ export interface User extends BaseUser {
   has_question_and_dashboard: boolean;
   personal_collection_id: number;
   custom_homepage: {
-    dashboard_id: number;
+    dashboard_id: DashboardId;
   } | null;
 }
 

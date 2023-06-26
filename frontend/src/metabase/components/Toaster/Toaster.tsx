@@ -1,6 +1,6 @@
-import React, { useState, useEffect, HTMLAttributes } from "react";
+import { useState, useEffect, HTMLAttributes } from "react";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import {
   ToasterContainer,

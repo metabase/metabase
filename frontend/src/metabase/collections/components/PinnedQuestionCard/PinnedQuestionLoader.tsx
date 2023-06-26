@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 import Questions from "metabase/entities/questions";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import {

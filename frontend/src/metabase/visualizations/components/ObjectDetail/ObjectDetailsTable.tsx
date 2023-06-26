@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -8,6 +8,7 @@ import ExpandableString from "metabase/query_builder/components/ExpandableString
 import EmptyState from "metabase/components/EmptyState";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import { isa, isID } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
@@ -47,7 +48,8 @@ export function DetailsTableCell({
     columnSettings?.["_column_title_full"] || formatColumn(column);
 
   if (isColumnName) {
-    cellValue = column !== null ? columnTitle : null;
+    const title = column !== null ? columnTitle : null;
+    cellValue = <Ellipsified lines={8}>{title}</Ellipsified>;
     clicked.column = column;
     isLink = false;
   } else {
@@ -157,7 +159,7 @@ export function DetailsTable({
     <ObjectDetailsTable>
       <GridContainer cols={3}>
         {cols.map((column, columnIndex) => (
-          <React.Fragment key={columnIndex}>
+          <Fragment key={columnIndex}>
             <GridCell>
               <DetailsTableCell
                 column={column}
@@ -180,7 +182,7 @@ export function DetailsTable({
                 visualizationIsClickable={visualizationIsClickable}
               />
             </GridCell>
-          </React.Fragment>
+          </Fragment>
         ))}
       </GridContainer>
     </ObjectDetailsTable>

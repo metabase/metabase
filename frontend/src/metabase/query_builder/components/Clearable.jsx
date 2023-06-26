@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 const Clearable = ({ onClear, children, className }) => (
   <span className={cx("flex align-center", className)}>
@@ -12,7 +11,7 @@ const Clearable = ({ onClear, children, className }) => (
         className="text-light no-decoration pr1 flex align-center"
         onClick={onClear}
       >
-        <Icon name="close" size={14} />
+        <Icon name="close" />
       </a>
     )}
   </span>

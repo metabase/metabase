@@ -1,4 +1,4 @@
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Grid } from "metabase/components/Grid";
 import {
   isVirtualCardId,
@@ -55,12 +55,10 @@ const TableBrowser = ({
       <Grid>
         {tables.map(table => (
           <TableGridItem key={table.id}>
-            <TableCard hoverable={!isTableLoading(table, database)}>
+            <TableCard hoverable={!isSyncInProgress(table)}>
               <TableLink
                 to={
-                  !isTableLoading(table, database)
-                    ? getTableUrl(table, metadata)
-                    : ""
+                  !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
                 }
                 data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
               >
@@ -90,7 +88,7 @@ const itemPropTypes = {
 
 const TableBrowserItem = ({ database, table, dbId, xraysEnabled }) => {
   const isVirtual = isVirtualCardId(table.id);
-  const isLoading = isTableLoading(table, database);
+  const isLoading = isSyncInProgress(table);
 
   return (
     <EntityItem
@@ -131,32 +129,17 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
           data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
         >
           <Icon
-            name="bolt"
-            size={20}
+            name="bolt_filled"
             tooltip={t`X-ray this table`}
             color={color("warning")}
           />
         </TableActionLink>
       )}
-      <TableActionLink
-        to={`/reference/databases/${dbId}/tables/${tableId}`}
-        data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
-      >
-        <Icon
-          name="reference"
-          tooltip={t`Learn about this table`}
-          color={color("text-medium")}
-        />
-      </TableActionLink>
     </Fragment>
   );
 };
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
-
-const isTableLoading = (table, database) => {
-  return database && isSyncInProgress(database) && isSyncInProgress(table);
-};
 
 const getDatabaseCrumbs = dbId => {
   if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {

@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
@@ -48,7 +48,7 @@ type PredefinedRelativeDatePickerProps = {
   onFilterChange: (filter: any[]) => void;
 };
 
-export class PredefinedRelativeDatePicker extends React.Component<PredefinedRelativeDatePickerProps> {
+export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDatePickerProps> {
   constructor(props: PredefinedRelativeDatePickerProps) {
     super(props);
 
@@ -157,7 +157,7 @@ type DateRelativeWidgetProps = {
   onClose: () => void;
 };
 
-class DateRelativeWidget extends React.Component<DateRelativeWidgetProps> {
+class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
   constructor(props: DateRelativeWidgetProps) {
     super(props);
   }

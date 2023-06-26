@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import EntityListLoader, { entityListLoader } from "./EntityListLoader";
 import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
 import EntityName from "./EntityName";

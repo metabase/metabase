@@ -72,12 +72,12 @@ describe("scenarios > admin > people", () => {
 
       cy.get("@groupsTab").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(GROUP).closest("tr").contains("3");
+      cy.findByText(GROUP).closest("tr").contains("4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(GROUP).click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("3 members");
+      cy.findByText("4 members");
 
       cy.button("Add members").click();
       cy.focused().type(admin.first_name);
@@ -86,11 +86,11 @@ describe("scenarios > admin > people", () => {
       cy.button("Add").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("4 members");
+      cy.findByText("5 members");
 
       removeUserFromGroup(adminUserName);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("3 members");
+      cy.findByText("4 members");
 
       // should load the members when navigating to the group directly
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
@@ -399,9 +399,9 @@ describe("scenarios > admin > people", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`1 - ${PAGE_SIZE}`);
         assertTableRowsCount(PAGE_SIZE);
-        cy.findByTestId("previous-page-btn").should("be.disabled");
+        cy.findByLabelText("Previous page").should("be.disabled");
 
-        cy.findByTestId("next-page-btn").click();
+        cy.findByLabelText("Next page").click();
         waitForUserRequests();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
@@ -409,9 +409,9 @@ describe("scenarios > admin > people", () => {
         // Page 2
         cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
         assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
-        cy.findByTestId("next-page-btn").should("be.disabled");
+        cy.findByLabelText("Next page").should("be.disabled");
 
-        cy.findByTestId("previous-page-btn").click();
+        cy.findByLabelText("Previous page").click();
         cy.wait("@users");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
@@ -434,9 +434,9 @@ describe("scenarios > admin > people", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`1 - ${PAGE_SIZE}`);
         assertTableRowsCount(PAGE_SIZE);
-        cy.findByTestId("previous-page-btn").should("be.disabled");
+        cy.findByLabelText("Previous page").should("be.disabled");
 
-        cy.findByTestId("next-page-btn").click();
+        cy.findByLabelText("Next page").click();
         waitForUserRequests();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
@@ -444,9 +444,9 @@ describe("scenarios > admin > people", () => {
         // Page 2
         cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
         assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
-        cy.findByTestId("next-page-btn").should("be.disabled");
+        cy.findByLabelText("Next page").should("be.disabled");
 
-        cy.findByTestId("previous-page-btn").click();
+        cy.findByLabelText("Previous page").click();
         cy.wait("@users");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");

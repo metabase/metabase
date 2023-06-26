@@ -21,7 +21,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -38,14 +37,14 @@
   (as-> (pulse/retrieve-alerts {:archived? (Boolean/parseBoolean archived)
                                 :user-id   user_id}) <>
     (filter mi/can-read? <>)
-    (hydrate <> :can_write)))
+    (t2/hydrate <> :can_write)))
 
 (api/defendpoint GET "/:id"
   "Fetch an alert by ID"
   [id]
   {id ms/PositiveInt}
   (-> (api/read-check (pulse/retrieve-alert id))
-      (hydrate :can_write)))
+      (t2/hydrate :can_write)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/question/:id"
@@ -56,7 +55,7 @@
   (-> (if api/*is-superuser?*
         (pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? (Boolean/parseBoolean archived)})
         (pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived? (Boolean/parseBoolean archived)}))
-      (hydrate :can_write)))
+      (t2/hydrate :can_write)))
 
 (defn- only-alert-keys [request]
   (u/select-keys-when request

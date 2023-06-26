@@ -1,4 +1,3 @@
-import React from "react";
 import type { WritebackAction } from "metabase-types/api";
 
 import ImplicitActionContextProvider, {

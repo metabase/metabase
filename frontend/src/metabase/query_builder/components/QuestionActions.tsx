@@ -1,6 +1,5 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
-import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 import Button from "metabase/core/components/Button";
@@ -14,12 +13,13 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { softReloadCard } from "metabase/query_builder/actions";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
 
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getSetting } from "metabase/selectors/settings";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import Question from "metabase-lib/Question";
 
 import {
@@ -41,19 +41,9 @@ const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
 
-const mapStateToProps = (state: State) => ({
-  isModerator: getUserIsAdmin(state),
-  isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
-});
-
-const mapDispatchToProps = {
-  softReloadCard,
-};
-
 interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
-  isMetabotEnabled: boolean;
   handleBookmark: () => void;
   onOpenModal: (modalType: string) => void;
   question: Question;
@@ -64,14 +54,11 @@ interface Props {
   turnDatasetIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
-  isModerator: boolean;
-  softReloadCard: () => void;
 }
 
 const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
-  isMetabotEnabled,
   handleBookmark,
   onOpenModal,
   question,
@@ -79,10 +66,15 @@ const QuestionActions = ({
   turnDatasetIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
-  isModerator,
-  softReloadCard,
 }: Props) => {
-  const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
+  const isMetabotEnabled = useSelector(state =>
+    getSetting(state, "is-metabot-enabled"),
+  );
+  const isModerator = useSelector(getUserIsAdmin);
+
+  const dispatch = useDispatch();
+
+  const dispatchSoftReloadCard = () => dispatch(softReloadCard());
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? color("brand")
@@ -116,6 +108,7 @@ const QuestionActions = ({
     const modal = checkCanBeModel(question)
       ? MODAL_TYPES.TURN_INTO_DATASET
       : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+    trackTurnIntoModelClicked(question);
     onOpenModal(modal);
   }, [onOpenModal, question]);
 
@@ -135,7 +128,11 @@ const QuestionActions = ({
   }
 
   extraButtons.push(
-    PLUGIN_MODERATION.getMenuItems(question, isModerator, softReloadCard),
+    PLUGIN_MODERATION.getMenuItems(
+      question,
+      isModerator,
+      dispatchSoftReloadCard,
+    ),
   );
 
   if (isDataset) {
@@ -170,7 +167,7 @@ const QuestionActions = ({
   if (!isDataset) {
     extraButtons.push({
       title: t`Add to dashboard`,
-      icon: "dashboard",
+      icon: "add_to_dash",
       action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
       testId: ADD_TO_DASH_TESTID,
     });
@@ -194,7 +191,7 @@ const QuestionActions = ({
     if (isDataset) {
       extraButtons.push({
         title: t`Turn back to saved question`,
-        icon: "model_framed",
+        icon: "insight",
         action: turnDatasetIntoQuestion,
       });
     }
@@ -203,7 +200,7 @@ const QuestionActions = ({
   if (!question.query().readOnly()) {
     extraButtons.push({
       title: t`Duplicate`,
-      icon: "segment",
+      icon: "clone",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
     });
@@ -212,7 +209,7 @@ const QuestionActions = ({
   if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
-      icon: "view_archive",
+      icon: "archive",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
     });
@@ -221,13 +218,13 @@ const QuestionActions = ({
   return (
     <>
       <QuestionActionsDivider />
-      <Tooltip tooltip={bookmarkTooltip}>
+      <ViewHeaderIconButtonContainer>
         <BookmarkToggle
           onCreateBookmark={handleBookmark}
           onDeleteBookmark={handleBookmark}
           isBookmarked={isBookmarked}
         />
-      </Tooltip>
+      </ViewHeaderIconButtonContainer>
       <Tooltip tooltip={t`More info`}>
         <ViewHeaderIconButtonContainer>
           <Button
@@ -251,4 +248,4 @@ const QuestionActions = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(QuestionActions);
+export default QuestionActions;

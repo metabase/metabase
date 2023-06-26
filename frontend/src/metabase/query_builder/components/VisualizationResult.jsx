@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
 import _ from "underscore";

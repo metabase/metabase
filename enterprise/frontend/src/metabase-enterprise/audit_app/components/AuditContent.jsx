@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Children, cloneElement, Component } from "react";
 
 import Radio from "metabase/core/components/Radio";
 
@@ -10,7 +10,7 @@ import {
   AuditContentData,
 } from "./AuditContent.styled";
 
-export default class AuditContent extends React.Component {
+export default class AuditContent extends Component {
   render() {
     const { title, subtitle, tabs, children, location, ...props } = this.props;
     // HACK: remove the last component to get the base page path. won't work with tabs using IndexRoute (IndexRedirect ok)
@@ -40,10 +40,10 @@ export default class AuditContent extends React.Component {
         )}
         <AuditContentData>
           {/* This allows the parent component to inject props into child route components, e.x. userId */}
-          {React.Children.count(children) === 1 &&
+          {Children.count(children) === 1 &&
           // NOTE: workaround for https://github.com/facebook/react/issues/12136
           !Array.isArray(children)
-            ? React.cloneElement(React.Children.only(children), props)
+            ? cloneElement(Children.only(children), props)
             : children}
         </AuditContentData>
       </AuditContentRoot>

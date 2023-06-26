@@ -22,7 +22,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.sql DatabaseMetaData)
+   (java.sql Connection DatabaseMetaData)
    (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -368,12 +368,17 @@
 
 (defmethod driver/describe-table :athena
   [driver {{:keys [catalog]} :details, :as database} table]
-  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (assoc (select-keys table [:name :schema])
-           :fields (try
-                     (describe-table-fields metadata database driver table catalog)
-                     (catch Throwable _
-                       (set nil))))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [metadata (.getMetaData conn)]
+       (assoc (select-keys table [:name :schema])
+              :fields (try
+                        (describe-table-fields metadata database driver table catalog)
+                        (catch Throwable _
+                          (set nil))))))))
 
 (defn- get-tables
   "Athena can query EXTERNAL and MANAGED tables."
@@ -424,8 +429,13 @@
 ; If we want to limit the initial connection to a specific database/schema, I think we'd have to do that here...
 (defmethod driver/describe-database :athena
   [driver {details :details, :as database}]
-  {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-             (fast-active-tables driver metadata details))})
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [metadata (.getMetaData conn)]
+       {:tables (fast-active-tables driver metadata details)}))))
 
 ; Unsure if this is the right way to approach building the parameterized query...but it works
 (defn- prepare-query [driver {query :native, :as outer-query}]

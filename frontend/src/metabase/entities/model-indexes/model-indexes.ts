@@ -5,7 +5,6 @@
  */
 
 import type { IndexedEntity } from "metabase-types/api/modelIndexes";
-import type { State } from "metabase-types/store";
 
 import { createEntity } from "metabase/lib/entities";
 import { ModelIndexApi } from "metabase/services";
@@ -29,16 +28,7 @@ export const ModelIndexes = createEntity({
     getUrl: (entity: IndexedEntity) => `/model/${entity.model_id}/${entity.id}`,
     getIcon: () => ({ name: "beaker" }),
   },
-  // objectActions: {},
   reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
     return state;
   },
-  selectors: {
-    getIndexesForModel: (state: State, { modelId }: { modelId: number }) => {
-      return Object.values(state.entities.modelIndexes).filter(
-        index => index.model_id === modelId,
-      );
-    },
-  },
-  // objectSelectors: {},
 });

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
@@ -14,7 +14,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
  */
 export default ComposedComponent =>
   ExplicitSize()(
-    class AutoExpanding extends React.Component {
+    class AutoExpanding extends Component {
       state = {
         expand: false,
       };

@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
+import { IconName } from "metabase/core/components/Icon";
 import type { DataPickerDataType, DataPickerFilters } from "./types";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;
-  icon: string;
+  icon: IconName;
   name: string;
   description: string;
 };

@@ -19,7 +19,7 @@ on:
 jobs:
   stress-test-flake-fix:
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 60
     name: Stress test E2E flake fix
     env:
       DISPLAY: ""

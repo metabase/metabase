@@ -1,5 +1,4 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
 import _ from "underscore";
 import PropTypes from "prop-types";
 import Databases from "metabase/entities/databases";

@@ -21,8 +21,8 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Troubleshooting logs");
-    cy.icon("chevronleft").as("previous");
-    cy.icon("chevronright").as("next");
+    cy.findByLabelText("Previous page").as("previous");
+    cy.findByLabelText("Next page").as("next");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("1 - 50");
@@ -52,11 +52,11 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 });
 
 function shouldNotBeDisabled(selector) {
-  cy.get(selector).parent().should("not.have.attr", "disabled");
+  cy.get(selector).should("be.enabled");
 }
 
 function shouldBeDisabled(selector) {
-  cy.get(selector).parent().should("have.attr", "disabled");
+  cy.get(selector).should("be.disabled");
 }
 
 /**

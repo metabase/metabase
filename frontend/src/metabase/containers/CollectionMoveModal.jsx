@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
@@ -9,7 +9,7 @@ import ModalContent from "metabase/components/ModalContent";
 import CollectionPicker from "metabase/containers/CollectionPicker";
 import { ButtonContainer } from "./CollectionMoveModal.styled";
 
-class CollectionMoveModal extends React.Component {
+class CollectionMoveModal extends Component {
   constructor(props) {
     super(props);
     this.state = {

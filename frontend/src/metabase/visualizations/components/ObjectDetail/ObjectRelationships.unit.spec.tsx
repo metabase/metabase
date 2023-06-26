@@ -1,4 +1,3 @@
-import React from "react";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Database, TableId } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";

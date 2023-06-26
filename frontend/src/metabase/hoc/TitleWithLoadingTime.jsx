@@ -1,5 +1,3 @@
-import React from "react";
-
 import { delay } from "metabase/lib/promise";
 import title from "metabase/hoc/Title";
 

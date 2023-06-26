@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import ValidationError from "metabase-lib/ValidationError";

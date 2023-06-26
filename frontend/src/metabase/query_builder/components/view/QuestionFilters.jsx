@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";

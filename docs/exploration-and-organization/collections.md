@@ -58,11 +58,21 @@ To move a question, dashboard, or pulse into a collection, or from one collectio
 
 ![Selecting questions](./images/question-checkbox.png)
 
-Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of.
+Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of. Metabase admins can move items into (and out of) anyone's [personal collection](#your-personal-collection).
 
 ## Events and timelines
 
 You can add events to collections, and organize those events into timelines. See [Events and timelines](events-and-timelines.md).
+
+## Uploading data
+
+You can upload CSV data by clicking on the **Upload** icon in the top right of the collection page.
+
+![Upload CSV data](../databases/images/upload-icon.png).
+
+Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
+
+Uploads will only be available if your admin has enabled uploads for your Metabase. See [Uploading data](../databases/uploads.md).
 
 ## Further reading
 

@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import LimitInput from "metabase/query_builder/components/LimitInput";

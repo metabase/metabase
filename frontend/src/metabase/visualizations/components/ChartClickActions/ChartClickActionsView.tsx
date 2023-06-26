@@ -1,4 +1,3 @@
-import React from "react";
 import type { RegularClickAction } from "metabase/modes/types";
 import { Container, Divider } from "./ChartClickActions.styled";
 import {

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import type { FormikHelpers } from "formik";
@@ -22,8 +22,7 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import ActionFormFieldWidget from "../ActionFormFieldWidget";
-
+import { ActionFormFieldWidget } from "../ActionFormFieldWidget";
 import { ActionFormButtonContainer } from "./ActionForm.styled";
 
 interface ActionFormProps {

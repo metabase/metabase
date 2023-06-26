@@ -4,10 +4,11 @@
    [metabase.models :refer [PermissionsGroup]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest application-permissions-test
-  (mt/with-temp PermissionsGroup [_]
+  (t2.with-temp/with-temp [PermissionsGroup _]
     (testing "GET /api/ee/advanced-permissions/application/graph"
       (premium-features-test/with-premium-features #{}
         (testing "Should require a token with `:advanced-permissions`"
@@ -31,9 +32,10 @@
                            {:monitoring   "no"
                             :setting      "no"
                             :subscription "yes"}}
-                          groups)))))))
+                          groups))))))))
 
-  (mt/with-temp* [PermissionsGroup [{group-id :id}]]
+(deftest application-permissions-test-2
+  (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
     (testing "PUT /api/ee/advanced-permissions/application/graph"
       (let [current-graph (premium-features-test/with-premium-features #{:advanced-permissions}
                             (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/application/graph"))

@@ -4,7 +4,8 @@
    [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -12,7 +13,7 @@
 
 (deftest disallow-updating-creator-id-test
   (testing "You shouldn't be allowed to update the creator_id of a NativeQuerySnippet"
-    (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name "my-snippet", :content "wow", :creator_id (mt/user->id :lucky)}]
+    (t2.with-temp/with-temp [NativeQuerySnippet {snippet-id :id} {:name "my-snippet", :content "wow", :creator_id (mt/user->id :lucky)}]
       (is (thrown-with-msg?
            Exception
            #"You cannot update the creator_id of a NativeQuerySnippet\."
@@ -44,7 +45,7 @@
   (doseq [collection-namespace [nil "x"]]
     (testing (format "Should *not* be allowed to create snippets in a Collection in the %s namespace"
                      (pr-str collection-namespace))
-      (mt/with-temp Collection [{collection-id :id} {:namespace collection-namespace}]
+      (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace collection-namespace}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"

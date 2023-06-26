@@ -16,7 +16,7 @@
 
 (deftest update-test
   (testing "Updating"
-    (mt/with-temp Segment [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
+    (t2.with-temp/with-temp [Segment {:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Segment"
         (is (thrown-with-msg?
              Exception

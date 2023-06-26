@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+import * as React from "react";
 import PropTypes from "prop-types";
 import * as Tippy from "@tippyjs/react";
 import * as ReactIs from "react-is";

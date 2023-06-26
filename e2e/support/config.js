@@ -23,12 +23,15 @@ const isQaDatabase = process.env["QA_DB_ENABLED"];
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
-const runWithReplay = process.env["REPLAYIO_ENABLED"];
+const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
 
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
+const {
+  removeDirectory,
+} = require("./commands/downloads/deleteDownloadsFolder");
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -79,6 +82,7 @@ const defaultConfig = {
     on("task", {
       ...dbTasks,
       ...verifyDownloadTasks,
+      removeDirectory,
     });
 
     /********************************************************************
@@ -120,7 +124,6 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
-  projectId: "KetpiS",
   viewportHeight: 800,
   viewportWidth: 1280,
   reporter: "mochawesome",
@@ -132,7 +135,7 @@ const mainConfig = {
     json: true,
   },
   retries: {
-    runMode: 5,
+    runMode: 4,
     openMode: 0,
   },
 };

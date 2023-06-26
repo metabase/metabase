@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { connect } from "react-redux";
@@ -67,7 +67,7 @@ function DataModelApp({
   ];
 
   return (
-    <React.Fragment>
+    <Fragment>
       <NavBar>
         <Radio
           value={currentTab}
@@ -84,7 +84,7 @@ function DataModelApp({
         onClose={hideModelEducationalModal}
       />
       {children}
-    </React.Fragment>
+    </Fragment>
   );
 }
 

@@ -1,4 +1,4 @@
-import React, { ChangeEvent, FocusEvent } from "react";
+import { ChangeEvent, FocusEvent } from "react";
 import FileInput from "metabase/core/components/FileInput";
 import { FormField, TreatBeforePosting } from "./types";
 

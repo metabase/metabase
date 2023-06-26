@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
@@ -7,7 +7,7 @@ import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
-import Icon from "metabase/components/Icon/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { Dispatch } from "metabase-types/store";

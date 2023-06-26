@@ -12,7 +12,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -41,7 +40,7 @@
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
   [model-name ids]
-  (for [id ids] [model-name id]))
+  (mapv vector (repeat model-name) ids))
 
 (defn- collection-set-for-user
   "Returns a set of collection IDs to export for the provided user, if any.
@@ -129,7 +128,7 @@
 
 (defn- collection-label [coll-id]
   (if coll-id
-    (let [collection (hydrate (t2/select-one Collection :id coll-id) :ancestors)
+    (let [collection (t2/hydrate (t2/select-one Collection :id coll-id) :ancestors)
           names      (->> (conj (:ancestors collection) collection)
                           (map :name)
                           (str/join " > "))]

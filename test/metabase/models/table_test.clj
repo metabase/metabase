@@ -8,7 +8,8 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest valid-field-order?-test
   (testing "A valid field ordering is a set IDs  of all active fields in a given table"
@@ -66,7 +67,7 @@
                          "my\\/schema"
                          "my\\\\/schema"]]
       (testing (format "Should be able to create/delete Table with schema name %s" (pr-str schema-name))
-        (mt/with-temp Table [{table-id :id} {:schema schema-name}]
+        (t2.with-temp/with-temp [Table {table-id :id} {:schema schema-name}]
           (is (= schema-name
                  (t2/select-one-fn :schema Table :id table-id))))))))
 

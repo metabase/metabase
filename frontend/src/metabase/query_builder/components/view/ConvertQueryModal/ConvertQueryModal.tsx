@@ -1,9 +1,9 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+
 import { getEngineNativeType } from "metabase/lib/engine";
 import Button from "metabase/core/components/Button";
-import { checkNotNull } from "metabase/core/utils/types";
 import {
   getNativeQueryFn,
   getQuestion,
@@ -11,7 +11,10 @@ import {
 import { NativeQueryForm } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
+
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+
+import { createDatasetQuery } from "./utils";
 
 const MODAL_TITLE = {
   sql: t`SQL for this question`,
@@ -48,11 +51,8 @@ const ConvertQueryModal = ({
       return;
     }
 
-    const newQuestion = question.setDatasetQuery({
-      type: "native",
-      native: { query, "template-tags": {} },
-      database: checkNotNull(question.databaseId()),
-    });
+    const newDatasetQuery = createDatasetQuery(query, question);
+    const newQuestion = question.setDatasetQuery(newDatasetQuery);
 
     onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });
     onClose?.();

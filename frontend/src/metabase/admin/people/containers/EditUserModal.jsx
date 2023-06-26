@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { compose } from "@reduxjs/toolkit";
 import { t } from "ttag";
 

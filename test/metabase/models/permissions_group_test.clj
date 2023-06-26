@@ -10,13 +10,13 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
-   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -46,26 +46,26 @@
 (deftest new-users-test
   (testing "newly created users should get added to the appropriate magic groups"
     (testing "regular user"
-      (mt/with-temp User [{user-id :id}]
+      (t2.with-temp/with-temp [User {user-id :id}]
         (testing "Should be added to All Users group"
           (is (t2/exists? PermissionsGroupMembership
-                :user_id  user-id
-                :group_id (u/the-id (perms-group/all-users)))))
+                          :user_id  user-id
+                          :group_id (u/the-id (perms-group/all-users)))))
         (testing "Should not be added to Admin group"
           (is (not (t2/exists? PermissionsGroupMembership
-                     :user_id  user-id
-                     :group_id (u/the-id (perms-group/admin))))))))
+                               :user_id  user-id
+                               :group_id (u/the-id (perms-group/admin))))))))
 
     (testing "superuser"
-      (mt/with-temp User [{user-id :id} {:is_superuser true}]
+      (t2.with-temp/with-temp [User {user-id :id} {:is_superuser true}]
         (testing "Should be added to All Users group"
           (is (t2/exists? PermissionsGroupMembership
-                :user_id  user-id
-                :group_id (u/the-id (perms-group/all-users)))))
+                          :user_id  user-id
+                          :group_id (u/the-id (perms-group/all-users)))))
         (testing "Should be added to Admin group"
           (is (t2/exists? PermissionsGroupMembership
-                :user_id  user-id
-                :group_id (u/the-id (perms-group/admin)))))))))
+                          :user_id  user-id
+                          :group_id (u/the-id (perms-group/admin)))))))))
 
 (s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
@@ -77,7 +77,7 @@
 
 (deftest newly-created-databases-test
   (testing "magic groups should have permissions for newly created databases\n"
-    (mt/with-temp Database [{database-id :id}]
+    (t2.with-temp/with-temp [Database {database-id :id}]
       (doseq [group [(perms-group/all-users)
                      (perms-group/admin)]]
         (testing (format "Group = %s" (pr-str (:name group)))
@@ -86,25 +86,25 @@
 (deftest add-remove-from-admin-group-test
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true")
-    (mt/with-temp User [{user-id :id}]
+    (t2.with-temp/with-temp [User {user-id :id}]
       (t2/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
       (is (= true
              (t2/select-one-fn :is_superuser User, :id user-id))))
 
     (testing "removing user from Admin should set is_superuser -> false"
-      (mt/with-temp User [{user-id :id} {:is_superuser true}]
+      (t2.with-temp/with-temp [User {user-id :id} {:is_superuser true}]
         (t2/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
         (is (= false
                (t2/select-one-fn :is_superuser User, :id user-id)))))
 
     (testing "setting is_superuser -> true should add user to Admin"
-      (mt/with-temp User [{user-id :id}]
+      (t2.with-temp/with-temp [User {user-id :id}]
         (t2/update! User user-id {:is_superuser true})
         (is (= true
                (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))
 
     (testing "setting is_superuser -> false should remove user from Admin"
-      (mt/with-temp User [{user-id :id} {:is_superuser true}]
+      (t2.with-temp/with-temp [User {user-id :id} {:is_superuser true}]
         (t2/update! User user-id {:is_superuser false})
         (is (= false
                (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))

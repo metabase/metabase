@@ -1,4 +1,3 @@
-import React from "react";
 import Question from "metabase-lib/Question";
 import { getLatestModerationReview } from "../../service";
 import ModerationReviewIcon from "../../containers/ModerationReviewIcon";

@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { TooltipRowModel } from "../types";

@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { MetabotVariant } from "metabase/core/components/MetabotLogo/MetabotLogo";
 import {
   MetabotText,

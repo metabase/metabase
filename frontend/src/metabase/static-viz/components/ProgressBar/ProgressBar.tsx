@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";

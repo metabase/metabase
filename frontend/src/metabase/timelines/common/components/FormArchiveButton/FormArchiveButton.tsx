@@ -1,4 +1,4 @@
-import React, { MouseEvent, ReactNode } from "react";
+import { MouseEvent, ReactNode } from "react";
 import { ArchiveButton } from "./FormDangerButton.styled";
 
 export interface FormArchiveButtonProps {

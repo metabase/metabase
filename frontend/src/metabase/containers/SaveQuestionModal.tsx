@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";

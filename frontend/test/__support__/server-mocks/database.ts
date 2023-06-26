@@ -11,6 +11,12 @@ export function setupDatabaseEndpoints(db: Database) {
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
   db.tables?.forEach(table => setupTableEndpoints(table));
+
+  fetchMock.put(`path:/api/database/${db.id}`, async url => {
+    const call = fetchMock.lastCall(url);
+    const body = await call?.request?.json();
+    return { ...db, ...body };
+  });
 }
 
 export function setupDatabasesEndpoints(

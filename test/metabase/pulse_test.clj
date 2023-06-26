@@ -23,7 +23,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,8 +68,8 @@
                                                :channel_type "slack"
                                                :details      {:channel "#general"}})]]
     (if (= channel :email)
-      (mt/with-temp PulseChannelRecipient [_ {:user_id          (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]
+      (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                        :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 
@@ -372,8 +373,8 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (mt/with-temp PulseChannelRecipient [_ {:user_id          (mt/user->id :crowberto)
-                                                :pulse_channel_id (t2/select-one-pk PulseChannel :pulse_id pulse-id)}]
+        (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
+                                                          :pulse_channel_id (t2/select-one-pk PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -381,7 +382,7 @@
        (fn [_ _]
          (is (= (into {} (map (fn [user-kwd]
                                 (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
-                                                       :to      #{"rasta@metabase.com" "crowberto@metabase.com"}
+                                                       :to      #{(:email (mt/fetch-user user-kwd))}
                                                        :body    [{"Pulse Name" true}
                                                                  pulse.test-util/png-attachment
                                                                  pulse.test-util/png-attachment]}))
@@ -662,17 +663,17 @@
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
-    (mt/with-temp Card [{card-id :id} {:name                   "Test card"
-                                       :dataset_query          {:database (mt/id)
-                                                                :type     :native
-                                                                :native   {:query (str "select count(*) as total_per_day, date as the_day "
-                                                                                       "from checkins "
-                                                                                       "group by date")}}
-                                       :display                :line
-                                       :visualization_settings {:graph.show_goal  true
-                                                                :graph.goal_value 5.9
-                                                                :graph.dimensions ["the_day"]
-                                                                :graph.metrics    ["total_per_day"]}}]
+    (t2.with-temp/with-temp [Card {card-id :id} {:name                   "Test card"
+                                                 :dataset_query          {:database (mt/id)
+                                                                          :type     :native
+                                                                          :native   {:query (str "select count(*) as total_per_day, date as the_day "
+                                                                                                 "from checkins "
+                                                                                                 "group by date")}}
+                                                 :display                :line
+                                                 :visualization_settings {:graph.show_goal  true
+                                                                          :graph.goal_value 5.9
+                                                                          :graph.dimensions ["the_day"]
+                                                                          :graph.metrics    ["total_per_day"]}}]
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
@@ -701,6 +702,21 @@
          (is (= (mt/email-to :rasta {:subject "Pulse Name"
                                      :body    {"<h1>dashboard description</h1>" true}})
                 (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
+
+(deftest nonuser-email-test
+  (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
+    (mt/with-temp* [Card                  [{card-id :id} {:name "Test card"}]
+                    Pulse                 [{pulse-id :id} {:name "Pulse Name"}]
+                    PulseCard             [_ {:pulse_id pulse-id
+                                              :card_id  card-id}]
+                    PulseChannel          [{pc-id :id} {:pulse_id pulse-id
+                                                        :details {:emails ["nonuser@metabase.com"]}}]
+                    PulseChannelRecipient [_ {:user_id (pulse.test-util/rasta-id)
+                                              :pulse_channel_id pc-id}]]
+      (pulse.test-util/email-test-setup
+       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
+       (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
+       (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe"))))))
 
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
@@ -787,17 +803,17 @@
 
 (deftest multi-channel-test
   (testing "Test with a slack channel and an email"
-    (mt/with-temp Card [{card-id :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
+    (t2.with-temp/with-temp [Card {card-id :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
       ;; create a Pulse with an email channel
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:skip_if_empty false}}]
         ;; add additional Slack channel
-        (mt/with-temp PulseChannel [_ {:pulse_id     pulse-id
-                                       :channel_type "slack"
-                                       :details      {:channel "#general"}}]
+        (t2.with-temp/with-temp [PulseChannel _ {:pulse_id     pulse-id
+                                                 :channel_type "slack"
+                                                 :details      {:channel "#general"}}]
           (pulse.test-util/slack-test-setup
            (let [pulse-data (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))
-                 slack-data (m/find-first #(contains? % :channel-id) pulse-data)
-                 email-data (m/find-first #(contains? % :subject) pulse-data)]
+                 slack-data (m/find-first map? pulse-data)
+                 email-data (first (m/find-first seq? pulse-data))]
              (is (= {:channel-id  "#general"
                      :attachments [{:blocks
                                     [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
@@ -821,10 +837,10 @@
 
 (deftest dont-run-async-test
   (testing "even if Card is saved as `:async?` we shouldn't run the query async"
-    (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                              :type     :query
-                                              :query    {:source-table (mt/id :venues)}
-                                              :async?   true}}]
+    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
+                                                        :type     :query
+                                                        :query    {:source-table (mt/id :venues)}
+                                                        :async?   true}}]
       (is (schema= {:card   (s/pred map?)
                     :result (s/pred map?)}
                    (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
@@ -868,10 +884,10 @@
     old))
 
 (def ^:private fake-email-notification
-  {:subject      "test-message"
+  [{:subject      "test-message"
    :recipients   ["whoever@example.com"]
    :message-type :text
-   :message      "test message body"})
+   :message      "test message body"}])
 
 (deftest email-notification-retry-test
   (testing "send email succeeds w/o retry"

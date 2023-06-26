@@ -1,5 +1,3 @@
-import React from "react";
-
 import CategoryFieldInput from "./CategoryFieldInput";
 import { CategoryWidgetProps } from "./types";
 

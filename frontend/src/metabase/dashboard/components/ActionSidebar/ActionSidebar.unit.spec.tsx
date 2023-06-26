@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import userEvent from "@testing-library/user-event";
 import { screen, waitFor, renderWithProviders } from "__support__/ui";
 

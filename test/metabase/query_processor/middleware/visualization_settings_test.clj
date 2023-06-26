@@ -6,7 +6,8 @@
    [metabase.query-processor.middleware.visualization-settings
     :as viz-settings]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- update-viz-settings
   ([query] (update-viz-settings query true))
@@ -69,10 +70,10 @@
 
 (deftest card-viz-settings-test
   (mt/with-everything-store
-    (mt/with-temp* [Field [{field-id-1 :id}]
-                    Field [{field-id-2 :id}]]
+    (t2.with-temp/with-temp [Field {field-id-1 :id} {}
+                             Field {field-id-2 :id} {}]
       (testing "Viz settings for a saved card are fetched from the DB and normalized"
-        (mt/with-temp Card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+        (t2.with-temp/with-temp [Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
           (let [query    (test-query [field-id-1 field-id-2] card-id nil)
                 result   (update-viz-settings query)
                 expected (processed-viz-settings field-id-1 field-id-2)]
@@ -85,13 +86,13 @@
               expected     (processed-viz-settings field-id-1 field-id-2)]
           (is (= expected result)))))
 
-    (mt/with-temp* [Field [{field-id-1 :id} {:settings {:column_title "Test"}}]
-                    Field [{field-id-2 :id} {:settings {:decimals 4, :scale 10}}]
-                    Field [{field-id-3 :id} {:settings {:number_style "percent"}}]]
+    (t2.with-temp/with-temp [Field {field-id-1 :id} {:settings {:column_title "Test"}}
+                             Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
+                             Field {field-id-3 :id} {:settings {:number_style "percent"}}]
       (testing "Field settings in the DB are incorporated into visualization settings with a lower
                precedence than card settings"
         (testing "for a saved card"
-          (mt/with-temp Card [{card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+          (t2.with-temp/with-temp [Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
             (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id nil)
                   result   (update-viz-settings query)
                   expected (-> (processed-viz-settings field-id-1 field-id-2)

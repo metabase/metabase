@@ -8,14 +8,13 @@
    [clojure.data]
    [clojure.test :refer :all]
    [environ.core :as env]
-   [hawk.init]
-   [hawk.parallel]
    [humane-are.core :as humane-are]
    [java-time :as t]
+   [mb.hawk.init]
+   [mb.hawk.parallel]
    [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -50,7 +49,8 @@
    [potemkin :as p]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]))
+   [toucan2.model :as t2.model]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,6 +82,7 @@
   test-runner.assert-exprs/keep-me
   test.users/keep-me
   tt/keep-me
+  t2.with-temp/keepme
   tu/keep-me
   tu.async/keep-me
   tu.log/keep-me
@@ -91,6 +92,7 @@
   tx.env/keep-me)
 
 ;; Add more stuff here as needed
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -207,8 +209,9 @@
   with-test-user]
 
  [tt
-  with-temp
-  with-temp*
+  with-temp*]
+
+ [t2.with-temp
   with-temp-defaults]
 
  [tu
@@ -285,7 +288,7 @@
 ;;; TODO -- move all the stuff below into some other namespace and import it here.
 
 (defn do-with-clock [clock thunk]
-  (hawk.parallel/assert-test-is-not-parallel "with-clock")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-clock")
   (testing (format "\nsystem clock = %s" (pr-str clock))
     (let [clock (cond
                   (t/clock? clock)           clock
@@ -315,12 +318,11 @@
                                      (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
         temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
                                                                                       attributes
-                                                                                      {:is_superuser true})))
-        primary-key                (mdb.u/primary-key User)]
+                                                                                      {:is_superuser true})))]
     (try
       (thunk temp-admin)
       (finally
-        (t2/delete! User primary-key (primary-key temp-admin))
+        (t2/delete! User (:id temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
         (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))
@@ -402,7 +404,7 @@
   application DB. Example usage:
 
     (deftest update-user-first-name-test
-      (mt/with-temp User [user]
+      (t2.with-temp/with-temp [User user]
         (update-user-first-name! user \"Cam\")
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
@@ -418,6 +420,11 @@
           ;; TIMESTAMP columns (which only have second resolution by default)
           (dissoc things-in-both :created_at :updated_at)))))
    (fn [toucan-model]
-     (hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
+     (mb.hawk.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (t2.model/resolve-model toucan-model))))
+
+;;; these are deprecated at runtime so Kondo doesn't complain, also because we can't go around deprecating stuff from
+;;; other libaries any other way. They're marked deprecated to encourage you to use the `t2.with-temp` versions.
+#_{:clj-kondo/ignore [:discouraged-var]}
+(alter-meta! #'with-temp* assoc :deprecated true)

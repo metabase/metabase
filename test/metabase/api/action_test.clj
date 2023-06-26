@@ -232,8 +232,8 @@
                                      (= (:type initial-action) "implicit")
                                      (assoc :database_id (mt/id)
                                             :parameters (if (= "row/create" (:kind initial-action))
-                                                            []
-                                                            [{:id "id" :type "type/BigInteger" :special "hello"}]))))
+                                                          []
+                                                          [{:id "id" :type "type/BigInteger" :special "hello"}]))))
                   updated-action (update-fn initial-action)]
               (testing "Create fails with"
                 (testing "no permission"
@@ -245,7 +245,7 @@
                            (:cause
                             (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
                 (testing "a plain card instead of a model"
-                  (mt/with-temp Card [{plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
+                  (t2.with-temp/with-temp [Card {plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
                     (is (= "Actions must be made with models, not cards."
                            (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
               (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
@@ -297,8 +297,8 @@
 (deftest implicit-actions-on-non-raw-model-test
   (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
     (mt/with-actions-enabled
-      (mt/with-temp Card [{model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
-                                          :dataset       true}]
+      (t2.with-temp/with-temp [Card {model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
+                                                    :dataset       true}]
         (is (= "Implicit actions are not supported for models with clauses."
                (mt/user-http-request :crowberto :post 400 "action"
                                      {:name       "Implicit example"
@@ -538,7 +538,7 @@
 
 (deftest parameter-ignore-test
   (mt/with-actions-test-data-tables #{"users"}
-    (mt/with-actions-enabled
+    (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
                         {action-id :action-id} {:type :implicit :kind "row/update"}]
         (testing "It strips out nil values"
@@ -546,10 +546,47 @@
                                                    :post 200
                                                    (format "action/%s/execute" action-id)
                                                    {:parameters {:id 1 :name % :last_login nil}})]
-            (try
-              (run-action! "Darth Vader")
+            (run-action! "Darth Vader")
+            (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
+              (is (= "Darth Vader" new-name))
+              (is (some? last-login)))))))))
+
+(deftest parameter-default-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-actions-enabled
+        (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                          {action-id :action-id} {:type :implicit :kind "row/update"
+                                                  :visualization_settings {:fields {"last_login" {:id           "last_login"
+                                                                                                  :defaultValue "2023-04-01T00:00:00Z"}}}}]
+          (testing "Missing parameters should be filled in with default values"
+            (let [run-action! #(mt/user-http-request :crowberto
+                                                     :post 200
+                                                     (format "action/%s/execute" action-id)
+                                                     {:parameters (merge {:id 1} %)})]
+              (run-action! {:name "Darth Vader"})
               (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
                 (is (= "Darth Vader" new-name))
-                (is (some? last-login)))
-              (finally
-                (run-action! "Plato Yeshua")))))))))
+                (is (= "2023-04-01T00:00:00Z" last-login)))))
+          (testing "{<param-id>: null} means a parameter is missing, and should not be replaced with a default value"
+            (let [run-action! #(mt/user-http-request :crowberto
+                                                     :post 200
+                                                     (format "action/%s/execute" action-id)
+                                                     {:parameters (merge {:id 1} %)})]
+              (run-action! {:name "Darth Vader" :last_login nil})
+              (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
+                (is (= "Darth Vader" new-name))
+                (is (= "2023-04-01T00:00:00Z" last-login))))))))))
+
+(deftest hidden-parameter-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {:keys [action-id]} {:type :implicit :kind "row/update"
+                                                      :visualization_settings {:fields {"name" {:id     "name"
+                                                                                                :hidden true}}}}]
+        (testing "Hidden parameter should fail gracefully"
+          (testing "GET /api/action/:id/execute"
+            (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
+                          (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
+                                                {:parameters {:name "Darth Vader"}})))))))))

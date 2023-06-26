@@ -71,7 +71,7 @@ jobs:
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -88,13 +88,13 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "actions"
           - "admin"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "downloads"
           - "embedding"
           - "filters"
           - "joins"
@@ -207,7 +207,7 @@ jobs:
           --browser "replay-chromium"
         env:
           TERM: xterm
-          REPLAYIO_ENABLED: 1
+          CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
@@ -220,12 +220,12 @@ jobs:
           --browser "replay-chromium"
         env:
           TERM: xterm
-          REPLAYIO_ENABLED: 1
+          CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
       - name: Upload Replay.io recordings
-        if: ${{ github.event_name == 'schedule' }}
+        if: github.event_name == 'schedule' && always()
         uses: replayio/action-upload@v0.4.7
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
@@ -256,13 +256,13 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "actions"
           - "admin"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "downloads"
           - "embedding"
           - "filters"
           - "joins"
@@ -285,7 +285,7 @@ jobs:
 
   visual-regression-tests:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     needs: build
     if: ${{ github.event_name != 'schedule' }}
     name: percy-visual-regression-tests

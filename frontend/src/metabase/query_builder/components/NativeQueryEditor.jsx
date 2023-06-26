@@ -1,7 +1,7 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import cx from "classnames";
 import "ace/ace";
 import "ace/ext-language_tools";
@@ -59,7 +59,7 @@ import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-class NativeQueryEditor extends Component {
+export class NativeQueryEditor extends Component {
   _localUpdate = false;
 
   constructor(props) {
@@ -77,8 +77,8 @@ class NativeQueryEditor extends Component {
     // e.x. https://github.com/metabase/metabase/issues/2801
     this.onChange = _.debounce(this.onChange.bind(this), 1);
 
-    this.editor = React.createRef();
-    this.resizeBox = React.createRef();
+    this.editor = createRef();
+    this.resizeBox = createRef();
   }
 
   static defaultProps = {

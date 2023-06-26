@@ -1,11 +1,10 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
 import { conjunct } from "metabase/lib/formatting";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Heading from "./Heading";
 
 // TODO: will need improved formatting for operator parameter filters

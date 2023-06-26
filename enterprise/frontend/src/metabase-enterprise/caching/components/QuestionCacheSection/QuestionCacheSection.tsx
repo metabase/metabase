@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { getRelativeTime } from "metabase/lib/time";
 import Question from "metabase-lib/Question";

@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { createMockMetadata } from "__support__/metadata";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";

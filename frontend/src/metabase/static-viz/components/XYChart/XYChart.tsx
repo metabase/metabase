@@ -1,4 +1,3 @@
-import React from "react";
 import { Text, TextProps } from "@visx/text";
 import { AxisBottom, AxisLeft, AxisRight } from "@visx/axis";
 import { GridRows } from "@visx/grid";

@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import { Children, Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
@@ -131,7 +131,7 @@ export default class LoadingAndErrorWrapper extends Component {
       if (children == null) {
         return null;
       }
-      return React.Children.only(children);
+      return Children.only(children);
     }
     return (
       <div className={this.props.className} style={this.props.style}>

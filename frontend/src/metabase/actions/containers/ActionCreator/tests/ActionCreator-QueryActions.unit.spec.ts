@@ -35,9 +35,9 @@ describe("ActionCreator > Query Actions", () => {
 
     it("should show clickable data reference icon", async () => {
       await setup();
-      getIcon("reference", "button").click();
+      userEvent.click(getIcon("reference"));
 
-      expect(screen.getByText("Data Reference")).toBeInTheDocument();
+      expect(screen.getAllByText("Data Reference")).toHaveLength(2);
       expect(screen.getByText("Database")).toBeInTheDocument();
     });
 
@@ -137,7 +137,7 @@ describe("ActionCreator > Query Actions", () => {
       await setup({ action, canWrite: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
-      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update" }),
@@ -155,7 +155,7 @@ describe("ActionCreator > Query Actions", () => {
       await setup({ action, hasActionsEnabled: false });
 
       expect(screen.getByDisplayValue(action.name)).toBeDisabled();
-      expect(queryIcon("grabber2")).not.toBeInTheDocument();
+      expect(queryIcon("grabber")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Update" }),

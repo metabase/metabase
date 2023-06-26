@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import Mustache from "mustache";
 import moment, { Moment } from "moment-timezone";
@@ -31,7 +31,6 @@ import { formatImage } from "./image";
 import { OptionsType } from "./types";
 
 const MARKDOWN_RENDERERS = {
-  // eslint-disable-next-line react/display-name
   a: ({ href, children }: any) => (
     <ExternalLink href={href}>{children}</ExternalLink>
   ),

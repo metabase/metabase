@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 
 export default function QuestionDataSelector({
@@ -16,7 +14,7 @@ export default function QuestionDataSelector({
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}
       setSourceTableFn={tableId =>
-        updateQuestion(query.setTableId(tableId).setDefaultQuery().question(), {
+        updateQuestion(query.setTableId(tableId), {
           run: true,
         })
       }

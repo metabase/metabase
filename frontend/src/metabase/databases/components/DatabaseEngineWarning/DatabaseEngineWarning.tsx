@@ -1,4 +1,3 @@
-import React from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 import { Engine } from "metabase-types/api";

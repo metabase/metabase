@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
 export const ToolbarButtonRoot = styled.button`
@@ -17,5 +17,5 @@ export const ToolbarButtonRoot = styled.button`
 `;
 
 export const ToolbarButtonIcon = styled(Icon)`
-  margin-right: 0.5rem;
+  margin-right: 0.25rem;
 `;

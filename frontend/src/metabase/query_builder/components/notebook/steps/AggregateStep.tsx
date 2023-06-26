@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";

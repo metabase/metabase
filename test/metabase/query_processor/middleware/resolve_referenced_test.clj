@@ -9,7 +9,8 @@
     :as qp.resolve-referenced]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -17,8 +18,8 @@
 
 (deftest resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
-    (mt/with-temp Card [mbql-card {:dataset_query (mt/mbql-query venues
-                                                    {:filter [:< $price 3]})}]
+    (t2.with-temp/with-temp [Card mbql-card {:dataset_query (mt/mbql-query venues
+                                                                           {:filter [:< $price 3]})}]
       (let [query {:database (mt/id)
                    :native   {:template-tags
                               {"tag-name-not-important1" {:type    :card

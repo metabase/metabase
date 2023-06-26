@@ -661,7 +661,7 @@ export default class Join extends MBQLObjectClause {
     const dimensions = [...this.parentDimensions(), ...this.joinDimensions()];
     return dimensions.every(
       dimension =>
-        dimensionOptions.hasDimension(dimension) || // For some GUI queries created in earlier versions of Metabase,
+        dimensionOptions.hasDimension(dimension.getMLv1CompatibleDimension()) || // For some GUI queries created in earlier versions of Metabase,
         // some dimensions are described as field literals
         // Usually it's [ "field", field_numeric_id, null|object ]
         // And field literals look like [ "field", "PRODUCT_ID", {'base-type': 'type/Integer' } ]

@@ -1,4 +1,3 @@
-import React from "react";
 import { Pie } from "@visx/shape";
 import { Group } from "@visx/group";
 import { PieArcDatum } from "@visx/shape/lib/shapes/Pie";

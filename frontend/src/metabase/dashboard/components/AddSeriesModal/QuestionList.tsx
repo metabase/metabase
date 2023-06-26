@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { memo, useState, useEffect, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useAsyncFn } from "react-use";
@@ -33,7 +33,7 @@ interface QuestionListProps {
   dashcard: DashboardOrderedCard;
 }
 
-export const QuestionList = React.memo(function QuestionList({
+export const QuestionList = memo(function QuestionList({
   enabledCards,
   onSelect,
   dashcard,

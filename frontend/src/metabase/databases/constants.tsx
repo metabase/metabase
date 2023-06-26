@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
@@ -31,7 +30,6 @@ export const ENGINE_LOGO: Record<string, string> = {
   bigquery: "bigquery.svg",
   "bigquery-cloud-sdk": "bigquery.svg",
   druid: "druid.svg",
-  googleanalytics: "googleanalytics.svg",
   h2: "h2.svg",
   mongo: "mongo.svg",
   mysql: "mysql.svg",

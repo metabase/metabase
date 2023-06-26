@@ -39,7 +39,7 @@ describe("issue 29082", () => {
     cy.findByText("Discount is empty").should("exist");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Discount is empty").within(() => cy.icon("close").click());
+    cy.findByText("Discount is empty").icon("close").click();
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 11 rows").should("exist");

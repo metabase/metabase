@@ -1,4 +1,3 @@
-import React from "react";
 import { Group } from "@visx/group";
 import { Text } from "metabase/static-viz/components/Text";
 import { PositionedLegendItem } from "./types";

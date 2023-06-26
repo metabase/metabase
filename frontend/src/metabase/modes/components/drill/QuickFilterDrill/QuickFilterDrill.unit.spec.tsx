@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { createMockColumn } from "metabase-types/api/mocks";

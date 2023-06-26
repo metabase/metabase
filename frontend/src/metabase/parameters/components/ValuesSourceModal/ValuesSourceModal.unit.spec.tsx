@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { checkNotNull } from "metabase/core/utils/types";
@@ -405,7 +404,7 @@ const setup = async ({
   setupDatabasesEndpoints(databases);
 
   if (hasCollectionAccess) {
-    setupCollectionsEndpoints(collections);
+    setupCollectionsEndpoints({ collections });
     setupCardsEndpoints(cards);
   } else {
     setupUnauthorizedCollectionsEndpoints(collections);

@@ -87,7 +87,7 @@ describeEE("issue 24966", () => {
             card_id,
             col: 0,
             row: 0,
-            size_x: 12,
+            size_x: 16,
             size_y: 8,
             parameter_mappings: [
               {

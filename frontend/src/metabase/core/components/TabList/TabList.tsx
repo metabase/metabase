@@ -1,4 +1,4 @@
-import React, {
+import {
   forwardRef,
   HTMLAttributes,
   ReactNode,
@@ -6,6 +6,7 @@ import React, {
   useContext,
   useMemo,
 } from "react";
+import * as React from "react";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { TabContext, TabContextType } from "../Tab";
 import { TabListContent, TabListRoot } from "./TabList.styled";

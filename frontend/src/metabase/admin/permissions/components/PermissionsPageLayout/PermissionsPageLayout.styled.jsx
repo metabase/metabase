@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
 export const PermissionPageRoot = styled.div`
@@ -23,7 +23,7 @@ export const PermissionPageSidebar = styled.aside`
   height: 100%;
   overflow: auto;
   border-left: 1px solid ${color("border")};
-  max-width: 300px;
+  max-width: 320px;
 `;
 
 export const TabsContainer = styled.div`
@@ -39,8 +39,8 @@ export const FullHeightContainer = styled.div`
 `;
 
 export const CloseSidebarButton = styled(Icon)`
-  top: 24px;
-  right: 24px;
+  top: 1.75rem;
+  right: 1.5rem;
   color: ${color("text-light")};
   position: absolute;
   cursor: pointer;

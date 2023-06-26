@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";

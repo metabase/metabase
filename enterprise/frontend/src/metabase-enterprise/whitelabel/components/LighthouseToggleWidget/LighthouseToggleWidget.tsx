@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import ImageToggle from "../ImageToggle";
 import { LighthouseSetting } from "./types";

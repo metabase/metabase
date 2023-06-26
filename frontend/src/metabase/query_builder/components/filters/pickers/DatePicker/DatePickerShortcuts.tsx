@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import type { Filter as FilterExpression } from "metabase-types/api";

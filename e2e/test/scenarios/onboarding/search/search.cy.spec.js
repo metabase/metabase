@@ -1,6 +1,14 @@
-import { restore } from "e2e/support/helpers";
+import {
+  describeWithSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  restore,
+} from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-describe("scenarios > auth > search", () => {
+describe("scenarios > search", () => {
   beforeEach(restore);
 
   describe("universal search", () => {
@@ -54,8 +62,33 @@ describe("scenarios > auth > search", () => {
       cy.realPress("ArrowDown");
       cy.realPress("Enter");
 
-      cy.location("pathname").should("eq", "/question/1-orders");
+      cy.location("pathname").should(
+        "eq",
+        `/question/${ORDERS_QUESTION_ID}-orders`,
+      );
     });
+  });
+});
+
+describeWithSnowplow("scenarios > search", () => {
+  const PAGE_VIEW_EVENT = 1;
+
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events for global search queries", () => {
+    cy.visit("/");
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
+    cy.findByPlaceholderText("Search…").type("Orders").blur();
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1); // new_search_query
   });
 });
 

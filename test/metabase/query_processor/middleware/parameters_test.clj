@@ -13,7 +13,8 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.schema :as su]
-   [schema.core :as s])
+   [schema.core :as s]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -230,29 +231,29 @@
 
 (deftest referencing-cards-with-parameters-test
   (testing "referencing card with parameter and default value substitutes correctly"
-    (mt/with-temp Card [param-card {:dataset_query (mt/native-query
-                                                    {:query "SELECT {{x}}"
-                                                     :template-tags {"x"
-                                                                     {:id "x", :name "x", :display-name "Number x",
-                                                                      :type :number, :default "1", :required true}}})}]
+    (t2.with-temp/with-temp [Card param-card {:dataset_query (mt/native-query
+                                                               {:query "SELECT {{x}}"
+                                                                :template-tags {"x"
+                                                                                {:id "x", :name "x", :display-name "Number x",
+                                                                                 :type :number, :default "1", :required true}}})}]
       (is (= (mt/native-query
-              {:query "SELECT * FROM (SELECT 1) AS x", :params []})
+               {:query "SELECT * FROM (SELECT 1) AS x", :params []})
              (substitute-params
               (mt/native-query
-               {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
-                :template-tags (card-template-tags [(:id param-card)])}))))))
+                {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
+                 :template-tags (card-template-tags [(:id param-card)])}))))))
 
   (testing "referencing card with parameter and NO default value, fails substitution"
-    (mt/with-temp Card [param-card {:dataset_query (mt/native-query
-                                                    {:query "SELECT {{x}}"
-                                                     :template-tags {"x"
-                                                                     {:id "x", :name "x", :display-name "Number x",
-                                                                      :type :number, :required false}}})}]
+    (t2.with-temp/with-temp [Card param-card {:dataset_query (mt/native-query
+                                                               {:query "SELECT {{x}}"
+                                                                :template-tags {"x"
+                                                                                {:id "x", :name "x", :display-name "Number x",
+                                                                                 :type :number, :required false}}})}]
       (is (thrown? ExceptionInfo
-            (substitute-params
-             (mt/native-query
-              {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
-               :template-tags (card-template-tags [(:id param-card)])})))))))
+                   (substitute-params
+                    (mt/native-query
+                      {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
+                       :template-tags (card-template-tags [(:id param-card)])})))))))
 
 (defn- snippet-template-tags
   [snippet-name->id]
@@ -296,13 +297,13 @@
 (deftest include-card-parameters-test
   (testing "Expanding a Card reference should include its parameters (#12236)"
     (mt/dataset sample-dataset
-      (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
-                                                 {:filter      [:between $total 30 60]
-                                                  :aggregation [[:aggregation-options
-                                                                 [:count-where
-                                                                  [:starts-with $product_id->products.category "G"]]
-                                                                 {:name "G Monies", :display-name "G Monies"}]]
-                                                  :breakout    [!month.created_at]})}]
+      (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query orders
+                                                           {:filter      [:between $total 30 60]
+                                                            :aggregation [[:aggregation-options
+                                                                           [:count-where
+                                                                            [:starts-with $product_id->products.category "G"]]
+                                                                           {:name "G Monies", :display-name "G Monies"}]]
+                                                            :breakout    [!month.created_at]})}]
         (let [card-tag (str "#" (u/the-id card))
               query    (mt/native-query
                          {:query         (format "SELECT * FROM {{%s}}" card-tag)

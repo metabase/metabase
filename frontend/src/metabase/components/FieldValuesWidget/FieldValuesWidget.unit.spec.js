@@ -1,4 +1,3 @@
-import React from "react";
 import "mutationobserver-shim";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -161,7 +160,6 @@ describe("FieldValuesWidget", () => {
       it("should not call fetchFieldValues", () => {
         const { fetchFieldValues } = renderFieldValuesWidget({
           fields: [field],
-          fetchFieldValues,
         });
         expect(fetchFieldValues).not.toHaveBeenCalled();
       });

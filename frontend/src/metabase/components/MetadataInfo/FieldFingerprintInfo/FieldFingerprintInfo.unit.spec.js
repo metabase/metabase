@@ -1,4 +1,3 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";

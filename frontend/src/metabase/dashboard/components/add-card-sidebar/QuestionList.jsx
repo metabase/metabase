@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -74,7 +74,7 @@ export function QuestionList({
         if (shouldShowEmptyState) {
           return (
             <EmptyStateContainer>
-              <EmptyState message={t`Nothing here`} icon="all" />
+              <EmptyState message={t`Nothing here`} icon="folder" />
             </EmptyStateContainer>
           );
         }

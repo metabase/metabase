@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { Timeline, TimelineEvent } from "metabase-types/api";

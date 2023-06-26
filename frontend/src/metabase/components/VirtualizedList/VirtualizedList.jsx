@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { useCallback } from "react";
 import { List, WindowScroller, AutoSizer } from "react-virtualized";
 
 function VirtualizedList({ items, rowHeight, renderItem, scrollElement }) {
-  const rowRenderer = React.useCallback(
+  const rowRenderer = useCallback(
     ({ index, key, style }) => (
       <div key={key} style={style}>
         {renderItem({ item: items[index], index })}
@@ -12,7 +12,7 @@ function VirtualizedList({ items, rowHeight, renderItem, scrollElement }) {
     [items, renderItem],
   );
 
-  const renderScrollComponent = React.useCallback(
+  const renderScrollComponent = useCallback(
     ({ width }) => {
       return (
         <WindowScroller scrollElement={scrollElement}>

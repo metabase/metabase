@@ -1,5 +1,3 @@
-import React from "react";
-
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { truncateText } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/static-viz/lib/colors";

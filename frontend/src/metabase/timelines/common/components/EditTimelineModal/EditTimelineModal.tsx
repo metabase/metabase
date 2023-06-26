@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import { Timeline, TimelineData } from "metabase-types/api";
 import ModalBody from "../ModalBody";

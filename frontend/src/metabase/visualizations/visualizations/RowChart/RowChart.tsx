@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -36,7 +37,7 @@ import {
   RemappingHydratedChartData,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,
@@ -45,6 +46,10 @@ import {
 import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -327,8 +332,8 @@ RowChartVisualization.iconName = "horizontal_bar";
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = { width: 5, height: 4 };
-RowChartVisualization.defaultSize = { width: 5, height: 4 };
+RowChartVisualization.minSize = getMinSize("row");
+RowChartVisualization.defaultSize = getDefaultSize("row");
 
 RowChartVisualization.settings = {
   ...ROW_CHART_SETTINGS,

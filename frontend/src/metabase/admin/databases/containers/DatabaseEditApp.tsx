@@ -1,4 +1,4 @@
-import React, { ComponentType, useState } from "react";
+import { ComponentType, useState } from "react";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
@@ -149,6 +149,8 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     }
   };
 
+  const autofocusFieldName = window.location.hash.slice(1);
+
   return (
     <DatabaseEditRoot>
       <Breadcrumbs className="py4" crumbs={crumbs} />
@@ -168,6 +170,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                       isAdvanced
                       onSubmit={handleSubmit}
                       setIsDirty={setIsDirty}
+                      autofocusFieldName={autofocusFieldName}
                     />
                   </DatabaseEditForm>
                   <div>{addingNewDatabase && <DatabaseEditHelp />}</div>

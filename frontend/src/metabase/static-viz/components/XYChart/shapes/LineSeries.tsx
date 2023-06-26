@@ -1,4 +1,3 @@
-import React from "react";
 import { Group } from "@visx/group";
 import { LinePath } from "@visx/shape";
 import { PositionScale } from "@visx/shape/lib/types";

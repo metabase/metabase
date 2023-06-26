@@ -12,6 +12,8 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.middleware.resolve-joins
+    :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]))
@@ -26,11 +28,6 @@
                                inner-query)
      [:field _ (_ :guard :join-alias)]
      &match)))
-
-(defn- add-joined-fields-to-fields [joined-fields source]
-  (cond-> source
-    (seq joined-fields) (update :fields (fn [fields]
-                                          (m/distinct-by add/normalize-clause (concat fields joined-fields))))))
 
 (defn- keep-source+alias-props [field]
   (update field 2 select-keys [::add/source-alias ::add/source-table :join-alias]))
@@ -70,7 +67,7 @@
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
-                 (add-joined-fields-to-fields (joined-fields inner-query) source)
+                 (qp.middleware.resolve-joins/append-join-fields-to-fields source (joined-fields inner-query))
                  (remove-unused-fields inner-query source)
                  (cond-> source
                    keep-filter? (assoc :filter filter-clause)))]

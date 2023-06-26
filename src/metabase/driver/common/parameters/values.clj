@@ -29,7 +29,7 @@
    (clojure.lang ExceptionInfo)
    (java.text NumberFormat)
    (java.util UUID)
-   (metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet)))
+   (metabase.driver.common.parameters Date FieldFilter ReferencedCardQuery ReferencedQuerySnippet)))
 
 (set! *warn-on-reflection* true)
 
@@ -54,9 +54,13 @@
 ;; the type of a FieldFilter look at the key `:widget-type`. This applies to things like the default value for a
 ;; FieldFilter as well.
 
+(def ^:private SingleValue
+  "Schema for a valid *single* value for a param."
+  (s/cond-pre FieldFilter Date s/Num s/Str s/Bool))
+
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
-  (s/named (s/maybe (s/cond-pre params/SingleValue MultipleValues su/Map))
+  (s/named (s/maybe (s/cond-pre (s/eq params/no-value) SingleValue [SingleValue] su/Map))
            "Valid param value(s)"))
 
 (s/defn ^:private tag-targets
@@ -232,37 +236,24 @@
   [s :- s/Str]
   (.parse (NumberFormat/getInstance) ^String s))
 
-(s/defn ^:private value->number :- (s/cond-pre s/Num CommaSeparatedNumbers)
+(s/defn ^:private value->number :- (s/cond-pre s/Num [s/Num])
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat
   undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the old parameter
   code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has long been
   changed for security purposes (avoiding SQL injection), but since users have come to expect comma-separated numeric
-  values to work we'll allow that (with validation) and return an instance of `CommaSeperatedNumbers`. (That is
-  converted to SQL as a simple comma-separated list.)"
+  values to work we'll allow that (with validation) and return a vector to be converted to a list in the native query."
   [value]
   (cond
-    ;; if not a string it's already been parsed
+    ;; already parsed
     (number? value)
-    value
-    ;; same goes for an instance of CommaSeperated values
-    (instance? CommaSeparatedNumbers value)
     value
     ;; newer operators use vectors as their arguments even if there's only one
     (vector? value)
-    (let [values (mapv value->number value)]
-      (if (next values)
-        (params/map->CommaSeparatedNumbers {:numbers values})
-        (first values)))
+    (u/many-or-one (mapv value->number value))
     ;; if the value is a string, then split it by commas in the string. Usually there should be none.
     ;; Parse each part as a number.
     (string? value)
-    (let [parts (for [part (str/split value #",")]
-                  (parse-number part))]
-      (if (> (count parts) 1)
-        ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
-        (params/map->CommaSeparatedNumbers {:numbers parts})
-        ;; otherwise just return the single number
-        (first parts)))))
+    (u/many-or-one (mapv parse-number (str/split value #",")))))
 
 (s/defn ^:private parse-value-for-field-type :- s/Any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
@@ -306,31 +297,30 @@
   base type Fields as UUIDs."
   [param-type :- mbql.s/TemplateTagType value]
   (cond
-   (= value params/no-value)
-   value
+    (= value params/no-value)
+    value
 
-   (= param-type :number)
-   (value->number value)
+    (= param-type :number)
+    (value->number value)
 
-   (= param-type :date)
-   (params/map->Date {:s value})
+    (= param-type :date)
+    (params/map->Date {:s value})
 
-   ;; Field Filters
-   (and (= param-type :dimension)
-        (= (get-in value [:value :type]) :number))
-   (update-in value [:value :value] value->number)
+    ;; Field Filters
+    (and (= param-type :dimension)
+         (= (get-in value [:value :type]) :number))
+    (update-in value [:value :value] value->number)
 
-   (sequential? value)
-   (params/map->MultipleValues {:values (for [v value]
-                                         (parse-value-for-type param-type v))})
+    (sequential? value)
+    (mapv (partial parse-value-for-type param-type) value)
 
-   ;; Field Filters with "special" base types
-   (and (= param-type :dimension)
-        (get-in value [:field :base_type]))
-   (update-filter-for-field-type value)
+    ;; Field Filters with "special" base types
+    (and (= param-type :dimension)
+         (get-in value [:field :base_type]))
+    (update-filter-for-field-type value)
 
-   :else
-   value))
+    :else
+    value))
 
 (s/defn ^:private value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`

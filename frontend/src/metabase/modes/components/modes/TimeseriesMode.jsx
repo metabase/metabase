@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
 import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupingWidget";

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -8,7 +8,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   isPreviewShown,
   isFullyParametrized,
@@ -112,7 +112,7 @@ function EntityItemMenu({
       [
         onPin && {
           title: isPinned ? t`Unpin` : t`Pin this`,
-          icon: "pin",
+          icon: isPinned ? "unpin" : "pin",
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },

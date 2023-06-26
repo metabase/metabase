@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -24,6 +24,10 @@ import {
 } from "metabase/visualizations/lib/settings/column";
 
 import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
+import {
   isMetric,
   isDimension,
   isNumber,
@@ -44,7 +48,8 @@ export default class Table extends Component {
   static iconName = "table";
   static canSavePng = false;
 
-  static minSize = { width: 4, height: 3 };
+  static minSize = getMinSize("table");
+  static defaultSize = getDefaultSize("table");
 
   static isSensible({ cols, rows }) {
     return true;

@@ -12,7 +12,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.ssh :as ssh]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io BufferedReader InputStreamReader PrintWriter)
    (java.net InetSocketAddress ServerSocket Socket)
@@ -229,7 +230,7 @@
                                      :tunnel-port ssh-mock-server-with-password-port
                                      :tunnel-user ssh-username
                                      :tunnel-pass ssh-password)]
-        (mt/with-temp Database [tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (letfn [(check-row []
@@ -251,7 +252,7 @@
       (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed (H2 version)"
         (let [h2-port (tu/find-free-port)
               server  (init-h2-tcp-server h2-port)
-              ; Use ACCESS_MODE_DATA=r to avoid updating the DB file
+              ;; Use ACCESS_MODE_DATA=r to avoid updating the DB file
               uri     (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest;ACCESS_MODE_DATA=r" h2-port)
               h2-db   {:port               h2-port
                        :host               "localhost"
@@ -263,7 +264,7 @@
                        :tunnel-user        ssh-username
                        :tunnel-pass        ssh-password}]
           (try
-            (mt/with-temp Database [db {:engine :h2, :details h2-db}]
+            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text

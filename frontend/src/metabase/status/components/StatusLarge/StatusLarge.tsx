@@ -1,6 +1,5 @@
-import React from "react";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "../../../components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import {
   StatusCardRoot,
@@ -83,7 +82,7 @@ const StatusCard = ({
   return (
     <StatusCardRoot key={id}>
       <StatusCardIcon>
-        <Icon name={icon} />
+        <Icon name={icon as unknown as IconName} />
       </StatusCardIcon>
       <StatusCardBody>
         <StatusCardTitle>

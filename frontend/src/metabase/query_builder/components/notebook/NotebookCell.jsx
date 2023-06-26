@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { isValidElement } from "react";
 
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { alpha } from "metabase/lib/colors";
 
@@ -93,7 +93,7 @@ export function NotebookCellItem(props) {
     ...restProps
   } = props;
 
-  const hasRightSide = React.isValidElement(right) && !readOnly;
+  const hasRightSide = isValidElement(right) && !readOnly;
   const mainContentRoundedCorners = ["left"];
   if (!hasRightSide) {
     mainContentRoundedCorners.push("right");

@@ -6,6 +6,7 @@ import {
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -23,7 +24,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should create the first event and timeline", () => {
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -49,7 +50,7 @@ describe("scenarios > organization > timelines > question", () => {
         events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
       });
 
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -81,7 +82,7 @@ describe("scenarios > organization > timelines > question", () => {
         ],
       });
 
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -109,7 +110,7 @@ describe("scenarios > organization > timelines > question", () => {
         events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
       });
 
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -117,7 +118,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
 
@@ -141,7 +142,7 @@ describe("scenarios > organization > timelines > question", () => {
         events: [{ name: "RC2", timestamp: "2018-10-20T00:00:00Z" }],
       });
 
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -149,7 +150,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Builds").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -169,7 +170,7 @@ describe("scenarios > organization > timelines > question", () => {
         events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
       });
 
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -177,7 +178,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      rightSidebar().within(() => cy.icon("ellipsis").click());
+      rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
@@ -204,7 +205,7 @@ describe("scenarios > organization > timelines > question", () => {
         ],
       });
 
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.icon("calendar").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -312,7 +313,7 @@ describe("scenarios > organization > timelines > question", () => {
         ],
       });
 
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -408,7 +409,7 @@ describe("scenarios > organization > timelines > question", () => {
   describe("as readonly user", () => {
     it("should not allow creating default timelines", () => {
       cy.signIn("readonly");
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At").should("be.visible");
 
@@ -427,7 +428,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
       cy.signOut();
       cy.signIn("readonly");
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At").should("be.visible");
 
@@ -436,7 +437,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Releases").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add an event").should("not.exist");
-      rightSidebar().within(() => cy.icon("ellipsis").should("not.exist"));
+      rightSidebar().icon("ellipsis").should("not.exist");
     });
   });
 });

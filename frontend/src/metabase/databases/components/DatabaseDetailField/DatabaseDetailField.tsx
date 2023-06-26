@@ -1,4 +1,3 @@
-import React from "react";
 import { EngineField } from "metabase-types/api";
 import FormNumericInput from "metabase/core/components/FormNumericInput";
 import FormFileInput from "metabase/core/components/FormFileInput";
@@ -6,6 +5,7 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import FormToggle from "metabase/core/components/FormToggle";
+import { IconName } from "metabase/core/components/Icon";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 import { FIELD_OVERRIDES } from "../../constants";
@@ -13,14 +13,19 @@ import { EngineFieldOverride } from "../../types";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
+  autoFocus?: boolean;
 }
 
 const DatabaseDetailField = ({
   field,
+  autoFocus,
 }: DatabaseDetailFieldProps): JSX.Element => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
-  const props = getFieldProps(field, override);
+  const props = {
+    autoFocus,
+    ...getFieldProps(field, override),
+  };
 
   if (typeof type === "function") {
     const Component = type;
@@ -69,7 +74,7 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
 const getInputProps = (field: EngineField) => {
   return {
     infoTooltip: field["helper-text"],
-    rightIcon: field["helper-text"] && "info",
+    rightIcon: (field["helper-text"] as unknown as IconName) ?? "info",
     rightIconTooltip: field["helper-text"],
   };
 };

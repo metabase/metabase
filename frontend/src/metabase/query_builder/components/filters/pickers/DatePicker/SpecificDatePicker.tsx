@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import moment, { Moment } from "moment-timezone";
@@ -41,7 +41,7 @@ const SpecificDatePicker = ({
   onChange,
   onClear,
 }: SpecificDatePickerProps) => {
-  const [showCalendar, setShowCalendar] = React.useState(true);
+  const [showCalendar, setShowCalendar] = useState(true);
   const { hours, minutes, date } = getTimeComponent(value);
 
   const showTimeSelectors =

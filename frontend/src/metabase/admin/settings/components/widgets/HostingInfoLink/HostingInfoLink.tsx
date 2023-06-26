@@ -1,4 +1,3 @@
-import React from "react";
 import { HostingLink } from "./HostingInfoLink.styled";
 
 export interface HostingInfoLinkProps {

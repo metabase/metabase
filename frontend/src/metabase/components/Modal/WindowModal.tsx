@@ -1,4 +1,4 @@
-import React, { Component, CSSProperties } from "react";
+import { Component, CSSProperties } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import cx from "classnames";
 import {
@@ -17,6 +17,8 @@ export type WindowModalProps = BaseModalProps & {
   fullPageModal?: boolean;
   formModal?: boolean;
   style?: CSSProperties;
+  "data-testid"?: string;
+  zIndex?: number;
 } & {
   [size in ModalSize]?: boolean;
 };
@@ -35,6 +37,10 @@ export class WindowModal extends Component<WindowModalProps> {
 
     this._modalElement = document.createElement("div");
     this._modalElement.className = "ModalContainer";
+
+    if (props.zIndex != null) {
+      this._modalElement.setAttribute("style", `z-index:${props.zIndex}`);
+    }
     document.body.appendChild(this._modalElement);
   }
 
@@ -86,6 +92,7 @@ export class WindowModal extends Component<WindowModalProps> {
       isOpen,
       style,
       enableTransition,
+      "data-testid": dataTestId,
     } = this.props;
     const backdropClassnames =
       "flex justify-center align-center fixed top left bottom right";
@@ -113,6 +120,7 @@ export class WindowModal extends Component<WindowModalProps> {
               <div
                 className={cx(backdropClassName, backdropClassnames)}
                 style={style}
+                data-testid={dataTestId}
               >
                 {this._modalComponent()}
               </div>

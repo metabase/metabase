@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
 import { WritebackAction, WritebackQueryAction } from "metabase-types/api";
@@ -107,10 +107,7 @@ function ModelActionListItem({
             )}
           </ActionSubtitle>
         </div>
-        <EntityMenu
-          items={menuItems}
-          trigger={<MenuIcon name="ellipsis" size={14} />}
-        />
+        <EntityMenu items={menuItems} trigger={<MenuIcon name="ellipsis" />} />
       </ActionHeader>
       <ActionCardContainer>
         {action.type === "query" ? (

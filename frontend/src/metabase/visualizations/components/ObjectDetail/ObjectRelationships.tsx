@@ -1,10 +1,9 @@
-import React from "react";
 import { jt, t } from "ttag";
 import { inflect } from "inflection";
 
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";

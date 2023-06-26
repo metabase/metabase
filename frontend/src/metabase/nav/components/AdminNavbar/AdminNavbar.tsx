@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import LogoIcon from "metabase/components/LogoIcon";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { User } from "metabase-types/api";
 import { AdminPath } from "metabase-types/store";
 import StoreLink from "../StoreLink";
@@ -83,7 +83,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
     <AdminMobileNavbar>
       <Icon
         name="burger"
-        size={20}
+        size={32}
         onClick={() => setMobileNavOpen(prev => !prev)}
       />
       {mobileNavOpen && (

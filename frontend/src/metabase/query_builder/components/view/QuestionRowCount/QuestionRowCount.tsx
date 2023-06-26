@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { ngettext, msgid, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";

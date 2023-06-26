@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import _ from "underscore";
 import { CreateQueryActionParams } from "metabase/entities/actions";

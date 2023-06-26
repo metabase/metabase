@@ -1,6 +1,5 @@
-import React from "react";
+import { Icon, IconName } from "metabase/core/components/Icon";
 
-import Icon from "metabase/components/Icon";
 import { TabBar, Tab, RadioInput } from "./EditorTabs.styled";
 
 type Props = {
@@ -8,7 +7,7 @@ type Props = {
   options: {
     id: string;
     name: string;
-    icon: string;
+    icon: IconName;
     disabled?: boolean;
   }[];
   onChange: (optionId: string) => void;

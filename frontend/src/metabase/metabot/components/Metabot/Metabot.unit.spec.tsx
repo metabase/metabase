@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { checkNotNull } from "metabase/core/utils/types";

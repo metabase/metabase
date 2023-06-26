@@ -3,12 +3,12 @@
    [clojure.test :refer :all]
    [metabase.events.last-login :as last-login]
    [metabase.models.user :refer [User]]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest user-login-test
   (testing "`:user-login` event"
-    (mt/with-temp User [{user-id :id, last-login :last_login}]
+    (t2.with-temp/with-temp [User {user-id :id, last-login :last_login}]
       (is (= nil
              last-login))
       (last-login/process-last-login-event {:topic :user-login

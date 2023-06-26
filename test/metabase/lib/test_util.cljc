@@ -2,12 +2,12 @@
   "Misc test utils for Metabase lib."
   (:require
    [clojure.core.protocols]
-   [clojure.datafy :as datafy]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [is]]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.composed-provider
+    :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
@@ -17,11 +17,8 @@
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def venues-query
-  {:lib/type     :mbql/query
-   :lib/metadata meta/metadata-provider
-   :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table (meta/id :venues)}]})
+  "A mock query against the `VENUES` test data table."
+  (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (defn venues-query-with-last-stage [m]
   (let [query (update-in venues-query [:stages 0] merge m)]
@@ -57,7 +54,7 @@
                                          (assoc :lib/type :metadata/table)
                                          (dissoc :fields)))
     (field    [_this field-id]   (some-> (m/find-first #(= (:id %) field-id) fields)
-                                         (assoc :lib/type :metadata/field)))
+                                         (assoc :lib/type :metadata/column)))
     (card     [_this card-id]    (some-> (m/find-first #(= (:id %) card-id) cards)
                                          (assoc :lib/type :metadata/card)))
     (metric   [_this metric-id]  (some-> (m/find-first #(= (:id %) metric-id) metrics)
@@ -69,50 +66,17 @@
                                        (dissoc :fields))))
     (fields   [_this table-id]   (for [field fields
                                        :when (= (:table_id field) table-id)]
-                                   (assoc field :lib/type :metadata/field)))
+                                   (assoc field :lib/type :metadata/column)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]
       (list `mock-metadata-provider m))))
 
-(defn composed-metadata-provider
-  "A metadata provider composed of several different `metadata-providers`. Methods try each constituent provider in
-  turn from left to right until one returns a truthy result."
-  [& metadata-providers]
-  (reify
-    metadata.protocols/MetadataProvider
-    (database [_this]            (some metadata.protocols/database                metadata-providers))
-    (table    [_this table-id]   (some #(metadata.protocols/table   % table-id)   metadata-providers))
-    (field    [_this field-id]   (some #(metadata.protocols/field   % field-id)   metadata-providers))
-    (card     [_this card-id]    (some #(metadata.protocols/card    % card-id)    metadata-providers))
-    (metric   [_this metric-id]  (some #(metadata.protocols/metric  % metric-id)  metadata-providers))
-    (segment  [_this segment-id] (some #(metadata.protocols/segment % segment-id) metadata-providers))
-    (tables   [_this]            (m/distinct-by :id (mapcat metadata.protocols/tables               metadata-providers)))
-    (fields   [_this table-id]   (m/distinct-by :id (mapcat #(metadata.protocols/fields % table-id) metadata-providers)))
 
-    clojure.core.protocols/Datafiable
-    (datafy [_this]
-      (cons `composed-metadata-provider (map datafy/datafy metadata-providers)))))
-
-(deftest ^:parallel composed-metadata-provider-test
-  (testing "Return things preferentially from earlier metadata providers"
-    (let [time-field        (assoc (meta/field-metadata :people :birth-date)
-                                   :base-type      :type/Time
-                                   :effective-type :type/Time)
-          metadata-provider (composed-metadata-provider
-                             (mock-metadata-provider
-                              {:fields [time-field]})
-                             meta/metadata-provider)]
-      (is (=? {:name           "BIRTH_DATE"
-               :base-type      :type/Time
-               :effective-type :type/Time}
-              (lib.metadata/field
-               metadata-provider
-               (meta/id :people :birth-date)))))))
 
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
-  (composed-metadata-provider
+  (lib.metadata.composed-provider/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [{:name          "My Card"
@@ -130,12 +94,12 @@
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
    :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table "card__1"}]})
+   :stages       [{:lib/type    :mbql.stage/mbql
+                   :source-card 1}]})
 
 (def metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
-  (composed-metadata-provider
+  (lib.metadata.composed-provider/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [{:name            "My Card"
@@ -179,25 +143,25 @@
    :lib/metadata metadata-provider-with-card-with-result-metadata
    :type         :pipeline
    :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table "card__1"}]})
+   :stages       [{:lib/type    :mbql.stage/mbql
+                   :source-card 1}]})
 
 (defn query-with-join
   "A query against `VENUES` with an explicit join against `CATEGORIES`."
   []
-  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/join (-> (lib/join-clause
                      (meta/table-metadata :categories)
                      [(lib/=
-                       (lib/field "VENUES" "CATEGORY_ID")
-                       (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                       (meta/field-metadata :venues :category-id)
+                       (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
                     (lib/with-join-alias "Cat")
                     (lib/with-join-fields :all)))))
 
 (defn query-with-expression
   "A query with an expression."
   []
-  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/expression "expr" (lib/absolute-datetime "2020" :month))))
 
 (defn native-query
@@ -208,12 +172,12 @@
    :database     (meta/id)
    :stages       [{:lib/type           :mbql.stage/native
                    :lib/stage-metadata {:lib/type :metadata/results
-                                        :columns  [{:lib/type      :metadata/field
+                                        :columns  [{:lib/type      :metadata/column
                                                     :name          "abc"
                                                     :display-name  "another Field"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}
-                                                   {:lib/type      :metadata/field
+                                                   {:lib/type      :metadata/column
                                                     :name          "sum"
                                                     :display-name  "sum of User ID"
                                                     :base-type     :type/Integer

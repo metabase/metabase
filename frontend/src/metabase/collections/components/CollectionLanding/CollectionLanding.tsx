@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { extractCollectionId } from "metabase/lib/urls";
 import CollectionContent from "../../containers/CollectionContent";
 

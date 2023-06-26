@@ -72,7 +72,7 @@
 
 (def ^:private Schemas
   [:or
-   [:enum :all :segmented :none :block :full :limited]
+   [:enum :all :segmented :none :block :full :limited :impersonated]
    SchemaGraph])
 
 (def ^:private DataPerms
@@ -87,7 +87,7 @@
    DataPerms
    [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
     (fn [{:keys [native schemas]}]
-      (not (and (= native :write) schemas (not= schemas :all))))]])
+      (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))]])
 
 (def ^:private DbGraph
   [:schema {:registry {"DataPerms" DataPerms}}

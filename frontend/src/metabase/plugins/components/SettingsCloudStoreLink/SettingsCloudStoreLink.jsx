@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { Description, Link, LinkIcon } from "./SettingsCloudStoreLink.styled";

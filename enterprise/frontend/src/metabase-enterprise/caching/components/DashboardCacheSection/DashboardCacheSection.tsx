@@ -1,4 +1,3 @@
-import React from "react";
 import { Dashboard } from "metabase-types/api";
 import CacheSection from "../CacheSection";
 

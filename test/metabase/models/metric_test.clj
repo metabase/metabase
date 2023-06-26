@@ -25,7 +25,7 @@
 
 (deftest update-test
   (testing "Updating"
-    (mt/with-temp Metric [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
+    (t2.with-temp/with-temp [Metric {:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Metric"
         (is (thrown-with-msg?
              Exception

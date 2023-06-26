@@ -26,6 +26,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 
@@ -896,11 +897,11 @@ describe("Question", () => {
           assoc(orders_raw_card, "id", 1),
           metadata,
         );
-        expect(question.getUrl()).toBe("/question/1-raw-orders-data");
+        expect(ML_Urls.getUrl(question)).toBe("/question/1-raw-orders-data");
       });
       it("returns a URL with hash for an unsaved question", () => {
         const question = new Question(dissoc(orders_raw_card, "id"), metadata);
-        expect(question.getUrl()).toBe(adhocUrl);
+        expect(ML_Urls.getUrl(question)).toBe(adhocUrl);
       });
     });
 
@@ -910,7 +911,7 @@ describe("Question", () => {
         metadata,
       );
 
-      expect(question.getUrl()).toBe(adhocUrl);
+      expect(ML_Urls.getUrl(question)).toBe(adhocUrl);
     });
   });
 
@@ -1305,7 +1306,7 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype.getUrlWithParameters", () => {
+  describe("getUrlWithParameters", () => {
     const parameters = [
       {
         id: 1,
@@ -1357,7 +1358,11 @@ describe("Question", () => {
         const parameters = [];
         const parameterValues = {};
 
-        const url = question.getUrlWithParameters(parameters, parameterValues);
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          parameters,
+          parameterValues,
+        );
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question/1",
@@ -1367,7 +1372,9 @@ describe("Question", () => {
       });
 
       it("should return question URL with string MBQL filter added", () => {
-        const url = question.getUrlWithParameters(parameters, { 1: "bar" });
+        const url = ML_Urls.getUrlWithParameters(question, parameters, {
+          1: "bar",
+        });
 
         const deserializedCard = {
           ...assocIn(
@@ -1386,7 +1393,9 @@ describe("Question", () => {
       });
 
       it("should return question URL with number MBQL filter added", () => {
-        const url = question.getUrlWithParameters(parameters, { 5: 123 });
+        const url = ML_Urls.getUrlWithParameters(question, parameters, {
+          5: 123,
+        });
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
@@ -1403,7 +1412,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with date MBQL filter added", () => {
-        const url = question.getUrlWithParameters(parameters, {
+        const url = ML_Urls.getUrlWithParameters(question, parameters, {
           3: "2017-05",
         });
 
@@ -1423,7 +1432,8 @@ describe("Question", () => {
 
       it("should include objectId in a URL", () => {
         const OBJECT_ID = "5";
-        const url = question.getUrlWithParameters(
+        const url = ML_Urls.getUrlWithParameters(
+          question,
           parameters,
           { 1: "bar" },
           { objectId: OBJECT_ID },
@@ -1441,7 +1451,9 @@ describe("Question", () => {
       const question = new Question(card);
 
       it("should return a card with attached parameters and parameter values as query params", () => {
-        const url = question.getUrlWithParameters(parameters, { 1: "bar" });
+        const url = ML_Urls.getUrlWithParameters(question, parameters, {
+          1: "bar",
+        });
 
         const deserializedCard = {
           ...card,
@@ -1460,7 +1472,8 @@ describe("Question", () => {
       });
 
       it("should not include objectId in a URL", () => {
-        const url = question.getUrlWithParameters(
+        const url = ML_Urls.getUrlWithParameters(
+          question,
           parameters,
           { 1: "bar" },
           { objectId: 5 },
@@ -1509,7 +1522,7 @@ describe("Question", () => {
       const question = new Question(cardWithTextFilter, metadata);
 
       it("should return question URL when there are no parameters", () => {
-        const url = question.getUrlWithParameters([], {});
+        const url = ML_Urls.getUrlWithParameters(question, [], {});
         expect(parseUrl(url)).toEqual({
           pathname: "/question/1",
           query: {},
@@ -1518,9 +1531,13 @@ describe("Question", () => {
       });
 
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's variable", () => {
-        const url = question.getUrlWithParameters(parametersForNativeQ, {
-          1: "bar",
-        });
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          parametersForNativeQ,
+          {
+            1: "bar",
+          },
+        );
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question/1",
@@ -1531,9 +1548,13 @@ describe("Question", () => {
 
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's field filter", () => {
         const question = new Question(cardWithFieldFilter, metadata);
-        const url = question.getUrlWithParameters(parametersForNativeQ, {
-          5: "111",
-        });
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          parametersForNativeQ,
+          {
+            5: "111",
+          },
+        );
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question/2",
@@ -1543,9 +1564,13 @@ describe("Question", () => {
       });
 
       it("should not include objectId in a URL", () => {
-        const url = question.getUrlWithParameters(parametersForNativeQ, {
-          1: "bar",
-        });
+        const url = ML_Urls.getUrlWithParameters(
+          question,
+          parametersForNativeQ,
+          {
+            1: "bar",
+          },
+        );
         expect(parseUrl(url).query.objectId).toBeUndefined();
       });
     });

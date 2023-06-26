@@ -1,5 +1,3 @@
-import React from "react";
-
 import { getCirclePositionInSvgCoordinate } from "./utils";
 import type { Position } from "./types";
 

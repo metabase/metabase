@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import {
@@ -96,7 +95,7 @@ const setup = async ({
   waitForContent = true,
 }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupDashboardCollectionItemsEndpoint([dashboard]);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -27,7 +27,7 @@ export default class DatabaseList extends Component {
     super(props);
 
     props.databases.map(database => {
-      this["deleteDatabaseModal_" + database.id] = React.createRef();
+      this["deleteDatabaseModal_" + database.id] = createRef();
     });
 
     this.state = {

@@ -1,10 +1,4 @@
-import React, {
-  ChangeEvent,
-  MouseEvent,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { ChangeEvent, MouseEvent, useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { useAsyncFn } from "react-use";
@@ -14,7 +8,7 @@ import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Tables from "metabase/entities/tables";
-import Icon from "metabase/components/Icon/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
@@ -24,8 +18,12 @@ import {
   TableVisibilityType,
 } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import Table from "metabase-lib/metadata/Table";
 import { getSchemaName } from "metabase-lib/metadata/utils/schema";
+import { AdminListItem } from "./MetadataTableList.styled";
+
+const RELOAD_INTERVAL = 2000;
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -263,22 +261,25 @@ const TableRow = ({
 
   return (
     <li className="hover-parent hover--visibility">
-      <a
+      <AdminListItem
+        disabled={!isSyncCompleted(table)}
+        onClick={handleSelect}
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
           { selected: isSelected },
         )}
-        onClick={handleSelect}
       >
         {table.displayName()}
-        <div className="hover-child float-right">
-          <ToggleVisibilityButton
-            tables={tables}
-            isHidden={table.visibility_type != null}
-            onUpdateTableVisibility={onUpdateTableVisibility}
-          />
-        </div>
-      </a>
+        {isSyncCompleted(table) && (
+          <div className="hover-child float-right">
+            <ToggleVisibilityButton
+              tables={tables}
+              isHidden={table.visibility_type != null}
+              onUpdateTableVisibility={onUpdateTableVisibility}
+            />
+          </div>
+        )}
+      </AdminListItem>
     </li>
   );
 };
@@ -334,6 +335,14 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   }
 };
 
+const getReloadInterval = (
+  _state: State,
+  _props: TableLoaderProps,
+  tables = [],
+) => {
+  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
+};
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.loadList({
@@ -344,6 +353,7 @@ export default _.compose(
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
     selectorName: "getListUnfiltered",
+    reloadInterval: getReloadInterval,
   }),
   connect(null, mapDispatchToProps),
 )(MetadataTableList);

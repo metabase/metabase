@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import { render, screen, getIcon, queryIcon } from "__support__/ui";
@@ -100,6 +99,17 @@ describe("SortStep", () => {
     const orderBy = gerRecentOrderByClause();
     expect(orderBy.displayName).toBe("Created At");
     expect(orderBy.direction).toBe("asc");
+  });
+
+  it("shouldn't show already used columns when adding a new order-by", () => {
+    const { query, columnInfo } = createQueryWithOrderBy();
+    setup(createMockNotebookStep({ topLevelQuery: query }));
+
+    userEvent.click(getIcon("add"));
+
+    expect(
+      screen.queryByRole("option", { name: columnInfo.displayName }),
+    ).not.toBeInTheDocument();
   });
 
   it("should toggle an order by direction", () => {

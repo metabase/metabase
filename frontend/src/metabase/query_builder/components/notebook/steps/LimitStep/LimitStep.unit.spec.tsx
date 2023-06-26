@@ -1,4 +1,3 @@
-import React from "react";
 import { fireEvent, render, screen } from "__support__/ui";
 
 import * as Lib from "metabase-lib";

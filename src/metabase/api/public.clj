@@ -39,7 +39,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -90,7 +89,7 @@
                               :archived false, conditions))
         remove-card-non-public-columns
         combine-parameters-and-template-tags
-        (hydrate :param_values :param_fields))))
+        (t2/hydrate :param_values :param_fields))))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -201,6 +200,30 @@
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
+(def ^:private action-public-keys
+  "The only keys for an action that should be visible to the general public."
+  #{:name
+    :id
+    :database_id ;; needed to check if the database has actions enabled on the frontend
+    :visualization_settings
+    :parameters})
+
+(defn- public-action
+  "Returns a public version of `action`, removing all data that should not be visible to the general public."
+  [action]
+  (let [hidden-parameter-ids (->> (get-in action [:visualization_settings :fields])
+                                  vals
+                                  (keep (fn [x]
+                                          (when (true? (:hidden x))
+                                            (:id x))))
+                                  set)]
+    (-> action
+        (update :parameters (fn [parameters]
+                              (remove #(contains? hidden-parameter-ids (:id %)) parameters)))
+        (update-in [:visualization_settings :fields] (fn [fields]
+                                                       (m/remove-keys hidden-parameter-ids fields)))
+        (select-keys action-public-keys))))
+
 (defn public-dashboard
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
   general public. Throws a 404 if the Dashboard doesn't exist."
@@ -208,16 +231,17 @@
   {:pre [(even? (count conditions))]}
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
     (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters :auto_apply_filters], :archived false, conditions))
-        (hydrate [:ordered_cards :card :series :dashcard/action] :param_values :param_fields)
+        (t2/hydrate [:ordered_cards :card :series :dashcard/action] :ordered_tabs :param_values :param_fields)
         api.dashboard/add-query-average-durations
         (update :ordered_cards (fn [dashcards]
                                  (for [dashcard dashcards]
-                                   (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x
+                                   (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x :dashboard_tab_id
                                                               :size_y :parameter_mappings :visualization_settings :action])
                                        (update :card remove-card-non-public-columns)
                                        (update :series (fn [series]
                                                          (for [series series]
-                                                           (remove-card-non-public-columns series)))))))))))
+                                                           (remove-card-non-public-columns series))))
+                                       (m/update-existing :action public-action))))))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
@@ -336,13 +360,6 @@
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
-(def ^:private action-public-keys
-  "The only keys for an action that should be visible to the general public."
-  #{:name
-    :id
-    :visualization_settings
-    :parameters})
-
 (api/defendpoint GET "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
@@ -350,7 +367,7 @@
   (validation/check-public-sharing-enabled)
   (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
-    (select-keys action action-public-keys)))
+    (public-action action)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -405,7 +422,7 @@
   [field-id dashboard-id]
   (let [dashboard       (-> (t2/select-one Dashboard :id dashboard-id)
                             api/check-404
-                            (hydrate [:ordered_cards :card]))
+                            (t2/hydrate [:ordered_cards :card]))
         param-field-ids (params/dashcards->param-field-ids (:ordered_cards dashboard))]
     (api/check-404 (contains? param-field-ids field-id))))
 

@@ -8,15 +8,18 @@ import {
   isBoolean,
 } from "metabase-lib/types/utils/isa";
 import type FieldEntity from "metabase-lib/metadata/Field";
-import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/Question";
 
-const hasPk = (table?: Table) =>
-  !!table?.fields?.some(
-    (field: FieldEntity) => isPK(field) && isInteger(field),
-  );
+const hasSingleIntegerPk = (model?: Question) => {
+  const pkFields = model
+    ?.getResultMetadata()
+    ?.filter((field: Field) => isPK(field));
 
-export const canIndexField = (field: FieldEntity): boolean => {
-  return !!(isString(field) && !isBoolean(field) && hasPk(field?.table));
+  return pkFields?.length === 1 && isInteger(pkFields[0]);
+};
+
+export const canIndexField = (field: FieldEntity, model: Question): boolean => {
+  return !!(isString(field) && !isBoolean(field) && hasSingleIntegerPk(model));
 };
 
 export const getPkRef = (fields?: Field[]) => fields?.find(isPK)?.field_ref;

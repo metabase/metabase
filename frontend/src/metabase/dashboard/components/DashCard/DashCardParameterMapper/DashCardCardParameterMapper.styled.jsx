@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 
 import { space } from "metabase/styled-components/theme";
 import { color, lighten } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
@@ -12,6 +12,8 @@ export const Container = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+  padding: 0.25rem;
 `;
 
 export const TextCardDefault = styled.div`
@@ -60,11 +62,14 @@ export const CardLabel = styled.div`
 `;
 
 export const Header = styled.h4`
+  width: 100%;
   color: ${color("text-medium")};
   margin-bottom: ${space(1)};
+  text-align: center;
 `;
 
 export const TargetButton = styled.div`
+  max-width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -75,8 +80,8 @@ export const TargetButton = styled.div`
   border: 2px solid ${color("brand")};
   border-radius: 8px;
   min-height: 30px;
-  min-width: 100px;
   padding: 0.25em 0.5em;
+  margin: 0 0.25rem;
   color: ${color("text-medium")};
 
   ${({ variant }) =>
@@ -111,6 +116,7 @@ TargetButton.defaultProps = {
 };
 
 export const TargetButtonText = styled.span`
+  overflow: hidden;
   text-align: center;
   margin-right: ${space(1)};
 `;

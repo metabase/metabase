@@ -1,5 +1,3 @@
-import React from "react";
-
 import moment from "moment-timezone";
 import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
 

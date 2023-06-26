@@ -1,4 +1,3 @@
-import React from "react";
 import { InfoBanner } from "./DatabaseInfoField.styled";
 
 export interface DatabaseInfoFieldProps {

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import _ from "underscore";
 import { originalColors } from "metabase/lib/colors/palette";
 import ColorSettings from "../ColorSettings";

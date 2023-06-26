@@ -1,24 +1,36 @@
-import React from "react";
 import { t } from "ttag";
 
+import type { Location } from "history";
 import { TabRow } from "metabase/core/components/TabRow";
+import { TabButton } from "metabase/core/components/TabButton";
 import { SelectedTabId } from "metabase-types/store";
+import { Sortable } from "metabase/core/components/Sortable";
 
 import {
   Container,
-  Tab,
   CreateTabButton,
   PlaceholderTab,
 } from "./DashboardTabs.styled";
-import { useDashboardTabs } from "./useDashboardTabs";
+import { useDashboardTabs } from "./use-dashboard-tabs";
 
 interface DashboardTabsProps {
-  isEditing: boolean;
+  location: Location;
+  isEditing?: boolean;
 }
 
-export function DashboardTabs({ isEditing }: DashboardTabsProps) {
-  const { tabs, createNewTab, deleteTab, renameTab, selectTab, selectedTabId } =
-    useDashboardTabs();
+export function DashboardTabs({
+  location,
+  isEditing = false,
+}: DashboardTabsProps) {
+  const {
+    tabs,
+    createNewTab,
+    deleteTab,
+    renameTab,
+    selectTab,
+    selectedTabId,
+    moveTab,
+  } = useDashboardTabs({ location });
   const showTabs = tabs.length > 1 || isEditing;
   const showPlaceholder = tabs.length <= 1 && isEditing;
 
@@ -28,27 +40,31 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
 
   return (
     <Container>
-      <TabRow<SelectedTabId> value={selectedTabId} onChange={selectTab}>
+      <TabRow<SelectedTabId>
+        value={selectedTabId}
+        onChange={selectTab}
+        itemIds={tabs.map(tab => tab.id)}
+        handleDragEnd={moveTab}
+      >
         {showPlaceholder ? (
-          <PlaceholderTab
-            label={tabs.length === 1 ? tabs[0].name : t`Page 1`}
-          />
+          <PlaceholderTab label={tabs.length === 1 ? tabs[0].name : t`Tab 1`} />
         ) : (
           tabs.map(tab => (
-            <Tab<SelectedTabId>
-              key={tab.id}
-              value={tab.id}
-              label={tab.name}
-              onRename={name => renameTab(tab.id, name)}
-              canRename={isEditing}
-              showMenu={isEditing}
-              menuItems={[
-                {
-                  label: t`Delete`,
-                  action: (_, value) => deleteTab(value),
-                },
-              ]}
-            />
+            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+              <TabButton.Renameable<SelectedTabId>
+                value={tab.id}
+                label={tab.name}
+                onRename={name => renameTab(tab.id, name)}
+                canRename={isEditing}
+                showMenu={isEditing}
+                menuItems={[
+                  {
+                    label: t`Delete`,
+                    action: (_, value) => deleteTab(value),
+                  },
+                ]}
+              />
+            </Sortable>
           ))
         )}
         {isEditing && (

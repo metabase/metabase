@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import ParametersList from "metabase/parameters/components/ParametersList";
 import Select, { Option } from "metabase/core/components/Select";

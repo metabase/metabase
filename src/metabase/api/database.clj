@@ -7,7 +7,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
-   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -48,8 +47,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -146,10 +143,10 @@
   {:pre [(#{:card :dataset} question-type)]}
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
-     (comp (map (partial models/do-post-select Card))
+     (comp (map (partial mi/do-after-select Card))
            (filter card-can-be-used-as-source-query?)
            xform)
-     (completing conj #(hydrate % :collection))
+     (completing conj #(t2/hydrate % :collection))
      []
      (mdb.query/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id :result_metadata
                                             [{:select   [:status]
@@ -226,21 +223,31 @@
   (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
     (api/check-403 (first filtered-dbs))))
 
+(defn- uploadable-db?
+  "Are uploads supported for this database?"
+  [db]
+  (driver/database-supports? (driver.u/database->driver db) :uploads db))
+
 (defn- dbs-list
   [& {:keys [include-tables?
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
-             exclude-uneditable-details?]}]
-  (let [dbs (t2/select Database {:where [:= :is_audit false]
-                                 :order-by [:%lower.name :%lower.engine]})
+             include-analytics?
+             exclude-uneditable-details?
+             include-only-uploadable?]}]
+  (let [dbs (t2/select Database (merge {:order-by [:%lower.name :%lower.engine]}
+                                       (when-not include-analytics?
+                                         {:where [:= :is_audit false]})))
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter mi/can-write? %))
       filter-by-data-access?       (#(filter mi/can-read? %))
-      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
+      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
+      ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
+      include-only-uploadable?     (#(filter uploadable-db? %)))))
 
 (api/defendpoint GET "/"
   "Fetch all `Databases`.
@@ -249,42 +256,33 @@
 
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
-  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
-    be removed in a future release.
-
-  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
-    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead.
-
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
-    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
-  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details]
-  {include_tables                [:maybe :boolean]
-   include_cards                 [:maybe :boolean]
-   include                       (mu/with-api-error-message
+    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
+
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data."
+  [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
+  {include                       (mu/with-api-error-message
                                    [:maybe [:= "tables"]]
                                    (deferred-tru "include must be either empty or the value 'tables'"))
+   include_analytics             [:maybe :boolean]
    saved                         [:maybe :boolean]
    include_editable_data_model   [:maybe :boolean]
-   exclude_uneditable_details    [:maybe :boolean]}
-  (when (and config/is-dev?
-             (or include_tables include_cards))
-    ;; don't need to i18n since this is dev-facing only
-    (log/warn "GET /api/database?include_tables and ?include_cards are deprecated."
-              "Prefer using ?include=tables and ?saved=true instead."))
-  (let [include-tables?                 (or (= include "tables") include_tables)
-        include-saved-questions-db?     (or saved include_cards)
-        include-saved-questions-tables? (when include-saved-questions-db?
-                                          (if include_cards true include-tables?))
+   exclude_uneditable_details    [:maybe :boolean]
+   include_only_uploadable       [:maybe :boolean]}
+  (let [include-tables?                 (= include "tables")
+        include-saved-questions-tables? (and saved include-tables?)
+        only-editable?                  (or include_only_uploadable exclude_uneditable_details)
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
-                                                      :include-saved-questions-db?     include-saved-questions-db?
+                                                      :include-saved-questions-db?     saved
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
-                                                      :exclude-uneditable-details?     exclude_uneditable_details)
+                                                      :exclude-uneditable-details?     only-editable?
+                                                      :include-analytics?  include_analytics
+                                                      :include-only-uploadable?        include_only_uploadable)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -311,9 +309,9 @@
   [db include]
   (if-not include
     db
-    (-> (hydrate db (case include
-                      "tables"        :tables
-                      "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
+    (-> (t2/hydrate db (case include
+                         "tables"        :tables
+                         "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
         (update :tables (fn [tables]
                           (cond->> tables
                             ; filter hidden tables
@@ -429,7 +427,7 @@
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
-               (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+               (t2/hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
         db (if include-editable-data-model?
              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
              ;; which the *current-user* does not have data model perms
@@ -631,7 +629,7 @@
   (let [fields (filter mi/can-read? (-> (t2/select [Field :id :name :display_name :table_id :base_type :semantic_type]
                                           :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                           :visibility_type [:not-in ["sensitive" "retired"]])
-                                        (hydrate :table)))]
+                                        (t2/hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
       {:id            id
        :name          name
@@ -654,7 +652,7 @@
     (db-perm-check (t2/select-one Database :id id))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          (hydrate :table))))))
+                                          (t2/hydrate :table))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
@@ -946,22 +944,7 @@
   api/generic-204-no-content)
 
 
-;;; ------------------------------------------ POST /api/database/:id/sync -------------------------------------------
-
-;; TODO - Shouldn't we just check for superuser status instead of write checking?
-;; NOTE Atte: This becomes maybe obsolete
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/sync"
-  "Update the metadata for this `Database`. This happens asynchronously."
-  [id]
-  ;; just publish a message and let someone else deal with the logistics
-  ;; TODO - does this make any more sense having this extra level of indirection?
-  ;; Why not just use a future?
-  (events/publish-event! :database-trigger-sync (api/write-check Database id))
-  {:status :ok})
-
-;; NOTE Atte Keinänen: If you think that these endpoints could have more descriptive names, please change them.
-;; Currently these match the titles of the admin UI buttons that call these endpoints
+;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
 ;; Should somehow trigger sync-database/sync-database!
 (api/defendpoint POST "/:id/sync_schema"
@@ -985,8 +968,11 @@
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
-    (t2/update! Table {:id [:in (map :id tables)]} {:initial_sync_status "complete"}))
+    (when-let [table-ids (seq (map :id tables))]
+      (t2/update! Table {:id [:in table-ids]} {:initial_sync_status "complete"})))
   {:status :ok})
+
+;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
 
@@ -1050,8 +1036,8 @@
   "Returns a list of all syncable schemas found for the database `id`."
   [id]
   {id ms/PositiveInt}
-  (api/check-superuser)
   (let [db (api/check-404 (t2/select-one Database id))]
+    (api/check-403 (mi/can-write? db))
     (driver/syncable-schemas (:engine db) db)))
 
 (api/defendpoint GET "/:id/schemas"

@@ -1,4 +1,4 @@
-import React, { ChangeEvent, KeyboardEvent, useCallback } from "react";
+import { ChangeEvent, KeyboardEvent, useCallback } from "react";
 import { User } from "metabase-types/api";
 import {
   PromptInput,

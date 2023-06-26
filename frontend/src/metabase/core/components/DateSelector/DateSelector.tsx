@@ -1,10 +1,4 @@
-import React, {
-  CSSProperties,
-  forwardRef,
-  Ref,
-  useCallback,
-  useMemo,
-} from "react";
+import { CSSProperties, forwardRef, Ref, useCallback, useMemo } from "react";
 import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
 import TimeInput from "metabase/core/components/TimeInput";

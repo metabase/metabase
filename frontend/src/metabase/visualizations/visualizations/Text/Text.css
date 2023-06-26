@@ -1,98 +1,68 @@
-:root {
-  --text-card-padding: 0.65em;
-}
-
-:local .Text {
-  border: none;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  justify-content: center;
-  overflow: hidden;
-  padding: 0;
-  width: 100%;
-}
-
-:local .Text .text-card-textarea {
-  border-radius: var(--default-border-radius);
-  font-size: 1.143em;
-  height: inherit;
-  line-height: 1.602em;
-  min-height: unset;
-  outline: none;
-  padding: 0.25em 0.75em;
-  pointer-events: all;
-  resize: none;
-  width: 100%;
-}
-:local .Text .text-card-textarea:focus {
-  border-color: var(--color-brand);
-  background-color: white;
-  box-shadow: 0 1px 7px var(--color-shadow);
-}
-
-:local .Text .text-card-markdown {
+:local .text-card-markdown {
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0.5em 16px;
+  padding: 0.5rem 0.75rem;
   pointer-events: all;
   width: 100%;
 }
 
-:local .Text .text-card-markdown h1,
-:local .Text .text-card-markdown h2,
-:local .Text .text-card-markdown h3,
-:local .Text .text-card-markdown h4,
-:local .Text .text-card-markdown h5,
-:local .Text .text-card-markdown h6 {
+:local .cursor-text {
+  cursor: text;
+}
+
+:local .text-card-markdown h1,
+:local .text-card-markdown h2,
+:local .text-card-markdown h3,
+:local .text-card-markdown h4,
+:local .text-card-markdown h5,
+:local .text-card-markdown h6 {
   margin: 0.375em 0 0.25em 0;
 }
 
-:local .Text .text-card-markdown h1:first-child,
-:local .Text .text-card-markdown h2:first-child,
-:local .Text .text-card-markdown h3:first-child,
-:local .Text .text-card-markdown h4:first-child,
-:local .Text .text-card-markdown h5:first-child,
-:local .Text .text-card-markdown h6:first-child,
-:local .Text .text-card-markdown p:first-child,
-:local .Text .text-card-markdown ul:first-child,
-:local .Text .text-card-markdown ol:first-child,
-:local .Text .text-card-markdown table:first-child {
+:local .text-card-markdown h1:first-child,
+:local .text-card-markdown h2:first-child,
+:local .text-card-markdown h3:first-child,
+:local .text-card-markdown h4:first-child,
+:local .text-card-markdown h5:first-child,
+:local .text-card-markdown h6:first-child,
+:local .text-card-markdown p:first-child,
+:local .text-card-markdown ul:first-child,
+:local .text-card-markdown ol:first-child,
+:local .text-card-markdown table:first-child {
   margin-top: 0.125em;
 }
 
-:local .Text .text-card-markdown h1:last-child,
-:local .Text .text-card-markdown h2:last-child,
-:local .Text .text-card-markdown h3:last-child,
-:local .Text .text-card-markdown h4:last-child,
-:local .Text .text-card-markdown h5:last-child,
-:local .Text .text-card-markdown h6:last-child,
-:local .Text .text-card-markdown p:last-child,
-:local .Text .text-card-markdown ul:last-child,
-:local .Text .text-card-markdown ol:last-child,
-:local .Text .text-card-markdown table:last-child {
+:local .text-card-markdown h1:last-child,
+:local .text-card-markdown h2:last-child,
+:local .text-card-markdown h3:last-child,
+:local .text-card-markdown h4:last-child,
+:local .text-card-markdown h5:last-child,
+:local .text-card-markdown h6:last-child,
+:local .text-card-markdown p:last-child,
+:local .text-card-markdown ul:last-child,
+:local .text-card-markdown ol:last-child,
+:local .text-card-markdown table:last-child {
   margin-bottom: 0.125em;
 }
 
-:local .Text .text-card-markdown h1 {
+:local .text-card-markdown h1 {
   font-weight: 900;
   font-size: 1.831em;
 }
-:local .Text .text-card-markdown h2 {
+:local .text-card-markdown h2 {
   font-size: 1.627em;
 }
-:local .Text .text-card-markdown h3 {
+:local .text-card-markdown h3 {
   font-size: 1.447em;
 }
-:local .Text .text-card-markdown h4 {
+:local .text-card-markdown h4 {
   font-size: 1.286em;
 }
-:local .Text .text-card-markdown h5 {
+:local .text-card-markdown h5 {
   font-size: 1.143em;
 }
-:local .Text .text-card-markdown p {
+:local .text-card-markdown p {
   font-size: 1.143em;
   line-height: 1.602em;
   padding: 0;
@@ -192,12 +162,4 @@
 
 :local .text-card-markdown hr {
   margin: 0;
-}
-
-:local .single-row {
-  margin: 0;
-}
-
-:local .padded {
-  padding: 0.5em 0.75em;
 }

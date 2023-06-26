@@ -1,4 +1,3 @@
-import React from "react";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import HelpCard from "metabase/components/HelpCard";

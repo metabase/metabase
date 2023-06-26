@@ -16,7 +16,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -59,7 +58,7 @@
   {model-id [:maybe ms/PositiveInt]}
   (letfn [(actions-for [models]
             (if (seq models)
-              (hydrate (action/select-actions models
+              (t2/hydrate (action/select-actions models
                                               :model_id [:in (map :id models)]
                                               :archived false)
                        :creator)
@@ -89,7 +88,7 @@
   [action-id]
   {action-id ms/PositiveInt}
   (-> (action/select-action :id action-id :archived false)
-      (hydrate :creator)
+      (t2/hydrate :creator)
       api/read-check))
 
 (api/defendpoint DELETE "/:action-id"

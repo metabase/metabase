@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -28,12 +27,12 @@ const propTypes = {
   runQuery: PropTypes.func,
   snippetCollections: PropTypes.array,
   snippets: PropTypes.array,
-  features: {
+  features: PropTypes.shape({
     dataReference: PropTypes.bool,
     variables: PropTypes.bool,
     snippets: PropTypes.bool,
     promptInput: PropTypes.bool,
-  },
+  }),
   onShowPromptInput: PropTypes.func,
 };
 
@@ -77,7 +76,7 @@ const NativeQueryEditorSidebar = props => {
   const canRunQuery = runQuery && cancelQuery;
 
   return (
-    <Container>
+    <Container data-testid="native-query-editor-sidebar">
       {canUsePromptInput && features.promptInput && !isPromptInputVisible ? (
         <Tooltip tooltip={t`Ask a question`}>
           <SidebarButton

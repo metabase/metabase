@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import TextPicker from "metabase/query_builder/components/filters/pickers/TextPicker";

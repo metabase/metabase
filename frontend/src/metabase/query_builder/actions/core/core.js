@@ -186,9 +186,10 @@ export const apiCreateQuestion = question => {
       : question;
 
     const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
     const questionToCreate = questionWithVizSettings
       .setQuery(question.query().clean())
-      .setResultsMetadata(resultsMetadata);
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
     const createdQuestion = await reduxCreateQuestion(
       questionToCreate,
       dispatch,
@@ -228,12 +229,16 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
+    const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
+
     if (question.isDataset()) {
-      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
-      question = ModelIndexes.actions.cleanIndexFlags(question);
+      resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
+        resultsMetadata.columns,
+      );
     }
 
-    rerunQuery = rerunQuery ?? getIsResultDirty(getState());
+    rerunQuery = rerunQuery ?? isResultDirty;
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -241,13 +246,12 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    const resultsMetadata = getResultsMetadata(getState());
     const questionToUpdate = questionWithVizSettings
       // Before we clean the query, we make sure question is not treated as a dataset
       // as calling table() method down the line would bring unwanted consequences
       // such as dropping joins (as joins are treated differently between pure questions and datasets)
       .setQuery(question.setDataset(false).query().clean())
-      .setResultsMetadata(resultsMetadata);
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
@@ -270,7 +274,16 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       updatedQuestion.type(),
     );
 
-    dispatch({ type: API_UPDATE_QUESTION, payload: updatedQuestion.card() });
+    await dispatch({
+      type: API_UPDATE_QUESTION,
+      payload: updatedQuestion.card(),
+    });
+
+    if (question.isDataset()) {
+      // this needs to happen after the question update completes in case we have changed the type
+      // of the primary key field in the same update
+      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+    }
 
     const metadataOptions = { reload: question.isDataset() };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));

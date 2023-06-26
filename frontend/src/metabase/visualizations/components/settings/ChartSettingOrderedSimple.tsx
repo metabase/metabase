@@ -1,5 +1,4 @@
 import { updateIn } from "icepick";
-import React from "react";
 import { t } from "ttag";
 
 import type { Series } from "metabase-types/api";

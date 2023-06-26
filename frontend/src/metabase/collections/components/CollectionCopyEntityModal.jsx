@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useState } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
 import { dissoc } from "icepick";
 import { t } from "ttag";

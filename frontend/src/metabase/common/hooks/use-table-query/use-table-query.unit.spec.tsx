@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockTable } from "metabase-types/api/mocks";
 import { setupTablesEndpoints } from "__support__/server-mocks";

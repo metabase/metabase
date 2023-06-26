@@ -1,4 +1,3 @@
-import React from "react";
 import { SlackSettings } from "metabase-types/api";
 import SlackForm from "../SlackForm";
 

@@ -5,7 +5,7 @@ import _ from "underscore";
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-
+import Actions from "metabase/entities/actions";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
@@ -235,6 +235,20 @@ const dashcards = handleActions(
       _.mapObject(state, dashcard =>
         dashcard.card?.id === card?.id
           ? assocIn(dashcard, ["card"], card)
+          : dashcard,
+      ),
+    [Actions.actionTypes.UPDATE]: (state, { payload: { object: action } }) =>
+      _.mapObject(state, dashcard =>
+        dashcard.action?.id === action?.id
+          ? {
+              ...dashcard,
+              action: {
+                ...action,
+
+                database_enabled_actions:
+                  dashcard?.action.database_enabled_actions || false,
+              },
+            }
           : dashcard,
       ),
   },

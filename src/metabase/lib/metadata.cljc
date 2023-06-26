@@ -65,7 +65,7 @@
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
   [:map
-   [:lib/type  [:= :metadata/field]] ; TODO -- should this be changed to `:metadata/column`?
+   [:lib/type  [:= :metadata/column]]
    [:name      ::lib.schema.common/non-blank-string]
    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
    [:base-type ::lib.schema.common/base-type]
@@ -93,13 +93,19 @@
    [:lib/source-column-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
    ;; guaranteed to be unique in each stage of the query.
-   [:lib/desired-column-alias {:optional true} [:maybe [:string {:min 1, :max 60}]]]])
+   [:lib/desired-column-alias {:optional true} [:maybe [:string {:min 1, :max 60}]]]
+   ;; when column metadata is returned by certain things
+   ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
+   ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.
+   ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
+   [:selected? {:optional true} :boolean]])
 
-(def ^:private CardMetadata
-  "More or less the same as a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not
-  necessarily converted to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata`
-  is probably not quite massaged into a sequence of `ColumnMetadata`s just yet.
-  See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
+(def CardMetadata
+  "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
+  a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted to
+  pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
+  massaged into a sequence of `ColumnMetadata`s just yet. See [[metabase.lib.card/card-metadata-columns]] that
+  converts these as needed."
   [:map
    [:lib/type [:= :metadata/card]]
    [:id   ::lib.schema.id/card]
@@ -125,8 +131,9 @@
    [:id       ::lib.schema.id/metric]
    [:name     ::lib.schema.common/non-blank-string]])
 
-(def ^:private TableMetadata
-  "More or less the same as a [[metabase.models.table]], but with kebab-case keys."
+(def TableMetadata
+  "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
+  but with kebab-case keys."
   [:map
    [:lib/type [:= :metadata/table]]
    [:id       ::lib.schema.id/table]
@@ -141,7 +148,10 @@
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
    ;; Like `:fields` for [[TableMetadata]], this is now optional -- we can fetch the Tables separately if needed.
-   [:tables {:optional true} [:sequential TableMetadata]]])
+   [:tables   {:optional true} [:sequential TableMetadata]]
+   ;; TODO -- this should validate against the driver features list in [[metabase.driver/driver-features]] if we're in
+   ;; Clj mode
+   [:features {:optional true} [:set :keyword]]])
 
 (def MetadataProvider
   "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
@@ -173,15 +183,20 @@
   [metadata-providerable :- MetadataProviderable]
   (lib.metadata.protocols/tables (->metadata-provider metadata-providerable)))
 
-(mu/defn table :- [:or TableMetadata CardMetadata]
-  "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
+(mu/defn table :- TableMetadata
+  "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID.
+
+  This supports legacy `card__<id>` style strings only for the benefit of legacy metadata: some column metadata comes
+  back like
+
+    {:table-id \"card__100\"}
+
+  and it is easier to work around that situation here than it is to update all of the various MetadataProviders to fix
+  things or to update all the places that call this function. Maybe in the future we can get rid of this icky
+  workaround."
   ([metadata-providerable :- MetadataProviderable
-    table-id :- [:or
-                 ::lib.schema.id/table
-                 ::lib.schema.id/table-card-id-string]]
-   (if-let [card-id (lib.util/string-table-id->card-id table-id)]
-     (lib.metadata.protocols/card  (->metadata-provider metadata-providerable) card-id)
-     (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id)))
+    table-id              :- ::lib.schema.id/table]
+   (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
   ([metadata-providerable :- MetadataProviderable
     table-schema          :- [:maybe ::lib.schema.common/non-blank-string]

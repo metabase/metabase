@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import { Component, Fragment, useRef } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { t } from "ttag";
@@ -260,7 +260,7 @@ function JoinClause({
       </PrimaryJoinCell>
 
       {joinedTable && (
-        <React.Fragment>
+        <Fragment>
           <JoinWhereConditionLabelContainer>
             <JoinWhereConditionLabel />
           </JoinWhereConditionLabelContainer>
@@ -368,7 +368,7 @@ function JoinClause({
               );
             })}
           </SecondaryJoinCell>
-        </React.Fragment>
+        </Fragment>
       )}
 
       {showRemove && <RemoveJoinIcon onClick={removeJoin} />}
@@ -651,7 +651,7 @@ const joinDimensionPickerPropTypes = {
   "data-testid": PropTypes.string,
 };
 
-class JoinDimensionPicker extends React.Component {
+class JoinDimensionPicker extends Component {
   open() {
     this._popover.open();
   }

@@ -1028,12 +1028,13 @@
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :aggregation]
-  [driver _ honeysql-form {aggregations :aggregation}]
+  [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]
   (let [honeysql-ags (vec (for [ag   aggregations
                                 :let [ag-expr  (->honeysql driver ag)
+                                      ag-name  (annotate/aggregation-name inner-query ag)
                                       ag-alias (->honeysql driver (hx/identifier
                                                                    :field-alias
-                                                                   (driver/escape-alias driver (annotate/aggregation-name ag))))]]
+                                                                   (driver/escape-alias driver ag-name)))]]
                             (case (long hx/*honey-sql-version*)
                               1 [ag-expr ag-alias]
                               2 [ag-expr [ag-alias]])))]
@@ -1371,13 +1372,19 @@
 (defn- apply-top-level-clauses
   "`apply-top-level-clause` for all of the top-level clauses in `inner-query`, progressively building a HoneySQL form.
   Clauses are applied according to the order in `top-level-clause-application-order`."
-  [driver honeysql-form inner-query]
-  (->> (reduce
-        (fn [honeysql-form k]
-          (apply-top-level-clause driver k honeysql-form inner-query))
-        honeysql-form
-        (query->keys-in-application-order inner-query))
-       (add-default-select driver)))
+  ([driver honeysql-form inner-query]
+   (apply-top-level-clauses driver honeysql-form inner-query identity))
+
+  ([driver honeysql-form inner-query xform]
+   (transduce
+    xform
+    (fn
+      ([honeysql-form]
+       (add-default-select driver honeysql-form))
+      ([honeysql-form k]
+       (apply-top-level-clause driver k honeysql-form inner-query)))
+    honeysql-form
+    (query->keys-in-application-order inner-query))))
 
 (declare apply-clauses)
 
@@ -1403,7 +1410,7 @@
                      2 [table-alias]))]]))
 
 (defn- apply-clauses
-  "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
+  "Like [[apply-top-level-clauses]], but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
   (binding [*inner-query* inner-query]
@@ -1411,7 +1418,9 @@
       (apply-top-level-clauses
        driver
        (apply-source-query driver honeysql-form inner-query)
-       (dissoc inner-query :source-query))
+       inner-query
+       ;; don't try to do anything with the source query recursively.
+       (remove (partial = :source-query)))
       (apply-top-level-clauses driver honeysql-form inner-query))))
 
 (defmulti preprocess

@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import { forceRedraw } from "metabase/lib/dom";
@@ -20,7 +20,7 @@ type State = {
   isFocused: boolean;
 };
 
-class TextWidget extends React.Component<Props, State> {
+class TextWidget extends Component<Props, State> {
   static defaultProps = {
     isEditing: false,
     commitImmediately: false,

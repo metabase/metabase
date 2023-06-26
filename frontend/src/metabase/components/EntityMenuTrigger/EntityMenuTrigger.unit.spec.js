@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import EntityMenuTrigger from "metabase/components/EntityMenuTrigger";

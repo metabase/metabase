@@ -1,8 +1,7 @@
 /* eslint-disable jest/expect-expect */
-/* eslint-disable react/display-name */
 /* eslint-disable react/prop-types */
 
-import React from "react";
+import { Component } from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -29,7 +28,7 @@ const DEFAULT_TOKEN_FIELD_PROPS = {
   ),
 };
 
-class TokenFieldWithStateAndDefaults extends React.Component {
+class TokenFieldWithStateAndDefaults extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -38,7 +37,6 @@ class TokenFieldWithStateAndDefaults extends React.Component {
   }
   render() {
     // allow overriding everything except value and onChange which we provide
-    // eslint-disable-next-line no-unused-vars
     const { value, onChange, ...props } = this.props;
     return (
       <TokenField

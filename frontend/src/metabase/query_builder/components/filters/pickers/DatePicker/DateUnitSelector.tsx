@@ -1,5 +1,3 @@
-import React from "react";
-
 import Select, { Option } from "metabase/core/components/Select";
 import * as Lib from "metabase-lib";
 

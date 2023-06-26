@@ -1,4 +1,3 @@
-import React from "react";
 import { checkNotNull } from "metabase/core/utils/types";
 import { Table } from "metabase-types/api";
 import {

@@ -4,21 +4,26 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
+   [metabase.query-processor.middleware.escape-join-aliases
+    :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -307,176 +312,53 @@
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
                     {:field &match}))))
 
+(defn- mlv2-query [inner-query]
+  (qp.store/cached [:mlv2-query (hash inner-query)]
+    (try
+      (lib/query
+       (qp.store/metadata-provider)
+       (lib.convert/->pMBQL (lib.convert/legacy-query-from-inner-query
+                             (:id (qp.store/database))
+                             (mbql.normalize/normalize-fragment [:query] inner-query))))
+      (catch Throwable e
+        (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
+                        {:inner-query inner-query, :type qp.error-type/qp}
+                        e))))))
 
-;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
+(s/defn ^:private col-info-for-aggregation-clause
+  "Return appropriate column metadata for an `:aggregation` clause."
+  ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
+  ;; `match` pattern for field clauses below
+  [inner-query :- su/Map clause]
+  (let [mlv2-clause (lib.convert/->pMBQL clause)]
+    ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
+    ;; inside an aggregation clause, e.g.
+    ;;
+    ;;    Distinct values of Category → Name
+    ;;
+    ;; but `:default` style names when they appear on their own or in breakouts, e.g.
+    ;;
+    ;;    Name
+    ;;
+    ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
+    ;; probably going to involve updating a ton of tests that encode the old behavior.
+    (binding [lib.metadata.calculation/*display-name-style* :long]
+      (-> (lib.metadata.calculation/metadata (mlv2-query inner-query) -1 mlv2-clause)
+          (update-keys u/->snake_case_en)
+          (dissoc :lib/type)))))
 
-(defn- expression-arg-display-name
-  "Generate an appropriate name for an `arg` in an expression aggregation."
-  [recursive-name-fn arg]
-  (mbql.u/match-one arg
-    ;; if the arg itself is a nested expression, recursively find a name for it, and wrap in parens
-    [(_ :guard #{:+ :- :/ :*}) & _]
-    (str "(" (recursive-name-fn &match) ")")
-
-    ;; if the arg is another aggregation, recurse to get its name. (Only aggregations, nested expressions, or numbers
-    ;; are allowed as args to expression aggregations; thus anything that's an MBQL clause, but not a nested
-    ;; expression, is a ag clause.)
-    [(_ :guard keyword?) & _]
-    (recursive-name-fn &match)
-
-    ;; otherwise for things like numbers just use that directly
-    _ &match))
-
-(s/defn aggregation-name :- su/NonBlankString
+(mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [ag-clause :- mbql.s/Aggregation]
-  (when-not driver/*driver*
-    (throw (Exception. (tru "*driver* is unbound."))))
-  (mbql.u/match-one ag-clause
-    [:aggregation-options _ (options :guard :name)]
-    (:name options)
-
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
-    (recur ag)
-
-    ;; For unnamed expressions, just compute a name like "sum + count"
-    ;; Top level expressions need a name without a leading __ as those are automatically removed from the results
-    [(operator :guard #{:+ :- :/ :*}) & args]
-    "expression"
-
-    ;; for historic reasons a distinct count clause is still named "count". Don't change this or you might break FE
-    ;; stuff that keys off of aggregation names.
-    ;;
-    ;; `cum-count` and `cum-sum` get the same names as the non-cumulative versions, due to limitations (they are
-    ;; written out of the query before we ever see them). For other code that makes use of this function give them
-    ;; the correct names to expect.
-    [(_ :guard #{:distinct :cum-count}) _]
-    "count"
-
-    [:cum-sum _]
-    "sum"
-
-    ;; for any other aggregation just use the name of the clause e.g. `sum`.
-    [clause-name & _]
-    (name clause-name)))
-
-(declare aggregation-display-name)
-
-(s/defn ^:private aggregation-arg-display-name :- su/NonBlankString
-  "Name to use for an aggregation clause argument such as a Field when constructing the complete aggregation name."
-  [inner-query, ag-arg :- Object]
-  (or (when (mbql.preds/Field? ag-arg)
-        (when-let [info (col-info-for-field-clause inner-query ag-arg)]
-          (some info [:display_name :name])))
-      (aggregation-display-name inner-query ag-arg)))
-
-(s/defn aggregation-display-name :- su/NonBlankString
-  "Return an appropriate user-facing display name for an aggregation clause."
-  [inner-query ag-clause]
-  (mbql.u/match-one ag-clause
-    [:aggregation-options _ (options :guard :display-name)]
-    (:display-name options)
-
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
-    (recur ag)
-
-    [(operator :guard #{:+ :- :/ :*}) & args]
-    (str/join (format " %s " (name operator))
-              (for [arg args]
-                (expression-arg-display-name (partial aggregation-arg-display-name inner-query) arg)))
-
-    [:count]             (tru "Count")
-    [:case]              (tru "Case")
-    [:distinct    arg]   (tru "Distinct values of {0}"    (aggregation-arg-display-name inner-query arg))
-    [:count       arg]   (tru "Count of {0}"              (aggregation-arg-display-name inner-query arg))
-    [:avg         arg]   (tru "Average of {0}"            (aggregation-arg-display-name inner-query arg))
-    ;; cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
-    [:cum-count   arg]   (tru "Count of {0}"              (aggregation-arg-display-name inner-query arg))
-    [:cum-sum     arg]   (tru "Sum of {0}"                (aggregation-arg-display-name inner-query arg))
-    [:stddev      arg]   (tru "SD of {0}"                 (aggregation-arg-display-name inner-query arg))
-    [:sum         arg]   (tru "Sum of {0}"                (aggregation-arg-display-name inner-query arg))
-    [:min         arg]   (tru "Min of {0}"                (aggregation-arg-display-name inner-query arg))
-    [:max         arg]   (tru "Max of {0}"                (aggregation-arg-display-name inner-query arg))
-    [:var         arg]   (tru "Variance of {0}"           (aggregation-arg-display-name inner-query arg))
-    [:median      arg]   (tru "Median of {0}"             (aggregation-arg-display-name inner-query arg))
-    [:percentile  arg p] (tru "{0}th percentile of {1}" p (aggregation-arg-display-name inner-query arg))
-
-    ;; until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
-    [:sum-where   arg _] (tru "Sum of {0} matching condition" (aggregation-arg-display-name inner-query arg))
-    [:share       _]     (tru "Share of rows matching condition")
-    [:count-where _]     (tru "Count of rows matching condition")
-
-    (_ :guard mbql.preds/Field?)
-    (:display_name (col-info-for-field-clause inner-query ag-clause))
-
-    _
-    (aggregation-name ag-clause)))
-
-(defn- ag->name-info [inner-query ag]
-  {:name         (aggregation-name ag)
-   :display_name (aggregation-display-name inner-query ag)})
-
-(s/defn col-info-for-aggregation-clause
-  "Return appropriate column metadata for an `:aggregation` clause."
-  ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
-  ;; `match` pattern for field clauses below
-  [inner-query :- su/Map, clause]
-  (mbql.u/match-one clause
-    ;; ok, if this is a aggregation w/ options recurse so we can get information about the ag it wraps
-    [:aggregation-options ag _]
-    (merge
-     (col-info-for-aggregation-clause inner-query ag)
-     (ag->name-info inner-query &match))
-
-    ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
-    ;; wacky like a BigDecimal or Float
-    [(_ :guard #{:count :distinct}) & args]
-    (merge
-     (col-info-for-aggregation-clause inner-query args)
-     {:base_type     :type/BigInteger
-      :semantic_type :type/Quantity}
-     (ag->name-info inner-query &match))
-
-    [:count-where _]
-    (merge
-     {:base_type     :type/Integer
-      :semantic_type :type/Quantity}
-     (ag->name-info inner-query &match))
-
-    [:share _]
-    (merge
-     {:base_type     :type/Float
-      :semantic_type :type/Share}
-     (ag->name-info inner-query &match))
-
-    ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
-    ;; `col-info-for-ag-clause`, and this info is added into the results)
-    (_ :guard mbql.preds/Field?)
-    (select-keys (col-info-for-field-clause inner-query &match) [:base_type :semantic_type :settings])
-    #{:expression :+ :- :/ :*}
-    (merge
-     (infer-expression-type &match)
-     (when (mbql.preds/Aggregation? &match)
-       (ag->name-info inner-query &match)))
-
-    ;; the type returned by a case statement depends on what its expressions are; we'll just return the type info for
-    ;; the first expression for the time being. I guess it's possible the expression might return a string for one
-    ;; case and a number for another, but I think in post cases it should be the same type for every clause.
-    [:case & _]
-    (merge
-     (infer-expression-type &match)
-     (ag->name-info inner-query &match))
-
-    ;; get name/display-name of this ag
-    [(_ :guard keyword?) arg & _]
-    (merge
-     (col-info-for-aggregation-clause inner-query arg)
-     (ag->name-info inner-query &match))))
+  [inner-query :- [:and
+                   [:map]
+                   [:fn
+                    {:error/message "legacy inner-query with :source-table or :source-query"}
+                    (some-fn :source-table :source-query)]]
+   ag-clause]
+  (lib.metadata.calculation/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
 
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
@@ -520,8 +402,6 @@
   (concat
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
-
-
 
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]

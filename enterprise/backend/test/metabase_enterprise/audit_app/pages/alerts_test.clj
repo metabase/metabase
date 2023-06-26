@@ -8,7 +8,8 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- alerts [card-name]
   (mt/with-test-user :crowberto
@@ -22,7 +23,7 @@
   (is (= []
          (mt/rows (alerts (mt/random-name)))))
   (let [card-name (mt/random-name)]
-    (mt/with-temp Collection [{collection-id :id, collection-name :name}]
+    (t2.with-temp/with-temp [Collection {collection-id :id, collection-name :name}]
       ;; test with both the Root Collection and a non-Root Collection
       (doseq [{:keys [collection-id collection-name]} [{:collection-id   collection-id
                                                         :collection-name collection-name}

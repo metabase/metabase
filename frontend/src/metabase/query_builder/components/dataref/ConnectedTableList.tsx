@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import Table from "metabase-lib/metadata/Table";

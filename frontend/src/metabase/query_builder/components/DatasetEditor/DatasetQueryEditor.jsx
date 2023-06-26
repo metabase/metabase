@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import styled from "@emotion/styled";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
@@ -93,9 +93,4 @@ function DatasetQueryEditor({
 
 DatasetQueryEditor.propTypes = propTypes;
 
-export default React.memo(
-  DatasetQueryEditor,
-  // should prevent the editor from re-rendering in "metadata" mode
-  // when it's completely covered with the results table
-  (prevProps, nextProps) => prevProps.height === 0 && nextProps.height === 0,
-);
+export default memo(DatasetQueryEditor);

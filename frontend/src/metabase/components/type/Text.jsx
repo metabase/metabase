@@ -1,29 +1,21 @@
 import styled from "@emotion/styled";
-import {
-  space,
-  fontSize,
-  fontWeight,
-  letterSpacing,
-  lineHeight,
-} from "styled-system";
+import PropTypes from "prop-types";
 import { color } from "metabase/lib/colors";
 
 const Text = styled.div`
-  ${space};
-  ${fontSize};
-  ${fontWeight};
-  ${letterSpacing};
-  ${lineHeight};
   color: ${props => color(`text-${props.color}`)};
+  font-size: ${props => props.fontSize};
+  font-weight: ${props => props.fontWeight};
 `;
 
 Text.defaultProps = {
-  fontSize: 14,
   color: "medium",
-  mb: "8px",
-  mt: "4px",
 };
 
-Text.propTypes = {};
+Text.propTypes = {
+  color: PropTypes.string,
+  fontSize: PropTypes.string,
+  fontWeight: PropTypes.number,
+};
 
 export default Text;

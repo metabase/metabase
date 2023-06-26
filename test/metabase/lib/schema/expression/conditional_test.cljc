@@ -63,13 +63,13 @@
         :database     (meta/id)
         :stages       [{:lib/type     :mbql.stage/mbql,
                         :source-table (meta/id :venues)
-                        :expressions  {"expr"
-                                       [:coalesce
-                                        {:lib/uuid "455a9f5e-4996-4df9-82aa-01bc083b2efe"}
+                        :expressions  [[:coalesce
+                                        {:lib/uuid "455a9f5e-4996-4df9-82aa-01bc083b2efe"
+                                         :lib/expression-name "expr"}
                                         [:field
                                          {:base-type :type/Text, :lib/uuid "68443c43-f9de-45e3-9f30-8dfd5fef5af6"}
                                          (meta/id :venues :name)]
-                                        "bar"]}}]})))
+                                        "bar"]]}]})))
 
 (deftest ^:parallel case-type-of-with-fields-only-test
   ;; Ideally expression/type-of should have enough information to determine the types of fields.

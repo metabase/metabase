@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 
-import { color, alpha, lighten } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Label from "metabase/components/type/Label";
 
 const tableBorder = `1px solid ${alpha(color("border"), 0.5)}`;
@@ -85,14 +85,14 @@ export const EntityNameLink = styled(Link)`
 export const PermissionTableHeaderRow = styled.tr``;
 
 export const HintIcon = styled(Icon)`
-  color: ${lighten("text-dark", 0.3)};
+  color: ${color("text-light")};
   margin-left: 0.375rem;
   cursor: pointer;
 `;
 
 HintIcon.defaultProps = {
   name: "info",
-  size: 12,
+  size: 16,
 };
 
 export const ColumnName = styled(Label)`

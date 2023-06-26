@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { isRootCollection } from "metabase/collections/utils";
 import { Collection } from "metabase-types/api";

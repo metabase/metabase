@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
@@ -17,7 +17,7 @@ import { getUserTemporaryPassword } from "../selectors";
 import { clearTemporaryPassword } from "../people";
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
-class UserSuccessModal extends React.Component {
+class UserSuccessModal extends Component {
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }

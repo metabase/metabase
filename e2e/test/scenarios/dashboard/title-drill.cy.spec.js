@@ -125,7 +125,7 @@ describe("scenarios > dashboard > title drill", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 8,
+              size_x: 11,
               size_y: 6,
               parameter_mappings: [
                 {

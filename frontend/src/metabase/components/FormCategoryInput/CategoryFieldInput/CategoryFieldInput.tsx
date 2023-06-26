@@ -1,4 +1,3 @@
-import React from "react";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type Field from "metabase-lib/metadata/Field";

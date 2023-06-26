@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
@@ -41,7 +41,7 @@ const SETTING_TYPES = [
   },
 ];
 
-class FormattingWidget extends React.Component {
+class FormattingWidget extends Component {
   render() {
     const { setting, onChange } = this.props;
     const value = setting.value || setting.default;

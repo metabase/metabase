@@ -1,9 +1,8 @@
-import React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import * as Urls from "metabase/lib/urls";
 import Questions, {
@@ -12,6 +11,7 @@ import Questions, {
 
 import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 
 import {
   EmptyStateContainer,
@@ -41,7 +41,7 @@ function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
           <EmptyStateActionContainer>
             <Button
               as={Link}
-              to={model.composeDataset().getUrl()}
+              to={ML_Urls.getUrl(model.composeDataset())}
               icon="add"
             >{t`Create a new question`}</Button>
           </EmptyStateActionContainer>

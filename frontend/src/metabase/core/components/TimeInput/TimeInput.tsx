@@ -1,4 +1,4 @@
-import React, { forwardRef, Ref, useCallback } from "react";
+import { forwardRef, Ref, useCallback } from "react";
 import { t } from "ttag";
 import moment, { Moment } from "moment-timezone";
 import Tooltip from "metabase/core/components/Tooltip";

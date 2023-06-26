@@ -4,7 +4,8 @@
    [metabase.models :refer [Card Collection]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; --------------------------------------------- source=card ----------------------------------------------
 
@@ -176,9 +177,26 @@
           [Collection [coll]
            Card       [card {:collection_id (:id coll)}]]
           (is (thrown-with-msg?
-                clojure.lang.ExceptionInfo
-                #"You don't have permissions to do that."
-                (custom-values/parameter->values
+               clojure.lang.ExceptionInfo
+               #"You don't have permissions to do that."
+               (custom-values/parameter->values
+                {:name                 "Card as source"
+                 :slug                 "card"
+                 :id                   "_CARD_"
+                 :type                 "category"
+                 :values_source_type   "card"
+                 :values_source_config {:card_id     (:id card)
+                                        :value_field (mt/$ids $venues.name)}}
+                nil
+                (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))))
+
+  ;; bind to an admin to bypass the permissions check
+  (mt/with-current-user (mt/user->id :crowberto)
+    (testing "call to default-case-fn if "
+      (testing "souce card is archived"
+        (t2.with-temp/with-temp [Card card {:archived true}]
+          (is (= :archived
+                 (custom-values/parameter->values
                   {:name                 "Card as source"
                    :slug                 "card"
                    :id                   "_CARD_"
@@ -187,35 +205,18 @@
                    :values_source_config {:card_id     (:id card)
                                           :value_field (mt/$ids $venues.name)}}
                   nil
-                  (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))))
-
-  ;; bind to an admin to bypass the permissions check
-  (mt/with-current-user (mt/user->id :crowberto)
-    (testing "call to default-case-fn if "
-      (testing "souce card is archived"
-        (mt/with-temp Card [card {:archived true}]
-          (is (= :archived
-                 (custom-values/parameter->values
-                   {:name                 "Card as source"
-                    :slug                 "card"
-                    :id                   "_CARD_"
-                    :type                 "category"
-                    :values_source_type   "card"
-                    :values_source_config {:card_id     (:id card)
-                                           :value_field (mt/$ids $venues.name)}}
-                   nil
-                   (constantly :archived))))))
+                  (constantly :archived))))))
 
       (testing "value-field not found in card's result_metadata"
-        (mt/with-temp Card [card {}]
+        (t2.with-temp/with-temp [Card card {}]
           (is (= :field-not-found
                  (custom-values/parameter->values
-                   {:name                 "Card as source"
-                    :slug                 "card"
-                    :id                   "_CARD_"
-                    :type                 "category"
-                    :values_source_type   "card"
-                    :values_source_config {:card_id     (:id card)
-                                           :value_field [:field 0 nil]}}
-                   nil
-                   (constantly :field-not-found)))))))))
+                  {:name                 "Card as source"
+                   :slug                 "card"
+                   :id                   "_CARD_"
+                   :type                 "category"
+                   :values_source_type   "card"
+                   :values_source_config {:card_id     (:id card)
+                                          :value_field [:field 0 nil]}}
+                  nil
+                  (constantly :field-not-found)))))))))

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { User } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";

@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
@@ -65,7 +65,7 @@ interface QueryModalsProps {
   ) => void;
 }
 
-class QueryModals extends React.Component<QueryModalsProps> {
+class QueryModals extends Component<QueryModalsProps> {
   showAlertsAfterQuestionSaved = () => {
     const { questionAlerts, user, onCloseModal, onOpenModal } = this.props;
 

@@ -1,4 +1,3 @@
-import React from "react";
 import fetchMock from "fetch-mock";
 import { setupLogoutEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, waitFor } from "__support__/ui";

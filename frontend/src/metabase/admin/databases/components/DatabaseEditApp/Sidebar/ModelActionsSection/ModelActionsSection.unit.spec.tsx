@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, waitFor } from "__support__/ui";
 import ModelActionsSection, {

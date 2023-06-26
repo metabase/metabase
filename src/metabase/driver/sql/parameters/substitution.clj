@@ -27,11 +27,11 @@
    [metabase.util.schema :as su]
    [schema.core :as s])
   (:import
-   (clojure.lang Keyword)
+   (clojure.lang IPersistentVector Keyword)
    (honeysql.types SqlCall)
    (java.time.temporal Temporal)
    (java.util UUID)
-   (metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet)))
+   (metabase.driver.common.parameters Date DateRange FieldFilter ReferencedCardQuery ReferencedQuerySnippet)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -145,12 +145,8 @@
   [_driver this]
   {:replacement-snippet (format "CAST('%s' AS uuid)" (str this))})
 
-(defmethod ->replacement-snippet-info [:sql CommaSeparatedNumbers]
-  [_driver {:keys [numbers]}]
-  {:replacement-snippet (str/join ", " numbers)})
-
-(defmethod ->replacement-snippet-info [:sql MultipleValues]
-  [driver {:keys [values]}]
+(defmethod ->replacement-snippet-info [:sql IPersistentVector]
+  [driver values]
   (let [values (map (partial ->replacement-snippet-info driver) values)]
     {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
@@ -216,7 +212,7 @@
 
 (s/defn ^:private field-filter-multiple-values->in-clause-sql :- ParamSnippetInfo
   [driver values]
-  (-> (->replacement-snippet-info driver (params/map->MultipleValues {:values values}))
+  (-> (->replacement-snippet-info driver (vec values))
       (update :replacement-snippet (partial format "IN (%s)"))))
 
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo

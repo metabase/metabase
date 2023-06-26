@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   SortableContainer,
   SortableElement,
@@ -22,7 +21,7 @@ const StaticParameterWidgetList = ({
 
 const SortableParameterHandle = SortableHandle(() => (
   <div className="flex layout-centered cursor-grab text-inherit">
-    <Icon name="grabber2" size={12} />
+    <Icon name="grabber" />
   </div>
 ));
 

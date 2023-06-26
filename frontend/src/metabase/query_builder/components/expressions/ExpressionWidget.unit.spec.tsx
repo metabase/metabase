@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getIcon, render, screen } from "__support__/ui";
@@ -10,8 +9,8 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import ExpressionWidgetHeader from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import ExpressionWidget, { ExpressionWidgetProps } from "./ExpressionWidget";
+import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
+import { ExpressionWidget, ExpressionWidgetProps } from "./ExpressionWidget";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {

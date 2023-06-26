@@ -29,7 +29,7 @@ describe("issue 28971", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("Orders").click());
     cy.button("Save").click();
-    modal().within(() => cy.button("Save").click());
+    modal().button("Save").click();
     cy.wait("@createCard");
 
     filter();

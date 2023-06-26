@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 
 import Filter from "metabase-lib/queries/structured/Filter";
 import TimePicker from "../pickers/TimePicker";
@@ -18,7 +18,7 @@ type Props = {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class FilterPopoverPicker extends React.Component<Props> {
+export default class FilterPopoverPicker extends Component<Props> {
   UNSAFE_componentWillMount() {
     window.addEventListener("keydown", this.handleKeyDown);
   }

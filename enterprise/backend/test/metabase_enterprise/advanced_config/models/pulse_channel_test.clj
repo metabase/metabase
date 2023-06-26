@@ -6,11 +6,11 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest validate-email-domains-test
-  (mt/with-temp Pulse [{pulse-id :id}]
+  (t2.with-temp/with-temp [Pulse {pulse-id :id}]
     (doseq [operation               [:create :update]
             enable-advanced-config? [true false]
             allowed-domains         [nil
@@ -36,11 +36,11 @@
             (let [thunk (case operation
                           :create
                           #(first (t2/insert-returning-instances! PulseChannel
-                                                                  (merge (tt/with-temp-defaults PulseChannel)
+                                                                  (merge (t2.with-temp/with-temp-defaults PulseChannel)
                                                                          {:pulse_id pulse-id, :details {:emails emails}})))
 
                           :update
-                          #(mt/with-temp PulseChannel [{pulse-channel-id :id} {:pulse_id pulse-id}]
+                          #(t2.with-temp/with-temp [PulseChannel {pulse-channel-id :id} {:pulse_id pulse-id}]
                              (t2/update! PulseChannel pulse-channel-id {:details {:emails emails}})))]
               (if fail?
                 (testing "should fail"

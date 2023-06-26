@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
