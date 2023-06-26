@@ -168,53 +168,53 @@
                                                           (format "/metabot/database/%s" (mt/id))
                                                           {:question "Doesn't matter"})]
               (is (true? (str/includes? message "The bot server is under heavy load"))))))))
-   (testing "Not having the right API keys set returns a useful message"
-     (mt/dataset sample-dataset
-       (t2.with-temp/with-temp
-         [Card _ {:name    "Orders Model"
-                  :dataset_query
-                  {:database (mt/id)
-                   :type     :query
-                   :query    {:source-table (mt/id :orders)}}
-                  :dataset true}]
-         (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
-                                                                          (throw (ex-info
-                                                                                  "Unauthorized"
-                                                                                  {:message "Unauthorized"
-                                                                                   :status  401})))
-                       metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
-                       metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-           (let [{:keys [message]} (mt/user-http-request :rasta :post 400
-                                                         (format "/metabot/database/%s" (mt/id))
-                                                         {:question "Doesn't matter"})]
-             (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
-   (testing "Too many tokens used returns a useful message"
-     (mt/dataset sample-dataset
-       (mt/with-temp* [Card [_
-                             {:name    "Orders Model"
-                              :dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)}}
-                              :dataset true}]]
-         (let [error-code    "context_length_exceeded"
-               error-message (str/join " "
-                                       ["This model's maximum context length is 8192 tokens."
-                                        "However, your messages resulted in 14837 tokens."
-                                        "Please reduce the length of the messages."])]
-           (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
-                                                                            (throw (ex-info
-                                                                                    error-message
-                                                                                    {:body   (json/generate-string
-                                                                                              {:error {:message error-message
-                                                                                                       :code    error-code}})
-                                                                                     :status 400})))
-                         metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
-                         metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
-             (let [{:keys [message]} (mt/user-http-request :rasta :post 400
-                                                           (format "/metabot/database/%s" (mt/id))
-                                                           {:question "Doesn't matter"})]
-               (is (= error-message message))))))))))
+    (testing "Not having the right API keys set returns a useful message"
+      (mt/dataset sample-dataset
+        (t2.with-temp/with-temp
+          [Card _ {:name    "Orders Model"
+                   :dataset_query
+                   {:database (mt/id)
+                    :type     :query
+                    :query    {:source-table (mt/id :orders)}}
+                   :dataset true}]
+          (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
+                                                                           (throw (ex-info
+                                                                                   "Unauthorized"
+                                                                                   {:message "Unauthorized"
+                                                                                    :status  401})))
+                        metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
+                        metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
+            (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+                                                          (format "/metabot/database/%s" (mt/id))
+                                                          {:question "Doesn't matter"})]
+              (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
+    (testing "Too many tokens used returns a useful message"
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [_
+                              {:name    "Orders Model"
+                               :dataset_query
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :orders)}}
+                               :dataset true}]]
+          (let [error-code    "context_length_exceeded"
+                error-message (str/join " "
+                                        ["This model's maximum context length is 8192 tokens."
+                                         "However, your messages resulted in 14837 tokens."
+                                         "Please reduce the length of the messages."])]
+            (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
+                                                                             (throw (ex-info
+                                                                                     error-message
+                                                                                     {:body   (json/generate-string
+                                                                                               {:error {:message error-message
+                                                                                                        :code    error-code}})
+                                                                                      :status 400})))
+                          metabot-client/*create-embedding-endpoint*       metabot-test/simple-embedding-stub
+                          metabot-util/*prompt-templates*                  (constantly metabot-test/test-prompt-templates)]
+              (let [{:keys [message]} (mt/user-http-request :rasta :post 400
+                                                            (format "/metabot/database/%s" (mt/id))
+                                                            {:question "Doesn't matter"})]
+                (is (= error-message message))))))))))
 
 (deftest metabot-infer-native-sql-test
   (testing "POST /database/:database-id/query"
