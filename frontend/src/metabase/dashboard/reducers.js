@@ -369,13 +369,17 @@ const loadingDashCards = handleActions(
       }),
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: (state, { payload: { currentTime, dashcardIds } }) => ({
-        ...state,
-        dashcardIds,
-        loadingIds: dashcardIds,
-        loadingStatus: dashcardIds.length > 0 ? "running" : "idle",
-        startTime: dashcardIds.length > 0 ? currentTime : null,
-      }),
+      next: (state, { payload: { currentTime, dashcardIds } }) => {
+        const loadingIds = Array.isArray(dashcardIds) ? dashcardIds : [];
+
+        return {
+          ...state,
+          dashcardIds: loadingIds,
+          loadingIds,
+          loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+          startTime: loadingIds.length > 0 ? currentTime : null,
+        };
+      },
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, currentTime } }) => {
