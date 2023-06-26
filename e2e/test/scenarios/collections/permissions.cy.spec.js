@@ -7,6 +7,7 @@ import {
   navigationSidebar,
   openNativeEditor,
   openCollectionMenu,
+  openCollectionItemMenu,
   modal,
 } from "e2e/support/helpers";
 
@@ -434,8 +435,8 @@ function clickButton(name) {
 }
 
 function pinItem(item) {
-  openEllipsisMenuFor(item);
-  popover().within(() => cy.icon("pin").click());
+  openCollectionItemMenu(item);
+  popover().icon("pin").click();
 }
 
 function exposeChildrenFor(collectionName) {

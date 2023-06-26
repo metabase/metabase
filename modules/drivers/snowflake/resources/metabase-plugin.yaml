@@ -16,7 +16,7 @@ driver:
     - user
     - password
     - name: private-key
-      display-name: RSA private key (PEM)
+      display-name: RSA private key (PKCS#8/.p8)
       type: secret
       secret-kind: pem-cert
     - name: warehouse

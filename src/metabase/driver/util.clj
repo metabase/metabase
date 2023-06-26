@@ -384,11 +384,14 @@
                 (assoc :visible-if v-ifs*))))
          final-props)))
 
+(def data-url-pattern
+  "A regex to match data-URL-encoded files uploaded via the frontend"
+  #"^data:[^;]+;base64,")
+
 (defn decode-uploaded
-  "Decode `uploaded-data` as an uploaded field.
-  Optionally strip the Base64 MIME prefix."
-  ^bytes [uploaded-data]
-  (u/decode-base64-to-bytes (str/replace uploaded-data #"^data:[^;]+;base64," "")))
+  "Returns bytes from encoded frontend file upload string."
+  ^bytes [^String uploaded-data]
+  (u/decode-base64-to-bytes (str/replace uploaded-data data-url-pattern "")))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.

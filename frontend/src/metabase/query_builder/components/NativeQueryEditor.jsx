@@ -56,7 +56,7 @@ import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-class NativeQueryEditor extends Component {
+export class NativeQueryEditor extends Component {
   _localUpdate = false;
 
   constructor(props) {
@@ -534,7 +534,10 @@ class NativeQueryEditor extends Component {
     );
 
     return (
-      <NativeQueryEditorRoot className="NativeQueryEditor bg-light full">
+      <NativeQueryEditorRoot
+        className="NativeQueryEditor bg-light full"
+        data-testid="native-query-editor-container"
+      >
         {hasTopBar && (
           <div className="flex align-center" data-testid="native-query-top-bar">
             <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>

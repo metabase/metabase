@@ -451,13 +451,21 @@ function DatasetEditor(props) {
       <Root>
         <MainContainer>
           <QueryEditorContainer isResizable={isEditingQuery}>
-            <DatasetQueryEditor
-              {...props}
-              isActive={isEditingQuery}
-              height={editorHeight}
-              viewHeight={height}
-              onResizeStop={handleResize}
-            />
+            {/**
+             * Optimization: DatasetQueryEditor can be expensive to re-render
+             * and we don't need it on the "Metadata" tab.
+             *
+             * @see https://github.com/metabase/metabase/pull/31142/files#r1211352364
+             */}
+            {isEditingQuery && editorHeight > 0 && (
+              <DatasetQueryEditor
+                {...props}
+                isActive={isEditingQuery}
+                height={editorHeight}
+                viewHeight={height}
+                onResizeStop={handleResize}
+              />
+            )}
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
             <DebouncedFrame className="flex-full" enabled>

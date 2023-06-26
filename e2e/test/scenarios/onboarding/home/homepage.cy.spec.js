@@ -117,11 +117,9 @@ describe("scenarios > home > homepage", () => {
 });
 
 const pinItem = name => {
-  cy.findByText(name)
-    .closest("tr")
-    .within(() => cy.icon("ellipsis").click());
+  cy.findByText(name).closest("tr").icon("ellipsis").click();
 
-  popover().within(() => cy.icon("pin").click());
+  popover().icon("pin").click();
 };
 
 const getXrayCandidates = () => [

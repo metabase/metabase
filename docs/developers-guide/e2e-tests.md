@@ -98,8 +98,11 @@ These snapshot-generating tests have the extension `.cy.snap.js`. When these tes
 Cypress records videos of each test run, which can be helpful in debugging. Additionally, failed tests have higher quality images saved.
 
 
-These files can be found under the “Artifacts” tab in Circle:
-![Circle CI Artifacts tab](https://user-images.githubusercontent.com/691495/72190614-f5995380-33cd-11ea-875e-4203d6dcf1c1.png)
+These files can be found under the “Artifacts” section for each run's summary in GitHub Actions.
+The example of the artifacts for a failed test in "Onboarding" directory:
+![GitHub Actions artifacts section](https://user-images.githubusercontent.com/31325167/241774190-f19da1d5-8fca-4c48-9342-ead18066bd12.png)
+
+Additionally, you will find a handy [DeploySentinel](https://www.deploysentinel.com/ci/dashboard) recording link for each failed test in the logs.
 
 ## Running Cypress tests against EE version of Metabase
 

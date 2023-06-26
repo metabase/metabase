@@ -10,6 +10,7 @@ export interface StructuredQuery {
 export interface NativeQuery {
   query: string;
   "template-tags"?: TemplateTags;
+  collection?: string;
 }
 
 export interface StructuredDatasetQuery {

@@ -62,7 +62,7 @@ const NativeQueryEditorSidebar = props => {
   const canRunQuery = runQuery && cancelQuery;
 
   return (
-    <Container>
+    <Container data-testid="native-query-editor-sidebar">
       <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
       <NativeVariablesButton {...props} size={ICON_SIZE} className="mt3" />
       {showSnippetSidebarButton && (

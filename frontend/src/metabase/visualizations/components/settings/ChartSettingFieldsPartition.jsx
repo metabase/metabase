@@ -106,7 +106,7 @@ class ChartSettingFieldsPartition extends React.Component {
     return (
       <DragDropContext onDragEnd={this.handleDragEnd}>
         {this.props.partitions.map(({ name: partitionName, title }, index) => {
-          const columns = value[partitionName];
+          const columns = value[partitionName] ?? [];
           const partitionType = this.getPartitionType(partitionName);
           return (
             <div

@@ -433,7 +433,7 @@ export default class NativeQuery extends AtomicQuery {
 
   updateSnippetsWithIds(snippets): NativeQuery {
     const tagsBySnippetName = _.chain(this.templateTags())
-      .filter(tag => tag.type === "snippet" && tag["snippet-id"] == null)
+      .filter(tag => tag.type === "snippet")
       .groupBy(tag => tag["snippet-name"])
       .value();
 

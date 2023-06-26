@@ -56,11 +56,14 @@ const defaultImplicitActionCreateOptions = {
 const enableImplicitActionsForModel =
   async (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
-    if (options.insert) {
+    // We're ordering actions that's most recently created first.
+    // So if we want to show Create, Update, Delete, then we need
+    // to create them in the reverse order.
+    if (options.delete) {
       await ActionsApi.create({
-        name: t`Create`,
+        name: t`Delete`,
         type: "implicit",
-        kind: "row/create",
+        kind: "row/delete",
         model_id: modelId,
       });
     }
@@ -74,11 +77,11 @@ const enableImplicitActionsForModel =
       });
     }
 
-    if (options.delete) {
+    if (options.insert) {
       await ActionsApi.create({
-        name: t`Delete`,
+        name: t`Create`,
         type: "implicit",
-        kind: "row/delete",
+        kind: "row/create",
         model_id: modelId,
       });
     }

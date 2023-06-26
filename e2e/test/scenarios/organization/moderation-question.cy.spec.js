@@ -132,11 +132,11 @@ describeEE("scenarios > saved question moderation", () => {
       cy.findAllByText(`${adminFullName} verified this`);
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
-      cy.findByText("Orders, Count").icon("verified");
+      cy.findByText("Orders, Count").parent().icon("verified");
 
       cy.visit("/collection/root");
 
-      cy.findByText("Orders, Count").icon("verified");
+      cy.findByText("Orders, Count").closest("td").icon("verified");
     });
   });
 });

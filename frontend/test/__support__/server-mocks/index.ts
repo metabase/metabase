@@ -6,6 +6,7 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./field";
+export * from "./native-query-snippet";
 export * from "./search";
 export * from "./session";
 export * from "./settings";

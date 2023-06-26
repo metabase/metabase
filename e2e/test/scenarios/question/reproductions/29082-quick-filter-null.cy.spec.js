@@ -34,7 +34,7 @@ describe("issue 29082", () => {
     cy.findByText("Showing 8 rows").should("exist");
     cy.findByText("Discount is empty").should("exist");
 
-    cy.findByText("Discount is empty").within(() => cy.icon("close").click());
+    cy.findByText("Discount is empty").icon("close").click();
     cy.wait("@dataset");
     cy.findByText("Showing 11 rows").should("exist");
 

@@ -7,7 +7,7 @@ redirect_from:
 
 # Data reference
 
-Sometimes when you're composing a question, you might forget the exact names of different tables or columns, or orwhiceh table contains what. That’s where the **Data reference** comes in handy.
+Sometimes when you're composing a question, you might forget the exact names of different tables or columns, or which table contains what. That’s where the **Data reference** comes in handy.
 
 You can open the data reference from:
 

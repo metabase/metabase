@@ -9,7 +9,7 @@ title: Data sandbox examples
 [Data sandboxes](./data-sandboxes.md) are a set of permissions that show different data to different people based on their user attributes. You can:
 
 - Restrict **rows** using a [basic sandbox](./data-sandboxes.md#basic-data-sandboxes-filter-by-a-column-in-the-table).
-- Restrict **columns** using a [custom sandbox](./data-sandboxes.md#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-of-a-table). 
+- Restrict **columns** using a [custom sandbox](./data-sandboxes.md#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-of-a-table).
 
 Permissions are always a bit pesky to set up, so here are some examples to get you started. (The example happens to use a group called "Customers" but this works the same whether you're doing this for internal or external folks.)
 
@@ -79,11 +79,7 @@ Here's the table I'm going to filter:
 
 ![Original Orders table](images/advanced-example-2-orders-table.png)
 
-<<<<<<< HEAD
-The filtering question that I'll create will exclude columns that I don't want these users to see, and I'll also add in an optional `WHERE` clause which defines a variable, `cid`, that I can then reference in my sandbox. Here's what it looks like:
-=======
 The filtering question that I'll create will exclude columns that I don't want these users to see, and I'll also add in a `WHERE` clause which defines a variable, `cid`, that I can then reference in my sandbox. Here's what it looks like:
->>>>>>> chale/faros-v1.46.4
 
 ![Filtering question](images/advanced-example-2-filtering-question.png)
 
@@ -99,11 +95,7 @@ SELECT
   user_id
 FROM
   orders
-<<<<<<< HEAD
-[[WHERE user_id = {%raw%}{{cid}}{%endraw%}]]
-=======
 WHERE user_id = {%raw%}{{cid}}{%endraw%}
->>>>>>> chale/faros-v1.46.4
 ```
 
 Going back over to the Permissions section, when I open up the sandboxed access modal and select the second option and select my filtering question, I'll see an additional section which allows me to map the variable I defined in my question with a user attribute:
