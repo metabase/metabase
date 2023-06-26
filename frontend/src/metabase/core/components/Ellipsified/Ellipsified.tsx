@@ -32,6 +32,32 @@ const getIsTruncated = (element: HTMLElement): boolean => {
   );
 };
 
+const useIsTruncated = <E extends HTMLElement>() => {
+  const ref = useRef<E | null>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+
+    if (!element) {
+      return;
+    }
+
+    const handleResize = () => {
+      setIsTruncated(getIsTruncated(element));
+    };
+
+    handleResize();
+    resizeObserver.subscribe(element, handleResize);
+
+    return () => {
+      resizeObserver.unsubscribe(element, handleResize);
+    };
+  }, []);
+
+  return { isTruncated, ref };
+};
+
 const Ellipsified = ({
   style,
   className,
@@ -44,23 +70,7 @@ const Ellipsified = ({
   placement = "top",
   "data-testid": dataTestId,
 }: EllipsifiedProps) => {
-  const [isTruncated, setIsTruncated] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
-  useLayoutEffect(() => {
-    const element = rootRef.current;
-    if (!element) {
-      return;
-    }
-    const handleResize = () => {
-      setIsTruncated(getIsTruncated(element));
-    };
-
-    handleResize();
-    resizeObserver.subscribe(element, handleResize);
-
-    return () => resizeObserver.unsubscribe(element, handleResize);
-  }, []);
+  const { isTruncated, ref } = useIsTruncated<HTMLDivElement>();
 
   return (
     <Tooltip
@@ -70,7 +80,7 @@ const Ellipsified = ({
       placement={placement}
     >
       <EllipsifiedRoot
-        ref={rootRef}
+        ref={ref}
         className={className}
         lines={lines}
         style={style}
