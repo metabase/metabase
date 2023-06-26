@@ -3,8 +3,9 @@ import { ComponentProps, LegacyRef } from "react";
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
 
 import Tooltip from "../Tooltip";
+import Markdown from "../Markdown";
 
-import { TooltipMarkdown, TruncatedMarkdown } from "./MarkdownPreview.styled";
+import { TruncatedMarkdown } from "./MarkdownPreview.styled";
 
 interface Props {
   children: string;
@@ -36,9 +37,9 @@ export const MarkdownPreview = ({
       placement="bottom"
       isEnabled={isTruncated}
       tooltip={
-        <TooltipMarkdown disallowHeading unstyleLinks>
+        <Markdown dark disallowHeading unstyleLinks>
           {children}
-        </TooltipMarkdown>
+        </Markdown>
       }
     >
       <div ref={setReactMarkdownRef}>
