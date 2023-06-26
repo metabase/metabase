@@ -19,7 +19,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.log :as log]))
 
 (declare stage-metadata)
 
@@ -149,8 +150,12 @@
    unique-name-fn :- fn?]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (lib.metadata.calculation/visible-columns query stage-number card {:unique-name-fn               unique-name-fn
-                                                                         :include-implicitly-joinable? false}))))
+      (->> (lib.metadata.calculation/visible-columns
+            query stage-number card {:unique-name-fn               unique-name-fn
+                                     :include-implicitly-joinable? false})
+           ;; questions should not have implicitly joinable columns (#30950)
+           (mapv #(dissoc % :fk-target-field-id))
+           not-empty))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query           :- ::lib.schema/query
