@@ -745,7 +745,7 @@ describe("scenarios > dashboard", () => {
 
   it("should create new dashboard inside a collection created on the go", () => {
     cy.visit("/");
-    cy.get("header").findByText("New").click();
+    appBar().findByText("New").click();
     popover().findByText("Dashboard").click();
     const NEW_DASHBOARD = "Foo";
     modal().within(() => {
