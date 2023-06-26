@@ -7,10 +7,7 @@ import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
 
-import {
-  BinningStrategyPickerPopover,
-  TemporalBucketPickerPopover,
-} from "./BucketPickerPopover";
+import { BucketPickerPopover } from "./BucketPickerPopover";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -123,50 +120,18 @@ function QueryColumnPicker({
   );
 
   const renderItemExtra = useCallback(
-    (item: ColumnListItem) => {
-      if (hasBinning && Lib.isBinnable(query, stageIndex, item.column)) {
-        const buckets = Lib.availableBinningStrategies(
-          query,
-          stageIndex,
-          item.column,
-        );
-        const isEditing = checkIsColumnSelected(item);
-        return (
-          <BinningStrategyPickerPopover
-            query={query}
-            stageIndex={stageIndex}
-            column={item.column}
-            buckets={buckets}
-            isEditing={isEditing}
-            onSelect={handleSelect}
-          />
-        );
-      }
-
-      if (
-        hasTemporalBucketing &&
-        Lib.isTemporalBucketable(query, stageIndex, item.column)
-      ) {
-        const buckets = Lib.availableTemporalBuckets(
-          query,
-          stageIndex,
-          item.column,
-        );
-        const isEditing = checkIsColumnSelected(item);
-        return (
-          <TemporalBucketPickerPopover
-            query={query}
-            stageIndex={stageIndex}
-            column={item.column}
-            buckets={buckets}
-            isEditing={isEditing}
-            onSelect={handleSelect}
-          />
-        );
-      }
-
-      return null;
-    },
+    (item: ColumnListItem) =>
+      hasBinning || hasTemporalBucketing ? (
+        <BucketPickerPopover
+          query={query}
+          stageIndex={stageIndex}
+          column={item.column}
+          isEditing={checkIsColumnSelected(item)}
+          hasBinning={hasBinning}
+          hasTemporalBucketing={hasTemporalBucketing}
+          onSelect={handleSelect}
+        />
+      ) : null,
     [
       query,
       stageIndex,
