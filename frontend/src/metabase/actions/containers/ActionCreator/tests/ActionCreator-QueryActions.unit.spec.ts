@@ -35,9 +35,9 @@ describe("ActionCreator > Query Actions", () => {
 
     it("should show clickable data reference icon", async () => {
       await setup();
-      getIcon("reference", "button").click();
+      userEvent.click(getIcon("reference"));
 
-      expect(screen.getByText("Data Reference")).toBeInTheDocument();
+      expect(screen.getAllByText("Data Reference")).toHaveLength(2);
       expect(screen.getByText("Database")).toBeInTheDocument();
     });
 

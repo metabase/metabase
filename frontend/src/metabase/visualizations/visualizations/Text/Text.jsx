@@ -19,7 +19,7 @@ import {
   DisplayContainer,
   EditModeContainer,
   TextInput,
-} from "./Text.styled.jsx";
+} from "./Text.styled";
 
 import styles from "./Text.css";
 
