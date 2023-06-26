@@ -24,10 +24,11 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
-import Button, { ButtonProps } from "metabase/core/components/Button";
+import { ButtonProps } from "metabase/core/components/Button";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
+  NewButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -54,9 +55,9 @@ function ItemName({
 
 export const NewCollectionButton = (props: ButtonProps) => {
   return (
-    <Button light className="mt1" icon="add" {...props}>
+    <NewButton light icon="add" {...props}>
       {t`New collection`}
-    </Button>
+    </NewButton>
   );
 };
 
