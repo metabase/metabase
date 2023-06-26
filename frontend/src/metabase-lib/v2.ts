@@ -1,5 +1,6 @@
 // Note: only metabase-lib v2 exports should be added here
 
+export * from "./aggregation";
 export * from "./binning";
 export * from "./breakout";
 export * from "./column_types";
