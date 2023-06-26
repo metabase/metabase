@@ -102,18 +102,22 @@
 
 (defn- warn-on-unsupported-versions [driver details]
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (jdbc/with-db-metadata [metadata jdbc-spec]
-      (when (unsupported-version? metadata)
-        (log/warn
-         (u/format-color 'red
-                         (str
-                          "\n\n********************************************************************************\n"
-                          (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-                               min-supported-mysql-version
-                               min-supported-mariadb-version)
-                          "\n"
-                          (trs "All Metabase features may not work properly when using an unsupported version.")
-                          "\n********************************************************************************\n")))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     jdbc-spec
+     nil
+     (fn [^java.sql.Connection conn]
+       (when (unsupported-version? (.getMetaData conn))
+         (log/warn
+          (u/format-color 'red
+                          (str
+                           "\n\n********************************************************************************\n"
+                           (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+                                min-supported-mysql-version
+                                min-supported-mariadb-version)
+                           "\n"
+                           (trs "All Metabase features may not work properly when using an unsupported version.")
+                           "\n********************************************************************************\n"))))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -661,13 +665,13 @@
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
                 ["show global variables like ?" var-name]))))
 
-(defmethod driver/insert-into :mysql
+(defmethod driver/insert-into! :mysql
   [driver db-id ^String table-name column-names values]
   ;; `local_infile` must be turned on per
   ;; https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
-    ((get-method driver/insert-into :sql-jdbc) driver db-id table-name column-names values)
+    ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
     (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try

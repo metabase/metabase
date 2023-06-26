@@ -5,11 +5,21 @@ import {
   undo,
   dashboardCards,
   sidebar,
-  popover,
   visitDashboardAndCreateTab,
+  describeWithSnowplow,
+  resetSnowplow,
+  expectNoBadSnowplowEvents,
+  visitDashboard,
+  editDashboard,
+  createNewTab,
+  expectGoodSnowplowEvents,
+  enableTracking,
+  deleteTab,
+  visitCollection,
+  main,
 } from "e2e/support/helpers";
 
-describe("scenarios > dashboard tabs", () => {
+describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -29,6 +39,7 @@ describe("scenarios > dashboard tabs", () => {
       cy.findByText("Orders, Count").click();
     });
     saveDashboard();
+    cy.url().should("include", "2-tab-2");
 
     // Go back to first tab
     cy.findByRole("tab", { name: "Tab 1" }).click();
@@ -44,10 +55,7 @@ describe("scenarios > dashboard tabs", () => {
     visitDashboardAndCreateTab({ dashboardId: 1, save: false });
 
     // Delete first tab
-    cy.findByRole("tab", { name: "Tab 1" }).findByRole("button").click();
-    popover().within(() => {
-      cy.findByText("Delete").click();
-    });
+    deleteTab("Tab 1");
     cy.findByRole("tab", { name: "Tab 1" }).should("not.exist");
 
     // Undo then go back to first tab
@@ -56,5 +64,48 @@ describe("scenarios > dashboard tabs", () => {
     dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
     });
+  });
+
+  it("should leave dashboard if navigating back after initial load", () => {
+    visitDashboardAndCreateTab({ dashboardId: 1 });
+    visitCollection("root");
+
+    main().within(() => {
+      cy.findByText("Orders in a dashboard").click();
+    });
+    cy.go("back");
+    main().within(() => {
+      cy.findByText("Our analytics").should("be.visible");
+    });
+  });
+});
+
+describeWithSnowplow("scenarios > dashboard > tabs", () => {
+  const PAGE_VIEW_EVENT = 1;
+
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events when dashboard tabs are created and deleted", () => {
+    visitDashboard(1);
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
+
+    editDashboard();
+    createNewTab();
+    saveDashboard();
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1); // dashboard_tab_created
+
+    editDashboard();
+    deleteTab("Tab 2");
+    saveDashboard();
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2); // dashboard_tab_deleted
   });
 });

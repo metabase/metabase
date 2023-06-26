@@ -45,7 +45,7 @@ export function updatePermission(
   permissions: GroupsPermissions,
   groupId: number,
   path: Array<number | string>,
-  value: string | number,
+  value: string | undefined,
   entityIds?: any[],
 ) {
   const fullPath = [groupId, ...path];

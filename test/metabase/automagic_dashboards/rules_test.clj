@@ -3,12 +3,6 @@
    [clojure.test :refer :all]
    [metabase.automagic-dashboards.rules :as rules]))
 
-(deftest ga-dimension?-test
-  (are [x expected] (= expected
-                       (rules/ga-dimension? x))
-    "ga:foo" true
-    "foo"    false))
-
 (deftest ->type-test
   (are [x expected] (= expected
                        (#'rules/->type x))

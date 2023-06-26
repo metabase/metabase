@@ -119,7 +119,7 @@
               (if-not (some #{:source-metadata} &parents)
                 (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
                                      (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
-                                                          (fk-field-id->join-alias (:source-field opts)))
+                                                          (pr-str (:source-field opts)))
                                                      {:resolving  &match
                                                       :candidates fk-field-id->join-alias})))]
                   [:field id-or-name (assoc opts :join-alias join-alias)])

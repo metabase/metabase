@@ -1,3 +1,4 @@
+import { Text } from "metabase/ui";
 import { IconName } from "metabase/core/components/Icon";
 import { ToolbarButtonIcon, ToolbarButtonRoot } from "./ToolbarButton.styled";
 
@@ -11,7 +12,7 @@ export const ToolbarButton = ({ onClick, text, icon }: ToolbarButtonProps) => {
   return (
     <ToolbarButtonRoot onClick={onClick}>
       <ToolbarButtonIcon name={icon} />
-      {text}
+      <Text>{text}</Text>
     </ToolbarButtonRoot>
   );
 };

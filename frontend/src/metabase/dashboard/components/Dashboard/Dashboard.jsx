@@ -49,7 +49,6 @@ class Dashboard extends Component {
     isFullscreen: PropTypes.bool,
     isNightMode: PropTypes.bool,
     isSharing: PropTypes.bool,
-    isEditable: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
@@ -104,14 +103,12 @@ class Dashboard extends Component {
   };
 
   static defaultProps = {
-    isEditable: true,
     isSharing: false,
   };
 
   constructor(props) {
     super(props);
     this.parametersWidgetRef = createRef();
-    this.parametersAndCardsContainerRef = createRef();
   }
 
   static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
@@ -324,7 +321,9 @@ class Dashboard extends Component {
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer
                 data-testid="dashboard-parameters-and-cards"
-                ref={element => (this.parametersAndCardsContainerRef = element)}
+                shouldMakeDashboardHeaderStickyAfterScrolling={
+                  !isFullscreen && (isEditing || isSharing)
+                }
               >
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer

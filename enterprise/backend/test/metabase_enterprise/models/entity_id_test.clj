@@ -38,13 +38,13 @@
     :model/ImplicitAction
     :model/QueryAction
     :model/Activity
-    :metabase.models.application-permissions-revision/ApplicationPermissionsRevision
+    :model/ApplicationPermissionsRevision
     :model/BookmarkOrdering
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
     :metabase.models.collection.root/RootCollection
-    :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
+    :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
     :model/FieldValues
@@ -53,10 +53,10 @@
     :model/ModelIndexValue
     :model/ModerationReview
     :model/ParameterCard
-    :metabase.models.permissions/Permissions
-    :metabase.models.permissions-group/PermissionsGroup
-    :metabase.models.permissions-group-membership/PermissionsGroupMembership
-    :metabase.models.permissions-revision/PermissionsRevision
+    :model/Permissions
+    :model/PermissionsGroup
+    :model/PermissionsGroupMembership
+    :model/PermissionsRevision
     :model/PersistedInfo
     :model/PulseCard
     :model/PulseChannel
@@ -72,7 +72,8 @@
     :model/TimelineEvent
     :model/User
     :model/ViewLog
-    :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})
+    :model/GroupTableAccessPolicy
+    :model/ConnectionImpersonation})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.seed-entity-ids/toucan-models)

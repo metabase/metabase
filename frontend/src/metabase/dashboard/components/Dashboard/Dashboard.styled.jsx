@@ -1,18 +1,12 @@
 import cx from "classnames";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { isWithinIframe } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
-import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+import { space } from "metabase/styled-components/theme";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import {
-  APP_BAR_HEIGHT,
-  APP_BAR_EXTENDED_HEIGHT,
-  NAV_SIDEBAR_WIDTH,
-} from "metabase/nav/constants";
 
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import Dashcard from "../DashCard";
@@ -46,7 +40,6 @@ export const DashboardStyled = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  overflow-x: hidden;
   width: 100%;
 `;
 
@@ -87,7 +80,13 @@ export const HeaderContainer = styled.header`
 
 export const ParametersAndCardsContainer = styled.div`
   flex: auto;
+  min-width: 0;
+  overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
+    shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
   overflow-x: hidden;
+  @supports (overflow-x: clip) {
+    overflow-x: clip;
+  }
   padding-bottom: 40px;
 `;
 
@@ -100,6 +99,9 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
   z-index: 3;
+  position: sticky;
+  top: 0;
+  left: 0;
 
   ${({ isEditing }) =>
     isEditing &&
@@ -110,27 +112,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   ${({ isSticky, topNav }) =>
     isSticky &&
     css`
-      position: fixed;
-      top: ${isWithinIframe() && !topNav ? "0" : APP_BAR_HEIGHT};
-      left: 0;
       border-bottom: 1px solid ${color("border")};
-    `}
-
-  ${({ isSticky, isNavbarOpen }) =>
-    isSticky &&
-    !isNavbarOpen &&
-    css`
-      ${breakpointMaxSmall} {
-        top: ${APP_BAR_EXTENDED_HEIGHT};
-      }
-    `}
-
-  ${({ isSticky, isNavbarOpen }) =>
-    isSticky &&
-    isNavbarOpen &&
-    css`
-      left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
-      width: calc(100% - ${NAV_SIDEBAR_WIDTH});
     `}
 `;
 

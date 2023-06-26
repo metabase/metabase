@@ -1,6 +1,12 @@
 import { restore, describeEE, visitQuestion } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+
 const { normal } = USERS;
 const { PRODUCTS } = SAMPLE_DATABASE;
 const TOTAL_USERS = Object.entries(USERS).length;
@@ -47,7 +53,7 @@ describeEE("audit > auditing", () => {
     });
 
     cy.log("Download a question");
-    visitQuestion(3);
+    visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
     cy.icon("download").click();
     cy.request("POST", "/api/card/1/query/json");
 
@@ -63,7 +69,7 @@ describeEE("audit > auditing", () => {
     cy.findByText("My personal collection").should("not.exist");
 
     cy.log("View old existing question");
-    visitQuestion(2);
+    visitQuestion(ORDERS_COUNT_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("18,760");
 

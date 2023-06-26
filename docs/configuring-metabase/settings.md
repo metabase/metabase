@@ -16,9 +16,13 @@ How you’d like to refer to this instance of Metabase.
 
 ## Site URL
 
-The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable.
+The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable. This feature is only available for self-hosted Metabases. For customers on Metabase Cloud, check out [Custom domains](https://www.metabase.com/docs/latest/cloud/custom-domain).
 
-### Redirect to HTTPS
+## Custom homepage
+
+Admins can pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage.
+
+## Redirect to HTTPS
 
 By default, Metabase is served over HTTP.
 
@@ -36,13 +40,13 @@ This email address will be displayed in various messages throughout Metabase whe
 
 {% include plans-blockquote.html feature="Approved domains for notifications" %}
 
-Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md). 
+Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md).
 
 Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to.
 
 To allow all domains, leave the field empty (allowing all domains is the default).
 
-To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). 
+To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2").
 
 You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
 
@@ -58,7 +62,7 @@ By default, Metabase attempts to make field and table names more readable by cha
 
 If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
 
-To manually label field or table names in Metabase, check out the [Data Model](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Data Model can be further curated in [models](../data-modeling/models.md).
+To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
 
 ## Enable nested queries
 

@@ -114,7 +114,7 @@ function LinkViz({
 
     if (isEditing) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper data-testid="entity-edit-display-link">
           <EntityDisplay entity={wrappedEntity} showDescription={false} />
         </EditLinkCardWrapper>
       );
@@ -125,6 +125,7 @@ function LinkViz({
     return (
       <DisplayLinkCardWrapper>
         <CardLink
+          data-testid="entity-view-display-link"
           to={wrappedEntity.getUrl()}
           target={target}
           rel="noreferrer"
@@ -138,7 +139,7 @@ function LinkViz({
 
   if (isEditing) {
     return (
-      <EditLinkCardWrapper>
+      <EditLinkCardWrapper data-testid="custom-edit-text-link">
         <TippyPopover
           visible={inputIsFocused && !isUrlString(url)}
           content={
@@ -173,7 +174,7 @@ function LinkViz({
   }
 
   return (
-    <DisplayLinkCardWrapper>
+    <DisplayLinkCardWrapper data-testid="custom-view-text-link">
       <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
         <UrlLinkDisplay url={url} />
       </CardLink>

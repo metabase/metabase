@@ -38,7 +38,7 @@
 (defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")
   :type :boolean
-  :visibility :authenticated
+  :visibility :public
   :default false)
 
 (defsetting num-metabot-choices

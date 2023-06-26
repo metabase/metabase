@@ -24,6 +24,8 @@ Our official hosted version, [Metabase Cloud](https://www.metabase.com/pricing).
 
 ### Other installation options
 
+We recommend that you deploy Metabase using a service and cloud provider that you're familiar with. Below are some example setups:
+
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
 - [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)

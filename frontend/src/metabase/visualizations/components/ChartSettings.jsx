@@ -275,7 +275,7 @@ class ChartSettings extends Component {
       dashcard,
       isDashboard,
     } = this.props;
-    const { currentWidget, popoverRef } = this.state;
+    const { popoverRef } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -411,9 +411,6 @@ class ChartSettings extends Component {
           </ChartSettingsPreview>
         )}
         <ChartSettingsWidgetPopover
-          currentWidgetKey={
-            currentWidget?.props?.initialKey || currentWidget?.props?.seriesKey
-          }
           anchor={popoverRef}
           widgets={[this.getFormattingWidget(), this.getStyleWidget()].filter(
             widget => !!widget,
