@@ -57,7 +57,6 @@ export const ScalarTitleContent = styled.h3`
 `;
 
 export const ScalarDescriptionContainer = styled.div`
-  cursor: pointer;
   width: 1.5rem;
   margin-top: 0.2rem;
   padding-left: 0.5rem;
@@ -70,6 +69,8 @@ export const ScalarDescriptionPlaceholder = styled.div`
 `;
 
 export const ScalarDescriptionIcon = styled(Icon)`
+  cursor: pointer;
+
   &:hover {
     color: ${color("brand")};
   }
