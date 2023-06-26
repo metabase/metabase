@@ -251,7 +251,7 @@ describe("dashboard reducers", () => {
           },
           {
             type: FETCH_DASHBOARD_CARD_DATA,
-            payload: { currentTime: 100 },
+            payload: { currentTime: 100, dashcardIds },
           },
         ),
       ).toMatchObject({

@@ -86,7 +86,9 @@ class PublicDashboard extends Component {
     initialize();
     try {
       await fetchDashboard(uuid || token, location.query);
-      await fetchDashboardCardData({ reload: false, clearCache: true });
+      if (this.props.dashboard.ordered_tabs.length === 0) {
+        await fetchDashboardCardData({ reload: false, clearCache: true });
+      }
     } catch (error) {
       console.error(error);
       setErrorPage(error);
@@ -104,6 +106,12 @@ class PublicDashboard extends Component {
   async componentDidUpdate(prevProps) {
     if (this.props.dashboardId !== prevProps.dashboardId) {
       return this._initialize();
+    }
+
+    if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
+      this.props.fetchDashboardCardData();
+      this.props.fetchDashboardCardMetadata();
+      return;
     }
 
     if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
