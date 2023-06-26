@@ -15,6 +15,8 @@ import {
   expectGoodSnowplowEvents,
   enableTracking,
   deleteTab,
+  visitCollection,
+  main,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > tabs", () => {
@@ -37,6 +39,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
     saveDashboard();
+    cy.url().should("include", "2-tab-2");
 
     // Go back to first tab
     cy.findByRole("tab", { name: "Tab 1" }).click();
@@ -62,9 +65,22 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders").should("be.visible");
     });
   });
+
+  it("should leave dashboard if navigating back after initial load", () => {
+    visitDashboardAndCreateTab({ dashboardId: 1 });
+    visitCollection("root");
+
+    main().within(() => {
+      cy.findByText("Orders in a dashboard").click();
+    });
+    cy.go("back");
+    main().within(() => {
+      cy.findByText("Our analytics").should("be.visible");
+    });
+  });
 });
 
-describeWithSnowplow.only("scenarios > dashboard > tabs", () => {
+describeWithSnowplow("scenarios > dashboard > tabs", () => {
   const PAGE_VIEW_EVENT = 1;
 
   beforeEach(() => {

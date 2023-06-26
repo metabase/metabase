@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import type { ByRoleMatcher } from "@testing-library/react";
 import _ from "underscore";
 import { createMemoryHistory, History } from "history";
-import { Router } from "react-router";
+import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import type { Store, Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
@@ -59,9 +59,13 @@ export function renderWithProviders(
     initialState = _.pick(initialState, ...publicReducerNames) as State;
   }
 
-  const history = withRouter
-    ? createMemoryHistory({ entries: [initialRoute] })
-    : undefined;
+  // We need to call `useRouterHistory` to ensure the history has a `query` object,
+  // since some components and hooks like `use-sync-url-slug` rely on it to read/write query params.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const browserHistory = useRouterHistory(createMemoryHistory)({
+    entries: [initialRoute],
+  });
+  const history = withRouter ? browserHistory : undefined;
 
   let reducers = mode === "default" ? mainReducers : publicReducers;
 
