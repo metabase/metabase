@@ -10,10 +10,12 @@ import { ParametersState } from "./parameters";
 import { SettingsState } from "./settings";
 import { SetupState } from "./setup";
 import { FileUploadState } from "./upload";
+import { AuthState } from "./auth";
 
 export interface State {
   admin: AdminState;
   app: AppState;
+  auth: AuthState;
   currentUser: User | null;
   dashboard: DashboardState;
   embed: EmbedState;

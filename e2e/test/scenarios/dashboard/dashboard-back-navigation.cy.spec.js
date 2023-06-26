@@ -16,6 +16,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -90,7 +91,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
     const cardTitle = "Orders by Subtotal";
-    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     cy.visit("/auto/dashboard/model/1");
     cy.wait("@dataset");
 

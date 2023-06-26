@@ -95,7 +95,6 @@ jobs:
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "downloads"
           - "embedding"
           - "filters"
           - "joins"
@@ -257,13 +256,13 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "actions"
           - "admin"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "downloads"
           - "embedding"
           - "filters"
           - "joins"

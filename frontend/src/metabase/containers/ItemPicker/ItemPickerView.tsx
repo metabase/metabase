@@ -212,7 +212,7 @@ function ItemPickerView<TId>({
   return (
     <ItemPickerRoot className={className} style={style}>
       {renderHeader()}
-      <ItemPickerList data-testid="item-picker-list">
+      <ItemPickerList data-testid="item-picker-list" role="list">
         {!searchString && collections.map(renderCollectionListItem)}
         {canFetch && (
           <Search.ListLoader query={searchQuery} wrapped>

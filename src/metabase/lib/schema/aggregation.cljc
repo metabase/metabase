@@ -6,35 +6,40 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
-;; count has an optional expression arg
+;; count has an optional expression arg. This is the number of non-NULL values -- corresponds to count(<expr>) in SQL
 (mbql-clause/define-catn-mbql-clause :count :- :type/Integer
-  [:expression [:? [:schema [:ref ::expression/number]]]])
+  [:expression [:? [:schema [:ref ::expression/expression]]]])
 
 ;; cum-count has an optional expression arg
 (mbql-clause/define-catn-mbql-clause :cum-count :- :type/Integer
-  [:expression [:? [:schema [:ref ::expression/number]]]])
+  [:expression [:? [:schema [:ref ::expression/expression]]]])
 
 (mbql-clause/define-tuple-mbql-clause :avg :- :type/Float
   [:schema [:ref ::expression/number]])
 
+;;; number of distinct values of something.
 (mbql-clause/define-tuple-mbql-clause :distinct :- :type/Integer
   [:schema [:ref ::expression/expression]])
 
 (mbql-clause/define-tuple-mbql-clause :count-where :- :type/Integer
   [:schema [:ref ::expression/boolean]])
 
+;;; min and max should work on anything orderable, including numbers, temporal values, and even text values.
 (mbql-clause/define-tuple-mbql-clause :max
-  [:schema [:ref ::expression/number]])
+  [:schema [:ref ::expression/orderable]])
 
 (lib.hierarchy/derive :max :lib.type-of/type-is-type-of-first-arg)
 
+;;; apparently median and percentile only work for numeric args in Postgres, as opposed to anything orderable. Not
+;;; sure this makes sense conceptually, but since there probably isn't as much of a use case we can keep that
+;;; restriction in MBQL for now.
 (mbql-clause/define-tuple-mbql-clause :median
   [:schema [:ref ::expression/number]])
 
 (lib.hierarchy/derive :median :lib.type-of/type-is-type-of-first-arg)
 
 (mbql-clause/define-tuple-mbql-clause :min
-  [:schema [:ref ::expression/number]])
+  [:schema [:ref ::expression/orderable]])
 
 (lib.hierarchy/derive :min :lib.type-of/type-is-type-of-first-arg)
 

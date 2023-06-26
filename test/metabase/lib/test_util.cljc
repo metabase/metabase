@@ -17,6 +17,7 @@
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def venues-query
+  "A mock query against the `VENUES` test data table."
   (lib/query meta/metadata-provider (meta/table-metadata :venues)))
 
 (defn venues-query-with-last-stage [m]
@@ -53,7 +54,7 @@
                                          (assoc :lib/type :metadata/table)
                                          (dissoc :fields)))
     (field    [_this field-id]   (some-> (m/find-first #(= (:id %) field-id) fields)
-                                         (assoc :lib/type :metadata/field)))
+                                         (assoc :lib/type :metadata/column)))
     (card     [_this card-id]    (some-> (m/find-first #(= (:id %) card-id) cards)
                                          (assoc :lib/type :metadata/card)))
     (metric   [_this metric-id]  (some-> (m/find-first #(= (:id %) metric-id) metrics)
@@ -65,7 +66,7 @@
                                        (dissoc :fields))))
     (fields   [_this table-id]   (for [field fields
                                        :when (= (:table_id field) table-id)]
-                                   (assoc field :lib/type :metadata/field)))
+                                   (assoc field :lib/type :metadata/column)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]
@@ -93,8 +94,8 @@
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
    :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table "card__1"}]})
+   :stages       [{:lib/type    :mbql.stage/mbql
+                   :source-card 1}]})
 
 (def metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
@@ -142,25 +143,25 @@
    :lib/metadata metadata-provider-with-card-with-result-metadata
    :type         :pipeline
    :database     (meta/id)
-   :stages       [{:lib/type     :mbql.stage/mbql
-                   :source-table "card__1"}]})
+   :stages       [{:lib/type    :mbql.stage/mbql
+                   :source-card 1}]})
 
 (defn query-with-join
   "A query against `VENUES` with an explicit join against `CATEGORIES`."
   []
-  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/join (-> (lib/join-clause
                      (meta/table-metadata :categories)
                      [(lib/=
-                       (lib/field "VENUES" "CATEGORY_ID")
-                       (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                       (meta/field-metadata :venues :category-id)
+                       (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
                     (lib/with-join-alias "Cat")
                     (lib/with-join-fields :all)))))
 
 (defn query-with-expression
   "A query with an expression."
   []
-  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
       (lib/expression "expr" (lib/absolute-datetime "2020" :month))))
 
 (defn native-query
@@ -171,12 +172,12 @@
    :database     (meta/id)
    :stages       [{:lib/type           :mbql.stage/native
                    :lib/stage-metadata {:lib/type :metadata/results
-                                        :columns  [{:lib/type      :metadata/field
+                                        :columns  [{:lib/type      :metadata/column
                                                     :name          "abc"
                                                     :display-name  "another Field"
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}
-                                                   {:lib/type      :metadata/field
+                                                   {:lib/type      :metadata/column
                                                     :name          "sum"
                                                     :display-name  "sum of User ID"
                                                     :base-type     :type/Integer

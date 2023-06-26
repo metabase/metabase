@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -12,7 +13,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honeysql-extensions :as hx])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -111,19 +114,19 @@
                      :quoted true
                      :dialect (sql.qp/quote-style driver))))
 
-(defmethod driver/create-table :sql-jdbc
+(defmethod driver/create-table! :sql-jdbc
   [driver db-id table-name col->type]
   (let [sql (create-table-sql driver table-name col->type)]
     (qp.writeback/execute-write-sql! db-id sql)))
 
-(defmethod driver/drop-table :sql-jdbc
+(defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
   (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
 
-(defmethod driver/insert-into :sql-jdbc
+(defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
   (let [table-name (keyword table-name)
         columns    (map keyword column-names)
@@ -145,7 +148,17 @@
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
-  (with-open [conn ^java.sql.Connection (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-    (let [[inclusion-patterns
-           exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
-      (into #{} (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns)))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [[inclusion-patterns
+            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
+       (into #{} (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
+
+(defmethod driver/set-role! :sql-jdbc
+  [driver conn role]
+  (let [sql (driver.sql/set-role-statement driver role)]
+    (with-open [stmt (.createStatement ^Connection conn)]
+      (.execute stmt sql))))

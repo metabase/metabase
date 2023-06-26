@@ -122,7 +122,7 @@
 
 (defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
   (binding [mu/*enforce* false]
-    (let [target-clause (lib.common/->op-arg query stage-number target-clause)
+    (let [target-clause (lib.common/->op-arg target-clause)
           stage (lib.util/query-stage query stage-number)
           location (m/find-first
                      (fn [possible-location]
@@ -133,7 +133,7 @@
                      (stage-paths query stage-number))
           replace? (= :replace remove-or-replace)
           replacement-clause (when replace?
-                               (lib.common/->op-arg query stage-number replacement))
+                               (lib.common/->op-arg replacement))
           remove-replace-fn (if replace?
                               #(lib.util/replace-clause %1 %2 %3 replacement-clause)
                               lib.util/remove-clause)

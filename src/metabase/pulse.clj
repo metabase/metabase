@@ -92,14 +92,6 @@
     (catch Throwable e
       (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
-(defn- dashcard-comparator
-  "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
-  This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
-  [dashcard-1 dashcard-2]
-  (if-not (= (:row dashcard-1) (:row dashcard-2))
-    (compare (:row dashcard-1) (:row dashcard-2))
-    (compare (:col dashcard-1) (:col dashcard-2))))
-
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
 
@@ -180,7 +172,7 @@
 
 (defn- dashcards->part
   [dashcards pulse dashboard]
-  (let [ordered-dashcards (sort dashcard-comparator dashcards)]
+  (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
     (doall (for [dashcard ordered-dashcards
                  :let  [part (dashcard->part dashcard pulse dashboard)]
                  :when (some? part)]
@@ -463,7 +455,7 @@
                               (construct-pulse-email email-subject user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
                               (construct-pulse-email email-subject non-user (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))))]
-        (concat email-to-users email-to-nonusers)))
+       (concat email-to-users email-to-nonusers)))
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]

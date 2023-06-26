@@ -27,7 +27,7 @@ import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 
-import { isSavedAction } from "../../utils";
+import { isActionPublic, isSavedAction } from "../../utils";
 import {
   ActionSettingsContent,
   CopyWidgetContainer,
@@ -134,7 +134,7 @@ const InlineActionSettings = ({
           >
             <Toggle
               id={`${id}-public`}
-              value={action.public_uuid != null}
+              value={isActionPublic(action)}
               onChange={handleTogglePublic}
             />
           </FormField>

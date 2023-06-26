@@ -109,12 +109,12 @@ export function getAutomaticDashboardUrl(
   const questionId = question.id();
 
   if (questionId != null && !isTransientId(questionId)) {
-    return `/auto/dashboard/question/${questionId}${cellQuery}`;
+    return `auto/dashboard/question/${questionId}${cellQuery}`;
   } else {
     const adHocQuery = utf8_to_b64url(
       JSON.stringify(question.card().dataset_query),
     );
-    return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
+    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
   }
 }
 
@@ -137,12 +137,12 @@ export function getComparisonDashboardUrl(
 
     if (tableId) {
       if (questionId != null && !isTransientId(questionId)) {
-        return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
+        return `auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
       } else {
         const adHocQuery = utf8_to_b64url(
           JSON.stringify(question.card().dataset_query),
         );
-        return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
+        return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
       }
     }
   }

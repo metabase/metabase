@@ -86,6 +86,7 @@
 (defn do-with-driver
   "Impl for `with-driver`."
   [driver f]
+  {:pre [(keyword? driver)]}
   (binding [*driver* (the-driver driver)]
     (f)))
 
@@ -502,7 +503,11 @@
     :actions/custom
 
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
-    :test/jvm-timezone-setting})
+    :test/jvm-timezone-setting
+
+    ;; Does the driver support connection impersonation (i.e. overriding the role used for individual queries)?
+    :connection-impersonation})
+
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -820,6 +825,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti set-role!
+  "Sets the database role used on a connection. Called prior to query execution for drivers that support connection
+  impersonation (an EE-only feature)."
+  {:arglists '([driver conn role])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -830,19 +843,19 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti create-table
+(defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error."
   {:added "0.47.0", :arglists '([driver db-id table-name col->type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti drop-table
+(defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped."
   {:added "0.47.0", :arglists '([driver db-id table-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti insert-into
+(defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a sequence of rows, where each row's order matches
    `column-names`."
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}

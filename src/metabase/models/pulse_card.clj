@@ -1,18 +1,22 @@
 (ns metabase.models.pulse-card
   (:require
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel PulseCard :pulse_card)
+(def PulseCard
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/PulseCard)
 
-(mi/define-methods
- PulseCard
- {:properties (constantly {::mi/entity-id true})})
+(methodical/defmethod t2/table-name :model/PulseCard [_model] :pulse_card)
+
+(doto :model/PulseCard
+  (derive :metabase/model)
+  (derive :hook/entity-id))
 
 (defmethod serdes/hash-fields PulseCard
   [_pulse-card]

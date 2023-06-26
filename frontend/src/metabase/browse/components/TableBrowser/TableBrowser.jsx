@@ -55,12 +55,10 @@ const TableBrowser = ({
       <Grid>
         {tables.map(table => (
           <TableGridItem key={table.id}>
-            <TableCard hoverable={!isTableLoading(table, database)}>
+            <TableCard hoverable={!isSyncInProgress(table)}>
               <TableLink
                 to={
-                  !isTableLoading(table, database)
-                    ? getTableUrl(table, metadata)
-                    : ""
+                  !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
                 }
                 data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
               >
@@ -90,7 +88,7 @@ const itemPropTypes = {
 
 const TableBrowserItem = ({ database, table, dbId, xraysEnabled }) => {
   const isVirtual = isVirtualCardId(table.id);
-  const isLoading = isTableLoading(table, database);
+  const isLoading = isSyncInProgress(table);
 
   return (
     <EntityItem
@@ -142,10 +140,6 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
 };
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
-
-const isTableLoading = (table, database) => {
-  return database && isSyncInProgress(database) && isSyncInProgress(table);
-};
 
 const getDatabaseCrumbs = dbId => {
   if (dbId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {

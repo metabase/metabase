@@ -140,6 +140,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "custom-homepage": false,
   "custom-homepage-dashboard": null,
   "deprecation-notice-version": undefined,
+  "dismissed-custom-dashboard-toast": true,
   "email-configured?": false,
   "enable-embedding": false,
   "enable-enhancements?": false,

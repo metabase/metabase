@@ -57,9 +57,8 @@
 
 (t2/define-before-insert :model/Table
   [table]
-  (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
-                  :field_order         (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))
-                  :initial_sync_status "incomplete"}]
+  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
+                  :field_order  (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))}]
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table

@@ -20,7 +20,7 @@ describe("issue 19742", () => {
     selectFromDropdown("Admin settings");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Data Model").click();
+    cy.findByText("Table Metadata").click();
     hideTable("Orders");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exit admin").click();

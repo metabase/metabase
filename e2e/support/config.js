@@ -29,6 +29,9 @@ const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
 // the project's config changing)
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
+const {
+  removeDirectory,
+} = require("./commands/downloads/deleteDownloadsFolder");
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -79,6 +82,7 @@ const defaultConfig = {
     on("task", {
       ...dbTasks,
       ...verifyDownloadTasks,
+      removeDirectory,
     });
 
     /********************************************************************

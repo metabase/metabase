@@ -1,5 +1,6 @@
 (ns metabase.events.revision-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events.revision :as revision]
    [metabase.models
@@ -34,8 +35,6 @@
    :name                   (:name card)
    :parameters             []
    :parameter_mappings     []
-   :public_uuid            nil
-   :made_public_by_id      nil
    :cache_ttl              nil
    :query_type             :query
    :table_id               (mt/id :categories)
@@ -52,10 +51,8 @@
    :archived            false
    :collection_position nil
    :enable_embedding    false
-   :made_public_by_id   nil
    :embedding_params    nil
-   :parameters          []
-   :public_uuid         nil})
+   :parameters          []})
 
 (deftest card-create-test
   (testing ":card-create"
@@ -89,6 +86,19 @@
                 :model       "Card"
                 :model_id    card-id)))))))
 
+(deftest card-update-shoud-not-contains-public-info-test
+  (testing ":card-update"
+    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+      (revision/process-revision-event! {:topic :card-update
+                                         :item  card})
+      ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
+      ;; otherwise revert a card to earlier revision might toggle the public sharing settings
+      (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
+                                    (->> (t2/select-one-fn :object Revision
+                                                           :model       "Card"
+                                                           :model_id    card-id)
+                                     keys set)))))))
+
 (deftest dashboard-create-test
   (testing ":dashboard-create"
     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
@@ -121,6 +131,20 @@
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
+
+(deftest dashboard-update-shoud-not-contains-public-info-test
+  (testing ":dashboard-update"
+    (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+      (revision/process-revision-event! {:topic :dashboard-update
+                                         :item  dashboard})
+
+      ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
+      ;; otherwise revert a card to earlier revision might toggle the public sharing settings
+      (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
+                                    (->> (t2/select-one-fn :object Revision
+                                                           :model       "Dashboard"
+                                                           :model_id    dashboard-id)
+                                         keys set)))))))
 (deftest dashboard-add-cards-test
   (testing ":dashboard-add-cards"
     (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}

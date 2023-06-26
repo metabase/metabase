@@ -136,6 +136,7 @@ export const setParameterMapping = createThunkAction(
         target,
       });
     }
+
     dispatch(
       setDashCardAttributes({
         id: dashcard_id,

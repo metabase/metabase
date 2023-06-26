@@ -84,13 +84,18 @@ describe("scenarios > question > notebook", () => {
   it("shouldn't show sub-dimensions for FK (metabase#16787)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("User ID")
-      .closest(".List-item")
-      .find(".Field-extra")
-      .should("not.have.descendants", "*");
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    popover().within(() => {
+      cy.findByText("User ID")
+        .findByLabelText("Binning strategy")
+        .should("not.exist");
+      cy.findByText("User ID")
+        .findByLabelText("Temporal bucket")
+        .should("not.exist");
+    });
   });
 
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {

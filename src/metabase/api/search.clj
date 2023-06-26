@@ -205,7 +205,7 @@
     (into [:or]
           (for [column searchable-columns
                 token (search-util/tokenize (search-util/normalize query))]
-            (if (and (= model "indexed-entity") (premium-features/segmented-user?))
+            (if (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
               [:= 0 1]
 
               [:like
