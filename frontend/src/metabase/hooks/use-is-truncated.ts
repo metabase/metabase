@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import resizeObserver from "metabase/lib/resize-observer";
 
-export const useIsTruncated = <E extends HTMLElement>() => {
+export const useIsTruncated = <E extends Element>() => {
   const ref = useRef<E | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -28,9 +28,9 @@ export const useIsTruncated = <E extends HTMLElement>() => {
   return { isTruncated, ref };
 };
 
-const getIsTruncated = (element: HTMLElement): boolean => {
+const getIsTruncated = (element: Element): boolean => {
   return (
     element.scrollHeight > element.clientHeight ||
-    element.scrollWidth > element.offsetWidth
+    element.scrollWidth > element.clientWidth
   );
 };
