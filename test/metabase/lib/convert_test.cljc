@@ -244,6 +244,8 @@
 
     [:value nil {:base_type :type/Number}]
 
+    [:value "TX" nil]
+
     [:expression "expr" {:display-name "Iambic Diameter"}]
 
     ;; (#29950)
@@ -456,7 +458,10 @@
                 pMBQL)))
       (testing "Round trip: make sure we convert back to `snake_case` when converting back."
         (is (= original
-               (lib.convert/->legacy-MBQL pMBQL)))))))
+               (lib.convert/->legacy-MBQL pMBQL))))))
+  (testing "Type is filled in properly when missing"
+    (is (=? [:value {:effective-type :type/Text} "TX"]
+            (lib.convert/->pMBQL [:value "TX" nil])))))
 
 (deftest ^:parallel clean-test
   (testing "irrecoverable queries"
