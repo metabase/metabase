@@ -93,6 +93,7 @@ export function Text({
         isEmpty={!hasContent}
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
+        isSingleRow={isSingleRow}
       >
         {isPreviewing ? (
           <ReactMarkdownStyleWrapper
@@ -129,7 +130,7 @@ export function Text({
   }
 
   return (
-    <DisplayContainer className={cx(className)}>
+    <DisplayContainer className={cx(className)} isSingleRow={isSingleRow}>
       <ReactMarkdownStyleWrapper isSingleRow={isSingleRow}>
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}

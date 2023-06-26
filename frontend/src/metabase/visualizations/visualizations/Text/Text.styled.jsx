@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { breakpointMinLarge } from "metabase/styled-components/theme";
+import { breakpointMaxExtraLarge } from "metabase/styled-components/theme";
 
 export const EditModeContainer = styled.div`
   display: flex;
@@ -9,14 +9,14 @@ export const EditModeContainer = styled.div`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding: 0.4rem;
+  padding: 0.75rem;
   width: 100%;
   pointer-events: auto;
   border-radius: 8px;
 
   .DashCard:hover &,
   .DashCard:focus-within & {
-    padding: calc(0.4rem - 1px);
+    padding: calc(0.75rem - 1px);
     border: 1px solid ${color("brand")};
   }
 
@@ -27,7 +27,7 @@ export const EditModeContainer = styled.div`
   ${({ isPreviewing, isEmpty }) =>
     (!isPreviewing || isEmpty) &&
     css`
-      padding: calc(0.4rem - 1px);
+      padding: calc(0.75rem - 1px);
     `} // adjust for border on preview/no entered content
   ${({ isEmpty }) =>
     isEmpty &&
@@ -35,16 +35,37 @@ export const EditModeContainer = styled.div`
       border: 1px solid ${color("brand")};
       color: ${color("text-light")};
     `}
+
+    // adjust styling for single row text cards
+    ${({ isSingleRow }) =>
+    isSingleRow &&
+    css`
+      ${breakpointMaxExtraLarge} {
+        padding: 0.4rem;
+
+        .DashCard:hover &,
+        .DashCard:focus-within & {
+          padding: calc(0.4rem - 1px);
+        }
+
+        ${({ isPreviewing, isEmpty }) =>
+          (!isPreviewing || isEmpty) &&
+          css`
+            padding: calc(0.4rem - 1px);
+          `}// adjust for border on preview/no entered content
+      }
+    `}
 `;
 
 export const ReactMarkdownStyleWrapper = styled.div`
   height: 100%;
   width: 100%;
+  padding-left: 2px; // adjust padding to align text input and markdown preview
 
   ${({ isSingleRow }) =>
     isSingleRow &&
     css`
-      ${breakpointMinLarge} {
+      ${breakpointMaxExtraLarge} {
         font-size: 0.85em;
       }
     `}
@@ -240,6 +261,14 @@ export const DisplayContainer = styled.div`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding: 0.4rem;
+  padding: 0.75rem;
   width: 100%;
+
+  ${({ isSingleRow }) =>
+    isSingleRow &&
+    css`
+      ${breakpointMaxExtraLarge} {
+        padding: 0.4rem;
+      }
+    `}
 `;
