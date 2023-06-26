@@ -108,16 +108,18 @@ export const ChartSettingOrderedColumns = ({
   );
 
   return (
-    <div className="list">
+    <div className="list" role="list">
       {enabledColumns.length > 0 ? (
-        <ChartSettingOrderedItems
-          items={enabledColumns}
-          getItemName={getColumnName}
-          onEdit={handleEdit}
-          onRemove={handleDisable}
-          onSortEnd={handleSortEnd}
-          distance={5}
-        />
+        <div role="group" title="visible-columns">
+          <ChartSettingOrderedItems
+            items={enabledColumns}
+            getItemName={getColumnName}
+            onEdit={handleEdit}
+            onRemove={handleDisable}
+            onSortEnd={handleSortEnd}
+            distance={5}
+          />
+        </div>
       ) : (
         <div className="my2 p2 flex layout-centered bg-grey-0 text-light text-bold rounded">
           {t`Add fields from the list below`}
@@ -133,6 +135,7 @@ export const ChartSettingOrderedColumns = ({
             title={getColumnName(columnSetting)}
             onAdd={() => handleEnable(columnSetting)}
             onClick={() => handleEnable(columnSetting)}
+            role="listitem"
           />
         ))}
       </div>
@@ -143,6 +146,7 @@ export const ChartSettingOrderedColumns = ({
               key={index}
               title={dimension.displayName()}
               onAdd={() => handleAddNewField(dimension.mbql())}
+              role="listitem"
             />
           ))}
           {additionalFieldOptions.fks.map((fk, index) => (
@@ -158,6 +162,7 @@ export const ChartSettingOrderedColumns = ({
                   key={index}
                   title={dimension.displayName()}
                   onAdd={() => handleAddNewField(dimension.mbql())}
+                  role="listitem"
                 />
               ))}
             </div>

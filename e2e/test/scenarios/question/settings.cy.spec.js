@@ -133,11 +133,7 @@ describe("scenarios > question > settings", () => {
       findColumnAtIndex("Products → Category", 5);
 
       // Remove "Total"
-      getSidebarColumns()
-        .contains("Total")
-        .closest("[data-testid^=draggable-item]")
-        .find(".Icon-eye_outline")
-        .click();
+      hideColumn("Total");
 
       reloadResults();
 
@@ -155,7 +151,8 @@ describe("scenarios > question > settings", () => {
 
       // Add "Address"
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Address").siblings("button").find(".Icon-add").click();
+      // cy.findByText("Address").siblings("button").find(".Icon-add").click();
+      addColumn("Address");
 
       // The result automatically load when adding new fields but two requests are fired.
       // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
@@ -177,13 +174,47 @@ describe("scenarios > question > settings", () => {
        * Helper functions related to THIS test only
        */
 
-      function reloadResults() {
-        cy.icon("play").last().click();
-      }
-
       function findColumnAtIndex(column_name, index) {
-        return getSidebarColumns().eq(index).contains(column_name);
+        return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
+    });
+
+    it("should be okay showing an empty joined table (metabase#29140)", () => {
+      // Orders join Products
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            fields: [
+              ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+              ["field", ORDERS.SUBTOTAL, { "base-type": "type/Float" }],
+            ],
+            limit: 5,
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "table",
+      });
+
+      cy.findByTestId("viz-settings-button").click();
+
+      addColumn("City");
+      // cy.findByText("City").siblings("button").find(".Icon-add").click();
+
+      // Remove "Product ID"
+      hideColumn("Product ID");
+
+      // Remove "Subtotal"
+      hideColumn("Subtotal");
+
+      reloadResults();
+
+      // Remove "City"
+      hideColumn("City");
+      cy.findByTestId("query-builder-main").findByText(
+        "Every field is hidden right now",
+      );
     });
 
     it("should change to column formatting when sidebar is already open (metabase#16043)", () => {
@@ -302,11 +333,37 @@ describe("scenarios > question > settings", () => {
   });
 });
 
+function reloadResults() {
+  cy.icon("play").last().click();
+}
+
 function getSidebarColumns() {
   return cy
     .findByText("Columns", { selector: "label" })
     .scrollIntoView()
     .should("be.visible")
     .parent()
-    .find("[data-testid^=draggable-item]");
+    .findAllByRole("listitem");
+}
+
+function getVisibleSidebarColumns() {
+  return cy
+    .findByRole("group", { name: /visible-columns/ })
+    .findAllByRole("listitem");
+}
+
+function hideColumn(name) {
+  getSidebarColumns()
+    .contains(name)
+    .parentsUntil("[role=listitem]")
+    .icon("eye_outline")
+    .click();
+}
+
+function addColumn(name) {
+  getSidebarColumns()
+    .contains(name)
+    .parentsUntil("[role=listitem]")
+    .icon("add")
+    .click();
 }
