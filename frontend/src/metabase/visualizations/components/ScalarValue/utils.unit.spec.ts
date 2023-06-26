@@ -97,7 +97,7 @@ describe("findSize", () => {
       .mockImplementationOnce(createMockMeasureText(50, 120))
       .mockImplementationOnce(createMockMeasureText(50, 110))
       .mockImplementationOnce(createMockMeasureText(50, 100)) // this is the one we want
-      .mockImplementationOnce(createMockMeasureText(0, 90));
+      .mockImplementationOnce(createMockMeasureText(50, 90));
 
     const size = findSize({
       ...defaults,
