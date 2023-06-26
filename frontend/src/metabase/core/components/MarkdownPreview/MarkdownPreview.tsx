@@ -2,8 +2,8 @@ import { ComponentProps, LegacyRef } from "react";
 
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
 
-import Tooltip from "../Tooltip";
 import Markdown from "../Markdown";
+import Tooltip from "../Tooltip";
 
 import { TruncatedMarkdown } from "./MarkdownPreview.styled";
 
@@ -22,12 +22,12 @@ export const MarkdownPreview = ({
 }: Props) => {
   const { isTruncated, ref } = useIsTruncated();
 
-  const setReactMarkdownRef: LegacyRef<HTMLDivElement> = divRef => {
+  const setReactMarkdownRef: LegacyRef<HTMLDivElement> = div => {
     /**
      * react-markdown API does not allow passing ref to the container div.
      * We can acquire the reference through its parent.
      */
-    const reactMarkdownRoot = divRef?.querySelector("div");
+    const reactMarkdownRoot = div?.firstElementChild;
     ref.current = reactMarkdownRoot || null;
   };
 
