@@ -7,13 +7,11 @@ import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/core/components/Tooltip";
+import { Box } from "metabase/ui";
 import { FieldDimension } from "metabase-lib/Dimension";
 
 import { DimensionPicker } from "./DimensionPicker";
-import {
-  DimensionListSubDimensionContainer,
-  FieldListGroupingTrigger,
-} from "./DimensionList.styled";
+import { FieldListGroupingTrigger } from "./DimensionList.styled";
 
 const SUBMENU_TETHER_OPTIONS = {
   attachment: "top left",
@@ -105,7 +103,7 @@ export default class DimensionList extends Component {
         );
 
     return (
-      <DimensionListSubDimensionContainer className="Field-extra">
+      <Box className="Field-extra">
         {item.dimension?.tag && (
           <span className="h5 text-light px1">{item.dimension.tag}</span>
         )}
@@ -158,7 +156,7 @@ export default class DimensionList extends Component {
             }}
           />
         )}
-      </DimensionListSubDimensionContainer>
+      </Box>
     );
   };
 

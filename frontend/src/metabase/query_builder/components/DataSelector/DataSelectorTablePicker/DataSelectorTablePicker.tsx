@@ -121,6 +121,7 @@ const DataSelectorTablePicker = ({
           width="100%"
           searchable={isSearchable}
           onChange={handleChange}
+          itemExtraIsRightAligned={false}
           renderItemExtra={renderItemExtra}
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={checkIfItemIsClickable}

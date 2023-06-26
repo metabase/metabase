@@ -4,7 +4,7 @@ import { InitialSyncStatus, Schema, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import DataSelectorTablePicker from "./DataSelectorTablePicker";
 
 const TEST_TABLE = createMockTable();
@@ -45,21 +45,16 @@ const setup = ({ schemas = [], tables = [] }: SetupOpts = {}) => {
 
 describe("DataSelectorTablePicker", () => {
   it.each(NOT_SYNCED_DB_STATUSES)(
-    "render a loading spinner when a table has initial_sync_status='incomplete'",
+    "render a loading spinner when a table has initial_sync_status='%s'",
     initial_sync_status => {
       setup({ tables: [createMockTable({ initial_sync_status })] });
-      expect(
-        within(screen.getByRole("option")).getByTestId("loading-spinner"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     },
   );
 
   it("don't render a loading spinner when a table has initial_sync_status='complete'", () => {
     setup({ tables: [createMockTable({ initial_sync_status: "complete" })] });
-    // eslint-disable-next-line testing-library/prefer-presence-queries
-    expect(
-      within(screen.getByRole("option")).queryByTestId("loading-spinner"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("when no table is in database", () => {

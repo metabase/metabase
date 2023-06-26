@@ -28,6 +28,7 @@ export const AccordionListCell = ({
   renderItemIcon,
   renderItemExtra,
   renderItemWrapper,
+  itemExtraIsRightAligned,
   searchText,
   onChangeSearchText,
   searchPlaceholder = t`Find...`,
@@ -116,6 +117,7 @@ export const AccordionListCell = ({
     const icon = renderItemIcon(item);
     const name = renderItemName(item);
     const description = renderItemDescription(item);
+    const extra = renderItemExtra(item, itemIndex, isSelected);
     content = (
       <ListCellItem
         data-testid={itemTestId}
@@ -139,6 +141,7 @@ export const AccordionListCell = ({
           className={cx(
             "p1 flex align-center",
             isClickable ? "cursor-pointer" : "cursor-default",
+            extra && itemExtraIsRightAligned && "flex-auto",
           )}
           onClick={isClickable ? () => onChange(item) : undefined}
         >
@@ -156,7 +159,7 @@ export const AccordionListCell = ({
             )}
           </div>
         </span>
-        {renderItemExtra(item, itemIndex, isSelected)}
+        {extra}
         {showItemArrows && (
           <div className="List-item-arrow flex align-center px1">
             <Icon name="chevronright" size={8} />

@@ -5,7 +5,6 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 
 import { Icon, IconName } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import { Box } from "metabase/ui";
 import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
 
@@ -94,11 +93,7 @@ const DataSelectorDatabaseSchemaPicker = ({
   };
 
   const renderSectionExtra = ({ active }: { active?: boolean }) =>
-    !active && (
-      <Box ml="0.5rem">
-        <PickerSpinner size={16} borderWidth={2} />
-      </Box>
-    );
+    !active && <PickerSpinner size={16} borderWidth={2} />;
 
   const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
     icon && <Icon className="Icon text-default" name={icon} size={18} />;

@@ -167,7 +167,7 @@ export default class AggregationPopover extends Component {
 
     if (content) {
       return (
-        <Box ml="auto" p="0.5rem">
+        <Box p="0.5rem">
           <Tooltip tooltip={content}>
             <span className="QuestionTooltipTarget" />
           </Tooltip>

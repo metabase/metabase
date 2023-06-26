@@ -7,10 +7,3 @@ export const FieldListGroupingTrigger = styled.div`
   border-left: 2px solid ${alpha("filter", 0.1)};
   color: ${alpha("text-white", 0.5)};
 `;
-
-export const DimensionListSubDimensionContainer = styled.div`
-  flex: 1;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-`;
