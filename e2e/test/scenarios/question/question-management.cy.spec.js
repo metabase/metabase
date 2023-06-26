@@ -111,7 +111,7 @@ describe("managing question from the question's details sidebar", () => {
                 openQuestionActions();
                 cy.findByTestId("move-button").click();
                 const NEW_COLLECTION = "Foo";
-                cy.get(".Modal").within(() => {
+                modal().within(() => {
                   cy.findByText("New collection").click();
                   cy.findByLabelText("Name").type(NEW_COLLECTION, { delay: 0 });
                   cy.findByText("Create").click();
