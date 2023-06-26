@@ -33,9 +33,10 @@ const PADDING = 32;
 const TITLE_ICON_SIZE = 10;
 const SCALAR_TITLE_LINE_HEIGHT = 23;
 
-const TITLE_2_LINES_THRESHOLD = 120; // determined empirically
+const TITLE_2_LINES_HEIGHT_THRESHOLD = 120; // determined empirically
 
-const getTitleLinesCount = height => (height > TITLE_2_LINES_THRESHOLD ? 2 : 1);
+const getTitleLinesCount = height =>
+  height > TITLE_2_LINES_HEIGHT_THRESHOLD ? 2 : 1;
 
 const getTitleHeight = ({ isDashboard, showSmallTitle, titleLinesCount }) => {
   if (!isDashboard) {
