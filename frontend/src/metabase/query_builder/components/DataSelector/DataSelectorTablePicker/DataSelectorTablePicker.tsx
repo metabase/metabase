@@ -24,7 +24,6 @@ import {
   DataSelectorTablePickerHeaderSchemaName as HeaderSchemaName,
   LinkToDocsContainer,
   NoTablesFound,
-  DataSelectorTablePickerLoader,
 } from "./DataSelectorTablePicker.styled";
 
 type DataSelectorTablePickerProps = {
@@ -102,15 +101,9 @@ const DataSelectorTablePicker = ({
     const renderItemIcon = ({ table }: { table: Table }) =>
       table ? <Icon name="table" /> : null;
 
-    const renderItemExtra = ({ table }: { table: Table }) => {
-      return (
-        <DataSelectorTablePickerLoader>
-          {table && !isSyncCompleted(table) && (
-            <PickerSpinner size={16} borderWidth={2} />
-          )}
-        </DataSelectorTablePickerLoader>
-      );
-    };
+    const renderItemExtra = ({ table }: { table: Table }) =>
+      table &&
+      !isSyncCompleted(table) && <PickerSpinner size={16} borderWidth={2} />;
 
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 

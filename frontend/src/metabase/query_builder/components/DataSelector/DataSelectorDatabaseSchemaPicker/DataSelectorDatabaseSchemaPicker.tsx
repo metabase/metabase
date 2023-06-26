@@ -1,4 +1,3 @@
-import cx from "classnames";
 import * as React from "react";
 import { t } from "ttag";
 
@@ -6,6 +5,7 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 
 import { Icon, IconName } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
+import { Box } from "metabase/ui";
 import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
 
@@ -95,7 +95,9 @@ const DataSelectorDatabaseSchemaPicker = ({
 
   const renderSectionExtra = ({ active }: { active?: boolean }) =>
     !active && (
-      <PickerSpinner size={16} borderWidth={2} className={cx("ml1")} />
+      <Box ml="0.5rem">
+        <PickerSpinner size={16} borderWidth={2} />
+      </Box>
     );
 
   const renderSectionIcon = ({ icon }: { icon?: IconName }) =>

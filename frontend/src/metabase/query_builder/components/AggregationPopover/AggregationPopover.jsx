@@ -7,6 +7,7 @@ import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
+import { Box } from "metabase/ui";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
 import { ExpressionWidget } from "../expressions/ExpressionWidget";
@@ -16,7 +17,6 @@ import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 import {
   AggregationItemList,
   AggregationFieldList,
-  AggregationMetricItemTooltip,
 } from "./AggregationPopover.styled";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
@@ -167,11 +167,11 @@ export default class AggregationPopover extends Component {
 
     if (content) {
       return (
-        <AggregationMetricItemTooltip>
+        <Box ml="auto" p="0.5rem">
           <Tooltip tooltip={content}>
             <span className="QuestionTooltipTarget" />
           </Tooltip>
-        </AggregationMetricItemTooltip>
+        </Box>
       );
     }
     return null;
