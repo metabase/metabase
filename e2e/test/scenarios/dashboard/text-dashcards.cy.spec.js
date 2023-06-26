@@ -13,7 +13,7 @@ import {
   expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
-describeWithSnowplow("scenarios > dashboard > text and headings", () => {
+describe("scenarios > dashboard > text and headings", () => {
   beforeEach(() => {
     resetSnowplow();
     restore();
@@ -21,7 +21,7 @@ describeWithSnowplow("scenarios > dashboard > text and headings", () => {
     enableTracking();
   });
 
-  describe("text", () => {
+  describeWithSnowplow("text", () => {
     beforeEach(() => {
       visitDashboard(1);
     });
@@ -154,7 +154,7 @@ describeWithSnowplow("scenarios > dashboard > text and headings", () => {
     });
   });
 
-  describe("heading", () => {
+  describeWithSnowplow("heading", () => {
     beforeEach(() => {
       visitDashboard(1);
     });

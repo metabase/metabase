@@ -36,7 +36,7 @@ const TEST_COLUMNS_TABLE = "many_data_types";
 const MODEL_NAME = "Test Action Model";
 
 ["mysql", "postgres"].forEach(dialect => {
-  describeWithSnowplow(
+  describe(
     `Write Actions on Dashboards (${dialect})`,
     { tags: ["@external", "@actions"] },
     () => {
@@ -59,7 +59,7 @@ const MODEL_NAME = "Test Action Model";
         );
       });
 
-      describe("adding and executing actions", () => {
+      describeWithSnowplow("adding and executing actions", () => {
         beforeEach(() => {
           resetSnowplow();
           resetTestTable({ type: dialect, table: TEST_TABLE });
@@ -75,9 +75,6 @@ const MODEL_NAME = "Test Action Model";
 
         afterEach(() => {
           expectNoBadSnowplowEvents();
-          expectGoodSnowplowEvent({
-            event: "new_action_card_created",
-          });
         });
 
         it("adds a custom query action to a dashboard and runs it", () => {
@@ -126,6 +123,10 @@ const MODEL_NAME = "Test Action Model";
             idFilter: true,
           });
 
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
+          });
+
           filterWidget().click();
           addWidgetStringFilter("1");
 
@@ -157,6 +158,10 @@ const MODEL_NAME = "Test Action Model";
 
           createDashboardWithActionButton({
             actionName: "Create",
+          });
+
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
           });
 
           cy.findByRole("button", { name: "Create" }).click();
@@ -193,6 +198,10 @@ const MODEL_NAME = "Test Action Model";
           createDashboardWithActionButton({
             actionName,
             idFilter: true,
+          });
+
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
           });
 
           filterWidget().click();
@@ -246,6 +255,10 @@ const MODEL_NAME = "Test Action Model";
 
           createDashboardWithActionButton({
             actionName: "Delete",
+          });
+
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
           });
 
           cy.findByRole("button", { name: "Delete" }).click();
