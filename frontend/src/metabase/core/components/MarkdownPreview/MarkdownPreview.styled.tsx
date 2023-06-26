@@ -1,5 +1,7 @@
 import styled from "@emotion/styled";
 
+import { color } from "metabase/lib/colors";
+
 import Markdown from "../Markdown/Markdown";
 
 export const TruncatedMarkdown = styled(Markdown)`
@@ -9,4 +11,11 @@ export const TruncatedMarkdown = styled(Markdown)`
   overflow: hidden;
   overflow-wrap: break-word;
   white-space: pre-line;
+`;
+
+export const TooltipMarkdown = styled(Markdown)`
+  hr {
+    border: none;
+    border-bottom: 1px solid ${color("bg-dark")};
+  }
 `;
