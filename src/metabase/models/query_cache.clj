@@ -1,17 +1,17 @@
 (ns metabase.models.query-cache
   "A model used to cache query results in the database."
   (:require
-   [metabase.models.interface :as mi]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel QueryCache :query_cache)
+(def QueryCache
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/QueryCache)
 
-(methodical/defmethod t2/primary-keys QueryCache
-  [_model]
-  [:query_hash])
+(methodical/defmethod t2/table-name :model/QueryCache [_model] :query_cache)
+(methodical/defmethod t2/primary-keys QueryCache [_model] [:query_hash])
 
-(mi/define-methods
- QueryCache
- {:properties (constantly {::mi/updated-at-timestamped? true})})
+(doto :model/QueryCache
+  (derive :metabase/model)
+  (derive :hook/updated-at-timestamped?))

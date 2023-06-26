@@ -439,6 +439,7 @@ function setupDashboard(cardId, addedSeriesCardId) {
 }
 
 function showTooltipForFirstCircleInSeries(series_index) {
+  cy.findByRole("main").scrollTo("bottom");
   cy.get(`.sub._${series_index}`)
     .as("firstSeries")
     .find("circle")
@@ -447,6 +448,7 @@ function showTooltipForFirstCircleInSeries(series_index) {
 }
 
 function showTooltipForFirstBarInSeries(series_index) {
+  cy.findByRole("main").scrollTo("bottom");
   cy.get(`.sub._${series_index}`)
     .as("firstSeries")
     .find(".bar")

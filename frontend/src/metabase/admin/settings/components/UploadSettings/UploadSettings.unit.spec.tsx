@@ -99,7 +99,7 @@ describe("Admin > Settings > UploadSetting", () => {
   it("should render a description", async () => {
     setup();
     expect(
-      screen.getByText("Allow users to upload data to Collections"),
+      screen.getByText("Allow people to upload data to Collections"),
     ).toBeInTheDocument();
   });
 

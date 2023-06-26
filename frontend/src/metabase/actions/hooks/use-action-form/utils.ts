@@ -5,6 +5,7 @@ import { isEmpty } from "metabase/lib/validate";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 
 import type {
+  FieldSettings,
   FieldSettingsMap,
   InputSettingType,
   Parameter,
@@ -36,6 +37,7 @@ export const formatInitialValue = (
       return moment(stripTZInfo(`2020-01-10T${value}`)).format("HH:mm:ss");
     }
   }
+
   return value;
 };
 
@@ -45,15 +47,17 @@ export const formatSubmitValues = (
 ) => {
   const values: ParametersForActionExecution = {};
 
-  Object.entries(rawValues).forEach(([fieldId, fieldValue]) => {
-    values[fieldId] = fieldValue;
+  Object.entries(rawValues)
+    .filter(([fieldId]) => !fieldSettings[fieldId].hidden)
+    .forEach(([fieldId, fieldValue]) => {
+      values[fieldId] = fieldValue;
 
-    const formField = fieldSettings[fieldId];
-    const isNumericField = formField?.fieldType === "number";
-    if (isNumericField && !isEmpty(fieldValue)) {
-      values[fieldId] = Number(fieldValue) ?? null;
-    }
-  });
+      const formField = fieldSettings[fieldId];
+      const isNumericField = formField?.fieldType === "number";
+      if (isNumericField && !isEmpty(fieldValue)) {
+        values[fieldId] = Number(fieldValue);
+      }
+    });
 
   return values;
 };
@@ -64,8 +68,10 @@ export const getChangedValues = (
 ) => {
   const changedValues = Object.entries(values).filter(([key, value]) => {
     const initialValue = initialValues[key];
+
     return value !== initialValue;
   });
+
   return Object.fromEntries(changedValues);
 };
 
@@ -112,7 +118,40 @@ export const getInputType = (param: Parameter, field?: Field) => {
   if (field.isCategory() && field.semantic_type !== TYPE.Name) {
     return "string";
   }
+
   return "string";
+};
+
+// TODO: @uladzimirdev remove this method once the migration of implicit action fields generating to the BE is complete
+export const getOrGenerateFieldSettings = (
+  params: Parameter[],
+  fields?: Record<
+    ParameterId,
+    Partial<FieldSettings> & Pick<FieldSettings, "id" | "hidden">
+  >,
+) => {
+  if (!fields) {
+    return generateFieldSettingsFromParameters(params);
+  }
+
+  const fieldValues = Object.values(fields);
+  const isGeneratedImplicitActionField =
+    fieldValues.length > 0 && Object.keys(fieldValues[0]).length === 2;
+
+  if (isGeneratedImplicitActionField) {
+    const generatedFieldSettings = generateFieldSettingsFromParameters(params);
+
+    fieldValues.forEach(fieldValue => {
+      const singleFieldSettings = generatedFieldSettings[fieldValue.id];
+      // this is the only field we sync with BE
+      singleFieldSettings.hidden = fieldValue.hidden;
+    });
+
+    return generatedFieldSettings;
+  }
+
+  // settings are in sync with BE
+  return fields as FieldSettingsMap;
 };
 
 export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
@@ -140,5 +179,6 @@ export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
       inputType: getInputType(param, field),
     });
   });
+
   return fieldSettings;
 };

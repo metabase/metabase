@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { Heading } from "./Heading";
 
 const HeadingWrapper = Object.assign(Heading, {
@@ -15,8 +18,8 @@ const HeadingWrapper = Object.assign(Heading, {
   supportPreviewing: false,
   supportsSeries: false,
 
-  minSize: { width: 1, height: 1 },
-  defaultSize: { width: GRID_WIDTH, height: 1 },
+  minSize: getMinSize("heading"),
+  defaultSize: getDefaultSize("heading"),
 
   checkRenderable: () => {
     // heading can always be rendered, nothing needed here

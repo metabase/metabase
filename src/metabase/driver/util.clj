@@ -427,7 +427,7 @@
                                           ;; version of the -value property (the :type "textFile" one)
                                           (let [textfile-prop (val-kw secrets-server->client)]
                                             (:treat-before-posting textfile-prop)))))
-                         value      (let [^String v (val-kw acc)]
+                         value      (when-let [^String v (val-kw acc)]
                                       (case (get-treat)
                                         "base64" (decode-uploaded v)
                                         v))]
@@ -452,7 +452,6 @@
   #{"athena"
     "bigquery-cloud-sdk"
     "druid"
-    "googleanalytics"
     "h2"
     "mongo"
     "mysql"

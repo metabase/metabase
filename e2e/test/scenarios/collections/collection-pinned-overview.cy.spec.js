@@ -7,6 +7,7 @@ import {
   openUnpinnedItemMenu,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -102,7 +103,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a model", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
 
     openRootCollection();
     openUnpinnedItemMenu(MODEL_NAME);
@@ -113,7 +114,7 @@ describe("scenarios > collection pinned items overview", () => {
       cy.icon("model").should("be.visible");
       cy.findByText(MODEL_NAME).should("be.visible");
       cy.findByText("A model").click();
-      cy.url().should("include", "/model/1");
+      cy.url().should("include", `/model/${ORDERS_QUESTION_ID}`);
     });
   });
 

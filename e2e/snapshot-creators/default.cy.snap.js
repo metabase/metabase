@@ -47,8 +47,14 @@ describe("snapshots", () => {
         );
       });
 
-      snapshot("default");
+      const instanceData = getDefaultInstanceData();
 
+      cy.writeFile(
+        "e2e/support/cypress_sample_instance_data.json",
+        instanceData,
+      );
+
+      snapshot("default");
       restore("blank");
     });
   });
@@ -274,3 +280,29 @@ describe("snapshots", () => {
     });
   });
 });
+
+function getDefaultInstanceData() {
+  const instanceData = {};
+
+  cy.request("/api/card").then(({ body: cards }) => {
+    instanceData.questions = cards;
+  });
+
+  cy.request("/api/dashboard").then(({ body: dashboards }) => {
+    instanceData.dashboards = dashboards;
+  });
+
+  cy.request("/api/user").then(({ body: { data: users } }) => {
+    instanceData.users = users;
+  });
+
+  cy.request("/api/database").then(({ body: { data: databases } }) => {
+    instanceData.databases = databases;
+  });
+
+  cy.request("/api/collection").then(({ body: collections }) => {
+    instanceData.collections = collections;
+  });
+
+  return instanceData;
+}

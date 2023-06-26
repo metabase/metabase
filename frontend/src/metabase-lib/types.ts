@@ -32,10 +32,22 @@ export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
 export type OrderByDirection = "asc" | "desc";
 
-export type Clause = AggregationClause | BreakoutClause | OrderByClause;
+declare const FilterClause: unique symbol;
+export type FilterClause = unknown & { _opaque: typeof FilterClause };
+
+export type Clause =
+  | AggregationClause
+  | BreakoutClause
+  | FilterClause
+  | OrderByClause;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
+
+declare const ColumnWithOperators: unique symbol;
+export type ColumnWithOperators = unknown & {
+  _opaque: typeof ColumnWithOperators;
+};
 
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
@@ -69,7 +81,7 @@ export type ColumnDisplayInfo = {
 
   breakoutPosition?: number;
   orderByPosition?: number;
-  selected?: boolean; // used in aggregations
+  selected?: boolean; // used in aggregation and field clauses
 };
 
 export type AggregationOperatorDisplayInfo = {
@@ -103,6 +115,23 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+
+export type ExpressionArg =
+  | null
+  | boolean
+  | number
+  | string
+  | ColumnMetadata
+  | Clause;
+
+// ExternalOp is a JS-friendly representation of a filter clause or aggregation clause.
+declare const ExternalOp: unique symbol;
+export type ExternalOp = {
+  _opaque: typeof ExternalOp;
+  operator: string;
+  options: Record<string, unknown>;
+  args: ExpressionArg[];
+};
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };

@@ -6,6 +6,7 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -189,7 +190,7 @@ describe("scenarios > admin > localization", () => {
     cy.wait("@updateFormatting");
     cy.findByDisplayValue("HH:mm").should("be.checked");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     // create a date filter and set it to the 'On' view to see a specific date
     cy.findByTextEnsureVisible("Created At").click();

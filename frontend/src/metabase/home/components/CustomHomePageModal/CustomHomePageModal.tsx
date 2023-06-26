@@ -1,7 +1,9 @@
 import { useState, useCallback } from "react";
 import { t } from "ttag";
+
 import { useDispatch } from "metabase/lib/redux";
 import { updateSettings } from "metabase/admin/settings/settings";
+import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { refreshCurrentUser } from "metabase/redux/user";
 
 import Modal from "metabase/components/Modal";
@@ -13,6 +15,7 @@ import { Collection, DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
+const CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY = "dismissed_custom_dashboard_toast";
 
 interface CustomHomePageModalProps {
   isOpen: boolean;
@@ -31,9 +34,11 @@ export const CustomHomePageModal = ({
       updateSettings({
         [CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY]: dashboardId,
         [CUSTOM_HOMEPAGE_SETTING_KEY]: true,
+        [CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY]: true,
       }),
     );
     await dispatch(refreshCurrentUser());
+    trackCustomHomepageDashboardEnabled("homepage");
   };
 
   const handleChange = useCallback(
@@ -47,21 +52,31 @@ export const CustomHomePageModal = ({
     [setDashboardId],
   );
 
+  const handleClose = useCallback(() => {
+    setDashboardId(undefined);
+    onClose();
+  }, [onClose, setDashboardId]);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalContent
         title="Customize Homepage"
-        onClose={onClose}
+        onClose={handleClose}
         footer={[
-          <Button onClick={onClose} key="custom-homepage-modal-cancel">
+          <Button onClick={handleClose} key="custom-homepage-modal-cancel">
             Cancel
           </Button>,
-          <Button primary onClick={handleSave} key="custom-homepage-modal-save">
+          <Button
+            primary
+            onClick={handleSave}
+            key="custom-homepage-modal-save"
+            disabled={!dashboardId}
+          >
             Save
           </Button>,
         ]}
       >
-        <p>{t`Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage. You can update or reset this anytime in Admin Settings > Settings > General`}</p>
+        <p>{t`Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General.`}</p>
         <DashboardSelector
           value={dashboardId}
           onChange={handleChange}

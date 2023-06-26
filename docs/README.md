@@ -58,6 +58,7 @@ Metabase's reference documentation.
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
+- [Uploading data](./databases/uploads.md)
 
 ### Questions
 

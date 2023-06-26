@@ -1,6 +1,7 @@
-import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import { Route } from "react-router";
+
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 
 import PinnedItemCard from "./PinnedItemCard";
 
@@ -13,6 +14,23 @@ const defaultCollection = {
   name: "Collection Foo",
   archived: false,
 };
+
+const HEADING_1_TEXT = "Heading 1";
+const HEADING_1_MARKDOWN = `# ${HEADING_1_TEXT}`;
+const HEADING_2_TEXT = "Heading 2";
+const HEADING_2_MARKDOWN = `## ${HEADING_2_TEXT}`;
+const PARAGRAPH_TEXT = "Paragraph with link";
+const PARAGRAPH_MARKDOWN = "Paragraph with [link](https://example.com)";
+const IMAGE_MARKDOWN = "![alt](https://example.com/img.jpg)";
+const MARKDOWN = [
+  IMAGE_MARKDOWN,
+  HEADING_1_MARKDOWN,
+  HEADING_2_MARKDOWN,
+  PARAGRAPH_MARKDOWN,
+].join("\n\n");
+const MARKDOWN_AS_TEXT = [HEADING_1_TEXT, HEADING_2_TEXT, PARAGRAPH_TEXT].join(
+  " ",
+);
 
 function getCollectionItem({
   id = 1,
@@ -108,6 +126,22 @@ describe("PinnedItemCard", () => {
         "href",
         "/model/1-order/detail",
       );
+    });
+  });
+
+  describe("description", () => {
+    it("should render description markdown as plain text", () => {
+      setup({ item: getCollectionItem({ description: MARKDOWN }) });
+
+      expect(screen.getByText(MARKDOWN_AS_TEXT)).toBeInTheDocument();
+    });
+
+    it("should show description tooltip with markdown formatting on hover", () => {
+      setup({ item: getCollectionItem({ description: MARKDOWN }) });
+
+      userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
+
+      expect(screen.getByRole("tooltip")).toHaveTextContent(MARKDOWN_AS_TEXT);
     });
   });
 });

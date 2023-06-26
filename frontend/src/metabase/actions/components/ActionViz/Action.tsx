@@ -145,7 +145,7 @@ function ActionFn(props: ActionProps) {
 
     return (
       <Tooltip tooltip={tooltip}>
-        <FullContainer>
+        <FullContainer data-testid="action-button-full-container">
           <ActionButtonView
             disabled
             icon="bolt"

@@ -62,6 +62,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           data-testid="toast-undo"
           translateY={isReducedMotionPreferred() ? 0 : translateY}
           color={undo.toastColor}
+          role="status"
         >
           <CardContent>
             <CardContentSide>
@@ -74,7 +75,9 @@ function UndoToast({ undo, onUndo, onDismiss }) {
                   {undo.actionLabel ?? t`Undo`}
                 </UndoButton>
               )}
-              <DismissIcon name="close" onClick={onDismiss} />
+              {undo.canDismiss && (
+                <DismissIcon name="close" onClick={onDismiss} />
+              )}
             </CardContentSide>
           </CardContent>
         </ToastCard>
@@ -88,7 +91,7 @@ function UndoListingInner() {
   const undos = useSelector(state => state.undo);
 
   return (
-    <UndoList>
+    <UndoList data-testid="undo-list">
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}

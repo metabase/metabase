@@ -12,6 +12,8 @@ import {
   getCollectionIdFromSlug,
 } from "e2e/support/helpers";
 
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
     restore();
@@ -82,7 +84,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("view and filter saved question", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     cy.findAllByText("Orders"); // question and table name appears
 
     // filter to only orders with quantity=100
@@ -123,7 +125,7 @@ describe("scenarios > question > saved", () => {
   it("should duplicate a saved question", () => {
     cy.intercept("POST", "/api/card").as("cardCreate");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     openQuestionActions();
     popover().within(() => {
@@ -148,7 +150,7 @@ describe("scenarios > question > saved", () => {
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     questionInfoButton().click();
 
     rightSidebar().within(() => {
@@ -172,14 +174,14 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should show table name in header with a table info popover on hover", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("9 columns");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     appBar().within(() => cy.findByText("Our analytics").click());
 
@@ -189,10 +191,10 @@ describe("scenarios > question > saved", () => {
 
   it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
     getCollectionIdFromSlug("second_collection", collection_id => {
-      cy.request("PUT", "/api/card/1", { collection_id });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { collection_id });
     });
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     appBar().within(() => cy.findByText("Second collection").click());
 
@@ -201,7 +203,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should show the question lineage when a saved question is changed", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     summarize();
     rightSidebar().within(() => {
@@ -218,7 +220,7 @@ describe("scenarios > question > saved", () => {
 
   it("'read-only' user should be able to resize column width (metabase#9772)", () => {
     cy.signIn("readonly");
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tax")

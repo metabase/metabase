@@ -102,3 +102,10 @@ export const FieldRoot = styled.div<FieldRootProps>`
     }
   }
 `;
+
+export const FieldTitleActions = styled.div`
+  margin-left: auto;
+  font-size: 0.77rem;
+  font-weight: 900;
+  color: ${color("text-medium")};
+`;

@@ -304,4 +304,4 @@ See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/run
 
 ## Continue to setup
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you've installed Metabase, it's time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).

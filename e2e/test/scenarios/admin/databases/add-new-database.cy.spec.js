@@ -299,21 +299,6 @@ describe("admin > database > add", () => {
         );
       });
     });
-
-    it("should work for Google Analytics", () => {
-      cy.visit("/admin/databases/create");
-
-      chooseDatabase("Google Analytics");
-      typeAndBlurUsingLabel("Display name", "GA");
-      typeAndBlurUsingLabel("Google Analytics Account ID", " 9  ");
-
-      mockUploadServiceAccountJSON(serviceAccountJSON);
-      mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
-        expect(body.details["service-account-json"]).to.equal(
-          serviceAccountJSON,
-        );
-      });
-    });
   });
 });
 

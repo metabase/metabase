@@ -6,7 +6,6 @@
   so this should produce identical IDs on all platforms and JVM implementations."
   (:require
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -19,7 +18,7 @@
   "Updates all rows of a particular model to have `:entity_id` set, based on the [[serdes/identity-hash]]."
   [model]
   (let [missing (t2/select model :entity_id nil)
-        pk      (mdb.u/primary-key model)]
+        pk      (first (t2/primary-keys model))]
     (when (seq missing)
       (log/info (trs "Backfilling entity_id for {0} rows of {1}" (pr-str (count missing)) (name model)))
       (doseq [entity missing

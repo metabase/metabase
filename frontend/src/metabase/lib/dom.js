@@ -304,7 +304,7 @@ export function open(
     ...options
   } = {},
 ) {
-  const isOriginalUrlAbsolute = isAbsoluteUrl(url);
+  const isOriginalUrlAbsolute = isAbsoluteUrl(url); // this does not check real "absolute" url, but if a url should be resolved from the root URL
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   if (shouldOpenInBlankWindow(url, options)) {

@@ -8,7 +8,7 @@
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -24,7 +24,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc [_ _ _] nil)
+(defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc
+  [_driver _database-type _column-name]
+  nil)
 
 (defn pattern-based-database-type->base-type
   "Return a `database-type->base-type` function that matches types based on a sequence of pattern / base-type pairs.
@@ -225,9 +227,12 @@
   [driver db-or-id-or-spec-or-conn table]
   (if (instance? Connection db-or-id-or-spec-or-conn)
     (describe-table* driver db-or-id-or-spec-or-conn table)
-    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
-      (with-open [conn (jdbc/get-connection spec)]
-        (describe-table* driver conn table)))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     db-or-id-or-spec-or-conn
+     nil
+     (fn [^Connection conn]
+       (describe-table* driver conn table)))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
@@ -246,9 +251,12 @@
   [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
   (if (instance? Connection db-or-id-or-spec-or-conn)
     (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
-    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
-      (with-open [conn (jdbc/get-connection spec)]
-        (describe-table-fks* driver conn table db-name-or-nil)))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     db-or-id-or-spec-or-conn
+     nil
+     (fn [^Connection conn]
+       (describe-table-fks* driver conn table db-name-or-nil)))))
 
 (def ^:dynamic *nested-field-column-max-row-length*
   "Max string length for a row for nested field column before we just give up on parsing it.
@@ -397,35 +405,39 @@
 (defn describe-nested-field-columns
   "Default implementation of [[metabase.driver.sql-jdbc.sync.interface/describe-nested-field-columns]] for SQL JDBC
   drivers. Goes and queries the table if there are JSON columns for the nested contents."
-  [driver spec table]
-  (with-open [conn (jdbc/get-connection spec)]
-    (let [table-identifier-info [(:schema table) (:name table)]
-          table-fields          (describe-table-fields driver conn table nil)
-          json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
-      (if (nil? (seq json-fields))
-        #{}
-        (sql.qp/with-driver-honey-sql-version driver
-          (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
-                unfold-json-fields      (remove (fn [field]
-                                                  (when-let [existing-field (existing-fields-by-name (:name field))]
-                                                    (false? (:json_unfolding existing-field))))
-                                                json-fields)]
-            (if (empty? unfold-json-fields)
-              #{}
-              (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
-                (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) unfold-json-fields)
-                      table-identifier (apply hx/identifier :table table-identifier-info)
-                      sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
-                                                                       :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
-                                                                       :limit  metadata-queries/nested-field-sample-limit})
-                      query            (jdbc/reducible-query spec sql-args {:identifiers identity})
-                      field-types      (transduce describe-json-xform describe-json-rf query)
-                      fields           (field-types->fields field-types)]
-                  (if (> (count fields) max-nested-field-columns)
-                    (do
-                      (log/warn
-                       (format
-                        "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-                        max-nested-field-columns))
-                      (set (take max-nested-field-columns fields)))
-                    fields))))))))))
+  [driver jdbc-spec table]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   jdbc-spec
+   nil
+   (fn [^Connection conn]
+     (let [table-identifier-info [(:schema table) (:name table)]
+           table-fields          (describe-table-fields driver conn table nil)
+           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
+       (if (nil? (seq json-fields))
+         #{}
+         (sql.qp/with-driver-honey-sql-version driver
+           (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
+                 unfold-json-fields      (remove (fn [field]
+                                                   (when-let [existing-field (existing-fields-by-name (:name field))]
+                                                     (false? (:json_unfolding existing-field))))
+                                                 json-fields)]
+             (if (empty? unfold-json-fields)
+               #{}
+               (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                 (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) unfold-json-fields)
+                       table-identifier (apply hx/identifier :table table-identifier-info)
+                       sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
+                                                                        :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
+                                                                        :limit  metadata-queries/nested-field-sample-limit})
+                       query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})
+                       field-types      (transduce describe-json-xform describe-json-rf query)
+                       fields           (field-types->fields field-types)]
+                   (if (> (count fields) max-nested-field-columns)
+                     (do
+                       (log/warn
+                        (format
+                         "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                         max-nested-field-columns))
+                       (set (take max-nested-field-columns fields)))
+                     fields)))))))))))
