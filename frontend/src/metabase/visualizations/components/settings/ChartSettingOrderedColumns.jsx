@@ -24,10 +24,10 @@ export const ChartSettingOrderedColumns = ({
     () =>
       _.partition(
         value
+          .map((columnSetting, index) => ({ ...columnSetting, index }))
           .filter(columnSetting =>
             findColumnForColumnSetting(columns, columnSetting),
-          )
-          .map((columnSetting, index) => ({ ...columnSetting, index })),
+          ),
         columnSetting => columnSetting.enabled,
       ),
     [value, columns],
