@@ -117,7 +117,7 @@ export const AccordionListCell = ({
     const icon = renderItemIcon(item);
     const name = renderItemName(item);
     const description = renderItemDescription(item);
-    const extra = renderItemExtra(item, itemIndex, isSelected);
+    const extra = renderItemExtra(item, isSelected);
     content = (
       <ListCellItem
         data-testid={itemTestId}

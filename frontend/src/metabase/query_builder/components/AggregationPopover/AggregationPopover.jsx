@@ -156,25 +156,25 @@ export default class AggregationPopover extends Component {
     return item.isSelected(AGGREGATION.getContent(aggregation));
   }
 
-  renderItemExtra(item, itemIndex) {
+  renderItemExtra(item) {
     let content;
-
     if (item.aggregation?.description) {
       content = item.aggregation.description;
     } else if (item.metric) {
       content = <QueryDefinitionTooltip type="metric" object={item.metric} />;
+    } else {
+      content = null;
     }
 
-    if (content) {
-      return (
+    return (
+      content && (
         <Box p="0.5rem">
           <Tooltip tooltip={content}>
             <span className="QuestionTooltipTarget" />
           </Tooltip>
         </Box>
-      );
-    }
-    return null;
+      )
+    );
   }
 
   getSections(table, selectedAggregation) {

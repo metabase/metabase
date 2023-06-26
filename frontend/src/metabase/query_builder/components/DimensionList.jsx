@@ -73,7 +73,7 @@ export default class DimensionList extends Component {
     );
   };
 
-  renderItemExtra = (item, itemIndex, isSelected) => {
+  renderItemExtra = (item, isSelected) => {
     const {
       enableSubDimensions,
       preventNumberSubDimensions,
