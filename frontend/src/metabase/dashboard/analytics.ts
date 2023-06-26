@@ -12,6 +12,7 @@ export const trackExportDashboardToPDF = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", "1-0-2", {
     event: "dashboard_pdf_exported",
     dashboard_id: dashboardId,
+  });
 };
 
 type CardTypes = "text" | "heading" | "link" | "action";
