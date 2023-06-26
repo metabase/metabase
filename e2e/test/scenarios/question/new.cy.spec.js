@@ -299,7 +299,7 @@ describe("scenarios > question > new", () => {
 
     const NEW_COLLECTION = "Foo";
     modal().within(() => {
-      cy.findByLabelText("Name").type(NEW_COLLECTION, { delay: 0 });
+      cy.findByLabelText("Name").type(NEW_COLLECTION);
       cy.findByText("Create").click();
     });
     cy.get("header").findByText(NEW_COLLECTION);
