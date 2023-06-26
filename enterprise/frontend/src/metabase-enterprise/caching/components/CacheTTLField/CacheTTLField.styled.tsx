@@ -8,7 +8,7 @@ export const CacheTTLFieldContainer = styled.div`
   align-items: center;
 `;
 
-export const FieldText = styled.span`
+export const FieldText = styled.span<{ hasError?: boolean; margin: string }>`
   color: ${props => color(props.hasError ? "error" : "text-dark")};
   ${props => css`margin-${props.margin}: 10px;`}
 `;

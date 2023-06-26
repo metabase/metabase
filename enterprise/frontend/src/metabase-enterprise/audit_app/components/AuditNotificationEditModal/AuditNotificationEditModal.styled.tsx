@@ -3,7 +3,7 @@ import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
-export const ModalButton = styled(Button)`
+export const ModalButton = styled(Button)<{ fullwidth?: boolean }>`
   margin-right: ${({ fullwidth }) => (fullwidth ? "auto" : "")};
 
   &:not(:first-of-type) {
