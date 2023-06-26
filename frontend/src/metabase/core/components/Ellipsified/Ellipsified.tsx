@@ -25,6 +25,13 @@ interface EllipsifiedProps {
   "data-testid"?: string;
 }
 
+const getIsTruncated = (element: HTMLElement): boolean => {
+  return (
+    element.scrollHeight > element.clientHeight ||
+    element.scrollWidth > element.offsetWidth
+  );
+};
+
 const Ellipsified = ({
   style,
   className,
@@ -46,10 +53,7 @@ const Ellipsified = ({
       return;
     }
     const handleResize = () => {
-      const isTruncated =
-        element.scrollHeight > element.clientHeight ||
-        element.offsetWidth < element.scrollWidth;
-      setIsTruncated(isTruncated);
+      setIsTruncated(getIsTruncated(element));
     };
 
     handleResize();
