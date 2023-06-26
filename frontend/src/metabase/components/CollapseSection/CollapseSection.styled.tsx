@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, IconName, IconProps } from "metabase/core/components/Icon";
 
-export const HeaderContainer = styled.div`
+export const HeaderContainer = styled.div<{ role: string; tabIndex?: number }>`
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -11,7 +11,7 @@ export const HeaderContainer = styled.div`
 
 HeaderContainer.defaultProps = {
   role: "button",
-  tabIndex: "0",
+  tabIndex: 0,
 };
 
 export const Header = styled.span`
@@ -30,11 +30,24 @@ const ICON_VARIANTS = {
   },
 };
 
+interface ToggleIconProps {
+  isExpanded: boolean;
+  position: string;
+  variant: keyof typeof ICON_VARIANTS;
+  size?: number;
+}
+
 export const ToggleIcon = styled(
-  ({ isExpanded, variant, size = 12, ...props }) => {
+  ({
+    isExpanded,
+    variant,
+    size = 12,
+    name: _,
+    ...props
+  }: ToggleIconProps & IconProps) => {
     const { collapsed, expanded } = ICON_VARIANTS[variant];
     const name = isExpanded ? expanded : collapsed;
-    return <Icon name={name} size={size} {...props} />;
+    return <Icon name={name as IconName} size={size} {...props} />;
   },
 )`
   ${props => css`
