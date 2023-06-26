@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import PropTypes from "prop-types";
 import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
@@ -8,7 +7,7 @@ const FONT_SIZE_VARIANTS = {
   medium: "1em",
 };
 
-export const TextButton = styled(Button)`
+export const TextButton = styled(Button)<{ size: "small" | "medium" }>`
   color: ${color("text-medium")};
   font-size: ${props =>
     FONT_SIZE_VARIANTS[props.size] || FONT_SIZE_VARIANTS.medium};
@@ -21,7 +20,3 @@ export const TextButton = styled(Button)`
     color: ${color("text-brand")};
   }
 `;
-
-TextButton.propTypes = {
-  size: PropTypes.oneOf(["small", "medium"]),
-};

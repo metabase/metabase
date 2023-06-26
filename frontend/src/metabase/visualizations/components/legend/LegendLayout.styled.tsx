@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export const LegendLayoutRoot = styled.div`
+export const LegendLayoutRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
   flex: 1 1 auto;
   flex-direction: ${({ isVertical }) => (isVertical ? "row" : "column")};
@@ -14,7 +14,10 @@ export const MainContainer = styled.div`
   flex-direction: column;
 `;
 
-export const LegendContainer = styled.div`
+export const LegendContainer = styled.div<{
+  isVertical: boolean;
+  isQueryBuilder: boolean;
+}>`
   display: ${({ isVertical }) => (isVertical ? "block" : "flex")};
   max-width: ${({ isVertical }) => (isVertical ? "25%" : "")};
   max-width: ${({ isVertical }) => (isVertical ? "min(25%, 20rem)" : "")};

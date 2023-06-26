@@ -6,7 +6,7 @@ import { Icon } from "metabase/core/components/Icon";
 
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
-export const PermissionsSelectRoot = styled.div`
+export const PermissionsSelectRoot = styled.div<{ isDisabled: boolean }>`
   display: flex;
   align-items: center;
   min-width: 180px;
@@ -67,7 +67,9 @@ WarningIcon.defaultProps = {
   name: "warning",
 };
 
-export const DisabledPermissionOption = styled(PermissionsSelectOption)`
+export const DisabledPermissionOption = styled(PermissionsSelectOption)<{
+  isHighlighted: boolean;
+}>`
   color: ${props =>
     props.isHighlighted ? color("text-medium") : color("text-light")};
 `;

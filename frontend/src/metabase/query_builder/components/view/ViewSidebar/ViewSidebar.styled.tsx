@@ -4,7 +4,11 @@ import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
-export const ViewSidebarAside = styled.aside`
+export const ViewSidebarAside = styled.aside<{
+  isOpen: boolean;
+  side: string;
+  widthProp: number;
+}>`
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
@@ -33,7 +37,7 @@ export const ViewSidebarAside = styled.aside`
     `}
 `;
 
-export const ViewSidebarContent = styled.div`
+export const ViewSidebarContent = styled.div<{ widthProp: number }>`
   position: absolute;
   height: 100%;
 

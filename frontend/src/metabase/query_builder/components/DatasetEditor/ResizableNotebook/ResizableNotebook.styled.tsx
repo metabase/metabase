@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+import { ComponentProps } from "react";
 import { color, darken } from "metabase/lib/colors";
 
-export const NotebookContainer = styled.div`
+export const NotebookContainer = styled.div<{ isResizing: boolean }>`
   width: 100%;
   overflow-y: ${props => {
     // Prevents automatic scroll effect on queries with lots of steps.
@@ -34,7 +35,7 @@ const HandleContent = styled.div`
   background-color: ${darken(color("border"), 0.03)};
 `;
 
-export function Handle(props) {
+export function Handle(props: ComponentProps<typeof HandleContainer>) {
   return (
     <HandleContainer {...props}>
       <HandleContent />

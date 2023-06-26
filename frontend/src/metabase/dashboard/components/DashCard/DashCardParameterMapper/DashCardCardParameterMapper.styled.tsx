@@ -68,7 +68,7 @@ export const Header = styled.h4`
   text-align: center;
 `;
 
-export const TargetButton = styled.div`
+export const TargetButton = styled.div<{ variant: string }>`
   max-width: 100%;
   display: flex;
   align-items: center;
@@ -121,7 +121,7 @@ export const TargetButtonText = styled.span`
   margin-right: ${space(1)};
 `;
 
-export const CloseIconButton = styled(Button)`
+export const CloseIconButton = styled(Button)<{ icon: string; size: number }>`
   color: ${color("white")};
   background-color: transparent;
   border: none;

@@ -1,17 +1,17 @@
-import PropTypes from "prop-types";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { HTMLAttributes } from "react";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
-import Link from "metabase/core/components/Link";
+import Link, { LinkProps } from "metabase/core/components/Link";
 import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
-const propTypes = {
-  to: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
-  activeColor: PropTypes.string,
-  inactiveColor: PropTypes.string,
-  isSingleLine: PropTypes.bool,
-};
+interface RawMaybeLinkProps {
+  to?: string;
+  activeColor: string;
+  inactiveColor: string;
+  isSingleLine: boolean;
+}
 
 function RawMaybeLink({
   to,
@@ -19,13 +19,11 @@ function RawMaybeLink({
   inactiveColor,
   isSingleLine,
   ...props
-}) {
+}: RawMaybeLinkProps & (LinkProps | HTMLAttributes<HTMLSpanElement>)) {
   return to ? <Link to={to} {...props} /> : <span {...props} />;
 }
 
-RawMaybeLink.propTypes = propTypes;
-
-const hoverStyle = props => css`
+const hoverStyle = (props: RawMaybeLinkProps) => css`
   cursor: pointer;
   color: ${color(props.activeColor)};
 `;
@@ -45,11 +43,11 @@ export const MaybeLink = styled(RawMaybeLink)`
 
 export const BadgeIcon = styled(Icon, {
   shouldForwardProp: shouldForwardNonTransientProp,
-})`
+})<{ $hasMargin: boolean }>`
   margin-right: ${props => (props.$hasMargin ? "5px" : 0)};
 `;
 
-export const BadgeText = styled.span`
+export const BadgeText = styled.span<{ isSingleLine: boolean }>`
   overflow: ${props => (props.isSingleLine ? "hidden" : "")};
   text-overflow: ${props => (props.isSingleLine ? "ellipsis" : "")};
   white-space: ${props => (props.isSingleLine ? "nowrap" : "")};

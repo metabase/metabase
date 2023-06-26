@@ -11,7 +11,9 @@ import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
 import QuestionDataSource from "./QuestionDataSource";
 
-export const ViewHeaderContainer = styled(ViewSection)`
+export const ViewHeaderContainer = styled(ViewSection)<{
+  isNavBarOpen?: boolean;
+}>`
   border-bottom: 1px solid ${color("border")};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
@@ -69,11 +71,13 @@ export const SaveButton = styled(Link)`
   }
 `;
 
-export const SavedQuestionHeaderButtonContainer = styled.div`
+export const SavedQuestionHeaderButtonContainer = styled.div<{
+  isDataset: boolean;
+}>`
   right: ${props => (props.isDataset ? "0px" : "0.38rem")};
 `;
 
-export const HeaderButton = styled(Button)`
+export const HeaderButton = styled(Button)<{ active: boolean }>`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
@@ -97,7 +101,7 @@ export const IconHeaderButton = styled(HeaderButton)`
   padding-right: 0.75rem;
 `;
 
-export const FilterHeaderButton = styled(Button)`
+export const FilterHeaderButton = styled(Button)<{ active: boolean }>`
   background-color: ${({ active }) =>
     active ? alpha(color("filter"), 0.8) : alpha(color("filter"), 0.2)};
   color: ${({ active }) => (active ? "white" : color("filter"))};
@@ -148,7 +152,7 @@ export const AdHocLeftSideRoot = styled.div`
   }
 `;
 
-export const SavedQuestionLeftSideRoot = styled.div`
+export const SavedQuestionLeftSideRoot = styled.div<{ showSubHeader: boolean }>`
   ${SavedQuestionHeaderButtonContainer} {
     transition: all 400ms ease;
     position: relative;

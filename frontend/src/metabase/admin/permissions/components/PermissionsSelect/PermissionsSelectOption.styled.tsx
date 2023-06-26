@@ -7,7 +7,7 @@ export const PermissionsSelectOptionRoot = styled.div`
   width: 100%;
 `;
 
-export const IconContainer = styled.div`
+export const IconContainer = styled.div<{ color: string }>`
   display: flex;
   align-items: center;
   justify-content: center;

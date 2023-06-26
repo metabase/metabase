@@ -37,13 +37,13 @@ LoadingSpinner.defaultProps = {
   size: 18,
 };
 
-export const RelativeContainer = styled.div`
+export const RelativeContainer = styled.div<{ height?: number }>`
   position: relative;
   height: ${({ height }) => height || "1em"};
   line-height: 1em;
 `;
 
-export const Fade = styled.div`
+export const Fade = styled.div<{ visible?: boolean }>`
   position: absolute;
   top: 0;
   left: 0;
@@ -52,7 +52,7 @@ export const Fade = styled.div`
   opacity: ${({ visible }) => (visible ? "1" : "0")};
 `;
 
-export const FadeAndSlide = styled.div`
+export const FadeAndSlide = styled.div<{ visible?: boolean }>`
   position: absolute;
   width: 100%;
   transition: opacity ${TRANSITION_DURATION} linear,

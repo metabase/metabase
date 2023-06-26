@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import LegendCaption from "./legend/LegendCaption";
 
-export const LineAreaBarChartRoot = styled.div`
+export const LineAreaBarChartRoot = styled.div<{ isQueryBuilder: boolean }>`
   display: flex;
   flex-direction: column;
   padding: ${({ isQueryBuilder }) =>

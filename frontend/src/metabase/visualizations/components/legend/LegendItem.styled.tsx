@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 
-export const LegendItemRoot = styled.div`
+export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
   align-items: center;
   min-width: 0;
@@ -14,7 +14,7 @@ export const LegendItemRoot = styled.div`
   }
 `;
 
-export const LegendItemLabel = styled.div`
+export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   display: flex;
   align-items: baseline;
   opacity: ${({ isMuted }) => (isMuted ? "0.4" : "1")};

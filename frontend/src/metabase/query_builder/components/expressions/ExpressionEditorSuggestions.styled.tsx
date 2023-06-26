@@ -13,7 +13,7 @@ export const ExpressionList = styled.ul`
   overflow-y: auto;
 `;
 
-export const ExpressionListItem = styled.li`
+export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.3125rem 0.875rem;

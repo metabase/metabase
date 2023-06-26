@@ -18,7 +18,9 @@ export const Variation = styled.div`
   }
 `;
 
-export const PreviousValueContainer = styled.div`
+export const PreviousValueContainer = styled.div<{
+  gridSize: { width: number };
+}>`
   align-items: center;
   display: flex;
   flex-wrap: wrap;
@@ -48,7 +50,9 @@ export const PreviousValueVariation = styled.h4`
   }
 `;
 
-export const PreviousValueSeparator = styled.span`
+export const PreviousValueSeparator = styled.span<{
+  gridSize: { width: number };
+}>`
   color: ${color("text-light")};
   font-size: 0.7rem;
   margin: 0 ${space(0)};

@@ -12,7 +12,7 @@ export const HeaderBadge = styled(Badge)`
   }
 `;
 
-export const Container = styled.span`
+export const Container = styled.span<{ variant: string }>`
   display: flex;
   align-items: center;
   flex-wrap: wrap;

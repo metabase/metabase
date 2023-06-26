@@ -5,11 +5,11 @@ import { color, darken } from "metabase/lib/colors";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-function getPinnedForeground(disabled) {
+function getPinnedForeground(disabled: boolean) {
   return disabled ? darken(color("border"), 0.38) : color("accent4");
 }
 
-function getForeground(model, disabled) {
+function getForeground(model: string, disabled: boolean) {
   return disabled
     ? darken(color("border"), 0.38)
     : model === "dataset"
@@ -17,7 +17,7 @@ function getForeground(model, disabled) {
     : color("brand");
 }
 
-const getItemPadding = variant => {
+const getItemPadding = (variant: string) => {
   switch (variant) {
     case "list":
       return "1rem";
@@ -28,7 +28,10 @@ const getItemPadding = variant => {
   }
 };
 
-export const EntityIconWrapper = styled(IconButtonWrapper)`
+export const EntityIconWrapper = styled(IconButtonWrapper)<{
+  isPinned: boolean;
+  disabled: boolean;
+}>`
   background-color: transparent;
   padding: 12px;
   cursor: ${props => (props.disabled ? "default" : "pointer")};
@@ -36,10 +39,13 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
   color: ${props =>
     props.isPinned
       ? getPinnedForeground(props.disabled)
-      : getForeground(props.disabled)};
+      : getForeground("", props.disabled)};
 `;
 
-export const EntityItemWrapper = styled.div`
+export const EntityItemWrapper = styled.div<{
+  variant: string;
+  disabled: boolean;
+}>`
   display: flex;
   align-items: center;
   padding: ${props => getItemPadding(props.variant)};

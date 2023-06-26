@@ -5,7 +5,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
-export const TabHintToastContainer = styled.div`
+export const TabHintToastContainer = styled.div<{ isVisible: boolean }>`
   position: fixed;
   bottom: 16px;
   left: 24px;
@@ -22,7 +22,7 @@ export const DatasetEditBar = styled(EditBar)`
   background-color: ${color("brand")};
 `;
 
-export const TableHeaderColumnName = styled.div`
+export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -68,7 +68,7 @@ export const TableHeaderColumnName = styled.div`
   }
 `;
 
-export const FieldTypeIcon = styled(Icon)`
+export const FieldTypeIcon = styled(Icon)<{ isSelected: boolean }>`
   background-color: ${props =>
     props.isSelected ? color("white") : color("brand")};
 
@@ -100,7 +100,7 @@ export const MainContainer = styled.div`
   position: relative;
 `;
 
-export const QueryEditorContainer = styled.div`
+export const QueryEditorContainer = styled.div<{ isResizable: boolean }>`
   z-index: 2;
   width: 100%;
 
@@ -120,7 +120,7 @@ const tableVisibilityStyle = css`
   }
 `;
 
-export const TableContainer = styled.div`
+export const TableContainer = styled.div<{ isSidebarOpen: boolean }>`
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;

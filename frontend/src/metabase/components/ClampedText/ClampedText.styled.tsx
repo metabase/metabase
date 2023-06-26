@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export const ClampedDiv = styled.div`
+export const ClampedDiv = styled.div<{ visibleLines: number }>`
   max-height: ${props =>
     props.visibleLines == null
       ? "unset"

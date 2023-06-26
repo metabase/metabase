@@ -2,7 +2,12 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const EditModeContainer = styled.div`
+interface EditModeContainerProps {
+  isPreviewing?: boolean;
+  isEmpty?: boolean;
+}
+
+export const EditModeContainer = styled.div<EditModeContainerProps>`
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -67,7 +72,7 @@ export const TextInput = styled.textarea`
   resize: none;
 `;
 
-export const DisplayContainer = styled.div`
+export const DisplayContainer = styled.div<{ isSingleRow?: boolean }>`
   display: flex;
   flex-direction: column;
   height: 100%;

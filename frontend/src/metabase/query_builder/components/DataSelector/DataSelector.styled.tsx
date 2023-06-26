@@ -60,7 +60,7 @@ export const CollectionDatasetSelectList = styled(SelectList)`
   padding: 0.5rem;
 `;
 
-CollectionDatasetSelectList.Item = SelectList.Item;
+Object.assign(CollectionDatasetSelectList, { Item: SelectList.Item });
 
 export const CollectionDatasetAllDataLink = styled(SelectList.BaseItem)`
   padding: 0.5rem;
@@ -74,7 +74,7 @@ export const CollectionDatasetAllDataLink = styled(SelectList.BaseItem)`
   }
 `;
 
-CollectionDatasetAllDataLink.Content = styled.span`
+const CollectionDatasetAllDataContent = styled.span`
   display: flex;
   align-items: center;
 
@@ -82,6 +82,10 @@ CollectionDatasetAllDataLink.Content = styled.span`
     margin-left: ${space(0)};
   }
 `;
+
+Object.assign(CollectionDatasetAllDataLink, {
+  Content: CollectionDatasetAllDataContent,
+});
 
 export const EmptyStateContainer = styled.div`
   width: 300px;

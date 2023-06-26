@@ -22,11 +22,11 @@ export const JoinClausesContainer = styled.div`
   flex: 1;
 `;
 
-export const JoinClauseContainer = styled.div`
+export const JoinClauseContainer = styled.div<{ isLast: boolean }>`
   margin-bottom: ${props => (props.isLast ? 0 : "2px")};
 `;
 
-export const JoinClauseRoot = styled.div`
+export const JoinClauseRoot = styled.div<{ isLast: boolean }>`
   display: flex;
   margin-bottom: ${props => (props.isLast ? 0 : "2px")};
 `;
@@ -44,7 +44,7 @@ export const JoinTypeSelectRoot = styled.div`
   margin: ${space(1)} ${space(1)} 0 ${space(1)};
 `;
 
-export const JoinTypeOptionRoot = styled.div`
+export const JoinTypeOptionRoot = styled.div<{ isSelected: boolean }>`
   display: flex;
   align-items: center;
   padding: ${space(1)};
@@ -65,14 +65,14 @@ export const JoinTypeOptionRoot = styled.div`
   }
 `;
 
-export const JoinTypeIcon = styled(Icon)`
+export const JoinTypeIcon = styled(Icon)<{ isSelected: boolean }>`
   margin-right: ${space(1)};
   color: ${props => (props.isSelected ? color("text-white") : color("brand"))};
 `;
 
 JoinTypeIcon.defaultProps = { size: 24 };
 
-export const JoinDimensionControlsContainer = styled.div`
+export const JoinDimensionControlsContainer = styled.div<{ isFirst: boolean }>`
   display: flex;
   flex: 1;
   align-items: center;

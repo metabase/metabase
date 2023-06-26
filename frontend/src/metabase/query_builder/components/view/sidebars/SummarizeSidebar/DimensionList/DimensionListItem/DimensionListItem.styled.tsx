@@ -126,7 +126,7 @@ const unselectedStyle = css`
   }
 `;
 
-export const DimensionListItemRoot = styled.li`
+export const DimensionListItemRoot = styled.li<{ isSelected: boolean }>`
   display: flex;
   align-items: stretch;
   cursor: pointer;

@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 
-export const LegendRoot = styled.div`
+export const LegendRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
   flex-direction: ${({ isVertical }) => (isVertical ? "column" : "row")};
   overflow: ${({ isVertical }) => (isVertical ? "" : "hidden")};
@@ -17,7 +17,7 @@ export const LegendLink = styled.div`
   }
 `;
 
-export const LegendLinkContainer = styled.div`
+export const LegendLinkContainer = styled.div<{ isVertical: boolean }>`
   margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
 `;
 

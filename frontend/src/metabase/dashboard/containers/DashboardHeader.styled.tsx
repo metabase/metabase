@@ -11,7 +11,7 @@ export const DashboardHeaderActionDivider = styled.div`
   border-left: 1px solid ${color("border")};
 `;
 
-export const DashboardHeaderButton = styled(Button)`
+export const DashboardHeaderButton = styled(Button)<{ isActive?: boolean }>`
   padding: 0.25rem 0.5rem;
   height: 2rem;
   min-width: 2rem;

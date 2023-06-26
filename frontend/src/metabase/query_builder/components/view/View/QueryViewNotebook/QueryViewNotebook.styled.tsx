@@ -3,7 +3,10 @@ import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 
-export const NotebookContainer = styled.div`
+export const NotebookContainer = styled.div<{
+  transitionTime?: number;
+  isOpen?: boolean;
+}>`
   background: white;
   border-top: 1px solid ${color("border")};
   bottom: 0;

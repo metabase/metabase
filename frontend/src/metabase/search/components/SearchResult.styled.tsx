@@ -6,7 +6,11 @@ import Link from "metabase/core/components/Link";
 import Text from "metabase/components/type/Text";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-function getColorForIconWrapper(props) {
+function getColorForIconWrapper(props: {
+  active: boolean;
+  type: string;
+  item: { collection_position?: unknown };
+}) {
   if (!props.active) {
     return color("text-medium");
   } else if (props.item.collection_position) {
@@ -41,12 +45,18 @@ export const ContextText = styled("p")`
   margin-top: 0;
 `;
 
-export const Title = styled("h3")`
+export const Title = styled("h3")<{ active: boolean }>`
   margin-bottom: 4px;
   color: ${props => color(props.active ? "text-dark" : "text-medium")};
 `;
 
-export const ResultButton = styled.button`
+interface ResultButtonProps {
+  isSelected: boolean;
+  compact: boolean;
+  active: boolean;
+}
+
+export const ResultButton = styled.button<ResultButtonProps>`
   ${props => resultStyles(props)}
   padding-right: 0.5rem;
   text-align: left;
@@ -58,11 +68,11 @@ export const ResultButton = styled.button`
   }
 `;
 
-export const ResultLink = styled(Link)`
+export const ResultLink = styled(Link)<ResultButtonProps>`
   ${props => resultStyles(props)}
 `;
 
-const resultStyles = props => `
+const resultStyles = (props: ResultButtonProps) => `
   display: block;
   background-color: ${
     props.isSelected ? lighten("brand", 0.63) : "transparent"
@@ -75,11 +85,10 @@ const resultStyles = props => `
   cursor: ${props.active ? "pointer" : "default"};
 
   &:hover {
-    background-color: ${props.acitve ? lighten("brand", 0.63) : ""};
+    background-color: ${props.active ? lighten("brand", 0.63) : ""};
 
     h3 {
-      color: ${props =>
-        props.active || props.isSelected ? color("brand") : ""};
+      color: ${props.active || props.isSelected ? color("brand") : ""};
     }
   }
 

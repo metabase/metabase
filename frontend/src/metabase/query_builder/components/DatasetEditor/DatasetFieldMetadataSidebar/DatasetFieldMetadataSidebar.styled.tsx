@@ -11,7 +11,7 @@ const slideInOutAnimation = keyframes`
   100% { transform: translateY(2%); opacity: 0; }
 `;
 
-export const AnimatableContent = styled.div`
+export const AnimatableContent = styled.div<{ animated: boolean }>`
   ${props =>
     props.animated &&
     css`

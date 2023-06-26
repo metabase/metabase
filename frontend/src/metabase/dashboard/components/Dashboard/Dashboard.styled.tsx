@@ -1,6 +1,7 @@
 import cx from "classnames";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { ComponentPropsWithoutRef } from "react";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
@@ -14,7 +15,12 @@ import Dashcard from "../DashCard";
 // Class names are added here because we still use traditional css,
 // see dashboard.css
 export const DashboardLoadingAndErrorWrapper = styled(
-  ({ isFullscreen, isNightMode, className, ...props }) => {
+  ({
+    isFullscreen,
+    isNightMode,
+    className,
+    ...props
+  }: ComponentPropsWithoutRef<typeof LoadingAndErrorWrapper>) => {
     return (
       <LoadingAndErrorWrapper
         className={cx(className, "Dashboard", {
@@ -43,7 +49,7 @@ export const DashboardStyled = styled.div`
   width: 100%;
 `;
 
-export const DashboardBody = styled.div`
+export const DashboardBody = styled.div<{ isEditingOrSharing: boolean }>`
   position: relative;
   display: flex;
   flex: 1 0 auto;
@@ -57,7 +63,10 @@ export const DashboardBody = styled.div`
     `}
 `;
 
-export const HeaderContainer = styled.header`
+export const HeaderContainer = styled.header<{
+  isFullscreen: boolean;
+  isNightMode: boolean;
+}>`
   position: relative;
   z-index: 2;
 
@@ -78,7 +87,9 @@ export const HeaderContainer = styled.header`
     `}
 `;
 
-export const ParametersAndCardsContainer = styled.div`
+export const ParametersAndCardsContainer = styled.div<{
+  shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
+}>`
   flex: auto;
   min-width: 0;
   overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
@@ -90,7 +101,10 @@ export const ParametersAndCardsContainer = styled.div`
   padding-bottom: 40px;
 `;
 
-export const ParametersWidgetContainer = styled(FullWidthContainer)`
+export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  isEditing: boolean;
+  isSticky: boolean;
+}>`
   align-items: flex-start;
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
@@ -109,14 +123,16 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
       border-top: 1px solid ${color("border")};
     `}
 
-  ${({ isSticky, topNav }) =>
+  ${({ isSticky }) =>
     isSticky &&
     css`
       border-bottom: 1px solid ${color("border")};
     `}
 `;
 
-export const CardsContainer = styled(FullWidthContainer)`
+export const CardsContainer = styled(FullWidthContainer)<{
+  addMarginTop: boolean;
+}>`
   ${({ addMarginTop }) =>
     addMarginTop &&
     css`
