@@ -19,8 +19,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [metabase.util.log :as log]))
+   [metabase.util.malli :as mu]))
 
 (declare stage-metadata)
 
