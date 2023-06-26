@@ -7,3 +7,10 @@ export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
     dashboard_id: dashboardId,
   });
 };
+
+export const trackExportDashboardToPDF = (dashboardId: DashboardId) => {
+  trackSchemaEvent("dashboard", "1-0-2", {
+    event: "dashboard_pdf_exported",
+    dashboard_id: dashboardId,
+  });
+};
