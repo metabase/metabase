@@ -1,15 +1,10 @@
-import {
-  CSSProperties,
-  ReactNode,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { CSSProperties, ReactNode } from "react";
 // eslint-disable-next-line import/named
 import { Placement } from "tippy.js";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import resizeObserver from "metabase/lib/resize-observer";
+import { useIsTruncated } from "metabase/hooks/use-is-truncated";
+
 import { EllipsifiedRoot } from "./Ellipsified.styled";
 
 interface EllipsifiedProps {
@@ -24,39 +19,6 @@ interface EllipsifiedProps {
   placement?: Placement;
   "data-testid"?: string;
 }
-
-const getIsTruncated = (element: HTMLElement): boolean => {
-  return (
-    element.scrollHeight > element.clientHeight ||
-    element.scrollWidth > element.offsetWidth
-  );
-};
-
-const useIsTruncated = <E extends HTMLElement>() => {
-  const ref = useRef<E | null>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
-
-  useLayoutEffect(() => {
-    const element = ref.current;
-
-    if (!element) {
-      return;
-    }
-
-    const handleResize = () => {
-      setIsTruncated(getIsTruncated(element));
-    };
-
-    handleResize();
-    resizeObserver.subscribe(element, handleResize);
-
-    return () => {
-      resizeObserver.unsubscribe(element, handleResize);
-    };
-  }, []);
-
-  return { isTruncated, ref };
-};
 
 const Ellipsified = ({
   style,
