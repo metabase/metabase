@@ -50,7 +50,9 @@
   (and (clause? clause)
        (= (first clause) clause-type)))
 
-(defn field-clause? [clause]
+(defn field-clause?
+  "Returns true if this is a field clause."
+  [clause]
   (clause-of-type? clause :field))
 
 (defn clause-uuid

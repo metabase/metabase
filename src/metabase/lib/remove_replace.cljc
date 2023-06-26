@@ -166,7 +166,8 @@
         query))))
 
 (mu/defn remove-clause :- :metabase.lib.schema/query
-  "Removes the `target-clause` in the filter of the `query`."
+  "Removes the `target-clause` from the stage specified by `stage-number` of `query`.
+  If `stage-number` is not specified, the last stage is used."
   ([query :- :metabase.lib.schema/query
     target-clause]
    (remove-clause query -1 target-clause))
@@ -176,7 +177,8 @@
    (remove-replace* query stage-number target-clause :remove nil)))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
-  "Replaces the `target-clause` with `new-clause` in the `query` stage."
+  "Replaces the `target-clause` with `new-clause` in the `query` stage specified by `stage-number`.
+  If `stage-number` is not specified, the last stage is used."
   ([query :- :metabase.lib.schema/query
     target-clause
     new-clause]
@@ -221,7 +223,7 @@
             (m/indexed (:joins (lib.util/query-stage query stage-number)))))))
 
 (mu/defn rename-join :- :metabase.lib.schema/query
-  "Rename the join specified by `join-spec` in `a-query` at `stage-number` to `new-name`.
+  "Rename the join specified by `join-spec` in `query` at `stage-number` to `new-name`.
   The join can be specified either by itself (as returned by [[joins]]), by its alias
   or by its index in the list of joins as returned by [[joins]].
   If `stage-number` is not provided, the last stage is used.
@@ -300,19 +302,28 @@
     :else join-spec))
 
 (mu/defn remove-join :- :metabase.lib.schema/query
-  [query        :- :metabase.lib.schema/query
-   stage-number :- :int
-   join-spec    :- [:or :metabase.lib.schema.join/join :string :int]]
-  (if-let [join-alias  (join-spec->alias query stage-number join-spec)]
-    (binding [mu/*enforce* false]
-      (let [query-after (lib.util/update-query-stage
-                         query
-                         stage-number
-                         (fn [stage]
-                           (u/assoc-dissoc stage :joins
-                                           (not-empty (filterv #(not= (:alias %) join-alias)
-                                                               (:joins stage))))))]
-        (reduce #(remove-invalidated-refs %1 query %2)
-                query-after
-                (take-while some? (iterate #(lib.util/next-stage-number query %) stage-number)))))
-    query))
+  "Remove the join specified by `join-spec` in `query` at `stage-number`.
+  The join can be specified either by itself (as returned by [[joins]]), by its alias
+  or by its index in the list of joins as returned by [[joins]].
+  If `stage-number` is not provided, the last stage is used.
+  If the specified join cannot be found, then `query` is returned as is.
+  Top level clauses containing references to the removed join are removed too."
+  ([query join-spec]
+   (remove-join query -1 join-spec))
+
+  ([query        :- :metabase.lib.schema/query
+    stage-number :- :int
+    join-spec    :- [:or :metabase.lib.schema.join/join :string :int]]
+   (if-let [join-alias  (join-spec->alias query stage-number join-spec)]
+     (binding [mu/*enforce* false]
+       (let [query-after (lib.util/update-query-stage
+                          query
+                          stage-number
+                          (fn [stage]
+                            (u/assoc-dissoc stage :joins
+                                            (not-empty (filterv #(not= (:alias %) join-alias)
+                                                                (:joins stage))))))]
+         (reduce #(remove-invalidated-refs %1 query %2)
+                 query-after
+                 (take-while some? (iterate #(lib.util/next-stage-number query %) stage-number)))))
+     query)))

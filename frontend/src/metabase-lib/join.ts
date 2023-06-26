@@ -102,8 +102,16 @@ export function withJoinFields(join: Join, newFields: ColumnMetadata[]): Join {
 export function renameJoin(
   query: Query,
   stageIndex: number,
-  oldNameOrIndex: string | number,
+  joinSpec: Join | string | number,
   newName: string,
 ): Query {
-  return ML.rename_join(query, stageIndex, oldNameOrIndex, newName);
+  return ML.rename_join(query, stageIndex, joinSpec, newName);
+}
+
+export function removeJoin(
+  query: Query,
+  stageIndex: number,
+  joinSpec: Join | string | number,
+): Query {
+  return ML.remove_join(query, stageIndex, joinSpec);
 }
