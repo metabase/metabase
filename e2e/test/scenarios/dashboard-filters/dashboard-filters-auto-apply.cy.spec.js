@@ -238,7 +238,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
 
       getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
-      // card result should be updated after manually update the filter
+      // card result should be updated after manually updating the filter
       filterWidget().icon("close").click();
       dashboardParametersContainer()
         .button("Apply")
@@ -522,7 +522,5 @@ const openSlowDashboard = (params = {}) => {
 };
 
 function toggleDashboardInfoSidebar() {
-  dashboardHeader().within(() => {
-    cy.icon("info").click();
-  });
+  dashboardHeader().icon("info").click();
 }
