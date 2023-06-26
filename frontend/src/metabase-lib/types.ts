@@ -35,7 +35,11 @@ export type OrderByDirection = "asc" | "desc";
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
 
-export type Clause = AggregationClause | BreakoutClause | FilterClause | OrderByClause;
+export type Clause =
+  | AggregationClause
+  | BreakoutClause
+  | FilterClause
+  | OrderByClause;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
