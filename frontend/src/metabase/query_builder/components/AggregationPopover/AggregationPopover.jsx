@@ -24,6 +24,9 @@ const CUSTOM_SECTION_NAME = t`Custom Expression`;
 
 const COMMON_AGGREGATIONS = new Set(["count"]);
 
+/**
+ * @deprecated use MLv2 + metabase/common/components/AggregationPicker
+ */
 export default class AggregationPopover extends Component {
   constructor(props, context) {
     super(props, context);
