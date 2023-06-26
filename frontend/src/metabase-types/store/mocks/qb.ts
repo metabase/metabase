@@ -1,4 +1,5 @@
 import {
+  QueryBuilderDashboardControls,
   QueryBuilderState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
@@ -18,10 +19,19 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingTimelineSidebar: false,
   initialChartSetting: null,
   isShowingRawTable: false,
+  isNativeEditorOpen: false,
   queryBuilderMode: "view",
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query",
+  ...opts,
+});
+
+export const createMockQueryBuilderDashboardControls = (
+  opts?: Partial<QueryBuilderDashboardControls>,
+): QueryBuilderDashboardControls => ({
+  dashboardId: null,
+  isEditing: false,
   ...opts,
 });
 
@@ -34,6 +44,7 @@ export const createMockQueryBuilderState = (
     documentTitle: "",
     timeoutId: "",
   },
+  dashboardControls: createMockQueryBuilderDashboardControls(),
 
   queryStatus: "complete",
   queryResults: null,
