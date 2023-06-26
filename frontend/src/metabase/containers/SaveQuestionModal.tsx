@@ -130,6 +130,7 @@ export const SaveQuestionModal = ({
   );
 
   const [creatingNewCollection, setCreatingNewCollection] = useState(false);
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>();
   const [stagedValues, setStagedValues] = useState<FormValues | null>(null);
 
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
@@ -175,6 +176,7 @@ export const SaveQuestionModal = ({
   if (creatingNewCollection && stagedValues) {
     return (
       <CreateCollectionModal
+        collectionId={openCollectionId}
         onClose={() => setCreatingNewCollection(false)}
         onCreate={(collection: Collection) => {
           handleSubmit({ ...stagedValues, collection_id: collection.id });
@@ -229,6 +231,7 @@ export const SaveQuestionModal = ({
                       placeholder={t`It's optional but oh, so helpful`}
                     />
                     <FormCollectionPicker
+                      onOpenCollectionChange={setOpenCollectionId}
                       name="collection_id"
                       title={t`Which collection should this go in?`}
                     >

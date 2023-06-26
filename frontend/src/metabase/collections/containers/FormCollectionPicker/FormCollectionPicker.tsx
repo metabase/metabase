@@ -37,6 +37,8 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
+  initialOpenCollectionId?: CollectionId;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
 }
 
 function ItemName({
@@ -68,6 +70,8 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
+  initialOpenCollectionId,
+  onOpenCollectionChange,
   children,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
@@ -123,12 +127,22 @@ function FormCollectionPicker({
           }}
           showSearch={hasSearch}
           width={width}
+          initialOpenCollectionId={initialOpenCollectionId}
+          onOpenCollectionChange={onOpenCollectionChange}
         >
           {children}
         </PopoverItemPicker>
       );
     },
-    [value, type, width, setValue, children],
+    [
+      value,
+      type,
+      width,
+      setValue,
+      children,
+      initialOpenCollectionId,
+      onOpenCollectionChange,
+    ],
   );
 
   return (

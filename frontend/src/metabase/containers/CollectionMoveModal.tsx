@@ -27,8 +27,7 @@ export const CollectionMoveModal = ({
     useState(initialCollectionId);
 
   const [creatingCollection, setCreatingCollection] = useState(false);
-  const [openCollectionId, setOpenCollectionId] =
-    useState<CollectionId>("root");
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>();
 
   if (creatingCollection) {
     return (

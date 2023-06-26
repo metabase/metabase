@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -44,6 +44,7 @@ export interface CreateDashboardProperties {
 export interface StagedDashboard {
   values: CreateDashboardProperties;
   handleCreate: (values: CreateDashboardProperties) => void;
+  openCollectionId: CollectionId | undefined;
 }
 
 export interface CreateDashboardFormOwnProps {
@@ -107,6 +108,8 @@ function CreateDashboardForm({
     [handleCreateDashboard, onCreate],
   );
 
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>();
+
   return (
     <FormProvider
       initialValues={computedInitialValues}
@@ -128,12 +131,19 @@ function CreateDashboardForm({
             nullable
           />
           <FormCollectionPicker
+            onOpenCollectionChange={setOpenCollectionId}
             name="collection_id"
             title={t`Which collection should this go in?`}
           >
             <NewCollectionButton
               disabled={!isValid}
-              onClick={() => saveToNewCollection?.({ values, handleCreate })}
+              onClick={() =>
+                saveToNewCollection?.({
+                  values,
+                  handleCreate,
+                  openCollectionId,
+                })
+              }
             />
           </FormCollectionPicker>
           <FormFooter>
