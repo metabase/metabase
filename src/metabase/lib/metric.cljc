@@ -41,16 +41,33 @@
         (lib.metadata.calculation/type-of query stage-number metric-metadata))
       :type/*))
 
+(defn- fallback-display-name []
+  (i18n/tru "[Unknown Metric]"))
+
 (defmethod lib.metadata.calculation/display-name-method :metadata/metric
   [_query _stage-number metric-metadata _style]
   (or ((some-fn :display-name :name) metric-metadata)
-      (i18n/tru "[Unknown Metric]")))
+      (fallback-display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :metric
   [query stage-number [_tag _opts metric-id-or-name] style]
   (or (when-let [metric-metadata (resolve-metric query metric-id-or-name)]
         (lib.metadata.calculation/display-name query stage-number metric-metadata style))
-      (i18n/tru "[Unknown Metric]")))
+      (fallback-display-name)))
+
+(defmethod lib.metadata.calculation/display-info-method :metadata/metric
+  [query stage-number metric-metadata]
+  ;; add `:description` to the metadata calculated by the default `display-info-method`.
+  (-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
+      (assoc :description (:description metric-metadata))))
+
+(defmethod lib.metadata.calculation/display-info-method :metric
+  [query stage-number [_tag _opts metric-id-or-name]]
+  (if-let [metric-metadata (resolve-metric query metric-id-or-name)]
+    (lib.metadata.calculation/display-info query stage-number metric-metadata)
+    {:effective-type    :type/*
+     :display-name      (fallback-display-name)
+     :long-display-name (fallback-display-name)}))
 
 (defmethod lib.metadata.calculation/column-name-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
