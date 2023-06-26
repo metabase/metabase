@@ -1,7 +1,6 @@
 import {
   getNativePermission,
   getSchemasPermission,
-  isRestrictivePermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
@@ -10,12 +9,10 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import { Group, GroupsPermissions } from "metabase-types/api";
+import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import type Database from "metabase-lib/metadata/Database";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
-import {
-  NATIVE_PERMISSION_REQUIRES_DATA_ACCESS,
-  UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
-} from "../../constants/messages";
+import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -92,20 +89,6 @@ const buildAccessPermission = (
     },
     actions: PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   };
-};
-
-const getNativePermissionDisabledTooltip = (
-  isAdmin: boolean,
-  accessPermissionValue: string,
-) => {
-  if (isAdmin) {
-    return UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
-  }
-
-  if (isRestrictivePermission(accessPermissionValue)) {
-    return NATIVE_PERMISSION_REQUIRES_DATA_ACCESS;
-  }
-  return null;
 };
 
 const buildNativePermission = (

@@ -6,7 +6,7 @@ type CommonProps = Pick<
   "query" | "stageIndex" | "isEditing"
 >;
 
-export interface BucketPickerPopoverProps extends CommonProps {
+export interface CommonBucketPickerProps extends CommonProps {
   column: Lib.ColumnMetadata;
   buckets: Lib.Bucket[];
   onSelect: (column: Lib.ColumnMetadata) => void;

@@ -182,13 +182,17 @@
                 (is (=? {:stages
                          [{:lib/type    :mbql.stage/mbql
                            :source-card 1
-                           :breakout    [[:field {:join-alias "Products"} "CATEGORY"]]}]}
+                           :breakout    [[:field
+                                           {:join-alias (symbol "nil #_\"key is not present.\"")}
+                                           "CATEGORY"]]}]}
                         query'))
                 (is (=? [{:name              "CATEGORY"
-                          :display-name      "Category"
+                          :display-name      (if (:result-metadata card-def)
+                                               "Products → Category"
+                                               "Category")
                           :long-display-name "Products → Category"
                           :effective-type    :type/Text}]
-                        (map (partial lib/display-info query')
+                        (map #(lib/display-info query' %)
                              (lib/breakouts query'))))))
             (when (:result-metadata card-def)
               (testing "\nwith broken breakout from broken drill-thru (#31482)"
@@ -684,3 +688,50 @@
              (lib.metadata.calculation/metadata
               query
               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
+
+(deftest ^:parallel ref-to-joined-column-from-previous-stage-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/join (-> (lib/join-clause
+                                 (meta/table-metadata :categories)
+                                 [(lib/=
+                                   (meta/field-metadata :venues :category-id)
+                                   (lib/with-join-alias (meta/field-metadata :categories :id) "Categories"))])
+                                (lib/with-join-fields [(lib/with-join-alias
+                                                         (meta/field-metadata :categories :name)
+                                                         "Categories")])))
+                  lib/append-stage)
+        breakoutables (lib/breakoutable-columns query)
+        joined-col (last breakoutables)]
+    (is (=? {:lib/type :metadata/column
+             :name "NAME"
+             :base-type :type/Text
+             :semantic-type :type/Name
+             :lib/source :source/previous-stage
+             :effective-type :type/Text
+             :lib/desired-column-alias "Categories__NAME"}
+            joined-col))
+    (testing "Metadata should not contain inherited join information"
+      (is (not-any? :metabase.lib.join/join-alias (lib.metadata.calculation/metadata query))))
+    (testing "Reference a joined column from a previous stage w/ desired-column-alias and w/o join-alias"
+      (is (=? {:lib/type :mbql.stage/mbql,
+               :breakout [[:field
+                           {:lib/uuid string?
+                            :base-type :type/Text,
+                            :effective-type :type/Text
+                            :join-alias (symbol "nil #_\"key is not present.\"")}
+                           "Categories__NAME"]]}
+              (-> (lib/breakout query joined-col) :stages peek))))
+    (testing "Binning information is still displayed"
+      (is (=? {:name "PRICE",
+               :effective-type :type/Integer,
+               :semantic-type :type/Category,
+               :is-from-join false,
+               :long-display-name "Price: Auto binned",
+               :display-name "Price",
+               :is-from-previous-stage true,
+               :is-calculated false,
+               :is-implicitly-joinable false}
+              (lib/display-info
+               query
+               (lib/with-binning (m/find-first (comp #{"PRICE"} :name) breakoutables)
+                 (first (lib.binning/numeric-binning-strategies)))))))))

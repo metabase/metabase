@@ -162,8 +162,8 @@ function MaybeDNDProvider({
   );
 }
 
-export function getIcon(name: string, role: ByRoleMatcher = "img") {
-  return screen.getByRole(role, { name: `${name} icon` });
+export function getIcon(name: string) {
+  return screen.getByLabelText(`${name} icon`);
 }
 
 export function queryIcon(name: string, role: ByRoleMatcher = "img") {
