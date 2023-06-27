@@ -9,6 +9,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
@@ -70,11 +71,24 @@
         (lib.metadata.calculation/display-name query stage-number metric-metadata style))
       (fallback-display-name)))
 
+(mu/defn ^:private aggregating-by-metric? :- :boolean
+  "Whether a given stage of a query currently includes a `:metric` ref clause in its aggregations."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   metric-id    :- ::lib.schema.id/metric]
+  (let [{aggregations :aggregation} (lib.util/query-stage query stage-number)]
+    (boolean
+     (some (fn [[tag :as clause]]
+             (when (= tag :metric)
+               (let [[_tag _opts id] clause]
+                 (= id metric-id))))
+           aggregations))))
+
 (defmethod lib.metadata.calculation/display-info-method :metadata/metric
-  [query stage-number metric-metadata]
-  ;; add `:description` to the metadata calculated by the default `display-info-method`.
-  (-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
-      (assoc :description (:description metric-metadata))))
+  [query stage-number {:keys [id description], :as metric-metadata}]
+  (assoc ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
+         :description description
+         :selected    (aggregating-by-metric? query stage-number id)))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
@@ -82,7 +96,8 @@
     (lib.metadata.calculation/display-info query stage-number metric-metadata)
     {:effective-type    :type/*
      :display-name      (fallback-display-name)
-     :long-display-name (fallback-display-name)}))
+     :long-display-name (fallback-display-name)
+     :selected          false}))
 
 (defmethod lib.metadata.calculation/column-name-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]

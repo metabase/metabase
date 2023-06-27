@@ -71,15 +71,24 @@
                      :display-name      "Sum of Cans"
                      :long-display-name "Sum of Cans"
                      :effective-type    :type/Integer
-                     :description       "Number of toucans plus number of pelicans"}
+                     :description       "Number of toucans plus number of pelicans"
+                     :selected          true}
                     (lib.metadata.calculation/display-info query-with-metric metric))
     metric-clause
     metric-metadata))
 
+(deftest ^:parallel display-info-unselected-metric-test
+  (testing "Include `:selected false` in display info for Metrics not in aggregations"
+    (are [metric] (=? {:selected false}
+                      (lib.metadata.calculation/display-info lib.tu/venues-query metric))
+      metric-clause
+      metric-metadata)))
+
 (deftest ^:parallel unknown-display-info-test
   (is (=? {:effective-type    :type/*
            :display-name      "[Unknown Metric]"
-           :long-display-name "[Unknown Metric]"}
+           :long-display-name "[Unknown Metric]"
+           :selected          false}
           (lib.metadata.calculation/display-info query-with-metric [:metric {} 1]))))
 
 (deftest ^:parallel type-of-test
@@ -127,6 +136,7 @@
                       :display-name      "Sum of Cans"
                       :long-display-name "Sum of Cans"
                       :effective-type    :type/Integer
-                      :description       "Number of toucans plus number of pelicans"}]
+                      :description       "Number of toucans plus number of pelicans"
+                      :selected          true}]
                     (map (partial lib/display-info query')
                          (lib/aggregations query'))))))))))
