@@ -120,6 +120,15 @@
      (when (and (seq matching-params)
                 (every? :value matching-params))
        (normalize-params matching-params))
+     ;; If a FieldFilter has value=nil, return a [[params/no-value]]
+     ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
+     (when (and
+            (not (:required tag))
+            (seq matching-params)
+            (every? (fn [param]
+                      (nil? (:value param)))
+                    matching-params))
+       params/no-value)
      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
      (when-let [tag-default (:default tag)]
        (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
@@ -132,10 +141,10 @@
                 (every? :default matching-params))
        (normalize-params matching-params))
      ;; otherwise there is no value for this Field filter ("dimension"), throw Exception if this param is required,
+     (when (:required tag)
+       (throw (missing-required-param-exception (:display-name tag))))
      ;; otherwise return [[params/no-value]] to signify that
-     (if (:required tag)
-       (throw (missing-required-param-exception (:display-name tag)))
-       params/no-value))))
+     params/no-value)))
 
 (s/defmethod parse-tag :dimension :- (s/maybe FieldFilter)
   [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
