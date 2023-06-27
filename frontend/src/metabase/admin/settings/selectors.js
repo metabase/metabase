@@ -37,7 +37,10 @@ import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdate
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
-import { trackTrackingPermissionChanged } from "./analytics";
+import {
+  trackTrackingPermissionChanged,
+  trackCustomHomepageDashboardEnabled,
+} from "./analytics";
 
 import EmbeddingOption from "./components/widgets/EmbeddingOption";
 import RedirectWidget from "./components/widgets/RedirectWidget";
@@ -117,6 +120,11 @@ const SECTIONS = updateSectionsWithPlugins({
           collectionFilter: collection =>
             collection.personal_owner_id === null || collection.id === "root",
         }),
+        onChanged: (oldVal, newVal) => {
+          if (newVal && !oldVal) {
+            trackCustomHomepageDashboardEnabled("admin");
+          }
+        },
       },
       {
         key: "redirect-all-requests-to-https",
