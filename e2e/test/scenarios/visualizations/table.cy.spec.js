@@ -32,10 +32,6 @@ describe("scenarios > visualizations > table", () => {
     selectFromDropdown("User ID");
     visualize();
 
-    function headerCells() {
-      return cy.findAllByTestId("header-cell");
-    }
-
     // Rename the first ID column, and make sure the second one is not updated
     headerCells().findByText("ID").click();
     popover().within(() => {
@@ -48,6 +44,27 @@ describe("scenarios > visualizations > table", () => {
     // click somewhere else to close the popover
     headerCells().last().click();
     headerCells().findAllByText("ID updated").should("have.length", 1);
+  });
+
+  it("should allow you to reorder columns in the table header", () => {
+    openNativeEditor().type("select * from orders LIMIT 2");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findByTestId(/subtotal-hide-button/i).click();
+    cy.findByTestId(/tax-hide-button/i).click();
+    cy.findByTestId("sidebar-left").findByText("Done").click();
+
+    headerCells().eq(3).should("contain.text", "TOTAL").as("total");
+
+    cy.get("@total")
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", -200, 0, { force: true })
+      .trigger("mouseup", -200, 0, { force: true });
+
+    headerCells().eq(1).should("contain.text", "TOTAL");
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
@@ -253,3 +270,7 @@ describe("scenarios > visualizations > table", () => {
     popover().should("not.exist");
   });
 });
+
+function headerCells() {
+  return cy.findAllByTestId("header-cell");
+}

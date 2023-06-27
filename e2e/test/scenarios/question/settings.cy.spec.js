@@ -137,12 +137,12 @@ describe("scenarios > question > settings", () => {
 
       reloadResults();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("117.03").should("not.exist");
+      cy.findByTestId("query-builder-main")
+        .findByText("117.03")
+        .should("not.exist");
 
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More columns").click();
+      cy.findByTestId("sidebar-left").findByText("More columns").click();
 
       findColumnAtIndex("Products → Category", 5);
 
@@ -150,8 +150,6 @@ describe("scenarios > question > settings", () => {
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
 
       // Add "Address"
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      // cy.findByText("Address").siblings("button").find(".Icon-add").click();
       addColumn("Address");
 
       // The result automatically load when adding new fields but two requests are fired.
