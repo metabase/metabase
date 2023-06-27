@@ -17,9 +17,9 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { TYPE } from "metabase-lib/types/constants";
-import { PADDING, TITLE_ICON_SIZE } from "./constants";
+import { TITLE_ICON_SIZE } from "./constants";
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
-import { getTitleHeight, getTitleLinesCount } from "./utils";
+import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -206,11 +206,6 @@ export class Scalar extends Component {
       (gridSize?.width < 2 || gridSize?.height < 2);
 
     const titleLinesCount = getTitleLinesCount(height);
-    const titleHeight = getTitleHeight({
-      isDashboard,
-      showSmallTitle,
-      titleLinesCount,
-    });
 
     return (
       <ScalarWrapper>
@@ -236,8 +231,8 @@ export class Scalar extends Component {
           >
             <ScalarValue
               value={displayValue}
-              width={width - PADDING}
-              height={height - PADDING - titleHeight}
+              width={getValueWidth(width)}
+              height={getValueHeight(height, { isDashboard, showSmallTitle })}
               gridSize={gridSize}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}

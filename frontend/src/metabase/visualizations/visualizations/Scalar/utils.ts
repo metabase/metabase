@@ -1,4 +1,5 @@
 import {
+  PADDING,
   SCALAR_TITLE_LINE_HEIGHT,
   TITLE_2_LINES_HEIGHT_THRESHOLD,
   TITLE_ICON_SIZE,
@@ -25,4 +26,28 @@ export const getTitleHeight = ({
   }
 
   return titleLinesCount * SCALAR_TITLE_LINE_HEIGHT;
+};
+
+export const getValueWidth = (width: number): number => {
+  return width - PADDING;
+};
+
+export const getValueHeight = (
+  height: number,
+  {
+    isDashboard,
+    showSmallTitle,
+  }: {
+    isDashboard: boolean;
+    showSmallTitle: boolean;
+  },
+): number => {
+  const titleLinesCount = getTitleLinesCount(height);
+  const titleHeight = getTitleHeight({
+    isDashboard,
+    showSmallTitle,
+    titleLinesCount,
+  });
+
+  return height - PADDING - titleHeight;
 };
