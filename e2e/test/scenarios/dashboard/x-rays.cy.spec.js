@@ -19,7 +19,7 @@ describe("scenarios > x-rays", () => {
     cy.signInAsAdmin();
   });
 
-  const XRAY_DATASETS = 11; // enough to load most questions
+  const XRAY_DATASETS = 5; // enough to load most questions
 
   it("should not display x-rays if the feature is disabled in admin settings (metabase#26571)", () => {
     cy.request("PUT", "api/setting/enable-xrays", { value: false });
@@ -92,10 +92,7 @@ describe("scenarios > x-rays", () => {
   });
 
   ["X-ray", "Compare to the rest"].forEach(action => {
-    // Temporarily skipping this due to degraded performance causing the test to fail, blocking all merges to master.
-    // We're actively investigating whether Github's runners or our code is responsible. See discussion at:
-    // https://metaboat.slack.com/archives/C5XHN8GLW/p1685964332028149
-    it.skip(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+    it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
       cy.createNativeQuestion({
@@ -122,10 +119,11 @@ describe("scenarios > x-rays", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(action).click();
 
+      for (let c = 0; c < XRAY_DATASETS; ++c) {
+        cy.wait("@postDataset");
+      }
+
       cy.wait("@xray").then(xhr => {
-        for (let c = 0; c < XRAY_DATASETS; ++c) {
-          cy.wait("@postDataset");
-        }
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.response.statusCode).not.to.eq(500);
       });
