@@ -2,16 +2,16 @@
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
   (:require
-    [clojure.string :as str]
-    [clojure.test :refer :all]
-    [java-time :as t]
-    [medley.core :as m]
-    [metabase.driver :as driver]
-    [metabase.lib.native :as lib-native]
-    [metabase.models :refer [Card]]
-    [metabase.query-processor :as qp]
-    [metabase.test :as mt]
-    [metabase.util :as u]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.lib.native :as lib-native]
+   [metabase.models :refer [Card]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
