@@ -79,7 +79,7 @@ export const ScalarTitle = ({ title, description, onClick }) => (
       <ScalarDescriptionContainer className="hover-child">
         <Tooltip
           tooltip={
-            <Markdown disallowHeading unstyleLinks>
+            <Markdown dark disallowHeading unstyleLinks>
               {description}
             </Markdown>
           }
