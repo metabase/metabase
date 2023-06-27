@@ -17,7 +17,9 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { TYPE } from "metabase-lib/types/constants";
+import { PADDING, TITLE_ICON_SIZE } from "./constants";
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
+import { getTitleHeight, getTitleLinesCount } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -28,27 +30,6 @@ function legacyScalarSettingsToFormatOptions(settings) {
     .object()
     .value();
 }
-
-const PADDING = 32;
-const TITLE_ICON_SIZE = 10;
-const SCALAR_TITLE_LINE_HEIGHT = 23;
-
-const TITLE_2_LINES_HEIGHT_THRESHOLD = 120; // determined empirically
-
-const getTitleLinesCount = height =>
-  height > TITLE_2_LINES_HEIGHT_THRESHOLD ? 2 : 1;
-
-const getTitleHeight = ({ isDashboard, showSmallTitle, titleLinesCount }) => {
-  if (!isDashboard) {
-    return 0;
-  }
-
-  if (showSmallTitle) {
-    return TITLE_ICON_SIZE;
-  }
-
-  return titleLinesCount * SCALAR_TITLE_LINE_HEIGHT;
-};
 
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
