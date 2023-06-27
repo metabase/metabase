@@ -108,7 +108,7 @@ const Databases = createEntity({
       (fields, databaseId) =>
         Object.values(fields).filter(f => {
           const { db_id } = f.table || {}; // a field's table can be null
-          return db_id === databaseId && f.isPK();
+          return db_id === databaseId && f.isPK() && !f.table.isVirtualCard();
         }),
     ),
   },
