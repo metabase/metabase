@@ -73,7 +73,7 @@
     [:type         [:= :snippet]]
     [:snippet-name ::common/non-blank-string]
     [:snippet-id   ::id/snippet]
-    ;; database to which this Snippet belongs. Doesn't always seen to be specified.
+    ;; database to which this Snippet belongs. Doesn't always seem to be specified.
     [:database {:optional true} ::id/database]]])
 
 ;; Example:
