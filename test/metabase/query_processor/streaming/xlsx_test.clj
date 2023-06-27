@@ -451,7 +451,15 @@
            (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))
     (binding [qp.xlsx/*parse-temporal-string-values* true]
       (is (= [#inst "2020-03-28T10:12:06.681"]
-             (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))))
+             (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Temporal}]
+                                  {}
+                                  [["2020-03-28T10:12:06.681"]]))))
+      (testing "Values that are parseable as dates are not when effective_type is not temporal (#29708)"
+        (doseq [value ["0001" "4161" "02" "2020-03-28T10:12:06.681"]]
+          (is (= [value]
+                 (second (xlsx-export [{:id 0, :name "Col" :effective_type :type/Text}]
+                                      {}
+                                      [[value]]))))))))
   (mt/with-everything-store
     (binding [driver/*driver* :h2]
       (testing "OffsetDateTime"

@@ -10,6 +10,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -201,10 +202,10 @@
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
         ;; in pMBQL, `:effective-type` is a required key for `:value`. `:value` SHOULD have always had `:base-type`,
-        ;; but on the off chance it did not give this `:type/*` so the schema doesn't fail entirely.
+        ;; but on the off chance it did not, get the type from value so the schema doesn't fail entirely.
         opts (assoc opts :effective-type (or (:effective-type opts)
                                              (:base-type opts)
-                                             :type/*))]
+                                             (lib.schema.expression/type-of value)))]
     (lib.options/ensure-uuid [:value opts value])))
 
 (defmethod ->pMBQL :case
