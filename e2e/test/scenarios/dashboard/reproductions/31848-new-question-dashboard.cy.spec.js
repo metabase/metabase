@@ -27,6 +27,7 @@ describe("issue 31848", () => {
     cy.findByTestId("dashboard-empty-state")
       .findByText("ask a new one")
       .click();
+
     popover().within(() => {
       cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
