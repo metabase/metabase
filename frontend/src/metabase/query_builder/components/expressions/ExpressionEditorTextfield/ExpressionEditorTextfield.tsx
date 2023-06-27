@@ -161,7 +161,6 @@ class ExpressionEditorTextfield extends React.Component<
   componentDidUpdate() {
     const { textAreaId } = this.props;
     if (this.input.current && textAreaId) {
-      // @ts-expect-error — getElement is missing in ace types
       const textArea = this.input.current.editor.textInput.getElement?.();
       textArea?.setAttribute?.("id", textAreaId);
     }
