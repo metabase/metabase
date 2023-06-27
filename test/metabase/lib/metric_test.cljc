@@ -12,17 +12,24 @@
 
 (def ^:private metric-id 100)
 
+(def ^:private metric-definition
+  {:source-table (meta/id :venues)
+   :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
+   :filter       [:= [:field (meta/id :venues :price) nil] 4]})
+
+(def ^:private metric-description
+  "Number of toucans plus number of pelicans")
+
 (def ^:private metadata-provider
   (lib.tu/mock-metadata-provider
    {:database meta/metadata
     :tables   [(meta/table-metadata :venues)]
     :fields   [(meta/field-metadata :venues :price)]
-    :metrics  [{:id         metric-id
-                :name       "Sum of Cans"
-                :definition {:source-table (meta/id :venues)
-                             :aggregation [[:sum [:field (meta/id :venues :price) nil]]]
-                             :filter      [:= [:field (meta/id :venues :price) nil] 4]}
-                :description "Number of toucans plus number of pelicans"}]}))
+    :metrics  [{:id          metric-id
+                :name        "Sum of Cans"
+                :table-id    (meta/id :venues)
+                :definition  metric-definition
+                :description metric-description}]}))
 
 (def ^:private metric-clause
   [:metric {:lib/uuid (str (random-uuid))} metric-id])
@@ -67,7 +74,7 @@
                      :display-name      "Sum of Cans"
                      :long-display-name "Sum of Cans"
                      :effective-type    :type/Integer
-                     :description       "Number of toucans plus number of pelicans"}
+                     :description       metric-description}
                     (lib.metadata.calculation/display-info query metric))
     metric-clause
     metric-metadata))
@@ -87,3 +94,16 @@
 (deftest ^:parallel unknown-type-of-test
   (is (= :type/*
          (lib.metadata.calculation/type-of query [:metric {} 1]))))
+
+(deftest ^:parallel available-metrics-test
+  (testing "Should return Metrics with the same Table ID as query's `:source-table`"
+    (is (=? [{:lib/type    :metadata/metric
+              :id          metric-id
+              :name        "Sum of Cans"
+              :table-id    (meta/id :venues)
+              :definition  metric-definition
+              :description metric-description}]
+            (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
+  (testing "query with different Table -- don't return Metrics"
+    (is (=? []
+            (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :orders)))))))

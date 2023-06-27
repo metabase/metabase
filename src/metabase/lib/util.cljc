@@ -451,7 +451,7 @@
     (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
       (parse-long card-id-str))))
 
-(mu/defn source-table :- [:maybe ::lib.schema.id/table]
+(mu/defn source-table-id :- [:maybe ::lib.schema.id/table]
   "If this query has a `:source-table` ID, return it."
   [query]
   (-> query :stages first :source-table))

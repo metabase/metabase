@@ -9,14 +9,15 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (defn- resolve-metric [query metric-id]
   (when (integer? metric-id)
     (lib.metadata/metric query metric-id)))
 
 (mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
-  [{:keys [definition], :as _metric-metadata}]
+  [{:keys [definition], :as _metric-metadata} :- lib.metadata/MetricMetadata]
   (when definition
     (if (:mbql/type definition)
       definition
@@ -74,3 +75,10 @@
   (or (when-let [metric-metadata (resolve-metric query metric-id-or-name)]
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
+
+(mu/defn available-metrics :- [:maybe [:sequential lib.metadata/MetricMetadata]]
+  "Get a list of Metrics that you may consider using as aggregations for a query. Only Metrics that have the same
+  `table-id` as the `source-table` for this query will be suggested."
+  [query :- ::lib.schema/query]
+  (when-let [source-table-id (lib.util/source-table-id query)]
+    (lib.metadata.protocols/metrics (lib.metadata/->metadata-provider query) source-table-id)))

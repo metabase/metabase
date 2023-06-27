@@ -189,6 +189,8 @@
    display-info
    suggested-name
    type-of]
+  [lib.metric
+   available-metrics]
   [lib.native
    #?@(:cljs [->TemplateTags
               TemplateTags->])

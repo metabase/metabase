@@ -358,7 +358,7 @@
 (defmethod display-info-method :metadata/table
   [query stage-number table]
   (merge (default-display-info query stage-number table)
-         {:is-source-table (= (lib.util/source-table query) (:id table))}))
+         {:is-source-table (= (lib.util/source-table-id query) (:id table))}))
 
 (def ColumnsWithUniqueAliases
   "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used

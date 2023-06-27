@@ -6,11 +6,13 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.composed-provider
     :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
+   [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs
@@ -35,7 +37,24 @@
            options)
     (meta/id table field)]))
 
-(defn mock-metadata-provider
+(defn- with-optional-lib-type
+  "Create a version of `schema` where `:lib/type` is optional rather than required."
+  [schema lib-type]
+  [:merge
+   schema
+   [:map
+    [:lib/type {:optional true} [:= lib-type]]]])
+
+(def ^:private MockMetadata
+  [:map
+   [:database {:optional true} [:maybe (with-optional-lib-type lib.metadata/DatabaseMetadata :metadata/database)]]
+   [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/TableMetadata   :metadata/table)]]]
+   [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/ColumnMetadata  :metadata/column)]]]
+   [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/CardMetadata    :metadata/card)]]]
+   [:metrics  {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/MetricMetadata  :metadata/metric)]]]
+   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type lib.metadata/SegmentMetadata :metadata/segment)]]]])
+
+(mu/defn mock-metadata-provider :- lib.metadata/MetadataProvider
   "Create a mock metadata provider to facilitate writing tests. All keys except `:database` should be a sequence of maps
   e.g.
 
@@ -44,7 +63,7 @@
   Normally you can probably get away with using [[metabase.lib.test-metadata/metadata-provider]] instead of using
   this; but this is available for situations when you need to test something not covered by the default test metadata,
   e.g. nested Fields."
-  [{:keys [database tables fields cards metrics segments] :as m}]
+  [{:keys [database tables fields cards metrics segments] :as m} :- MockMetadata]
   (reify
     metadata.protocols/MetadataProvider
     (database [_this]            (some-> database
@@ -65,8 +84,11 @@
                                    (-> (assoc table :lib/type :metadata/table)
                                        (dissoc :fields))))
     (fields   [_this table-id]   (for [field fields
-                                       :when (= (:table_id field) table-id)]
+                                       :when (= (:table-id field) table-id)]
                                    (assoc field :lib/type :metadata/column)))
+    (metrics  [_this table-id]   (for [metric metrics
+                                       :when (= (:table-id metric) table-id)]
+                                   (assoc metric :lib/type :metadata/metric)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]
