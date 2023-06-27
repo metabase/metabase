@@ -312,10 +312,10 @@ class QuestionInner {
   }
 
   maybeResetDisplay(sensibleDisplays, previousSensibleDisplays): Question {
-    const isSensible = sensibleDisplays.includes(this.display());
     const wasSensible =
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());
+    const isSensible = sensibleDisplays.includes(this.display());
     const shouldUnlock = wasSensible && !isSensible;
     const defaultDisplay = this.setDefaultDisplay().display();
 
