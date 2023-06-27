@@ -24,7 +24,8 @@ import {
 
 import { measureText } from "metabase/lib/measure-text";
 import { isDate } from "metabase-lib/types/utils/isa";
-import { ScalarContainer } from "./Scalar.styled";
+
+import { ScalarContainer } from "../Scalar/Scalar.styled";
 
 import {
   PreviousValue,
@@ -80,7 +81,7 @@ const formatChange = (change, { maximumFractionDigits = 2 } = {}) =>
     maximumFractionDigits,
   });
 
-export default class SmartScalar extends Component {
+export class SmartScalar extends Component {
   static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";
