@@ -1639,7 +1639,7 @@
   [_table-name _field-name]
   {:description                nil
    :database-type              "CHARACTER VARYING"
-   :semantic-type              nil
+   :semantic-type              :type/ZipCode
    :table-id                   (id :people)
    :coercion-strategy          nil
    :name                       "ZIP"
