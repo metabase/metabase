@@ -6,10 +6,8 @@ import { Icon } from "metabase/core/components/Icon";
 
 import type { Aggregation as LegacyAggregationClause } from "metabase-types/api";
 import * as Lib from "metabase-lib";
-import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Metric from "metabase-lib/metadata/Metric";
 
 import QueryColumnPicker from "../QueryColumnPicker";
 import {
@@ -30,7 +28,7 @@ interface AggregationPickerProps {
   legacyQuery: StructuredQuery;
   legacyClause?: LegacyAggregation;
   maxHeight?: number;
-  onSelect: (operator: Lib.AggregationClause) => void;
+  onSelect: (operator: Lib.AggregationClause | Lib.MetricMetadata) => void;
   onSelectLegacy: (operator: LegacyAggregationClause) => void;
   onClose?: () => void;
 }
@@ -39,7 +37,11 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
   operator: Lib.AggregationOperator;
 };
 
-type ListItem = OperatorListItem | Metric;
+type MetricListItem = Lib.MetricDisplayInfo & {
+  metric: Lib.MetricMetadata;
+};
+
+type ListItem = OperatorListItem | MetricListItem;
 
 type Section = {
   name: string;
@@ -48,7 +50,7 @@ type Section = {
 };
 
 function isOperatorListItem(item: ListItem): item is OperatorListItem {
-  return !(item instanceof Metric);
+  return "operator" in item;
 }
 
 export function AggregationPicker({
@@ -75,8 +77,7 @@ export function AggregationPicker({
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
-    const unfilteredMetrics = legacyQuery.table()?.getMetrics() ?? [];
-    const metrics = unfilteredMetrics.filter(metric => !metric.archived);
+    const metrics = Lib.availableMetrics(query);
 
     if (operators.length > 0) {
       sections.push({
@@ -91,25 +92,19 @@ export function AggregationPicker({
     if (metrics.length > 0) {
       sections.push({
         name: t`Common Metrics`,
-        items: metrics,
+        items: metrics.map(metric =>
+          getMetricListItem(query, stageIndex, metric),
+        ),
         icon: "star",
       });
     }
 
     return sections;
-  }, [query, legacyQuery, stageIndex, operators]);
+  }, [query, stageIndex, operators]);
 
   const checkIsItemSelected = useCallback(
-    (item: ListItem) => {
-      if (isOperatorListItem(item)) {
-        return item.selected;
-      }
-      if (legacyClause) {
-        return AGGREGATION.getMetric(legacyClause) === item.id;
-      }
-      return false;
-    },
-    [legacyClause],
+    (item: ListItem) => item.selected,
+    [],
   );
 
   const handleOperatorSelect = useCallback(
@@ -142,11 +137,11 @@ export function AggregationPicker({
   );
 
   const handleMetricSelect = useCallback(
-    (metric: Metric) => {
-      onSelectLegacy(metric.aggregationClause());
+    (item: MetricListItem) => {
+      onSelect(item.metric);
       onClose?.();
     },
-    [onSelectLegacy, onClose],
+    [onSelect, onClose],
   );
 
   const handleChange = useCallback(
@@ -215,7 +210,7 @@ function ColumnPickerHeader({
 }
 
 function renderItemName(item: ListItem) {
-  return isOperatorListItem(item) ? item.displayName : item.displayName();
+  return item.displayName;
 }
 
 function omitItemDescription() {
@@ -253,6 +248,18 @@ function getOperatorListItem(
   return {
     ...operatorInfo,
     operator,
+  };
+}
+
+function getMetricListItem(
+  query: Lib.Query,
+  stageIndex: number,
+  metric: Lib.MetricMetadata,
+): MetricListItem {
+  const metricInfo = Lib.displayInfo(query, stageIndex, metric);
+  return {
+    ...metricInfo,
+    metric,
   };
 }
 
