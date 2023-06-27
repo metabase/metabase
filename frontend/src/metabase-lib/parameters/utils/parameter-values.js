@@ -57,31 +57,16 @@ export function normalizeParameterValue(type, value) {
   const fieldType = getParameterType(type);
 
   if (["string", "number"].includes(fieldType)) {
-    return value == null ? [] : [].concat(value);
+    return value == null ? null : [].concat(value);
   } else {
     return value;
   }
 }
 
-function removeNilValuedPairs(pairs) {
-  return pairs.filter(([, value]) => hasParameterValue(value));
-}
-
-function removeUndefaultedNilValuedPairs(pairs) {
-  return pairs.filter(
-    ([parameter, value]) =>
-      hasDefaultParameterValue(parameter) || hasParameterValue(value),
-  );
-}
-
 // when `preserveDefaultedParameters` is true, we don't remove defaulted parameters with nil values
 // so that they can be set in the URL query without a value. Used alongside `getParameterValuesByIdFromQueryParams`
 // with `forcefullyUnsetDefaultedParametersWithEmptyStringValue` set to true.
-export function getParameterValuesBySlug(
-  parameters,
-  parameterValuesById,
-  { preserveDefaultedParameters } = {},
-) {
+export function getParameterValuesBySlug(parameters, parameterValuesById) {
   parameters = parameters || [];
   parameterValuesById = parameterValuesById || {};
   const parameterValuePairs = parameters.map(parameter => [
@@ -91,11 +76,7 @@ export function getParameterValuesBySlug(
       : parameterValuesById[parameter.id],
   ]);
 
-  const transformedPairs = preserveDefaultedParameters
-    ? removeUndefaultedNilValuedPairs(parameterValuePairs)
-    : removeNilValuedPairs(parameterValuePairs);
-
-  const slugValuePairs = transformedPairs.map(([parameter, value]) => [
+  const slugValuePairs = parameterValuePairs.map(([parameter, value]) => [
     parameter.slug,
     value,
   ]);

@@ -1,5 +1,5 @@
 import { handleActions } from "redux-actions";
-import { assoc, dissoc, merge } from "icepick";
+import { assoc, merge } from "icepick";
 import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
@@ -540,8 +540,7 @@ export const parameterValues = handleActions(
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
     [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value } }) =>
-        value == null ? dissoc(state, id) : assoc(state, id, value),
+      next: (state, { payload: { id, value } }) => assoc(state, id, value),
     },
   },
   {},
