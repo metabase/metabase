@@ -741,21 +741,21 @@
   ([a-query stage-number column]
    (available-drill-thrus query stage-number column nil))
   ([a-query stage-number column value]
-   (to-array (lib.core/available-drill-thrus query stage-number column value))))
+   (to-array (lib.core/available-drill-thrus query stage-number (js.metadata/parse-column column) value))))
 
 (defn ^:export drill-thru
   "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
 
   Each type of drill-thru has a different effect on the query."
-  [a-query stage-number drill-thru]
-  (lib.core/drill-thru query stage-number drill-thru))
+  [a-query stage-number a-drill-thru]
+  (lib.core/drill-thru a-query stage-number a-drill-thru))
 
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
-  [drill-thru]
-  (to-array (lib.core/pivot-types drill-thru)))
+  [a-drill-thru]
+  (to-array (lib.core/pivot-types a-drill-thru)))
 
 (defn ^:export pivot-columns-for-type
-  "Returns an array of "
-  [drill-thru]
-  (lib.core/pivot-types drill-thru))
+  "Returns an array of pivotable columns of the specified type."
+  [a-drill-thru pivot-type]
+  (lib.core/pivot-columns-for-type a-drill-thru pivot-type))
