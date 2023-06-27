@@ -437,7 +437,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     return queryText && this.supportsNativeParameters()
-      ? ML.template_tags(queryText, this.templateTagsMap())
+      ? ML.extract_template_tags(queryText, this.templateTagsMap())
       : {};
   }
 
