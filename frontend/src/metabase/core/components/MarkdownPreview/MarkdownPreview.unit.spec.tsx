@@ -35,20 +35,52 @@ describe("MarkdownPreview", () => {
     expect(screen.getByText(MARKDOWN_AS_TEXT)).toBeInTheDocument();
   });
 
-  it("should show tooltip with markdown formatting on hover", () => {
+  it("should not show tooltip with markdown formatting on hover when text is not truncated", () => {
     setup();
 
     userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
 
-    const tooltip = screen.getByRole("tooltip");
-    expect(tooltip).not.toHaveTextContent(MARKDOWN);
-    expect(tooltip).not.toHaveTextContent(HEADING_1_MARKDOWN);
-    expect(tooltip).not.toHaveTextContent(HEADING_2_MARKDOWN);
-    expect(tooltip).toHaveTextContent(MARKDOWN_AS_TEXT);
+  describe("Tooltip on ellipsis", () => {
+    const originalScrollWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollWidth",
+    );
 
-    const image = within(tooltip).getByRole("img");
-    expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute("alt", "alt");
-    expect(image).toHaveAttribute("src", "https://example.com/img.jpg");
+    beforeAll(() => {
+      // emulate ellipsis
+      Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+        configurable: true,
+        value: 100,
+      });
+    });
+
+    afterAll(() => {
+      if (originalScrollWidth) {
+        Object.defineProperty(
+          HTMLElement.prototype,
+          "scrollWidth",
+          originalScrollWidth,
+        );
+      }
+    });
+
+    it("should show tooltip with markdown formatting on hover when text is truncated", () => {
+      setup();
+
+      userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
+
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip).not.toHaveTextContent(MARKDOWN);
+      expect(tooltip).not.toHaveTextContent(HEADING_1_MARKDOWN);
+      expect(tooltip).not.toHaveTextContent(HEADING_2_MARKDOWN);
+      expect(tooltip).toHaveTextContent(MARKDOWN_AS_TEXT);
+
+      const image = within(tooltip).getByRole("img");
+      expect(image).toBeInTheDocument();
+      expect(image).toHaveAttribute("alt", "alt");
+      expect(image).toHaveAttribute("src", "https://example.com/img.jpg");
+    });
   });
 });
