@@ -241,7 +241,7 @@ export const ReactMarkdownStyleWrapper = styled.div<MarkdownWrapperProps>`
     font-weight: bold;
     cursor: pointer;
     text-decoration: none;
-    color: var(--color-brand);
+    color: ${color("brand")};
   }
   .text-card-markdown a:hover {
     text-decoration: underline;
@@ -267,15 +267,15 @@ export const ReactMarkdownStyleWrapper = styled.div<MarkdownWrapperProps>`
     text-align: left;
   }
   .text-card-markdown tr {
-    border-bottom: 1px solid color-mod(var(--color-border) alpha(-70%));
+    border-bottom: 1px solid color-mod(${color("border")} alpha(-70%));
   }
   .text-card-markdown tr:nth-child(even) {
-    background-color: color-mod(var(--color-bg-black) alpha(-98%));
+    background-color: color-mod(${color("bg-black")} alpha(-98%));
   }
   .text-card-markdown th,
   .text-card-markdown td {
     padding: 0.75em;
-    border: 1px solid color-mod(var(--color-border) alpha(-70%));
+    border: 1px solid color-mod(${color("border")} alpha(-70%));
   }
 
   .text-card-markdown code {
@@ -283,8 +283,8 @@ export const ReactMarkdownStyleWrapper = styled.div<MarkdownWrapperProps>`
     font-size: 12.64px;
     line-height: 20px;
     padding: 0 0.25em;
-    background-color: var(--color-bg-light);
-    border-radius: var(--default-border-radius);
+    background-color: ${color("bg-light")};
+    border-radius: 8px;
   }
 
   .text-card-markdown pre code {
@@ -294,8 +294,8 @@ export const ReactMarkdownStyleWrapper = styled.div<MarkdownWrapperProps>`
   }
 
   .text-card-markdown blockquote {
-    color: var(--color-text-medium);
-    border-left: 5px solid var(--color-border);
+    color: ${color("text-medium")};
+    border-left: 5px solid ${color("border")};
     padding: 0 1.5em 0 17px;
     margin: 0.5em 0 0.5em 1em;
   }
