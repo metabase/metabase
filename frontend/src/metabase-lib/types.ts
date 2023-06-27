@@ -17,10 +17,10 @@ export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 declare const MetricMetadata: unique symbol;
 export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
 
-export type Limit = number | null;
-
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
+
+export type Aggregatable = AggregationClause | MetricMetadata;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -43,6 +43,8 @@ export type Clause =
   | BreakoutClause
   | FilterClause
   | OrderByClause;
+
+export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };

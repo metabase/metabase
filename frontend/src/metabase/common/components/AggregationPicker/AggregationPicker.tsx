@@ -23,7 +23,7 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   maxHeight?: number;
-  onSelect: (operator: Lib.AggregationClause | Lib.MetricMetadata) => void;
+  onSelect: (operator: Lib.Aggregatable) => void;
   onClose?: () => void;
 }
 
