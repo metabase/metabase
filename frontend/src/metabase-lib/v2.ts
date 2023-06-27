@@ -15,3 +15,4 @@ export * from "./join";
 export * from "./query";
 export * from "./temporal_bucket";
 export * from "./types";
+export * from "./expression";

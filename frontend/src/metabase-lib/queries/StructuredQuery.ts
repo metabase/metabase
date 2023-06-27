@@ -1037,21 +1037,21 @@ class StructuredQueryInner extends AtomicQuery {
 
   // EXPRESSIONS
   expressions(): ExpressionClause {
+    const query = this.getMLv2Query();
+    window.q = query;
+    // return ML.expressions(query);
     return Q.getExpressions(this.query());
   }
 
   addExpression(name, expression) {
     const uniqueName = getUniqueExpressionName(this.expressions(), name);
-
-    let query = this._updateQuery(Q.addExpression, [uniqueName, expression]);
-
-    // extra logic for adding expressions in fields clause
-    // TODO: push into query/expression?
-    if (query.hasFields() && query.isRaw()) {
-      query = query.addField(["expression", uniqueName]);
-    }
-
-    return query;
+    const nextQuery = ML.addExpression(
+      this.getMLv2Query(),
+      -1,
+      uniqueName,
+      expression,
+    );
+    return this.updateWithMLv2(nextQuery);
   }
 
   updateExpression(name, expression, oldName) {
