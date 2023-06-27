@@ -29,3 +29,6 @@
 
 (mr/def ::metric
   ::common/int-greater-than-or-equal-to-zero)
+
+(mr/def ::snippet
+  ::common/int-greater-than-or-equal-to-zero)
