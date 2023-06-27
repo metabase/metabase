@@ -42,6 +42,7 @@ export function Text({
   settings,
   isEditing,
   parameterValues,
+  isMobile,
 }) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
@@ -94,12 +95,14 @@ export function Text({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
         isSingleRow={isSingleRow}
+        isMobile={isMobile}
       >
         {isPreviewing ? (
           <ReactMarkdownStyleWrapper
             data-testid="editing-dashboard-text-preview"
             onMouseDown={preventDragging}
             isSingleRow={isSingleRow}
+            isMobile={isMobile}
           >
             {/* ReactMarkdown does not allow adding an onMouseDown event handler */}
             <ReactMarkdown
@@ -130,8 +133,12 @@ export function Text({
   }
 
   return (
-    <DisplayContainer className={cx(className)} isSingleRow={isSingleRow}>
-      <ReactMarkdownStyleWrapper isSingleRow={isSingleRow}>
+    <DisplayContainer
+      className={cx(className)}
+      isSingleRow={isSingleRow}
+      isMobile={isMobile}
+    >
+      <ReactMarkdownStyleWrapper isSingleRow={isSingleRow} isMobile={isMobile}>
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}

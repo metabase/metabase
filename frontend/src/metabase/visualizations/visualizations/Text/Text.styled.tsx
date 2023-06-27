@@ -1,27 +1,60 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { breakpointMaxExtraLarge } from "metabase/styled-components/theme";
+import {
+  breakpointMinLarge,
+  breakpointMinExtraLarge,
+} from "metabase/styled-components/theme";
 
-interface EditModeContainerProps {
-  isPreviewing?: boolean;
-  isEmpty?: boolean;
+const DEFAULT_CONTAINER_PADDING_SIZE = "0.75rem";
+const SMALL_CONTAINER_PADDING_SIZE = "0.4rem";
+
+interface TextCardWrapperProps {
+  isSingleRow: boolean;
+  isMobile: boolean;
 }
-
-export const EditModeContainer = styled.div<EditModeContainerProps>`
+const TextCardWrapper = styled.div<TextCardWrapperProps>`
   display: flex;
   flex-direction: column;
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding: 0.75rem;
+  padding: ${DEFAULT_CONTAINER_PADDING_SIZE};
   width: 100%;
+
+  // adjust styles for single row text cards on desktop resolutions
+  // to prevent clipping of text cards (https://github.com/metabase/metabase/issues/31613)
+  ${({ isSingleRow, isMobile }) =>
+    isSingleRow &&
+    !isMobile &&
+    css`
+      padding: ${SMALL_CONTAINER_PADDING_SIZE} ${DEFAULT_CONTAINER_PADDING_SIZE};
+
+      ${breakpointMinExtraLarge} {
+        padding: ${DEFAULT_CONTAINER_PADDING_SIZE};
+      }
+    `}
+`;
+
+const BORDER_ADJUSTED_DEFAULT_PADDING = css`
+  padding: calc(${DEFAULT_CONTAINER_PADDING_SIZE} - 1px);
+`;
+const BORDER_ADJUSTED_SMALL_PADDING = css`
+  padding: calc(${SMALL_CONTAINER_PADDING_SIZE} - 1px)
+    calc(${DEFAULT_CONTAINER_PADDING_SIZE} - 1px);
+`;
+interface EditModeProps {
+  isPreviewing: boolean;
+  isEmpty: boolean;
+  isSingleRow: boolean;
+  isMobile: boolean;
+}
+export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
   pointer-events: auto;
   border-radius: 8px;
 
   .DashCard:hover &,
   .DashCard:focus-within & {
-    padding: calc(0.75rem - 1px);
     border: 1px solid ${color("brand")};
   }
 
@@ -29,11 +62,6 @@ export const EditModeContainer = styled.div<EditModeContainerProps>`
     border: 1px solid ${color("brand")};
   }
 
-  ${({ isPreviewing, isEmpty }) =>
-    (!isPreviewing || isEmpty) &&
-    css`
-      padding: calc(0.75rem - 1px);
-    `} // adjust for border on preview/no entered content
   ${({ isEmpty }) =>
     isEmpty &&
     css`
@@ -41,37 +69,82 @@ export const EditModeContainer = styled.div<EditModeContainerProps>`
       color: ${color("text-light")};
     `}
 
-    // adjust styling for single row text cards
-    ${({ isSingleRow }) =>
-    isSingleRow &&
-    css`
-      ${breakpointMaxExtraLarge} {
-        padding: 0.4rem;
+  ${({ isSingleRow, isPreviewing, isEmpty, isMobile }) => {
+    const borderActive = !isPreviewing || isEmpty;
 
+    // adjust styles for single row text cards on desktop resolutions
+    // to prevent clipping of text cards (https://github.com/metabase/metabase/issues/31613)
+    if (isSingleRow && !isMobile) {
+      return css`
         .DashCard:hover &,
         .DashCard:focus-within & {
-          padding: calc(0.4rem - 1px);
+          ${BORDER_ADJUSTED_SMALL_PADDING}// adjust for border on preview/no entered content
         }
 
-        ${({ isPreviewing, isEmpty }) =>
-          (!isPreviewing || isEmpty) &&
+        ${borderActive &&
+        css`
+          ${BORDER_ADJUSTED_SMALL_PADDING}
+        `}
+
+        ${breakpointMinExtraLarge} {
+          .DashCard:hover &,
+          .DashCard:focus-within & {
+            ${BORDER_ADJUSTED_DEFAULT_PADDING}
+          }
+
+          ${borderActive &&
           css`
-            padding: calc(0.4rem - 1px);
-          `}// adjust for border on preview/no entered content
+            ${BORDER_ADJUSTED_DEFAULT_PADDING}
+          `}
+        }
+      `;
+    }
+
+    return css`
+      .DashCard:hover &,
+      .DashCard:focus-within & {
+        ${BORDER_ADJUSTED_DEFAULT_PADDING}
       }
-    `}
+
+      ${borderActive &&
+      css`
+        ${BORDER_ADJUSTED_DEFAULT_PADDING}
+      `}
+    `;
+  }}
 `;
 
-export const ReactMarkdownStyleWrapper = styled.div`
+interface DisplayContainerProps {
+  isSingleRow: boolean;
+  isMobile: boolean;
+}
+export const DisplayContainer = styled(
+  TextCardWrapper,
+)<DisplayContainerProps>``;
+
+interface MarkdownWrapperProps {
+  isSingleRow: boolean;
+  isMobile: boolean;
+}
+export const ReactMarkdownStyleWrapper = styled.div<MarkdownWrapperProps>`
   height: 100%;
   width: 100%;
   padding-left: 2px; // adjust padding to align text input and markdown preview
 
-  ${({ isSingleRow }) =>
+  // adjust font-size for single row text cards on desktop resolutions
+  // to prevent clipping of text cards (https://github.com/metabase/metabase/issues/31613)
+  ${({ isSingleRow, isMobile }) =>
     isSingleRow &&
+    !isMobile &&
     css`
-      ${breakpointMaxExtraLarge} {
-        font-size: 0.85em;
+      font-size: 0.8em;
+
+      ${breakpointMinLarge} {
+        font-size: 0.9em;
+      }
+
+      ${breakpointMinExtraLarge} {
+        font-size: 1em;
       }
     `}
 
@@ -258,22 +331,4 @@ export const TextInput = styled.textarea`
   outline: none;
   pointer-events: all;
   resize: none;
-`;
-
-export const DisplayContainer = styled.div<{ isSingleRow?: boolean }>`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  justify-content: center;
-  overflow: hidden;
-  padding: 0.75rem;
-  width: 100%;
-
-  ${({ isSingleRow }) =>
-    isSingleRow &&
-    css`
-      ${breakpointMaxExtraLarge} {
-        padding: 0.4rem;
-      }
-    `}
 `;
