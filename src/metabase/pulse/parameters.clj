@@ -49,7 +49,8 @@
   "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
   substituted into connected variables in the text."
   [dashcard parameters]
-  (let [text               (-> dashcard :visualization_settings :text)
+  (let [dashcard           (update-in dashcard [:visualization_settings :text] #(str "## " %))
+        text               (-> dashcard :visualization_settings :text)
         parameter-mappings (:parameter_mappings dashcard)
         tag-names          (shared.params/tag_names text)
         param-id->param    (into {} (map (juxt :id identity) parameters))
