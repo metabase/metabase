@@ -160,6 +160,10 @@
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
 
+(defmethod ->pMBQL :mbql.stage/native
+  [stage]
+  (m/update-existing stage :template-tags update-vals (fn [tag] (m/update-existing tag :dimension ->pMBQL))))
+
 (defmethod ->pMBQL :mbql/join
   [join]
   (let [join (-> join

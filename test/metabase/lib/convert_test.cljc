@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [malli.core :as mc]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]))
@@ -87,6 +88,25 @@
                                                 [:field (meta/id :categories :id) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
+
+(deftest ^:parallel ->pMBQL-native-query-test
+  (testing "template tag dimensions are converted"
+    (let [original {:type :native,
+                    :native
+                    {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]",
+                     :template-tags
+                     {"NAME"
+                      {:name "NAME",
+                       :display-name "Name",
+                       :type :dimension,
+                       :dimension [:field 866 nil],
+                       :widget-type :string/=,
+                       :default nil}}},
+                    :database 76}
+          converted (lib.convert/->pMBQL original)]
+      (is (=? {:stages [{:template-tags {"NAME" {:dimension [:field {:lib/uuid string?} 866]}}}]}
+              converted))
+      (is (mc/validate :metabase.lib.schema/query converted)))))
 
 (deftest ^:parallel ->pMBQL-joins-default-alias-test
   (let [original {:database (meta/id)
@@ -329,6 +349,19 @@
                    :type :category,
                    :value [:param-value]}],
      :type :native}
+
+    {:type :native,
+     :native
+     {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]",
+      :template-tags
+      {"NAME"
+       {:name "NAME",
+        :display-name "Name",
+        :type :dimension,
+        :dimension [:field 866 nil],
+        :widget-type :string/=,
+        :default nil}}},
+     :database 76}
 
     {:database 1
      :type     :query
