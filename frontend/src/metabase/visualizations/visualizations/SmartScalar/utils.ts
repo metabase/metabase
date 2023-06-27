@@ -1,7 +1,14 @@
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
 
-import { TITLE_2_LINES_HEIGHT_THRESHOLD } from "./constants";
+import {
+  ICON_MARGIN_RIGHT,
+  ICON_SIZE,
+  MIN_PREVIOUS_VALUE_SIZE,
+  SCALAR_TITLE_LINE_HEIGHT,
+  SPACING,
+  TITLE_2_LINES_HEIGHT_THRESHOLD,
+} from "./constants";
 
 export const getTitleLinesCount = (height: number) =>
   height > TITLE_2_LINES_HEIGHT_THRESHOLD ? 2 : 1;
@@ -43,3 +50,59 @@ export const formatChange = (
     number_style: "percent",
     maximumFractionDigits,
   });
+
+export const getValueWidth = (width: number): number => {
+  return getWidthWithoutSpacing(width);
+};
+
+export const getWidthWithoutSpacing = (width: number) => {
+  return width - 2 * SPACING;
+};
+
+export const getValueHeight = (height: number): number => {
+  return (
+    height -
+    SCALAR_TITLE_LINE_HEIGHT * getTitleLinesCount(height) -
+    MIN_PREVIOUS_VALUE_SIZE -
+    4 * SPACING
+  );
+};
+
+export const getChangeWidth = (width: number): number => {
+  return width - ICON_SIZE - ICON_MARGIN_RIGHT - 2 * SPACING;
+};
+
+export const getCanShowPreviousValue = ({
+  width,
+  change,
+  previousValue,
+  fontFamily,
+}: {
+  width: number;
+  change: string;
+  previousValue: string;
+  fontFamily: string;
+}): boolean => {
+  const changeWidth = measureText(change, {
+    size: "1rem",
+    family: fontFamily,
+    weight: 900,
+  }).width;
+
+  const previousValueWidth = measureText(previousValue, {
+    size: "0.875rem",
+    family: fontFamily,
+    weight: 700,
+  }).width;
+
+  const availablePreviousValueWidth =
+    getWidthWithoutSpacing(width) -
+    (changeWidth - 2 * SPACING - ICON_SIZE - ICON_MARGIN_RIGHT);
+
+  return availablePreviousValueWidth >= previousValueWidth;
+};
+
+export const concatRecursively = (value: string | string[]) => {
+  const values = typeof value === "string" ? [value] : value;
+  return values.flat(Number.MAX_SAFE_INTEGER).join("");
+};

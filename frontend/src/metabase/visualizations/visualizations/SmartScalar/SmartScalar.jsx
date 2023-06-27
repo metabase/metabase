@@ -22,19 +22,11 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 
-import { measureText } from "metabase/lib/measure-text";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
-import {
-  ICON_MARGIN_RIGHT,
-  ICON_SIZE,
-  MIN_PREVIOUS_VALUE_SIZE,
-  SCALAR_TITLE_LINE_HEIGHT,
-  SPACING,
-  TOOLTIP_ICON_SIZE,
-} from "./constants";
+import { ICON_SIZE, TOOLTIP_ICON_SIZE } from "./constants";
 import {
   PreviousValue,
   PreviousValueContainer,
@@ -47,9 +39,14 @@ import {
   VariationValue,
 } from "./SmartScalar.styled";
 import {
+  concatRecursively,
   formatChange,
   formatChangeAutoPrecision,
+  getCanShowPreviousValue,
+  getChangeWidth,
   getTitleLinesCount,
+  getValueHeight,
+  getValueWidth,
 } from "./utils";
 
 export class SmartScalar extends Component {
@@ -168,28 +165,14 @@ export class SmartScalar extends Component {
       : color("success");
 
     const titleLinesCount = getTitleLinesCount(height);
-    const availableWidth = width - 2 * SPACING;
-    const availableChangeWidth = availableWidth - ICON_SIZE - ICON_MARGIN_RIGHT;
-
-    const availableValueHeight =
-      height -
-      titleLinesCount * SCALAR_TITLE_LINE_HEIGHT -
-      MIN_PREVIOUS_VALUE_SIZE -
-      4 * SPACING;
 
     const tooltipSeparator = <Separator>•</Separator>;
 
     const changeDisplay = formatChangeAutoPrecision(lastChange, {
       fontFamily,
       fontWeight: 900,
-      width: availableChangeWidth,
+      width: getChangeWidth(width),
     });
-
-    const changeWidth = measureText(changeDisplay, {
-      size: "1rem",
-      family: fontFamily,
-      weight: 900,
-    }).width;
 
     const granularityDisplay = jt`last ${granularity}`;
     const previousValueDisplay = formatValue(
@@ -198,19 +181,12 @@ export class SmartScalar extends Component {
     );
     const disabledSeparator = ""; // avoid creating new translation key
     const previousValueContent = jt`${disabledSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
-    const previousValueContentText = previousValueContent
-      .flat(Number.MAX_SAFE_INTEGER)
-      .join("");
-    const previousValueTextWidth = measureText(previousValueContentText, {
-      size: "0.875rem",
-      family: fontFamily,
-      weight: 700,
-    }).width;
-    const availablePreviousValueWidth =
-      availableWidth -
-      (changeWidth + 2 * SPACING + ICON_SIZE + ICON_MARGIN_RIGHT);
-    const canShowPreviousValue =
-      availablePreviousValueWidth >= previousValueTextWidth;
+    const canShowPreviousValue = getCanShowPreviousValue({
+      width,
+      change: changeDisplay,
+      previousValue: concatRecursively(previousValueContent),
+      fontFamily,
+    });
     const iconName = isNegative ? "arrow_down" : "arrow_up";
 
     const clicked = {
@@ -254,8 +230,8 @@ export class SmartScalar extends Component {
           >
             <ScalarValue
               gridSize={gridSize}
-              height={availableValueHeight}
-              width={availableWidth}
+              height={getValueHeight(height)}
+              width={getValueWidth(width)}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
               value={displayValue}
