@@ -5,7 +5,7 @@ import {
 
 import ActionViz from "metabase/actions/components/ActionViz";
 
-import Scalar from "./visualizations/Scalar";
+import { Scalar } from "./visualizations/Scalar";
 import SmartScalar from "./visualizations/SmartScalar";
 import Progress from "./visualizations/Progress";
 import Table from "./visualizations/Table";

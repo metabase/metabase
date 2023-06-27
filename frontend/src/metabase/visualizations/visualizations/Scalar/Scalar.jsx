@@ -52,7 +52,7 @@ const getTitleHeight = ({ isDashboard, showSmallTitle, titleLinesCount }) => {
 
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
-export default class Scalar extends Component {
+export class Scalar extends Component {
   static uiName = t`Number`;
   static identifier = "scalar";
   static iconName = "number";
