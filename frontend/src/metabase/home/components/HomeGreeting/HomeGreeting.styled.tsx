@@ -18,17 +18,17 @@ export const GreetingLogo = styled(MetabotLogo)`
 `;
 
 export interface GreetingMessageProps {
-  showLogo?: boolean;
+  $showLogo?: boolean;
 }
 
 export const GreetingMessage = styled.span<GreetingMessageProps>`
   color: ${color("text-dark")};
-  font-size: ${props => (props.showLogo ? "1.125rem" : "1.25rem")};
+  font-size: ${props => (props.$showLogo ? "1.125rem" : "1.25rem")};
   font-weight: bold;
   line-height: 1.5rem;
-  margin-left: ${props => props.showLogo && "0.5rem"};
+  margin-left: ${props => props.$showLogo && "0.5rem"};
 
   ${breakpointMinExtraLarge} {
-    font-size: ${props => (props.showLogo ? "1.25rem" : "1.5rem")};
+    font-size: ${props => (props.$showLogo ? "1.25rem" : "1.5rem")};
   }
 `;

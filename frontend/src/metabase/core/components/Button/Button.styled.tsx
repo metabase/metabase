@@ -45,21 +45,21 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
 `;
 
 export interface ButtonContentProps {
-  iconVertical?: boolean;
+  $iconVertical?: boolean;
 }
 
 export const ButtonContent = styled.div<ButtonContentProps>`
   display: flex;
-  flex-direction: ${props => (props.iconVertical ? "column" : "row")};
+  flex-direction: ${props => (props.$iconVertical ? "column" : "row")};
   align-items: center;
   justify-content: center;
-  min-width: ${props => (props.iconVertical ? "60px" : "")};
+  min-width: ${props => (props.$iconVertical ? "60px" : "")};
 `;
 
 export interface ButtonTextContainerProps {
-  iconVertical: boolean;
-  hasIcon: boolean;
-  hasRightIcon: boolean;
+  $iconVertical: boolean;
+  $hasIcon: boolean;
+  $hasRightIcon: boolean;
 }
 
 const verticalTopIconCSS = css`
@@ -84,14 +84,14 @@ export const ButtonTextContainer = styled.div<ButtonTextContainerProps>`
   white-space: nowrap;
 
   ${props => {
-    if (props.hasIcon) {
-      return props.iconVertical ? verticalTopIconCSS : horizontalLeftIconCSS;
+    if (props.$hasIcon) {
+      return props.$iconVertical ? verticalTopIconCSS : horizontalLeftIconCSS;
     }
   }}
 
   ${props => {
-    if (props.hasRightIcon) {
-      return props.iconVertical
+    if (props.$hasRightIcon) {
+      return props.$iconVertical
         ? verticalBottomIconCSS
         : horizontalRightIconCSS;
     }

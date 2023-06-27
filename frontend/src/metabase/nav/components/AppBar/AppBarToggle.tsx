@@ -21,15 +21,15 @@ const AppBarToggle = ({
   return (
     <Tooltip tooltip={getSidebarTooltip(isNavBarOpen)}>
       <SidebarButton
-        isSmallAppBar={isSmallAppBar}
-        isNavBarEnabled={isNavBarEnabled}
-        isLogoVisible={isLogoVisible}
+        $isSmallAppBar={isSmallAppBar}
+        $isNavBarEnabled={isNavBarEnabled}
+        $isLogoVisible={isLogoVisible}
         onClick={onToggleClick}
         data-testid="sidebar-toggle"
         aria-label={t`Toggle sidebar`}
       >
         <SidebarIcon
-          isLogoVisible={isLogoVisible}
+          $isLogoVisible={isLogoVisible}
           size={24}
           name={isNavBarOpen ? "sidebar_open" : "sidebar_closed"}
         />

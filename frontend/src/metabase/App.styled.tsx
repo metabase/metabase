@@ -7,15 +7,15 @@ export const AppContainer = styled.div`
 `;
 
 export const AppContentContainer = styled.div<{
-  isAdminApp: boolean;
+  $isAdminApp: boolean;
 }>`
   flex-grow: 1;
   display: flex;
-  flex-direction: ${props => (props.isAdminApp ? "column" : "row")};
+  flex-direction: ${props => (props.$isAdminApp ? "column" : "row")};
   position: relative;
   overflow: hidden;
   background-color: ${props =>
-    color(props.isAdminApp ? "bg-white" : "content")};
+    color(props.$isAdminApp ? "bg-white" : "content")};
 
   @media print {
     height: 100%;

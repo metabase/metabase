@@ -4,15 +4,15 @@ import { color, lighten } from "metabase/lib/colors";
 import { Icon, IconProps } from "metabase/core/components/Icon";
 
 interface TreeNodeRootProps {
-  isSelected: boolean;
+  $isSelected: boolean;
   depth: number;
 }
 
 export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
-  color: ${props => (props.isSelected ? color("white") : color("brand"))};
-  background-color: ${props => (props.isSelected ? color("brand") : "unset")};
+  color: ${props => (props.$isSelected ? color("white") : color("brand"))};
+  background-color: ${props => (props.$isSelected ? color("brand") : "unset")};
   padding-left: ${props => props.depth + 0.5}rem;
   padding-right: 0.5rem;
   cursor: pointer;
@@ -20,7 +20,7 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
 
   &:hover {
     background-color: ${props =>
-      props.isSelected ? color("brand") : lighten("brand", 0.6)};
+      props.$isSelected ? color("brand") : lighten("brand", 0.6)};
   }
 `;
 
@@ -34,14 +34,14 @@ export const ExpandToggleButton = styled.button`
 `;
 
 interface ExpandToggleIconProps {
-  isExpanded: boolean;
+  $isExpanded: boolean;
 }
 
 export const ExpandToggleIcon = styled(Icon)<ExpandToggleIconProps & IconProps>`
   transition: transform 200ms;
 
   ${props =>
-    props.isExpanded &&
+    props.$isExpanded &&
     css`
       transform: rotate(90deg);
     `}
@@ -58,13 +58,13 @@ export const NameContainer = styled.div`
   flex: 1;
 `;
 
-export const IconContainer = styled.div<{ transparent?: boolean }>`
+export const IconContainer = styled.div<{ $transparent?: boolean }>`
   display: flex;
   align-items: center;
   padding: 0.25rem;
-  opacity: ${props => (props.transparent ? 0.5 : 1)};
+  opacity: ${props => (props.$transparent ? 0.5 : 1)};
 `;
 
 IconContainer.defaultProps = {
-  transparent: true,
+  $transparent: true,
 };

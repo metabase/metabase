@@ -102,11 +102,11 @@ function MainNavbar({
   return (
     <Sidebar
       className="Nav"
-      isOpen={isOpen}
+      $isOpen={isOpen}
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"
     >
-      <NavRoot isOpen={isOpen}>
+      <NavRoot $isOpen={isOpen}>
         <MainNavbarContainer
           isOpen={isOpen}
           location={location}

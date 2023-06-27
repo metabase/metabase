@@ -27,7 +27,7 @@ export const HomeGreeting = (): JSX.Element => {
           <GreetingLogo />
         </Tooltip>
       )}
-      <GreetingMessage showLogo={showLogo}>{message}</GreetingMessage>
+      <GreetingMessage $showLogo={showLogo}>{message}</GreetingMessage>
     </GreetingRoot>
   );
 };

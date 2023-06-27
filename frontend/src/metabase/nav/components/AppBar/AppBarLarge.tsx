@@ -45,10 +45,10 @@ const AppBarLarge = ({
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
   return (
-    <AppBarRoot isNavBarOpen={isNavBarVisible}>
+    <AppBarRoot $isNavBarOpen={isNavBarVisible}>
       <AppBarLeftContainer
-        isNavBarEnabled={isNavBarEnabled}
-        isLogoVisible={isLogoVisible}
+        $isNavBarEnabled={isNavBarEnabled}
+        $isLogoVisible={isLogoVisible}
       >
         <AppBarLogo
           isLogoVisible={isLogoVisible}
@@ -57,7 +57,7 @@ const AppBarLarge = ({
           onToggleClick={onToggleNavbar}
         />
         <AppBarInfoContainer
-          isVisible={!isNavBarVisible || isQuestionLineageVisible}
+          $isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >
           {isQuestionLineageVisible ? (
             <QuestionLineage />

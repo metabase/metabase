@@ -101,7 +101,7 @@ function App({
         <AppContainer className="spread">
           <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
-          <AppContentContainer isAdminApp={isAdminApp}>
+          <AppContentContainer $isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}
             <AppContent ref={setViewportElement}>
               <ContentViewportContext.Provider value={viewportElement ?? null}>

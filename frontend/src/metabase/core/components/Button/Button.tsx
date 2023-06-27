@@ -96,7 +96,7 @@ const BaseButton = forwardRef(function BaseButton(
       })}
       purple={props.purple}
     >
-      <ButtonContent iconVertical={iconVertical}>
+      <ButtonContent $iconVertical={iconVertical}>
         {icon && typeof icon === "string" ? (
           <Icon
             color={iconColor}
@@ -108,9 +108,9 @@ const BaseButton = forwardRef(function BaseButton(
         )}
         {children && (
           <ButtonTextContainer
-            hasIcon={!!icon}
-            hasRightIcon={!!iconRight}
-            iconVertical={iconVertical}
+            $hasIcon={!!icon}
+            $hasRightIcon={!!iconRight}
+            $iconVertical={iconVertical}
             className={cx({
               [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
             })}

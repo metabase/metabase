@@ -64,8 +64,8 @@ function SidebarLink({
     }
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
     return (
-      <TreeNode.IconContainer transparent={false}>
-        <SidebarIcon {...iconProps} isSelected={isSelected} />
+      <TreeNode.IconContainer $transparent={false}>
+        <SidebarIcon {...iconProps} $isSelected={isSelected} />
       </TreeNode.IconContainer>
     );
   }, [icon, isSelected]);
@@ -81,8 +81,8 @@ function SidebarLink({
   return (
     <NodeRoot
       depth={0}
-      isSelected={isSelected}
-      hasDefaultIconStyle={hasDefaultIconStyle}
+      $isSelected={isSelected}
+      $hasDefaultIconStyle={hasDefaultIconStyle}
       aria-label={children}
       aria-selected={isSelected}
       onMouseDown={disableImageDragging}

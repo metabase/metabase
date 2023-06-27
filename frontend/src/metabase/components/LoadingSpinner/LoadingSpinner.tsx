@@ -14,7 +14,7 @@ const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }: Props) => (
     {isReducedMotionPreferred() ? (
       <Icon name="hourglass" size="24" />
     ) : (
-      <SpinnerIcon iconSize={size} borderWidth={borderWidth} />
+      <SpinnerIcon $iconSize={size} $borderWidth={borderWidth} />
     )}
   </SpinnerRoot>
 );

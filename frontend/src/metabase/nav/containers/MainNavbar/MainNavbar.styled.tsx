@@ -22,7 +22,7 @@ const openSidebarCSS = css`
   }
 `;
 
-export const Sidebar = styled.aside<{ isOpen: boolean }>`
+export const Sidebar = styled.aside<{ $isOpen: boolean }>`
   width: 0;
   height: 100%;
 
@@ -35,7 +35,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   overflow-x: hidden;
   z-index: 4;
 
-  ${props => props.isOpen && openSidebarCSS};
+  ${props => props.$isOpen && openSidebarCSS};
 
   ${breakpointMaxSmall} {
     position: absolute;
@@ -44,7 +44,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   }
 `;
 
-export const NavRoot = styled.nav<{ isOpen: boolean }>`
+export const NavRoot = styled.nav<{ $isOpen: boolean }>`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -55,7 +55,7 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   overflow-x: hidden;
   overflow-y: auto;
 
-  opacity: ${props => (props.isOpen ? 1 : 0)};
+  opacity: ${props => (props.$isOpen ? 1 : 0)};
   transition: opacity 0.2s;
 
   @media (prefers-reduced-motion) {

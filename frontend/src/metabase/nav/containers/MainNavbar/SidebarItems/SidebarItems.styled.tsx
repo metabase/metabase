@@ -12,7 +12,7 @@ import { darken, color, alpha } from "metabase/lib/colors";
 
 export const SidebarIcon = styled(Icon)<{
   color?: string | null;
-  isSelected: boolean;
+  $isSelected: boolean;
 }>`
   ${props =>
     !props.color &&
@@ -39,18 +39,18 @@ function getTextColor(isSelected: boolean) {
 }
 
 export const NodeRoot = styled(TreeNode.Root)<{
-  hasDefaultIconStyle?: boolean;
+  $hasDefaultIconStyle?: boolean;
 }>`
-  color: ${props => getTextColor(props.isSelected)};
+  color: ${props => getTextColor(props.$isSelected)};
 
   background-color: ${props =>
-    props.isSelected ? alpha("brand", 0.2) : "unset"};
+    props.$isSelected ? alpha("brand", 0.2) : "unset"};
 
   padding-left: ${props => props.depth}rem;
   border-radius: 4px;
 
   ${ExpandToggleButton} {
-    ${props => props.isSelected && activeColorCSS}
+    ${props => props.$isSelected && activeColorCSS}
   }
 
   &:hover {
@@ -62,13 +62,13 @@ export const NodeRoot = styled(TreeNode.Root)<{
     }
 
     ${SidebarIcon} {
-      ${props => props.hasDefaultIconStyle && activeColorCSS};
+      ${props => props.$hasDefaultIconStyle && activeColorCSS};
     }
   }
 `;
 
 NodeRoot.defaultProps = {
-  hasDefaultIconStyle: true,
+  $hasDefaultIconStyle: true,
 };
 
 export const collectionDragAndDropHoverStyle = css`
@@ -76,8 +76,8 @@ export const collectionDragAndDropHoverStyle = css`
   background-color: ${color("brand")};
 `;
 
-export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
-  ${props => props.hovered && collectionDragAndDropHoverStyle}
+export const CollectionNodeRoot = styled(NodeRoot)<{ $hovered?: boolean }>`
+  ${props => props.$hovered && collectionDragAndDropHoverStyle}
 `;
 
 const itemContentStyle = css`

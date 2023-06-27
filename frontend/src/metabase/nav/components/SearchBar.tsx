@@ -160,10 +160,13 @@ function SearchBar({
 
   return (
     <SearchBarRoot ref={container}>
-      <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
-        <SearchIcon name="search" isActive={isActive} />
+      <SearchInputContainer
+        $isActive={isActive}
+        onClick={onInputContainerClick}
+      >
+        <SearchIcon name="search" $isActive={isActive} />
         <SearchInput
-          isActive={isActive}
+          $isActive={isActive}
           value={searchText}
           placeholder={t`Search` + "…"}
           maxLength={200}

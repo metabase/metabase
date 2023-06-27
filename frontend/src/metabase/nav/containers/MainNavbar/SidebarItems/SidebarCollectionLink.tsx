@@ -98,22 +98,22 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         role="treeitem"
         depth={depth}
         aria-selected={isSelected}
-        isSelected={isSelected}
-        hovered={isHovered}
+        $isSelected={isSelected}
+        $hovered={isHovered}
         onClick={onToggleExpand}
-        hasDefaultIconStyle={isRegularCollection}
+        $hasDefaultIconStyle={isRegularCollection}
         ref={ref}
       >
         <ExpandToggleButton hidden={!hasChildren}>
           <TreeNode.ExpandToggleIcon
-            isExpanded={isExpanded}
+            $isExpanded={isExpanded}
             name="chevronright"
             size={12}
           />
         </ExpandToggleButton>
         <FullWidthLink to={url} onClick={onSelect} onKeyDown={onKeyDown}>
-          <TreeNode.IconContainer transparent={false}>
-            <SidebarIcon {...icon} isSelected={isSelected} />
+          <TreeNode.IconContainer $transparent={false}>
+            <SidebarIcon {...icon} $isSelected={isSelected} />
           </TreeNode.IconContainer>
           <NameContainer>{collection.name}</NameContainer>
         </FullWidthLink>

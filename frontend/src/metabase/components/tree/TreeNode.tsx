@@ -58,7 +58,7 @@ const BaseTreeNode = React.memo(
         onClick={onClick}
         {...props}
         depth={depth}
-        isSelected={isSelected}
+        $isSelected={isSelected}
         aria-selected={isSelected}
         aria-expanded={isExpanded}
         onKeyDown={handleKeyDown}
@@ -66,7 +66,7 @@ const BaseTreeNode = React.memo(
       >
         <ExpandToggleButton hidden={!hasChildren}>
           <ExpandToggleIcon
-            isExpanded={isExpanded}
+            $isExpanded={isExpanded}
             name="chevronright"
             size={12}
           />

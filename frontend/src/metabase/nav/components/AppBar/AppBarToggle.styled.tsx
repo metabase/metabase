@@ -5,22 +5,22 @@ import { Icon } from "metabase/core/components/Icon";
 import { AppBarLeftContainer } from "./AppBarLarge.styled";
 
 interface SidebarButtonProps {
-  isSmallAppBar?: boolean;
-  isNavBarEnabled?: boolean;
-  isLogoVisible?: boolean;
+  $isSmallAppBar?: boolean;
+  $isNavBarEnabled?: boolean;
+  $isLogoVisible?: boolean;
 }
 
 export const SidebarButton = styled.button<SidebarButtonProps>`
   cursor: pointer;
   display: block;
 
-  ${({ isNavBarEnabled, isLogoVisible, isSmallAppBar }) =>
-    isLogoVisible && !isSmallAppBar
+  ${({ $isNavBarEnabled, $isLogoVisible, $isSmallAppBar }) =>
+    $isLogoVisible && !$isSmallAppBar
       ? css`
-          opacity: ${isNavBarEnabled ? 0 : 1};
+          opacity: ${$isNavBarEnabled ? 0 : 1};
 
           ${AppBarLeftContainer}:hover & {
-            opacity: ${isNavBarEnabled ? 1 : 0};
+            opacity: ${$isNavBarEnabled ? 1 : 0};
           }
         `
       : css`
@@ -29,7 +29,7 @@ export const SidebarButton = styled.button<SidebarButtonProps>`
 `;
 
 interface SidebarIconProps {
-  isLogoVisible?: boolean;
+  $isLogoVisible?: boolean;
 }
 
 export const SidebarIcon = styled(Icon)<SidebarIconProps>`
@@ -38,7 +38,7 @@ export const SidebarIcon = styled(Icon)<SidebarIconProps>`
   transform: translateY(2px) translateX(2px);
 
   ${props =>
-    !props.isLogoVisible &&
+    !props.$isLogoVisible &&
     css`
       color: ${color("text-medium")};
 

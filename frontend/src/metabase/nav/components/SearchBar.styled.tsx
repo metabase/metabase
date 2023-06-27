@@ -25,14 +25,14 @@ export const SearchBarRoot = styled.div`
   }
 `;
 
-export const SearchInputContainer = styled.div<{ isActive: boolean }>`
+export const SearchInputContainer = styled.div<{ $isActive: boolean }>`
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   position: relative;
 
   background-color: ${props =>
-    props.isActive ? color("bg-medium") : color("bg-light")};
+    props.$isActive ? color("bg-medium") : color("bg-light")};
   border: 1px solid ${color("border")};
 
   overflow: hidden;
@@ -56,7 +56,7 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
     border-radius: 99px;
 
     ${props =>
-      props.isActive &&
+      props.$isActive &&
       css`
         width: 100%;
         ${activeInputCSS};
@@ -69,7 +69,7 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   }
 `;
 
-export const SearchInput = styled.input<{ isActive: boolean }>`
+export const SearchInput = styled.input<{ $isActive: boolean }>`
   background-color: transparent;
   border: none;
   color: ${color("text-dark")};
@@ -94,7 +94,7 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
     padding: 0;
 
     ${props =>
-      props.isActive &&
+      props.$isActive &&
       css`
         width: 100%;
         padding-top: 10px;
@@ -105,12 +105,12 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
 
 const ICON_MARGIN = "10px";
 
-export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
+export const SearchIcon = styled(Icon)<{ $isActive: boolean }>`
   ${breakpointMaxSmall} {
     transition: margin 0.3s;
 
     ${props =>
-      props.isActive &&
+      props.$isActive &&
       css`
         margin-left: ${ICON_MARGIN};
         margin-right: ${ICON_MARGIN};
