@@ -175,7 +175,7 @@
     (fn [{existing-tags :template-tags :as stage}]
       (let [valid-tags (keys existing-tags)]
         (assoc stage :template-tags
-               (select-keys (m/deep-merge existing-tags tags) valid-tags))))))
+               (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
 
 (mu/defn raw-native-query :- ::common/non-blank-string
   "Returns the native query string"
