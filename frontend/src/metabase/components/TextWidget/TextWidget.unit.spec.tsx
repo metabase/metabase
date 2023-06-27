@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import _ from "underscore";
 import TextWidget from "./TextWidget";
 
 const TextInputWithStateWrapper = ({ value }: { value?: number | string }) => {
@@ -10,31 +11,33 @@ const TextInputWithStateWrapper = ({ value }: { value?: number | string }) => {
   );
 };
 
+const PLACEHOLDER_TEXT = "Enter a value...";
+
 describe("TextWidget", () => {
   it("should render correctly", () => {
     render(
       <TextWidget
-        value={"Hello, world!"}
+        value="Hello, world!"
         setValue={jest.fn()}
         focusChanged={jest.fn()}
-      ></TextWidget>,
+      />,
     );
-    expect(screen.getByRole("textbox")).toHaveValue("Hello, world!");
+
+    const textbox = screen.getByPlaceholderText(PLACEHOLDER_TEXT);
+
+    expect(textbox).toHaveValue("Hello, world!");
   });
 
   it("should accept editing", () => {
     render(
-      <TextWidget
-        value={""}
-        setValue={jest.fn()}
-        focusChanged={jest.fn()}
-      ></TextWidget>,
+      <TextWidget value={""} setValue={jest.fn()} focusChanged={jest.fn()} />,
     );
 
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "Toucan McBird" },
-    });
-    expect(screen.getByRole("textbox")).toHaveValue("Toucan McBird");
+    const textbox = screen.getByPlaceholderText(PLACEHOLDER_TEXT);
+
+    userEvent.paste(textbox, "Toucan McBird");
+
+    expect(textbox).toHaveValue("Toucan McBird");
   });
 
   it("should render a zero as an initial value", () => {
@@ -42,24 +45,49 @@ describe("TextWidget", () => {
       <TextWidget value={0} setValue={jest.fn()} focusChanged={jest.fn()} />,
     );
 
-    expect(screen.getByRole("textbox")).toHaveValue("0");
-  });
+    const textbox = screen.getByPlaceholderText(PLACEHOLDER_TEXT);
 
-  it("should accept zero as an input value", async () => {
-    render(<TextInputWithStateWrapper />);
-
-    const textbox = screen.getByRole("textbox");
-
-    await userEvent.type(textbox, "0");
     expect(textbox).toHaveValue("0");
   });
 
-  it("should keep zero value when pressing enter", async () => {
+  it("should accept zero as an input value", () => {
     render(<TextInputWithStateWrapper />);
 
-    const textbox = screen.getByRole("textbox");
+    const textbox = screen.getByPlaceholderText(PLACEHOLDER_TEXT);
+    userEvent.type(textbox, "0");
 
-    await userEvent.type(textbox, "0{enter}");
     expect(textbox).toHaveValue("0");
+  });
+
+  it("should keep zero value when pressing enter", () => {
+    render(<TextInputWithStateWrapper />);
+
+    const textbox = screen.getByPlaceholderText(PLACEHOLDER_TEXT);
+    userEvent.type(textbox, "0{enter}");
+
+    expect(textbox).toHaveValue("0");
+  });
+
+  it("should trigger setValue with null on blur if value is empty", () => {
+    const setValueSpy = jest.fn();
+
+    render(
+      <TextWidget value={""} setValue={setValueSpy} focusChanged={jest.fn()} />,
+    );
+
+    const textbox = screen.getByPlaceholderText(PLACEHOLDER_TEXT);
+    const textToType = "123";
+
+    userEvent.type(textbox, textToType);
+
+    _.times(textToType.length, () => {
+      userEvent.type(textbox, "{backspace}");
+    });
+
+    expect(textbox).toHaveValue("");
+
+    userEvent.tab();
+
+    expect(setValueSpy).toHaveBeenCalledWith(null);
   });
 });
