@@ -411,6 +411,8 @@ const Foo = styled.div<{$color: string}>`
 const Bar = ({ color }) => <Foo $color={color} />;
 ```
 
+> props started with $ sign are not passed to the DOM element
+
 ## Popover
 
 Popovers are popups or modals.
