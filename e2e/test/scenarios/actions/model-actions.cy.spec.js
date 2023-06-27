@@ -741,8 +741,7 @@ describe(
       });
     });
 
-    // FIXME: unskip before merging
-    it.skip("should respect impersonated permission", () => {
+    it("should respect impersonated permission", () => {
       cy.onlyOn(dialect === "postgres");
 
       cy.updatePermissionsGraph(
@@ -786,8 +785,9 @@ describe(
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.button(SAMPLE_QUERY_ACTION.name).click();
 
-        // FIXME: update the error once BE restricts access
-        cy.findByText(/Error executing Action/i);
+        cy.findByText(
+          "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+        );
       });
 
       queryWritableDB(
