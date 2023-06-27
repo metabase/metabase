@@ -115,7 +115,8 @@
    [:dataset-query   {:optional true} :map]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential :map]]]])
+   [:result-metadata {:optional true} [:maybe [:sequential :map]]]
+   [:dataset {:optional true} :boolean]])
 
 (def ^:private SegmentMetadata
   "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."

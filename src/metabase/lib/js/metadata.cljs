@@ -253,6 +253,7 @@
       :fields          (parse-fields v)
       :visibility-type (keyword v)
       :dataset-query   (js->clj v :keywordize-keys true)
+      :dataset         v
       ;; this is not complete, add more stuff as needed.
       v)))
 
@@ -263,7 +264,7 @@
   (or (object-get obj "_card")
       obj))
 
-(defn- assamble-card
+(defn- assemble-card
   [metadata id]
   (let [parse-card-ignoring-plain-object (parse-object-fn :card {:use-plain-object? false})
         parse-card (parse-object-fn :card)]
@@ -288,7 +289,7 @@
   [_object-type metadata]
   (into {}
         (map (fn [id]
-               [id (delay (assamble-card metadata id))]))
+               [id (delay (assemble-card metadata id))]))
         (-> #{}
             (into (keep lib.util/legacy-string-table-id->card-id)
                   (gobject/getKeys (object-get metadata "tables")))

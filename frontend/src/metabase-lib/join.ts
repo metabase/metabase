@@ -115,3 +115,18 @@ export function removeJoin(
 ): Query {
   return ML.remove_join(query, stageIndex, joinSpec);
 }
+
+export function joinedThing(query: Query, join: Join): Joinable {
+  return ML.joined_thing(query, join);
+}
+
+export type PickerInfo = {
+  databaseId: number;
+  tableId: number;
+  cardId?: number;
+  isModel?: boolean;
+};
+
+export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
+  return ML.picker_info(query, metadata);
+}
