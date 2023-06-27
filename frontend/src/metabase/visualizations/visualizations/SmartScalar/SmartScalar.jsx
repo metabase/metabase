@@ -3,7 +3,7 @@ import { Component } from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import { formatNumber, formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
 import Tooltip from "metabase/core/components/Tooltip";
@@ -28,6 +28,14 @@ import { isDate } from "metabase-lib/types/utils/isa";
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
 import {
+  ICON_MARGIN_RIGHT,
+  ICON_SIZE,
+  MIN_PREVIOUS_VALUE_SIZE,
+  SCALAR_TITLE_LINE_HEIGHT,
+  SPACING,
+  TOOLTIP_ICON_SIZE,
+} from "./constants";
+import {
   PreviousValue,
   PreviousValueContainer,
   PreviousValueSeparator,
@@ -38,48 +46,11 @@ import {
   VariationTooltip,
   VariationValue,
 } from "./SmartScalar.styled";
-
-const SPACING = 8;
-const ICON_SIZE = 13;
-const TOOLTIP_ICON_SIZE = 11;
-const ICON_MARGIN_RIGHT = SPACING;
-const SCALAR_TITLE_LINE_HEIGHT = 23;
-const MIN_PREVIOUS_VALUE_SIZE = 27;
-const TITLE_2_LINES_HEIGHT_THRESHOLD = 150; // determined empirically
-
-const getTitleLinesCount = height =>
-  height > TITLE_2_LINES_HEIGHT_THRESHOLD ? 2 : 1;
-
-const formatChangeAutoPrecision = (
-  change,
-  { fontFamily, fontWeight, width },
-) => {
-  for (let fractionDigits = 2; fractionDigits >= 1; --fractionDigits) {
-    const formatted = formatChange(change, {
-      maximumFractionDigits: fractionDigits,
-    });
-
-    const formattedWidth = measureText(formatted, {
-      size: "1rem",
-      family: fontFamily,
-      weight: fontWeight,
-    }).width;
-
-    if (formattedWidth <= width) {
-      return formatted;
-    }
-  }
-
-  return formatChange(change, {
-    maximumFractionDigits: 0,
-  });
-};
-
-const formatChange = (change, { maximumFractionDigits = 2 } = {}) =>
-  formatNumber(Math.abs(change), {
-    number_style: "percent",
-    maximumFractionDigits,
-  });
+import {
+  formatChange,
+  formatChangeAutoPrecision,
+  getTitleLinesCount,
+} from "./utils";
 
 export class SmartScalar extends Component {
   static uiName = t`Trend`;
