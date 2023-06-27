@@ -16,7 +16,6 @@ import {
   openQuestionsSidebar,
   describeWithSnowplow,
   expectNoBadSnowplowEvents,
-  expectGoodSnowplowEvents,
   resetSnowplow,
   enableTracking,
   expectGoodSnowplowEvent,
