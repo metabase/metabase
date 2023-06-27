@@ -1,7 +1,9 @@
 import { useState, useCallback } from "react";
 import { t } from "ttag";
+
 import { useDispatch } from "metabase/lib/redux";
 import { updateSettings } from "metabase/admin/settings/settings";
+import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { refreshCurrentUser } from "metabase/redux/user";
 
 import Modal from "metabase/components/Modal";
@@ -36,6 +38,7 @@ export const CustomHomePageModal = ({
       }),
     );
     await dispatch(refreshCurrentUser());
+    trackCustomHomepageDashboardEnabled("homepage");
   };
 
   const handleChange = useCallback(

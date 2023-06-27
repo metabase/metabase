@@ -78,7 +78,7 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
       <ScalarDescriptionContainer data-testid="scalar-description">
         <Tooltip
           tooltip={
-            <Markdown disallowHeading unstyleLinks>
+            <Markdown dark disallowHeading unstyleLinks>
               {description}
             </Markdown>
           }

@@ -118,7 +118,7 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
     const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
     const initialValues: FormValues = {
-      name: question.generateQueryDescription(),
+      name: question.generateQueryDescription() || "",
       description: question.description() || "",
       collection_id:
         question.collectionId() === undefined || isReadonly
