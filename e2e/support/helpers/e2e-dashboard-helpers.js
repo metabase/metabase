@@ -143,6 +143,13 @@ export function createNewTab() {
   cy.findByLabelText("Create new tab").click();
 }
 
+export function deleteTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Delete").click();
+  });
+}
+
 export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   visitDashboard(dashboardId);
   editDashboard();
@@ -163,4 +170,8 @@ export function resizeDashboardCard({ card, x, y }) {
       })
       .trigger("mouseup", { force: true });
   });
+}
+
+export function createLinkCard() {
+  cy.icon("link").click();
 }

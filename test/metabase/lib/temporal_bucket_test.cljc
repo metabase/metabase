@@ -70,7 +70,7 @@
 
 (deftest ^:parallel available-temporal-buckets-test
   (let [column {:description nil
-                :lib/type :metadata/field
+                :lib/type :metadata/column
                 :database-is-auto-increment false
                 :fingerprint-version 5
                 :base-type :type/DateTimeWithLocalTZ
@@ -133,8 +133,8 @@
                    (filter :default options)))))))))
 
 (deftest ^:parallel temporal-bucketing-options-test
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "PRODUCTS")
-                  (lib/with-fields [(lib/field "PRODUCTS" "CREATED_AT")]))]
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                  (lib/with-fields [(meta/field-metadata :products :created-at)]))]
     (is (= [{:unit :minute}
             {:unit :hour}
             {:unit :day}
@@ -157,8 +157,8 @@
 
 (deftest ^:parallel temporal-bucketing-options-expressions-test
   (testing "There should be no bucketing options for expressions as they are not supported (#31367)"
-    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))]
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
       (is (empty? (->> (lib.metadata.calculation/metadata query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-temporal-buckets query)))))))

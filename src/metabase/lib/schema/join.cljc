@@ -58,8 +58,8 @@
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
    [:conditions  ::conditions]
-   [:fields {:optional true} ::fields]
-   [:alias  {:optional true} ::alias]
+   [:alias       ::alias]
+   [:fields   {:optional true} ::fields]
    [:strategy {:optional true} ::strategy]])
 
 (mr/def ::joins

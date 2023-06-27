@@ -15,44 +15,47 @@
   "Convert the internal operator `clause` to the external format."
   [[operator options :as clause]]
   (when clause
-    {:operator (cond-> operator
+    {:lib/type :lib/external-op
+     :operator (cond-> operator
                  (keyword? operator) name)
-     :options options
-     :args (subvec clause 2)}))
+     :options  options
+     :args     (subvec clause 2)}))
 
 (defmulti ->op-arg
   "Ensures that clause arguments are properly unwrapped"
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x))
+  {:arglists '([x])}
+  lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod ->op-arg :default
-  [query stage-number x]
+  [x]
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause
-    (mapv #(->op-arg query stage-number %) x)
+    (mapv ->op-arg x)
     ;; Something else - just return it
     x))
 
 (defmethod ->op-arg :dispatch-type/sequential
-  [query stage-number xs]
-  (mapv #(->op-arg query stage-number %) xs))
+  [xs]
+  (mapv ->op-arg xs))
 
-(defmethod ->op-arg :metadata/field
-  [_query _stage-number field-metadata]
+(defmethod ->op-arg :metadata/column
+  [field-metadata]
   (lib.ref/ref field-metadata))
 
 (defmethod ->op-arg :lib/external-op
-  [query stage-number {:keys [operator options args] :or {options {}}}]
-  (->op-arg query stage-number (lib.options/ensure-uuid (into [(keyword operator) options]
-                                                              (map #(->op-arg query stage-number %))
-                                                              args))))
+  [{:keys [operator options args] :or {options {}}}]
+  (->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]
+                                           (map ->op-arg)
+                                           args))))
 
-(defmethod ->op-arg :dispatch-type/fn
-  [query stage-number f]
-  (->op-arg query stage-number (f query stage-number)))
+(defn defop-create
+  "Impl for [[defop]]."
+  [op-name args]
+  (into [op-name {:lib/uuid (str (random-uuid))}]
+        (map ->op-arg)
+        args))
 
 #?(:clj
    (defmacro defop
@@ -62,30 +65,11 @@
      {:pre [(symbol? op-name)
             (every? vector? argvecs) (every? #(every? symbol? %) argvecs)
             (every? #(not-any? #{'query 'stage-number} %) argvecs)]}
-     (let [fn-rename #(name (get {'/ 'div} % %))]
-       `(do
-          (mu/defn ~(symbol (str (fn-rename op-name) "-clause")) :- :metabase.lib.schema.common/external-op
-            ~(format "Create a standalone clause of type `%s`." (name op-name))
-            ~@(for [argvec argvecs
-                    :let [arglist-expr (if (contains? (set argvec) '&)
-                                         (cons `list* (remove #{'&} argvec))
-                                         argvec)]]
-                `([~'query ~'stage-number ~@argvec]
-                  {:operator ~(keyword op-name)
-                   :args (mapv (fn [~'arg]
-                                 (->op-arg ~'query ~'stage-number ~'arg))
-                               ~arglist-expr)})))
-
-          (mu/defn ~op-name :- fn?
-            ~(format "Create a closure of clause of type `%s`." (name op-name))
-            ~@(for [argvec argvecs
-                    :let [varargs? (contains? (set argvec) '&)
-                          arglist-expr (if varargs?
-                                         (filterv (complement #{'&}) argvec)
-                                         argvec)]]
-                `([~@argvec]
-                  (fn ~(symbol (str (fn-rename op-name) "-closure"))
-                    [~'query ~'stage-number]
-                    ~(cond->> (concat [(symbol (str (fn-rename op-name) "-clause")) 'query 'stage-number]
-                                      arglist-expr)
-                       varargs? (cons `apply))))))))))
+     `(mu/defn ~op-name :- ~(keyword "mbql.clause" (name op-name))
+        ~(format "Create a standalone clause of type `%s`." (name op-name))
+        ~@(for [argvec argvecs
+                :let [arglist-expr (if (contains? (set argvec) '&)
+                                     (cons `list* (remove #{'&} argvec))
+                                     argvec)]]
+            `([~@argvec]
+              (defop-create ~(keyword op-name) ~arglist-expr))))))

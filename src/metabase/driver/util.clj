@@ -452,7 +452,6 @@
   #{"athena"
     "bigquery-cloud-sdk"
     "druid"
-    "googleanalytics"
     "h2"
     "mongo"
     "mysql"

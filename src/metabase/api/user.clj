@@ -141,12 +141,14 @@
   - with include_deactivated"
   [status query group_ids include_deactivated]
   (cond-> {}
-    true                               (sql.helpers/where (status-clause status include_deactivated))
-    (premium-features/segmented-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                      (sql.helpers/where (query-clause query))
-    (some? group_ids)                   (sql.helpers/right-join :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                   (sql.helpers/where [:in :permissions_group_membership.group_id group_ids])))
+    true                                               (sql.helpers/where (status-clause status include_deactivated))
+    (premium-features/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                                      (sql.helpers/where (query-clause query))
+    (some? group_ids)                                  (sql.helpers/right-join
+                                                        :permissions_group_membership
+                                                        [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_ids)                                  (sql.helpers/where
+                                                        [:in :permissions_group_membership.group_id group_ids])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -208,7 +210,7 @@
      :total  (t2/count User (user-clauses nil nil nil nil))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}
-    (and (= :group (user-visibility)) (not (premium-features/segmented-user?)))
+    (and (= :group (user-visibility)) (not (premium-features/sandboxed-or-impersonated-user?)))
     (let [user_group_ids (map :id (:user_group_memberships
                                    (-> (fetch-user :id api/*current-user-id*)
                                        (t2/hydrate :user_group_memberships))))

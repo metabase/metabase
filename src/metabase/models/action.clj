@@ -45,11 +45,18 @@
 (methodical/defmethod t2/primary-keys :model/HTTPAction     [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
 
+(def ^:private transform-action-visualization-settings
+  {:in  mi/json-in
+   :out (comp (fn [viz-settings]
+                ;; the keys of :fields should be strings, not keywords
+                (m/update-existing viz-settings :fields update-keys name))
+              mi/json-out-with-keywordization)})
+
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
    :parameter_mappings     mi/transform-parameters-list
    :parameters             mi/transform-parameters-list
-   :visualization_settings mi/transform-visualization-settings})
+   :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction
   ;; shouldn't this be mi/transform-metabase-query?
@@ -258,10 +265,10 @@
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
                                         (implicit-action-parameters implicit-action-models))]
-    (for [{:keys [parameters] :as action} actions]
+    (for [action actions]
       (if (= (:type action) :implicit)
         (let [model-id        (:model_id action)
-              saved-params    (m/index-by :id parameters)
+              saved-params    (m/index-by :id (:parameters action))
               action-kind     (:kind action)
               implicit-params (cond->> (get model-id->implicit-parameters model-id)
                                 :always
@@ -282,7 +289,20 @@
                                 (map #(dissoc % ::pk? ::field-id)))]
           (cond-> (assoc action :database_id (model-id->db-id (:model_id action)))
             (seq implicit-params)
-            (assoc :parameters implicit-params)))
+            (-> (assoc :parameters implicit-params)
+                (update-in [:visualization_settings :fields]
+                           (fn [fields]
+                             (let [param-ids (map :id implicit-params)
+                                   fields    (->> (or fields {})
+                                                  ;; remove entries that don't match params (in case of deleted columns)
+                                                  (m/filter-keys (set param-ids)))]
+                               ;; add default entries for params that don't have an entry
+                               (reduce (fn [acc param-id]
+                                         (if (contains? acc param-id)
+                                           acc
+                                           (assoc acc param-id {:id param-id, :hidden false})))
+                                       fields
+                                       param-ids)))))))
         action))))
 
 (defn select-action

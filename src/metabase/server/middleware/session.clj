@@ -348,7 +348,7 @@
   [& body]
   `(do-with-current-user
     (merge
-      (with-current-user-fetch-user-for-id ~'api/*current-user-id*)
+      (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
       {:is-superuser? true
        :permissions-set #{"/"}})
     (fn [] ~@body)))

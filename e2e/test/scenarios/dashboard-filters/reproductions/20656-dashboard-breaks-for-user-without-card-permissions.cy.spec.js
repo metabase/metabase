@@ -3,6 +3,7 @@ import {
   filterWidget,
   visitDashboard,
   editDashboard,
+  getDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -73,11 +74,9 @@ describe("issue 20656", () => {
       .find(".Icon-gear")
       .click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Column to filter on")
-      .parent()
-      .within(() => {
-        cy.icon("key");
-      });
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.icon("key");
+    });
   });
 });

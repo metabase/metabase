@@ -735,3 +735,49 @@ describeEE("scenarios > admin > permissions", () => {
     cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });
+
+describe("scenarios > admin > permissions", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions");
+
+    // Data permissions
+    cy.get("main").within(() => {
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference")
+      .as("permissionsHelpContent")
+      .within(() => {
+        cy.findByText("Data permissions");
+        cy.findByText("Unrestricted");
+        cy.findByText("Impersonated (Pro)");
+        cy.findByLabelText("Close").click();
+      });
+
+    cy.get("main").within(() => {
+      cy.findByText("Collections").click();
+      cy.get("@permissionHelpButton").click();
+    });
+
+    // Collection permissions
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Collection permissions");
+      cy.findByText("Collections Permission Levels");
+    });
+
+    // The help reference keeps being open when switching tabs
+    cy.get("main").within(() => {
+      cy.findByText("Data").click();
+    });
+
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Data permissions");
+    });
+  });
+});
