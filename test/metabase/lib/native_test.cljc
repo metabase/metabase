@@ -91,7 +91,7 @@
        (let [mktag (fn [base]
                      (merge {:type    :text
                              :display-name (u.humanization/name->human-readable-name :simple (:name base))
-                             :id           uuid?}
+                             :id           string?}
                             base))
              v1    (mktag {:name "foo"})
              v2    (mktag {:name "bar"})
