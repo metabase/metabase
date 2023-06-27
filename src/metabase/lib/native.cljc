@@ -11,9 +11,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]
-   [metabase.shared.util.i18n :as i18n]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private TemplateTag
   [:map
