@@ -18,12 +18,6 @@ export const blockSnowplow = () => {
   blockSnowplowRequest("*/tp2");
 };
 
-export const expectGoodSnowplowEvents = count => {
-  retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
-    .its("body")
-    .should("have.length", count);
-};
-
 /**
  * Check for the existence of specific snowplow events.
  *
@@ -38,6 +32,12 @@ export const expectGoodSnowplowEvent = (eventData, count = 1) => {
         _.isMatch(snowplowEvent?.event?.unstruct_event?.data?.data, eventData),
       ).length === count,
   ).should("be.ok");
+};
+
+export const expectGoodSnowplowEvents = count => {
+  retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
+    .its("body")
+    .should("have.length", count);
 };
 
 export const expectNoBadSnowplowEvents = () => {

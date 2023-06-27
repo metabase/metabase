@@ -172,7 +172,6 @@
    join-fields
    join-strategy
    joins
-   rename-join
    suggested-join-condition
    with-join-alias
    with-join-fields
@@ -210,6 +209,8 @@
    ref]
   [lib.remove-replace
    remove-clause
+   remove-join
+   rename-join
    replace-clause]
   [lib.stage
    append-stage
