@@ -42,16 +42,20 @@ const SearchResults = ({
   return (
     <ul data-testid="search-results-list">
       {hasResults ? (
-        list.map((item, index) => (
-          <li key={`${item.model}:${item.id}`} ref={getRef(item)}>
-            <SearchResult
-              result={item}
-              compact={true}
-              isSelected={cursorIndex === index}
-              onClick={onEntitySelect}
-            />
-          </li>
-        ))
+        list.map((item, index) => {
+          const isIndexedEntity = item.model === "indexed-entity";
+
+          return (
+            <li key={`${item.model}:${item.id}`} ref={getRef(item)}>
+              <SearchResult
+                result={item}
+                compact={true}
+                isSelected={cursorIndex === index}
+                onClick={isIndexedEntity ? onEntitySelect : undefined}
+              />
+            </li>
+          );
+        })
       ) : (
         <EmptyStateContainer>
           <EmptyState message={t`Didn't find anything`} icon="search" />

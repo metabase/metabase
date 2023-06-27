@@ -89,66 +89,6 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it("should not reload the model for record in the same model", () => {
-    cy.visit(`/model/${modelId}`);
-    cy.wait("@dataset");
-
-    editTitleMetadata();
-
-    sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click();
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.button("Save changes").click();
-    });
-
-    cy.wait("@modelIndexCreate").then(({ request, response }) => {
-      expect(request.body.model_id).to.equal(modelId);
-
-      // this will likely change when this becomes an async process
-      expect(response.body.state).to.equal("indexed");
-      expect(response.body.id).to.equal(1);
-    });
-
-    cy.findByTestId("app-bar")
-      .findByPlaceholderText("Search…")
-      .type("marble shoes");
-
-    cy.wait("@searchQuery");
-
-    cy.findByTestId("search-results-list")
-      .findByText("Small Marble Shoes")
-      .click();
-
-    cy.wait("@dataset");
-
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Product");
-      cy.findByText("Small Marble Shoes");
-      cy.findByText("Doohickey");
-    });
-
-    cy.get("body").type("{esc}");
-
-    cy.findByTestId("app-bar")
-      .findByPlaceholderText("Search…")
-      .clear()
-      .type("silk coat");
-
-    cy.findByTestId("search-results-list")
-      .findByText("Ergonomic Silk Coat")
-      .click();
-
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Upton, Kovacek and Halvorson");
-    });
-
-    cy.get("@cardGet.all").then(interceptions => {
-      expect(interceptions).to.have.length(2);
-    });
-  });
-
   it("should not allow indexing when a primary key has been unassigned", () => {
     cy.visit(`/model/${modelId}`);
     cy.wait("@dataset");
@@ -230,6 +170,50 @@ describe("scenarios > model indexes", () => {
       cy.findAllByText("Anais Zieme").should("have.length", 2);
     });
   });
+
+  it("should not reload the model for record in the same model", () => {
+    createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
+
+    cy.visit("/");
+
+    cy.findByTestId("app-bar")
+      .findByPlaceholderText("Search…")
+      .type("marble shoes");
+
+    cy.wait("@searchQuery");
+
+    cy.findByTestId("search-results-list")
+      .findByText("Small Marble Shoes")
+      .click();
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Product");
+      cy.findByText("Small Marble Shoes");
+      cy.findByText("Doohickey");
+    });
+
+    // for some reason we hit this endpoint twice on initial load
+    expectCardQueries(2);
+
+    cy.get("body").type("{esc}");
+
+    cy.findByTestId("app-bar")
+      .findByPlaceholderText("Search…")
+      .clear()
+      .type("silk coat");
+
+    cy.findByTestId("search-results-list")
+      .findByText("Ergonomic Silk Coat")
+      .click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Upton, Kovacek and Halvorson");
+    });
+
+    expectCardQueries(2);
+  });
 });
 
 function editTitleMetadata() {
@@ -267,3 +251,8 @@ function createModelIndex({ modelId, pkName, valueName }) {
     },
   );
 }
+
+const expectCardQueries = num =>
+  cy.get("@cardGet.all").then(interceptions => {
+    expect(interceptions).to.have.length(num);
+  });

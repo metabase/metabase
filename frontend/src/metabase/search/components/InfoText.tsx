@@ -61,7 +61,7 @@ export function InfoText({ result }: { result: WrappedResult }) {
       break;
   }
 
-  return <div onClick={e => e.stopPropagation()}>{textContent}</div>;
+  return <>{textContent}</>;
 }
 
 function formatCollection(
