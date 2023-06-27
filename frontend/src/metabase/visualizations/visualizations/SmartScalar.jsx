@@ -23,7 +23,6 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 import { measureText } from "metabase/lib/measure-text";
-import { space } from "metabase/styled-components/theme";
 import { isDate } from "metabase-lib/types/utils/isa";
 import { ScalarContainer } from "./Scalar.styled";
 
@@ -39,7 +38,7 @@ import {
   VariationValue,
 } from "./SmartScalar.styled";
 
-const SPACING = parseInt(space(1), 10);
+const SPACING = 8;
 const ICON_SIZE = 13;
 const TOOLTIP_ICON_SIZE = 11;
 const ICON_MARGIN_RIGHT = SPACING;
