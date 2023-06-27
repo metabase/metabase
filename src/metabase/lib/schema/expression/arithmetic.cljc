@@ -87,7 +87,7 @@
   "Given a sequence of args to a numeric arithmetic expression like `:+`, determine the type returned by the expression
   by calculating the most-specific common ancestor type of all the args. E.g. `[:+ ... 2.0 2.0]` has two `:type/Float`
   args, and thus the most-specific common ancestor type is `:type/Float`. `[:+ ... 2.0 2]` has a `:type/Float` and a
-  `:type/Integer` arg; the most-specific common ancestor type is `:type/Number`. For refs without type
+  `:type/Integer` arg; the most-specific common ancestor type is `:type/Number`. For args without type
   information (e.g. `:field` clauses), assume `:type/Number`."
   [args]
   ;; Okay to use reduce without an init value here since we know we have >= 2 args
@@ -96,8 +96,11 @@
    types/most-specific-common-ancestor
    (map (fn [expr]
           (let [expr-type (expression/type-of expr)]
-            (if (and (isa? expr-type ::expression/type.unknown)
-                     (mc/validate :metabase.lib.schema.ref/ref expr))
+            ;; we know arithmetic expressions are at least guaranteed to return numbers, so if the arg returns
+            ;; `:type/*` or `type.unknown` then 'upgrade' it to `:type/Number` to get better type calculation for the
+            ;; expression as a whole.
+            (if (or (isa? expr-type ::expression/type.unknown)
+                    (= expr-type :type/*))
               :type/Number
               expr-type)))
         args)))

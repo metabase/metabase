@@ -8,13 +8,11 @@
    [clojure.data]
    [clojure.test :refer :all]
    [environ.core :as env]
-   [humane-are.core :as humane-are]
    [java-time :as t]
    [mb.hawk.init]
    [mb.hawk.parallel]
    [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -45,7 +43,6 @@
    [metabase.test.util.random :as tu.random]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.log :as log]
-   [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
@@ -54,18 +51,14 @@
 
 (set! *warn-on-reflection* true)
 
-(humane-are/install!)
-
-;; don't enable humane-test-output when running tests from the CLI, it breaks diffs.
-(when-not config/is-test?
-  (humane-test-output/activate!))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
 (comment
+  actions.test-util/keep-me
   client/keep-me
-  data/keep-me
   data.impl/keep-me
+  data/keep-me
   datasets/keep-me
   driver/keep-me
   et/keep-me
@@ -73,23 +66,23 @@
   initialize/keep-me
   metabase.test.redefs/keep-me
   mw.session/keep-me
-  test.persistence/keep-me
-  qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
+  qp/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
+  t2.with-temp/keepme
   test-runner.assert-exprs/keep-me
+  test.persistence/keep-me
+  test.tz/keep-me
   test.users/keep-me
   tt/keep-me
-  t2.with-temp/keepme
-  tu/keep-me
   tu.async/keep-me
   tu.log/keep-me
   tu.random/keep-me
-  test.tz/keep-me
-  tx/keep-me
-  tx.env/keep-me)
+  tu/keep-me
+  tx.env/keep-me
+  tx/keep-me)
 
 ;; Add more stuff here as needed
 #_{:clj-kondo/ignore [:discouraged-var]}

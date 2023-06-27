@@ -5,12 +5,14 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.util.malli :as mu]))
 
 (defn- resolve-metric [query metric-id]
   (when (integer? metric-id)
@@ -28,6 +30,18 @@
         mbql.normalize/normalize
         lib.convert/->pMBQL
         (lib.util/query-stage -1)))))
+
+(defmethod lib.ref/ref-method :metadata/metric
+  [{:keys [id], :as metric-metadata}]
+  (let [effective-type (or (:effective-type metric-metadata)
+                           (:base-type metric-metadata)
+                           (when-let [[aggregation] (not-empty (:aggregation (metric-definition metric-metadata)))]
+                             (let [ag-effective-type (lib.schema.expression/type-of aggregation)]
+                               (when (isa? ag-effective-type :type/*)
+                                 ag-effective-type))))
+        options (cond-> {:lib/uuid (str (random-uuid))}
+                  effective-type (assoc :effective-type effective-type))]
+    [:metric options id]))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/metric
   [query stage-number metric-metadata]

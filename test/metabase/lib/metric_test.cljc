@@ -17,9 +17,6 @@
    :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
    :filter       [:= [:field (meta/id :venues :price) nil] 4]})
 
-(def ^:private metric-description
-  "Number of toucans plus number of pelicans")
-
 (def ^:private metadata-provider
   (lib.tu/mock-metadata-provider
    {:database meta/metadata
@@ -29,21 +26,21 @@
                 :name        "Sum of Cans"
                 :table-id    (meta/id :venues)
                 :definition  metric-definition
-                :description metric-description}]}))
+                :description "Number of toucans plus number of pelicans"}]}))
 
 (def ^:private metric-clause
   [:metric {:lib/uuid (str (random-uuid))} metric-id])
 
-(def ^:private query
+(def ^:private query-with-metric
   (-> (lib/query metadata-provider (meta/table-metadata :venues))
       (lib/aggregate metric-clause)))
 
 (def ^:private metric-metadata
-  (lib.metadata/metric query metric-id))
+  (lib.metadata/metric query-with-metric metric-id))
 
 (deftest ^:parallel query-suggested-name-test
   (is (= "Venues, Sum of Cans"
-         (lib.metadata.calculation/suggested-name query))))
+         (lib.metadata.calculation/suggested-name query-with-metric))))
 
 (deftest ^:parallel display-name-test
   (doseq [metric [metric-clause
@@ -55,8 +52,8 @@
                   "style = " (pr-str style))
       (is (= "Sum of Cans"
              (if style
-               (lib.metadata.calculation/display-name query -1 metric style)
-               (lib.metadata.calculation/display-name query metric)))))))
+               (lib.metadata.calculation/display-name query-with-metric -1 metric style)
+               (lib.metadata.calculation/display-name query-with-metric metric)))))))
 
 (deftest ^:parallel unknown-display-name-test
   (let [metric [:metric {} 1]]
@@ -66,16 +63,16 @@
       (testing (str "style = " (pr-str style))
         (is (= "[Unknown Metric]"
                (if style
-                 (lib.metadata.calculation/display-name query -1 metric style)
-                 (lib.metadata.calculation/display-name query metric))))))))
+                 (lib.metadata.calculation/display-name query-with-metric -1 metric style)
+                 (lib.metadata.calculation/display-name query-with-metric metric))))))))
 
 (deftest ^:parallel display-info-test
   (are [metric] (=? {:name              "sum_of_cans"
                      :display-name      "Sum of Cans"
                      :long-display-name "Sum of Cans"
                      :effective-type    :type/Integer
-                     :description       metric-description}
-                    (lib.metadata.calculation/display-info query metric))
+                     :description       "Number of toucans plus number of pelicans"}
+                    (lib.metadata.calculation/display-info query-with-metric metric))
     metric-clause
     metric-metadata))
 
@@ -83,17 +80,17 @@
   (is (=? {:effective-type    :type/*
            :display-name      "[Unknown Metric]"
            :long-display-name "[Unknown Metric]"}
-          (lib.metadata.calculation/display-info query [:metric {} 1]))))
+          (lib.metadata.calculation/display-info query-with-metric [:metric {} 1]))))
 
 (deftest ^:parallel type-of-test
   (are [metric] (= :type/Integer
-                   (lib.metadata.calculation/type-of query metric))
+                   (lib.metadata.calculation/type-of query-with-metric metric))
     metric-clause
     metric-metadata))
 
 (deftest ^:parallel unknown-type-of-test
   (is (= :type/*
-         (lib.metadata.calculation/type-of query [:metric {} 1]))))
+         (lib.metadata.calculation/type-of query-with-metric [:metric {} 1]))))
 
 (deftest ^:parallel available-metrics-test
   (testing "Should return Metrics with the same Table ID as query's `:source-table`"
@@ -102,8 +99,34 @@
               :name        "Sum of Cans"
               :table-id    (meta/id :venues)
               :definition  metric-definition
-              :description metric-description}]
+              :description "Number of toucans plus number of pelicans"}]
             (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
   (testing "query with different Table -- don't return Metrics"
     (is (=? []
             (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :orders)))))))
+
+(deftest ^:parallel aggregate-with-metric-test
+  (testing "Should be able to pass a Metric metadata to `aggregate`"
+    (let [query   (lib/query metadata-provider (meta/table-metadata :venues))
+          metrics (lib/available-metrics query)]
+      (is (= 1
+             (count metrics)))
+      ;; test with both `:metadata/metric` and with a `:metric` ref clause
+      (doseq [metric [(first metrics)
+                      [:metric {:lib/uuid (str (random-uuid))} 100]]]
+        (testing (pr-str (list 'lib/aggregate 'query metric))
+          (let [query' (lib/aggregate query metric)]
+            (is (=? {:lib/type :mbql/query
+                     :stages   [{:lib/type     :mbql.stage/mbql
+                                 :source-table (meta/id :venues)
+                                 :aggregation  [[:metric {:lib/uuid string?} 100]]}]}
+                    query'))
+            (is (=? [[:metric {:lib/uuid string?} 100]]
+                    (lib/aggregations query')))
+            (is (=? [{:name              "sum_of_cans"
+                      :display-name      "Sum of Cans"
+                      :long-display-name "Sum of Cans"
+                      :effective-type    :type/Integer
+                      :description       "Number of toucans plus number of pelicans"}]
+                    (map (partial lib/display-info query')
+                         (lib/aggregations query'))))))))))

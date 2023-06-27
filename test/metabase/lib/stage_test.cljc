@@ -33,13 +33,17 @@
     (testing "expressions in aggregations"
       (let [query (lib.tu/venues-query-with-last-stage
                    {:aggregation [[:*
-                                   {}
+                                   {:lib/uuid (str (random-uuid))}
                                    0.8
-                                   [:avg {} (lib.tu/field-clause :venues :price)]]
+                                   [:avg
+                                    {:lib/uuid (str (random-uuid))}
+                                    (lib.tu/field-clause :venues :price)]]
                                   [:*
-                                   {}
+                                   {:lib/uuid (str (random-uuid))}
                                    0.8
-                                   [:avg {} (lib.tu/field-clause :venues :price)]]]})]
+                                   [:avg
+                                    {:lib/uuid (str (random-uuid))}
+                                    (lib.tu/field-clause :venues :price)]]]})]
         (is (=? [{:base-type                :type/Float
                   :name                     "expression"
                   :display-name             "0.8 × Average of Price"

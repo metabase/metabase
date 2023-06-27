@@ -174,6 +174,7 @@
               {:lib/uuid (str (random-uuid))}
               [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} "double-price"]])))))
 
+;;; Tests for calling [[lib/aggregate]] with a Metric live in [[metabase.lib.metric-test]]
 (deftest ^:parallel aggregate-test
   (let [q (lib/query meta/metadata-provider (meta/table-metadata :venues))
         result-query
@@ -207,6 +208,7 @@
            {:lib/uuid (str (random-uuid))}
            [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]))))
 
+;;; See also [[metabase.lib.schema.aggregation-test/sum-type-of-test]]
 (deftest ^:parallel type-of-test
   (testing "Make sure we can calculate correct type information for an aggregation clause like"
     (doseq [tag  [:max
@@ -223,9 +225,7 @@
                           {:lib/uuid (str (random-uuid))}
                           arg]]]
       (testing (str \newline (pr-str clause))
-        (is (= (condp = (first arg)
-                 :field :metabase.lib.schema.expression/type.unknown
-                 :type/Number)
+        (is (= :type/Number
                (lib.schema.expression/type-of clause)))
         (is (= (condp = (first arg)
                  :field :type/BigInteger
