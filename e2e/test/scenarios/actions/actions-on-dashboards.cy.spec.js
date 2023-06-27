@@ -18,6 +18,11 @@ import {
   createImplicitAction,
   dragField,
   createAction,
+  describeWithSnowplow,
+  enableTracking,
+  resetSnowplow,
+  expectNoBadSnowplowEvents,
+  expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
 import { many_data_types_rows } from "e2e/support/test_tables_data";
@@ -54,16 +59,22 @@ const MODEL_NAME = "Test Action Model";
         );
       });
 
-      describe("adding and executing actions", () => {
+      describeWithSnowplow("adding and executing actions", () => {
         beforeEach(() => {
+          resetSnowplow();
           resetTestTable({ type: dialect, table: TEST_TABLE });
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
+          enableTracking();
           resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
           createModelFromTableName({
             tableName: TEST_TABLE,
             modelName: MODEL_NAME,
           });
+        });
+
+        afterEach(() => {
+          expectNoBadSnowplowEvents();
         });
 
         it("adds a custom query action to a dashboard and runs it", () => {
@@ -112,6 +123,10 @@ const MODEL_NAME = "Test Action Model";
             idFilter: true,
           });
 
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
+          });
+
           filterWidget().click();
           addWidgetStringFilter("1");
 
@@ -143,6 +158,10 @@ const MODEL_NAME = "Test Action Model";
 
           createDashboardWithActionButton({
             actionName: "Create",
+          });
+
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
           });
 
           cy.findByRole("button", { name: "Create" }).click();
@@ -179,6 +198,10 @@ const MODEL_NAME = "Test Action Model";
           createDashboardWithActionButton({
             actionName,
             idFilter: true,
+          });
+
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
           });
 
           filterWidget().click();
@@ -232,6 +255,10 @@ const MODEL_NAME = "Test Action Model";
 
           createDashboardWithActionButton({
             actionName: "Delete",
+          });
+
+          expectGoodSnowplowEvent({
+            event: "new_action_card_created",
           });
 
           cy.findByRole("button", { name: "Delete" }).click();
