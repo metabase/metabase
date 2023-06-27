@@ -196,7 +196,7 @@
               (-> q
                   (lib/aggregate {:operator :sum
                                   :lib/type :lib/external-op
-                                  :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
+                                  :args [(lib/ref (meta/field-metadata :venues :category-id))]})
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel type-of-sum-test

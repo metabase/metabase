@@ -49,8 +49,8 @@
                 j (lib/query meta/metadata-provider (meta/table-metadata :categories))]
             (lib/join q (lib/join-clause j [{:lib/type :lib/external-op
                                              :operator :=
-                                             :args     [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))
-                                                        (lib/ref (lib.metadata/field j nil "CATEGORIES" "ID"))]}]))))))
+                                             :args     [(lib/ref (meta/field-metadata :venues :category-id))
+                                                        (lib/ref (meta/field-metadata :categories :id))]}]))))))
 
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
@@ -83,7 +83,7 @@
   (testing "Should be able to use raw Field metadatas in the join condition"
     (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
           q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-          venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+          venues-category-id-metadata (meta/field-metadata :venues :category-id)
           categories-id-metadata      (lib.metadata/stage-column q2 "ID")]
       (let [clause (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
         (is (=? {:lib/type    :mbql/join
