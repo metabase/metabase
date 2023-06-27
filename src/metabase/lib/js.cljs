@@ -35,7 +35,7 @@
 
   Given the text of a native query, extract a possibly-empty set of template tag strings from it.
 
-  These looks like mustache templates. For variables, we only allow alphanumeric characters, eg. `{{foo}}`.
+  These look like mustache templates. For variables, we only allow alphanumeric characters, eg. `{{foo}}`.
   For snippets they start with `snippet:`, eg. `{{ snippet: arbitrary text here }}`.
   And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
 
