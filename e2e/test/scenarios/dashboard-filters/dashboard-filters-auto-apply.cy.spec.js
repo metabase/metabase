@@ -69,17 +69,13 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     cy.wait("@cardQuery");
 
     // changing parameter values by default should reload affected questions
-    filterWidget().within(() => {
-      cy.findByText(FILTER.name).click();
-    });
+    filterWidget().findByText(FILTER.name).click();
     popover().within(() => {
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
       cy.wait("@cardQuery");
     });
-    getDashboardCard().within(() => {
-      cy.findByText("Rows 1-5 of 53").should("be.visible");
-    });
+    getDashboardCard().findByText("Rows 1-5 of 53").should("be.visible");
 
     // parameter values should be preserved when disabling auto applying filters
     toggleDashboardInfoSidebar();
@@ -88,46 +84,30 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.wait("@updateDashboard");
       cy.findByLabelText("Auto-apply filters").should("not.be.checked");
     });
-    filterWidget().within(() => {
-      cy.findByText("Gadget").should("be.visible");
-    });
-    getDashboardCard().within(() => {
-      cy.findByText("Rows 1-4 of 53").should("be.visible");
-    });
+    filterWidget().findByText("Gadget").should("be.visible");
+    getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
     // draft parameter values should be applied manually
-    filterWidget().within(() => {
-      cy.findByText("Gadget").click();
-    });
+    filterWidget().findByText("Gadget").click();
     popover().within(() => {
       cy.findByText("Widget").click();
       cy.button("Update filter").click();
     });
-    getDashboardCard().within(() => {
-      cy.findByText("Rows 1-4 of 53").should("be.visible");
-    });
+    getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
     dashboardParametersContainer().within(() => {
       cy.button("Apply").click();
       cy.wait("@cardQuery");
     });
-    getDashboardCard().within(() => {
-      cy.findByText("Rows 1-4 of 107").should("be.visible");
-    });
+    getDashboardCard().findByText("Rows 1-4 of 107").should("be.visible");
 
     // draft parameter values should be discarded when enabling auto-applying filters
-    filterWidget().within(() => {
-      cy.findByText("2 selections").click();
-    });
+    filterWidget().findByText("2 selections").click();
     popover().within(() => {
       cy.findByText("Gadget").click();
       cy.button("Update filter").click();
     });
-    filterWidget().within(() => {
-      cy.findByText("Widget").should("be.visible");
-    });
-    dashboardParametersContainer().within(() => {
-      cy.button("Apply").should("be.visible");
-    });
+    filterWidget().findByText("Widget").should("be.visible");
+    dashboardParametersContainer().button("Apply").should("be.visible");
     rightSidebar().within(() => {
       cy.findByLabelText("Auto-apply filters").click();
       cy.wait("@updateDashboard");
@@ -155,34 +135,22 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     createDashboard({ dashboardDetails: { auto_apply_filters: false } });
     openDashboard();
 
-    filterWidget().within(() => {
-      cy.findByText(FILTER.name).click();
-    });
+    filterWidget().findByText(FILTER.name).click();
     popover().within(() => {
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
-    dashboardParametersContainer().within(() => {
-      cy.button("Apply").should("be.visible");
-    });
+    dashboardParametersContainer().button("Apply").should("be.visible");
 
     editDashboard();
-    dashboardHeader().within(() => {
-      cy.icon("filter").click();
-    });
+    dashboardHeader().icon("filter").click();
     popover().within(() => {
       cy.findByText("Text or Category").click();
       cy.findByText("Is").click();
     });
-    sidebar().within(() => {
-      cy.findByDisplayValue("Text").clear().type("Vendor");
-    });
-    getDashboardCard().within(() => {
-      cy.findByText("Select…").click();
-    });
-    popover().within(() => {
-      cy.findByText("Vendor").click();
-    });
+    sidebar().findByDisplayValue("Text").clear().type("Vendor");
+    getDashboardCard().findByText("Select…").click();
+    popover().findByText("Vendor").click();
     saveDashboard();
 
     dashboardParametersContainer().within(() => {
@@ -197,27 +165,17 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     createDashboard({ dashboardDetails: { auto_apply_filters: false } });
     openDashboard();
 
-    filterWidget().within(() => {
-      cy.findByText(FILTER.name).click();
-    });
+    filterWidget().findByText(FILTER.name).click();
     popover().within(() => {
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
-    dashboardParametersContainer().within(() => {
-      cy.button("Apply").should("be.visible");
-    });
+    dashboardParametersContainer().button("Apply").should("be.visible");
 
     editDashboard();
-    dashboardHeader().within(() => {
-      cy.button("Cancel").click();
-    });
-    filterWidget().within(() => {
-      cy.findByText("Gadget").should("be.visible");
-    });
-    dashboardParametersContainer().within(() => {
-      cy.button("Apply").should("be.visible");
-    });
+    dashboardHeader().button("Cancel").click();
+    filterWidget().findByText("Gadget").should("be.visible");
+    dashboardParametersContainer().button("Apply").should("be.visible");
   });
 
   describe("parameter with default values", () => {
@@ -274,17 +232,13 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       });
 
       toggleDashboardInfoSidebar();
-      rightSidebar().within(() => {
-        cy.findByLabelText("Auto-apply filters").should("not.be.checked");
-      });
+      rightSidebar()
+        .findByLabelText("Auto-apply filters")
+        .should("not.be.checked");
       // Gadget
       const filterDefaultValue = FILTER_WITH_DEFAULT_VALUE.default[0];
-      filterWidget().within(() => {
-        cy.findByText(filterDefaultValue).should("be.visible");
-      });
-      getDashboardCard().within(() => {
-        cy.findByText("Rows 1-4 of 53").should("be.visible");
-      });
+      filterWidget().findByText(filterDefaultValue).should("be.visible");
+      getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
     });
 
     it("should not display the toast when we clear out parameter default value", () => {
@@ -313,15 +267,11 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       });
 
       toggleDashboardInfoSidebar();
-      rightSidebar().within(() => {
-        cy.findByLabelText("Auto-apply filters").should("not.be.checked");
-      });
-      filterWidget().within(() => {
-        cy.findByText("Gadget").should("be.visible");
-      });
-      getDashboardCard().within(() => {
-        cy.findByText("Rows 1-4 of 53").should("be.visible");
-      });
+      rightSidebar()
+        .findByLabelText("Auto-apply filters")
+        .should("not.be.checked");
+      filterWidget().findByText("Gadget").should("be.visible");
+      getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
     });
 
     it("should display the toast indefinitely unless dismissing manually", () => {
@@ -348,12 +298,8 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.tick(TOAST_TIMEOUT);
       cy.wait("@cardQuery");
       undoToast().should("not.exist");
-      filterWidget().within(() => {
-        cy.findByText("Gadget").should("be.visible");
-      });
-      getDashboardCard().within(() => {
-        cy.findByText("Rows 1-5 of 53").should("be.visible");
-      });
+      filterWidget().findByText("Gadget").should("be.visible");
+      getDashboardCard().findByText("Rows 1-5 of 53").should("be.visible");
     });
 
     it("should not display the toast if there are no parameter values", () => {
@@ -377,9 +323,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
         cy.button("Turn off").should("be.visible");
         cy.icon("close").click();
       });
-      filterWidget().within(() => {
-        cy.findByText("Gadget").click();
-      });
+      filterWidget().findByText("Gadget").click();
       popover().within(() => {
         cy.findByText("Widget").click();
         cy.findByText("Update filter").click();
@@ -402,9 +346,9 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.wait("@cardQuery");
 
       toggleDashboardInfoSidebar();
-      rightSidebar().within(() => {
-        cy.findByLabelText("Auto-apply filters").should("be.disabled");
-      });
+      rightSidebar()
+        .findByLabelText("Auto-apply filters")
+        .should("be.disabled");
     });
 
     it("should not display a toast even when a dashboard takes longer than 15s to load", () => {
