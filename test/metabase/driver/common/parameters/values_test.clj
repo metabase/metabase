@@ -25,6 +25,8 @@
    (java.util UUID)
    (metabase.driver.common.parameters ReferencedCardQuery)))
 
+(run-tests)
+
 (set! *warn-on-reflection* true)
 
 (def ^:private test-uuid (str (UUID/randomUUID)))
@@ -57,10 +59,32 @@
       (is (= params/no-value
              (#'params.values/value-for-tag {:name "id", :display-name "ID", :type :text} nil))))
 
-    (testing "Default used"
+    (testing "Unspecified value when required"
+      (is (thrown? Exception
+                   (#'params.values/value-for-tag {:name "id", :display-name "ID", :required true, :type :text} nil))))
+
+    (testing "Empty value when required"
+      (is (thrown? Exception
+                   (#'params.values/value-for-tag 
+                    {:name "id", :id test-uuid, :display-name "ID", :required true, :type :text}
+                    [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
+
+    (testing "Default used with unspecified value"
       (is (= "100"
              (#'params.values/value-for-tag
-              {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil))))))
+              {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil))))
+
+    (testing "Default not used with empty value"
+      (is (= params/no-value
+             (#'params.values/value-for-tag
+              {:name "id", :id test-uuid, :display-name "ID", :type :text, :default "100"}
+              [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
+    
+    (testing "Default not used with empty value when required"
+      (is (thrown? Exception
+             (#'params.values/value-for-tag
+              {:name "id", :id test-uuid, :display-name "ID", :type :text, :required true, :default "100"}
+              [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))))
 
 (defn- value-for-tag
   "Call the private function and de-recordize the field"
@@ -544,15 +568,11 @@
                          :card-id      (u/the-id card)}
                         nil))))))))
 
-(deftest prefer-template-tag-default-test
-  (testing "Default values in a template tag should take precedence over default values passed in as part of the request"
-    ;; Dashboard parameter mappings can have their own defaults specified, and those get passed in as part of the
-    ;; request parameter. If the template tag also specifies a default, we should prefer that.
+(deftest nil-value-parameter-template-tag-default-test
+  (testing "default values passed in as part of the request should not apply when the value is nil"
     (mt/dataset sample-dataset
       (testing "Field filters"
-        (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :category)
-                                                  :value    (s/eq ["Gizmo" "Gadget"])
-                                                  s/Keyword s/Any}
+        (is (schema= {(s/eq "filter") {:value    (s/eq ::params/no-value)
                                        s/Keyword s/Any}}
                      (query->params-map
                       {:template-tags {"filter"
@@ -562,26 +582,26 @@
                                         :type         :dimension
                                         :dimension    [:field (mt/id :products :category) nil]
                                         :widget-type  :category
-                                        :default      ["Gizmo" "Gadget"]
-                                        :required     true}}
+                                        :default      ["Gizmo" "Gadget"]}}
                        :parameters    [{:type    :string/=
                                         :id      "abc123"
                                         :default ["Widget"]
+                                        :value   nil
                                         :target  [:dimension [:template-tag "filter"]]}]}))))
 
       (testing "Raw value template tags"
-        (is (= {"filter" "Foo"}
+        (is (= {"filter" ::params/no-value}
                (query->params-map
                 {:template-tags {"filter"
                                  {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
                                   :name         "filter"
                                   :display-name "Filter"
                                   :type         :text
-                                  :required     true
                                   :default      "Foo"}}
                  :parameters    [{:type    :string/=
                                   :id      "5791ff38"
                                   :default "Bar"
+                                  :value   nil
                                   :target  [:variable [:template-tag "filter"]]}]})))))))
 
 (deftest field-filter-multiple-values-test
@@ -603,12 +623,10 @@
                               :value  "2015-07-01"}]})))))
 
 (deftest use-parameter-defaults-test
-  (testing "If parameter specifies a default value (but tag does not), use the parameter's default"
+  (testing "If parameter specifies a default value (but tag does not), don't use the default when the value is nil"
     (mt/dataset sample-dataset
       (testing "Field filters"
-        (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :string/=)
-                                                  :default  (s/eq ["Widget"])
-                                                  s/Keyword s/Any}
+        (is (schema= {(s/eq "filter") {:value    (s/eq ::params/no-value)
                                        s/Keyword s/Any}}
                      (query->params-map
                       {:template-tags {"filter"
@@ -617,25 +635,25 @@
                                         :display-name "Filter"
                                         :type         :dimension
                                         :dimension    [:field (mt/id :products :category) nil]
-                                        :widget-type  :category
-                                        :required     true}}
+                                        :widget-type  :category}}
                        :parameters    [{:type    :string/=
                                         :id      "abc123"
                                         :default ["Widget"]
+                                        :value   nil
                                         :target  [:dimension [:template-tag "filter"]]}]}))))
 
       (testing "Raw value template tags"
-        (is (= {"filter" "Bar"}
+        (is (= {"filter" ::params/no-value}
                (query->params-map
                 {:template-tags {"filter"
                                  {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
                                   :name         "filter"
                                   :display-name "Filter"
-                                  :type         :text
-                                  :required     true}}
+                                  :type         :text}}
                  :parameters    [{:type    :string/=
                                   :id      "5791ff38"
                                   :default "Bar"
+                                  :value   nil
                                   :target  [:variable [:template-tag "filter"]]}]})))))))
 
 (deftest value->number-test

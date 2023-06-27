@@ -114,7 +114,11 @@
                                              params)]
                              (if (= (count params) 1)
                                (first params)
-                               params)))]
+                               params)))
+        nil-value?        (and (seq matching-params)
+                               (every? (fn [param]
+                                         (nil? (:value param)))
+                                       matching-params))]
     (or
      ;; if we have matching parameter(s) that all have actual values, return those.
      (when (and (seq matching-params)
@@ -122,13 +126,13 @@
        (normalize-params matching-params))
      ;; If a FieldFilter has value=nil, return a [[params/no-value]]
      ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
-     (when (and
-            (not (:required tag))
-            (seq matching-params)
-            (every? (fn [param]
-                      (nil? (:value param)))
-                    matching-params))
+     (when (and (not (:required tag))
+                nil-value?)
        params/no-value)
+     ;; When a FieldFilter has value=nil and is required, throw an exception
+     (when (and (:required tag)
+                nil-value?)
+       (throw (missing-required-param-exception (:display-name tag))))
      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
      (when-let [tag-default (:default tag)]
        (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
@@ -215,10 +219,19 @@
                                            {:type                qp.error-type/invalid-parameter
                                             :template-tag        tag
                                             :matching-parameters params})))
-                         (first matching-params))]
+                         (first matching-params))
+        nil-value?       (and matching-param
+                              (nil? (:value matching-param)))]
     ;; if both the tag and the Dashboard parameter specify a default value, prefer the default value from the tag.
     (or (:value matching-param)
+        (when (and nil-value?
+                   (:required tag))
+          (throw (missing-required-param-exception (:display-name tag))))
+        (when (and nil-value?
+                   (not (:required tag)))
+          params/no-value)
         (:default tag)
+        ;; TODO: is it even necessary to check the default on the matching param?
         (:default matching-param)
         (if (:required tag)
           (throw (missing-required-param-exception (:display-name tag)))
