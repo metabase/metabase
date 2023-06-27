@@ -152,7 +152,13 @@
       (->> (lib.metadata.calculation/visible-columns
             query stage-number card {:unique-name-fn               unique-name-fn
                                      :include-implicitly-joinable? false})
-           ;; questions should not have implicitly joinable columns (#30950)
+           ;; Questions should not have implicitly joinable columns (#30950).
+           ;; :include-implicitly-joinable? false in the call above makes sure
+           ;; no implicitly joinable columns show up in the list, but this is
+           ;; not enough. If the returned columns contain :fk-target-field-id
+           ;; fields, then [[metabase.lib.metadata.calculation/visible-columns-method]]
+           ;; for :metabase.lib.stage/stage would add the implicitly joinable
+           ;; columns. Dissocing these fields prevents that.
            (mapv #(dissoc % :fk-target-field-id))
            not-empty))))
 
