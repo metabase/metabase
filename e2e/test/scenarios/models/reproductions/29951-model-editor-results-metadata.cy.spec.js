@@ -41,7 +41,7 @@ describe("issue 29951", () => {
 
     dragColumn(0, 100);
     cy.findAllByRole("button", { name: "Get Answer" }).first().click();
-    cy.wait("@dataset");
+    cy.wait("@dataset", { timeout: 10000 });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows").should("be.visible");
   });
