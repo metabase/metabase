@@ -52,14 +52,7 @@ describeEE("impersonated permission", () => {
           "No",
           "No",
         ],
-        [
-          "QA Postgres12",
-          "Impersonated",
-          "No", // FIXME: should be "Yes"
-          "1 million rows",
-          "No",
-          "No",
-        ],
+        ["QA Postgres12", "Impersonated", "Yes", "1 million rows", "No", "No"],
       ]);
 
       // Checking it shows the right state on the tables level
@@ -71,30 +64,9 @@ describeEE("impersonated permission", () => {
         ["Feedback", "Impersonated", "No", "1 million rows", "No", "No"],
         ["Invoices", "Impersonated", "No", "1 million rows", "No", "No"],
         ["Orders", "Impersonated", "No", "1 million rows", "No", "No"],
-        [
-          "People",
-          "Impersonated",
-          "No", // FIXME: should be "Yes"
-          "1 million rows",
-          "No",
-          "No",
-        ],
-        [
-          "Products",
-          "Impersonated",
-          "No", // FIXME: should be "Yes"
-          "1 million rows",
-          "No",
-          "No",
-        ],
-        [
-          "Reviews",
-          "Impersonated",
-          "No", // FIXME: should be "Yes"
-          "1 million rows",
-          "No",
-          "No",
-        ],
+        ["People", "Impersonated", "Yes", "1 million rows", "No", "No"],
+        ["Products", "Impersonated", "Yes", "1 million rows", "No", "No"],
+        ["Reviews", "Impersonated", "Yes", "1 million rows", "No", "No"],
       ]);
 
       cy.get("main")
@@ -138,14 +110,7 @@ describeEE("impersonated permission", () => {
           "No",
           "No",
         ],
-        [
-          "QA Postgres12",
-          "Impersonated",
-          "No", // FIXME: should be "Yes"
-          "1 million rows",
-          "No",
-          "No",
-        ],
+        ["QA Postgres12", "Impersonated", "Yes", "1 million rows", "No", "No"],
       ]);
 
       // Change from impersonated permission
@@ -245,8 +210,6 @@ describeEE("impersonated permission", () => {
       createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
 
-      // FIXME: two calls is a hack because BE will set the native permission to "write" only from the second call
-      setImpersonatedPermission();
       setImpersonatedPermission();
 
       cy.signInAsImpersonatedUser();
