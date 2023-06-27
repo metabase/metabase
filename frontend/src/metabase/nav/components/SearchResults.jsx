@@ -16,6 +16,7 @@ const propTypes = {
   list: PropTypes.array,
   onChangeLocation: PropTypes.func,
   onEntitySelect: PropTypes.func,
+  forceEntitySelect: PropTypes.bool,
   searchText: PropTypes.string,
 };
 
@@ -23,6 +24,7 @@ const SearchResults = ({
   list,
   onChangeLocation,
   onEntitySelect,
+  forceEntitySelect,
   searchText,
 }) => {
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation({
@@ -44,6 +46,10 @@ const SearchResults = ({
       {hasResults ? (
         list.map((item, index) => {
           const isIndexedEntity = item.model === "indexed-entity";
+          const onClick =
+            onEntitySelect && (isIndexedEntity || forceEntitySelect)
+              ? onEntitySelect
+              : undefined;
 
           return (
             <li key={`${item.model}:${item.id}`} ref={getRef(item)}>
@@ -51,7 +57,7 @@ const SearchResults = ({
                 result={item}
                 compact={true}
                 isSelected={cursorIndex === index}
-                onClick={isIndexedEntity ? onEntitySelect : undefined}
+                onClick={onClick}
               />
             </li>
           );
