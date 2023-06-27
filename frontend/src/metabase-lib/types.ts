@@ -97,6 +97,14 @@ export type AggregationOperatorDisplayInfo = {
   selected?: boolean;
 };
 
+export type MetricDisplayInfo = {
+  name: string;
+  displayName: string;
+  longDisplayName: string;
+  description: string;
+  selected?: boolean;
+};
+
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "longDisplayName" | "table"
