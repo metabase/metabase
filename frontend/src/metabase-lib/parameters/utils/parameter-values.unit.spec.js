@@ -243,12 +243,12 @@ describe("parameters/utils/parameter-values", () => {
       expect(normalizeParameterValue("string/contains", "foo")).toEqual([
         "foo",
       ]);
-      expect(normalizeParameterValue("string/contains")).toEqual([]);
+      expect(normalizeParameterValue("string/contains", null)).toEqual(null);
     });
 
     it("should return normalized value for number parameters", () => {
       expect(normalizeParameterValue("number/=", 0)).toEqual([0]);
-      expect(normalizeParameterValue("number/=", null)).toEqual([]);
+      expect(normalizeParameterValue("number/=", null)).toEqual(null);
     });
   });
 });
