@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 import { SidebarItem } from "../SidebarItem";
 import { sidebarItemPaddingStyle } from "../SidebarItem/SidebarItem.styled";

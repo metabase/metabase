@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import QueryColumnPicker from "metabase/common/components/QueryColumnPicker";
 import { color } from "metabase/lib/colors";
 

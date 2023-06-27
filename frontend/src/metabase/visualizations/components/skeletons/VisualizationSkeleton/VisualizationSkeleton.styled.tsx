@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 
 export const VisualizationSkeletonCaption = styled(SkeletonCaption)`

@@ -402,13 +402,13 @@ const Foo = () => <div className={style.primary} />;
 ### [Emotion](https://emotion.sh/)
 
 ```javascript
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
-const Foo = styled.div`
-  color: ${props => props.color};
+const Foo = styled.div<{$color: string}>`
+  color: ${props => props.$color};
 `;
 
-const Bar = ({ color }) => <Foo color={color} />;
+const Bar = ({ color }) => <Foo $color={color} />;
 ```
 
 ## Popover

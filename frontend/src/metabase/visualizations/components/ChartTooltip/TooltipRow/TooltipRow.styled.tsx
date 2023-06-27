@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { color, darken } from "metabase/lib/colors";
 
 interface TooltipRowRootProps {

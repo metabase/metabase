@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const AggregationAndBreakoutDescription = styled.span`
   cursor: pointer;

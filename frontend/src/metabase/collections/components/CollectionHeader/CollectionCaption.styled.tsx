@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import EditableText from "metabase/core/components/EditableText";
 
 export const CaptionTitleContainer = styled.div`

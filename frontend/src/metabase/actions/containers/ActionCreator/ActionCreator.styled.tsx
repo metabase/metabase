@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";

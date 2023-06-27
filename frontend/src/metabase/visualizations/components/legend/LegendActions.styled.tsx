@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const LegendActionsRoot = styled.div`
   flex: 0 0 auto;

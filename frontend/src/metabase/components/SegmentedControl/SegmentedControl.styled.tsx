@@ -1,6 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import _ from "underscore";
+import { styled } from "metabase/ui/utils";
 
 import { Icon, IconProps } from "metabase/core/components/Icon";
 

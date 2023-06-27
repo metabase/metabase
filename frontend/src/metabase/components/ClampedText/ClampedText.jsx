@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { TextButton } from "metabase/components/Button.styled";
 import { ClampedDiv } from "./ClampedText.styled";
 

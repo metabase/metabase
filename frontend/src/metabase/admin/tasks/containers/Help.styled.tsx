@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const HelpRoot = styled.div`
   padding: 2rem;

@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const EmptyStateContainer = styled.div`
   padding: 2rem 2rem 0 2rem;

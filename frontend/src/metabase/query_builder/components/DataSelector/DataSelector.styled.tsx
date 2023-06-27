@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { Icon } from "metabase/core/components/Icon";
 import SelectList from "metabase/components/SelectList";
 import { color } from "metabase/lib/colors";

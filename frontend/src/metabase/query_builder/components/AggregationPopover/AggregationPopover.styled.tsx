@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import AccordionList from "metabase/core/components/AccordionList";
 import { color } from "metabase/lib/colors";
 import FieldList from "../FieldList";

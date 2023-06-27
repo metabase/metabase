@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css, keyframes } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 
 import Radio from "metabase/core/components/Radio";
 import SelectButton from "metabase/core/components/SelectButton";

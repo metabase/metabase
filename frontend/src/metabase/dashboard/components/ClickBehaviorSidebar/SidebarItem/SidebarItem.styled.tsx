@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 import { color, darken } from "metabase/lib/colors";
 
 const disabledStyle = css`

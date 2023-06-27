@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { ComponentProps } from "react";
+import { styled } from "metabase/ui/utils";
 import { color, darken } from "metabase/lib/colors";
 
 export const NotebookContainer = styled.div<{ isResizing: boolean }>`

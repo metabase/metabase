@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { color, lighten, tint, isDark } from "metabase/lib/colors";
 import { RadioColorScheme, RadioVariant } from "./types";
 

@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import ButtonGroup from "metabase/core/components/ButtonGroup";
 import Button from "metabase/core/components/Button";
 import ViewSection from "./ViewSection";

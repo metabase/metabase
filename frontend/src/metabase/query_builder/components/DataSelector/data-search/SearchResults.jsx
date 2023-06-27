@@ -1,6 +1,6 @@
-import styled from "@emotion/styled";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { styled } from "metabase/ui/utils";
 
 import { Icon } from "metabase/core/components/Icon";
 import { SearchResult } from "metabase/search/components/SearchResult";

@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { ModalBody } from "./ValuesSourceModal.styled";
 
 export const ModalBodyWithSearch = styled(ModalBody)`

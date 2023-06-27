@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const BrowseHeaderRoot = styled.div`
   margin-top: 2rem;

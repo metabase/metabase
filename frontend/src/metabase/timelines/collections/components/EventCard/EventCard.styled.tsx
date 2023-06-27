@@ -1,5 +1,5 @@
 import { css } from "@emotion/react";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Markdown from "metabase/core/components/Markdown";

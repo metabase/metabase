@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const ButtonBarRoot = styled.div`
   display: flex;

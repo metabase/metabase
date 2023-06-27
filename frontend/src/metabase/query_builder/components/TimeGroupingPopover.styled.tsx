@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { alpha } from "metabase/lib/colors";
 
 export const DimensionListItem = styled.li`

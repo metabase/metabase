@@ -11,10 +11,10 @@ import {
   forwardRef,
   Ref,
 } from "react";
-import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import { css } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 
 import { color, lighten } from "metabase/lib/colors";

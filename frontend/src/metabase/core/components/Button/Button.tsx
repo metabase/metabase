@@ -6,8 +6,8 @@ import {
   Ref,
   ElementType,
 } from "react";
-import styled from "@emotion/styled";
 import _ from "underscore";
+import { styled } from "metabase/ui/utils";
 import { Icon, IconName } from "metabase/core/components/Icon";
 import {
   ButtonContent,

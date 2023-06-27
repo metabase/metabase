@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const AddAnotherContainer = styled.div`
   margin-top: 1rem;

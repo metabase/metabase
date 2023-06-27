@@ -1,5 +1,5 @@
 import { css } from "@emotion/react";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { Icon } from "metabase/core/components/Icon";
 import { color, lighten } from "metabase/lib/colors";
 import type { AlertVariant } from "./Alert";

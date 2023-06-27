@@ -1,6 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { HTMLAttributes } from "react";
+import { styled } from "metabase/ui/utils";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Link, { LinkProps } from "metabase/core/components/Link";

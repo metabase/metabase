@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import PropTypes from "prop-types";
+import { styled } from "metabase/ui/utils";
 import { color } from "metabase/lib/colors";
 
 const Text = styled.div`

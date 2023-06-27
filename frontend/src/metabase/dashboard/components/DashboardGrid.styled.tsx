@@ -1,5 +1,5 @@
 import { css } from "@emotion/react";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 interface DashboardCardProps {
   isAnimationDisabled?: boolean;

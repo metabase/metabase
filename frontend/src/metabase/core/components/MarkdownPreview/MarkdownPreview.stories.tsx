@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import type { ComponentStory } from "@storybook/react";
+import { styled } from "metabase/ui/utils";
 
 import { MarkdownPreview } from "./MarkdownPreview";
 

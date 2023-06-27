@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 const IconButtonWrapper = styled.button<{ circle?: boolean }>`
   display: flex;

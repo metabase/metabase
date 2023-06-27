@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import ViewButton from "../view/ViewButton";
 
 export const SidebarContentRoot = styled.div`

@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import Modal from "metabase/components/Modal";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
 import { color } from "metabase/lib/colors";

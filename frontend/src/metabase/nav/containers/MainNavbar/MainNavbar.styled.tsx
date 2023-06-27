@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 
 import { Icon } from "metabase/core/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";

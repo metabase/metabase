@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { color } from "metabase/lib/colors";
 import Input from "metabase/core/components/Input";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

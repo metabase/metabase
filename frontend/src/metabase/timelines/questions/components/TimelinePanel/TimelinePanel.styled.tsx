@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const PanelRoot = styled.div`
   margin: 0 1.5rem;

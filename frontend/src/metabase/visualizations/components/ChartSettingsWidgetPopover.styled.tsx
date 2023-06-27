@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import Radio from "metabase/core/components/Radio";
 
 import { color } from "metabase/lib/colors";

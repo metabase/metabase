@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";

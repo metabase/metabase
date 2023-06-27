@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import Banner from "metabase/components/Banner";
 
 export const InfoBanner = styled(Banner)`

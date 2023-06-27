@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { color } from "metabase/lib/colors";
 

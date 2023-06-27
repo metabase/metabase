@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { Link } from "react-router";
+import { styled } from "metabase/ui/utils";
 import { color } from "metabase/lib/colors";
 
 export const BackButtonLink = styled(Link)`

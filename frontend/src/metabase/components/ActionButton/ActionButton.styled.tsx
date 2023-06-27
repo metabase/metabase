@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner/LoadingSpinner";
 

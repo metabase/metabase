@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { color, alpha, darken } from "metabase/lib/colors";
 
 export const TokenFieldItem = styled.li<{

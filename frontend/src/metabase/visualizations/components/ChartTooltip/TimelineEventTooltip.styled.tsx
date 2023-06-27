@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { darken } from "metabase/lib/colors";
 import DateTime from "metabase/components/DateTime";
 

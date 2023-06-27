@@ -1,5 +1,5 @@
 import type { StoryObj } from "@storybook/react";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { Icon } from "./Icon";
 import { iconNames } from "./icons";
 

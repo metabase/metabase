@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 
 interface AdminListItemProps {
   disabled?: boolean;

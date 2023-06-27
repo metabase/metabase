@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 import { TabRow as BaseTabRow } from "metabase/core/components/TabRow";
 import BaseTabPanel from "metabase/core/components/TabPanel";

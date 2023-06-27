@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import TokenField from "metabase/components/TokenField";

@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const TimePickerRoot = styled.div`
   padding: 1rem;

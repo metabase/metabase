@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import LegendCaption from "./legend/LegendCaption";
 
 export const LineAreaBarChartRoot = styled.div<{ isQueryBuilder: boolean }>`

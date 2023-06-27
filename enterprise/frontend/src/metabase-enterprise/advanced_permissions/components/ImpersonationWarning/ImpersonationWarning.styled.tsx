@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import Alert from "metabase/core/components/Alert";
 
 export const ImpersonationAlert = styled(Alert)`

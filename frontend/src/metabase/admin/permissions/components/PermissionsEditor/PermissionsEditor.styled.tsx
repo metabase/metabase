@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const PermissionsEditorRoot = styled.div`
   flex-grow: 1;

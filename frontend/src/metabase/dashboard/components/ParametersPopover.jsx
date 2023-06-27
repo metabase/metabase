@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { t } from "ttag";
-import styled from "@emotion/styled";
 import _ from "underscore";
+import { styled } from "metabase/ui/utils";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import { Icon } from "metabase/core/components/Icon";
 import { getParameterIconName } from "metabase/parameters/utils/ui";

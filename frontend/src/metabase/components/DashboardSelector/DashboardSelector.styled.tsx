@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import SelectButton from "metabase/core/components/SelectButton/SelectButton";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 

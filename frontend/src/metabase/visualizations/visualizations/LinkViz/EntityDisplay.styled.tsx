@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import Ellipsified from "metabase/core/components/Ellipsified";
 
 export const EntityDisplayContainer = styled.div`

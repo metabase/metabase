@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 import { TabButton as BaseTabButton } from "metabase/core/components/TabButton";
 import BaseButton from "metabase/core/components/Button";

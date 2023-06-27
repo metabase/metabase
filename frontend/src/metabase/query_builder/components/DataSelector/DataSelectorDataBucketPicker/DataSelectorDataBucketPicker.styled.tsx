@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 import SelectList from "metabase/components/SelectList";
 import { Icon } from "metabase/core/components/Icon";

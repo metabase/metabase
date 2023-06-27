@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
 

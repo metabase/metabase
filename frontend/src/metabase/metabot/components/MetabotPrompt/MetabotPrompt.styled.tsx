@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { color } from "metabase/lib/colors";
 import RunButton from "metabase/query_builder/components/RunButton";
 import UserAvatar from "metabase/components/UserAvatar";

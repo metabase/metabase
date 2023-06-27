@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import ResizableNotebook from "./ResizableNotebook";

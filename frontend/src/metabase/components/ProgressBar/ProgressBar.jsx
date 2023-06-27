@@ -1,6 +1,6 @@
 import { Component } from "react";
 import PropTypes from "prop-types";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 import { color as c } from "metabase/lib/colors";
 

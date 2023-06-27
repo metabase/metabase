@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
 import { animationStyles } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.styled";

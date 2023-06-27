@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 import { color, alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import { DimensionPicker } from "metabase/query_builder/components/DimensionPicker";

@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import { color } from "metabase/lib/colors";
 

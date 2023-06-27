@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 const PageHeading = styled.h1`
   font-weight: 900;

@@ -2,7 +2,7 @@
 import { createRef, cloneElement, Children, Component } from "react";
 
 import cx from "classnames";
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { isObscured } from "metabase/lib/dom";
 
 import Tooltip from "metabase/core/components/Tooltip";

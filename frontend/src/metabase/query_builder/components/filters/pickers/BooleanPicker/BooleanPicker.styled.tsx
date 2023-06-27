@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
-import styled from "@emotion/styled";
 import { t } from "ttag";
+import { styled } from "metabase/ui/utils";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";

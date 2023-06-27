@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 export const FormLabelRoot = styled.div`
   margin-bottom: 2rem;

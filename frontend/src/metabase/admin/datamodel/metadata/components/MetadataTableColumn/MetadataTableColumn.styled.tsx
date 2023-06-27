@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import InputBlurChange from "metabase/components/InputBlurChange";
 
 export const ColumnInput = styled(InputBlurChange)`

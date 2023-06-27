@@ -1,11 +1,11 @@
 import PropTypes from "prop-types";
 import cx from "classnames";
-import styled from "@emotion/styled";
 import {
   SortableContainer as OriginalSortableContainer,
   SortableElement,
   SortableHandle,
 } from "react-sortable-hoc";
+import { styled } from "metabase/ui/utils";
 import "./sortable.css";
 
 const SortableContainerWrapper = styled.div`

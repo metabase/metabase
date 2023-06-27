@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";

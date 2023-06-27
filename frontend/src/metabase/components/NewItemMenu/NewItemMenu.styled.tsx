@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import Modal from "metabase/components/Modal";
 
 export const WideModal = styled(Modal)`

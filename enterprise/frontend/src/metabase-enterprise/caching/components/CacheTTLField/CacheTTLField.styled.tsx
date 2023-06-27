@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import { styled } from "metabase/ui/utils";
 import { color } from "metabase/lib/colors";
 import NumericInput from "metabase/components/NumericInput";
 

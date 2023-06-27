@@ -1,7 +1,7 @@
 import cx from "classnames";
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { ComponentPropsWithoutRef } from "react";
+import { styled } from "metabase/ui/utils";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 

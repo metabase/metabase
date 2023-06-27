@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import { color } from "metabase/lib/colors";

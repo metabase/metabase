@@ -1,4 +1,4 @@
-import styled from "@emotion/styled";
+import { styled } from "metabase/ui/utils";
 import { color, tint, isDark, lighten } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 
@@ -25,7 +25,7 @@ export const OptionRoot = styled.div<OptionRootProps>`
     props.isSelected &&
     `
     ${OptionIconContainer} {
-      &, &:hover { 
+      &, &:hover {
       background-color: ${color("brand")};
       color: ${getOptionIconColor(props)};
       border: 1px solid transparent;
