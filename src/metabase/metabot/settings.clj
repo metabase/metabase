@@ -1,7 +1,7 @@
 (ns metabase.metabot.settings
   (:require
    [clojure.core.memoize :as memoize]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -38,7 +38,9 @@
 (defsetting is-metabot-enabled
   (deferred-tru "Is Metabot enabled?")
   :type :boolean
-  :visibility :authenticated
+  :visibility :public
+  :getter  (fn []
+             (boolean (setting/env-var-value :is-metabot-enabled)))
   :default false)
 
 (defsetting num-metabot-choices

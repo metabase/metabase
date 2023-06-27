@@ -143,6 +143,13 @@ export function createNewTab() {
   cy.findByLabelText("Create new tab").click();
 }
 
+export function deleteTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Delete").click();
+  });
+}
+
 export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   visitDashboard(dashboardId);
   editDashboard();
@@ -150,4 +157,21 @@ export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   if (save) {
     saveDashboard();
   }
+}
+
+export function resizeDashboardCard({ card, x, y }) {
+  card.within(() => {
+    const resizeHandle = cy.get(".react-resizable-handle");
+    resizeHandle
+      .trigger("mousedown", { button: 0 })
+      .trigger("mousemove", {
+        clientX: x,
+        clientY: y,
+      })
+      .trigger("mouseup", { force: true });
+  });
+}
+
+export function createLinkCard() {
+  cy.icon("link").click();
 }

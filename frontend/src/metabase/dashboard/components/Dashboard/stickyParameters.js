@@ -13,8 +13,6 @@ export const updateParametersWidgetStickiness = dashboard => {
   );
 
   if (shouldToggleStickiness) {
-    updateParametersAndCardsContainerStyle(dashboard, shouldBeSticky);
-
     dashboard.setState({
       isParametersWidgetSticky: shouldBeSticky,
     });
@@ -52,14 +50,6 @@ const checkIfParametersWidgetShouldBeSticky = dashboard => {
   const offsetTop = getOffsetTop(dashboard);
 
   return getMainElement().scrollTop > offsetTop;
-};
-
-const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {
-  const { offsetHeight } = dashboard.parametersWidgetRef;
-
-  const paddingTop = shouldBeSticky ? offsetHeight + "px" : "0";
-
-  dashboard.parametersAndCardsContainerRef.style.paddingTop = paddingTop;
 };
 
 const getOffsetTop = dashboard =>

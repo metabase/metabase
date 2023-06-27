@@ -34,6 +34,7 @@ import {
   getCanShowAutoApplyFiltersToast,
   getDashboardById,
   getDashCardById,
+  getSelectedTabId,
 } from "../selectors";
 
 import {
@@ -59,6 +60,9 @@ export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";
+
+export const FETCH_DASHBOARD_CARD_METADATA =
+  "metabase/dashboard/FETCH_DASHBOARD_CARD_METADATA";
 
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
 export const CANCEL_FETCH_CARD_DATA =
@@ -197,7 +201,16 @@ export const fetchDashboard = createThunkAction(
       }
 
       if (dashboardType === "normal" || dashboardType === "transient") {
-        await dispatch(loadMetadataForDashboard(result.ordered_cards));
+        const selectedTabId = getSelectedTabId(getState());
+
+        const cards =
+          selectedTabId === undefined
+            ? result.ordered_cards
+            : result.ordered_cards.filter(
+                c => c.dashboard_tab_id === selectedTabId,
+              );
+
+        await dispatch(loadMetadataForDashboard(cards));
       }
 
       const isUsingCachedResults = entities != null;
@@ -409,14 +422,23 @@ export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
   options => (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
+    const selectedTabId = getSelectedTabId(getState());
+    const dashcardIds = [];
 
     const promises = getAllDashboardCards(dashboard)
       .map(({ card, dashcard }) => {
-        if (!isVirtualDashCard(dashcard)) {
-          return dispatch(fetchCardData(card, dashcard, options)).then(() => {
-            return dispatch(updateLoadingTitle());
-          });
+        if (
+          isVirtualDashCard(dashcard) ||
+          (selectedTabId !== undefined &&
+            dashcard.dashboard_tab_id !== selectedTabId)
+        ) {
+          return;
         }
+
+        dashcardIds.push(dashcard.id);
+        return dispatch(fetchCardData(card, dashcard, options)).then(() => {
+          return dispatch(updateLoadingTitle());
+        });
       })
       .filter(p => !!p);
 
@@ -428,7 +450,21 @@ export const fetchDashboardCardData = createThunkAction(
       dispatch(loadingComplete());
     });
 
-    return { currentTime: performance.now() };
+    return { currentTime: performance.now(), dashcardIds };
+  },
+);
+
+export const fetchDashboardCardMetadata = createThunkAction(
+  FETCH_DASHBOARD_CARD_METADATA,
+  () => async (dispatch, getState) => {
+    const allDashCards = getDashboardComplete(getState()).ordered_cards;
+    const selectedTabId = getSelectedTabId(getState());
+
+    const cards = allDashCards.filter(
+      dc =>
+        selectedTabId !== undefined && dc.dashboard_tab_id === selectedTabId,
+    );
+    await dispatch(loadMetadataForDashboard(cards));
   },
 );
 

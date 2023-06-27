@@ -26,7 +26,8 @@ Check is a password reset token is valid and isn't expired.
 
 ## `GET /api/session/properties`
 
-Get all global properties and their values. These are the specific `Settings` which are meant to be public.
+Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
+  public if no user is logged in.
 
 ## `POST /api/session/`
 

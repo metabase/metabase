@@ -5,6 +5,8 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]))
@@ -17,6 +19,15 @@
   [_query _stage-number {card-name :name, :keys [display-name], :as card-metadata}]
   (cond-> card-metadata
     (not display-name) (assoc :display-name (u.humanization/name->human-readable-name :simple card-name))))
+
+(defmethod lib.metadata.calculation/describe-top-level-key-method :source-card
+  [query stage-number _k]
+  (let [{:keys [source-card]} (lib.util/query-stage query stage-number)]
+    (when source-card
+      (or (when-let [card-metadata (lib.metadata/card query source-card)]
+            (lib.metadata.calculation/display-name query stage-number card-metadata :long))
+          ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
+          (i18n/tru "Saved Question {0}" (pr-str source-card))))))
 
 (mu/defn ^:private infer-results-metadata
   [metadata-providerable :- lib.metadata/MetadataProviderable
@@ -42,10 +53,14 @@
                                  (sequential? result-metadata) result-metadata))]
       (mapv (fn [col]
               (merge
+               {:base-type :type/*, :lib/type :metadata/column}
                (when-let [field-id (:id col)]
-                 (lib.metadata/field metadata-providerable field-id))
+                 (try
+                   (lib.metadata/field metadata-providerable field-id)
+                   (catch #?(:clj Throwable :cljs :default) _
+                     nil)))
                (update-keys col u/->kebab-case-en)
-               {:lib/type                :metadata/field
+               {:lib/type                :metadata/column
                 :lib/source              :source/card
                 :lib/card-id             (:id card)
                 :lib/source-column-alias (:name col)}))

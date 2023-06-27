@@ -39,8 +39,8 @@
 
 (deftest ^:parallel unique-connection-property-test
   ;; abnormal usage here; we are not using the regular mt/test-driver or mt/test-drivers, because those involve
-  ;; initializing the driver and test data namespaces, which don't necessarily exist for all drivers (ex:
-  ;; googleanalytics), and besides which, we don't actually need sample data or test extensions for this test itself
+  ;; initializing the driver and test data namespaces, which don't necessarily exist for all drivers
+  ;; and besides which, we don't actually need sample data or test extensions for this test itself
 
   ;; so instead, just iterate through all drivers currently set to test by the environment, and check their
   ;; connection-properties; between all the different CI driver runs, this should cover everything

@@ -6,7 +6,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- instance-of [^Class klass]
+(defn instance-of
+  "Convenience for defining a Malli schema for an instance of a particular Class."
+  [^Class klass]
   [:fn {:error/message (str "instance of " (.getName klass))}
    #(instance? klass %)])
 

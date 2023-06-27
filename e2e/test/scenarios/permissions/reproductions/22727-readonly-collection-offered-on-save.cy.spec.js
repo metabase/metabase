@@ -1,5 +1,6 @@
 import { restore, visitQuestion, popover } from "e2e/support/helpers";
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -21,7 +22,7 @@ describe("issue 22727", () => {
   it("should not offer to save question in view only collection (metabase#22727, metabase#20717)", () => {
     // It is important to start from a saved question and to alter it.
     // We already have a reproduction that makes sure "Our analytics" is not offered when starting from an ad-hoc question (table).
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("31.44").click();

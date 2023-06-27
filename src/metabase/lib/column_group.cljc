@@ -46,11 +46,10 @@
     (merge
      (let [stage (lib.util/query-stage query stage-number)]
        (or
-        (when-let [table-id (:source-table stage)]
-          ;; if table-id is of `card__<id>` format this will return CardMetadata, so we don't need to special case
-          ;; that here.
-          (when-let [table (lib.metadata/table query table-id)]
-            (lib.metadata.calculation/display-info query stage-number table)))
+        (when-let [table (some->> (:source-table stage) (lib.metadata/table query))]
+          (lib.metadata.calculation/display-info query stage-number table))
+        (when-let [card (some->> (:source-card stage) (lib.metadata/card query))]
+          (lib.metadata.calculation/display-info query stage-number card))
         ;; for multi-stage queries return an empty string (#30108)
         (when (next (:stages query))
           {:display-name ""})

@@ -11,7 +11,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-test
-  (let [query   (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (let [query   (lib/query meta/metadata-provider (meta/table-metadata :venues))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (not (mc/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
@@ -45,9 +45,9 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel aggregation-and-breakout-test
-  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
-                    (lib/breakout (lib/field "VENUES" "NAME")))
+  (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
+                    (lib/breakout (meta/field-metadata :venues :name)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -66,9 +66,9 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel multi-stage-test
-  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
-                    (lib/breakout (lib/field "VENUES" "NAME"))
+  (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
+                    (lib/breakout (meta/field-metadata :venues :name))
                     (lib/append-stage))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]

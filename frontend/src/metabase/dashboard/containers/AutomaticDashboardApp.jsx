@@ -32,6 +32,7 @@ import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import * as Q from "metabase-lib/queries/utils/query";
 import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
+import { isSegment } from "metabase-lib/queries/utils/filter";
 
 import {
   ItemContent,
@@ -221,7 +222,7 @@ const TransientFilter = ({ filter, metadata }) => {
     <div className="mr3">
       <Icon
         size={12}
-        name={getIconForFilter(dimension.field())}
+        name={getIconForFilter(filter, dimension)}
         className="mr1"
       />
       <Filter filter={filter} metadata={metadata} />
@@ -229,8 +230,14 @@ const TransientFilter = ({ filter, metadata }) => {
   );
 };
 
-const getIconForFilter = field => {
-  if (field.isDate()) {
+const getIconForFilter = (filter, dimension) => {
+  const field = dimension?.field();
+
+  if (isSegment(filter)) {
+    return "star";
+  } else if (!field) {
+    return "label";
+  } else if (field.isDate()) {
     return "calendar";
   } else if (field.isLocation()) {
     return "location";

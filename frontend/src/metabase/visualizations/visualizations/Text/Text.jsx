@@ -19,7 +19,7 @@ import {
   EditModeContainer,
   ReactMarkdownStyleWrapper,
   TextInput,
-} from "./Text.styled.jsx";
+} from "./Text.styled";
 
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
@@ -73,7 +73,7 @@ export function Text({
     }, {});
   }
 
-  let content = settings["text"];
+  let content = settings.text;
   if (!_.isEmpty(parametersByTag)) {
     // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
     // translated the same way.
@@ -82,7 +82,7 @@ export function Text({
     );
   }
 
-  const hasContent = !isEmpty(content);
+  const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
   if (isEditing) {
@@ -118,7 +118,7 @@ export function Text({
             data-testid="editing-dashboard-text-input"
             name="text"
             placeholder={placeholder}
-            value={content}
+            value={settings.text}
             autoFocus={justAdded || isFocused}
             onChange={e => handleTextChange(e.target.value)}
             onMouseDown={preventDragging}

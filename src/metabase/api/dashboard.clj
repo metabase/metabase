@@ -616,7 +616,7 @@
 
   ;; Tabs events
   (when (seq deleted-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard-tabs-deleted
+    (snowplow/track-event! ::snowplow/dashboard-tab-deleted
                            api/*current-user-id*
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count deleted-tab-ids)
@@ -624,7 +624,7 @@
     (events/publish-event! :dashboard-remove-tabs
                            {:id dashboard-id :actor_id api/*current-user-id* :tab-ids deleted-tab-ids}))
   (when (seq created-tab-ids)
-    (snowplow/track-event! ::snowplow/dashboard-tabs-created
+    (snowplow/track-event! ::snowplow/dashboard-tab-created
                            api/*current-user-id*
                            {:dashboard-id   dashboard-id
                             :num-tabs       (count created-tab-ids)

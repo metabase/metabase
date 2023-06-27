@@ -6,7 +6,7 @@
   "repository": "https://github.com/metabase/metabase",
   "license": "private",
   "engines": {
-    "node": ">=16",
+    "node": ">=18",
     "yarn": "^1.12.3"
   },
   "dependencies": {
@@ -149,7 +149,7 @@
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^11.0.2",
     "@testing-library/react-hooks": "^8.0.0",
-    "@testing-library/user-event": "^12.6.0",
+    "@testing-library/user-event": "^13.1.3",
     "@types/babel__core": "^7.1.16",
     "@types/babel__preset-env": "^7.9.2",
     "@types/color": "^3.0.2",

@@ -419,6 +419,11 @@
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
+            valid-metadata?)
+
+       ;; copying card and reusing existing metadata
+       (and (nil? original-query)
+            query
             valid-metadata?))
       (do
         (log/debug (trs "Reusing provided metadata"))
@@ -1138,10 +1143,10 @@ saved later when it is ready."
   (param-values (api/read-check Card card-id) param-key query))
 
 (defn- scan-and-sync-table!
-  [{:keys [is_on_demand is_full_sync] :as database} table]
+  [database table]
   (sync-fields/sync-fields-for-table! database table)
-  (when (or is_on_demand is_full_sync)
-    (future (sync/sync-table! table))))
+  (future
+    (sync/sync-table! table)))
 
 (defn- csv-stats [^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
@@ -1185,7 +1190,7 @@ saved later when it is ready."
           schema+table-name (if (str/blank? schema-name)
                               table-name
                               (str schema-name "." table-name))
-          stats             (upload/load-from-csv driver db-id schema+table-name csv-file)
+          stats             (upload/load-from-csv! driver db-id schema+table-name csv-file)
           ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
           table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
           _sync             (scan-and-sync-table! database table)
@@ -1219,11 +1224,17 @@ saved later when it is ready."
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
   [:as {raw-params :params}]
-  ;; parse-long returns nil with "root", which is what we want anyway
-  (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
-                                   (get-in raw-params ["file" :filename])
-                                   (get-in raw-params ["file" :tempfile])))]
-    {:status 200
-     :body   model-id}))
+  ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
+  (try
+    (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
+                                     (get-in raw-params ["file" :filename])
+                                     (get-in raw-params ["file" :tempfile])))]
+      {:status 200
+       :body   model-id})
+    (catch Throwable e
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error uploading the file"))}})))
 
 (api/define-routes)

@@ -68,8 +68,7 @@
    & args      :- [s/Any]]
   (with-open [conn (.getConnection data-source)]
     (.setAutoCommit conn false)
-      ;; Set up liquibase and let it do its thing
-
+    ;; Set up liquibase and let it do its thing
     (log/info (trs "Setting up Liquibase..."))
     (liquibase/with-liquibase [liquibase conn]
       (try

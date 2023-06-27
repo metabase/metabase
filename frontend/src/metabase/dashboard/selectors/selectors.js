@@ -17,7 +17,7 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "../utils";
-import { getDashboardId } from "./selectors_typed";
+import { getDashboardId } from "./selectors-typed";
 
 export const getIsEditing = state => !!state.dashboard.isEditing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
@@ -155,21 +155,22 @@ const getIsParameterValuesEmpty = createSelector(
 
 export const getCanShowAutoApplyFiltersToast = createSelector(
   [
-    getDashboardId,
+    getDashboard,
     getAutoApplyFiltersToastDashboardId,
     getIsAutoApplyFilters,
     getIsSlowDashboard,
     getIsParameterValuesEmpty,
   ],
   (
-    dashboardId,
+    dashboard,
     toastDashboardId,
     isAutoApply,
     isSlowDashboard,
     isParameterValuesEmpty,
   ) => {
     return (
-      dashboardId !== toastDashboardId &&
+      dashboard.can_write &&
+      dashboard.id !== toastDashboardId &&
       isAutoApply &&
       isSlowDashboard &&
       !isParameterValuesEmpty

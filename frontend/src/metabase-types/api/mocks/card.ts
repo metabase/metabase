@@ -1,4 +1,4 @@
-import {
+import type {
   ModerationReview,
   Card,
   UnsavedCard,
@@ -6,7 +6,9 @@ import {
   SeriesOrderSetting,
   StructuredDatasetQuery,
   NativeDatasetQuery,
+  PublicCard,
 } from "metabase-types/api";
+
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
@@ -27,6 +29,18 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   collection_id: null,
   last_query_start: null,
   archived: false,
+  ...opts,
+});
+
+export const createMockPublicCard = (
+  opts?: Partial<PublicCard>,
+): PublicCard => ({
+  id: 1,
+  name: "Question",
+  description: null,
+  display: "table",
+  dataset_query: { type: "query" },
+  visualization_settings: createMockVisualizationSettings(),
   ...opts,
 });
 

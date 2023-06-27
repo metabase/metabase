@@ -8,7 +8,6 @@
    [metabase.actions :as actions]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -117,25 +116,27 @@
   [database-id f]
   (if *connection*
     (f *connection*)
-    (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)]
-      (with-open [conn (jdbc/get-connection jdbc-spec)]
-        ;; execute inside of a transaction.
-        (.setAutoCommit conn false)
-        (log/tracef "BEGIN transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
-        ;; use the strictest transaction isolation level possible to avoid dirty, non-repeatable, and phantom reads
-        (sql-jdbc.execute/set-best-transaction-level! (driver.u/database->driver database-id) conn)
-        (try
-          (let [result (binding [*connection* conn]
-                         (f conn))]
-            (log/debug "f completed successfully; committing transaction.")
-            (log/tracef "COMMIT transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
-            (.commit conn)
-            result)
-          (catch Throwable e
-            (log/debugf "f threw Exception; rolling back transaction. Error: %s" (ex-message e))
-            (log/tracef "ROLLBACK transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
-            (.rollback conn)
-            (throw e)))))))
+    (let [driver (driver.u/database->driver database-id)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database-id
+       {:write? true}
+       (fn [^Connection conn]
+         ;; execute inside of a transaction.
+         (.setAutoCommit conn false)
+         (log/tracef "BEGIN transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+         (try
+           (let [result (binding [*connection* conn]
+                          (f conn))]
+             (log/debug "f completed successfully; committing transaction.")
+             (log/tracef "COMMIT transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+             (.commit conn)
+             result)
+           (catch Throwable e
+             (log/debugf "f threw Exception; rolling back transaction. Error: %s" (ex-message e))
+             (log/tracef "ROLLBACK transaction on conn %s@0x%s" (.getCanonicalName (class conn)) (System/identityHashCode conn))
+             (.rollback conn)
+             (throw e))))))))
 
 (defmacro with-jdbc-transaction
   "Execute `f` with a JDBC Connection for the Database with `database-id`. Uses [[*connection*]] if already bound,
@@ -143,7 +144,6 @@
   {:style/indent 1}
   [[connection-binding database-id] & body]
   `(do-with-jdbc-transaction ~database-id (fn [~(vary-meta connection-binding assoc :tag 'Connection)] ~@body)))
-
 
 (defmulti prepare-query*
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.

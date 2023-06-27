@@ -15,7 +15,6 @@
    [medley.core :as m]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
-   [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -319,12 +318,11 @@
                                      (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
         temp-admin                 (first (t2/insert-returning-instances! User (merge (with-temp-defaults User)
                                                                                       attributes
-                                                                                      {:is_superuser true})))
-        primary-key                (mdb.u/primary-key User)]
+                                                                                      {:is_superuser true})))]
     (try
       (thunk temp-admin)
       (finally
-        (t2/delete! User primary-key (primary-key temp-admin))
+        (t2/delete! User (:id temp-admin))
         (when (seq existing-admin-ids)
           (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
         (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))

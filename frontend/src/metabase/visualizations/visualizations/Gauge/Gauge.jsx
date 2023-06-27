@@ -14,6 +14,10 @@ import { formatValue } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { isNumeric } from "metabase-lib/types/utils/isa";
 import { GaugeArcPath } from "./Gauge.styled";
 import { getValue } from "./utils";
@@ -60,7 +64,8 @@ export default class Gauge extends Component {
   static identifier = "gauge";
   static iconName = "gauge";
 
-  static minSize = { width: 4, height: 4 };
+  static minSize = getMinSize("gauge");
+  static defaultSize = getDefaultSize("gauge");
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;

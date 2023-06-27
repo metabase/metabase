@@ -60,6 +60,7 @@
 
 (mr/def ::external-op
   [:map
+   [:lib/type [:= :lib/external-op]]
    [:operator [:or :string :keyword]]
    [:options {:optional true} ::options]
    [:args [:sequential :any]]])
