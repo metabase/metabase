@@ -507,6 +507,102 @@ describe("scenarios > dashboards > filters > auto apply", () => {
         undoToast().should("not.exist");
       });
     });
+
+    describe("full-app embeddings", () => {
+      beforeEach(() => {
+        cy.signInAsNormalUser();
+      });
+
+      it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
+        createDashboard({
+          dashboardDetails: {
+            name: "Full-app embedding dashboard",
+            auto_apply_filters: false,
+          },
+        });
+        cy.get("@dashboardId").then(dashboardId => {
+          visitFullAppEmbeddingUrl({
+            url: `/dashboard/${dashboardId}`,
+            qs: { side_nav: false, logo: false },
+          });
+        });
+        cy.findByDisplayValue("Full-app embedding dashboard").should(
+          "be.visible",
+        );
+        // Ensure that we're viewing the dashboard in full-app embedding mode, since `logo` is a full-app embedding parameter.
+        cy.findByTestId("main-logo").should("not.exist");
+
+        dashboardParametersContainer().button("Apply").should("not.exist");
+        filterWidget().findByText("Category").click();
+        popover().within(() => {
+          cy.findByText("Widget").click();
+          cy.button("Add filter").click();
+        });
+        getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+        dashboardParametersContainer()
+          .button("Apply")
+          .should("be.visible")
+          .click();
+        getDashboardCard().findByText("Rows 1-5 of 54").should("be.visible");
+      });
+
+      it("should display a toast when a dashboard takes longer than 15s to load", () => {
+        createDashboard();
+        // Not sure why I need to pass a date in this case, but it doesn't work without it.
+        cy.clock(Date.now());
+        openSlowFullAppEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
+        cy.tick(TOAST_TIMEOUT);
+        cy.wait("@cardQuery");
+        undoToast().within(() => {
+          cy.findByText(TOAST_MESSAGE).should("be.visible");
+          cy.button("Turn off").click();
+          cy.wait("@updateDashboard");
+        });
+
+        // In embedding we'll load bookmark after the dashboard is loaded, it's the opposite in normal app because bookmark is cached from somewhere else.
+        // And somehow, dashboard card query will be completed before the dashboard even start to load, and in entity loader it uses `setTimeout`,
+        // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
+        cy.tick();
+
+        toggleDashboardInfoSidebar();
+        rightSidebar()
+          .findByLabelText("Auto-apply filters")
+          .should("not.be.checked");
+        filterWidget().findByText("Gadget").should("be.visible");
+
+        // Card height isn't updated because we're mocking clock, that's it's only showing 1 result per page.
+        getDashboardCard().findByText("Rows 1-1 of 53").should("be.visible");
+
+        // card result should be updated after manually updating the filter
+        filterWidget().icon("close").click();
+        dashboardParametersContainer()
+          .button("Apply")
+          .should("be.visible")
+          .click();
+
+        // Card height isn't updated because we're mocking clock, that's it's only showing 1 result per page.
+        getDashboardCard().findByText("Rows 1-1 of 200").should("be.visible");
+      });
+
+      it("should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard", () => {
+        createDashboard();
+        cy.signIn("readonly");
+        // Not sure why I need to pass a date in this case, but it doesn't work without it.
+        cy.clock(Date.now());
+        openSlowFullAppEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
+        cy.tick(TOAST_TIMEOUT);
+        cy.wait("@cardQuery");
+        undoToast().should("not.exist");
+
+        // In embedding we'll load bookmark after the dashboard is loaded, it's the opposite in normal app because bookmark is cached from somewhere else.
+        // And somehow, dashboard card query will be completed before the dashboard even start to load, and in entity loader it uses `setTimeout`,
+        // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
+        cy.tick();
+
+        // Card height isn't updated because we're mocking clock, that's it's only showing 1 result per page.
+        getDashboardCard().findByText("Rows 1-1 of 53").should("be.visible");
+      });
+    });
   });
 });
 
@@ -645,6 +741,32 @@ const openSlowEmbeddingDashboard = (params = {}) => {
   getDashboardCard().should("be.visible");
 };
 
+const openSlowFullAppEmbeddingDashboard = (params = {}) => {
+  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+    "cardQuery",
+  );
+
+  cy.get("@dashboardId").then(dashboardId => {
+    visitFullAppEmbeddingUrl({
+      url: `/dashboard/${dashboardId}`,
+      qs: params,
+    });
+  });
+
+  getDashboardCard().should("be.visible");
+};
+
 function toggleDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
 }
+
+const visitFullAppEmbeddingUrl = url => {
+  cy.visit({
+    ...url,
+    onBeforeLoad(window) {
+      // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
+      // by removing the property the app would work in embedding mode
+      window.Cypress = undefined;
+    },
+  });
+};

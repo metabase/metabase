@@ -79,7 +79,10 @@ describe("database prompt banner", () => {
 
     describe("full-app embeddings", () => {
       it("should render database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
-        visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+        visitFullAppEmbeddingUrl({
+          url: "/",
+          qs: { side_nav: false, logo: false },
+        });
 
         cy.findByRole("link", { name: "Metabase tips" }).should("exist");
 
@@ -99,7 +102,10 @@ describe("database prompt banner", () => {
         // Adding a second database should prevent the database prompt
         cy.addH2SampleDatabase({ name: "H2 DB" });
 
-        visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+        visitFullAppEmbeddingUrl({
+          url: "/",
+          qs: { side_nav: false, logo: false },
+        });
 
         cy.findByRole("link", { name: "Metabase tips" }).should("exist");
 
@@ -145,7 +151,7 @@ describeWithSnowplow("database prompt banner", () => {
   });
 });
 
-const visitUrl = url => {
+const visitFullAppEmbeddingUrl = url => {
   cy.visit({
     ...url,
     onBeforeLoad(window) {
