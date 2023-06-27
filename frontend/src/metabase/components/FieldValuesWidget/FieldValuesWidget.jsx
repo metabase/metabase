@@ -184,7 +184,11 @@ class FieldValuesWidgetInner extends Component {
   fetchFieldValues = async query => {
     if (query == null) {
       const { fields, fetchFieldValues } = this.props;
-      await Promise.all(fields.map(field => fetchFieldValues(field.id)));
+      await Promise.all(
+        fields
+          .filter(field => !field.isVirtual())
+          .map(field => fetchFieldValues(field.id)),
+      );
       return dedupeValues(this.props.fields.map(field => field.values));
     } else {
       const { fields } = this.props;
