@@ -61,11 +61,13 @@ Note that [Block](#block-access) access is unavailable for individual tables/sch
 
 {% include plans-blockquote.html feature="Impersonation access" %}
 
-**Impersonation access** associates a Metabase [group](../people-and-groups/managing.md#groups) with database-defined roles and their privileges. Metabase queries made by this group will respect the grants given to the database roles. You can use impersonation to give a group access to the native/SQL editor, while restricting the group's access to data based on a specific database role.
+**Impersonation access** allows you to associate user attributes with database-defined roles and their privileges. Metabase queries made by people with attributes that you define will respect the grants given to the database roles. 
+
+You can use impersonation to give people access to the native/SQL editor, while at the same time restricting the their access to data based on a specific database role. And not just table-level access, but row-level access---or however you define access for that role in your database. Effectively what this means is that you can use impersonation to set up data sandbox-like access to your data. The difference is that, instead of setting up a data sandbox in Metabase, you need to set up that row-level security via the privileges granted to a role in your database.
 
 When you connect Metabase to a database, you use a database user account that has one or more database roles. When you give a group in Metabase unrestricted access to a database, that group will have the same privileges as the user account that you used to connect Metabase to that database.
 
-If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables, and then use Metabase's impersonation feature to map a Metabase group to that role. Essentially what Metabase will do is take the user attribute you select for impersonation and pass that string into a `SET ROLE` OR `USE ROLE` command for the database before it executes a query.
+If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query.
 
 ### Setting up connection impersonation
 
@@ -74,7 +76,7 @@ If instead you want to give a group SQL access to some, but not all, of the sche
 - Create a new role.
 - Grant that role privileges.
 
-For exactly how to set this up, you'll need to consult your database's documentation. We also have some docs on [users, roles, and privileges](../databases/users-roles-privileges.md) that can help you get started.
+For exactly how to create a new role in your database and grant that role privileges, you'll need to consult your database's documentation. We also have some docs on [users, roles, and privileges](../databases/users-roles-privileges.md) that can help you get started.
 
 **In your Metabase:**
 
