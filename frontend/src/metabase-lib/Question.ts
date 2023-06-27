@@ -91,6 +91,13 @@ export type QuestionCreatorOpts = {
 };
 
 /**
+ * Wrapper around CardObject to add frontend-only properties.
+ */
+interface CardInner extends CardObject {
+  displayIsLocked?: boolean;
+}
+
+/**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 
@@ -99,7 +106,7 @@ class QuestionInner {
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
    */
-  _card: CardObject;
+  _card: CardInner;
 
   /**
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
@@ -303,11 +310,11 @@ class QuestionInner {
     return this.setDisplayIsLocked(true);
   }
 
-  setDisplayIsLocked(locked: boolean): Question {
+  setDisplayIsLocked(locked: boolean | undefined): Question {
     return this.setCard(assoc(this.card(), "displayIsLocked", locked));
   }
 
-  displayIsLocked(): boolean {
+  displayIsLocked(): boolean | undefined {
     return this._card && this._card.displayIsLocked;
   }
 
