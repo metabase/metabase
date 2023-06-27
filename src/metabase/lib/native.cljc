@@ -12,7 +12,8 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.util :as lib.util]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.shared.util.i18n :as i18n]))
 
 (def ^:private TemplateTag
   [:map
@@ -161,7 +162,8 @@
    inner-query :- ::common/non-blank-string]
   (lib.util/update-query-stage
     query 0
-    (fn [{existing-tags :template-tags :as stage}]
+    (fn [{existing-tags :template-tags stage-type :lib/type :as stage}]
+      (assert (= stage-type :mbql.stage/native) (i18n/tru "Must be a native query"))
       (assoc stage
         :native inner-query
         :template-tags (extract-template-tags inner-query existing-tags)))))
@@ -172,7 +174,8 @@
    tags :- TemplateTags]
   (lib.util/update-query-stage
     query 0
-    (fn [{existing-tags :template-tags :as stage}]
+    (fn [{existing-tags :template-tags stage-type :lib/type :as stage}]
+      (assert (= stage-type :mbql.stage/native) (i18n/tru "Must be a native query"))
       (let [valid-tags (keys existing-tags)]
         (assoc stage :template-tags
                (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
