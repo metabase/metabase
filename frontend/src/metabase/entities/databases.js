@@ -104,11 +104,25 @@ const Databases = createEntity({
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
 
     getIdFields: createSelector(
-      [state => getMetadata(state).fields, (state, props) => props.databaseId],
-      (fields, databaseId) =>
-        Object.values(fields).filter(f => {
-          const { db_id } = f.table || {}; // a field's table can be null
-          return db_id === databaseId && f.isPK() && !f.table.isVirtualCard();
+      [
+        state => getMetadata(state).fields,
+        (state, props) => props.databaseId,
+        state => getMetadata(state),
+      ],
+      (fields, databaseId, metadata) =>
+        Object.values(fields).filter(field => {
+          const { db_id } = field.table || {}; // a field's table can be null
+
+          const isPKField = db_id === databaseId && field.isPK();
+
+          if (!isPKField) {
+            return;
+          }
+
+          const questionId = field.table?.savedQuestionId();
+          const isModelField = metadata.question(questionId)?.isDataset();
+
+          return !isModelField;
         }),
     ),
   },
