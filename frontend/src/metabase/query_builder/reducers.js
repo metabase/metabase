@@ -97,7 +97,7 @@ const DEFAULT_LOADING_CONTROLS = {
   timeoutId: "",
 };
 
-const DEFAULT_DASHBOARD_CONTROLS = {
+const DEFAULT_DASHBOARD_STATE = {
   dashboardId: null,
   isEditing: false,
 };
@@ -554,7 +554,7 @@ export const currentState = handleActions(
   null,
 );
 
-export const dashboardControls = handleActions(
+export const parentDashboard = handleActions(
   {
     [NAVIGATE_TO_NEW_CARD]: {
       next: (state, { payload: { dashboardId } }) => ({
@@ -568,9 +568,9 @@ export const dashboardControls = handleActions(
         isEditing: true,
       }),
     },
-    [CLOSE_QB]: { next: () => DEFAULT_DASHBOARD_CONTROLS },
+    [CLOSE_QB]: { next: () => DEFAULT_DASHBOARD_STATE },
   },
-  DEFAULT_DASHBOARD_CONTROLS,
+  DEFAULT_DASHBOARD_STATE,
 );
 
 export const visibleTimelineEventIds = handleActions(

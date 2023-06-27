@@ -941,11 +941,11 @@ export const getNativeQueryFn = createSelector(
 );
 
 export const getDashboardId = state => {
-  return state.qb.dashboardControls.dashboardId;
+  return state.qb.parentDashboard.dashboardId;
 };
 
 export const getIsEditingInDashboard = state => {
-  return state.qb.dashboardControls.isEditing;
+  return state.qb.parentDashboard.isEditing;
 };
 
 export const getDashboard = state => {

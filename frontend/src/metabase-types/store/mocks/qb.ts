@@ -1,5 +1,5 @@
 import {
-  QueryBuilderDashboardControls,
+  QueryBuilderDashboardState,
   QueryBuilderState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
@@ -27,9 +27,9 @@ export const createMockQueryBuilderUIControlsState = (
   ...opts,
 });
 
-export const createMockQueryBuilderDashboardControls = (
-  opts?: Partial<QueryBuilderDashboardControls>,
-): QueryBuilderDashboardControls => ({
+export const createMockQueryBuilderDashboardState = (
+  opts?: Partial<QueryBuilderDashboardState>,
+): QueryBuilderDashboardState => ({
   dashboardId: null,
   isEditing: false,
   ...opts,
@@ -44,7 +44,7 @@ export const createMockQueryBuilderState = (
     documentTitle: "",
     timeoutId: "",
   },
-  dashboardControls: createMockQueryBuilderDashboardControls(),
+  parentDashboard: createMockQueryBuilderDashboardState(),
 
   queryStatus: "complete",
   queryResults: null,

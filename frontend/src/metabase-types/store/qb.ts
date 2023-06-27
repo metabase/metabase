@@ -41,7 +41,7 @@ export interface QueryBuilderLoadingControls {
   timeoutId: string;
 }
 
-export interface QueryBuilderDashboardControls {
+export interface QueryBuilderDashboardState {
   dashboardId: DashboardId | null;
   isEditing: boolean;
 }
@@ -49,7 +49,7 @@ export interface QueryBuilderDashboardControls {
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
   loadingControls: QueryBuilderLoadingControls;
-  dashboardControls: QueryBuilderDashboardControls;
+  parentDashboard: QueryBuilderDashboardState;
   queryStatus: QueryBuilderQueryStatus;
   queryResults: Dataset[] | null;
   queryStartTime: number | null;
