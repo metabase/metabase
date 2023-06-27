@@ -85,8 +85,8 @@ export const ModalCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
 `;
 
-export const SearchIcon = styled(Icon)`
-  margin: 0 ${space(1)};
+export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
+  margin: ${props => (props.isActive ? `0 ${space(1)}` : "auto")};
   color: ${color("text-light")};
 `;
 
