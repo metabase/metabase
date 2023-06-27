@@ -21,6 +21,9 @@
 ;; So far:
 ;; - :filter on each :operators of :drill-thru/quick-filter applied with (lib/filter query stage filter-clause)
 
+;; TODO: ActionMode, PublicMode, MetabotMode need to be captured in the FE before calling `available-drill-thrus`.
+
+
 ;;; ---------------------------------------- Internals -------------------------------------------
 (defn- structured-query? [query stage-number]
   (-> (lib.util/query-stage query stage-number)
@@ -288,6 +291,13 @@
                     (every-pred lib.types.isa/category?
                                 (complement lib.types.isa/address?))))
 
+(defn- breakout-type [query stage-number breakout]
+  (let [column (lib.metadata.calculation/metadata query stage-number breakout)]
+    (cond
+      (lib.types.isa/date? column) :date
+      (lib.types.isa/address? column) :address
+      (lib.types.isa/category? column) :category)))
+
 (mu/defn ^:private pivot-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Return all possible pivoting options on the given column and value.
 
@@ -300,10 +310,23 @@
   (when (and (structured-query? query stage-number)
              column
              (some? value)
-             (= (:lib/source column) :source/aggregations))
-    (let [by-category (pivot-by-category-drill query stage-number column value)
-          by-location (pivot-by-location-drill query stage-number column value)
-          by-time     (pivot-by-time-drill     query stage-number column value)
+             (= (:lib/source column) :source/aggregations)
+             (-> (lib.aggregation/aggregations query stage-number) count pos?))
+    (let [pivot-types (case (mapv #(breakout-type query stage-number %)
+                                  (lib.breakout/breakouts query stage-number))
+                        ([:date]
+                         [:date :category])     #{:category :location}
+                        [:address]              #{:category :time}
+                        ([]
+                         [:category]
+                         [:category :category]) #{:category :location :time}
+                        #{})
+          by-category (when (pivot-types :category)
+                        (pivot-by-category-drill query stage-number column value))
+          by-location (when (pivot-types :location)
+                        (pivot-by-location-drill query stage-number column value))
+          by-time     (when (pivot-types :time)
+                        (pivot-by-time-drill     query stage-number column value))
           pivots      (merge (when (seq by-category) {:category by-category})
                              (when (seq by-location) {:location by-location})
                              (when (seq by-time)     {:time     by-time}))]
