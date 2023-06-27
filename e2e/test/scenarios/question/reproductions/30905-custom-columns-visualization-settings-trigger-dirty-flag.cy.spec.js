@@ -27,10 +27,7 @@ describe("Custom columns visualization settings", () => {
   it("should not show 'Save' after modifying minibar settings for a custom column", () => {
     goToExpressionSidebarVisualizationSettings();
     popover().within(() => {
-      const miniBarSwitch = cy
-        .get("#show_mini_bar")
-        .parent()
-        .findByRole("switch");
+      const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
       miniBarSwitch.click();
       miniBarSwitch.should("be.checked");
     });
@@ -41,10 +38,7 @@ describe("Custom columns visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
 
     popover().within(() => {
-      const viewAsDropdown = cy
-        .get("#view_as")
-        .parent()
-        .findByTestId("select-button");
+      const viewAsDropdown = cy.findByLabelText("Display as");
       viewAsDropdown.click();
     });
 
@@ -63,10 +57,7 @@ describe("Custom columns visualization settings", () => {
       cy.findByRole("button", { name: /gear icon/i }).click();
     });
     popover().within(() => {
-      const miniBarSwitch = cy
-        .get("#show_mini_bar")
-        .parent()
-        .findByRole("switch");
+      const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
       miniBarSwitch.click();
       miniBarSwitch.should("be.checked");
     });

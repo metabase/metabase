@@ -41,9 +41,9 @@ describe("scenarios > visualizations > table", () => {
     popover().within(() => {
       cy.findByText("Filter by this column");
       cy.icon("gear").click();
-      cy.findByTestId("column_title").type(" updated");
+      cy.findByLabelText("Column title").type(" updated");
       // This defocuses the input, which triggers the update
-      cy.get("#column_title").click();
+      cy.findByText("Column title").click();
     });
     // click somewhere else to close the popover
     headerCells().last().click();
@@ -63,18 +63,18 @@ describe("scenarios > visualizations > table", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link").click();
 
-    cy.findByTestId("link_text").type("{{C");
+    cy.findByLabelText("Link text").type("{{C");
     cy.findByTestId("select-list").within(() => {
       cy.findAllByText("CITY").click();
     });
 
-    cy.findByTestId("link_text")
+    cy.findByLabelText("Link text")
       .type(" {{ID}} fixed text", {
         parseSpecialCharSequences: false,
       })
       .blur();
 
-    cy.findByTestId("link_url")
+    cy.findByLabelText("Link URL")
       .type("http://metabase.com/people/{{ID}}", {
         parseSpecialCharSequences: false,
       })
