@@ -2,7 +2,7 @@
   "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
   "description": "Search events",
   "self": {
-    "vendor": "com.example",
+    "vendor": "com.metabase",
     "name": "search",
     "format": "jsonschema",
     "version": "1-0-0"
