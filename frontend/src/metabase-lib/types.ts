@@ -157,3 +157,17 @@ export type JoinStrategyDisplayInfo = {
   default?: boolean;
   shortName: string;
 };
+
+declare const DrillThru: unique symbol;
+export type DrillThru = unknown & { _opaque: typeof DrillThru };
+
+export interface Dimension {
+  column: Record<string, unknown>;
+  value?: any;
+}
+
+export interface DrillThruInputs {
+  column: Record<string, unknown>;
+  value?: any;
+  dimensions?: Dimension[];
+}

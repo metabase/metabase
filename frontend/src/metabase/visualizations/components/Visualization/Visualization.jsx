@@ -32,6 +32,7 @@ import { getFont } from "metabase/styled-components/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRegularClickAction } from "metabase/modes/types";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
@@ -235,12 +236,20 @@ class Visualization extends PureComponent {
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 
-    return mode
-      ? mode.actionsForClick(
-          { ...clicked, extraData: getExtraDataForClick(clicked) },
-          {},
-        )
-      : [];
+    const extraData = getExtraDataForClick(clicked);
+    if (extraData && Object.keys(extraData).length > 0) {
+      //debugger;
+    }
+
+    if (mode) {
+      window.__q = question._getMLv2Query();
+      const mlv2Drills = Lib.availableDrillThrus(window.__q, -1, clicked);
+      if (mlv2Drills && mlv2Drills.length > 0) {
+        //console.log(question, clicked?.column, clicked?.value, mlv2Drills);
+      }
+    }
+
+    return mode ? mode.actionsForClick({ ...clicked, extraData }, {}) : [];
   }
 
   visualizationIsClickable = clicked => {

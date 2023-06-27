@@ -9,6 +9,7 @@ export * from "./common";
 export * from "./comparison";
 export * from "./metadata";
 export * from "./breakout";
+export * from "./drills";
 export * from "./fields";
 export * from "./limit";
 export * from "./order_by";
