@@ -4,10 +4,7 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
 
-import type { Aggregation as LegacyAggregationClause } from "metabase-types/api";
 import * as Lib from "metabase-lib";
-import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import QueryColumnPicker from "../QueryColumnPicker";
 import {
@@ -25,11 +22,8 @@ interface AggregationPickerProps {
   query: Lib.Query;
   stageIndex: number;
   operators: Lib.AggregationOperator[];
-  legacyQuery: StructuredQuery;
-  legacyClause?: LegacyAggregation;
   maxHeight?: number;
   onSelect: (operator: Lib.AggregationClause | Lib.MetricMetadata) => void;
-  onSelectLegacy: (operator: LegacyAggregationClause) => void;
   onClose?: () => void;
 }
 
@@ -58,11 +52,8 @@ export function AggregationPicker({
   query,
   stageIndex,
   operators,
-  legacyQuery,
-  legacyClause,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
-  onSelectLegacy,
   onClose,
 }: AggregationPickerProps) {
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
