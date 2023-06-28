@@ -3,6 +3,7 @@ import "mutationobserver-shim";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 
+import { checkNotNull } from "metabase/core/utils/types";
 import {
   FieldValuesWidget,
   searchField,
@@ -31,6 +32,7 @@ const LISTABLE_PK_FIELD_ID = 100;
 const STRING_PK_FIELD_ID = 101;
 const SEARCHABLE_FK_FIELD_ID = 102;
 const LISTABLE_FIELD_WITH_MANY_VALUES_ID = 103;
+const EXPRESSION_FIELD_ID = ["field", "CC", { "base-type": "type/Text" }];
 
 const database = createSampleDatabase({
   tables: [
@@ -74,6 +76,10 @@ const database = createSampleDatabase({
           effective_type: "type/Text",
           has_field_values: "list",
           has_more_values: true,
+        }),
+        createMockField({
+          id: EXPRESSION_FIELD_ID,
+          field_ref: ["expression", "CC"],
         }),
       ],
     }),
@@ -403,6 +409,17 @@ describe("FieldValuesWidget", () => {
         const fields = [metadata.field(ORDERS.SUBTOTAL)];
         expect(getValuesMode({ fields })).toBe("none");
       });
+    });
+  });
+
+  describe("custom expressions", () => {
+    const field = checkNotNull(metadata.field(EXPRESSION_FIELD_ID));
+
+    it("should not call fetchFieldValues", () => {
+      const { fetchFieldValues } = renderFieldValuesWidget({
+        fields: [field],
+      });
+      expect(fetchFieldValues).not.toHaveBeenCalled();
     });
   });
 });
