@@ -126,6 +126,14 @@
 
                                      y_label       (assoc :graph.y_axis.title_text y_label)))}))
 
+
+(defn card-defaults
+  "Default properties for a dashcard on magic dashboard."
+  []
+  {:id                     (gensym)
+   :dashboard_tab_id       nil
+   :visualization_settings {}})
+
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
@@ -137,33 +145,34 @@
                   :id            (or id (gensym))}
                  (merge (visualization-settings card))
                  card/populate-query-fields)]
-    (update dashboard :ordered_cards conj {:col                    y
-                                           :row                    x
-                                           :size_x                 width
-                                           :size_y                 height
-                                           :card                   card
-                                           :card_id                (:id card)
-                                           :visualization_settings {}
-                                           :id                     (gensym)})))
+    (update dashboard :ordered_cards conj
+            (merge (card-defaults)
+             {:col                    y
+              :row                    x
+              :size_x                 width
+              :size_y                 height
+              :card                   card
+              :card_id                (:id card)
+              :visualization_settings {}}))))
 
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [text width height visualization-settings]} [x y]]
   (update dashboard :ordered_cards conj
-          {:creator_id             api/*current-user-id*
-           :visualization_settings (merge
-                                    {:text         text
-                                     :virtual_card {:name                   nil
-                                                    :display                :text
-                                                    :dataset_query          {}
-                                                    :visualization_settings {}}}
-                                    visualization-settings)
-           :col                    y
-           :row                    x
-           :size_x                 width
-           :size_y                 height
-           :card                   nil
-           :id                     (gensym)}))
+          (merge (card-defaults)
+                 {:creator_id             api/*current-user-id*
+                  :visualization_settings (merge
+                                            {:text         text
+                                             :virtual_card {:name                   nil
+                                                            :display                :text
+                                                            :dataset_query          {}
+                                                            :visualization_settings {}}}
+                                            visualization-settings)
+                  :col                    y
+                  :row                    x
+                  :size_x                 width
+                  :size_y                 height
+                  :card                   nil})))
 
 (defn- make-grid
   [width height]

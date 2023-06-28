@@ -1,6 +1,7 @@
-import { useMount } from "react-use";
+import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 import type { UniqueIdentifier } from "@dnd-kit/core";
+import type { Location } from "history";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -13,24 +14,21 @@ import {
   moveTab as moveTabAction,
 } from "metabase/dashboard/actions";
 import { SelectedTabId } from "metabase-types/store";
-import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
+import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
 import { addUndo } from "metabase/redux/undo";
+
+import { parseSlug, useSyncURLSlug } from "./use-sync-url-slug";
 
 let tabDeletionId = 1;
 
-export function useDashboardTabs() {
+export function useDashboardTabs({ location }: { location: Location }) {
   const dispatch = useDispatch();
-  const dashboardId = useSelector(getDashboardId);
-  const tabs = useSelector(state =>
-    dashboardId
-      ? state.dashboard.dashboards[dashboardId].ordered_tabs?.filter(
-          tab => !tab.isRemoved,
-        ) ?? []
-      : [],
-  );
+  const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
 
-  useMount(() => dispatch(initTabs()));
+  useSyncURLSlug({ location });
+  useMount(() => dispatch(initTabs({ slug: parseSlug({ location }) })));
+  useUnmount(() => dispatch(selectTab({ tabId: null })));
 
   const deleteTab = (tabId: SelectedTabId) => {
     const tabName = tabs.find(({ id }) => id === tabId)?.name;

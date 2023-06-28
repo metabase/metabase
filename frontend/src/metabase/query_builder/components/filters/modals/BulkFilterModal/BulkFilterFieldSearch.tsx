@@ -51,6 +51,7 @@ export const FieldSearch = ({
     >
       <SearchIcon
         name="search"
+        isActive={showSearch}
         onClick={() => setShowSearch(lastShowSearch => !lastShowSearch)}
       />
       <SearchInput
