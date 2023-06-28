@@ -519,6 +519,6 @@
 (mu/defn primary-keys :- [:sequential lib.metadata/ColumnMetadata]
   "Returns a list of primary keys for the source table of this query."
   [query        :- ::lib.schema/query]
-  (if-let [table-id (lib.util/source-table query)]
+  (if-let [table-id (lib.util/source-table-id query)]
     (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
     []))
