@@ -1,34 +1,61 @@
 (ns metabase.lib.schema.aggregation
   (:require
+   [clojure.string :as str]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
+;;; `:metric` refs are allowed as aggregations. The definition for `:metric` is in [[metabase.lib.schema.ref]].
+(lib.hierarchy/derive :metric ::aggregation)
+
+;;; Clauses like `:sum` are guaranteed to return a number, right? So rather than return `type.unknown` when their arg
+;;; is something like a `:field` ref without type info, just fall back to `:type/Number`. If we have more specific
+;;; info, we can return a more specific type.
+(lib.hierarchy/derive ::type-is-type-of-first-arg-or-number :lib.type-of/type-is-type-of-first-arg)
+
+(defmethod expression/type-of-method ::type-is-type-of-first-arg-or-number
+  [clause]
+  (let [calculated-type ((get-method expression/type-of-method :lib.type-of/type-is-type-of-first-arg) clause)]
+    (if (= calculated-type ::expression/type.unknown)
+      :type/Number
+      calculated-type)))
+
 ;; count has an optional expression arg. This is the number of non-NULL values -- corresponds to count(<expr>) in SQL
 (mbql-clause/define-catn-mbql-clause :count :- :type/Integer
   [:expression [:? [:schema [:ref ::expression/expression]]]])
+
+(lib.hierarchy/derive :count ::aggregation)
 
 ;; cum-count has an optional expression arg
 (mbql-clause/define-catn-mbql-clause :cum-count :- :type/Integer
   [:expression [:? [:schema [:ref ::expression/expression]]]])
 
+(lib.hierarchy/derive :cum-count ::aggregation)
+
 (mbql-clause/define-tuple-mbql-clause :avg :- :type/Float
   [:schema [:ref ::expression/number]])
+
+(lib.hierarchy/derive :avg ::aggregation)
 
 ;;; number of distinct values of something.
 (mbql-clause/define-tuple-mbql-clause :distinct :- :type/Integer
   [:schema [:ref ::expression/expression]])
 
+(lib.hierarchy/derive :distinct ::aggregation)
+
 (mbql-clause/define-tuple-mbql-clause :count-where :- :type/Integer
   [:schema [:ref ::expression/boolean]])
+
+(lib.hierarchy/derive :count-where ::aggregation)
 
 ;;; min and max should work on anything orderable, including numbers, temporal values, and even text values.
 (mbql-clause/define-tuple-mbql-clause :max
   [:schema [:ref ::expression/orderable]])
 
-(lib.hierarchy/derive :max :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :max ::aggregation)
+(lib.hierarchy/derive :max ::type-is-type-of-first-arg-or-number)
 
 ;;; apparently median and percentile only work for numeric args in Postgres, as opposed to anything orderable. Not
 ;;; sure this makes sense conceptually, but since there probably isn't as much of a use case we can keep that
@@ -36,12 +63,14 @@
 (mbql-clause/define-tuple-mbql-clause :median
   [:schema [:ref ::expression/number]])
 
-(lib.hierarchy/derive :median :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :median ::aggregation)
+(lib.hierarchy/derive :median ::type-is-type-of-first-arg-or-number)
 
 (mbql-clause/define-tuple-mbql-clause :min
   [:schema [:ref ::expression/orderable]])
 
-(lib.hierarchy/derive :min :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :min ::aggregation)
+(lib.hierarchy/derive :min ::type-is-type-of-first-arg-or-number)
 
 (mr/def ::percentile.percentile
   [:and
@@ -55,52 +84,54 @@
   #_expr       [:ref ::expression/number]
   #_percentile [:ref ::percentile.percentile])
 
-(lib.hierarchy/derive :percentile :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :percentile ::aggregation)
+(lib.hierarchy/derive :percentile ::type-is-type-of-first-arg-or-number)
 
 (mbql-clause/define-tuple-mbql-clause :share :- :type/Float
   [:schema [:ref ::expression/boolean]])
 
+(lib.hierarchy/derive :share ::aggregation)
+
 (mbql-clause/define-tuple-mbql-clause :stddev :- :type/Float
   [:schema [:ref ::expression/number]])
+
+(lib.hierarchy/derive :stddev ::aggregation)
 
 (mbql-clause/define-tuple-mbql-clause :sum
   [:schema [:ref ::expression/number]])
 
+(lib.hierarchy/derive :sum ::aggregation)
+(lib.hierarchy/derive :sum ::type-is-type-of-first-arg-or-number)
+
 (mbql-clause/define-tuple-mbql-clause :cum-sum
   [:schema [:ref ::expression/number]])
 
-(lib.hierarchy/derive :sum :lib.type-of/type-is-type-of-first-arg)
-
-(lib.hierarchy/derive :cum-sum :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :cum-sum ::aggregation)
+(lib.hierarchy/derive :cum-sum ::type-is-type-of-first-arg-or-number)
 
 (mbql-clause/define-tuple-mbql-clause :sum-where
   [:schema [:ref ::expression/number]]
   [:schema [:ref ::expression/boolean]])
 
-(lib.hierarchy/derive :sum-where :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :sum-where ::aggregation)
+(lib.hierarchy/derive :sum-where ::type-is-type-of-first-arg-or-number)
 
 (mbql-clause/define-tuple-mbql-clause :var :- :type/Float
   #_expr [:schema [:ref ::expression/number]])
 
+(lib.hierarchy/derive :var ::aggregation)
+
 (mr/def ::aggregation
-  ;; placeholder!
-  [:or
-   :mbql.clause/avg
-   :mbql.clause/count
-   :mbql.clause/cum-count
-   :mbql.clause/count-where
-   :mbql.clause/distinct
-   :mbql.clause/max
-   :mbql.clause/median
-   :mbql.clause/min
-   :mbql.clause/percentile
-   :mbql.clause/share
-   :mbql.clause/stddev
-   :mbql.clause/sum
-   :mbql.clause/cum-sum
-   :mbql.clause/sum-where
-   :mbql.clause/var
-   any?])
+  [:and
+   ::mbql-clause/clause
+   [:or
+    ::expression/number
+    [:fn
+     {:error/fn (fn [_ _]
+                  (str "Valid aggregation, must be one of these clauses: "
+                       (str/join ", " (sort (descendants @lib.hierarchy/hierarchy ::aggregation)))))}
+     (fn [[tag :as _clause]]
+       (lib.hierarchy/isa? tag ::aggregation))]]])
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])
