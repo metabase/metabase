@@ -287,7 +287,11 @@ export class SmartScalar extends Component {
               </Tooltip>
 
               {canShowPreviousValue && (
-                <PreviousValue id="SmartScalar-PreviousValue" responsive>
+                <PreviousValue
+                  gridSize={gridSize}
+                  id="SmartScalar-PreviousValue"
+                  responsive
+                >
                   <PreviousValueSeparator gridSize={gridSize}>
                     •
                   </PreviousValueSeparator>
