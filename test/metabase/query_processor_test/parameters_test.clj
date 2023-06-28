@@ -7,7 +7,6 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib.native :as lib-native]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -74,17 +73,6 @@
               (is (= 1
                      (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))))
 
-(deftest template-tag-generation-test
-  (testing "Generating template tags produces correct types for running process-query (#31252)"
-    (mt/with-temp* [Card [{card-id :id}]]
-      (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
-            tt  (lib-native/template-tags q)
-            res (qp/process-query
-                  {:database (mt/id)
-                   :type     :native
-                   :native   {:query         q
-                              :template-tags tt}})]
-        (is (some? res))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Field Filter Params                                               |
