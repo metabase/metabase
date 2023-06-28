@@ -4,7 +4,6 @@ import { Icon } from "metabase/core/components/Icon";
 import SelectList from "metabase/components/SelectList";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export const DataSelectorSection = styled.section`
   width: 300px;
@@ -95,11 +94,4 @@ export const EmptyStateContainer = styled.div`
 
 export const TableSearchContainer = styled.div`
   padding: 0.5rem;
-`;
-
-export const PickerSpinner = styled(LoadingSpinner)`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: ${color("brand")};
 `;

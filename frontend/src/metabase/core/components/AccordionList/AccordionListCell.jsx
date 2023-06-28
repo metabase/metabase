@@ -23,7 +23,6 @@ export const AccordionListCell = ({
   alwaysExpanded,
   toggleSection,
   renderSectionIcon,
-  renderSectionExtra,
   renderItemName,
   renderItemDescription,
   renderItemIcon,
@@ -54,7 +53,6 @@ export const AccordionListCell = ({
       );
     } else {
       const icon = renderSectionIcon(section);
-      const extra = renderSectionExtra(section, sectionIndex);
       const name = section.name;
       content = (
         <div
@@ -76,7 +74,11 @@ export const AccordionListCell = ({
             </span>
           )}
           {name && <h3 className="List-section-title text-wrap">{name}</h3>}
-          {extra}
+          {showSpinner(section) && (
+            <Box ml="0.5rem">
+              <LoadingSpinner size={16} borderWidth={2} />
+            </Box>
+          )}
           {sections.length > 1 && section.items && section.items.length > 0 && (
             <span className="flex-align-right ml1 hover-child">
               <Icon
