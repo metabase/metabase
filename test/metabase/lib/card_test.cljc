@@ -78,8 +78,6 @@
                 :id                       (meta/id :checkins :user-id)
                 :table-id                 (meta/id :checkins)
                 :semantic-type            :type/FK
-                ;; this comes from the metadata provider, it's not present in `result-metadata`
-                :fk-target-field-id       (meta/id :users :id)
                 :lib/desired-column-alias "USER_ID"}
                {:lib/type :metadata/column
                 :name     "count"}]
