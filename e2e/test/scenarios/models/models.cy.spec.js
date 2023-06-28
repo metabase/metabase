@@ -252,6 +252,9 @@ describe("scenarios > models", () => {
         cy.findByText("Raw Data").click();
         cy.findByText("Sample Database").click(); // go back to db list
         cy.findByText("Saved Questions").should("not.exist");
+
+        cy.findByText("Great Balls of Fire").should("be.visible"); // FIXME
+
         testDataPickerSearch({
           inputPlaceholderText: "Search for a table…",
           query: "Ord",

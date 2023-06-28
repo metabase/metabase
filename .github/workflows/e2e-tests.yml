@@ -64,13 +64,28 @@ jobs:
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
 
+  determine_runner:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.determine_runner.outputs.runner }}
+    steps:
+      - name: Determine runner
+        id: determine_runner
+        run: |
+          echo "run attempt: ${{ github.event.workflow_run.run_attempt}}"
+          if [ ${{ github.event.workflow_run.run_attempt || 0 }} -gt 1 ]; then
+            echo "runner=buildjet-4vcpu-ubuntu-2204" >> $GITHUB_OUTPUT
+          else
+            echo "runner=ubuntu-latest" >> $GITHUB_OUTPUT
+          fi
+
   e2e-tests:
-    needs: [build, files-changed, test-run-id]
+    needs: [build, files-changed, test-run-id, determine_runner]
     if: |
       always() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ needs.determine_runner.outputs.runner }}
     timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
