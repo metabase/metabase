@@ -27,7 +27,7 @@ const CARDS_SIZE_1X = {
 
     ...createCardsRow({ size_y: 1 }),
   ],
-  name: "Cards 1 cell high or wide",
+  name: "cards 1 cell high or wide",
 };
 
 const VIEWPORTS = [
@@ -50,9 +50,9 @@ const SCALAR_QUESTION = {
 };
 
 const SCALAR_QUESTION_CARDS = [
-  { cards: createCardsRow({ size_y: 2 }), name: "Cards 2 cells high" },
-  { cards: createCardsRow({ size_y: 3 }), name: "Cards 3 cells high" },
-  { cards: createCardsRow({ size_y: 4 }), name: "Cards 4 cells high" },
+  { cards: createCardsRow({ size_y: 2 }), name: "cards 2 cells high" },
+  { cards: createCardsRow({ size_y: 3 }), name: "cards 3 cells high" },
+  { cards: createCardsRow({ size_y: 4 }), name: "cards 4 cells high" },
   CARDS_SIZE_1X,
 ];
 
@@ -77,9 +77,9 @@ const SMART_SCALAR_QUESTION = {
 };
 
 const SMART_SCALAR_QUESTION_CARDS = [
-  { cards: createCardsRow({ size_y: 2 }), name: "Cards 2 cells high" },
-  { cards: createCardsRow({ size_y: 3 }), name: "Cards 3 cells high" },
-  { cards: createCardsRow({ size_y: 4 }), name: "Cards 4 cells high" },
+  { cards: createCardsRow({ size_y: 2 }), name: "cards 2 cells high" },
+  { cards: createCardsRow({ size_y: 3 }), name: "cards 3 cells high" },
+  { cards: createCardsRow({ size_y: 4 }), name: "cards 4 cells high" },
 ];
 
 describe("issue 31628", () => {
