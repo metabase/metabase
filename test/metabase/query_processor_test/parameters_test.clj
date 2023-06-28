@@ -78,7 +78,7 @@
   (testing "Generating template tags produces correct types for running process-query (#31252)"
     (mt/with-temp* [Card [{card-id :id}]]
       (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
-            tt  (lib-native/template-tags q)
+            tt  (lib-native/extract-template-tags q)
             res (qp/process-query
                   {:database (mt/id)
                    :type     :native
