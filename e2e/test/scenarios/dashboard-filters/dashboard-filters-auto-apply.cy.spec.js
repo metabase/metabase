@@ -713,9 +713,10 @@ function toggleDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
 }
 
-const visitFullAppEmbeddingUrl = url => {
+const visitFullAppEmbeddingUrl = ({ url, qs }) => {
   cy.visit({
-    ...url,
+    url,
+    qs,
     onBeforeLoad(window) {
       // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
       // by removing the property the app would work in embedding mode
