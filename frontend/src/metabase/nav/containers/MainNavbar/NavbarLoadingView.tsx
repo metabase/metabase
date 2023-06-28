@@ -2,13 +2,19 @@ import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
+import {
+  LoadingContainer,
+  LoadingContent,
+  LoadingTitle,
+} from "./MainNavbar.styled";
 
 function NavbarLoadingView() {
   return (
     <LoadingContainer>
-      <LoadingSpinner />
-      <LoadingTitle>{t`Loading…`}</LoadingTitle>
+      <LoadingContent>
+        <LoadingSpinner />
+        <LoadingTitle>{t`Loading…`}</LoadingTitle>
+      </LoadingContent>
     </LoadingContainer>
   );
 }
