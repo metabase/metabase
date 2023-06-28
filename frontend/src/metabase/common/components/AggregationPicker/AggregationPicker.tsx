@@ -4,7 +4,19 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
 
+import { useToggle } from "metabase/hooks/use-toggle";
+
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+
+import type {
+  Aggregation as LegacyAggregationClause,
+  Expression as LegacyExpressionClause,
+} from "metabase-types/api";
 import * as Lib from "metabase-lib";
+import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import type LegacyAggregation from "metabase-lib/queries/structured/Aggregation";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import QueryColumnPicker from "../QueryColumnPicker";
 import {
@@ -22,8 +34,11 @@ interface AggregationPickerProps {
   query: Lib.Query;
   stageIndex: number;
   operators: Lib.AggregationOperator[];
+  legacyQuery: StructuredQuery;
+  legacyClause?: LegacyAggregation;
   maxHeight?: number;
   onSelect: (operator: Lib.Aggregatable) => void;
+  onSelectLegacy: (operator: LegacyAggregationClause) => void;
   onClose?: () => void;
 }
 
@@ -39,6 +54,7 @@ type ListItem = OperatorListItem | MetricListItem;
 
 type Section = {
   name: string;
+  key: string;
   items: ListItem[];
   icon?: string;
 };
@@ -52,12 +68,25 @@ export function AggregationPicker({
   query,
   stageIndex,
   operators,
+  legacyQuery,
+  legacyClause,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
+  onSelectLegacy,
   onClose,
 }: AggregationPickerProps) {
+  const [
+    isEditingExpression,
+    { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
+  ] = useToggle(isExpressionEditorInitiallyOpen(legacyClause));
+
+  // For really simple inline expressions like Average([Price]),
+  // MLv2 can figure out that "Average" operator is used.
+  // We don't want that though, so we don't break navigation inside the picker
   const [operator, setOperator] = useState<Lib.AggregationOperator | null>(
-    getInitialOperator(query, stageIndex, operators),
+    isEditingExpression
+      ? null
+      : getInitialOperator(query, stageIndex, operators),
   );
 
   const operatorInfo = useMemo(
@@ -69,9 +98,13 @@ export function AggregationPicker({
     const sections: Section[] = [];
 
     const metrics = Lib.availableMetrics(query);
+    const canUseExpressions = legacyQuery
+      .database()
+      ?.hasFeature("expression-aggregations");
 
     if (operators.length > 0) {
       sections.push({
+        key: "basic-metrics",
         name: t`Basic Metrics`,
         items: operators.map(operator =>
           getOperatorListItem(query, stageIndex, operator),
@@ -82,6 +115,7 @@ export function AggregationPicker({
 
     if (metrics.length > 0) {
       sections.push({
+        key: "common-metrics",
         name: t`Common Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric),
@@ -90,8 +124,17 @@ export function AggregationPicker({
       });
     }
 
+    if (canUseExpressions) {
+      sections.push({
+        key: "custom-expression",
+        name: t`Custom Expression`,
+        items: [],
+        icon: "sum",
+      });
+    }
+
     return sections;
-  }, [query, stageIndex, operators]);
+  }, [query, legacyQuery, stageIndex, operators]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
@@ -146,6 +189,39 @@ export function AggregationPicker({
     [handleOperatorSelect, handleMetricSelect],
   );
 
+  const handleSectionChange = useCallback(
+    (section: Section) => {
+      if (section.key === "custom-expression") {
+        openExpressionEditor();
+      }
+    },
+    [openExpressionEditor],
+  );
+
+  const handleExpressionChange = useCallback(
+    (name: string, expression: LegacyExpressionClause) => {
+      const aggregation = AGGREGATION.setName(expression, name);
+      onSelectLegacy(aggregation as LegacyAggregationClause);
+      onClose?.();
+    },
+    [onSelectLegacy, onClose],
+  );
+
+  if (isEditingExpression) {
+    return (
+      <ExpressionWidget
+        query={legacyQuery}
+        name={AGGREGATION.getName(legacyClause)}
+        expression={AGGREGATION.getContent(legacyClause)}
+        withName
+        startRule="aggregation"
+        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        onChangeExpression={handleExpressionChange}
+        onClose={closeExpressionEditor}
+      />
+    );
+  }
+
   if (operator && operatorInfo?.requiresColumn) {
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
@@ -175,6 +251,7 @@ export function AggregationPicker({
       maxHeight={maxHeight}
       alwaysExpanded={false}
       onChange={handleChange}
+      onChangeSection={handleSectionChange}
       itemIsSelected={checkIsItemSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
@@ -228,6 +305,13 @@ function getInitialOperator(
     operator => Lib.displayInfo(query, stageIndex, operator).selected,
   );
   return operator ?? null;
+}
+
+function isExpressionEditorInitiallyOpen(legacyClause?: LegacyAggregation) {
+  return (
+    legacyClause &&
+    (AGGREGATION.isCustom(legacyClause) || AGGREGATION.isNamed(legacyClause))
+  );
 }
 
 function getOperatorListItem(
