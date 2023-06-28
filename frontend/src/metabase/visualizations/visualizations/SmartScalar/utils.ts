@@ -101,7 +101,7 @@ export const getCanShowPreviousValue = ({
 
   const availablePreviousValueWidth =
     getWidthWithoutSpacing(width) -
-    (changeWidth - 2 * SPACING - ICON_SIZE - ICON_MARGIN_RIGHT);
+    (changeWidth + 2 * SPACING + ICON_SIZE + ICON_MARGIN_RIGHT);
 
   return availablePreviousValueWidth >= previousValueWidth;
 };
