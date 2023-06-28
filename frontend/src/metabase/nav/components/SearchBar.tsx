@@ -202,3 +202,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
 }
 
 export const SearchBar = withRouter(SearchBarView);
+
+// for some reason our unit test don't work if this is a name export ¯\_(ツ)_/¯
+// eslint-disable-next-line import/no-default-export
+export default SearchBar;
