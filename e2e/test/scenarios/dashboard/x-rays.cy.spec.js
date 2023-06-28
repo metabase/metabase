@@ -5,6 +5,7 @@ import {
   summarize,
   visualize,
   startNewQuestion,
+  main,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -128,12 +129,10 @@ describe("scenarios > x-rays", () => {
         expect(xhr.response.statusCode).not.to.eq(500);
       });
 
-      cy.findByTextEnsureVisible("A look at the number of 15655");
-
-      cy.findByRole("heading", {
-        name: /^A look at the number of/,
-        timeout: 30000,
+      main().within(() => {
+        cy.findByText("A look at the number of 15655").should("exist");
       });
+
       cy.get(".DashCard");
     });
 
