@@ -113,7 +113,7 @@ export function Text({
                 getSettingsStyle(settings),
               )}
             >
-              {hasContent ? content : placeholder}
+              {hasContent ? settings.text : placeholder}
             </ReactMarkdown>
           </ReactMarkdownStyleWrapper>
         ) : (
