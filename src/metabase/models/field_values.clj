@@ -134,7 +134,6 @@
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
-  (def field-values field-values)
   (u/prog1 (merge {:type :full}
                   field-values)
     (assert-valid-human-readable-values field-values)
