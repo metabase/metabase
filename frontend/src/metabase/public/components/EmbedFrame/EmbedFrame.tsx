@@ -139,7 +139,7 @@ function EmbedFrame({
               />
             )}
             {hasParameters && (
-              <ParametersWidgetContainer>
+              <ParametersWidgetContainer data-testid="dashboard-parameters-widget-container">
                 <SyncedParametersList
                   className="mt1"
                   question={question}
