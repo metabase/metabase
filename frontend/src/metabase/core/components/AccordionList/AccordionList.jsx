@@ -82,7 +82,7 @@ export default class AccordionList extends Component {
     alwaysTogglable: PropTypes.bool,
     alwaysExpanded: PropTypes.bool,
     hideSingleSectionTitle: PropTypes.bool,
-    showSpinner: PropTypes.bool,
+    showSpinner: PropTypes.func,
     showItemArrows: PropTypes.bool,
 
     searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
