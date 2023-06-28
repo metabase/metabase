@@ -184,63 +184,22 @@
   (lib.metadata.protocols/tables (->metadata-provider metadata-providerable)))
 
 (mu/defn table :- TableMetadata
-  "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID.
-
-  This supports legacy `card__<id>` style strings only for the benefit of legacy metadata: some column metadata comes
-  back like
-
-    {:table-id \"card__100\"}
-
-  and it is easier to work around that situation here than it is to update all of the various MetadataProviders to fix
-  things or to update all the places that call this function. Maybe in the future we can get rid of this icky
-  workaround."
-  ([metadata-providerable :- MetadataProviderable
-    table-id              :- ::lib.schema.id/table]
-   (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
-
-  ([metadata-providerable :- MetadataProviderable
-    table-schema          :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name            :- ::lib.schema.common/non-blank-string]
-   (some (fn [table-metadata]
-           (when (and (or (nil? table-schema)
-                          (= (:schema table-metadata) table-schema))
-                      (= (:name table-metadata) table-name))
-             table-metadata))
-         (tables metadata-providerable))))
+  "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
+  [metadata-providerable :- MetadataProviderable
+   table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
 (mu/defn fields :- [:sequential ColumnMetadata]
   "Get metadata about all the Fields belonging to a specific Table."
-  ([metadata-providerable :- MetadataProviderable
-    table-id              :- ::lib.schema.id/table]
-   (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
-
-  ([metadata-provider
-    table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name        :- ::lib.schema.common/non-blank-string]
-   (fields metadata-provider
-           (:id (table metadata-provider table-schema table-name)))))
+  [metadata-providerable :- MetadataProviderable
+   table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
 (mu/defn field :- ColumnMetadata
   "Get metadata about a specific Field in the Database we're querying."
-  ([metadata-providerable :- MetadataProviderable
-    field-id              :- ::lib.schema.id/field]
-   (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
-
-  ;; TODO -- we need to figure out how to deal with nested fields... should field-name be a varargs thing?
-  ([metadata-providerable :- MetadataProviderable
-    table-id              :- ::lib.schema.id/table
-    field-name            :- ::lib.schema.common/non-blank-string]
-   (some (fn [field-metadata]
-           (when (= (:name field-metadata) field-name)
-             field-metadata))
-         (fields metadata-providerable table-id)))
-
-  ([metadata-providerable :- MetadataProviderable
-    table-schema          :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name            :- ::lib.schema.common/non-blank-string
-    field-name            :- ::lib.schema.common/non-blank-string]
-   (let [table-metadata (table metadata-providerable table-schema table-name)]
-     (field metadata-providerable (:id table-metadata) field-name))))
+  [metadata-providerable :- MetadataProviderable
+   field-id              :- ::lib.schema.id/field]
+  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
 
 ;;;; Stage metadata
 
