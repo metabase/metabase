@@ -313,22 +313,7 @@
                 :display-name             "Count"
                 :base-type                :type/Integer
                 :lib/source               :source/card
-                :lib/desired-column-alias "count"}
-               {:name                     "ID"
-                :display-name             "ID"
-                :base-type                :type/BigInteger
-                :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__ID"}
-               {:name                     "NAME"
-                :display-name             "Name"
-                :base-type                :type/Text
-                :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
-               {:name                     "LAST_LOGIN"
-                :display-name             "Last Login"
-                :base-type                :type/DateTime
-                :lib/source               :source/implicitly-joinable
-                :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
+                :lib/desired-column-alias "count"}]
               (lib/orderable-columns query)))
       (testing `lib/display-info
         (is (=? [{:name                   "USER_ID"
@@ -340,22 +325,7 @@
                   :display-name           "Count"
                   :table                  {:name "My Card", :display-name "My Card"}
                   :is-from-previous-stage false
-                  :is-implicitly-joinable false}
-                 {:name                   "ID"
-                  :display-name           "ID"
-                  :table                  {:name "USERS", :display-name "Users"}
-                  :is-from-previous-stage false
-                  :is-implicitly-joinable true}
-                 {:name                   "NAME"
-                  :display-name           "Name"
-                  :table                  {:name "USERS", :display-name "Users"}
-                  :is-from-previous-stage false
-                  :is-implicitly-joinable true}
-                 {:name                   "LAST_LOGIN"
-                  :display-name           "Last Login"
-                  :table                  {:name "USERS", :display-name "Users"}
-                  :is-from-previous-stage false
-                  :is-implicitly-joinable true}]
+                  :is-implicitly-joinable false}]
                 (for [col (lib/orderable-columns query)]
                   (lib/display-info query col))))))))
 
