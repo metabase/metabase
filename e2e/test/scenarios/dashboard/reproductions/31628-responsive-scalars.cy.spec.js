@@ -16,16 +16,15 @@ const createCardsRow = ({ size_y }) => [
   { size_x: 4, size_y, row: 0, col: 11 },
   { size_x: 3, size_y, row: 0, col: 15 },
   { size_x: 2, size_y, row: 0, col: 18 },
-  { size_x: 1, size_y, row: 0, col: 20 },
 ];
 
 const CARDS_SIZE_1X = {
   cards: [
-    { size_x: 1, size_y: 4, row: 1, col: 20 },
-    { size_x: 1, size_y: 3, row: 5, col: 20 },
-    { size_x: 1, size_y: 2, row: 8, col: 20 },
-
     ...createCardsRow({ size_y: 1 }),
+    { size_x: 1, size_y: 1, row: 0, col: 20 },
+    { size_x: 1, size_y: 2, row: 1, col: 20 },
+    { size_x: 1, size_y: 4, row: 3, col: 20 },
+    { size_x: 1, size_y: 3, row: 7, col: 20 },
   ],
   name: "cards 1 cell high or wide",
 };
