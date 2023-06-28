@@ -148,6 +148,7 @@ function LinkViz({
               <SearchResultsContainer>
                 <SearchResults
                   searchText={url?.trim()}
+                  forceEntitySelect
                   onEntitySelect={handleEntitySelect}
                   models={MODELS_TO_SEARCH}
                 />
