@@ -7,7 +7,8 @@
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.urls :as urls]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec]
+   [clojure.string :as string]))
 
 (defenterprise the-parameters
   "OSS way of getting filter parameters for a dashboard subscription"
@@ -45,13 +46,25 @@
     (str base-url (when (seq url-params)
                     (str "?" (str/join "&" url-params))))))
 
+
+(defn escape-markdown
+  "Escapes markdown characters and adds heading."
+  [string]
+  (str "## "
+       (-> string
+           (str/replace "#" "\\#")
+           (str/replace "_" "\\_")
+           (str/replace "*" "\\*")
+           (str/replace "[" "\\[")
+           (str/replace "]" "\\]"))))
+
 (defn process-virtual-dashcard
   "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
   substituted into connected variables in the text."
   [dashcard parameters]
-  (let [dashcard           (update-in dashcard [:visualization_settings :text] #(str "## " %))
-        text               (-> dashcard :visualization_settings :text)
-        parameter-mappings (:parameter_mappings dashcard)
+  (let [escaped-dashcard   (update-in dashcard [:visualization_settings :text] escape-markdown)
+        text               (-> escaped-dashcard :visualization_settings :text)
+        parameter-mappings (:parameter_mappings escaped-dashcard)
         tag-names          (shared.params/tag_names text)
         param-id->param    (into {} (map (juxt :id identity) parameters))
         tag-name->param-id (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
@@ -60,4 +73,4 @@
                                        (assoc m tag-name (get param-id->param param-id))))
                                    {}
                                    tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
+    (update-in escaped-dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
