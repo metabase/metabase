@@ -64,7 +64,7 @@
   (let [field-ref (lib.ref/ref column)]
     (cond
       (lib.types.isa/structured? column)  []
-      (nil? value)                        [{:name "=" :filter (operator :is-null  field-ref)}
+      (= value :null)                     [{:name "=" :filter (operator :is-null  field-ref)}
                                            {:name "≠" :filter (operator :not-null field-ref)}]
       (or (lib.types.isa/numeric? column)
           (lib.types.isa/date? column))   (for [[op label] [[:<  "<"]
@@ -88,10 +88,9 @@
 
   Note that this returns a single `::drill-thru` value with 1 or more `:operators`; these are rendered as a set of small
   buttons in a single row of the drop-down."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
   (when (and (structured-query? query stage-number)
              ;(editable? query stage-number)
              column
@@ -118,29 +117,45 @@
                      :stage-number stage-number}))))
 
 ;;; ------------------------------------ Object Details ------------------------------------------
+(defn- object-detail-drill-for [query stage-number {:keys [column row value] :as context} many-pks?]
+  (let [base {:lib/type  ::drill-thru
+              :type      :drill-thru/pk
+              :column    column
+              :object-id value
+              :many-pks? many-pks?}]
+    (cond
+      (and (lib.types.isa/primary-key? column) many-pks?) (assoc base :type :drill-thru/pk)
+      ;; TODO: Figure out clicked.extraData and the dashboard flow.
+      (lib.types.isa/primary-key? column)                 (assoc base :type :drill-thru/zoom)
+      (lib.types.isa/foreign-key? column)                 (assoc base :type :drill-thru/fk-details)
+      (and (not many-pks?)
+           (not-empty row)
+           (empty? (lib.aggregation/aggregations query stage-number)))
+      (let [[pk-column] (lib.metadata.calculation/primary-keys query) ; Already know there's only one.
+            pk-value    (->> row
+                             (filter #(= (:column-name %) (:name pk-column)))
+                             first
+                             :value)]
+        (when (and pk-value
+                   ;; Only recurse if this is a different column - otherwise it's an infinite loop.
+                   (not= (:name column) (:name pk-column)))
+          (object-detail-drill-for query
+                                   stage-number
+                                   (assoc context :column pk-column :value pk-value)
+                                   many-pks?))))))
+
 (mu/defn ^:private object-detail-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "When clicking a foreign key or primary key value, drill through to the details for that specific object.
 
   Contrast [[foreign-key-drill]], which filters this query to only those rows with a specific value for a FK column."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
+  [query                              :- ::lib.schema/query
+   stage-number                       :- :int
+   {:keys [column value] :as context} :- ::lib.schema.drill-thru/context]
   (when (and (structured-query? query stage-number)
              column
              (some? value))
-    (let [many-pks?  (> (count (lib.metadata.calculation/primary-keys query)) 1)
-          drill-type (cond
-                       (and (lib.types.isa/primary-key? column) many-pks?) :drill-thru/pk
-                       ;; TODO: Figure out clicked.extraData and the dashboard flow.
-                       (lib.types.isa/primary-key? column)                 :drill-thru/zoom
-                       (lib.types.isa/foreign-key? column)                 :drill-thru/fk-details)]
-      (when drill-type
-        {:lib/type  ::drill-thru
-         :type      drill-type
-         :column    column
-         :object-id value
-         :many-pks? many-pks?}))))
+    (object-detail-drill-for query stage-number context
+                             (> (count (lib.metadata.calculation/primary-keys query)) 1))))
 
 (defmethod drill-thru-info-method :drill-thru/pk
   [_query _stage-number drill-thru]
@@ -158,7 +173,7 @@
   [query stage-number {:keys [column object-id]} & _]
   ;; This type is only used when there are multiple PKs and one was selected - [= pk x] filter.
   (lib.filter/filter query stage-number
-                     (lib.options/ensure-uuid [:= {} (lib.ref/ref column) object-id])))
+                     (lib.options/ensure-uuid [:field {} (lib.ref/ref column) object-id])))
 
 (defn- field-id [x]
   (cond
@@ -193,10 +208,9 @@
   This has the same effect as the `=` filter on a generic field (ie. not a key), but renders differently.
 
   Contrast [[object-detail-drill]], which shows the details of the foreign object."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
   (when (and (structured-query? query stage-number)
              column
              (some? value)
@@ -218,10 +232,9 @@
   - For dates, breaks out by month by default.
   - For numeric values, by an auto-selected set of bins
   - For strings, by each distinct value (which might be = the number of rows)"
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
   (when (and (structured-query? query stage-number)
              column
              (nil? value)
@@ -253,11 +266,10 @@
   "Implementation for pivoting on various kinds of fields.
 
   Don't call this directly; call [[pivot-drill]]."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value
-   field-pred   :- [:=> [:cat lib.metadata/ColumnMetadata] boolean?]]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context
+   field-pred             :- [:=> [:cat lib.metadata/ColumnMetadata] boolean?]]
   (when (and (structured-query? query stage-number)
              column
              (some? value)
@@ -269,25 +281,22 @@
   "Pivots this column and value on a time dimension."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
-  (pivot-drill-pred query stage-number column value lib.types.isa/date?))
+   context      :- ::lib.schema.drill-thru/context]
+  (pivot-drill-pred query stage-number context lib.types.isa/date?))
 
 (mu/defn ^:private pivot-by-location-drill :- [:sequential lib.metadata/ColumnMetadata]
   "Pivots this column and value on an address dimension."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
-  (pivot-drill-pred query stage-number column value lib.types.isa/address?))
+   context      :- ::lib.schema.drill-thru/context]
+  (pivot-drill-pred query stage-number context lib.types.isa/address?))
 
 (mu/defn ^:private pivot-by-category-drill :- [:sequential lib.metadata/ColumnMetadata]
   "Pivots this column and value on an category dimension."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
-  (pivot-drill-pred query stage-number column value
+   context      :- ::lib.schema.drill-thru/context]
+  (pivot-drill-pred query stage-number context
                     (every-pred lib.types.isa/category?
                                 (complement lib.types.isa/address?))))
 
@@ -303,10 +312,9 @@
 
   See `:pivots` key, which holds a map `{t [breakouts...]}` where `t` is `:category`, `:location`, or `:time`.
   If a key is missing, there are no breakouts of that kind."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
+  [query                              :- ::lib.schema/query
+   stage-number                       :- :int
+   {:keys [column value] :as context} :- ::lib.schema.drill-thru/context]
   (when (and (structured-query? query stage-number)
              column
              (some? value)
@@ -322,11 +330,11 @@
                          [:category :category]) #{:category :location :time}
                         #{})
           by-category (when (pivot-types :category)
-                        (pivot-by-category-drill query stage-number column value))
+                        (pivot-by-category-drill query stage-number context))
           by-location (when (pivot-types :location)
-                        (pivot-by-location-drill query stage-number column value))
+                        (pivot-by-location-drill query stage-number context))
           by-time     (when (pivot-types :time)
-                        (pivot-by-time-drill     query stage-number column value))
+                        (pivot-by-time-drill     query stage-number context))
           pivots      (merge (when (seq by-category) {:category by-category})
                              (when (seq by-location) {:location by-location})
                              (when (seq by-time)     {:time     by-time}))]
@@ -359,10 +367,9 @@
 ;;; ----------------------------------------- Sort -----------------------------------------------
 (mu/defn ^:private sort-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Sorting on a clicked column."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
   (when (and (structured-query? query stage-number)
              column
              (nil? value)
@@ -394,10 +401,9 @@
 ;;; ------------------------------------ Summarize Column ----------------------------------------
 (mu/defn ^:private summarize-column-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "A set of possible aggregations that can summarize this column: distinct values, sum, average."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
-   value]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
   (when (and (structured-query? query stage-number)
              column
              (nil? value)
@@ -444,23 +450,21 @@
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
 
-  Note that `stage-number` is required because to avoid ambiguous arities."
-  ([query stage-number column]
-   (available-drill-thrus query stage-number column nil))
-
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    column       :- lib.metadata/ColumnMetadata
-    value]
-   (keep #(% query stage-number column value)
-         ;; TODO: Missing drills: automatic insights, format.
-         [distribution-drill
-          foreign-key-drill
-          object-detail-drill
-          pivot-drill
-          quick-filter-drill
-          sort-drill
-          summarize-column-drill])))
+  Note that if `:value nil` in the `context`, that implies the value is *missing*, ie. that this was a column click.
+  For a value of `NULL` from the database, use the sentinel `:null`. Most of this file only cares whether the value was
+  provided or not, but some things (eg. quick filters) treat `NULL` values differently."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   context      :- ::lib.schema.drill-thru/context]
+  (keep #(% query stage-number context)
+        ;; TODO: Missing drills: automatic insights, format.
+        [distribution-drill
+         foreign-key-drill
+         object-detail-drill
+         pivot-drill
+         quick-filter-drill
+         sort-drill
+         summarize-column-drill]))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`

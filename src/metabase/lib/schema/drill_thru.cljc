@@ -19,6 +19,14 @@
    [:object-id :any]
    [:many-pks? :boolean]])
 
+(mr/def ::context
+  [:map
+   [:column lib.metadata/ColumnMetadata]
+   [:value  [:maybe :any]]
+   [:row    {:optional true} [:sequential [:map
+                                           [:column-name string?]
+                                           [:value       :any]]]]])
+
 (mr/def ::drill-thru
   [:multi {:dispatch :type}
    [:drill-thru/pk         ::drill-thru-keyed]

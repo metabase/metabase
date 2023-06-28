@@ -183,8 +183,4 @@ export interface Dimension {
   value?: any;
 }
 
-export interface DrillThruInputs {
-  column: Record<string, unknown>;
-  value?: any;
-  dimensions?: Dimension[];
-}
+export type DataRow = Array<{ col: Record<string, unknown>; value: any }>;
