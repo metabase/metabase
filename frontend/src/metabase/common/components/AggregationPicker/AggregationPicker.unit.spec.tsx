@@ -3,9 +3,10 @@ import { createMockMetadata } from "__support__/metadata";
 import { render, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 
-import type { Metric } from "metabase-types/api";
+import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
 import { createMockMetric } from "metabase-types/api/mocks";
 import {
+  createAdHocCard,
   createSampleDatabase,
   createOrdersTable,
   createPeopleTable,
@@ -17,7 +18,9 @@ import {
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   createQuery,
   columnFinder,
@@ -95,6 +98,10 @@ function setup({
   metadata = createMetadata(),
   query = createQuery({ metadata }),
 }: SetupOpts = {}) {
+  const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
+  const question = new Question(createAdHocCard({ dataset_query }), metadata);
+  const legacyQuery = question.query() as StructuredQuery;
+
   const clause = Lib.aggregations(query, 0)[0];
 
   const baseOperators = Lib.availableAggregationOperators(query, 0);
@@ -115,9 +122,11 @@ function setup({
   render(
     <AggregationPicker
       query={query}
+      legacyQuery={legacyQuery}
       stageIndex={0}
       operators={operators}
       onSelect={handleSelect}
+      onSelectLegacy={onSelectLegacy}
     />,
   );
 
