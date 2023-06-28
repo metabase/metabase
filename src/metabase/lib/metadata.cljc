@@ -117,7 +117,7 @@
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
    [:result-metadata {:optional true} [:maybe [:sequential :map]]]])
 
-(def ^:private SegmentMetadata
+(def SegmentMetadata
   "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
   [:map
    [:lib/type [:= :metadata/segment]]
