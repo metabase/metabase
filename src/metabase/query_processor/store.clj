@@ -344,6 +344,7 @@
     (segment [_this _segment-id] nil)
     (tables [_metadata-provider] nil)
     (fields [_metadata-provider _table-id] nil)
+    (metrics [_metadata-provider _table-id] nil)
 
     pretty/PrettyPrintable
     (pretty [_this]

@@ -12,6 +12,7 @@ export * from "./limit";
 export * from "./order_by";
 export * from "./filter";
 export * from "./join";
+export * from "./metrics";
 export * from "./query";
 export * from "./temporal_bucket";
 export * from "./types";

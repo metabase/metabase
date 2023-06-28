@@ -9,6 +9,7 @@
     :as perms-group
     :refer [PermissionsGroup]]
    [metabase.models.table :refer [Table]]
+   [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -796,6 +797,19 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest revoke-db-schema-permissions-test
+  (mt/with-temp* [Database [database]]
+    (testing "revoke-db-schema-permissions! should revoke all non-native permissions on a database"
+      (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
+                                           (perms/data-perms-path database)))
+      (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
+                                           (perms/adhoc-native-query-path database)))
+      (perms/revoke-db-schema-permissions! (perms-group/all-users) database)
+      (is (not (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
+                                                (perms/data-perms-path database))))
+      (is (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
+                                           (perms/adhoc-native-query-path database))))))
 
 (deftest revoke-permissions-helper-function-test
   (testing "Make sure if you try to use the helper function to *revoke* perms for a Personal Collection, you get an Exception"

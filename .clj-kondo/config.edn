@@ -3,11 +3,11 @@
  {:unresolved-symbol
   {:exclude
    [instaparse.core/transform
-    (cljs.test/is [=?])
+    (cljs.test/is [=? malli=])
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= sql= =?])
+    (clojure.test/is [query= sql= =? malli=])
     (clojure.tools.macro/macrolet)
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
