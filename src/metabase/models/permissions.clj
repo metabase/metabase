@@ -1090,15 +1090,23 @@
   version."
   metabase-enterprise.audit-db [] ::noop)
 
+(defn- config-monitoring-permissions!
+  "Will either remove or grant monitoring (audit) permissions, depending on the config parameter."
+  [group-or-id perm-type config]
+  (when (and (= perm-type :monitoring) config/ee-available?)
+    (let [change-permissions! (if (= config :grant)
+                                grant-permissions!
+                                delete-related-permissions!)]
+      (change-permissions! group-or-id (str "/db/" (default-audit-db-id) "/schema/"))
+      (doseq [audit-collection (t2/select 'Collection {:where [:in :entity_id (default-audit-collection-entity-ids)]})]
+        (change-permissions! group-or-id (collection-read-path audit-collection)))
+      (doseq [audit-collection-report (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})]
+        (change-permissions! group-or-id (all-schemas-path audit-collection-report))))))
+
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
   [group-or-id perm-type]
-  (when (and (= perm-type :monitoring) config/ee-available?)
-    (delete-related-permissions! group-or-id (str "/db/" (default-audit-db-id) "/schema/"))
-    (doseq [audit-collection-id (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-entity-ids)]})]
-      (delete-related-permissions! group-or-id (str "/collection/" (:id audit-collection-id) "/read/")))
-    (doseq [audit-collection-report-id (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})]
-      (delete-related-permissions! group-or-id (str "/collection/" (:id audit-collection-report-id) "/"))))
+  (config-monitoring-permissions! group-or-id perm-type :revoke)
   (delete-related-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn grant-permissions-for-all-schemas!
@@ -1120,12 +1128,7 @@
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
-  (when (and (= perm-type :monitoring) config/ee-available?)
-    (grant-permissions! group-or-id (str "/db/" (default-audit-db-id) "/schema/"))
-    (doseq [audit-collection-id (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-entity-ids)]})]
-      (grant-permissions! group-or-id (str "/collection/" (:id audit-collection-id) "/read/")))
-    (doseq [audit-collection-report-id (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})]
-      (grant-permissions! group-or-id (str "/collection/" (:id audit-collection-report-id) "/"))))
+  (config-monitoring-permissions! group-or-id perm-type :grant)
   (grant-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
