@@ -99,7 +99,7 @@ const DataSelectorTablePicker = ({
       table ? <Icon name="table" /> : null;
 
     const showSpinner = ({ table }: { table: Table }) =>
-      table && !isSyncCompleted(table);
+      Boolean(table && !isSyncCompleted(table));
 
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 
