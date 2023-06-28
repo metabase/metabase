@@ -14,6 +14,9 @@ export type TableMetadata = unknown & { _opaque: typeof TableMetadata };
 declare const CardMetadata: unique symbol;
 export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 
+declare const MetricMetadata: unique symbol;
+export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
+
 export type Limit = number | null;
 
 declare const BreakoutClause: unique symbol;
