@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -196,7 +195,7 @@
               (-> q
                   (lib/aggregate {:operator :sum
                                   :lib/type :lib/external-op
-                                  :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
+                                  :args [(lib/ref (meta/field-metadata :venues :category-id))]})
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel type-of-sum-test

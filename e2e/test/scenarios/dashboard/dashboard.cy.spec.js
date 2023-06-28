@@ -14,6 +14,11 @@ import {
   getDashboardCardMenu,
   addOrUpdateDashboardCard,
   openQuestionsSidebar,
+  describeWithSnowplow,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -734,6 +739,59 @@ describe("scenarios > dashboard", () => {
             testMarkdownContent.split("{enter}").length * lineHeight, // num of lines * lineHeight
           );
         });
+    });
+  });
+});
+
+describeWithSnowplow("scenarios > dashboard", () => {
+  beforeEach(() => {
+    resetSnowplow();
+    restore();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should allow users to add link cards to dashboards", () => {
+    visitDashboard(1);
+    editDashboard();
+    cy.findByTestId("dashboard-header").icon("link").click();
+
+    cy.findByTestId("custom-edit-text-link").click().type("Orders");
+
+    saveDashboard();
+
+    expectGoodSnowplowEvent({
+      event: "new_link_card_created",
+    });
+  });
+
+  it("should track enabling the hide empty cards setting", () => {
+    visitDashboard(1);
+    editDashboard();
+
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("palette").click({ force: true });
+    });
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByRole("switch", {
+        name: "Hide this card if there are no results",
+      })
+        .click() // enable
+        .click() // disable
+        .click(); // enable
+
+      expectGoodSnowplowEvent(
+        {
+          event: "card_set_to_hide_when_no_results",
+          dashboard_id: 1,
+        },
+        2,
+      );
     });
   });
 });

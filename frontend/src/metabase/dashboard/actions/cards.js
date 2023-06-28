@@ -11,6 +11,7 @@ import {
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
+import { trackCardCreated } from "../analytics";
 import { ADD_CARD_TO_DASH } from "./core";
 import { fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
@@ -100,6 +101,8 @@ export const addDashCardToDashboard = function ({
 };
 
 export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("text", dashId);
+
   const virtualTextCard = {
     ...createCard(),
     display: "text",
@@ -120,6 +123,8 @@ export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
 };
 
 export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("heading", dashId);
+
   const virtualTextCard = {
     ...createCard(),
     display: "heading",
@@ -141,6 +146,8 @@ export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
 };
 
 export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("link", dashId);
+
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -163,6 +170,8 @@ export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
 export const addActionToDashboard =
   async ({ dashId, tabId, action, displayType }) =>
   dispatch => {
+    trackCardCreated("action", dashId);
+
     const virtualActionsCard = {
       ...createCard(),
       id: action.model_id,

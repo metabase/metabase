@@ -5,7 +5,8 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.types :as types]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   ))
 
 ;;; the logic for calculating the return type of a `:case` or similar statement is not optimal nor perfect. But it
 ;;; should be ok for now and errors on the side of being permissive. See this Slack thread for more info:
@@ -17,6 +18,11 @@
   (cond
     (nil? x)
     y
+
+    ;; if the type of either x or y is unknown, then the overall type of this has to be unknown as well.
+    (or (= x ::expression/type.unknown)
+        (= y ::expression/type.unknown))
+    ::expression/type.unknown
 
     ;; if both types are keywords return their most-specific ancestor.
     (and (keyword? x)
@@ -55,25 +61,15 @@
   [:pred-expr-pairs [:sequential {:min 1} [:ref ::case-subclause]]]
   [:default [:? [:schema [:ref ::expression/expression]]]])
 
-(defn- allow-unkown-type
-  "A hack to allow case and coalesce expressions using fields only.
-  The real fix would pass in metadata so that the types of fields
-  can be determined."
-  [expr-type]
-  (if (= expr-type ::expression/type.unknown)
-    :type/*
-    expr-type))
-
 (defmethod expression/type-of-method :case
   [[_tag _opts pred-expr-pairs default]]
-  (-> (reduce
-       (fn [best-guess [_pred expr]]
-         (let [expr-type (expression/type-of expr)]
-           (best-return-type best-guess expr-type)))
-       (when (some? default)
-         (expression/type-of default))
-       pred-expr-pairs)
-      allow-unkown-type))
+  (reduce
+   (fn [best-guess [_pred expr]]
+     (let [expr-type (expression/type-of expr)]
+       (best-return-type best-guess expr-type)))
+   (when (some? default)
+     (expression/type-of default))
+   pred-expr-pairs))
 
 ;;; TODO -- add constraint that these types have to be compatible
 (mbql-clause/define-tuple-mbql-clause :coalesce
@@ -82,5 +78,4 @@
 
 (defmethod expression/type-of-method :coalesce
   [[_tag _opts expr null-value]]
-  (-> (best-return-type (expression/type-of expr) (expression/type-of null-value))
-      allow-unkown-type))
+  (best-return-type (expression/type-of expr) (expression/type-of null-value)))

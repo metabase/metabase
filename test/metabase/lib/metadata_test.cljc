@@ -11,14 +11,10 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel field-metadata-test
-  (are [x] (=? (merge
-                {:lib/type :metadata/column}
-                (meta/field-metadata :venues :category-id))
-               x)
-    (lib.metadata/field meta/metadata-provider (meta/id :venues :category-id))
-    (lib.metadata/field meta/metadata-provider (meta/id :venues) "CATEGORY_ID")
-    (lib.metadata/field meta/metadata-provider "PUBLIC" "VENUES" "CATEGORY_ID")
-    (lib.metadata/field meta/metadata-provider nil "VENUES" "CATEGORY_ID")))
+  (is (=? (merge
+           {:lib/type :metadata/column}
+           (meta/field-metadata :venues :category-id))
+          (lib.metadata/field meta/metadata-provider (meta/id :venues :category-id)))))
 
 (deftest ^:parallel stage-metadata-test
   (let [query (lib/saved-question-query meta/metadata-provider meta/saved-question)]
