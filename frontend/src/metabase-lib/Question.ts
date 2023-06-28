@@ -488,8 +488,8 @@ class QuestionInner {
     const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
-    const tableId = query.tableId();
-    const table = this.metadata().tables?.[tableId];
+    const table = query.sourceTable();
+
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
