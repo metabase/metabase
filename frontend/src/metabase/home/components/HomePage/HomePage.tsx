@@ -30,7 +30,7 @@ export const HomePage = (): JSX.Element => {
   useNavbar();
   useDashboardPage();
 
-  if (isLoading || error) {
+  if ((isLoading || error) && isMetabotEnabled) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
@@ -66,7 +66,7 @@ const useMetabot = () => {
     models: searchListQuery.data ?? [],
     isMetabotEnabled,
     isLoading: databaseListQuery.isLoading || searchListQuery.isLoading,
-    error: databaseListQuery.isLoading ?? searchListQuery.isLoading,
+    error: databaseListQuery.error ?? searchListQuery.error,
   };
 };
 
