@@ -2805,8 +2805,8 @@
             db-id                (u/the-id db)
             original-sync-values (select-keys db [:is_on_demand :is_full_sync])
             in-future?           (atom false)
-            _                    (t2/update! db db-id {:is_on_demand false
-                                                       :is_full_sync false})]
+            _                    (t2/update! Database db-id {:is_on_demand false
+                                                             :is_full_sync false})]
         (try
           (with-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
                         future-call (fn [thunk]
@@ -2832,8 +2832,9 @@
                            :name             "Example Csv File"
                            :collection_id    nil} new-model)
                       "A new model is created")
-                  (is (=? {:name #"(?i)example(.*)"
-                           :schema #"(?i)not_public"}
+                  (is (=? {:name      #"(?i)example(.*)"
+                           :schema    #"(?i)not_public"
+                           :is_upload true}
                           new-table)
                       "A new table is created")
                   (is (= "complete"
@@ -2849,7 +2850,7 @@
                   (is (true? @in-future?)
                       "Table has been synced in a separate thread")))))
           (finally
-            (t2/update! db db-id original-sync-values)))))))
+            (t2/update! Database db-id original-sync-values)))))))
 
 (deftest upload-csv!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
