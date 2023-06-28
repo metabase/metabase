@@ -1143,10 +1143,10 @@ saved later when it is ready."
   (param-values (api/read-check Card card-id) param-key query))
 
 (defn- scan-and-sync-table!
-  [{:keys [is_on_demand is_full_sync] :as database} table]
+  [database table]
   (sync-fields/sync-fields-for-table! database table)
-  (when (or is_on_demand is_full_sync)
-    (future (sync/sync-table! table))))
+  (future
+    (sync/sync-table! table)))
 
 (defn- csv-stats [^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
