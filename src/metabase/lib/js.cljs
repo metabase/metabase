@@ -634,9 +634,9 @@
 
   `stage-number` is required to avoid ambiguous arities."
   ([a-query stage-number column]
-   (available-drill-thrus query stage-number column nil))
+   (available-drill-thrus a-query stage-number column nil))
   ([a-query stage-number column value]
-   (to-array (lib.core/available-drill-thrus query stage-number (js.metadata/parse-column column) value))))
+   (to-array (lib.core/available-drill-thrus a-query stage-number (js.metadata/parse-column column) value))))
 
 (defn ^:export drill-thru
   "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
