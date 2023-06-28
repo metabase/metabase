@@ -77,7 +77,7 @@ class TextWidget extends Component<Props, State> {
         onChange={e => {
           this.setState({ value: e.target.value });
           if (this.props.commitImmediately) {
-            setValue(e.target.value ?? null);
+            this.props.setValue(e.target.value ?? null);
           }
         }}
         onKeyUp={e => {
@@ -93,11 +93,8 @@ class TextWidget extends Component<Props, State> {
           changeFocus(true);
         }}
         onBlur={() => {
-          if (!this.state.value) {
-            setValue(null);
-          }
-
           changeFocus(false);
+          this.setState({ value: this.props.value });
         }}
         placeholder={isEditing ? t`Enter a default value…` : defaultPlaceholder}
         disabled={disabled}
