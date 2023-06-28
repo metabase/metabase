@@ -1,14 +1,9 @@
-import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Ellipsified from "metabase/core/components/Ellipsified/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
-import {
-  breakpointMaxLarge,
-  breakpointMaxSmall,
-  space,
-} from "metabase/styled-components/theme";
+import { breakpointMaxMedium, space } from "metabase/styled-components/theme";
 
 export const Variation = styled.div`
   color: ${props => props.color};
@@ -50,18 +45,9 @@ export const PreviousValueContainer = styled.div<{
   gap: ${space(0)};
   line-height: 1.2rem;
 
-  ${breakpointMaxSmall} {
+  ${breakpointMaxMedium} {
     margin: ${space(1)};
     flex-direction: column;
-  }
-
-  ${breakpointMaxLarge} {
-    ${props =>
-      props.gridSize &&
-      props.gridSize.width <= 3 &&
-      css`
-        flex-direction: column;
-      `}
   }
 `;
 
@@ -69,19 +55,6 @@ export const PreviousValue = styled.h4<{
   gridSize?: { width: number };
 }>`
   color: ${color("text-light")};
-
-  ${breakpointMaxSmall} {
-    text-transform: capitalize;
-  }
-
-  ${breakpointMaxLarge} {
-    ${props =>
-      props.gridSize &&
-      props.gridSize.width <= 3 &&
-      css`
-        text-transform: capitalize;
-      `}
-  }
 `;
 
 export const Separator = styled.span`
@@ -94,16 +67,7 @@ export const PreviousValueSeparator = styled(Separator)<{
 }>`
   color: ${color("text-light")};
 
-  ${breakpointMaxSmall} {
+  ${breakpointMaxMedium} {
     display: none;
-  }
-
-  ${breakpointMaxLarge} {
-    ${props =>
-      props.gridSize &&
-      props.gridSize.width <= 3 &&
-      css`
-        display: none;
-      `}
   }
 `;
