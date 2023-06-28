@@ -4,6 +4,7 @@ import { measureText } from "metabase/lib/measure-text";
 import {
   ICON_MARGIN_RIGHT,
   ICON_SIZE,
+  MAX_PREVIOUS_VALUE_SIZE,
   MIN_PREVIOUS_VALUE_SIZE,
   SCALAR_TITLE_LINE_HEIGHT,
   SPACING,
@@ -59,11 +60,14 @@ export const getWidthWithoutSpacing = (width: number) => {
   return width - 2 * SPACING;
 };
 
-export const getValueHeight = (height: number): number => {
+export const getValueHeight = (
+  height: number,
+  canShowPreviousValue: boolean,
+): number => {
   return (
     height -
     SCALAR_TITLE_LINE_HEIGHT * getTitleLinesCount(height) -
-    MIN_PREVIOUS_VALUE_SIZE -
+    (canShowPreviousValue ? MAX_PREVIOUS_VALUE_SIZE : MIN_PREVIOUS_VALUE_SIZE) -
     4 * SPACING
   );
 };

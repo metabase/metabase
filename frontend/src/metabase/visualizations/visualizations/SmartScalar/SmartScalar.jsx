@@ -184,7 +184,9 @@ export class SmartScalar extends Component {
     const canShowPreviousValue = getCanShowPreviousValue({
       width,
       change: changeDisplay,
-      previousValue: concatRecursively(previousValueContent),
+      previousValue: concatRecursively(
+        jt`${"•"} was ${previousValueDisplay} ${granularityDisplay}`,
+      ),
       fontFamily,
     });
     const iconName = isNegative ? "arrow_down" : "arrow_up";
@@ -230,7 +232,7 @@ export class SmartScalar extends Component {
           >
             <ScalarValue
               gridSize={gridSize}
-              height={getValueHeight(height)}
+              height={getValueHeight(height, canShowPreviousValue)}
               width={getValueWidth(width)}
               totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
