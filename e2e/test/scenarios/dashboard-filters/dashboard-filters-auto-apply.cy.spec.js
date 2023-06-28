@@ -16,6 +16,8 @@ import {
   sidebar,
   undoToast,
   visitDashboard,
+  visitEmbeddedPage,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -414,6 +416,98 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       undoToast().should("not.exist");
     });
   });
+
+  describe("embeddings", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+    });
+
+    describe("public embeds", () => {
+      it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
+        createDashboard({ dashboardDetails: { auto_apply_filters: false } });
+        cy.get("@dashboardId").then(dashboardId => {
+          visitPublicDashboard(dashboardId);
+        });
+
+        dashboardParametersContainer().button("Apply").should("not.exist");
+        filterWidget().findByText("Category").click();
+        popover().within(() => {
+          cy.findByText("Widget").click();
+          cy.button("Add filter").click();
+        });
+        getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+        dashboardParametersContainer()
+          .button("Apply")
+          .should("be.visible")
+          .click();
+        getDashboardCard().findByText("Rows 1-5 of 54").should("be.visible");
+      });
+
+      it("should not show toast", () => {
+        createDashboard();
+        cy.clock();
+        openSlowPublicDashboard({ [FILTER.slug]: "Gadget" });
+        filterWidget().findByText("Gadget").should("be.visible");
+
+        cy.tick(TOAST_TIMEOUT);
+        cy.wait("@cardQuery");
+        undoToast().should("not.exist");
+      });
+    });
+
+    describe("signed embeds", () => {
+      it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
+        createDashboard({
+          dashboardDetails: {
+            auto_apply_filters: false,
+            enable_embedding: true,
+            embedding_params: {
+              [FILTER.slug]: "enabled",
+            },
+          },
+        });
+        cy.get("@dashboardId").then(dashboardId => {
+          const embeddingPayload = {
+            resource: { dashboard: dashboardId },
+            params: {},
+          };
+          visitEmbeddedPage(embeddingPayload);
+        });
+
+        dashboardParametersContainer().button("Apply").should("not.exist");
+        filterWidget().findByText("Category").click();
+        popover().within(() => {
+          cy.findByText("Widget").click();
+          cy.button("Add filter").click();
+        });
+        getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
+        dashboardParametersContainer()
+          .button("Apply")
+          .should("be.visible")
+          .click();
+        getDashboardCard().findByText("Rows 1-5 of 54").should("be.visible");
+      });
+
+      it("should not show toast", () => {
+        createDashboard({
+          dashboardDetails: {
+            enable_embedding: true,
+            embedding_params: {
+              [FILTER.slug]: "enabled",
+            },
+          },
+        });
+
+        cy.clock();
+        openSlowEmbeddingDashboard({ [FILTER.slug]: "Gadget" });
+        filterWidget().findByText("Gadget").should("be.visible");
+
+        cy.tick(TOAST_TIMEOUT);
+        cy.wait("@cardQuery");
+        undoToast().should("not.exist");
+      });
+    });
+  });
 });
 
 describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
@@ -507,14 +601,44 @@ const openDashboard = (params = {}) => {
 };
 
 const openSlowDashboard = (params = {}) => {
-  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
-    return Cypress.Promise.delay().then(() => req.reply());
-  }).as("cardQuery");
+  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+    "cardQuery",
+  );
 
   cy.get("@dashboardId").then(dashboardId => {
     return cy.visit({
       url: `/dashboard/${dashboardId}`,
       qs: params,
+    });
+  });
+
+  getDashboardCard().should("be.visible");
+};
+
+const openSlowPublicDashboard = (params = {}) => {
+  cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+    "cardQuery",
+  );
+
+  cy.get("@dashboardId").then(dashboardId => {
+    visitPublicDashboard(dashboardId, { params });
+  });
+
+  getDashboardCard().should("be.visible");
+};
+
+const openSlowEmbeddingDashboard = (params = {}) => {
+  cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
+    "cardQuery",
+  );
+
+  cy.get("@dashboardId").then(dashboardId => {
+    const embeddingPayload = {
+      resource: { dashboard: dashboardId },
+      params: {},
+    };
+    visitEmbeddedPage(embeddingPayload, {
+      setFilters: new URLSearchParams(params).toString(),
     });
   });
 

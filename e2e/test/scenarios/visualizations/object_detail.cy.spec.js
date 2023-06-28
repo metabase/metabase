@@ -332,6 +332,30 @@ function changeSorting(columnName, direction) {
           cy.findAllByText("Horse").should("have.length", 2);
         });
       });
+
+      it("cannot navigate past the end of the list of objects with the keyboard", () => {
+        // this bug only manifests on tables without single integer primary keys
+        // it is also reproducible on tables with string keys
+
+        getTableId({ name: TEST_TABLE }).then(tableId => {
+          cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+        });
+
+        cy.get("#main-data-grid").findByText("Rabbit").trigger("mouseover");
+
+        cy.icon("expand").first().click();
+
+        cy.findByRole("dialog").within(() => {
+          cy.findAllByText("Rabbit").should("have.length", 2);
+        });
+
+        cy.get("body").type("{downarrow}");
+
+        cy.findByRole("dialog").within(() => {
+          cy.findAllByText("Rabbit").should("have.length", 2);
+          cy.findByText("Empty").should("not.exist");
+        });
+      });
     },
   );
 

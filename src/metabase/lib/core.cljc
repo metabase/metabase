@@ -188,11 +188,17 @@
    display-info
    suggested-name
    type-of]
+  [lib.metric
+   available-metrics]
   [lib.native
    #?@(:cljs [->TemplateTags
               TemplateTags->])
-   recognize-template-tags
-   template-tags]
+   native-query
+   raw-native-query
+   with-native-query
+   template-tags
+   with-template-tags
+   extract-template-tags]
   [lib.order-by
    change-direction
    order-by
@@ -202,7 +208,6 @@
   [lib.normalize
    normalize]
   [lib.query
-   native-query
    query
    saved-question-query]
   [lib.ref
