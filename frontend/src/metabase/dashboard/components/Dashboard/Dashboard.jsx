@@ -364,6 +364,7 @@ class Dashboard extends Component {
                     <TabEmptyState isNightMode={shouldRenderAsNightMode} />
                   ) : (
                     <DashboardEmptyState
+                      dashboard={dashboard}
                       isNightMode={shouldRenderAsNightMode}
                       addQuestion={this.onAddQuestion}
                       closeNavbar={this.props.closeNavbar}

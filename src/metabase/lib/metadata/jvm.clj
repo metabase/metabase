@@ -50,6 +50,11 @@
   (mapv #(instance->metadata % :metadata/column)
         (t2/select :model/Field :table_id table-id)))
 
+(defn- metrics [table-id]
+  (log/debugf "Fetching all Metrics for Table %d" table-id)
+  (mapv #(instance->metadata % :metadata/metric)
+        (t2/select :model/Metric :table_id table-id)))
+
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
@@ -71,6 +76,9 @@
 
   (fields [_this table-id]
     (fields table-id))
+
+  (metrics [_this table-id]
+    (metrics table-id))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]

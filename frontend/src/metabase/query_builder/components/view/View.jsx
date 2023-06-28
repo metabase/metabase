@@ -296,7 +296,8 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, query, card, height, isDirty } = this.props;
+    const { question, query, card, height, isDirty, isNativeEditorOpen } =
+      this.props;
 
     // Normally, when users open native models,
     // they open an ad-hoc GUI question using the model as a data source
@@ -315,6 +316,7 @@ class View extends Component {
           {...this.props}
           viewHeight={height}
           isOpen={query.isEmpty() || isDirty}
+          isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
         />
       </NativeQueryEditorContainer>

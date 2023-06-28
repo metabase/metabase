@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -223,12 +224,25 @@
   [aggregation-clause]
   aggregation-clause)
 
+(def ^:private Aggregatable
+  "Schema for something you can pass to [[aggregate]] to add to a query as an aggregation."
+  [:or
+   ::lib.schema.aggregation/aggregation
+   ::lib.schema.common/external-op
+   lib.metadata/MetricMetadata])
+
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
-  ([query an-aggregate-clause]
-   (aggregate query -1 an-aggregate-clause))
-  ([query stage-number an-aggregate-clause]
-   (lib.util/add-summary-clause query stage-number :aggregation an-aggregate-clause)))
+  ([query aggregatable]
+   (aggregate query -1 aggregatable))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    aggregatable :- Aggregatable]
+   ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
+   (if (= (lib.dispatch/dispatch-value aggregatable) :metadata/metric)
+     (recur query stage-number (lib.ref/ref aggregatable))
+     (lib.util/add-summary-clause query stage-number :aggregation aggregatable))))
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
   "Get the aggregations in a given stage of a query."
