@@ -7,8 +7,7 @@
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.urls :as urls]
-   [ring.util.codec :as codec]
-   [clojure.string :as string]))
+   [ring.util.codec :as codec]))
 
 (defenterprise the-parameters
   "OSS way of getting filter parameters for a dashboard subscription"
