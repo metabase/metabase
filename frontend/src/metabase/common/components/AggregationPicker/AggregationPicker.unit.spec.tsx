@@ -1,11 +1,16 @@
+import _ from "underscore";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
-import { render, screen, within } from "__support__/ui";
+import { render, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 
-import type { Metric } from "metabase-types/api";
-import { createMockMetric } from "metabase-types/api/mocks";
+import type { Metric, StructuredDatasetQuery } from "metabase-types/api";
 import {
+  createMockMetric,
+  COMMON_DATABASE_FEATURES,
+} from "metabase-types/api/mocks";
+import {
+  createAdHocCard,
   createSampleDatabase,
   createOrdersTable,
   createPeopleTable,
@@ -15,9 +20,12 @@ import {
   ORDERS_ID,
   PRODUCTS_ID,
   PRODUCTS,
+  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   createQuery,
   columnFinder,
@@ -49,6 +57,24 @@ function createQueryWithMaxAggregation({
   return Lib.aggregate(initialQuery, 0, clause);
 }
 
+function createQueryWithInlineExpression() {
+  return createQuery({
+    query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        aggregation: [
+          [
+            "aggregation-options",
+            ["avg", ["field", ORDERS.QUANTITY, null]],
+            { name: "Avg Q", "display-name": "Avg Q" },
+          ],
+        ],
+      },
+    },
+  });
+}
+
 const TEST_METRIC = createMockMetric({
   id: 1,
   table_id: ORDERS_ID,
@@ -70,7 +96,10 @@ const PRODUCT_METRIC = createMockMetric({
   },
 });
 
-function createMetadata({ metrics = [] }: { metrics?: Metric[] } = {}) {
+function createMetadata({
+  metrics = [],
+  hasExpressionSupport = true,
+}: { metrics?: Metric[]; hasExpressionSupport?: boolean } = {}) {
   return createMockMetadata({
     databases: [
       createSampleDatabase({
@@ -80,6 +109,9 @@ function createMetadata({ metrics = [] }: { metrics?: Metric[] } = {}) {
           createProductsTable({ metrics: [PRODUCT_METRIC] }),
           createReviewsTable(),
         ],
+        features: hasExpressionSupport
+          ? COMMON_DATABASE_FEATURES
+          : _.without(COMMON_DATABASE_FEATURES, "expression-aggregations"),
       }),
     ],
     metrics: [...metrics, PRODUCT_METRIC],
@@ -95,6 +127,10 @@ function setup({
   metadata = createMetadata(),
   query = createQuery({ metadata }),
 }: SetupOpts = {}) {
+  const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
+  const question = new Question(createAdHocCard({ dataset_query }), metadata);
+  const legacyQuery = question.query() as StructuredQuery;
+
   const clause = Lib.aggregations(query, 0)[0];
 
   const baseOperators = Lib.availableAggregationOperators(query, 0);
@@ -115,9 +151,12 @@ function setup({
   render(
     <AggregationPicker
       query={query}
+      legacyQuery={legacyQuery}
+      legacyClause={legacyQuery.aggregations()[0]}
       stageIndex={0}
       operators={operators}
       onSelect={handleSelect}
+      onSelectLegacy={onSelectLegacy}
     />,
   );
 
@@ -345,6 +384,37 @@ describe("AggregationPicker", () => {
           displayName: metric.displayName(),
         }),
       );
+    });
+  });
+
+  describe("custom expressions", () => {
+    it("should allow to enter a custom expression", async () => {
+      const { onSelectLegacy } = setup();
+
+      userEvent.click(screen.getByText("Custom Expression"));
+      userEvent.type(screen.getByLabelText("Expression"), "1 + 1");
+      userEvent.type(screen.getByLabelText("Name"), "My expression");
+      userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      await waitFor(() =>
+        expect(onSelectLegacy).toHaveBeenCalledWith([
+          "aggregation-options",
+          ["+", 1, 1],
+          { "display-name": "My expression", name: "My expression" },
+        ]),
+      );
+    });
+
+    it("shouldn't be available if database doesn't support custom expressions", () => {
+      setup({ metadata: createMetadata({ hasExpressionSupport: false }) });
+      expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
+    });
+
+    it("should open the editor when an expression is used", async () => {
+      setup({ query: createQueryWithInlineExpression() });
+
+      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
     });
   });
 });
