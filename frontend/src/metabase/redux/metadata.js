@@ -5,7 +5,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import { MetabaseApi, RevisionsApi } from "metabase/services";
 
-import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
@@ -13,13 +12,6 @@ import Fields from "metabase/entities/fields";
 // NOTE: All of these actions are deprecated. Use metadata entities directly.
 
 const deprecated = message => console.warn("DEPRECATED: " + message);
-
-export const FETCH_DATABASE_METADATA =
-  Databases.actions.fetchDatabaseMetadata.toString();
-export const fetchDatabaseMetadata = (dbId, reload = false) => {
-  deprecated("metabase/redux/metadata fetchDatabaseMetadata");
-  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
-};
 
 export const METADATA_FETCH_FIELD = "metabase/metadata/FETCH_FIELD";
 export const fetchField = createThunkAction(
