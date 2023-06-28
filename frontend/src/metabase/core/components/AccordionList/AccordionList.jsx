@@ -123,7 +123,7 @@ export default class AccordionList extends Component {
     getItemClassName: item => item.className,
     getItemStyles: item => {},
     hasInitialFocus: true,
-    showSpinner: item => false,
+    showSpinner: _item => false,
   };
 
   componentDidMount() {
