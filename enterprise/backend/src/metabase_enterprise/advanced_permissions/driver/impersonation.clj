@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.models.field :as field]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
@@ -11,8 +12,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [metabase.models.field :as field])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
