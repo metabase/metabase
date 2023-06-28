@@ -8,6 +8,7 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
+import { Box } from "metabase/ui";
 import { ListCellItem, FilterContainer } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
@@ -28,7 +29,7 @@ export const AccordionListCell = ({
   renderItemIcon,
   renderItemExtra,
   renderItemWrapper,
-  itemExtraIsRightAligned,
+  showSpinner,
   searchText,
   onChangeSearchText,
   searchPlaceholder = t`Find...`,
@@ -139,9 +140,8 @@ export const AccordionListCell = ({
       >
         <span
           className={cx(
-            "p1 flex align-center",
+            "p1 flex-auto flex align-center",
             isClickable ? "cursor-pointer" : "cursor-default",
-            (!extra || itemExtraIsRightAligned) && "flex-auto",
           )}
           onClick={isClickable ? () => onChange(item) : undefined}
         >
@@ -158,6 +158,11 @@ export const AccordionListCell = ({
               </p>
             )}
           </div>
+          {showSpinner(item) && (
+            <Box ml="0.5rem">
+              <LoadingSpinner size={16} borderWidth={2} />
+            </Box>
+          )}
         </span>
         {extra}
         {showItemArrows && (

@@ -83,7 +83,7 @@ export default class AccordionList extends Component {
     alwaysTogglable: PropTypes.bool,
     alwaysExpanded: PropTypes.bool,
     hideSingleSectionTitle: PropTypes.bool,
-    itemExtraIsRightAligned: PropTypes.bool,
+    showSpinner: PropTypes.bool,
     showItemArrows: PropTypes.bool,
 
     searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
@@ -110,13 +110,13 @@ export default class AccordionList extends Component {
     alwaysExpanded: false,
     hideSingleSectionTitle: false,
     hideEmptySectionsInSearch: false,
+    showSpinner: false,
 
     // section getters/render props
     renderSectionIcon: section => section.icon && <Icon name={section.icon} />,
     renderSectionExtra: () => null,
 
     // item getters/render props
-    itemExtraIsRightAligned: true,
     itemIsClickable: item => true,
     itemIsSelected: item => false,
     renderItemName: item => item.name,

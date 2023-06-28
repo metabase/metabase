@@ -12,10 +12,7 @@ import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
-import {
-  DataSelectorSection as Section,
-  PickerSpinner,
-} from "../DataSelector.styled";
+import { DataSelectorSection as Section } from "../DataSelector.styled";
 import {
   DataSelectorTablePickerContainer as Container,
   DataSelectorTablePickerHeaderContainer as HeaderContainer,
@@ -101,9 +98,8 @@ const DataSelectorTablePicker = ({
     const renderItemIcon = ({ table }: { table: Table }) =>
       table ? <Icon name="table" /> : null;
 
-    const renderItemExtra = ({ table }: { table: Table }) =>
-      table &&
-      !isSyncCompleted(table) && <PickerSpinner size={16} borderWidth={2} />;
+    const showSpinner = ({ table }: { table: Table }) =>
+      table && !isSyncCompleted(table);
 
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 
@@ -121,8 +117,7 @@ const DataSelectorTablePicker = ({
           width="100%"
           searchable={isSearchable}
           onChange={handleChange}
-          itemExtraIsRightAligned={false}
-          renderItemExtra={renderItemExtra}
+          showSpinner={showSpinner}
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={checkIfItemIsClickable}
           renderItemIcon={renderItemIcon}
