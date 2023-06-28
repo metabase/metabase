@@ -629,14 +629,28 @@
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
-(defn ^:export available-drill-thrus
-  "Return an array (possibly empty) of drill-thrus for a given column and optional value.
+(defn- row-cell
+  "Converts a JS object `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map `{:column-name \"ID\", :value 12}`.
+  The column's name is used because it must be unique (eg. aliased by a join) while the ID might be duplicated if the
+  same field were joined multiple times."
+  [^js cell]
+  {:column-name (.. cell -col -name)
+   :value       (.-value cell)})
 
-  `stage-number` is required to avoid ambiguous arities."
-  ([a-query stage-number column]
-   (available-drill-thrus a-query stage-number column nil))
-  ([a-query stage-number column value]
-   (to-array (lib.core/available-drill-thrus a-query stage-number (js.metadata/parse-column column) value))))
+(defn ^:export available-drill-thrus
+  "Return an array (possibly empty) of drill-thrus given:
+  - Required column
+  - Nullable value
+  - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)"
+  [a-query stage-number column value row]
+  (->> {:column (js.metadata/parse-column column)
+        :value  (cond
+                  (identical? value js/undefined) nil   ; Missing a value, ie. a column click
+                  (nil? value)                    :null ; Provided value is null, ie. database NULL
+                  :else                           value)
+        :row    (mapv row-cell row)}
+       (lib.core/available-drill-thrus a-query stage-number)
+       to-array))
 
 (defn ^:export drill-thru
   "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.

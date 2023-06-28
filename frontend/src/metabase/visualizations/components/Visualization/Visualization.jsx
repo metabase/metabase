@@ -243,7 +243,13 @@ class Visualization extends PureComponent {
 
     if (mode) {
       window.__q = question._getMLv2Query();
-      const mlv2Drills = Lib.availableDrillThrus(window.__q, -1, clicked);
+      const mlv2Drills = Lib.availableDrillThrus(
+        window.__q,
+        -1,
+        clicked.column,
+        clicked.value,
+        clicked.data,
+      );
       if (mlv2Drills && mlv2Drills.length > 0) {
         //console.log(question, clicked?.column, clicked?.value, mlv2Drills);
       }

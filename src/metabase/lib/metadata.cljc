@@ -224,12 +224,6 @@
     setting-key           :- [:or string? keyword?]]
    (lib.metadata.protocols/setting (->metadata-provider metadata-providerable) setting-key)))
 
-(mu/defn setting :- any?
-  "Get the value of a Metabase setting for the instance we're querying."
-  ([metadata-providerable :- MetadataProviderable
-    setting-key           :- [:or string? keyword?]]
-   (lib.metadata.protocols/setting (->metadata-provider metadata-providerable) setting-key)))
-
 ;;;; Stage metadata
 
 (def StageMetadata
