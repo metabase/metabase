@@ -40,7 +40,7 @@ export const PreviousValueWrapper = styled.div`
 `;
 
 export const PreviousValueContainer = styled.div<{
-  gridSize: { width: number };
+  gridSize?: { width: number };
 }>`
   align-items: center;
   display: flex;
@@ -57,7 +57,8 @@ export const PreviousValueContainer = styled.div<{
 
   ${breakpointMaxLarge} {
     ${props =>
-      props.gridSize?.width <= 3 &&
+      props.gridSize &&
+      props.gridSize.width <= 3 &&
       css`
         flex-direction: column;
       `}
@@ -78,7 +79,7 @@ export const Separator = styled.span`
 `;
 
 export const PreviousValueSeparator = styled(Separator)<{
-  gridSize: { width: number };
+  gridSize?: { width: number };
 }>`
   color: ${color("text-light")};
 
@@ -88,7 +89,8 @@ export const PreviousValueSeparator = styled(Separator)<{
 
   ${breakpointMaxLarge} {
     ${props =>
-      props.gridSize?.width <= 3 &&
+      props.gridSize &&
+      props.gridSize.width <= 3 &&
       css`
         display: none;
       `}
