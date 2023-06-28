@@ -555,3 +555,9 @@
   "Returns the native query's template tags"
   [a-query]
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
+
+(defn ^:export available-metrics
+  "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
+  metadata objects."
+  [a-query]
+  (to-array (lib.core/available-metrics a-query)))

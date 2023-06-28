@@ -174,7 +174,12 @@
       ;; otherwise if `:base-type` is specified, we can return that.
       (:base-type options)
       ;; if none of the special cases are true, fall back to [[type-of-method]].
-      (type-of-method query stage-number x)))))
+      (let [calculated-type (type-of-method query stage-number x)]
+        ;; if calculated type is not a true type but a placeholder like `:metabase.lib.schema.expression/type.unknown`
+        ;; or a union of types then fall back to `:type/*`, an actual type.
+        (if (isa? calculated-type :type/*)
+          calculated-type
+          :type/*))))))
 
 (defmethod type-of-method :default
   [_query _stage-number expr]
@@ -358,7 +363,7 @@
 (defmethod display-info-method :metadata/table
   [query stage-number table]
   (merge (default-display-info query stage-number table)
-         {:is-source-table (= (lib.util/source-table query) (:id table))}))
+         {:is-source-table (= (lib.util/source-table-id query) (:id table))}))
 
 (def ColumnsWithUniqueAliases
   "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
