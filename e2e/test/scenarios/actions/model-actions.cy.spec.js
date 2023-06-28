@@ -12,6 +12,7 @@ import {
   resyncDatabase,
   createModelFromTableName,
   queryWritableDB,
+  createTestRoles,
 } from "e2e/support/helpers";
 
 import {
@@ -334,6 +335,7 @@ describe(
 
       resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
       restore(`${dialect}-writable`);
+      createTestRoles({ type: "postgres", isWritable: true });
       cy.signInAsAdmin();
       resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TEST_TABLE });
 
