@@ -65,11 +65,22 @@ export const PreviousValueContainer = styled.div<{
   }
 `;
 
-export const PreviousValue = styled.h4`
+export const PreviousValue = styled.h4<{
+  gridSize?: { width: number };
+}>`
   color: ${color("text-light")};
 
   ${breakpointMaxSmall} {
     text-transform: capitalize;
+  }
+
+  ${breakpointMaxLarge} {
+    ${props =>
+      props.gridSize &&
+      props.gridSize.width <= 3 &&
+      css`
+        text-transform: capitalize;
+      `}
   }
 `;
 
