@@ -79,7 +79,7 @@
     (fields table-id))
 
   (metrics [_this table-id]
-    (metrics table-id)
+    (metrics table-id))
 
   (setting [_this setting-name]
     (setting/get setting-name))

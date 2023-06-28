@@ -1,17 +1,15 @@
 import * as ML from "cljs/metabase.lib.js";
-import type {
-  //ColumnMetadata,
-  DrillThruInputs,
-  Query,
-} from "./types";
+import type { DataRow, Query } from "./types";
 
 export function availableDrillThrus(
   // TODO: What is the right type for a JS column? (Not types.ts ColumnMetadata; that's the opaque CLJS type.)
   query: Query,
   stageIndex: number,
-  inputs: DrillThruInputs,
+  column: Record<string, unknown>,
+  value: any,
+  row: DataRow | null,
 ): DrillThru[] {
-  return ML.available_drill_thrus(query, stageIndex, inputs);
+  return ML.available_drill_thrus(query, stageIndex, column, value, row);
 }
 
 // TODO: Precise types for each of the various extra args?
