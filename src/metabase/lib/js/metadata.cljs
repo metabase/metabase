@@ -375,6 +375,12 @@
         :when              (and a-field (= (:table-id a-field) table-id))]
     a-field))
 
+(defn- metrics [metadata table-id]
+  (for [[_id metric-delay] (some-> metadata :metrics deref)
+        :let               [a-metric (some-> metric-delay deref)]
+        :when              (and a-metric (= (:table-id a-metric) table-id))]
+    a-metric))
+
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id unparsed-metadata]
@@ -389,6 +395,7 @@
       (card     [_this card-id]    (card     metadata card-id))
       (tables   [_this]            (tables   metadata database-id))
       (fields   [_this table-id]   (fields   metadata table-id))
+      (metrics  [_this table-id]   (metrics  metadata table-id))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.

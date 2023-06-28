@@ -15,9 +15,9 @@ import {
   addOrUpdateDashboardCard,
   openQuestionsSidebar,
   describeWithSnowplow,
+  expectNoBadSnowplowEvents,
   resetSnowplow,
   enableTracking,
-  expectNoBadSnowplowEvents,
   expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
@@ -743,7 +743,7 @@ describe("scenarios > dashboard", () => {
   });
 });
 
-describeWithSnowplow("scenarios > dashboard (snowplow)", () => {
+describeWithSnowplow("scenarios > dashboard", () => {
   beforeEach(() => {
     resetSnowplow();
     restore();
@@ -766,6 +766,32 @@ describeWithSnowplow("scenarios > dashboard (snowplow)", () => {
 
     expectGoodSnowplowEvent({
       event: "new_link_card_created",
+    });
+  });
+
+  it("should track enabling the hide empty cards setting", () => {
+    visitDashboard(1);
+    editDashboard();
+
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("palette").click({ force: true });
+    });
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByRole("switch", {
+        name: "Hide this card if there are no results",
+      })
+        .click() // enable
+        .click() // disable
+        .click(); // enable
+
+      expectGoodSnowplowEvent(
+        {
+          event: "card_set_to_hide_when_no_results",
+          dashboard_id: 1,
+        },
+        2,
+      );
     });
   });
 });

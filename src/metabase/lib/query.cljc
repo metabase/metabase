@@ -7,7 +7,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
@@ -90,26 +89,6 @@
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
   (->query metadata-providerable x))
-
-;;; TODO -- the stuff below will probably change in the near future, please don't read too much in to it.
-(mu/defn native-query :- ::lib.schema/query
-  "Create a new native query.
-
-  Native in this sense means a pMBQL query with a first stage that is a native query."
-  ([metadata-providerable :- lib.metadata/MetadataProviderable
-    inner-query]
-   (native-query metadata-providerable nil inner-query))
-
-  ;; TODO not sure if `results-metadata` should be StageMetadata (i.e., a map roughly matching the shape you get from
-  ;; the QP) or a sequence of ColumnMetadatas, like what would be saved in Card `result_metadata`.
-  ([metadata-providerable :- lib.metadata/MetadataProviderable
-    results-metadata      :- lib.metadata/StageMetadata
-    inner-query]
-   (query-with-stages metadata-providerable
-                      [(-> {:lib/type           :mbql.stage/native
-                            :lib/stage-metadata results-metadata
-                            :native             inner-query}
-                           lib.options/ensure-uuid)])))
 
 (mu/defn saved-question-query :- ::lib.schema/query
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
