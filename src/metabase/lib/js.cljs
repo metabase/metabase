@@ -523,8 +523,8 @@
 
 (defn ^:export joined-thing
   "Return metadata about the origin of `join` using `metadata-providerable` as the source of information."
-  [a-query join]
-  (lib.join/joined-thing a-query join))
+  [a-query a-join]
+  (lib.join/joined-thing a-query a-join))
 
 (defn ^:export picker-info
   "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions."
