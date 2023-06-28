@@ -117,19 +117,27 @@
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
    [:result-metadata {:optional true} [:maybe [:sequential :map]]]])
 
-(def ^:private SegmentMetadata
+(def SegmentMetadata
   "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
   [:map
    [:lib/type [:= :metadata/segment]]
    [:id       ::lib.schema.id/segment]
    [:name     ::lib.schema.common/non-blank-string]])
 
-(def ^:private MetricMetadata
-  "More or less the same as a [[metabase.models.metric]], but with kebab-case keys."
+(def MetricMetadata
+  "Malli schema for a legacy v1 [[metabase.models.metric]], but with kebab-case keys. A Metric defines an MBQL snippet
+  with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations` in an
+  MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
+  see [[metabase.query-processor.middleware.expand-macros]]."
   [:map
-   [:lib/type [:= :metadata/metric]]
-   [:id       ::lib.schema.id/metric]
-   [:name     ::lib.schema.common/non-blank-string]])
+   [:lib/type   [:= :metadata/metric]]
+   [:id         ::lib.schema.id/metric]
+   [:name       ::lib.schema.common/non-blank-string]
+   [:table-id   ::lib.schema.id/table]
+   ;; the MBQL snippet defining this Metric; this may still be in legacy
+   ;; format. [[metabase.lib.metric/metric-definition]] handles conversion to pMBQL if needed.
+   [:definition :map]
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def TableMetadata
   "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
@@ -155,7 +163,9 @@
 
 (def MetadataProvider
   "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
-  [:fn lib.metadata.protocols/metadata-provider?])
+  [:fn
+   {:error/message "Valid MetadataProvider"}
+   #'lib.metadata.protocols/metadata-provider?])
 
 (def MetadataProviderable
   "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
