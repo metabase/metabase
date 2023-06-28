@@ -19,19 +19,16 @@ const createCardsRow = ({ size_y }) => [
   { size_x: 1, size_y, row: 0, col: 20 },
 ];
 
-const CARDS = [
-  ...createCardsRow({ size_y: 2 }),
-  ...createCardsRow({ size_y: 3 }),
-  ...createCardsRow({ size_y: 4 }),
-];
+const CARDS_SIZE_1X = {
+  cards: [
+    { size_x: 1, size_y: 4, row: 1, col: 20 },
+    { size_x: 1, size_y: 3, row: 5, col: 20 },
+    { size_x: 1, size_y: 2, row: 8, col: 20 },
 
-const CARDS_SIZE_1X = [
-  { size_x: 1, size_y: 4, row: 1, col: 20 },
-  { size_x: 1, size_y: 3, row: 5, col: 20 },
-  { size_x: 1, size_y: 2, row: 8, col: 20 },
-
-  ...createCardsRow({ size_y: 1 }),
-];
+    ...createCardsRow({ size_y: 1 }),
+  ],
+  name: "Cards 1 cell high or wide",
+};
 
 const VIEWPORTS = [
   { width: 375, height: 667, openSidebar: false },
@@ -52,7 +49,12 @@ const SCALAR_QUESTION = {
   display: "scalar",
 };
 
-const SCALAR_QUESTION_CARDS = [...CARDS, ...CARDS_SIZE_1X];
+const SCALAR_QUESTION_CARDS = [
+  { cards: createCardsRow({ size_y: 2 }), name: "Cards 2 cells high" },
+  { cards: createCardsRow({ size_y: 3 }), name: "Cards 3 cells high" },
+  { cards: createCardsRow({ size_y: 4 }), name: "Cards 4 cells high" },
+  CARDS_SIZE_1X,
+];
 
 const SMART_SCALAR_QUESTION = {
   name: "31628 Question - This is a rather lengthy question name",
@@ -74,7 +76,11 @@ const SMART_SCALAR_QUESTION = {
   display: "smartscalar",
 };
 
-const SMART_SCALAR_QUESTION_CARDS = CARDS;
+const SMART_SCALAR_QUESTION_CARDS = [
+  { cards: createCardsRow({ size_y: 2 }), name: "Cards 2 cells high" },
+  { cards: createCardsRow({ size_y: 3 }), name: "Cards 3 cells high" },
+  { cards: createCardsRow({ size_y: 4 }), name: "Cards 4 cells high" },
+];
 
 describe("issue 31628", () => {
   describe("display: scalar", () => {
@@ -85,25 +91,24 @@ describe("issue 31628", () => {
     ].join(",");
 
     VIEWPORTS.forEach(({ width, height, openSidebar }) => {
-      describe(`${width}x${height} - sidebar ${
-        openSidebar ? "open" : "closed"
-      }`, () => {
-        beforeEach(() => {
-          restore();
-          cy.viewport(width, height);
-          cy.signInAsAdmin();
-          setupDashboardWithQuestionInCards(
-            SCALAR_QUESTION,
-            SCALAR_QUESTION_CARDS,
-          );
+      SCALAR_QUESTION_CARDS.forEach(({ cards, name }) => {
+        const sidebar = openSidebar ? "sidebar open" : "sidebar closed";
 
-          if (openSidebar) {
-            openNavigationSidebar();
-          }
-        });
+        describe(`${width}x${height} - ${sidebar} - ${name}`, () => {
+          beforeEach(() => {
+            restore();
+            cy.viewport(width, height);
+            cy.signInAsAdmin();
+            setupDashboardWithQuestionInCards(SCALAR_QUESTION, cards);
 
-        it(`should render descendants of a 'scalar' without overflowing it (metabase#31628)`, () => {
-          assertDescendantsNotOverflowDashcards(descendantsSelector);
+            if (openSidebar) {
+              openNavigationSidebar();
+            }
+          });
+
+          it(`should render descendants of a 'scalar' without overflowing it (metabase#31628)`, () => {
+            assertDescendantsNotOverflowDashcards(descendantsSelector);
+          });
         });
       });
     });
@@ -233,25 +238,24 @@ describe("issue 31628", () => {
     ].join(",");
 
     VIEWPORTS.forEach(({ width, height, openSidebar }) => {
-      describe(`${width}x${height} - sidebar ${
-        openSidebar ? "open" : "closed"
-      }`, () => {
-        beforeEach(() => {
-          restore();
-          cy.viewport(width, height);
-          cy.signInAsAdmin();
-          setupDashboardWithQuestionInCards(
-            SMART_SCALAR_QUESTION,
-            SMART_SCALAR_QUESTION_CARDS,
-          );
+      SMART_SCALAR_QUESTION_CARDS.forEach(({ cards, name }) => {
+        const sidebar = openSidebar ? "sidebar open" : "sidebar closed";
 
-          if (openSidebar) {
-            openNavigationSidebar();
-          }
-        });
+        describe(`${width}x${height} - ${sidebar} - ${name}`, () => {
+          beforeEach(() => {
+            restore();
+            cy.viewport(width, height);
+            cy.signInAsAdmin();
+            setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, cards);
 
-        it(`should render descendants of a 'smartscalar' without overflowing it (metabase#31628)`, () => {
-          assertDescendantsNotOverflowDashcards(descendantsSelector);
+            if (openSidebar) {
+              openNavigationSidebar();
+            }
+          });
+
+          it(`should render descendants of a 'smartscalar' without overflowing it (metabase#31628)`, () => {
+            assertDescendantsNotOverflowDashcards(descendantsSelector);
+          });
         });
       });
     });
