@@ -348,7 +348,7 @@
                                               {:strategy :num-bins  :num-bins  10}
                                               {:strategy :bin-width :bin-width 1.0}
                                               {:strategy :default}])
-          :let                  [field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")]
+          :let                  [field-metadata (meta/field-metadata :orders :subtotal)]
           [what x]              {"column metadata" field-metadata
                                  "field ref"       (lib/ref field-metadata)}
           :let                  [x' (lib/with-binning x binning1)]]
@@ -383,10 +383,10 @@
 (deftest ^:parallel available-binning-strategies-test
   (doseq [{:keys [expected-options field-metadata query]}
           [{:query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
-            :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+            :field-metadata   (meta/field-metadata :orders :subtotal)
             :expected-options (lib.binning/numeric-binning-strategies)}
            {:query            (lib/query meta/metadata-provider (meta/table-metadata :people))
-            :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+            :field-metadata   (meta/field-metadata :people :latitude)
             :expected-options (lib.binning/coordinate-binning-strategies)}]]
     (testing (str (:semantic-type field-metadata) " Field")
       (doseq [[what x] [["column metadata" field-metadata]
@@ -422,7 +422,7 @@
 (deftest ^:parallel binning-display-info-test
   (testing "numeric binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+          field-metadata (meta/field-metadata :orders :subtotal)
           strategies     (lib.binning/numeric-binning-strategies)]
       (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
                                               {:display-name "10 bins"}
@@ -437,7 +437,7 @@
 
   (testing "coordinate binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :people))
-          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+          field-metadata (meta/field-metadata :people :latitude)
           strategies     (lib.binning/coordinate-binning-strategies)]
       (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
                                               {:display-name "0.1°"}
