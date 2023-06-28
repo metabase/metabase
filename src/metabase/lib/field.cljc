@@ -83,18 +83,25 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    column-name  :- ::lib.schema.common/non-blank-string]
-  (let [stage         (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                        (lib.util/query-stage query previous-stage-number)
-                        (lib.util/query-stage query stage-number))
+  (let [previous-stage-number (lib.util/previous-stage-number query stage-number)
+        stage                 (if previous-stage-number
+                                (lib.util/query-stage query previous-stage-number)
+                                (lib.util/query-stage query stage-number))
         ;; TODO -- it seems a little icky that the existence of `:metabase.lib.stage/cached-metadata` is leaking here,
         ;; we should look in to fixing this if we can.
-        stage-columns (or (:metabase.lib.stage/cached-metadata stage)
-                          (get-in stage [:lib/stage-metadata :columns])
-                          (when (:source-card stage)
-                            (lib.metadata.calculation/visible-columns query stage-number stage))
-                          (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
-    (when (seq stage-columns)
-      (resolve-column-name-in-metadata column-name stage-columns))))
+        stage-columns         (or (:metabase.lib.stage/cached-metadata stage)
+                                  (get-in stage [:lib/stage-metadata :columns])
+                                  (when (:source-card stage)
+                                    (lib.metadata.calculation/visible-columns query stage-number stage))
+                                  (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
+    (when-let [column (and (seq stage-columns)
+                           (resolve-column-name-in-metadata column-name stage-columns))]
+      (cond-> column
+        previous-stage-number (-> (dissoc :id :table-id
+                                          ::binning ::temporal-unit
+                                          :metabase.lib.join/join-alias)
+                                  (assoc :name (or (:lib/desired-column-alias column) (:name column)))
+                                  (assoc :lib/source :source/previous-stage))))))
 
 (mu/defn ^:private resolve-field-metadata :- lib.metadata/ColumnMetadata
   "Resolve metadata for a `:field` ref. This is part of the implementation
@@ -416,21 +423,20 @@
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    (let [options          (merge
-                            {:lib/uuid       (str (random-uuid))
-                             :base-type      (:base-type metadata)
-                             :effective-type (column-metadata-effective-type metadata)}
-                            (when-let [join-alias (lib.join/current-join-alias metadata)]
-                              {:join-alias join-alias})
-                            (when-let [temporal-unit (::temporal-unit metadata)]
-                              {:temporal-unit temporal-unit})
-                            (when-let [binning (::binning metadata)]
-                              {:binning binning})
-                            (when-let [source-field-id (:fk-field-id metadata)]
-                              {:source-field source-field-id}))
-          always-use-name? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))]
-      [:field options (if always-use-name?
-                        (:name metadata)
+    (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
+          options           (merge {:lib/uuid       (str (random-uuid))
+                                    :base-type      (:base-type metadata)
+                                    :effective-type (column-metadata-effective-type metadata)}
+                                   (when-let [join-alias (lib.join/current-join-alias metadata)]
+                                     {:join-alias join-alias})
+                                   (when-let [temporal-unit (::temporal-unit metadata)]
+                                     {:temporal-unit temporal-unit})
+                                   (when-let [binning (::binning metadata)]
+                                     {:binning binning})
+                                   (when-let [source-field-id (:fk-field-id metadata)]
+                                     {:source-field source-field-id}))]
+      [:field options (if inherited-column?
+                        (or (:lib/desired-column-alias metadata) (:name metadata))
                         (or (:id metadata) (:name metadata)))])))
 
 (defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]

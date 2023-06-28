@@ -21,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version-file: '.nvmrc'
+          node-version: lts/Hydrogen # 18.x.x
       - run: npm install @slack/web-api
       - name: Trigger a re-run
         uses: actions/github-script@v6

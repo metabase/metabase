@@ -128,7 +128,9 @@ describe("FileUploadStatus", () => {
     fetchMock.post(
       "path:/api/card/from-csv",
       {
-        throws: { data: { message: "It's dead Jim" } },
+        throws: {
+          data: { message: "Something went wrong", cause: "It's dead Jim" },
+        },
         status: 400,
       },
       { delay: 1000 },
@@ -173,9 +175,14 @@ describe("FileUploadStatus", () => {
     jest.advanceTimersByTime(500);
 
     expect(
-      await screen.findByText("Error uploading your File"),
+      await screen.findByText("There was an error uploading the file"),
     ).toBeInTheDocument();
-    expect(await screen.findByText("It's dead Jim")).toBeInTheDocument();
+
+    userEvent.click(await screen.findByText("Show error details"));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+
+    expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
   });
 
   describe("loading state", () => {

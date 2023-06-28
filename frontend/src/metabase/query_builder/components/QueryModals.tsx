@@ -31,7 +31,7 @@ import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQue
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import { Alert, Card, Collection, User } from "metabase-types/api";
-import { QueryBuilderMode } from "metabase-types/store";
+import { QueryBuilderMode, QueryBuilderUIControls } from "metabase-types/store";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
@@ -51,6 +51,7 @@ interface QueryModalsProps {
   initialCollectionId: number;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
+  setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
   originalQuestion: Question | null;
   card: Card;
   onCreate: (question: Question) => void;
@@ -99,6 +100,7 @@ class QueryModals extends Component<QueryModalsProps> {
       onOpenModal,
       updateQuestion,
       setQueryBuilderMode,
+      setUIControls,
     } = this.props;
 
     switch (modal) {
@@ -345,6 +347,7 @@ class QueryModals extends Component<QueryModalsProps> {
           <Modal fit onClose={onCloseModal}>
             <ConvertQueryModal
               onUpdateQuestion={updateQuestion}
+              onSetUIControls={setUIControls}
               onClose={onCloseModal}
             />
           </Modal>

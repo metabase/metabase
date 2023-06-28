@@ -412,6 +412,15 @@
   formatting can be applied. This should be enabled for generation of pulse/dashboard subscription attachments."
   false)
 
+(defn- maybe-parse-temporal-value
+  [value col]
+  (when (and *parse-temporal-string-values*
+             (isa? (:effective_type col) :type/Temporal)
+             (string? value))
+    (try (u.date/parse value)
+         ;; Fallback to plain string value if it couldn't be parsed
+         (catch Exception _ value
+                value))))
 (defn- add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -430,11 +439,9 @@
                            value)
             ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
             ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-            parsed-value (if (and *parse-temporal-string-values* (string? value))
-                           (try (u.date/parse value)
-                                ;; Fallback to plain string value if it couldn't be parsed
-                                (catch Exception _ value))
-                           scaled-val)]
+            parsed-value (or
+                          (maybe-parse-temporal-value value col)
+                          scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
 

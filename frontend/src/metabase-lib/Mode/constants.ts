@@ -1,4 +1,3 @@
-export const MODE_TYPE_ACTION = "actions";
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
 export const MODE_TYPE_SEGMENT = "segment";
@@ -8,7 +7,6 @@ export const MODE_TYPE_GEO = "geo";
 export const MODE_TYPE_PIVOT = "pivot";
 
 export const MODES_TYPES = [
-  MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
   MODE_TYPE_SEGMENT,
   MODE_TYPE_METRIC,

@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -196,7 +195,7 @@
               (-> q
                   (lib/aggregate {:operator :sum
                                   :lib/type :lib/external-op
-                                  :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
+                                  :args [(lib/ref (meta/field-metadata :venues :category-id))]})
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel type-of-sum-test
@@ -300,6 +299,22 @@
     :effective-type :type/Text
     :semantic-type  :type/Name
     :lib/source     :source/implicitly-joinable}])
+
+(deftest ^:parallel aggregation-clause-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        aggregation-operators (lib/available-aggregation-operators query)
+        count-op (first aggregation-operators)
+        sum-op (second aggregation-operators)]
+    (is (=? [:sum {} [:field {} (meta/id :venues :price)]]
+            (lib/aggregation-clause sum-op (meta/field-metadata :venues :price))))
+    (is (=? [:count {}]
+            (lib/aggregation-clause count-op)))
+    (is (=? [:count {} [:field {} (meta/id :venues :price)]]
+            (lib/aggregation-clause count-op (meta/field-metadata :venues :price))))
+    (is (thrown-with-msg?
+          #?(:clj Exception :cljs :default)
+          #"aggregation operator :sum requires an argument"
+          (lib/aggregation-clause sum-op)))))
 
 (deftest ^:parallel aggregation-operator-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))

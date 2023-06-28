@@ -35,11 +35,10 @@
                   :region_key  nil
                   :region_name nil}})
 
-(deftest geojson-schema-test
-  (is (= true
-         (boolean (s/validate @#'api.geojson/CustomGeoJSON test-custom-geojson)))))
+(deftest ^:parallel geojson-schema-test
+  (is (s/validate @#'api.geojson/CustomGeoJSON test-custom-geojson)))
 
-(deftest validate-geojson-test
+(deftest ^:parallel validate-geojson-test
   (testing "It validates URLs and files appropriately"
     (let [examples {;; Internal metadata for GCP
                     "metadata.google.internal"                 false
@@ -135,6 +134,25 @@
                                          {:value resource-geojson})
                    (mt/user-http-request :crowberto :get 200 "setting/custom-geojson")))))))))
 
+(deftest ^:parallel url-proxy-endpoint-test
+  (testing "GET /api/geojson"
+    (testing "test the endpoint that fetches JSON files given a URL"
+      (is (= {:type        "Point"
+              :coordinates [37.77986 -122.429]}
+             (mt/user-http-request :crowberto :get 200 "geojson" :url test-geojson-url))))
+    (testing "error is returned if URL connection fails"
+      (is (= "GeoJSON URL failed to load"
+             (mt/user-http-request :crowberto :get 400 "geojson"
+                                   :url test-broken-geojson-url))))
+    (testing "error is returned if URL is invalid"
+      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
+                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
+                  "prohibited.")
+             (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
+    (testing "cannot be called by non-admins"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url))))))
+
 (defprotocol GeoJsonTestServer
   (-port [_]))
 
@@ -155,17 +173,9 @@
       GeoJsonTestServer
       (-port [_] (.. server getURI getPort)))))
 
-(deftest url-proxy-endpoint-test
-  (testing "GET /api/geojson"
-    (testing "test the endpoint that fetches JSON files given a URL"
-      (is (= {:type        "Point"
-              :coordinates [37.77986 -122.429]}
-             (mt/user-http-request :crowberto :get 200 "geojson" :url test-geojson-url))))
-    (testing "error is returned if URL connection fails"
-      (is (= "GeoJSON URL failed to load"
-             (mt/user-http-request :crowberto :get 400 "geojson"
-                                   :url test-broken-geojson-url))))
-    (testing "error is returned if URL server never responds (#28752)"
+(deftest url-proxy-endpoint-non-responding-server-test
+  (testing "error is returned if URL server never responds (#28752)"
+    (with-redefs [api.geojson/connection-timeout-ms 200]
       ;; use a webserver which accepts a connection and never responds. The geojson endpoint opens a reader to the url
       ;; and responds with it. And if there are never any bytes going across, the whole thing just sits there. Our
       ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar
@@ -175,15 +185,7 @@
           (testing "error is returned if URL connection fails"
             (is (= "GeoJSON URL failed to load"
                    (mt/user-http-request :crowberto :get 400 "geojson"
-                                         :url never-responds-url)))))))
-    (testing "error is returned if URL is invalid"
-      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
-                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
-                  "prohibited.")
-             (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
-    (testing "cannot be called by non-admins"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url))))))
+                                         :url never-responds-url)))))))))
 
 (deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"
