@@ -23,7 +23,7 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   maxHeight?: number;
-  onSelect: (operator: Lib.AggregationClause) => void;
+  onSelect: (operator: Lib.Aggregatable) => void;
   onClose?: () => void;
 }
 
@@ -31,11 +31,21 @@ type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
   operator: Lib.AggregationOperator;
 };
 
+type MetricListItem = Lib.MetricDisplayInfo & {
+  metric: Lib.MetricMetadata;
+};
+
+type ListItem = OperatorListItem | MetricListItem;
+
 type Section = {
   name: string;
-  items: OperatorListItem[];
+  items: ListItem[];
   icon?: string;
 };
+
+function isOperatorListItem(item: ListItem): item is OperatorListItem {
+  return "operator" in item;
+}
 
 export function AggregationPicker({
   className,
@@ -57,9 +67,10 @@ export function AggregationPicker({
 
   const sections = useMemo(() => {
     const sections: Section[] = [];
-    const hasOperators = operators.length > 0;
 
-    if (hasOperators) {
+    const metrics = Lib.availableMetrics(query);
+
+    if (operators.length > 0) {
       sections.push({
         name: t`Basic Metrics`,
         items: operators.map(operator =>
@@ -69,11 +80,21 @@ export function AggregationPicker({
       });
     }
 
+    if (metrics.length > 0) {
+      sections.push({
+        name: t`Common Metrics`,
+        items: metrics.map(metric =>
+          getMetricListItem(query, stageIndex, metric),
+        ),
+        icon: "star",
+      });
+    }
+
     return sections;
   }, [query, stageIndex, operators]);
 
   const checkIsItemSelected = useCallback(
-    (item: OperatorListItem) => item.selected,
+    (item: ListItem) => item.selected,
     [],
   );
 
@@ -106,6 +127,25 @@ export function AggregationPicker({
     [operator, onSelect, onClose],
   );
 
+  const handleMetricSelect = useCallback(
+    (item: MetricListItem) => {
+      onSelect(item.metric);
+      onClose?.();
+    },
+    [onSelect, onClose],
+  );
+
+  const handleChange = useCallback(
+    (item: ListItem) => {
+      if (isOperatorListItem(item)) {
+        handleOperatorSelect(item);
+      } else {
+        handleMetricSelect(item);
+      }
+    },
+    [handleOperatorSelect, handleMetricSelect],
+  );
+
   if (operator && operatorInfo?.requiresColumn) {
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
@@ -134,7 +174,7 @@ export function AggregationPicker({
       sections={sections}
       maxHeight={maxHeight}
       alwaysExpanded={false}
-      onChange={handleOperatorSelect}
+      onChange={handleChange}
       itemIsSelected={checkIsItemSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
@@ -160,7 +200,7 @@ function ColumnPickerHeader({
   );
 }
 
-function renderItemName(item: OperatorListItem) {
+function renderItemName(item: ListItem) {
   return item.displayName;
 }
 
@@ -168,12 +208,15 @@ function omitItemDescription() {
   return null;
 }
 
-function renderItemExtra(item: OperatorListItem) {
-  return (
-    <InfoIconContainer>
-      <Icon name="question" size={20} tooltip={item.description} />
-    </InfoIconContainer>
-  );
+function renderItemExtra(item: ListItem) {
+  if (item.description) {
+    return (
+      <InfoIconContainer>
+        <Icon name="question" size={20} tooltip={item.description} />
+      </InfoIconContainer>
+    );
+  }
+  return null;
 }
 
 function getInitialOperator(
@@ -196,6 +239,18 @@ function getOperatorListItem(
   return {
     ...operatorInfo,
     operator,
+  };
+}
+
+function getMetricListItem(
+  query: Lib.Query,
+  stageIndex: number,
+  metric: Lib.MetricMetadata,
+): MetricListItem {
+  const metricInfo = Lib.displayInfo(query, stageIndex, metric);
+  return {
+    ...metricInfo,
+    metric,
   };
 }
 

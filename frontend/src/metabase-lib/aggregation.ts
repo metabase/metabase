@@ -3,6 +3,7 @@ import type {
   AggregationClause,
   AggregationOperator,
   ColumnMetadata,
+  MetricMetadata,
   Query,
 } from "./types";
 
@@ -29,7 +30,7 @@ export function selectedAggregationOperators(
 export function aggregate(
   query: Query,
   stageIndex: number,
-  clause: AggregationClause,
+  clause: AggregationClause | MetricMetadata,
 ): Query {
   return ML.aggregate(query, stageIndex, clause);
 }
