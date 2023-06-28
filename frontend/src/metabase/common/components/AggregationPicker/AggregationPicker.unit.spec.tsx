@@ -1,22 +1,44 @@
 import userEvent from "@testing-library/user-event";
+import { createMockMetadata } from "__support__/metadata";
 import { render, screen, within } from "__support__/ui";
+import { checkNotNull } from "metabase/core/utils/types";
+
+import type { Metric } from "metabase-types/api";
+import { createMockMetric } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createReviewsTable,
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS_ID,
+  PRODUCTS,
+} from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import {
   createQuery,
   columnFinder,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
+
 import { AggregationPicker } from "./AggregationPicker";
 
-function createQueryWithCountAggregation() {
-  const initialQuery = createQuery();
+function createQueryWithCountAggregation({
+  metadata,
+}: { metadata?: Metadata } = {}) {
+  const initialQuery = createQuery({ metadata });
   const count = findAggregationOperator(initialQuery, "count");
   const clause = Lib.aggregationClause(count);
   return Lib.aggregate(initialQuery, 0, clause);
 }
 
-function createQueryWithMaxAggregation() {
-  const initialQuery = createQuery();
+function createQueryWithMaxAggregation({
+  metadata,
+}: { metadata?: Metadata } = {}) {
+  const initialQuery = createQuery({ metadata });
   const max = findAggregationOperator(initialQuery, "max");
   const findColumn = columnFinder(
     initialQuery,
@@ -27,19 +49,63 @@ function createQueryWithMaxAggregation() {
   return Lib.aggregate(initialQuery, 0, clause);
 }
 
-function setup({ query = createQuery() } = {}) {
+const TEST_METRIC = createMockMetric({
+  id: 1,
+  table_id: ORDERS_ID,
+  name: "Total Order Value",
+  description: "The total value of all orders",
+  definition: {
+    aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+    "source-table": ORDERS_ID,
+  },
+});
+
+const PRODUCT_METRIC = createMockMetric({
+  id: 2,
+  table_id: PRODUCTS_ID,
+  name: "Average Rating",
+  definition: {
+    aggregation: [["avg", ["field", PRODUCTS.RATING, null]]],
+    "source-table": PRODUCTS_ID,
+  },
+});
+
+function createMetadata({ metrics = [] }: { metrics?: Metric[] } = {}) {
+  return createMockMetadata({
+    databases: [
+      createSampleDatabase({
+        tables: [
+          createOrdersTable({ metrics }),
+          createPeopleTable(),
+          createProductsTable({ metrics: [PRODUCT_METRIC] }),
+          createReviewsTable(),
+        ],
+      }),
+    ],
+    metrics: [...metrics, PRODUCT_METRIC],
+  });
+}
+
+type SetupOpts = {
+  query?: Lib.Query;
+  metadata?: Metadata;
+};
+
+function setup({
+  metadata = createMetadata(),
+  query = createQuery({ metadata }),
+}: SetupOpts = {}) {
   const clause = Lib.aggregations(query, 0)[0];
 
+  const baseOperators = Lib.availableAggregationOperators(query, 0);
   const operators = clause
-    ? Lib.selectedAggregationOperators(
-        Lib.availableAggregationOperators(query, 0),
-        clause,
-      )
-    : Lib.availableAggregationOperators(query, 0);
+    ? Lib.selectedAggregationOperators(baseOperators, clause)
+    : baseOperators;
 
   const onSelect = jest.fn();
+  const onSelectLegacy = jest.fn();
 
-  function handleSelect(clause: Lib.AggregationClause) {
+  function handleSelect(clause: Lib.Aggregatable) {
     const nextQuery = Lib.aggregate(query, 0, clause);
     const aggregations = Lib.aggregations(nextQuery, 0);
     const recentAggregation = aggregations[aggregations.length - 1];
@@ -60,10 +126,28 @@ function setup({ query = createQuery() } = {}) {
     return lastCall?.[0];
   }
 
-  return { getRecentClause };
+  return { metadata, getRecentClause, onSelectLegacy };
 }
 
 describe("AggregationPicker", () => {
+  it("should allow switching between aggregation approaches", () => {
+    const metadata = createMetadata({ metrics: [TEST_METRIC] });
+    const { getRecentClause } = setup({
+      query: createQueryWithCountAggregation({ metadata }),
+      metadata,
+    });
+    const metric = checkNotNull(metadata.metric(TEST_METRIC.id));
+
+    userEvent.click(screen.getByText("Common Metrics"));
+    userEvent.click(screen.getByText(TEST_METRIC.name));
+
+    expect(getRecentClause()).toEqual(
+      expect.objectContaining({
+        displayName: metric.displayName(),
+      }),
+    );
+  });
+
   describe("basic operators", () => {
     it("should list basic operators", () => {
       setup();
@@ -203,6 +287,62 @@ describe("AggregationPicker", () => {
         expect.objectContaining({
           name: "max",
           displayName: "Max of Discount",
+        }),
+      );
+    });
+  });
+
+  describe("metrics", () => {
+    function setupMetrics(opts: SetupOpts = {}) {
+      const result = setup(opts);
+
+      // Expand the metrics section
+      userEvent.click(screen.getByText("Common Metrics"));
+
+      return result;
+    }
+
+    it("shouldn't show the metrics section when there're no metics", () => {
+      setup({ metadata: createMetadata({ metrics: [] }) });
+      expect(screen.queryByText("Common Metrics")).not.toBeInTheDocument();
+    });
+
+    it("should list metrics for the query table", () => {
+      setupMetrics({ metadata: createMetadata({ metrics: [TEST_METRIC] }) });
+      expect(screen.getByText(TEST_METRIC.name)).toBeInTheDocument();
+    });
+
+    it("shouldn't list metrics for other tables", () => {
+      setupMetrics({ metadata: createMetadata({ metrics: [TEST_METRIC] }) });
+      expect(screen.queryByText(PRODUCT_METRIC.name)).not.toBeInTheDocument();
+    });
+
+    it("should show a description for each metric", () => {
+      setupMetrics({ metadata: createMetadata({ metrics: [TEST_METRIC] }) });
+
+      const metricOption = screen.getByRole("option", {
+        name: TEST_METRIC.name,
+      });
+      const infoIcon = within(metricOption).getByRole("img", {
+        name: "question icon",
+      });
+      userEvent.hover(infoIcon);
+
+      expect(screen.getByRole("tooltip")).toHaveTextContent(
+        TEST_METRIC.description,
+      );
+    });
+
+    it("should allow picking a metric", () => {
+      const metadata = createMetadata({ metrics: [TEST_METRIC] });
+      const { getRecentClause } = setupMetrics({ metadata });
+      const metric = checkNotNull(metadata.metric(TEST_METRIC.id));
+
+      userEvent.click(screen.getByText(TEST_METRIC.name));
+
+      expect(getRecentClause()).toEqual(
+        expect.objectContaining({
+          displayName: metric.displayName(),
         }),
       );
     });

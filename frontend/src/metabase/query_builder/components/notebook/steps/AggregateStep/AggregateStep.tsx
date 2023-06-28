@@ -35,14 +35,14 @@ export function AggregateStep({
     stageIndex,
   );
 
-  const handleAddAggregation = (aggregation: Lib.AggregationClause) => {
+  const handleAddAggregation = (aggregation: Lib.Aggregatable) => {
     const nextQuery = Lib.aggregate(topLevelQuery, stageIndex, aggregation);
     updateQuery(nextQuery);
   };
 
   const handleUpdateAggregation = (
     currentClause: Lib.AggregationClause,
-    nextClause: Lib.AggregationClause,
+    nextClause: Lib.Aggregatable,
   ) => {
     const nextQuery = Lib.replaceClause(
       topLevelQuery,
@@ -70,27 +70,69 @@ export function AggregateStep({
       isLastOpened={isLastOpened}
       tetherOptions={aggTetherOptions}
       renderName={renderAggregationName}
-      renderPopover={aggregation => (
-        <AggregationPicker
+      renderPopover={(aggregation, index) => (
+        <AggregationPopover
           query={topLevelQuery}
           stageIndex={stageIndex}
-          operators={
-            aggregation
-              ? Lib.selectedAggregationOperators(operators, aggregation)
-              : operators
-          }
-          onSelect={newAggregation => {
-            const isUpdate = aggregation != null;
-            if (isUpdate) {
-              handleUpdateAggregation(aggregation, newAggregation);
-            } else {
-              handleAddAggregation(newAggregation);
-            }
-          }}
+          operators={operators}
+          clause={aggregation}
+          clauseIndex={index}
+          onAddAggregation={handleAddAggregation}
+          onUpdateAggregation={handleUpdateAggregation}
         />
       )}
       onRemove={handleRemoveAggregation}
       data-testid="aggregate-step"
+    />
+  );
+}
+
+interface AggregationPopoverProps {
+  query: Lib.Query;
+  stageIndex: number;
+  operators: Lib.AggregationOperator[];
+  clause?: Lib.AggregationClause;
+  onUpdateAggregation: (
+    currentClause: Lib.AggregationClause,
+    nextClause: Lib.Aggregatable,
+  ) => void;
+  onAddAggregation: (aggregation: Lib.Aggregatable) => void;
+
+  clauseIndex?: number;
+
+  // Implicitly passed by metabase/components/Triggerable
+  onClose?: () => void;
+}
+
+function AggregationPopover({
+  query,
+  stageIndex,
+  operators: baseOperators,
+  clause,
+  clauseIndex,
+  onAddAggregation,
+  onUpdateAggregation,
+  onClose,
+}: AggregationPopoverProps) {
+  const isUpdate = clause != null && clauseIndex != null;
+
+  const operators = isUpdate
+    ? Lib.selectedAggregationOperators(baseOperators, clause)
+    : baseOperators;
+
+  return (
+    <AggregationPicker
+      query={query}
+      stageIndex={stageIndex}
+      operators={operators}
+      onSelect={aggregation => {
+        if (isUpdate) {
+          onUpdateAggregation(clause, aggregation);
+        } else {
+          onAddAggregation(aggregation);
+        }
+      }}
+      onClose={onClose}
     />
   );
 }
