@@ -579,3 +579,12 @@
    (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
        (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))
+
+(mu/defn joined-thing :- [:maybe [:or lib.metadata/TableMetadata lib.metadata/CardMetadata]]
+  "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
+  [metadata-providerable :- lib.metadata/MetadataProviderable
+   a-join                :- ::lib.schema.join/join]
+  (let [origin (-> a-join :stages first)]
+    (cond
+      (:source-card origin)  (lib.metadata/card metadata-providerable (:source-card origin))
+      (:source-table origin) (lib.metadata/table metadata-providerable (:source-table origin)))))
