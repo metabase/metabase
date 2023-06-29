@@ -87,7 +87,6 @@
                                 (count limited-values))
                              has_more_values)}))
 
-    (:sandbox :impersonation)
     (field-values/distinct-values field)))
 
 (defn hash-key-for-advanced-field-values

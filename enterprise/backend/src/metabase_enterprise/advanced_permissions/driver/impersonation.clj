@@ -70,7 +70,7 @@
   [field-id]
   ;; Include the role in the hash key, so that we can cache the results of the query for each role.
   (let [db-id (field/field-id->database-id field-id)]
-   (str (hash [field-id (connection-impersonation-role db-id)]))))
+    (str (hash [field-id (connection-impersonation-role db-id)]))))
 
 (defenterprise set-role-if-supported!
   "Executes a `USE ROLE` or similar statement on the given connection, if connection impersonation is enabled for the
