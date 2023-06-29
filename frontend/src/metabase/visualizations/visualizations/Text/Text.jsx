@@ -124,6 +124,8 @@ export function Text({
             onChange={e => handleTextChange(e.target.value)}
             onMouseDown={preventDragging}
             onBlur={toggleFocusOff}
+            isMobile={isMobile}
+            isSingleRow={isSingleRow}
           />
         )}
       </EditModeContainer>

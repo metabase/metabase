@@ -1,7 +1,10 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { breakpointMinExtraLarge } from "metabase/styled-components/theme";
+import {
+  breakpointMinExtraLarge,
+  breakpointMaxExtraLarge,
+} from "metabase/styled-components/theme";
 
 const DEFAULT_CONTAINER_PADDING_SIZE = "0.75rem";
 const SMALL_CONTAINER_PADDING_SIZE = "0.4rem";
@@ -293,7 +296,11 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 `;
 
-export const TextInput = styled.textarea`
+interface TextAreaProps {
+  isSingleRow: boolean;
+  isMobile: boolean;
+}
+export const TextInput = styled.textarea<TextAreaProps>`
   width: 100%;
   max-height: 100%;
   display: flex;
@@ -310,4 +317,13 @@ export const TextInput = styled.textarea`
   outline: none;
   pointer-events: all;
   resize: none;
+
+  ${({ isSingleRow, isMobile }) =>
+    isSingleRow &&
+    !isMobile &&
+    css`
+      ${breakpointMaxExtraLarge} {
+        line-height: calc(1.602em - 1px);
+      }
+    `}
 `;
