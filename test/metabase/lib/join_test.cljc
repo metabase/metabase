@@ -368,7 +368,11 @@
                                 :conditions [[:= {}
                                               [:field {} (meta/id :venues :category-id)]
                                               [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
-            query))))
+            query))
+    (let [[join] (lib/joins query)]
+      (is (some? join))
+      (is (= :all
+             (lib/join-fields join))))))
 
 (defn- query-with-join-with-fields
   "A query against `VENUES` joining `CATEGORIES` with `:fields` set to return only `NAME`."

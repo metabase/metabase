@@ -466,14 +466,18 @@
   (lib.core/suggested-join-condition a-query stage-number joinable))
 
 (defn ^:export join-fields
-  "Get the join conditions for a given join."
+  "Get the `:fields` associated with a join."
   [a-join]
-  (to-array (lib.core/join-fields a-join)))
+  (let [joined-fields (lib.core/join-fields a-join)]
+    (if (keyword? joined-fields)
+      (u/qualified-name joined-fields)
+      (to-array joined-fields))))
 
 (defn ^:export with-join-fields
   "Set the `:fields` for `a-join`."
   [a-join new-fields]
-  (lib.core/with-join-fields a-join new-fields))
+  (lib.core/with-join-fields a-join (cond-> new-fields
+                                      (string? new-fields) keyword)))
 
 (defn ^:export join-clause
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another

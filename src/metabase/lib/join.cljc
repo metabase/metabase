@@ -396,7 +396,7 @@
   [j :- ::lib.schema.join/join]
   (:conditions j))
 
-(mu/defn join-fields :- [:maybe ::lib.schema/fields]
+(mu/defn join-fields :- [:maybe ::lib.schema.join/fields]
   "Get all join conditions for the given join"
   [j :- ::lib.schema.join/join]
   (:fields j))
