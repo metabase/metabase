@@ -23,3 +23,7 @@ export const getCustomHomePageDashboardId = createSelector(
   [getUser],
   user => user?.custom_homepage?.dashboard_id || null,
 );
+
+export const getHasDismissedCustomHomePageToast = (state: State) => {
+  return getSetting(state, "dismissed-custom-dashboard-toast");
+};
