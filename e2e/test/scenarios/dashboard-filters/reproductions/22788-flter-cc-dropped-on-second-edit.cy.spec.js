@@ -5,6 +5,7 @@ import {
   editDashboard,
   saveDashboard,
   sidebar,
+  getDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -75,12 +76,11 @@ describe("issue 22788", () => {
     openFilterSettings();
 
     // Make sure the filter is still connected to the custom column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Column to filter on")
-      .parent()
-      .within(() => {
-        cy.findByText(ccDisplayName);
-      });
+
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText(ccDisplayName);
+    });
 
     // need to actually change the dashboard to test a real save
     sidebar().within(() => {

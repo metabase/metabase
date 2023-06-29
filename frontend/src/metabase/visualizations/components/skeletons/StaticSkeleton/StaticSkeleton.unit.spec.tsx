@@ -27,6 +27,29 @@ function setup({ description }: { description?: string } = {}) {
 
 describe("StaticSkeleton", () => {
   describe("description", () => {
+    const originalScrollWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollWidth",
+    );
+
+    beforeAll(() => {
+      // emulate ellipsis
+      Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+        configurable: true,
+        value: 100,
+      });
+    });
+
+    afterAll(() => {
+      if (originalScrollWidth) {
+        Object.defineProperty(
+          HTMLElement.prototype,
+          "scrollWidth",
+          originalScrollWidth,
+        );
+      }
+    });
+
     it("should render description markdown as plain text", () => {
       setup({ description: MARKDOWN });
 

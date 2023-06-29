@@ -1,11 +1,13 @@
-/* eslint-disable react/prop-types */
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
-
 import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
 
 import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
+
+import type { SearchScore, SearchModelType } from "metabase-types/api";
+
+import type { WrappedResult } from "./types";
 
 import {
   IconWrapper,
@@ -27,7 +29,7 @@ function TableIcon() {
   return <Icon name="database" />;
 }
 
-function CollectionIcon({ item }) {
+function CollectionIcon({ item }: { item: WrappedResult }) {
   const iconProps = { ...item.getIcon() };
   const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
   if (isRegular) {
@@ -44,12 +46,24 @@ const ModelIconComponentMap = {
   collection: CollectionIcon,
 };
 
-function DefaultIcon({ item }) {
+function DefaultIcon({ item }: { item: WrappedResult }) {
   return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
 }
 
-export function ItemIcon({ item, type, active }) {
-  const IconComponent = ModelIconComponentMap[type] || DefaultIcon;
+export function ItemIcon({
+  item,
+  type,
+  active,
+}: {
+  item: WrappedResult;
+  type: SearchModelType;
+  active: boolean;
+}) {
+  const IconComponent =
+    type in Object.keys(ModelIconComponentMap)
+      ? ModelIconComponentMap[type as keyof typeof ModelIconComponentMap]
+      : DefaultIcon;
+
   return (
     <IconWrapper item={item} type={type} active={active}>
       <IconComponent item={item} />
@@ -57,13 +71,14 @@ export function ItemIcon({ item, type, active }) {
   );
 }
 
-function Score({ scores }) {
+function Score({ scores }: { scores: SearchScore[] }) {
   return (
     <pre className="hide search-score">{JSON.stringify(scores, null, 2)}</pre>
   );
 }
 
-function Context({ context }) {
+// I think it's very likely that this is a dead codepath: RL 2023-06-21
+function Context({ context }: { context: any[] }) {
   if (!context) {
     return null;
   }
@@ -71,7 +86,7 @@ function Context({ context }) {
   return (
     <ContextContainer>
       <ContextText>
-        {context.map(({ is_match, text }, i) => {
+        {context.map(({ is_match, text }, i: number) => {
           if (!is_match) {
             return <span key={i}> {text}</span>;
           }
@@ -88,12 +103,18 @@ function Context({ context }) {
   );
 }
 
-export default function SearchResult({
+export function SearchResult({
   result,
   compact = false,
   hasDescription = true,
   onClick = undefined,
   isSelected = false,
+}: {
+  result: WrappedResult;
+  compact?: boolean;
+  hasDescription?: boolean;
+  onClick?: (result: WrappedResult) => void;
+  isSelected?: boolean;
 }) {
   const active = isItemActive(result);
   const loading = isItemLoading(result);
@@ -106,7 +127,7 @@ export default function SearchResult({
       isSelected={isSelected}
       active={active}
       compact={compact}
-      to={!onClick ? result.getUrl() : undefined}
+      to={!onClick ? result.getUrl() : ""}
       onClick={onClick ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
@@ -137,7 +158,7 @@ export default function SearchResult({
   );
 }
 
-const isItemActive = result => {
+const isItemActive = (result: WrappedResult) => {
   switch (result.model) {
     case "table":
       return isSyncCompleted(result);
@@ -146,7 +167,7 @@ const isItemActive = result => {
   }
 };
 
-const isItemLoading = result => {
+const isItemLoading = (result: WrappedResult) => {
   switch (result.model) {
     case "database":
     case "table":

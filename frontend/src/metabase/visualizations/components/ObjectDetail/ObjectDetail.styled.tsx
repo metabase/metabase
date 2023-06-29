@@ -83,6 +83,13 @@ export const GridCell = styled.div<GridItemProps>`
     ${props => props.colSpan || 1};
 `;
 
+export const FitImage = styled.img`
+  max-width: 100%;
+  max-height: 18rem;
+  object-fit: contain;
+  margin: 1rem auto;
+`;
+
 export const RootModal = styled(Modal)`
   ${ObjectDetailContainer} {
     overflow: hidden;
