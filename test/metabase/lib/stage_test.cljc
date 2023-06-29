@@ -33,13 +33,17 @@
     (testing "expressions in aggregations"
       (let [query (lib.tu/venues-query-with-last-stage
                    {:aggregation [[:*
-                                   {}
+                                   {:lib/uuid (str (random-uuid))}
                                    0.8
-                                   [:avg {} (lib.tu/field-clause :venues :price)]]
+                                   [:avg
+                                    {:lib/uuid (str (random-uuid))}
+                                    (lib.tu/field-clause :venues :price)]]
                                   [:*
-                                   {}
+                                   {:lib/uuid (str (random-uuid))}
                                    0.8
-                                   [:avg {} (lib.tu/field-clause :venues :price)]]]})]
+                                   [:avg
+                                    {:lib/uuid (str (random-uuid))}
+                                    (lib.tu/field-clause :venues :price)]]]})]
         (is (=? [{:base-type                :type/Float
                   :name                     "expression"
                   :display-name             "0.8 × Average of Price"
@@ -149,7 +153,7 @@
                  (mapv #(lib.metadata.calculation/display-name query -1 % :long) metadata))))))))
 
 (deftest ^:parallel query-with-source-card-include-implicit-columns-test
-  (testing "visible-columns should include implicitly joinable columns when the query has a source Card (#30046)"
+  (testing "visible-columns should not include implicitly joinable columns when the query has a source Card (#30950)"
     (doseq [varr [#'lib.tu/query-with-card-source-table
                   #'lib.tu/query-with-card-source-table-with-result-metadata]
             :let [query (varr)]]
@@ -163,22 +167,7 @@
                   :display-name             "Count"
                   :base-type                :type/Integer
                   :lib/source               :source/card
-                  :lib/desired-column-alias "count"}
-                 {:name                     "ID"
-                  :display-name             "ID"
-                  :base-type                :type/BigInteger
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
-                 {:name                     "NAME"
-                  :display-name             "Name"
-                  :base-type                :type/Text
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
-                 {:name                     "LAST_LOGIN"
-                  :display-name             "Last Login"
-                  :base-type                :type/DateTime
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
+                  :lib/desired-column-alias "count"}]
                 (lib.metadata.calculation/visible-columns query)))))))
 
 (deftest ^:parallel do-not-propagate-temporal-units-to-next-stage-text
@@ -243,7 +232,7 @@
     (let [expr-name "ID + 1"
           query (-> (query-with-expressions)
                     (lib/breakout [:expression {:lib/uuid (str (random-uuid))} expr-name]))]
-      (is (=? [{:lib/type :metadata/field
+      (is (=? [{:lib/type :metadata/column
                 :lib/source :source/expressions}]
               (filter #(= (:name %) expr-name)
                       (lib.metadata.calculation/visible-columns query)))))))

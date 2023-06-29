@@ -53,11 +53,11 @@
   we can recalculate the correct metadata anyway."
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [{stage-type :lib/type, :keys [source-table] :as stage} (lib.util/query-stage query stage-number)]
+  (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
     (or (::cached-metadata stage)
         (when-let [metadata (:lib/stage-metadata stage)]
           (when (or (= stage-type :mbql.stage/native)
-                    (lib.util/string-table-id->card-id source-table))
+                    source-card)
             (let [source-type (case stage-type
                                 :mbql.stage/native :source/native
                                 :mbql.stage/mbql   :source/card)]
@@ -142,15 +142,25 @@
            (dissoc ::lib.field/temporal-unit))))))
 
 (mu/defn ^:private saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  "Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string."
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   source-table-id :- [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]
-   unique-name-fn  :- fn?]
-  (when-let [card-id (lib.util/string-table-id->card-id source-table-id)]
+  "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
+  [query          :- ::lib.schema/query
+   stage-number   :- :int
+   card-id        :- [:maybe ::lib.schema.id/card]
+   unique-name-fn :- fn?]
+  (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (lib.metadata.calculation/visible-columns query stage-number card {:unique-name-fn               unique-name-fn
-                                                                         :include-implicitly-joinable? false}))))
+      (->> (lib.metadata.calculation/visible-columns
+            query stage-number card {:unique-name-fn               unique-name-fn
+                                     :include-implicitly-joinable? false})
+           ;; Questions should not have implicitly joinable columns (#30950).
+           ;; :include-implicitly-joinable? false in the call above makes sure
+           ;; no implicitly joinable columns show up in the list, but this is
+           ;; not enough. If the returned columns contain :fk-target-field-id
+           ;; fields, then [[metabase.lib.metadata.calculation/visible-columns-method]]
+           ;; for :metabase.lib.stage/stage would add the implicitly joinable
+           ;; columns. Dissocing these fields prevents that.
+           (mapv #(dissoc % :fk-target-field-id))
+           not-empty))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query           :- ::lib.schema/query
@@ -208,7 +218,8 @@
 ;;;
 ;;; 1b. Default 'visible' Fields for our `:source-table`, OR
 ;;;
-;;; 1c. Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string, OR
+;;; 1c. Metadata associated with a Saved Question, if we have `:source-card` (`:source-table` is a `card__<id>` string
+;;;     in legacy MBQL), OR
 ;;;
 ;;; 1d. `:lib/stage-metadata` if this is a `:mbql.stage/native` stage
 ;;;
@@ -225,27 +236,30 @@
    stage-number                          :- :int
    {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
   {:pre [(fn? unique-name-fn)]}
-  (or
-   ;; 1a. columns returned by previous stage
-   (previous-stage-metadata query stage-number unique-name-fn)
-   ;; 1b or 1c
-   (let [{:keys [source-table], :as this-stage} (lib.util/query-stage query stage-number)]
-     (or
-      ;; 1b: default visible Fields for the source Table
-      (when (integer? source-table)
-        (let [table-metadata (lib.metadata/table query source-table)]
-          (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
-      ;; 1c. Metadata associated with a saved Question
-      (when (string? source-table)
-        (saved-question-metadata query stage-number source-table unique-name-fn))
-      ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-      (for [col (:columns (:lib/stage-metadata this-stage))]
-        (assoc col
-               :lib/source :source/native
-               :lib/source-column-alias  (:name col)
-               ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-               ;; that gets added later gets deduplicated from these.
-               :lib/desired-column-alias (unique-name-fn (:name col))))))))
+  (mapv
+   #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)
+   (or
+    ;; 1a. columns returned by previous stage
+    (previous-stage-metadata query stage-number unique-name-fn)
+    ;; 1b or 1c
+    (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)]
+      (or
+       ;; 1b: default visible Fields for the source Table
+       (when source-table
+         (assert (integer? source-table))
+         (let [table-metadata (lib.metadata/table query source-table)]
+           (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
+       ;; 1c. Metadata associated with a saved Question
+       (when source-card
+         (saved-question-metadata query stage-number source-card unique-name-fn))
+       ;; 1d: `:lib/stage-metadata` for the (presumably native) query
+       (for [col (:columns (:lib/stage-metadata this-stage))]
+         (assoc col
+                :lib/source :source/native
+                :lib/source-column-alias  (:name col)
+                ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
+                ;; that gets added later gets deduplicated from these.
+                :lib/desired-column-alias (unique-name-fn (:name col)))))))))
 
 (mu/defn ^:private existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query
@@ -346,6 +360,7 @@
 
 (def ^:private display-name-parts
   [:source-table
+   :source-card
    :aggregation
    :breakout
    :filters

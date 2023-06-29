@@ -98,3 +98,35 @@ export function joinFields(join: Join): ColumnMetadata[] {
 export function withJoinFields(join: Join, newFields: ColumnMetadata[]): Join {
   return ML.with_join_fields(join, newFields);
 }
+
+export function renameJoin(
+  query: Query,
+  stageIndex: number,
+  joinSpec: Join | string | number,
+  newName: string,
+): Query {
+  return ML.rename_join(query, stageIndex, joinSpec, newName);
+}
+
+export function removeJoin(
+  query: Query,
+  stageIndex: number,
+  joinSpec: Join | string | number,
+): Query {
+  return ML.remove_join(query, stageIndex, joinSpec);
+}
+
+export function joinedThing(query: Query, join: Join): Joinable {
+  return ML.joined_thing(query, join);
+}
+
+export type PickerInfo = {
+  databaseId: number;
+  tableId: number;
+  cardId?: number;
+  isModel?: boolean;
+};
+
+export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
+  return ML.picker_info(query, metadata);
+}

@@ -2,7 +2,6 @@
 
 import d3 from "d3";
 import { createSelector } from "@reduxjs/toolkit";
-import createCachedSelector from "re-reselect";
 import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";
 
@@ -340,14 +339,6 @@ export const getQuestion = createSelector(
       : question;
   },
 );
-
-// This jsdoc keeps the TS typechecker happy.
-// Otherwise TS thinks this `getQuestionFromCard` requires two args.
-/** @type {function(unknown, unknown): Question} */
-export const getQuestionFromCard = createCachedSelector(
-  [getMetadata, (_state, card) => card],
-  (metadata, card) => new Question(card, metadata),
-)((_state, card) => card.id);
 
 function isQuestionEditable(question) {
   return !question?.query().readOnly();
@@ -941,7 +932,11 @@ export const getNativeQueryFn = createSelector(
 );
 
 export const getDashboardId = state => {
-  return state.qb.dashboardId;
+  return state.qb.parentDashboard.dashboardId;
+};
+
+export const getIsEditingInDashboard = state => {
+  return state.qb.parentDashboard.isEditing;
 };
 
 export const getDashboard = state => {

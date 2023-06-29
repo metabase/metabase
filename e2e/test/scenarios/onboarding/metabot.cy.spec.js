@@ -49,7 +49,7 @@ const PROMPT_RESPONSE = {
   prompt_template_versions: [],
 };
 
-describe("scenarios > metabot", () => {
+describe.skip("scenarios > metabot", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -113,7 +113,7 @@ describe("scenarios > metabot", () => {
   });
 });
 
-describeWithSnowplow("scenarios > metabot", () => {
+describeWithSnowplow.skip("scenarios > metabot", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();

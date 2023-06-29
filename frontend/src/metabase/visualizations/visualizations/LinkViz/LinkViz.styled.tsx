@@ -5,7 +5,7 @@ import { Icon } from "metabase/core/components/Icon";
 import RecentsList from "metabase/nav/components/RecentsList";
 
 export const DisplayLinkCardWrapper = styled.div`
-  padding: 0.5rem;
+  padding: 0 0.5rem;
   display: flex;
   width: 100%;
   height: 100%;
@@ -14,7 +14,7 @@ export const DisplayLinkCardWrapper = styled.div`
 `;
 
 export const EditLinkCardWrapper = styled.div`
-  padding: 0.5rem 1rem;
+  padding: 0 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -25,9 +25,8 @@ export const EditLinkCardWrapper = styled.div`
 
 export const CardLink = styled(Link)`
   width: 100%;
-  padding: 0.5rem;
+  padding: 0 0.5rem;
   display: flex;
-  width: 100%;
   height: 100%;
   min-width: 0;
   gap: 0.5rem;

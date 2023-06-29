@@ -18,11 +18,6 @@
 (mr/def ::table
   ::common/int-greater-than-or-equal-to-zero)
 
-(mr/def ::table-card-id-string
-  [:re
-   {:error/message "card__<id> string"}
-   #"^card__\d+$"])
-
 (mr/def ::field
   ::common/int-greater-than-or-equal-to-zero)
 
@@ -33,4 +28,7 @@
   ::common/int-greater-than-or-equal-to-zero)
 
 (mr/def ::metric
+  ::common/int-greater-than-or-equal-to-zero)
+
+(mr/def ::snippet
   ::common/int-greater-than-or-equal-to-zero)

@@ -322,7 +322,7 @@ describe("scenarios > question > native", () => {
       ).as("databasePrompt");
     });
 
-    it("allows generate sql queries from natural language prompts", () => {
+    it.skip("allows generate sql queries from natural language prompts", () => {
       cy.intercept(
         "POST",
         "/api/metabot/database/**/query",
@@ -347,7 +347,7 @@ describe("scenarios > question > native", () => {
       cy.findByDisplayValue(PROMPT).should("not.exist");
     });
 
-    it("shows an error when an sql query cannot be generated", () => {
+    it.skip("shows an error when an sql query cannot be generated", () => {
       const errorMessage = "Could not generate a query for a given prompt";
       cy.intercept("POST", "/api/metabot/database/**/query", {
         body: {

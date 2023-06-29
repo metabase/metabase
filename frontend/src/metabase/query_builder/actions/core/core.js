@@ -238,7 +238,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       );
     }
 
-    rerunQuery = rerunQuery ?? isResultDirty;
+    if (question.isStructured()) {
+      rerunQuery = rerunQuery ?? isResultDirty;
+    }
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());

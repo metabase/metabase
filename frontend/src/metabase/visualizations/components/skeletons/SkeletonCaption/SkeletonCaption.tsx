@@ -38,7 +38,7 @@ const SkeletonCaption = ({
           <Tooltip
             maxWidth="22em"
             tooltip={
-              <Markdown disallowHeading unstyleLinks>
+              <Markdown dark disallowHeading unstyleLinks>
                 {description}
               </Markdown>
             }

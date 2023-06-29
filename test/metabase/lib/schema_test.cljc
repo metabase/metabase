@@ -147,24 +147,24 @@
     ["Invalid :field reference in stage 0: no join named \"X\""]
 
     ;; join referencing another join: should be OK
-    [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
-      :joins        [(valid-join "A" [:=
-                                      {:lib/uuid (str (random-uuid))}
-                                      [:field {:lib/uuid (str (random-uuid))} 1]
-                                      [:field {:lib/uuid (str (random-uuid))} 2]])
-                     (valid-join "B" [:=
-                                      {:lib/uuid (str (random-uuid))}
-                                      [:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]
-                                      [:field {:lib/uuid (str (random-uuid)), :join-alias "B"} 2]])]
-      :fields       [[:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]
-                     [:field {:lib/uuid (str (random-uuid)), :join-alias "B"} 1]]}]
+    [{:lib/type    :mbql.stage/mbql
+      :source-card 1
+      :joins       [(valid-join "A" [:=
+                                     {:lib/uuid (str (random-uuid))}
+                                     [:field {:lib/uuid (str (random-uuid))} 1]
+                                     [:field {:lib/uuid (str (random-uuid))} 2]])
+                    (valid-join "B" [:=
+                                     {:lib/uuid (str (random-uuid))}
+                                     [:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]
+                                     [:field {:lib/uuid (str (random-uuid)), :join-alias "B"} 2]])]
+      :fields      [[:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]
+                    [:field {:lib/uuid (str (random-uuid)), :join-alias "B"} 1]]}]
     nil
 
     ;; reference for a join from a previous stage: should be ok
-    [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
-      :joins        [(valid-join "Y")]}
+    [{:lib/type    :mbql.stage/mbql
+      :source-card 1
+      :joins       [(valid-join "Y")]}
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "Y"} 1]]}]
     nil
@@ -178,17 +178,17 @@
 
     ;; we have no way of knowing what sort of joins are inside a Card, so if we have a Card source query unfortunately
     ;; we're just going to have to skip validation for now.
-    [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
-      :joins        [(valid-join "X")]}
+    [{:lib/type    :mbql.stage/mbql
+      :source-card 1
+      :joins       [(valid-join "X")]}
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "Y"} 1]]}]
     nil
 
     ;; apparently, this is also allowed for join aliases introduced inside the joins themselves =(
-    [{:lib/type     :mbql.stage/mbql
-      :source-table "card__1"
-      :joins        [(assoc-in (valid-join "X") [:stages 0 :joins] [(valid-join "A")])]}
+    [{:lib/type    :mbql.stage/mbql
+      :source-card 1
+      :joins       [(assoc-in (valid-join "X") [:stages 0 :joins] [(valid-join "A")])]}
      {:lib/type :mbql.stage/mbql
       :fields   [[:field {:lib/uuid (str (random-uuid)), :join-alias "A"} 1]]}]
     nil))

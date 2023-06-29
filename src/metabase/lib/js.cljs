@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
@@ -27,31 +28,24 @@
 ;; conversion for incoming args and outgoing return values. I'm imagining something like
 ;; `(mu/js-export lib.core/recognize-template-tags)` where that function has a Malli schema and it works like
 ;; `metabase.shared.util.namespaces/import-fn` plus wrapping it with conversion for all args and the return value.
-(defn ^:export recognize-template-tags
-  "Given the text of a native query, extract a possibly-empty set of template tag strings from it.
-
-  These looks like mustache templates. For variables, we only allow alphanumeric characters, eg. `{{foo}}`.
-  For snippets they start with `snippet:`, eg. `{{ snippet: arbitrary text here }}`.
-  And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
-
-  Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded."
-  [query-text]
-  (-> query-text
-      lib.core/recognize-template-tags
-      clj->js))
-
-(defn ^:export template-tags
+(defn ^:export extract-template-tags
   "Extract the template tags from a native query's text.
 
   If the optional map of existing tags previously parsed is given, this will reuse the existing tags where
   they match up with the new one (in particular, it will preserve the UUIDs).
 
-  See [[recognize-template-tags]] for how the tags are parsed."
-  ([query-text] (template-tags query-text {}))
+  Given the text of a native query, extract a possibly-empty set of template tag strings from it.
+
+  These look like mustache templates. For variables, we only allow alphanumeric characters, eg. `{{foo}}`.
+  For snippets they start with `snippet:`, eg. `{{ snippet: arbitrary text here }}`.
+  And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
+
+  Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded."
+  ([query-text] (extract-template-tags query-text {}))
   ([query-text existing-tags]
    (->> existing-tags
         lib.core/->TemplateTags
-        (lib.core/template-tags query-text)
+        (lib.core/extract-template-tags query-text)
         lib.core/TemplateTags->)))
 
 (defn ^:export suggestedName
@@ -508,6 +502,44 @@
   [a-query stage-number]
   (to-array (lib.core/joins a-query stage-number)))
 
+(defn ^:export rename-join
+  "Rename the join specified by `join-spec` in `a-query` at `stage-number` to `new-name`.
+  The join can be specified either by itself (as returned by [[joins]]), by its alias
+  or by its index in the list of joins as returned by [[joins]].
+  If the specified join cannot be found, then `query` is returned as is.
+  If renaming the join to `new-name` would clash with an existing join, a
+  suffix is appended to `new-name` to make it unique."
+  [a-query stage-number join-spec new-name]
+  (lib.core/rename-join a-query stage-number join-spec new-name))
+
+(defn ^:export remove-join
+  "Remove the join specified by `join-spec` in `a-query` at `stage-number`.
+  The join can be specified either by itself (as returned by [[joins]]), by its alias
+  or by its index in the list of joins as returned by [[joins]].
+  If the specified join cannot be found, then `a-query` is returned as is.
+  Top level clauses containing references to the removed join are removed too."
+  [a-query stage-number join-spec]
+  (lib.core/remove-join a-query stage-number join-spec))
+
+(defn ^:export joined-thing
+  "Return metadata about the origin of `join` using `metadata-providerable` as the source of information."
+  [a-query a-join]
+  (lib.join/joined-thing a-query a-join))
+
+(defn ^:export picker-info
+  "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions."
+  [a-query metadata]
+  (case (:lib/type metadata)
+    :metadata/table #js {:databaseId (:database a-query)
+                         :tableId (:id metadata)}
+    :metadata/card  #js {:databaseId (:database a-query)
+                         :tableId (str "card__" (:id metadata))
+                         :cardId (:id metadata)
+                         :isModel (:dataset metadata)}
+    (do
+      (log/warn "Cannot provide picker-info for" (:lib/type metadata))
+      nil)))
+
 (defn ^:export external-op
   "Convert the internal operator `clause` to the external format."
   [clause]
@@ -515,3 +547,37 @@
     #js {:operator operator
          :options (clj->js options)
          :args (to-array args)}))
+
+(defn ^:export native-query
+  "Create a new native query.
+
+  Native in this sense means a pMBQL query with a first stage that is a native query."
+  [database-id metadata inner-query]
+  (lib.core/native-query (metadataProvider database-id metadata) inner-query))
+
+(defn ^:export with-native-query
+  "Update the raw native query, the first stage must already be a native type.
+   Replaces templates tags"
+  [a-query inner-query]
+  (lib.core/with-native-query a-query inner-query))
+
+(defn ^:export with-template-tags
+  "Updates the native query's template tags."
+  [a-query tags]
+  (lib.core/with-template-tags a-query (lib.core/->TemplateTags tags)))
+
+(defn ^:export raw-native-query
+  "Returns the native query string"
+  [a-query]
+  (lib.core/raw-native-query a-query))
+
+(defn ^:export template-tags
+  "Returns the native query's template tags"
+  [a-query]
+  (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
+
+(defn ^:export available-metrics
+  "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
+  metadata objects."
+  [a-query]
+  (to-array (lib.core/available-metrics a-query)))

@@ -22,7 +22,7 @@
                                                    meta/metadata-provider
                                                    meta/saved-question)
                                                   "ID")]
-    (is (=? {:lib/type :metadata/field
+    (is (=? {:lib/type :metadata/column
              :name     "ID"}
             field-metadata))
     (is (=? [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
@@ -37,16 +37,16 @@
 
 (def ^:private grandparent-parent-child-metadata-provider
   "A MetadataProvider for a Table that nested Fields: grandparent, parent, and child"
-  (let [grandparent {:lib/type  :metadata/field
+  (let [grandparent {:lib/type  :metadata/column
                      :name      "grandparent"
                      :id        (grandparent-parent-child-id :grandparent)
                      :base-type :type/Text}
-        parent      {:lib/type  :metadata/field
+        parent      {:lib/type  :metadata/column
                      :name      "parent"
                      :parent-id (grandparent-parent-child-id :grandparent)
                      :id        (grandparent-parent-child-id :parent)
                      :base-type :type/Text}
-        child       {:lib/type  :metadata/field
+        child       {:lib/type  :metadata/column
                      :name      "child"
                      :parent-id (grandparent-parent-child-id :parent)
                      :id        (grandparent-parent-child-id :child)
@@ -167,7 +167,7 @@
                                    meta/metadata-provider)
                 legacy-query      {:database (meta/id)
                                    :type     :query
-                                   :query    {:source-table "card__1"}}
+                                   :query    {:source-card 1}}
                 query             (lib/query metadata-provider legacy-query)
                 breakoutable-cols (lib/breakoutable-columns query)
                 breakout-col      (m/find-first (fn [col]
@@ -180,15 +180,19 @@
                       (lib/display-info query breakout-col)))
               (let [query' (lib/breakout query breakout-col)]
                 (is (=? {:stages
-                         [{:lib/type     :mbql.stage/mbql
-                           :source-table "card__1"
-                           :breakout     [[:field {:join-alias "Products"} "CATEGORY"]]}]}
+                         [{:lib/type    :mbql.stage/mbql
+                           :source-card 1
+                           :breakout    [[:field
+                                           {:join-alias (symbol "nil #_\"key is not present.\"")}
+                                           "CATEGORY"]]}]}
                         query'))
                 (is (=? [{:name              "CATEGORY"
-                          :display-name      "Category"
+                          :display-name      (if (:result-metadata card-def)
+                                               "Products → Category"
+                                               "Category")
                           :long-display-name "Products → Category"
                           :effective-type    :type/Text}]
-                        (map (partial lib/display-info query')
+                        (map #(lib/display-info query' %)
                              (lib/breakouts query'))))))
             (when (:result-metadata card-def)
               (testing "\nwith broken breakout from broken drill-thru (#31482)"
@@ -348,7 +352,7 @@
                                               {:strategy :num-bins  :num-bins  10}
                                               {:strategy :bin-width :bin-width 1.0}
                                               {:strategy :default}])
-          :let                  [field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")]
+          :let                  [field-metadata (meta/field-metadata :orders :subtotal)]
           [what x]              {"column metadata" field-metadata
                                  "field ref"       (lib/ref field-metadata)}
           :let                  [x' (lib/with-binning x binning1)]]
@@ -383,10 +387,10 @@
 (deftest ^:parallel available-binning-strategies-test
   (doseq [{:keys [expected-options field-metadata query]}
           [{:query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
-            :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+            :field-metadata   (meta/field-metadata :orders :subtotal)
             :expected-options (lib.binning/numeric-binning-strategies)}
            {:query            (lib/query meta/metadata-provider (meta/table-metadata :people))
-            :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+            :field-metadata   (meta/field-metadata :people :latitude)
             :expected-options (lib.binning/coordinate-binning-strategies)}]]
     (testing (str (:semantic-type field-metadata) " Field")
       (doseq [[what x] [["column metadata" field-metadata]
@@ -422,7 +426,7 @@
 (deftest ^:parallel binning-display-info-test
   (testing "numeric binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+          field-metadata (meta/field-metadata :orders :subtotal)
           strategies     (lib.binning/numeric-binning-strategies)]
       (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
                                               {:display-name "10 bins"}
@@ -437,7 +441,7 @@
 
   (testing "coordinate binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :people))
-          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+          field-metadata (meta/field-metadata :people :latitude)
           strategies     (lib.binning/coordinate-binning-strategies)]
       (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
                                               {:display-name "0.1°"}
@@ -510,6 +514,8 @@
             :default "Distinct values of Name"))))))
 
 (deftest ^:parallel source-card-table-display-info-test
+  ;; this uses a legacy `card__<id>` `:table-id` intentionally; we don't currently have logic that parses this to
+  ;; something like `:card-id` for Column Metadata yet. Make sure it works correctly.
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
         field (lib.metadata.calculation/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
                                                               :table-id "card__1"))]
@@ -540,8 +546,8 @@
                                              :source-table (meta/id :checkins)
                                              :joins        [{:lib/type    :mbql/join
                                                              :lib/options {:lib/uuid "d7ebb6bd-e7ac-411a-9d09-d8b18329ad46"}
-                                                             :stages      [{:lib/type     :mbql.stage/mbql
-                                                                            :source-table "card__1"}]
+                                                             :stages      [{:lib/type    :mbql.stage/mbql
+                                                                            :source-card 1}]
                                                              :alias       "checkins_by_user"
                                                              :conditions  [[:=
                                                                             {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
@@ -658,9 +664,9 @@
                                                     :name "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
-                                        :stages   [{:lib/type     :mbql.stage/mbql
-                                                    :source-table "card__3"}]})]
-      (is (= [{:lib/type                 :metadata/field
+                                        :stages   [{:lib/type    :mbql.stage/mbql
+                                                    :source-card 3}]})]
+      (is (= [{:lib/type                 :metadata/column
                :base-type                :type/*
                :id                       4
                :name                     "Field 4"
@@ -669,7 +675,7 @@
                :lib/source-column-alias  "Field 4"
                :lib/desired-column-alias "Field 4"}]
              (lib.metadata.calculation/metadata query)))
-      (is (= {:lib/type                :metadata/field
+      (is (= {:lib/type                :metadata/column
               :base-type               :type/Text
               :effective-type          :type/Text
               :id                      4
@@ -682,3 +688,50 @@
              (lib.metadata.calculation/metadata
               query
               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
+
+(deftest ^:parallel ref-to-joined-column-from-previous-stage-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/join (-> (lib/join-clause
+                                 (meta/table-metadata :categories)
+                                 [(lib/=
+                                   (meta/field-metadata :venues :category-id)
+                                   (lib/with-join-alias (meta/field-metadata :categories :id) "Categories"))])
+                                (lib/with-join-fields [(lib/with-join-alias
+                                                         (meta/field-metadata :categories :name)
+                                                         "Categories")])))
+                  lib/append-stage)
+        breakoutables (lib/breakoutable-columns query)
+        joined-col (last breakoutables)]
+    (is (=? {:lib/type :metadata/column
+             :name "NAME"
+             :base-type :type/Text
+             :semantic-type :type/Name
+             :lib/source :source/previous-stage
+             :effective-type :type/Text
+             :lib/desired-column-alias "Categories__NAME"}
+            joined-col))
+    (testing "Metadata should not contain inherited join information"
+      (is (not-any? :metabase.lib.join/join-alias (lib.metadata.calculation/metadata query))))
+    (testing "Reference a joined column from a previous stage w/ desired-column-alias and w/o join-alias"
+      (is (=? {:lib/type :mbql.stage/mbql,
+               :breakout [[:field
+                           {:lib/uuid string?
+                            :base-type :type/Text,
+                            :effective-type :type/Text
+                            :join-alias (symbol "nil #_\"key is not present.\"")}
+                           "Categories__NAME"]]}
+              (-> (lib/breakout query joined-col) :stages peek))))
+    (testing "Binning information is still displayed"
+      (is (=? {:name "PRICE",
+               :effective-type :type/Integer,
+               :semantic-type :type/Category,
+               :is-from-join false,
+               :long-display-name "Price: Auto binned",
+               :display-name "Price",
+               :is-from-previous-stage true,
+               :is-calculated false,
+               :is-implicitly-joinable false}
+              (lib/display-info
+               query
+               (lib/with-binning (m/find-first (comp #{"PRICE"} :name) breakoutables)
+                 (first (lib.binning/numeric-binning-strategies)))))))))
