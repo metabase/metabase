@@ -94,8 +94,21 @@ export const ChartSettingOrderedColumns = ({
 
   const handleAddNewField = useCallback(
     fieldRef => {
-      const columnSettings = [...value, { fieldRef, enabled: true }];
-      onChange(columnSettings);
+      const columnSettingIndex = value.findIndex(columnSetting =>
+        _.isEqual(fieldRef, columnSetting.fieldRef),
+      );
+
+      if (columnSettingIndex >= 0) {
+        const columnSettings = [...value];
+        columnSettings[columnSettingIndex] = {
+          ...columnSettings[columnSettingIndex],
+          enabled: true,
+        };
+        onChange(columnSettings);
+      } else {
+        const columnSettings = [...value, { fieldRef, enabled: true }];
+        onChange(columnSettings);
+      }
     },
     [value, onChange],
   );

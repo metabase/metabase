@@ -42,6 +42,7 @@ const ColumnItem = ({
       isDraggable={draggable}
       data-testid={draggable ? `draggable-item-${title}` : null}
       {...props}
+      title={props.role ? title : null}
     >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber" />}

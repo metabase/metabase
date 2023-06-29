@@ -61,8 +61,8 @@ describe("scenarios > visualizations > table", () => {
     cy.get("@total")
       .trigger("mousedown", 0, 0, { force: true })
       .trigger("mousemove", 5, 5, { force: true })
-      .trigger("mousemove", -200, 0, { force: true })
-      .trigger("mouseup", -200, 0, { force: true });
+      .trigger("mousemove", -220, 0, { force: true })
+      .trigger("mouseup", -220, 0, { force: true });
 
     headerCells().eq(1).should("contain.text", "TOTAL");
   });
