@@ -1,6 +1,12 @@
-import { mockSettings } from "__support__/settings";
 import { msToSeconds, hoursToSeconds } from "metabase/lib/time";
-import { getQuestionsImplicitCacheTTL, validateCacheTTL } from "./utils";
+import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  getQuestionsImplicitCacheTTL,
+  hasQuestionCacheSection,
+  validateCacheTTL,
+} from "./utils";
 
 describe("validateCacheTTL", () => {
   const validTestCases = [null, 0, 1, 6, 42];
@@ -83,5 +89,55 @@ describe("getQuestionsImplicitCacheTTL", () => {
   it("returns null if caching disabled, but database has a cache ttl", () => {
     const question = setup({ databaseCacheTTL: 10, cachingEnabled: false });
     expect(getQuestionsImplicitCacheTTL(question)).toBe(null);
+  });
+});
+
+describe("hasQuestionCacheSection", () => {
+  function setup({
+    isDataset = false,
+    isCachingEnabled = true,
+    canWrite = true,
+    lastQueryStart = null,
+  }) {
+    const card = createMockCard({
+      dataset: isDataset,
+      can_write: canWrite,
+      last_query_start: lastQueryStart,
+    });
+    const settings = createMockSettings({
+      "enable-query-caching": isCachingEnabled,
+    });
+    const metadata = createMockMetadata({ questions: [card] }, settings);
+    return metadata.question(card.id);
+  }
+
+  it("should not have the cache section for models", () => {
+    const question = setup({ isDataset: true });
+    expect(hasQuestionCacheSection(question)).toBe(false);
+  });
+
+  it("should not have the cache section when caching is disabled", () => {
+    const question = setup({ isCachingEnabled: false });
+    expect(hasQuestionCacheSection(question)).toBe(false);
+  });
+
+  it("should not have the cache section when the user has no write access and the question is not cached", () => {
+    const question = setup({ canWrite: false, lastQueryStart: null });
+    expect(hasQuestionCacheSection(question)).toBe(false);
+  });
+
+  it("should have the cache section when the user has no write access but the question is cached", () => {
+    const question = setup({ canWrite: false, lastQueryStart: "2020-01-01" });
+    expect(hasQuestionCacheSection(question)).toBe(true);
+  });
+
+  it("should have the cache section when the user has write access but the question is not cached", () => {
+    const question = setup({ canWrite: true, lastQueryStart: null });
+    expect(hasQuestionCacheSection(question)).toBe(true);
+  });
+
+  it("should have the cache section when the user has write access abd the question is cached", () => {
+    const question = setup({ canWrite: true, lastQueryStart: "2020-01-01" });
+    expect(hasQuestionCacheSection(question)).toBe(true);
   });
 });
