@@ -487,7 +487,7 @@ function JoinTablePicker({
         isInitiallyOpen={!hasSourceTable}
         triggerElement={
           <FieldPickerContentContainer>
-            {joinedTable ? joinedTable.displayName() : t`Pick a table...`}
+            {joinedTable ? joinedTable.displayName() : t`Pick data…`}
           </FieldPickerContentContainer>
         }
       />
