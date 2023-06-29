@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { getIcon, render, screen, within } from "__support__/ui";
-import Scalar from "metabase/visualizations/visualizations/Scalar";
+
+import { Scalar } from "./Scalar";
 
 const series = (value = 1.23) => [
   {
