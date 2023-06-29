@@ -350,8 +350,8 @@
 
       (testing "should be able to unset just the human-readable values"
         (t2.with-temp/with-temp [FieldValues _ {:values                (range 1 5)
-                                      :field_id              field-id
-                                      :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
+                                                :field_id              field-id
+                                                :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
             (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
@@ -673,7 +673,7 @@
   (testing "PUT /api/field/:id"
     (testing "Changing a remapped field's type to something that can't be remapped will clear the dimension"
       (t2.with-temp/with-temp [Field {field-id :id} {:name      "Field Test"
-                                           :base_type "type/Integer"}]
+                                                     :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before API request"
           (is (= {:id                      true
@@ -692,7 +692,7 @@
 
     (testing "Change from supported type to supported type will leave the dimension"
       (t2.with-temp/with-temp [Field {field-id :id} {:name      "Field Test"
-                                           :base_type "type/Integer"}]
+                                                     :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (let [expected {:id                      true
                         :entity_id               true
