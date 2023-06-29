@@ -1,7 +1,5 @@
 import { MouseEvent, useEffect, useCallback, useRef, useState } from "react";
-import _ from "underscore";
 import { t } from "ttag";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { withRouter } from "react-router";
 import { Location, LocationDescriptorObject } from "history";
@@ -14,6 +12,8 @@ import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";
+import { useDispatch } from "metabase/lib/redux";
+import { zoomInRow } from "metabase/query_builder/actions";
 
 import SearchResults from "./SearchResults";
 import RecentsList from "./RecentsList";
@@ -35,20 +35,12 @@ type RouterProps = {
   location: SearchAwareLocation;
 };
 
-type DispatchProps = {
-  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
-};
-
 type OwnProps = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
 };
 
-type Props = RouterProps & DispatchProps & OwnProps;
-
-const mapDispatchToProps = {
-  onChangeLocation: push,
-};
+type Props = RouterProps & OwnProps;
 
 function isSearchPageLocation(location: Location) {
   const components = location.pathname.split("/");
@@ -62,12 +54,7 @@ function getSearchTextFromLocation(location: SearchAwareLocation) {
   return "";
 }
 
-function SearchBar({
-  location,
-  onSearchActive,
-  onSearchInactive,
-  onChangeLocation,
-}: Props) {
+function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const [searchText, setSearchText] = useState<string>(() =>
     getSearchTextFromLocation(location),
   );
@@ -79,6 +66,12 @@ function SearchBar({
   const previousLocation = usePrevious(location);
   const container = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const dispatch = useDispatch();
+
+  const onChangeLocation = useCallback(
+    (nextLocation: LocationDescriptorObject) => dispatch(push(nextLocation)),
+    [dispatch],
+  );
 
   const onInputContainerClick = useCallback(() => {
     searchInput.current?.focus();
@@ -88,6 +81,19 @@ function SearchBar({
   const onTextChange = useCallback(e => {
     setSearchText(e.target.value);
   }, []);
+
+  const onSearchItemSelect = useCallback(
+    result => {
+      // if we're already looking at the right model, don't navigate, just update the zoomed in row
+      const isSameModel = result?.model_id === location?.state?.cardId;
+      if (isSameModel && result.model === "indexed-entity") {
+        zoomInRow({ objectId: result.id })(dispatch);
+      } else {
+        onChangeLocation(result.getUrl());
+      }
+    },
+    [dispatch, onChangeLocation, location?.state?.cardId],
+  );
 
   useOnClickOutside(container, setInactive);
 
@@ -181,7 +187,10 @@ function SearchBar({
         <SearchResultsFloatingContainer>
           {hasSearchText ? (
             <SearchResultsContainer>
-              <SearchResults searchText={searchText.trim()} />
+              <SearchResults
+                searchText={searchText.trim()}
+                onEntitySelect={onSearchItemSelect}
+              />
             </SearchResultsContainer>
           ) : (
             <RecentsList />
@@ -191,8 +200,9 @@ function SearchBar({
     </SearchBarRoot>
   );
 }
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  withRouter,
-  connect(null, mapDispatchToProps),
-)(SearchBar);
+
+export const SearchBar = withRouter(SearchBarView);
+
+// for some reason our unit test don't work if this is a name export ¯\_(ツ)_/¯
+// eslint-disable-next-line import/no-default-export
+export default SearchBar;

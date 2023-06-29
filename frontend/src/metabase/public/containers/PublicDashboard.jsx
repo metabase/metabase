@@ -13,7 +13,6 @@ import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import title from "metabase/hoc/Title";
 
-import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -61,7 +60,6 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...dashboardActions,
-  fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,
 };
