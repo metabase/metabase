@@ -8,6 +8,7 @@ import { color, alpha } from "metabase/lib/colors";
 const triggerButtonStyle = css`
   border-color: transparent;
   visibility: hidden;
+  border-left-width: 1px;
 `;
 
 export const BucketPickerPopover = styled(BaseBucketPickerPopover)`
@@ -86,10 +87,12 @@ const selectedStyle = css`
     visibility: visible;
     color: ${alpha("white", 0.5)};
     border-color: ${alpha("text-dark", 0.1)};
+    border-left-width: 1px;
   }
 
   ${BaseBucketPickerPopover.TriggerButton}:hover {
     color: ${color("white")};
+    border-left-width: 1px;
   }
 `;
 
@@ -110,10 +113,12 @@ const unselectedStyle = css`
       visibility: visible;
       color: ${color("text-light")};
       border-color: ${alpha("text-dark", 0.1)};
+      border-left-width: 1px;
     }
 
     ${BaseBucketPickerPopover.TriggerButton}:hover {
       color: ${color("text-medium")};
+      border-left-width: 1px;
     }
   }
 `;
