@@ -331,16 +331,12 @@ export const getStackedTooltipModel = (
   }));
 
   const hoveredSeries = seriesWithGroupedData[hoveredIndex];
-  const hoveredCardId = hoveredSeries?.card?.id;
-  const hoveredCardSeries = seriesWithGroupedData.filter(
-    series => series.card?.id === hoveredCardId,
-  );
-  const hasBreakout = hoveredCardSeries?.some(
+  const hasBreakout = seriesWithGroupedData.some(
     series => series.card?._breakoutColumn != null,
   );
 
   const seriesToShow = hasBreakout
-    ? hoveredCardSeries
+    ? seriesWithGroupedData
     : seriesWithGroupedData.filter(
         series => series.card?._breakoutColumn == null,
       );
