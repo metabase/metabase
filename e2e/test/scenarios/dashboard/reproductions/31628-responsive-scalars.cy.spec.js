@@ -81,6 +81,11 @@ const SMART_SCALAR_QUESTION_CARDS = [
   { cards: createCardsRow({ size_y: 4 }), name: "cards 4 cells high" },
 ];
 
+/**
+ * This test suite reduces the number of "it" calls for performance reasons.
+ * Every block with JSDoc within "it" callabacks should ideally be a separate "it" call.
+ * @see https://github.com/metabase/metabase/pull/31722#discussion_r1246165418
+ */
 describe("issue 31628", () => {
   describe("display: scalar", () => {
     const descendantsSelector = [
@@ -121,22 +126,27 @@ describe("issue 31628", () => {
         ]);
       });
 
-      it("should truncate value and show value tooltip on hover", () => {
+      it("should follow truncation rules", () => {
+        /**
+         * should truncate value and show value tooltip on hover
+         */
         const scalarContainer = cy.findByTestId("scalar-container");
 
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
         popover().findByText("18,760").should("exist");
-      });
 
-      it("should show ellipsis icon with question name in tooltip", () => {
+        /**
+         * should show ellipsis icon with question name in tooltip
+         */
         cy.findByTestId("scalar-title-icon").realHover();
 
         popover().findByText(SCALAR_QUESTION.name).should("exist");
-      });
 
-      it("should not show description", () => {
+        /**
+         * should not show description
+         */
         cy.findByTestId("scalar-description").should("not.exist");
       });
     });
@@ -150,29 +160,35 @@ describe("issue 31628", () => {
         ]);
       });
 
-      it("should not truncate value and should not show value tooltip on hover", () => {
+      it("should follow truncation rules", () => {
+        /**
+         * should not truncate value and should not show value tooltip on hover
+         */
         const scalarContainer = cy.findByTestId("scalar-container");
 
         scalarContainer.then($element => assertIsNotEllipsified($element[0]));
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-      });
 
-      it("should not show ellipsis icon for title", () => {
+        /**
+         * should not show ellipsis icon for title
+         */
         cy.findByTestId("scalar-title-icon").should("not.exist");
-      });
 
-      it("should truncate title and show title tooltip on hover", () => {
+        /**
+         * should truncate title and show title tooltip on hover
+         */
         const scalarTitle = cy.findByTestId("scalar-title");
 
         scalarTitle.then($element => assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
         popover().findByText(SCALAR_QUESTION.name).should("exist");
-      });
 
-      it("should show description tooltip on hover", () => {
+        /**
+         * should show description tooltip on hover
+         */
         cy.findByTestId("scalar-description").realHover();
 
         popover().findByText(SCALAR_QUESTION.description).should("exist");
@@ -188,29 +204,35 @@ describe("issue 31628", () => {
         ]);
       });
 
-      it("should not truncate value and should not show value tooltip on hover", () => {
+      it("should follow truncation rules", () => {
+        /**
+         * should not truncate value and should not show value tooltip on hover
+         */
         const scalarContainer = cy.findByTestId("scalar-container");
 
         scalarContainer.then($element => assertIsNotEllipsified($element[0]));
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-      });
 
-      it("should not show ellipsis icon for title", () => {
+        /**
+         * should not show ellipsis icon for title
+         */
         cy.findByTestId("scalar-title-icon").should("not.exist");
-      });
 
-      it("should not truncate title and should not show title tooltip on hover", () => {
+        /**
+         * should not truncate title and should not show title tooltip on hover
+         */
         const scalarTitle = cy.findByTestId("scalar-title");
 
         scalarTitle.then($element => assertIsNotEllipsified($element[0]));
         scalarTitle.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-      });
 
-      it("should show description tooltip on hover", () => {
+        /**
+         * should show description tooltip on hover
+         */
         cy.findByTestId("scalar-description").realHover();
 
         popover().findByText(SCALAR_QUESTION.description).should("exist");
@@ -258,53 +280,61 @@ describe("issue 31628", () => {
         ]);
       });
 
-      it("should not truncate value and should not show value tooltip on hover", () => {
+      it("should follow truncation rules", () => {
+        /**
+         * it should not truncate value and should not show value tooltip on hover
+         */
         const scalarContainer = cy.findByTestId("scalar-container");
 
         scalarContainer.then($element => assertIsNotEllipsified($element[0]));
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-      });
 
-      it("should truncate title and show title tooltip on hover", () => {
+        /**
+         * it should truncate title and show title tooltip on hover
+         */
         const scalarTitle = cy.findByTestId("scalar-title");
 
         scalarTitle.then($element => assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
         popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
-      });
 
-      it("should show description tooltip on hover", () => {
+        /**
+         * it should show description tooltip on hover
+         */
         cy.findByTestId("scalar-description").realHover();
 
         popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
-      });
 
-      it("should show previous value tooltip on hover", () => {
+        /**
+         * it should show previous value tooltip on hover
+         */
         cy.findByTestId("scalar-previous-value").realHover();
 
         popover().within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• was 527 last month").should("exist");
         });
-      });
 
-      it("should show previous value as a percentage only (without truncation)", () => {
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        /**
+         * it should show previous value as a percentage only (without truncation)
+         */
+        let previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• was 527 last month").should("not.exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
-      });
 
-      it("should show previous value as a percentage only up to 1 decimal place (without truncation, 1200x600)", () => {
+        /**
+         * should show previous value as a percentage only up to 1 decimal place (without truncation, 1200x600)
+         */
         cy.viewport(1200, 600);
 
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
           cy.contains("34.7%").should("exist");
@@ -312,12 +342,13 @@ describe("issue 31628", () => {
           cy.contains("• was 527 last month").should("not.exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
-      });
 
-      it("should show previous value as a percentage without decimal places (without truncation, 1000x600)", () => {
+        /**
+         * should show previous value as a percentage without decimal places (without truncation, 1000x600)
+         */
         cy.viewport(1000, 600);
 
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
           cy.contains("35%").should("exist");
@@ -325,12 +356,13 @@ describe("issue 31628", () => {
           cy.contains("• was 527 last month").should("not.exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
-      });
 
-      it("should truncate previous value (840x600)", () => {
+        /**
+         * should truncate previous value (840x600)
+         */
         cy.viewport(840, 600);
 
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue
           .findByText("35%")
@@ -347,31 +379,37 @@ describe("issue 31628", () => {
         ]);
       });
 
-      it("should not truncate value and should not show value tooltip on hover", () => {
-        const scalarContainer = cy.findByTestId("scalar-container");
+      it("should follow truncation rules", () => {
+        /**
+         * should not truncate value and should not show value tooltip on hover
+         */
+        let scalarContainer = cy.findByTestId("scalar-container");
 
         scalarContainer.then($element => assertIsNotEllipsified($element[0]));
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-      });
 
-      it("should truncate title and show title tooltip on hover", () => {
-        const scalarContainer = cy.findByTestId("scalar-title");
+        /**
+         * should truncate title and show title tooltip on hover
+         */
+        scalarContainer = cy.findByTestId("scalar-title");
 
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
         popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
-      });
 
-      it("should show description tooltip on hover", () => {
+        /**
+         * should show description tooltip on hover
+         */
         cy.findByTestId("scalar-description").realHover();
 
         popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
-      });
 
-      it("should show previous value in full", () => {
+        /**
+         * should show previous value in full
+         */
         const previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
@@ -379,9 +417,10 @@ describe("issue 31628", () => {
           cy.contains("• was 527 last month").should("exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
-      });
 
-      it("should not show previous value tooltip on hover", () => {
+        /**
+         * should not show previous value tooltip on hover
+         */
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -397,31 +436,37 @@ describe("issue 31628", () => {
         ]);
       });
 
-      it("should not truncate value and should not show value tooltip on hover", () => {
-        const scalarContainer = cy.findByTestId("scalar-container");
+      it("should follow truncation rules", () => {
+        /**
+         * should not truncate value and should not show value tooltip on hover
+         */
+        let scalarContainer = cy.findByTestId("scalar-container");
 
         scalarContainer.then($element => assertIsNotEllipsified($element[0]));
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-      });
 
-      it("should not truncate title and should not show title tooltip on hover", () => {
-        const scalarContainer = cy.findByTestId("scalar-title");
+        /**
+         * should not truncate title and should not show title tooltip on hover
+         */
+        scalarContainer = cy.findByTestId("scalar-title");
 
         scalarContainer.then($element => assertIsNotEllipsified($element[0]));
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-      });
 
-      it("should show description tooltip on hover", () => {
+        /**
+         * should show description tooltip on hover
+         */
         cy.findByTestId("scalar-description").realHover();
 
         popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
-      });
 
-      it("should show previous value in full", () => {
+        /**
+         * should show previous value in full
+         */
         const previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
@@ -429,9 +474,10 @@ describe("issue 31628", () => {
           cy.contains("• was 527 last month").should("exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
-      });
 
-      it("should not show previous value tooltip on hover", () => {
+        /**
+         * should not show previous value tooltip on hover
+         */
         cy.findByTestId("scalar-previous-value").realHover();
 
         cy.findByRole("tooltip").should("not.exist");
