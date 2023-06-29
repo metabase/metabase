@@ -202,10 +202,10 @@ describe("issue 31628", () => {
       });
 
       it("should not truncate title and should not show title tooltip on hover", () => {
-        const scalarContainer = cy.findByTestId("scalar-container");
+        const scalarTitle = cy.findByTestId("scalar-title");
 
-        scalarContainer.then($element => assertIsNotEllipsified($element[0]));
-        scalarContainer.realHover();
+        scalarTitle.then($element => assertIsNotEllipsified($element[0]));
+        scalarTitle.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
       });
