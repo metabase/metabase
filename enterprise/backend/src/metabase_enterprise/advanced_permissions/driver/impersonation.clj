@@ -33,10 +33,12 @@
   filter the policies to only include ones that should be enforced for the current user. An impersonation policy is
   not enforced if the user is in a different permission group that grants full access to the database."
   [impersonations group-ids]
-  (let [perms               (when (seq group-ids)
-                             (t2/select Permissions {:where [:in :group_id group-ids]}))
-        group-id->perms-set (-> (group-by :group_id perms)
-                                (update-vals (fn [perms] (into #{} (map :object) perms))))]
+  (let [non-impersonated-group-ids (set/difference (set group-ids)
+                                                   (set (map :group_id impersonations)))
+        perms                      (when (seq non-impersonated-group-ids)
+                                     (t2/select Permissions {:where [:in :group_id non-impersonated-group-ids]}))
+        group-id->perms-set        (-> (group-by :group_id perms)
+                                       (update-vals (fn [perms] (into #{} (map :object) perms))))]
     (filter (partial enforce-impersonation? group-id->perms-set)
             impersonations)))
 
