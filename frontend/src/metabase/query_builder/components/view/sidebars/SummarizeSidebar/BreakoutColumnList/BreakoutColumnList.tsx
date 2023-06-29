@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
@@ -34,44 +34,72 @@ export function BreakoutColumnList({
     searchQuery,
     SEARCH_DEBOUNCE_DURATION,
   );
-  const isSearching = debouncedSearchQuery.trim().length > 0;
+  const isSearching = searchQuery.trim().length > 0;
 
   const breakouts = Lib.breakouts(query, STAGE_INDEX);
   const [pinnedBreakouts, setPinnedBreakouts] = useState(breakouts);
 
-  const allColumns = Lib.breakoutableColumns(query, STAGE_INDEX);
-
-  const [pinnedColumns, unpinnedColumns] = _.partition(allColumns, column =>
-    isPinnedColumn(query, pinnedBreakouts, column),
+  const allColumns = useMemo(
+    () => Lib.breakoutableColumns(query, STAGE_INDEX),
+    [query],
   );
 
-  const pinnedItems = pinnedColumns.map(column =>
-    getColumnListItem(query, breakouts, column),
+  const [pinnedColumns, unpinnedColumns] = useMemo(
+    () =>
+      _.partition(allColumns, column =>
+        isPinnedColumn(query, pinnedBreakouts, column),
+      ),
+    [query, pinnedBreakouts, allColumns],
   );
 
-  const sections = getColumnSections(
-    query,
-    isSearching ? allColumns : unpinnedColumns,
-    searchQuery,
+  const pinnedItems = useMemo(
+    () =>
+      pinnedColumns.map(column => getColumnListItem(query, breakouts, column)),
+    [query, breakouts, pinnedColumns],
   );
 
-  const handleRemovePinnedBreakout = (column: Lib.ColumnMetadata) => {
-    const { breakoutPosition } = Lib.displayInfo(query, STAGE_INDEX, column);
-    const isPinned =
-      breakoutPosition != null && breakoutPosition < pinnedBreakouts.length;
+  const sections = useMemo(
+    () =>
+      getColumnSections(
+        query,
+        isSearching ? allColumns : unpinnedColumns,
+        debouncedSearchQuery,
+      ),
+    [query, allColumns, unpinnedColumns, isSearching, debouncedSearchQuery],
+  );
 
-    if (isPinned) {
-      const breakout = pinnedBreakouts[breakoutPosition];
-      setPinnedBreakouts(breakouts => breakouts.filter(b => b !== breakout));
-    }
+  const handleRemovePinnedBreakout = useCallback(
+    (column: Lib.ColumnMetadata) => {
+      const { breakoutPosition } = Lib.displayInfo(query, STAGE_INDEX, column);
+      const isPinned =
+        breakoutPosition != null && breakoutPosition < pinnedBreakouts.length;
 
-    onRemoveBreakout(column);
-  };
+      if (isPinned) {
+        const breakout = pinnedBreakouts[breakoutPosition];
+        setPinnedBreakouts(breakouts => breakouts.filter(b => b !== breakout));
+      }
 
-  const handleReplaceBreakout = (column: Lib.ColumnMetadata) => {
-    onReplaceBreakout(column);
-    setPinnedBreakouts([]);
-  };
+      onRemoveBreakout(column);
+    },
+    [query, pinnedBreakouts, onRemoveBreakout],
+  );
+
+  const handleReplaceBreakout = useCallback(
+    (column: Lib.ColumnMetadata) => {
+      onReplaceBreakout(column);
+      setPinnedBreakouts([]);
+    },
+    [onReplaceBreakout],
+  );
+
+  const handleChangeSearchQuery = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(event.target.value);
+    },
+    [],
+  );
+
+  const handleResetSearch = useCallback(() => setSearchQuery(""), []);
 
   return (
     <>
@@ -81,8 +109,8 @@ export function BreakoutColumnList({
           placeholder={t`Find...`}
           value={searchQuery}
           leftIcon="search"
-          onResetClick={() => setSearchQuery("")}
-          onChange={event => setSearchQuery(event.target.value)}
+          onResetClick={handleResetSearch}
+          onChange={handleChangeSearchQuery}
         />
       </SearchContainer>
       {!isSearching && (

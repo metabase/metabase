@@ -41,10 +41,12 @@ export function SummarizeSidebar({
     [initialQuery, isDefaultAggregationRemoved],
   );
 
-  const question = initialLegacyQuery.question();
-  const legacyQuery = question
-    .setDatasetQuery(Lib.toLegacyQuery(query))
-    .query() as StructuredQuery;
+  const legacyQuery = useMemo(() => {
+    const question = initialLegacyQuery.question();
+    return question
+      .setDatasetQuery(Lib.toLegacyQuery(query))
+      .query() as StructuredQuery;
+  }, [query, initialLegacyQuery]);
 
   const aggregations = Lib.aggregations(query, STAGE_INDEX);
   const hasAggregations = aggregations.length > 0;
