@@ -1143,10 +1143,10 @@ saved later when it is ready."
   (param-values (api/read-check Card card-id) param-key query))
 
 (defn- scan-and-sync-table!
-  [{:keys [is_on_demand is_full_sync] :as database} table]
+  [database table]
   (sync-fields/sync-fields-for-table! database table)
-  (when (or is_on_demand is_full_sync)
-    (future (sync/sync-table! table))))
+  (future
+    (sync/sync-table! table)))
 
 (defn- csv-stats [^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
@@ -1193,13 +1193,15 @@ saved later when it is ready."
           stats             (upload/load-from-csv! driver db-id schema+table-name csv-file)
           ;; Syncs are needed immediately to create the Table and its Fields; the scan is settings-dependent and can be async
           table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
+          table-id          (u/the-id table)
+          _set_is_upload    (t2/update! Table table-id {:is_upload true})
           _sync             (scan-and-sync-table! database table)
           card              (create-card!
                              {:collection_id          collection-id,
                               :dataset                true
                               :database_id            db-id
                               :dataset_query          {:database db-id
-                                                       :query    {:source-table (u/the-id table)}
+                                                       :query    {:source-table table-id}
                                                        :type     :query}
                               :display                :table
                               :name                   (humanization/name->human-readable-name filename-prefix)

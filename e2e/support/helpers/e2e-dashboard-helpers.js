@@ -171,3 +171,7 @@ export function resizeDashboardCard({ card, x, y }) {
       .trigger("mouseup", { force: true });
   });
 }
+
+export function createLinkCard() {
+  cy.icon("link").click();
+}
