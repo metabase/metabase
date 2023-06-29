@@ -65,7 +65,7 @@
 
     (testing "Empty value when required"
       (is (thrown? Exception
-                   (#'params.values/value-for-tag 
+                   (#'params.values/value-for-tag
                     {:name "id", :id test-uuid, :display-name "ID", :required true, :type :text}
                     [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
 
@@ -79,7 +79,7 @@
              (#'params.values/value-for-tag
               {:name "id", :id test-uuid, :display-name "ID", :type :text, :default "100"}
               [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value nil}]))))
-    
+
     (testing "Default not used with empty value when required"
       (is (thrown? Exception
              (#'params.values/value-for-tag
