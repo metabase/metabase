@@ -16,6 +16,8 @@ import type {
   ColumnDisplayInfo,
   ColumnGroup,
   ColumnMetadata,
+  JoinStrategy,
+  JoinStrategyDisplayInfo,
   MetadataProvider,
   MetricMetadata,
   MetricDisplayInfo,
@@ -81,6 +83,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   metric: MetricMetadata,
 ): MetricDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  joinStrategy: JoinStrategy,
+): JoinStrategyDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema

@@ -132,6 +132,20 @@
               (column-from-join-fields query stage-number field-metadata join-alias))
             field-metadatas))))
 
+(defmethod lib.metadata.calculation/display-name-method :option/join.strategy
+  [_query _stage-number {:keys [strategy]} _style]
+  (case strategy
+    :left-join  (i18n/tru "Left outer join")
+    :right-join (i18n/tru "Right outer join")
+    :inner-join (i18n/tru "Inner join")
+    :full-join  (i18n/tru "Full outer join")))
+
+(defmethod lib.metadata.calculation/display-info-method :option/join.strategy
+  [query stage-number {:keys [strategy default], :as option}]
+  (cond-> {:short-name   (u/qualified-name strategy)
+           :display-name (lib.metadata.calculation/display-name query stage-number option)}
+    default (assoc :default true)))
+
 (mu/defn joined-field-desired-alias :- ::lib.schema.common/non-blank-string
   "Desired alias for a Field that comes from a join, e.g.
 
@@ -410,10 +424,13 @@
 (mu/defn with-join-strategy :- PartialJoin
   "Return a copy of `a-join` with its `:strategy` set to `strategy`."
   [a-join   :- PartialJoin
-   strategy :- ::lib.schema.join/strategy]
-  (assoc a-join :strategy strategy))
+   strategy :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
+  ;; unwrap the strategy to a raw keyword if needed.
+  (assoc a-join :strategy (cond-> strategy
+                            (= (lib.dispatch/dispatch-value strategy) :option/join.strategy)
+                            :strategy)))
 
-(mu/defn available-join-strategies :- [:sequential ::lib.schema.join/strategy]
+(mu/defn available-join-strategies :- [:sequential ::lib.schema.join/strategy.option]
   "Get available join strategies for the current Database (based on the Database's
   supported [[metabase.driver/driver-features]]) as raw keywords like `:left-join`."
   ([query]
@@ -424,11 +441,12 @@
     _stage-number :- :int]
    (let [database (lib.metadata/database query)
          features (:features database)]
-     (filterv (partial contains? features)
-              [:left-join
-               :right-join
-               :inner-join
-               :full-join]))))
+     (filterv (fn [{:keys [strategy]}]
+                (contains? features strategy))
+              [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
+               {:lib/type :option/join.strategy, :strategy :right-join}
+               {:lib/type :option/join.strategy, :strategy :inner-join}
+               {:lib/type :option/join.strategy, :strategy :full-join}]))))
 
 ;;; Building join conditions:
 ;;;

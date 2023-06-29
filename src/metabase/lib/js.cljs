@@ -402,7 +402,7 @@
 
 (defn ^:export available-join-strategies
   "Get available join strategies for the current Database (based on the Database's
-  supported [[metabase.driver/driver-features]]) as strings like `left-join`."
+  supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
   (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))
 

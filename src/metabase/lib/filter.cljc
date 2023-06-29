@@ -189,8 +189,8 @@
    (operator-def tag nil))
 
   ([tag alternate-display-name-style]
-   {:type/type :operator/filter
-    :short     tag
+   {:lib/type :operator/filter
+    :short    tag
     :display-name
     (clojure.core/case tag
       :=                (clojure.core/case alternate-display-name-style
