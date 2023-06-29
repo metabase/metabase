@@ -9,7 +9,7 @@ export const getTitleLinesCount = (height: number) =>
   height > TITLE_2_LINES_HEIGHT_THRESHOLD ? 2 : 1;
 
 export const getValueWidth = (width: number): number => {
-  return width - PADDING;
+  return Math.max(width - PADDING, 0);
 };
 
 export const getValueHeight = (
@@ -29,7 +29,7 @@ export const getValueHeight = (
     titleLinesCount,
   });
 
-  return height - PADDING - titleHeight;
+  return Math.max(height - PADDING - titleHeight, 0);
 };
 
 const getTitleHeight = ({
