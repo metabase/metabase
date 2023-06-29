@@ -166,6 +166,9 @@ export class SmartScalar extends Component {
 
     const titleLinesCount = getTitleLinesCount(height);
 
+    const previousValueSeparator = (
+      <PreviousValueSeparator>•</PreviousValueSeparator>
+    );
     const tooltipSeparator = <Separator>•</Separator>;
 
     const changeDisplay = formatChangeAutoPrecision(lastChange, {
@@ -179,7 +182,7 @@ export class SmartScalar extends Component {
       previousValue,
       settings.column(column),
     );
-    const disabledSeparator = ""; // avoid creating new translation key
+
     const canShowPreviousValue = getCanShowPreviousValue({
       width,
       change: changeDisplay,
@@ -287,8 +290,7 @@ export class SmartScalar extends Component {
 
               {canShowPreviousValue && (
                 <PreviousValue id="SmartScalar-PreviousValue" responsive>
-                  <PreviousValueSeparator>•</PreviousValueSeparator>
-                  {jt`${disabledSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
+                  {jt`${previousValueSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
                 </PreviousValue>
               )}
             </PreviousValueContainer>
