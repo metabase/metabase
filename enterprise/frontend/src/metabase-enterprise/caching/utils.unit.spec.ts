@@ -35,11 +35,17 @@ describe("getQuestionsImplicitCacheTTL", () => {
     databaseCacheTTL = null,
     cacheTTLMultiplier = DEFAULT_CACHE_TTL_MULTIPLIER,
     minCacheThreshold = 60,
+  }: {
+    cachingEnabled?: boolean;
+    avgQueryTime?: number | null;
+    databaseCacheTTL?: number | null;
+    cacheTTLMultiplier?: number;
+    minCacheThreshold?: number;
   } = {}) {
     mockSettings({
       "enable-query-caching": cachingEnabled,
-      "query-caching-ttl-ratio": cachingEnabled ? cacheTTLMultiplier : null,
-      "query-caching-min-ttl": cachingEnabled ? minCacheThreshold : null,
+      "query-caching-ttl-ratio": cachingEnabled ? cacheTTLMultiplier : 10,
+      "query-caching-min-ttl": cachingEnabled ? minCacheThreshold : 60,
     });
 
     return {
@@ -98,6 +104,11 @@ describe("hasQuestionCacheSection", () => {
     isCachingEnabled = true,
     canWrite = true,
     lastQueryStart = null,
+  }: {
+    isDataset?: boolean;
+    isCachingEnabled?: boolean;
+    canWrite?: boolean;
+    lastQueryStart?: string | null;
   }) {
     const card = createMockCard({
       dataset: isDataset,
