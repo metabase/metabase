@@ -68,7 +68,6 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
     {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
     <ScalarTitleContent
       className="fullscreen-normal-text fullscreen-night-text"
-      data-testid="scalar-title"
       onClick={onClick}
     >
       <Ellipsified tooltip={title} lines={lines} placement="bottom">
