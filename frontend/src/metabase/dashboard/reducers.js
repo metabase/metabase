@@ -291,9 +291,11 @@ const dashcardData = handleActions(
     },
     [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
       _.mapObject(state, dashboardData => {
-        if (card.id) {
-          dissoc(dashboardData, card.id);
+        if (!card || !card.id) {
+          return dashboardData;
         }
+
+        dissoc(dashboardData, card.id);
       }),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,

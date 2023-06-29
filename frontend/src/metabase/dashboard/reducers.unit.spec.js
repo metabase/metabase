@@ -1,3 +1,4 @@
+import Questions from "metabase/entities/questions";
 import reducer from "./reducers";
 import {
   INITIALIZE,
@@ -106,7 +107,7 @@ describe("dashboard reducers", () => {
   });
 
   describe("SET_EDITING_DASHBOARD", () => {
-    it("should clear sideabr state when entering edit mode", () => {
+    it("should clear sidebar state when entering edit mode", () => {
       const state = {
         ...initState,
         sidebar: { name: "foo", props: { abc: 123 } },
@@ -119,7 +120,7 @@ describe("dashboard reducers", () => {
       ).toEqual({ ...state, isEditing: true, sidebar: { props: {} } });
     });
 
-    it("should clear sideabr state when leaving edit mode", () => {
+    it("should clear sidebar state when leaving edit mode", () => {
       const state = {
         ...initState,
         sidebar: { name: "foo", props: { abc: 123 } },
@@ -226,6 +227,25 @@ describe("dashboard reducers", () => {
           },
         },
       });
+    });
+
+    it('should not generate runtime error for missing update data in "metabase/entities/questions/UPDATE" action payload', () => {
+      const state = {
+        ...initState,
+        dashcardData: { 1: { test: {} }, 2: { test: {} } },
+      };
+      const action = {
+        type: Questions.actionTypes.UPDATE,
+        payload: {
+          object: undefined,
+        },
+      };
+
+      expect(() => {
+        reducer(state, action);
+      }).not.toThrow();
+
+      expect(reducer(state, action)).toEqual(state);
     });
   });
 
