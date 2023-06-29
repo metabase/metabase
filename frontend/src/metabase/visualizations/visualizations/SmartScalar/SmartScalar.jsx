@@ -180,7 +180,6 @@ export class SmartScalar extends Component {
       settings.column(column),
     );
     const disabledSeparator = ""; // avoid creating new translation key
-    const previousValueContent = jt`${disabledSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
     const canShowPreviousValue = getCanShowPreviousValue({
       width,
       change: changeDisplay,
@@ -289,7 +288,7 @@ export class SmartScalar extends Component {
               {canShowPreviousValue && (
                 <PreviousValue id="SmartScalar-PreviousValue" responsive>
                   <PreviousValueSeparator>•</PreviousValueSeparator>
-                  {previousValueContent}
+                  {jt`${disabledSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
                 </PreviousValue>
               )}
             </PreviousValueContainer>
