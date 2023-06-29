@@ -110,7 +110,8 @@
 
     ;; Impersonation can have row-level security enforced by the database, so we still need to store field values per-user.
     ;; TODO: only do this for DBs with impersonation in effect
-    (advanced-perms.api.u/impersonated-user?)
+    (and api/*current-user-id*
+         (advanced-perms.api.u/impersonated-user?))
     (params.field-values/get-or-create-advanced-field-values! :impersonation field)
 
     :else
