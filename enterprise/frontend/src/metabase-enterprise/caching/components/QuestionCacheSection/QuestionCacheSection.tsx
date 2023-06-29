@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import { getRelativeTime } from "metabase/lib/time";
+import { Stack, Text } from "metabase/ui";
 import Question from "metabase-lib/Question";
 import CacheSection from "../CacheSection";
-import { QueryStartLabel } from "./QuestionCacheSection.styled";
 
 export interface QuestionCacheSectionProps {
   question: Question;
@@ -18,16 +18,16 @@ const QuestionCacheSection = ({
   const cacheRelativeTime = cacheTimestamp && getRelativeTime(cacheTimestamp);
 
   return (
-    <div>
+    <Stack spacing="0.5rem">
       {cacheTimestamp && (
-        <QueryStartLabel>
+        <Text color="text.2" fw="bold">
           {t`Question last cached ${cacheRelativeTime}`}
-        </QueryStartLabel>
+        </Text>
       )}
       {canWrite && (
         <CacheSection initialCacheTTL={question.cacheTTL()} onSave={onSave} />
       )}
-    </div>
+    </Stack>
   );
 };
 
