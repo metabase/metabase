@@ -93,7 +93,7 @@
         ;; User with connection impersonation should not be able to query a table they don't have access to
         ;; (`limited_role` in CI Snowflake has no data access)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"You do not have permissions to run this query."
+                              #"SQL compilation error:\nDatabase.*does not exist or not authorized"
                               (mt/run-mbql-query venues
                                                  {:aggregation [[:count]]})))
         ;; Non-impersonated user should stil be able to query the table
