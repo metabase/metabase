@@ -32,12 +32,8 @@ describe("TableBrowser", () => {
     // advance the timer
     jest.advanceTimersByTime(RELOAD_INTERVAL);
     // wait for the response
-    await waitFor(async () => {
-      const calls2 = await fetchMock.calls(
-        /\/api\/database\/1\/schema\/public/,
-      );
-      expect(calls2.length).toBe(2);
-    });
+    const calls2 = fetchMock.calls(/\/api\/database\/1\/schema\/public/);
+    expect(calls2.length).toBe(2);
     // wait for the loading spinner to disapear
     await waitFor(() => {
       expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
