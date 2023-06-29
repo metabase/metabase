@@ -1,6 +1,10 @@
 import { checkNotNull } from "metabase/core/utils/types";
 import { msToSeconds, hoursToSeconds } from "metabase/lib/time";
-import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -49,14 +53,19 @@ describe("getQuestionsImplicitCacheTTL", () => {
       "query-caching-min-ttl": cachingEnabled ? minCacheThreshold : 60,
     });
 
-    return {
-      card: () => ({
-        average_query_time: avgQueryTime,
-      }),
-      database: () => ({
-        cache_ttl: databaseCacheTTL,
-      }),
-    };
+    const card = createMockCard({
+      average_query_time: avgQueryTime,
+    });
+    const database = createMockDatabase({
+      cache_ttl: databaseCacheTTL,
+    });
+
+    const metadata = createMockMetadata({
+      questions: [card],
+      databases: [database],
+    });
+
+    return checkNotNull(metadata.question(card.id));
   }
 
   it("returns database's cache TTL if set", () => {
