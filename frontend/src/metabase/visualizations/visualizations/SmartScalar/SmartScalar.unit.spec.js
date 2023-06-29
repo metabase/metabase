@@ -1,8 +1,10 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
 
+import { NumberColumn, DateTimeColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { NumberColumn, DateTimeColumn } from "__support__/visualizations";
 
 const setup = (series, width) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
@@ -31,9 +33,12 @@ describe("SmartScalar", () => {
     setup(series({ rows, insights }));
 
     expect(screen.getByText("120")).toBeInTheDocument();
-    expect(screen.getByText("20%")).toBeInTheDocument();
-    expect(screen.getByText("was 100")).toBeInTheDocument();
-    expect(screen.getByText("last month")).toBeInTheDocument();
+
+    const previousValue = screen.getByText("20%");
+    expect(previousValue).toBeInTheDocument();
+
+    userEvent.hover(previousValue);
+    expect(screen.getByText("was 100 last month")).toBeInTheDocument();
   });
 
   it("should show 20% decrease", () => {
@@ -51,9 +56,12 @@ describe("SmartScalar", () => {
     setup(series({ rows, insights }));
 
     expect(screen.getByText("80")).toBeInTheDocument();
-    expect(screen.getByText("20%")).toBeInTheDocument();
-    expect(screen.getByText("was 100")).toBeInTheDocument();
-    expect(screen.getByText("last month")).toBeInTheDocument();
+
+    const previousValue = screen.getByText("20%");
+    expect(previousValue).toBeInTheDocument();
+
+    userEvent.hover(previousValue);
+    expect(screen.getByText("was 100 last month")).toBeInTheDocument();
   });
 
   it("should show 0% change", () => {
