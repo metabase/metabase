@@ -135,10 +135,14 @@
 (def ^:private escaped-chars-regex
   #"[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")
 
+(def escaped-markdown-chars-regex
+  "Regex for virtual dashboards conversion to markdown. Excludes {} as its used for subsitution."
+  #"[\\/*_`'\[\]()<>#+-.!$@%^&=|\?~]")
+
 (defn escape-chars
   "Escape markdown characters."
-  [text]
-  (str/replace text escaped-chars-regex #(str \\ %)))
+  [text regex]
+  (str/replace text regex #(str \\ %)))
 
 (defn- value
   [tag-name tag->param locale]
@@ -147,7 +151,7 @@
         tyype    (:type param)]
     (when value
       (try (-> (formatted-value tyype value locale)
-               escape-chars)
+               (escape-chars escaped-chars-regex))
            (catch #?(:clj Throwable :cljs js/Error) _
              ;; If we got an exception (most likely during date parsing/formatting), fallback to the default
              ;; implementation of formatted-value

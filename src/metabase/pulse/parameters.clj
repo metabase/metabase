@@ -49,7 +49,7 @@
   "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
   substituted into connected variables in the text."
   [dashcard parameters]
-  (let [escaped-dashcard   (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars %)))
+  (let [escaped-dashcard   (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars % shared.params/escaped-markdown-chars-regex)))
         text               (-> escaped-dashcard :visualization_settings :text)
         parameter-mappings (:parameter_mappings escaped-dashcard)
         tag-names          (shared.params/tag_names text)

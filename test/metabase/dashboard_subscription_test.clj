@@ -636,8 +636,8 @@
                     DashboardCard [_ {:parameter_mappings [{:parameter_id "TEST_ID"
                                                             :target       [:text-tag "foo"]}]
                                       :dashboard_id       dashboard-id
-                                      :visualization_settings {:text "## \\{\\{foo\\}\\}"}}]]
-      (is (= [{:text "Doohickey and Gizmo" :type :text}]
+                                      :visualization_settings {:text "{{foo}}"}}]]
+      (is (= [{:text "## Doohickey and Gizmo" :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest no-native-perms-test
