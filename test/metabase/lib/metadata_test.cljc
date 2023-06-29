@@ -57,9 +57,9 @@
      (is (thrown-with-msg?
           Throwable
           #"Valid Table metadata, received: nil"
-          ;; `Integer/MAX_VALUE`, but I don't know what the Cljs way to do this
-          (lib.metadata/table-or-card lib.tu/metadata-provider-with-card 2147483647)))
+          (lib.metadata/table-or-card lib.tu/metadata-provider-with-card Integer/MAX_VALUE)))
      ;; doesn't currently throw an error in Cljs because we don't have Malli validation enabled... probably fine for
      ;; now.
      :cljs
+     ;; `Integer/MAX_VALUE`, but I don't know what the Cljs way to do this
      (is (nil? (lib.metadata/table-or-card lib.tu/metadata-provider-with-card 2147483647)))))
