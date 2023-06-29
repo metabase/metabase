@@ -55,7 +55,7 @@
   ;; but if Table isn't present then that is a legitimate error.
   #?(:clj
      (is (thrown-with-msg?
-          #?(:clj Throwable :cljs :default)
+          Throwable
           #"Valid Table metadata, received: nil"
           ;; `Integer/MAX_VALUE`, but I don't know what the Cljs way to do this
           (lib.metadata/table-or-card lib.tu/metadata-provider-with-card 2147483647)))
