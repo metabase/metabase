@@ -63,9 +63,6 @@ export function normalizeParameterValue(type, value) {
   }
 }
 
-// when `preserveDefaultedParameters` is true, we don't remove defaulted parameters with nil values
-// so that they can be set in the URL query without a value. Used alongside `getParameterValuesByIdFromQueryParams`
-// with `forcefullyUnsetDefaultedParametersWithEmptyStringValue` set to true.
 export function getParameterValuesBySlug(parameters, parameterValuesById) {
   parameters = parameters || [];
   parameterValuesById = parameterValuesById || {};
