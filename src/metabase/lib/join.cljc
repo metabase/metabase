@@ -415,11 +415,24 @@
   [j :- ::lib.schema.join/join]
   (:fields j))
 
-(mu/defn join-strategy :- ::lib.schema.join/strategy
+(defn- raw-join-strategy->strategy-option [raw-strategy]
+  (merge
+   {:lib/type :option/join.strategy
+    :strategy raw-strategy}
+   (when (= raw-strategy :left-join)
+     {:default true})))
+
+(mu/defn raw-join-strategy :- ::lib.schema.join/strategy
   "Get the raw keyword strategy (type) of a given join, e.g. `:left-join` or `:right-join`. This is either the value
   of the optional `:strategy` key or the default, `:left-join`, if `:strategy` is not specified."
   [a-join :- ::lib.schema.join/join]
   (get a-join :strategy :left-join))
+
+(mu/defn join-strategy :- ::lib.schema.join/strategy.option
+  "Get the strategy (type) of a given join, as a `:option/join.strategy` map. If `:stategy` is unspecified, returns
+  the default, left join."
+  [a-join :- ::lib.schema.join/join]
+  (raw-join-strategy->strategy-option (raw-join-strategy a-join)))
 
 (mu/defn with-join-strategy :- PartialJoin
   "Return a copy of `a-join` with its `:strategy` set to `strategy`."
@@ -441,12 +454,10 @@
     _stage-number :- :int]
    (let [database (lib.metadata/database query)
          features (:features database)]
-     (filterv (fn [{:keys [strategy]}]
-                (contains? features strategy))
-              [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
-               {:lib/type :option/join.strategy, :strategy :right-join}
-               {:lib/type :option/join.strategy, :strategy :inner-join}
-               {:lib/type :option/join.strategy, :strategy :full-join}]))))
+     (into []
+           (comp (filter (partial contains? features))
+                 (map raw-join-strategy->strategy-option))
+           [:left-join :right-join :inner-join :full-join]))))
 
 ;;; Building join conditions:
 ;;;

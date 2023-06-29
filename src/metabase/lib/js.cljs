@@ -391,14 +391,14 @@
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
 (defn ^:export join-strategy
-  "Get the strategy (type) of a given join as a plain string like `left-join`."
+  "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
-  (u/qualified-name (lib.core/join-strategy a-join)))
+  (lib.core/join-strategy a-join))
 
 (defn ^:export with-join-strategy
-  "Return a copy of `a-join` with its `:strategy` set to `strategy`."
+  "Return a copy of `a-join` with its `:strategy` set to an opaque JoinStrategy."
   [a-join strategy]
-  (lib.core/with-join-strategy a-join (keyword strategy)))
+  (lib.core/with-join-strategy a-join strategy))
 
 (defn ^:export available-join-strategies
   "Get available join strategies for the current Database (based on the Database's

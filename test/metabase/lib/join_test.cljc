@@ -323,12 +323,16 @@
         [join] (lib/joins query)]
     (testing "join without :strategy"
       (is (= :left-join
+             (lib/raw-join-strategy join)))
+      (is (= {:lib/type :option/join.strategy, :strategy :left-join, :default true}
              (lib/join-strategy join))))
     (testing "join with explicit :strategy"
       (let [join' (lib/with-join-strategy join :right-join)]
         (is (=? {:strategy :right-join}
                 join'))
         (is (= :right-join
+               (lib/raw-join-strategy join')))
+        (is (= {:lib/type :option/join.strategy, :strategy :right-join}
                (lib/join-strategy join')))))))
 
 (deftest ^:parallel with-join-strategy-test
