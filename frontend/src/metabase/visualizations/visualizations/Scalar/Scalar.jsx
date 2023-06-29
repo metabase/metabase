@@ -230,12 +230,12 @@ export class Scalar extends Component {
             ref={scalar => (this._scalar = scalar)}
           >
             <ScalarValue
+              fontFamily={fontFamily}
+              gridSize={gridSize}
+              height={getValueHeight(height, { isDashboard, showSmallTitle })}
+              totalNumGridCols={totalNumGridCols}
               value={displayValue}
               width={getValueWidth(width)}
-              height={getValueHeight(height, { isDashboard, showSmallTitle })}
-              gridSize={gridSize}
-              totalNumGridCols={totalNumGridCols}
-              fontFamily={fontFamily}
             />
           </span>
         </ScalarContainer>

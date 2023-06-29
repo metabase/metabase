@@ -231,12 +231,12 @@ export class SmartScalar extends Component {
             ref={scalar => (this._scalar = scalar)}
           >
             <ScalarValue
+              fontFamily={fontFamily}
               gridSize={gridSize}
               height={getValueHeight(height, canShowPreviousValue)}
-              width={getValueWidth(width)}
               totalNumGridCols={totalNumGridCols}
-              fontFamily={fontFamily}
               value={displayValue}
+              width={getValueWidth(width)}
             />
           </span>
         </ScalarContainer>
