@@ -65,8 +65,9 @@
 
 (def advanced-field-values-types
   "A class of fieldvalues that has additional constraints/filters."
-  #{:sandbox         ;; are fieldvalues but filtered by sandbox permissions
-    :linked-filter}) ;; are fieldvalues but has constraints from other linked parameters on dashboard/embedding
+  #{:sandbox         ;; field values filtered by sandbox permissions
+    :impersonation   ;; field values with connection impersonation enforced (db-level roles)
+    :linked-filter}) ;; field values with constraints from other linked parameters on dashboard/embedding
 
 (def ^:private field-values-types
   "All FieldValues type."
@@ -274,6 +275,12 @@
 (defenterprise hash-key-for-sandbox
   "Return a hash-key that will be used for sandboxed fieldvalues."
   metabase-enterprise.sandbox.models.params.field-values
+  [_field-id]
+  nil)
+
+(defenterprise hash-key-for-impersonation
+  "Return a hash-key that will be used for impersonated fieldvalues."
+  metabase-enterprise.advanced-permissions.driver.impersonation
   [_field-id]
   nil)
 
