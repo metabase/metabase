@@ -290,7 +290,11 @@ const dashcardData = handleActions(
         assocIn(state, [dashcardId, cardId]),
     },
     [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
-      _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
+      _.mapObject(state, dashboardData => {
+        if (card.id) {
+          dissoc(dashboardData, card.id);
+        }
+      }),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
