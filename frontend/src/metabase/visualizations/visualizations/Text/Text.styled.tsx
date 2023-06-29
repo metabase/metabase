@@ -26,9 +26,11 @@ const TextCardWrapper = styled.div<TextCardWrapperProps>`
     !isMobile &&
     css`
       padding: ${SMALL_CONTAINER_PADDING_SIZE} ${DEFAULT_CONTAINER_PADDING_SIZE};
+      font-size: 0.8em;
 
       ${breakpointMinExtraLarge} {
         padding: ${DEFAULT_CONTAINER_PADDING_SIZE};
+        font-size: 1em;
       }
     `}
 `;
@@ -119,27 +121,11 @@ export const DisplayContainer = styled(
   TextCardWrapper,
 )<DisplayContainerProps>``;
 
-interface MarkdownWrapperProps {
-  isSingleRow: boolean;
-  isMobile: boolean;
-}
-export const ReactMarkdownStyleWrapper = styled.div<MarkdownWrapperProps>`
+export const ReactMarkdownStyleWrapper = styled.div`
   height: 100%;
   width: 100%;
   padding-left: 2px; // adjust padding to align text input and markdown preview
-
-  // adjust font-size for single row text cards on desktop resolutions
-  // to prevent clipping of text cards (https://github.com/metabase/metabase/issues/31613)
-  ${({ isSingleRow, isMobile }) =>
-    isSingleRow &&
-    !isMobile &&
-    css`
-      font-size: 0.8em;
-
-      ${breakpointMinExtraLarge} {
-        font-size: 1em;
-      }
-    `}
+  font-size: inherit;
 
   .text-card-markdown {
     height: 100%;

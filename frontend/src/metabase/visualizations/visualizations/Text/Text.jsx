@@ -101,8 +101,6 @@ export function Text({
           <ReactMarkdownStyleWrapper
             data-testid="editing-dashboard-text-preview"
             onMouseDown={preventDragging}
-            isSingleRow={isSingleRow}
-            isMobile={isMobile}
           >
             {/* ReactMarkdown does not allow adding an onMouseDown event handler */}
             <ReactMarkdown
@@ -138,7 +136,7 @@ export function Text({
       isSingleRow={isSingleRow}
       isMobile={isMobile}
     >
-      <ReactMarkdownStyleWrapper isSingleRow={isSingleRow} isMobile={isMobile}>
+      <ReactMarkdownStyleWrapper>
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}
