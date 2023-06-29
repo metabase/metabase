@@ -11,7 +11,7 @@ const STAGE_INDEX = -1;
 interface AddAggregationButtonProps {
   query: Lib.Query;
   legacyQuery: StructuredQuery;
-  onAddAggregation: (aggregation: Lib.AggregationClause) => void;
+  onAddAggregation: (aggregation: Lib.Aggregatable) => void;
   onLegacyQueryChange: (nextLegacyQuery: StructuredQuery) => void;
 }
 
