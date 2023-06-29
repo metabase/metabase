@@ -39,7 +39,6 @@ import {
   VariationValue,
 } from "./SmartScalar.styled";
 import {
-  concatRecursively,
   formatChange,
   formatChangeAutoPrecision,
   getCanShowPreviousValue,
@@ -166,29 +165,31 @@ export class SmartScalar extends Component {
 
     const titleLinesCount = getTitleLinesCount(height);
 
-    const previousValueSeparator = (
-      <PreviousValueSeparator>•</PreviousValueSeparator>
-    );
-    const tooltipSeparator = <Separator>•</Separator>;
-
     const changeDisplay = formatChangeAutoPrecision(lastChange, {
       fontFamily,
       fontWeight: 900,
       width: getChangeWidth(width),
     });
 
+    const tooltipSeparator = <Separator>•</Separator>;
+    const previousValueSeparator = (
+      <PreviousValueSeparator>•</PreviousValueSeparator>
+    );
     const granularityDisplay = jt`last ${granularity}`;
     const previousValueDisplay = formatValue(
       previousValue,
       settings.column(column),
     );
 
+    const previousValueDisplayInTooltip = jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
+    const previousValueDisplayInCard = jt`${previousValueSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
     const canShowPreviousValue = getCanShowPreviousValue({
       width,
       change: changeDisplay,
-      previousValue: concatRecursively(
-        jt`${"•"} was ${previousValueDisplay} ${granularityDisplay}`,
-      ),
+      previousValue:
+        typeof previousValueDisplayInTooltip === "string"
+          ? previousValueDisplayInTooltip
+          : previousValueDisplayInTooltip.join(""),
       fontFamily,
     });
     const iconName = isNegative ? "arrow_down" : "arrow_up";
@@ -276,7 +277,7 @@ export class SmartScalar extends Component {
                       </VariationValue>
                     </Variation>
 
-                    {jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
+                    {previousValueDisplayInTooltip}
                   </VariationTooltip>
                 }
               >
@@ -290,7 +291,7 @@ export class SmartScalar extends Component {
 
               {canShowPreviousValue && (
                 <PreviousValue id="SmartScalar-PreviousValue" responsive>
-                  {jt`${previousValueSeparator} was ${previousValueDisplay} ${granularityDisplay}`}
+                  {previousValueDisplayInCard}
                 </PreviousValue>
               )}
             </PreviousValueContainer>

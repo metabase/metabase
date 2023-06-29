@@ -105,8 +105,3 @@ export const getCanShowPreviousValue = ({
 
   return availablePreviousValueWidth >= previousValueWidth;
 };
-
-export const concatRecursively = (value: string | string[]) => {
-  const values = typeof value === "string" ? [value] : value;
-  return values.flat(Number.MAX_SAFE_INTEGER).join("");
-};
