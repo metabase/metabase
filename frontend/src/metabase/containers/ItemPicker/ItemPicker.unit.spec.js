@@ -19,6 +19,11 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import ItemPicker from "./ItemPicker";
+import {
+  getItemPickerHeader,
+  getItemPickerList,
+  openCollectionWait,
+} from "./test-utils";
 
 const CURRENT_USER = createMockUser({
   id: 1,
@@ -118,26 +123,6 @@ async function setup({
   return { onChange };
 }
 
-function getItemPickerHeader() {
-  return screen.getByTestId("item-picker-header");
-}
-
-function getItemPickerList() {
-  return screen.getByTestId("item-picker-list");
-}
-
-function queryListItem(itemName) {
-  return within(getItemPickerList())
-    .queryByText(itemName)
-    .closest("[data-testid=item-picker-item]");
-}
-
-async function openCollection(itemName) {
-  const collectionNode = within(queryListItem(itemName));
-  userEvent.click(collectionNode.getByLabelText("chevronright icon"));
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-}
-
 describe("ItemPicker", () => {
   it("displays items from the root collection by default", async () => {
     await setup();
@@ -175,7 +160,7 @@ describe("ItemPicker", () => {
   it("can open nested collection", async () => {
     await setup();
 
-    await openCollection(COLLECTION.REGULAR.name);
+    await openCollectionWait(COLLECTION.REGULAR.name);
 
     const header = within(getItemPickerHeader());
     const list = within(getItemPickerList());
@@ -192,7 +177,7 @@ describe("ItemPicker", () => {
 
   it("can navigate back from a currently open nested collection", async () => {
     await setup();
-    await openCollection(COLLECTION.REGULAR.name);
+    await openCollectionWait(COLLECTION.REGULAR.name);
     let header = within(getItemPickerHeader());
 
     userEvent.click(header.getByText(/Our analytics/i));
