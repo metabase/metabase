@@ -38,7 +38,7 @@ interface ScalarTitleContainerProps {
 
 export const ScalarTitleContainer = styled.div<ScalarTitleContainerProps>`
   line-height: ${TITLE_LINE_HEIGHT_REM}rem;
-  height: ${props => props.lines * TITLE_LINE_HEIGHT_REM}rem;
+  max-height: ${props => props.lines * TITLE_LINE_HEIGHT_REM}rem;
   display: flex;
   justify-content: center;
   align-items: flex-start;
