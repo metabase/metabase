@@ -13,6 +13,7 @@ const QuestionCacheSection = ({
   question,
   onSave,
 }: QuestionCacheSectionProps) => {
+  const canWrite = question.canWrite();
   const cacheTimestamp = question.lastQueryStart();
   const cacheRelativeTime = cacheTimestamp && getRelativeTime(cacheTimestamp);
 
@@ -23,7 +24,9 @@ const QuestionCacheSection = ({
           {t`Question last cached ${cacheRelativeTime}`}
         </QueryStartLabel>
       )}
-      <CacheSection initialCacheTTL={question.cacheTTL()} onSave={onSave} />
+      {canWrite && (
+        <CacheSection initialCacheTTL={question.cacheTTL()} onSave={onSave} />
+      )}
     </div>
   );
 };

@@ -54,3 +54,11 @@ export function validateCacheTTL(value) {
 export function normalizeCacheTTL(value) {
   return value === 0 || value === undefined ? null : value;
 }
+
+export function hasQuestionCacheSection(question) {
+  return (
+    !question.isDataset() &&
+    (question.lastQueryStart() != null || question.canWrite()) &&
+    MetabaseSettings.get("enable-query-caching")
+  );
+}
