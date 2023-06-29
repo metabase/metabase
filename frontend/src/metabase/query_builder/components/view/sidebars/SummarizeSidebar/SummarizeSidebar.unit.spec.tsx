@@ -81,7 +81,7 @@ function setup({
   render(<Wrapper />);
 
   if (!withDefaultAggregation) {
-    const countButton = screen.getByRole("button", { name: "Count" });
+    const countButton = screen.getByLabelText("Count");
     userEvent.click(within(countButton).getByLabelText("close icon"));
   }
 
@@ -118,8 +118,8 @@ describe("SummarizeSidebar", () => {
     it("should apply default aggregation for bare rows query", () => {
       const { getNextAggregations, onQueryChange } = setup();
 
-      expect(screen.getByRole("button", { name: "Count" })).toBeInTheDocument();
-      userEvent.click(screen.getByRole("button", { name: "Done" }));
+      expect(screen.getByLabelText("Count")).toBeInTheDocument();
+      userEvent.click(screen.getByText("Done"));
 
       const aggregations = getNextAggregations();
       const [aggregation] = aggregations;
@@ -131,7 +131,7 @@ describe("SummarizeSidebar", () => {
     it("should allow to remove a default aggregation", () => {
       const { getNextAggregations, onQueryChange } = setup();
 
-      const countButton = screen.getByRole("button", { name: "Count" });
+      const countButton = screen.getByLabelText("Count");
       userEvent.click(within(countButton).getByLabelText("close icon"));
 
       const aggregations = getNextAggregations();
@@ -141,9 +141,7 @@ describe("SummarizeSidebar", () => {
 
     it("shouldn't apply default aggregation if a query is already aggregated", () => {
       setup({ card: createSummarizedCard() });
-      expect(
-        screen.queryByRole("button", { name: "Count" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Count")).not.toBeInTheDocument();
     });
   });
 
@@ -183,18 +181,15 @@ describe("SummarizeSidebar", () => {
     await waitFor(() =>
       expect(screen.getAllByTestId("dimension-list-item")).toHaveLength(3),
     );
-    expect(screen.getAllByText("Created At")).toHaveLength(3);
+    expect(screen.getAllByLabelText("Created At")).toHaveLength(3);
   });
 
   it("should highlight selected breakout columns", () => {
     setup({ card: createSummarizedCard() });
 
-    const [ordersCreatedAt, peopleCreatedAt] = screen.getAllByRole("listitem", {
-      name: "Created At",
-    });
-    const productCategory = screen.getByRole("listitem", {
-      name: "Product → Category",
-    });
+    const [ordersCreatedAt, peopleCreatedAt] =
+      screen.getAllByLabelText("Created At");
+    const productCategory = screen.getByLabelText("Product → Category");
 
     expect(ordersCreatedAt).toHaveAttribute("aria-selected", "true");
     expect(productCategory).toHaveAttribute("aria-selected", "true");
@@ -227,12 +222,12 @@ describe("SummarizeSidebar", () => {
   it("should add an aggregation", async () => {
     const { getNextAggregations } = setup({ withDefaultAggregation: false });
 
-    userEvent.click(screen.getByRole("button", { name: "Add aggregation" }));
+    userEvent.click(screen.getByLabelText("Add aggregation"));
 
-    let popover = await screen.findByRole("grid");
+    let popover = await screen.findByLabelText("grid");
     userEvent.click(within(popover).getByText("Average of ..."));
 
-    popover = await screen.findByRole("grid");
+    popover = await screen.findByLabelText("grid");
     userEvent.click(within(popover).getByText("Total"));
 
     await waitFor(() => {
@@ -245,9 +240,9 @@ describe("SummarizeSidebar", () => {
   it("should add a column-less aggregation", async () => {
     const { getNextAggregations } = setup({ withDefaultAggregation: false });
 
-    userEvent.click(screen.getByRole("button", { name: "Add aggregation" }));
+    userEvent.click(screen.getByLabelText("Add aggregation"));
 
-    const popover = await screen.findByRole("grid");
+    const popover = await screen.findByLabelText("grid");
     userEvent.click(within(popover).getByText("Count of rows"));
 
     await waitFor(() => {
@@ -278,7 +273,7 @@ describe("SummarizeSidebar", () => {
       expect(breakout.displayName).toBe("Category");
     });
 
-    const breakoutOption = screen.getByRole("listitem", { name: "Quantity" });
+    const breakoutOption = screen.getByLabelText("Quantity");
     userEvent.hover(breakoutOption);
     userEvent.click(within(breakoutOption).getByLabelText("Add dimension"));
 
@@ -291,7 +286,7 @@ describe("SummarizeSidebar", () => {
   it("should allow picking a temporal bucket for breakout columns", async () => {
     const { getNextBreakouts } = setup();
 
-    const [createdAt] = screen.getAllByRole("listitem", { name: "Created At" });
+    const [createdAt] = screen.getAllByLabelText("Created At");
     userEvent.hover(createdAt);
     userEvent.click(within(createdAt).getByText("by month"));
     const [quarter] = await screen.findAllByText("Quarter");
@@ -307,7 +302,7 @@ describe("SummarizeSidebar", () => {
   it("should allow picking a binning strategy for breakout columns", async () => {
     const { getNextBreakouts } = setup();
 
-    const [total] = screen.getAllByRole("listitem", { name: "Total" });
+    const [total] = screen.getAllByLabelText("Total");
     userEvent.hover(total);
     userEvent.click(within(total).getByText("Auto bin"));
     const [strategy] = await screen.findAllByText("10 bins");
@@ -323,7 +318,7 @@ describe("SummarizeSidebar", () => {
   it("should add a new column instead of replacing when adding a bucketed column", async () => {
     const { getNextBreakouts } = setup({ card: createSummarizedCard() });
 
-    const [total] = screen.getAllByRole("listitem", { name: "Total" });
+    const [total] = screen.getAllByLabelText("Total");
     userEvent.hover(total);
     userEvent.click(within(total).getByText("Auto bin"));
     const [strategy] = await screen.findAllByText("10 bins");
@@ -335,10 +330,8 @@ describe("SummarizeSidebar", () => {
   it("should remove breakout", async () => {
     const { getNextBreakouts } = setup({ card: createSummarizedCard() });
 
-    const [breakout] = screen.getAllByRole("listitem", { name: "Created At" });
-    userEvent.click(
-      within(breakout).getByRole("button", { name: "Remove dimension" }),
-    );
+    const [breakout] = screen.getAllByLabelText("Created At");
+    userEvent.click(within(breakout).getByLabelText("Remove dimension"));
 
     await waitFor(() => expect(getNextBreakouts()).toHaveLength(1));
     expect(getNextBreakouts()[0].longDisplayName).toBe("Product → Category");
@@ -358,7 +351,7 @@ describe("SummarizeSidebar", () => {
 
   it("should close on 'Done' button", () => {
     const { onClose } = setup();
-    userEvent.click(screen.getByRole("button", { name: "Done" }));
+    userEvent.click(screen.getByText("Done"));
     expect(onClose).toHaveBeenCalled();
   });
 });
