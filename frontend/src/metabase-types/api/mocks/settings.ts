@@ -164,6 +164,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "ldap-configured?": false,
   "ldap-enabled": false,
   "loading-message": "doing-science",
+  "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "openai-api-key": null,
   "openai-organization": null,
   "openai-model": null,
