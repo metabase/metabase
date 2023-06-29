@@ -13,6 +13,7 @@ import {
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { CollectionItem } from "metabase-types/api";
+import { getSettingsLoading } from "metabase/selectors/settings";
 import Database from "metabase-lib/metadata/Database";
 import {
   getCustomHomePageDashboardId,
@@ -82,11 +83,12 @@ const getHasMetabot = (
 
 const useDashboardPage = () => {
   const dashboardId = useSelector(getCustomHomePageDashboardId);
+  const isLoading = useSelector(getSettingsLoading);
   const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
   const dispatch = useDispatch();
 
   useEffect(() => {
-    if (dashboardId) {
+    if (dashboardId && !isLoading) {
       dispatch(replace(`/dashboard/${dashboardId}`));
 
       if (!hasDismissedToast) {
@@ -107,5 +109,5 @@ const useDashboardPage = () => {
         );
       }
     }
-  }, [dashboardId, hasDismissedToast, dispatch]);
+  }, [dashboardId, isLoading, hasDismissedToast, dispatch]);
 };
