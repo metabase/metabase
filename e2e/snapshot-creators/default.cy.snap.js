@@ -67,8 +67,11 @@ describe("snapshots", () => {
         });
       },
     );
-    // Dismiss `it's ok to play around` modal for admin
-    cy.request("PUT", `/api/user/1/modal/qbnewb`, {});
+
+    cy.request("GET", "/api/user/current").then(({ body: { id } }) => {
+      // Dismiss `it's ok to play around` modal for admin
+      cy.request("PUT", `/api/user/${id}/modal/qbnewb`);
+    });
   }
 
   function updateSettings() {

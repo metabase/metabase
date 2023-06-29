@@ -161,7 +161,7 @@
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
-  and `archived`. See corresponditng implementation functions above for the specific behavior of each filter
+  and `archived`. See corresponding implementation functions above for the specific behavior of each filter
   option. :card_index:"
   [f model_id]
   {f        [:maybe (into [:enum] card-filter-options)]
@@ -412,6 +412,11 @@
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
+            valid-metadata?)
+
+       ;; copying card and reusing existing metadata
+       (and (nil? original-query)
+            query
             valid-metadata?))
       (do
         (log/debug (trs "Reusing provided metadata"))

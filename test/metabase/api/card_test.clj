@@ -760,47 +760,6 @@
                                            "card"
                                            (assoc card :result_metadata []))))))))
 
-(deftest save-new-card-with-result-metadata-test
-  (mt/with-model-cleanup [Card]
-    (testing "we should ignore result_metadata on new Cards"
-      (let [outdated-metadata (->> (qp/process-query (mt/mbql-query venues))
-                                   :data
-                                   :results_metadata
-                                   :columns
-                                   (mapv #(assoc % :description "User edits")))
-            saved-query (mt/mbql-query venues {:fields [$id $name]})]
-        (is (=? {:result_metadata [{:display_name "ID"
-                                    :description nil}
-                                   {:display_name "Name"
-                                    :description nil}]}
-                (mt/user-http-request :rasta
-                                      :post
-                                      200
-                                      "card"
-                                      (merge (mt/with-temp-defaults Card)
-                                             {:dataset_query saved-query
-                                              :result_metadata outdated-metadata}))))))
-    (testing "we should incorporate result_metadata on new Models"
-      ;; query has changed but we can still preserve user edits
-      (let [outdated-metadata (->> (qp/process-query (mt/mbql-query venues))
-                                   :data
-                                   :results_metadata
-                                   :columns
-                                   (mapv #(assoc % :description "User edits")))
-            saved-query (mt/mbql-query venues {:fields [$id $name]})]
-        (is (=? {:result_metadata [{:display_name "ID"
-                                    :description "User edits"}
-                                   {:display_name "Name"
-                                    :description "User edits"}]}
-                (mt/user-http-request :rasta
-                                      :post
-                                      200
-                                      "card"
-                                      (merge (mt/with-temp-defaults Card)
-                                             {:dataset true
-                                              :dataset_query saved-query
-                                              :result_metadata outdated-metadata}))))))))
-
 (deftest cache-ttl-save
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"

@@ -60,7 +60,8 @@ export const openPinnedItemMenu = name => {
   getPinnedSection().within(() => {
     cy.findByText(name)
       .closest("a")
-      .within(() => cy.icon("ellipsis").click({ force: true }));
+      .realHover()
+      .within(() => cy.findByLabelText("Actions").click());
   });
 };
 
