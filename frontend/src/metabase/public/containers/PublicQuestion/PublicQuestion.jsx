@@ -92,7 +92,6 @@ class PublicQuestionInner extends Component {
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
         query,
-        this.props.metadata,
       );
 
       this.setState(
