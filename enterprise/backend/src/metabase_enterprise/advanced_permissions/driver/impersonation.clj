@@ -22,10 +22,8 @@
   "Takes the permission set for each group a user is in, and an impersonation policy, and determines whether the policy
   should be enforced. This is done by checking whether the union of permissions in all *other* groups provides full
   data access to the database. If so, we don't enforce the policy, because theo ther groups' permissions supercede it."
-  [group-id->perms-set {group-id :group_id, db-id :db_id}]
-  (let [perms-set (->> (dissoc group-id->perms-set group-id)
-                       (vals)
-                       (apply set/union))]
+  [group-id->perms-set {db-id :db_id}]
+  (let [perms-set (apply set/union (vals group-id->perms-set))]
     (not (perms/set-has-full-permissions? perms-set (perms/all-schemas-path db-id)))))
 
 (defn- enforced-impersonations
