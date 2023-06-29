@@ -1,3 +1,4 @@
+import { checkNotNull } from "metabase/core/utils/types";
 import { msToSeconds, hoursToSeconds } from "metabase/lib/time";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
 import { mockSettings } from "__support__/settings";
@@ -119,7 +120,7 @@ describe("hasQuestionCacheSection", () => {
       "enable-query-caching": isCachingEnabled,
     });
     const metadata = createMockMetadata({ questions: [card] }, settings);
-    return metadata.question(card.id);
+    return checkNotNull(metadata.question(card.id));
   }
 
   it("should not have the cache section for models", () => {
