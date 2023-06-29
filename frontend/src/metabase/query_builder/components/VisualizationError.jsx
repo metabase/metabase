@@ -9,6 +9,7 @@ import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
+import { getEngineNativeType } from "metabase/lib/engine";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   QueryError,
@@ -142,6 +143,9 @@ class VisualizationError extends Component {
       if (typeof error === "string") {
         processedError = stripRemarks(processedError);
       }
+      const database = question.database();
+      const isSql = database && getEngineNativeType(database.engine);
+
       return (
         <QueryError className={className}>
           <QueryErrorContent>
@@ -150,11 +154,13 @@ class VisualizationError extends Component {
               <QueryErrorTitle>{t`An error occurred in your query`}</QueryErrorTitle>
             </QueryErrorHeader>
             <QueryErrorMessage>{processedError}</QueryErrorMessage>
-            <QueryErrorLink
-              href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
-            >
-              {t`Learn how to debug SQL errors`}
-            </QueryErrorLink>
+            {isSql && (
+              <QueryErrorLink
+                href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
+              >
+                {t`Learn how to debug SQL errors`}
+              </QueryErrorLink>
+            )}
           </QueryErrorContent>
         </QueryError>
       );

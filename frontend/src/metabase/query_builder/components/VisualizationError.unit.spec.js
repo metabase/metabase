@@ -3,7 +3,7 @@ import {
   stripRemarks,
 } from "metabase/query_builder/components/VisualizationError";
 
-describe("VisualizationError", () => {
+describe("adjustPositions", () => {
   const remarkedQuery =
     "-- Metabase:: userID: 1 queryType: native queryHash: 9863b8284f269ce8763ad59b04cec26407a1dd74eebeb16cffdf1ef3e23b325a\nfwefwef";
   const remarkedRedshiftQuery =
@@ -15,11 +15,6 @@ describe("VisualizationError", () => {
   const redshiftAdjustedError = `boopy boop boopy boop fake error message Position: 823;`;
 
   const errorLineNumbers = "boopy boop boopy boop fake error message Line: 2";
-
-  const errorH2Unstripped = `
-  Syntax error in SQL statement " FWEFWEF[*] "; expected "FROM, {"; SQL statement: -- Metabase:: userID: 1 queryType: native queryHash: 9863b8284f269ce8763ad59b04cec26407a1dd74eebeb16cffdf1ef3e23b325a\nfwefwef [42001-197]`;
-  const errorH2Stripped = `
-  Syntax error in SQL statement " FWEFWEF[*] "; expected "FROM, {"; SQL statement: fwefwef [42001-197]`;
 
   it("error adjusted pg", () => {
     expect(adjustPositions(unadjustedError, remarkedQuery)).toEqual(
@@ -44,6 +39,12 @@ describe("VisualizationError", () => {
       errorLineNumbers,
     );
   });
+});
+describe("stripRemarks", () => {
+  const errorH2Unstripped = `
+  Syntax error in SQL statement " FWEFWEF[*] "; expected "FROM, {"; SQL statement: -- Metabase:: userID: 1 queryType: native queryHash: 9863b8284f269ce8763ad59b04cec26407a1dd74eebeb16cffdf1ef3e23b325a\nfwefwef [42001-197]`;
+  const errorH2Stripped = `
+  Syntax error in SQL statement " FWEFWEF[*] "; expected "FROM, {"; SQL statement: fwefwef [42001-197]`;
 
   it("should strip remarks from query with stripRemarks", () => {
     expect(stripRemarks(errorH2Unstripped)).toEqual(errorH2Stripped);
