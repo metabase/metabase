@@ -308,6 +308,7 @@ describe("issue 31628", () => {
 
         popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
 
+        cy.findByTestId("scalar-description").trigger("mouseleave"); // allow tooltip to hide
         /**
          * it should show previous value tooltip on hover
          */
@@ -321,20 +322,19 @@ describe("issue 31628", () => {
         /**
          * it should show previous value as a percentage only (without truncation)
          */
-        let previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• was 527 last month").should("not.exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
+      });
 
-        /**
-         * should show previous value as a percentage only up to 1 decimal place (without truncation, 1200x600)
-         */
+      it("should show previous value as a percentage only up to 1 decimal place (without truncation, 1200x600)", () => {
         cy.viewport(1200, 600);
 
-        previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
           cy.contains("34.7%").should("exist");
@@ -342,13 +342,12 @@ describe("issue 31628", () => {
           cy.contains("• was 527 last month").should("not.exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
+      });
 
-        /**
-         * should show previous value as a percentage without decimal places (without truncation, 1000x600)
-         */
+      it("should show previous value as a percentage without decimal places (without truncation, 1000x600)", () => {
         cy.viewport(1000, 600);
 
-        previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
           cy.contains("35%").should("exist");
@@ -356,13 +355,12 @@ describe("issue 31628", () => {
           cy.contains("• was 527 last month").should("not.exist");
           previousValue.then($element => assertIsNotEllipsified($element[0]));
         });
+      });
 
-        /**
-         * should truncate previous value (840x600)
-         */
+      it("should truncate previous value (840x600)", () => {
         cy.viewport(840, 600);
 
-        previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue
           .findByText("35%")
@@ -370,12 +368,12 @@ describe("issue 31628", () => {
       });
     });
 
-    describe("6x3 card", () => {
+    describe("7x3 card", () => {
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
         setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, [
-          { size_x: 6, size_y: 3, row: 0, col: 0 },
+          { size_x: 7, size_y: 3, row: 0, col: 0 },
         ]);
       });
 
@@ -427,12 +425,12 @@ describe("issue 31628", () => {
       });
     });
 
-    describe("6x4 card", () => {
+    describe("7x4 card", () => {
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
         setupDashboardWithQuestionInCards(SMART_SCALAR_QUESTION, [
-          { size_x: 6, size_y: 4, row: 0, col: 0 },
+          { size_x: 7, size_y: 4, row: 0, col: 0 },
         ]);
       });
 
