@@ -205,7 +205,7 @@ export interface Settings {
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
-  "map-tile-server-url"?: string;
+  "map-tile-server-url": string | undefined;
   "openai-api-key": string | null;
   "openai-organization": string | null;
   "openai-model": string | null;

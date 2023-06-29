@@ -1,5 +1,5 @@
 import { queryIcon, renderWithProviders } from "__support__/ui";
-import MetabaseSettings from "metabase/lib/settings";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 const RAW_SERIES = [
@@ -115,12 +115,14 @@ const RAW_SERIES = [
 ];
 
 const setup = async () => {
-  MetabaseSettings.set(
-    "map-tile-server-url",
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-  );
-
-  return renderWithProviders(<Visualization rawSeries={RAW_SERIES} />);
+  return renderWithProviders(<Visualization rawSeries={RAW_SERIES} />, {
+    storeInitialState: {
+      settings: createMockSettingsState({
+        "map-tile-server-url":
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      }),
+    },
+  });
 };
 
 describe("LeafletGridHeatMap", () => {
