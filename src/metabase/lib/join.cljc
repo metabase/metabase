@@ -521,7 +521,7 @@
 ;;; TODO -- definitions duplicated with code in [[metabase.lib.filter]]
 
 (defn- equals-join-condition-operator-definition []
-  {:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to")})
+  {:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to"), :default true})
 
 (defn- join-condition-operator-definitions []
   [(equals-join-condition-operator-definition)
