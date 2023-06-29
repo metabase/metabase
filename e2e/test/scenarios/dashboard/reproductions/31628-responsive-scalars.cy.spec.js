@@ -127,17 +127,13 @@ describe("issue 31628", () => {
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
-        popover().within(() => {
-          cy.contains("18,760").should("exist");
-        });
+        popover().findByText("18,760").should("exist");
       });
 
       it("should show ellipsis icon with question name in tooltip", () => {
         cy.findByTestId("scalar-title-icon").realHover();
 
-        popover().within(() => {
-          cy.contains(SCALAR_QUESTION.name).should("exist");
-        });
+        popover().findByText(SCALAR_QUESTION.name).should("exist");
       });
 
       it("should not show description", () => {
@@ -173,17 +169,13 @@ describe("issue 31628", () => {
         scalarTitle.then($element => assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
-        popover().within(() => {
-          cy.contains(SCALAR_QUESTION.name).should("exist");
-        });
+        popover().findByText(SCALAR_QUESTION.name).should("exist");
       });
 
       it("should show description tooltip on hover", () => {
         cy.findByTestId("scalar-description").realHover();
 
-        popover().within(() => {
-          cy.contains(SCALAR_QUESTION.description).should("exist");
-        });
+        popover().findByText(SCALAR_QUESTION.description).should("exist");
       });
     });
 
@@ -221,9 +213,7 @@ describe("issue 31628", () => {
       it("should show description tooltip on hover", () => {
         cy.findByTestId("scalar-description").realHover();
 
-        popover().within(() => {
-          cy.contains(SCALAR_QUESTION.description).should("exist");
-        });
+        popover().findByText(SCALAR_QUESTION.description).should("exist");
       });
     });
   });
@@ -283,17 +273,13 @@ describe("issue 31628", () => {
         scalarTitle.then($element => assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
-        popover().within(() => {
-          cy.contains(SMART_SCALAR_QUESTION.name).should("exist");
-        });
+        popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
       });
 
       it("should show description tooltip on hover", () => {
         cy.findByTestId("scalar-description").realHover();
 
-        popover().within(() => {
-          cy.contains(SMART_SCALAR_QUESTION.description).should("exist");
-        });
+        popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
       });
 
       it("should show previous value tooltip on hover", () => {
@@ -376,17 +362,13 @@ describe("issue 31628", () => {
         scalarContainer.then($element => assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
-        popover().within(() => {
-          cy.contains(SMART_SCALAR_QUESTION.name).should("exist");
-        });
+        popover().findByText(SMART_SCALAR_QUESTION.name).should("exist");
       });
 
       it("should show description tooltip on hover", () => {
         cy.findByTestId("scalar-description").realHover();
 
-        popover().within(() => {
-          cy.contains(SMART_SCALAR_QUESTION.description).should("exist");
-        });
+        popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
       });
 
       it("should show previous value in full", () => {
@@ -436,9 +418,7 @@ describe("issue 31628", () => {
       it("should show description tooltip on hover", () => {
         cy.findByTestId("scalar-description").realHover();
 
-        popover().within(() => {
-          cy.contains(SMART_SCALAR_QUESTION.description).should("exist");
-        });
+        popover().findByText(SMART_SCALAR_QUESTION.description).should("exist");
       });
 
       it("should show previous value in full", () => {
