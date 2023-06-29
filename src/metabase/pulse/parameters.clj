@@ -45,23 +45,11 @@
     (str base-url (when (seq url-params)
                     (str "?" (str/join "&" url-params))))))
 
-
-(defn escape-markdown
-  "Escapes markdown characters and adds heading."
-  [string]
-  (str "## "
-       (-> string
-           (str/replace "#" "\\#")
-           (str/replace "_" "\\_")
-           (str/replace "*" "\\*")
-           (str/replace "[" "\\[")
-           (str/replace "]" "\\]"))))
-
 (defn process-virtual-dashcard
   "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
   substituted into connected variables in the text."
   [dashcard parameters]
-  (let [escaped-dashcard   (update-in dashcard [:visualization_settings :text] escape-markdown)
+  (let [escaped-dashcard   (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars %)))
         text               (-> escaped-dashcard :visualization_settings :text)
         parameter-mappings (:parameter_mappings escaped-dashcard)
         tag-names          (shared.params/tag_names text)

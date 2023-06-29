@@ -135,7 +135,8 @@
 (def ^:private escaped-chars-regex
   #"[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")
 
-(defn- escape-chars
+(defn escape-chars
+  "Escape markdown characters."
   [text]
   (str/replace text escaped-chars-regex #(str \\ %)))
 
