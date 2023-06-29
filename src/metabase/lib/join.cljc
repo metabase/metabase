@@ -518,18 +518,13 @@
    (sort-join-condition-columns
     (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false}))))
 
-;;; TODO -- definitions duplicated with code in [[metabase.lib.filter]]
-
-(defn- equals-join-condition-operator-definition []
-  {:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to")})
-
 (defn- join-condition-operator-definitions []
-  [(equals-join-condition-operator-definition)
-   {:lib/type :mbql.filter/operator, :short :>, :display-name  (i18n/tru "Greater than")}
-   {:lib/type :mbql.filter/operator, :short :<, :display-name  (i18n/tru "Less than")}
-   {:lib/type :mbql.filter/operator, :short :>=, :display-name (i18n/tru "Greater than or equal to")}
-   {:lib/type :mbql.filter/operator, :short :<=, :display-name (i18n/tru "Less than or equal to")}
-   {:lib/type :mbql.filter/operator, :short :!=, :display-name (i18n/tru "Not equal to")}])
+  [(lib.filter/operator-def := :equal-to)
+   (lib.filter/operator-def :>)
+   (lib.filter/operator-def :<)
+   (lib.filter/operator-def :>=)
+   (lib.filter/operator-def :<=)
+   (lib.filter/operator-def :!= :not-equal-to)])
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
@@ -578,7 +573,7 @@
     joinable]
    (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
-       (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))
+       (lib.filter/filter-clause (lib.filter/operator-def := :equal-to) fk-col pk-col)))))
 
 (mu/defn joined-thing :- [:maybe [:or lib.metadata/TableMetadata lib.metadata/CardMetadata]]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
