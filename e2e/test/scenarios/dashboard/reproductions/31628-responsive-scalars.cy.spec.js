@@ -83,7 +83,7 @@ const SMART_SCALAR_QUESTION_CARDS = [
 
 /**
  * This test suite reduces the number of "it" calls for performance reasons.
- * Every block with JSDoc within "it" callabacks should ideally be a separate "it" call.
+ * Every block with JSDoc within "it" callbacks should ideally be a separate "it" call.
  * @see https://github.com/metabase/metabase/pull/31722#discussion_r1246165418
  */
 describe("issue 31628", () => {
