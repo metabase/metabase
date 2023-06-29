@@ -447,9 +447,9 @@
   (serdes/extract-query-collections Card opts))
 
 (defn- export-result-metadata [card metadata]
-  (when (and (:dataset card) metadata)
+  (when (and metadata (:dataset card))
     (for [m metadata]
-      (-> m
+      (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
           (m/update-existing :id        serdes/*export-field-fk*)
           (m/update-existing :field_ref serdes/export-mbql)))))
