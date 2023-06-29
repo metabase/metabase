@@ -770,7 +770,6 @@ describeWithSnowplow("scenarios > dashboard (snowplow)", () => {
       event: "new_link_card_created",
     });
   });
-  });
 
   it("should track enabling the hide empty cards setting", () => {
     visitDashboard(1);
