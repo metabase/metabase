@@ -7,9 +7,9 @@ import { getIn } from "icepick";
 import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getEngineNativeType } from "metabase/lib/engine";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
-import { getEngineNativeType } from "metabase/lib/engine";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   QueryError,
