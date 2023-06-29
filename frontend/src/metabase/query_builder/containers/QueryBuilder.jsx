@@ -42,7 +42,6 @@ import {
   getQueryResults,
   getParameterValues,
   getIsDirty,
-  getIsNew,
   getIsObjectDetail,
   getTables,
   getTableForeignKeys,
@@ -86,6 +85,8 @@ import {
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
+  getIsEditingModel,
+  getIsQuestionEdited,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -139,8 +140,9 @@ const mapStateToProps = (state, props) => {
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
-    isNew: getIsNew(state),
+    isQuestionEdited: getIsQuestionEdited(state),
     isObjectDetail: getIsObjectDetail(state),
+    isEditingModel: getIsEditingModel(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isVisualized: getIsVisualized(state),
@@ -197,6 +199,7 @@ function QueryBuilder(props) {
     params,
     fromUrl,
     uiControls,
+    isEditingModel,
     isNativeEditorOpen,
     isAnySidebarOpen,
     closeNavbar,
@@ -215,10 +218,10 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
-    isDirty: isModelQueryDirty,
+    isDirty,
+    isQuestionEdited,
     isMetadataDirty,
     closeQB,
-    isNew,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -300,17 +303,15 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   });
 
-  const isExistingModelDirty = useMemo(
-    () => isModelQueryDirty || isMetadataDirty,
-    [isMetadataDirty, isModelQueryDirty],
-  );
+  const shouldShowUnsavedChangesWarningForModels =
+    isEditingModel && (isDirty || isMetadataDirty);
+  const shouldShowUnsavedChangesWarningForSqlQuery =
+    isNativeEditorOpen && isQuestionEdited;
 
-  const isExistingSqlQueryDirty = useMemo(
-    () => isModelQueryDirty && isNativeEditorOpen,
-    [isModelQueryDirty, isNativeEditorOpen],
+  useBeforeUnload(
+    shouldShowUnsavedChangesWarningForModels ||
+      shouldShowUnsavedChangesWarningForSqlQuery,
   );
-
-  useBeforeUnload(!isNew && (isExistingModelDirty || isExistingSqlQueryDirty));
 
   useUnmount(() => {
     cancelQuery();

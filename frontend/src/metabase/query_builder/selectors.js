@@ -298,6 +298,11 @@ export const getPreviousQueryBuilderMode = createSelector(
   uiControls => uiControls.previousQueryBuilderMode,
 );
 
+export const getIsEditingModel = createSelector(
+  [getQueryBuilderMode],
+  queryBuilderMode => queryBuilderMode === "dataset",
+);
+
 export const getDatasetEditorTab = createSelector(
   [getUiControls],
   uiControls => uiControls.datasetEditorTab,
@@ -315,14 +320,13 @@ export const getLastRunQuestion = createSelector(
 );
 
 export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
-  (metadata, card, parameterValues, queryBuilderMode) => {
+  [getMetadata, getCard, getParameterValues, getIsEditingModel],
+  (metadata, card, parameterValues, isEditingModel) => {
     if (!metadata || !card) {
       return;
     }
     const question = new Question(card, metadata, parameterValues);
 
-    const isEditingModel = queryBuilderMode === "dataset";
     if (isEditingModel) {
       return question.lockDisplay();
     }
@@ -547,6 +551,19 @@ export const getIsDirty = createSelector(
       return false;
     }
     return question.isDirtyComparedToWithoutParameters(originalQuestion);
+  },
+);
+
+export const getIsQuestionEdited = createSelector(
+  [getQuestion, getOriginalQuestion],
+  (question, originalQuestion) => {
+    const isQuestionEdited =
+      question != null &&
+      !question.isSaved() &&
+      originalQuestion != null &&
+      !originalQuestion.isDataset();
+
+    return isQuestionEdited;
   },
 );
 

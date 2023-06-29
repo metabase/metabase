@@ -7,7 +7,7 @@ import {
   getDashboardId,
 } from "metabase/dashboard/selectors";
 import {
-  getOriginalQuestion,
+  getIsQuestionEdited,
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
@@ -64,12 +64,9 @@ export const getIsCollectionPathVisible = createSelector(
 );
 
 export const getIsQuestionLineageVisible = createSelector(
-  [getQuestion, getOriginalQuestion, getRouterPath],
-  (question, originalQuestion, path) =>
-    question != null &&
-    !question.isSaved() &&
-    originalQuestion != null &&
-    !originalQuestion.isDataset() &&
+  [getIsQuestionEdited, getRouterPath],
+  (isQuestionEdited, path) =>
+    isQuestionEdited &&
     PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
 );
 
