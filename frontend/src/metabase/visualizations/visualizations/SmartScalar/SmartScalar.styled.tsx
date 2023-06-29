@@ -34,9 +34,7 @@ export const PreviousValueWrapper = styled.div`
   max-width: 100%;
 `;
 
-export const PreviousValueContainer = styled.div<{
-  gridSize?: { width: number };
-}>`
+export const PreviousValueContainer = styled.div`
   align-items: center;
   display: flex;
   flex-wrap: wrap;
@@ -51,9 +49,7 @@ export const PreviousValueContainer = styled.div<{
   }
 `;
 
-export const PreviousValue = styled.h4<{
-  gridSize?: { width: number };
-}>`
+export const PreviousValue = styled.h4`
   color: ${color("text-light")};
 `;
 
@@ -62,9 +58,7 @@ export const Separator = styled.span`
   transform: scale(0.7);
 `;
 
-export const PreviousValueSeparator = styled(Separator)<{
-  gridSize?: { width: number };
-}>`
+export const PreviousValueSeparator = styled(Separator)`
   color: ${color("text-light")};
 
   ${breakpointMaxMedium} {

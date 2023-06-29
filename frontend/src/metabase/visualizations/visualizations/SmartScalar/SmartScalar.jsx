@@ -261,7 +261,7 @@ export class SmartScalar extends Component {
           ) : lastChange === 0 ? (
             t`No change from last ${granularity}`
           ) : (
-            <PreviousValueContainer gridSize={gridSize}>
+            <PreviousValueContainer>
               <Tooltip
                 isEnabled={!canShowPreviousValue}
                 placement="bottom"
@@ -287,15 +287,8 @@ export class SmartScalar extends Component {
               </Tooltip>
 
               {canShowPreviousValue && (
-                <PreviousValue
-                  gridSize={gridSize}
-                  id="SmartScalar-PreviousValue"
-                  responsive
-                >
-                  <PreviousValueSeparator gridSize={gridSize}>
-                    •
-                  </PreviousValueSeparator>
-
+                <PreviousValue id="SmartScalar-PreviousValue" responsive>
+                  <PreviousValueSeparator>•</PreviousValueSeparator>
                   {previousValueContent}
                 </PreviousValue>
               )}
