@@ -56,24 +56,25 @@ export const getValueWidth = (width: number): number => {
   return getWidthWithoutSpacing(width);
 };
 
-export const getWidthWithoutSpacing = (width: number) => {
-  return width - 2 * SPACING;
+const getWidthWithoutSpacing = (width: number) => {
+  return Math.max(width - 2 * SPACING, 0);
 };
 
 export const getValueHeight = (
   height: number,
   canShowPreviousValue: boolean,
 ): number => {
-  return (
+  const valueHeight =
     height -
     SCALAR_TITLE_LINE_HEIGHT * getTitleLinesCount(height) -
     (canShowPreviousValue ? MAX_PREVIOUS_VALUE_SIZE : MIN_PREVIOUS_VALUE_SIZE) -
-    4 * SPACING
-  );
+    4 * SPACING;
+
+  return Math.max(valueHeight, 0);
 };
 
 export const getChangeWidth = (width: number): number => {
-  return width - ICON_SIZE - ICON_MARGIN_RIGHT - 2 * SPACING;
+  return Math.max(width - ICON_SIZE - ICON_MARGIN_RIGHT - 2 * SPACING, 0);
 };
 
 export const getCanShowPreviousValue = ({
