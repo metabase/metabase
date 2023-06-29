@@ -9,6 +9,8 @@
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
@@ -36,6 +38,14 @@
              clojure.lang.ExceptionInfo
              #"Multiple conflicting connection impersonation policies found for current user"
              (@#'impersonation/connection-impersonation-role (mt/db)))))))
+
+  (testing "Returns nil if the permissions in another group supercede the impersonation"
+    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                :attributes     {"impersonation_attr" "impersonation_role"}}
+      ;; `with-impersonations` creates a new group and revokes data perms in `all users`, so if we re-grant data perms
+      ;; for all users, it should supercede the impersonation policy in the new group
+      (perms/grant-full-data-permissions! (perms-group/all-users) (mt/id))
+      (is (nil? (@#'impersonation/connection-impersonation-role (mt/db))))))
 
   (testing "Returns nil for superuser, even if they are in a group with an impersonation policy defined"
     (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
@@ -83,7 +93,7 @@
         ;; User with connection impersonation should not be able to query a table they don't have access to
         ;; (`limited_role` in CI Snowflake has no data access)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"You do not have permissions to run this query."
+                              #"SQL compilation error:\nDatabase.*does not exist or not authorized"
                               (mt/run-mbql-query venues
                                                  {:aggregation [[:count]]})))
         ;; Non-impersonated user should stil be able to query the table
