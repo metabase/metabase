@@ -15906,6 +15906,22 @@ databaseChangeLog:
         - sql:
             sql: drop view if exists v_audit_log;
 
+  - changeSet:
+      id: v47.00-050
+      author: tsmacdonald
+      comment: Added 0.47.0 - table.is_upload
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_upload
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Was the table created from user-uploaded (i.e., from a CSV) data?'
+                  constraints:
+                    nullable: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

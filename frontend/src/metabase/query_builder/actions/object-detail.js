@@ -11,6 +11,8 @@ import {
   getCard,
   getFirstQueryResult,
   getPKColumnIndex,
+  getCanZoomPreviousRow,
+  getCanZoomNextRow,
   getNextRowPKValue,
   getPreviousRowPKValue,
   getTableForeignKeys,
@@ -139,8 +141,8 @@ export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
 
 export const viewNextObjectDetail = () => {
   return (dispatch, getState) => {
-    const objectId = getNextRowPKValue(getState());
-    if (objectId != null) {
+    if (getCanZoomNextRow(getState())) {
+      const objectId = getNextRowPKValue(getState());
       dispatch(zoomInRow({ objectId }));
     }
   };
@@ -148,8 +150,8 @@ export const viewNextObjectDetail = () => {
 
 export const viewPreviousObjectDetail = () => {
   return (dispatch, getState) => {
-    const objectId = getPreviousRowPKValue(getState());
-    if (objectId != null) {
+    if (getCanZoomPreviousRow(getState())) {
+      const objectId = getPreviousRowPKValue(getState());
       dispatch(zoomInRow({ objectId }));
     }
   };

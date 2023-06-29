@@ -1,6 +1,5 @@
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
-
 import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
 

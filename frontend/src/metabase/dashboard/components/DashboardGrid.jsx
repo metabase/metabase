@@ -273,7 +273,6 @@ class DashboardGrid extends Component {
             dashcardData={this.props.dashcardData}
             databases={this.props.databases}
             fetchCardData={this.props.fetchCardData}
-            fetchDatabaseMetadata={this.props.fetchDatabaseMetadata}
             removeCardFromDashboard={this.props.removeCardFromDashboard}
             setDashCardAttributes={this.props.setDashCardAttributes}
             onClose={() => this.setState({ addSeriesModalDashCard: null })}

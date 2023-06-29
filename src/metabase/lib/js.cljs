@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
@@ -519,6 +520,25 @@
   Top level clauses containing references to the removed join are removed too."
   [a-query stage-number join-spec]
   (lib.core/remove-join a-query stage-number join-spec))
+
+(defn ^:export joined-thing
+  "Return metadata about the origin of `join` using `metadata-providerable` as the source of information."
+  [a-query a-join]
+  (lib.join/joined-thing a-query a-join))
+
+(defn ^:export picker-info
+  "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions."
+  [a-query metadata]
+  (case (:lib/type metadata)
+    :metadata/table #js {:databaseId (:database a-query)
+                         :tableId (:id metadata)}
+    :metadata/card  #js {:databaseId (:database a-query)
+                         :tableId (str "card__" (:id metadata))
+                         :cardId (:id metadata)
+                         :isModel (:dataset metadata)}
+    (do
+      (log/warn "Cannot provide picker-info for" (:lib/type metadata))
+      nil)))
 
 (defn ^:export external-op
   "Convert the internal operator `clause` to the external format."

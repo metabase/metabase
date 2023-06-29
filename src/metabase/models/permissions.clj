@@ -1067,13 +1067,22 @@
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (adhoc-native-query-path database-or-id)))
 
+(defn- group-has-native-perms?
+  [group-or-id database-or-id]
+  (set-has-full-permissions?
+   (t2/select-fn-set :object Permissions :group_id (u/the-id group-or-id))
+   (adhoc-native-query-path database-or-id)))
+
 (defn revoke-db-schema-permissions!
   "Remove all permissions entries for a DB and *any* child objects.
    This does *not* revoke native permissions; use `revoke-native-permssions!` to do that."
   [group-or-id database-or-id]
-  ;; TODO - if permissions for this DB are DB root entries like `/db/1/` won't this end up removing our native perms?
-  (delete-related-permissions! group-or-id (data-perms-path database-or-id)
-    [:not= :object (adhoc-native-query-path database-or-id)]))
+  (let [has-native-perms? (group-has-native-perms? group-or-id database-or-id)]
+    (delete-related-permissions! group-or-id (data-perms-path database-or-id)
+      [:not= :object (adhoc-native-query-path database-or-id)])
+    ;; If we've removed native perms as a consequence of deleting a root database path like `/db/1/`, add them back
+    (when (and has-native-perms? (not (group-has-native-perms? group-or-id database-or-id)))
+      (grant-native-readwrite-permissions! group-or-id database-or-id))))
 
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
