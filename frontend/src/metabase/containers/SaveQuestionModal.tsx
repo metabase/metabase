@@ -17,6 +17,7 @@ import FormRadio from "metabase/core/components/FormRadio";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { CollectionId } from "metabase-types/api";
 import * as Errors from "metabase/core/utils/errors";
+import { isQuestionEdited } from "metabase/query_builder/utils";
 import Question from "metabase-lib/Question";
 
 import "./SaveQuestionModal.css";
@@ -140,9 +141,7 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
         : t`First, save your model`;
 
     const showSaveType =
-      !question.isSaved() &&
-      !!originalQuestion &&
-      !originalQuestion.isDataset() &&
+      isQuestionEdited(question, originalQuestion) &&
       originalQuestion.canWrite();
 
     const singleStepTitle = getSingleStepTitle(questionType, showSaveType);

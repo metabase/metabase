@@ -42,6 +42,7 @@ import Mode from "metabase-lib/Mode";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+import { isQuestionEdited } from "./utils";
 
 export const getUiControls = state => state.qb.uiControls;
 const getQueryStatus = state => state.qb.queryStatus;
@@ -179,8 +180,6 @@ export const getPKRowIndexMap = createSelector(
     return map;
   },
 );
-
-export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
 export const getQueryStartTime = state => state.qb.queryStartTime;
 
@@ -557,13 +556,7 @@ export const getIsDirty = createSelector(
 export const getIsQuestionEdited = createSelector(
   [getQuestion, getOriginalQuestion],
   (question, originalQuestion) => {
-    const isQuestionEdited =
-      question != null &&
-      !question.isSaved() &&
-      originalQuestion != null &&
-      !originalQuestion.isDataset();
-
-    return isQuestionEdited;
+    return isQuestionEdited(question, originalQuestion);
   },
 );
 
