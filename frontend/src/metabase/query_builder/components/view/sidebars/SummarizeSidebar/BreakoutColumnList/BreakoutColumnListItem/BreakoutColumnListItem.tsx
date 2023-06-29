@@ -39,6 +39,14 @@ export function BreakoutColumnListItem({
 }: BreakoutColumnListItemProps) {
   const isSelected = typeof item.breakoutPosition === "number";
 
+  const handleAddClick = useCallback(() => {
+    onAddColumn(Lib.withDefaultBucket(query, STAGE_INDEX, item.column));
+  }, [query, item.column, onAddColumn]);
+
+  const handleListItemClick = useCallback(() => {
+    onReplaceColumns?.(Lib.withDefaultBucket(query, STAGE_INDEX, item.column));
+  }, [query, item.column, onReplaceColumns]);
+
   const handleRemoveColumn = useCallback(
     (event: MouseEvent) => {
       event.stopPropagation();
@@ -74,7 +82,7 @@ export function BreakoutColumnListItem({
       aria-selected={isSelected}
       data-testid="dimension-list-item"
     >
-      <Content onClick={() => onReplaceColumns?.(item.column)}>
+      <Content onClick={handleListItemClick}>
         <TitleContainer>
           <ColumnTypeIcon name={getColumnIcon(item.column)} size={18} />
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
@@ -89,10 +97,7 @@ export function BreakoutColumnListItem({
       </Content>
       {!isSelected && (
         <Tooltip tooltip={t`Add grouping`}>
-          <AddButton
-            aria-label={t`Add dimension`}
-            onClick={() => onAddColumn(item.column)}
-          />
+          <AddButton aria-label={t`Add dimension`} onClick={handleAddClick} />
         </Tooltip>
       )}
     </Root>

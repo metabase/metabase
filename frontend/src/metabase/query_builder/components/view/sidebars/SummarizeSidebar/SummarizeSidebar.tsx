@@ -90,35 +90,12 @@ export function SummarizeSidebar({
     [query, onQueryChange],
   );
 
-  const maybeApplyDefaultBucket = useCallback(
-    (column: Lib.ColumnMetadata) => {
-      const isBinned = Lib.binning(column) != null;
-      const isBinnable = Lib.isBinnable(query, STAGE_INDEX, column);
-      if (isBinnable && !isBinned) {
-        return Lib.withDefaultBinning(query, STAGE_INDEX, column);
-      }
-
-      const isBucketed = Lib.temporalBucket(column) != null;
-      const isBucketable = Lib.isTemporalBucketable(query, STAGE_INDEX, column);
-      if (isBucketable && !isBucketed) {
-        return Lib.withDefaultTemporalBucket(query, STAGE_INDEX, column);
-      }
-
-      return column;
-    },
-    [query],
-  );
-
   const handleAddBreakout = useCallback(
     (column: Lib.ColumnMetadata) => {
-      const nextQuery = Lib.breakout(
-        query,
-        STAGE_INDEX,
-        maybeApplyDefaultBucket(column),
-      );
+      const nextQuery = Lib.breakout(query, STAGE_INDEX, column);
       onQueryChange(nextQuery);
     },
-    [query, maybeApplyDefaultBucket, onQueryChange],
+    [query, onQueryChange],
   );
 
   const handleUpdateBreakout = useCallback(
@@ -144,14 +121,10 @@ export function SummarizeSidebar({
 
   const handleReplaceBreakouts = useCallback(
     (column: Lib.ColumnMetadata) => {
-      const nextQuery = Lib.replaceBreakouts(
-        query,
-        STAGE_INDEX,
-        maybeApplyDefaultBucket(column),
-      );
+      const nextQuery = Lib.replaceBreakouts(query, STAGE_INDEX, column);
       onQueryChange(nextQuery);
     },
-    [query, onQueryChange, maybeApplyDefaultBucket],
+    [query, onQueryChange],
   );
 
   const handleDoneClick = useCallback(() => {
