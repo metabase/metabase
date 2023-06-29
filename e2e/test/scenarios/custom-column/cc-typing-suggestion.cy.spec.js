@@ -80,7 +80,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     );
   });
 
-  it("should not show suggestions for an unfocused field", () => {
+  it("should not show suggestions for an unfocused field (metabase#31643)", () => {
     summarize({ mode: "notebook" });
     popover().findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "Count{enter}" });
