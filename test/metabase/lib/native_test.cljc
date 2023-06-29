@@ -126,7 +126,7 @@
                  "snippet:first snippet" (assoc s1 :id (str (random-uuid)))}))))))
 
 #?(:cljs
-   (deftest converters-test
+   (deftest ^:parallel converters-test
             (let [clj-tags {"a"  {:id           "c5ad010c-632a-4498-b667-9188fbe965f9"
                                   :name         "a"
                                   :display-name "A"
