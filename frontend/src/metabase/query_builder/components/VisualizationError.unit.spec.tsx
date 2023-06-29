@@ -68,7 +68,7 @@ describe("VisualizationError", () => {
         database: database.id,
         type: "native",
         native: {
-          query: '{ $lookup: { from: "orders", as: "result" } }',
+          query: "[]",
         },
       },
     });
