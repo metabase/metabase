@@ -46,7 +46,7 @@ export function BreakoutColumnList({
   );
 
   const pinnedItems = pinnedColumns.map(column =>
-    getColumnListItem(query, column),
+    getColumnListItem(query, breakouts, column),
   );
 
   const sections = getColumnSections(
@@ -87,30 +87,24 @@ export function BreakoutColumnList({
       </SearchContainer>
       {!isSearching && (
         <ul data-testid="pinned-dimensions">
-          {pinnedItems.map(item => {
-            const breakout =
-              item.breakoutPosition != null
-                ? breakouts[item.breakoutPosition]
-                : undefined;
-            return (
-              <BreakoutColumnListItem
-                key={item.longDisplayName}
-                query={query}
-                item={item}
-                breakout={breakout}
-                isPinned
-                onAddColumn={onAddBreakout}
-                onUpdateColumn={column => {
-                  if (breakout) {
-                    onUpdateBreakout(breakout, column);
-                  } else {
-                    onAddBreakout(column);
-                  }
-                }}
-                onRemoveColumn={handleRemovePinnedBreakout}
-              />
-            );
-          })}
+          {pinnedItems.map(item => (
+            <BreakoutColumnListItem
+              key={item.longDisplayName}
+              query={query}
+              item={item}
+              breakout={item.breakout}
+              isPinned
+              onAddColumn={onAddBreakout}
+              onUpdateColumn={column => {
+                if (item.breakout) {
+                  onUpdateBreakout(item.breakout, column);
+                } else {
+                  onAddBreakout(column);
+                }
+              }}
+              onRemoveColumn={handleRemovePinnedBreakout}
+            />
+          ))}
         </ul>
       )}
       <ul data-testid="unpinned-dimensions">
@@ -118,30 +112,24 @@ export function BreakoutColumnList({
           <li key={section.name}>
             <ColumnGroupName>{section.name}</ColumnGroupName>
             <ul>
-              {section.items.map(item => {
-                const breakout =
-                  item.breakoutPosition != null
-                    ? breakouts[item.breakoutPosition]
-                    : undefined;
-                return (
-                  <BreakoutColumnListItem
-                    key={item.longDisplayName}
-                    query={query}
-                    item={item}
-                    breakout={breakout}
-                    onAddColumn={onAddBreakout}
-                    onUpdateColumn={column => {
-                      if (breakout) {
-                        onUpdateBreakout(breakout, column);
-                      } else {
-                        onAddBreakout(column);
-                      }
-                    }}
-                    onRemoveColumn={onRemoveBreakout}
-                    onReplaceColumns={handleReplaceBreakout}
-                  />
-                );
-              })}
+              {section.items.map(item => (
+                <BreakoutColumnListItem
+                  key={item.longDisplayName}
+                  query={query}
+                  item={item}
+                  breakout={item.breakout}
+                  onAddColumn={onAddBreakout}
+                  onUpdateColumn={column => {
+                    if (item.breakout) {
+                      onUpdateBreakout(item.breakout, column);
+                    } else {
+                      onAddBreakout(column);
+                    }
+                  }}
+                  onRemoveColumn={onRemoveBreakout}
+                  onReplaceColumns={handleReplaceBreakout}
+                />
+              ))}
             </ul>
           </li>
         ))}
@@ -156,10 +144,20 @@ function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
 }
 
-function getColumnListItem(query: Lib.Query, column: Lib.ColumnMetadata) {
+function getColumnListItem(
+  query: Lib.Query,
+  breakouts: Lib.BreakoutClause[],
+  column: Lib.ColumnMetadata,
+) {
+  const displayInfo = Lib.displayInfo(query, STAGE_INDEX, column);
+  const breakout =
+    displayInfo.breakoutPosition != null
+      ? breakouts[displayInfo.breakoutPosition]
+      : undefined;
   return {
-    ...Lib.displayInfo(query, STAGE_INDEX, column),
+    ...displayInfo,
     column,
+    breakout,
   };
 }
 
@@ -168,13 +166,14 @@ function getColumnSections(
   columns: Lib.ColumnMetadata[],
   searchQuery: string,
 ) {
-  const formattedQuery = searchQuery.trim().toLowerCase();
+  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+  const formattedSearchQuery = searchQuery.trim().toLowerCase();
 
   const filteredColumns =
-    formattedQuery.length > 0
+    formattedSearchQuery.length > 0
       ? columns.filter(column => {
           const { displayName } = Lib.displayInfo(query, STAGE_INDEX, column);
-          return displayName.toLowerCase().includes(formattedQuery);
+          return displayName.toLowerCase().includes(formattedSearchQuery);
         })
       : columns;
 
@@ -182,7 +181,7 @@ function getColumnSections(
     const groupInfo = Lib.displayInfo(query, STAGE_INDEX, group);
 
     const items = Lib.getColumnsFromColumnGroup(group).map(column =>
-      getColumnListItem(query, column),
+      getColumnListItem(query, breakouts, column),
     );
 
     return {
