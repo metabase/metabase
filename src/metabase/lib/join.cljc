@@ -8,6 +8,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -24,7 +25,6 @@
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
-   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.util.malli :as mu]))
 
 (def ^:private JoinWithOptionalAlias
