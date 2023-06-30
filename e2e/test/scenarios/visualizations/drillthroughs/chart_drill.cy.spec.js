@@ -64,10 +64,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
     //       It is enough that we assert that the filter exists and that it starts with May, 2016
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Created At between May, 2016/);
+    cy.contains(/^Created At between May, 2022/);
     // more granular axis labels
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("June, 2016");
+    cy.contains("June, 2022");
     // confirm that product category is still broken out
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gadget");
@@ -111,7 +111,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       granularity === "month"
         ? // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Created At between September, 2016 February, 2017")
+          cy.findByText("Created At between September, 2022 February, 2023")
         : // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
           null;
 

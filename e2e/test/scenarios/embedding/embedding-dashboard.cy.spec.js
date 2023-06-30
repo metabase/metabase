@@ -201,7 +201,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       popover().within(() => {
         cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
 
-        cy.contains("Alycia McCullough - 2016");
+        cy.contains("Alycia McCullough - 2022");
       });
 
       cy.log("should allow searching PEOPLE.NAME by PEOPLE.NAME");
@@ -224,7 +224,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       popover().within(() => {
         cy.findByPlaceholderText("Search by Name or enter an ID").type("Aly");
 
-        cy.contains("Alycia McCullough - 2016");
+        cy.contains("Alycia McCullough - 2022");
       });
 
       cy.log("should accept url parameters");

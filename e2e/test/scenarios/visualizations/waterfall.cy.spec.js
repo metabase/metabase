@@ -116,7 +116,7 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     cy.get(".ace_text-input")
-      .type("between([Created At], '2016-01-01', '2016-08-01')")
+      .type("between([Created At], '2022-01-01', '2022-08-01')")
       .blur();
     cy.button("Done").click();
 

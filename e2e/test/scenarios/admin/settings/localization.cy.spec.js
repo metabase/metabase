@@ -23,12 +23,12 @@ describe("scenarios > admin > localization", () => {
     // summarize: Count by CreatedAt: Week
 
     cy.createQuestion({
-      name: "Orders created before June 1st 2016",
+      name: "Orders created before June 1st 2022",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2016-06-01"],
+        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
       },
       display: "line",
     });
@@ -36,12 +36,12 @@ describe("scenarios > admin > localization", () => {
     // find and open that question
     cy.visit("/collection/root");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders created before June 1st 2016").click();
+    cy.findByText("Orders created before June 1st 2022").click();
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    cy.get(".axis.x").contains("April 25, 2016");
+    cy.get(".axis.x").contains("April 25, 2022");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {

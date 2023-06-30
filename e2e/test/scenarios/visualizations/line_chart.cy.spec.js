@@ -342,13 +342,13 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries(0);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
             });
           });
@@ -391,13 +391,13 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries(0);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "2,829.03");
             });
           });
