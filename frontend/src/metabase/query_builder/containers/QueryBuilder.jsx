@@ -306,7 +306,7 @@ function QueryBuilder(props) {
   const shouldShowUnsavedChangesWarningForModels =
     isEditingModel && (isDirty || isMetadataDirty);
   const shouldShowUnsavedChangesWarningForSqlQuery =
-    isNativeEditorOpen && isQuestionEdited;
+    question != null && question.isNative() && isQuestionEdited;
 
   useBeforeUnload(
     shouldShowUnsavedChangesWarningForModels ||
