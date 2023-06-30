@@ -91,6 +91,7 @@ class TableInteractive extends Component {
       columnWidths: [],
       contentWidths: null,
       showDetailShortcut: true,
+      showAddControl: true,
     };
     this.columnHasResized = {};
     this.headerRefs = [];
@@ -973,6 +974,8 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
+    const addColumn = this.state.showAddControl ? 1 : 0;
+    const colCount = cols.length + gutterColumn + addColumn;
 
     return (
       <ScrollSync>
@@ -1051,21 +1054,63 @@ class TableInteractive extends Component {
                 height={headerHeight}
                 rowCount={1}
                 rowHeight={headerHeight}
-                columnCount={cols.length + gutterColumn}
+                columnCount={colCount}
                 columnWidth={this.getDisplayColumnWidth}
-                cellRenderer={props =>
-                  gutterColumn && props.columnIndex === 0
-                    ? () => null // we need a phantom cell to properly offset columns
-                    : this.tableHeaderRenderer({
-                        ...props,
-                        columnIndex: props.columnIndex - gutterColumn,
-                      })
-                }
+                cellRenderer={props => {
+                  if (gutterColumn && props.columnIndex === 0) {
+                    return null;
+                  }
+
+                  if (addColumn && props.columnIndex === colCount - 1) {
+                    return null;
+                  }
+
+                  return this.tableHeaderRenderer({
+                    ...props,
+                    columnIndex: props.columnIndex - gutterColumn,
+                  });
+                }}
                 onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                 scrollLeft={scrollLeft}
                 tabIndex={null}
                 scrollToColumn={scrollToColumn}
               />
+              {!!addColumn && (
+                <>
+                  <div
+                    className="TableInteractive-header TableInteractive--noHover flex align-center justify-center bg-white"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      right: 0,
+                      width: 60,
+                      height: headerHeight,
+                      zIndex: 4,
+                    }}
+                  >
+                    <span
+                      className="text-brand text-bold px2"
+                      onClick={() => alert("You added a new col!")}
+                    >
+                      +
+                    </span>
+                  </div>
+                  <div
+                    id="add-column"
+                    className="TableInteractive-gutter"
+                    style={{
+                      position: "absolute",
+                      top: headerHeight,
+                      right: 0,
+                      height: height - headerHeight - getScrollBarSize(),
+                      width: 60,
+                      zIndex: 3,
+                    }}
+                    onMouseMove={this.handleHoverRow}
+                    onMouseLeave={this.handleLeaveRow}
+                  ></div>
+                </>
+              )}
               <Grid
                 id="main-data-grid"
                 ref={ref => (this.grid = ref)}
@@ -1078,18 +1123,24 @@ class TableInteractive extends Component {
                 }}
                 width={width}
                 height={height - headerHeight}
-                columnCount={cols.length + gutterColumn}
+                columnCount={colCount}
                 columnWidth={this.getDisplayColumnWidth}
                 rowCount={rows.length}
                 rowHeight={ROW_HEIGHT}
-                cellRenderer={props =>
-                  gutterColumn && props.columnIndex === 0
-                    ? () => null // we need a phantom cell to properly offset columns
-                    : this.cellRenderer({
-                        ...props,
-                        columnIndex: props.columnIndex - gutterColumn,
-                      })
-                }
+                cellRenderer={props => {
+                  if (gutterColumn && props.columnIndex === 0) {
+                    return null;
+                  }
+
+                  if (addColumn && props.columnIndex === colCount - 1) {
+                    return null;
+                  }
+
+                  return this.cellRenderer({
+                    ...props,
+                    columnIndex: props.columnIndex - gutterColumn,
+                  });
+                }}
                 scrollTop={scrollTop}
                 onScroll={({ scrollLeft, scrollTop }) => {
                   this.props.onActionDismissal();
