@@ -286,8 +286,8 @@
   (let [stage-before (lib.util/query-stage query-before stage-number)
         stage-after  (lib.util/query-stage query-after stage-number)
         removed-cols (set/difference
-                      (set (lib.metadata.calculation/metadata query-before stage-number stage-before))
-                      (set (lib.metadata.calculation/metadata query-after stage-number stage-after)))
+                      (set (lib.metadata.calculation/returned-columns query-before stage-number stage-before))
+                      (set (lib.metadata.calculation/returned-columns query-after stage-number stage-after)))
         invalid-locs (referring-locations query-after stage-after removed-cols)
         paths        (stage-paths query-after stage-number)
         to-remove    (concat (clauses-to-remove stage-after paths (map first invalid-locs))

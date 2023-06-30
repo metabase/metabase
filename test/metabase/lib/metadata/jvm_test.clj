@@ -45,7 +45,7 @@
              {:lib/desired-column-alias "PRICE"}
              {:lib/desired-column-alias "Cat__ID"}
              {:lib/desired-column-alias "Cat__NAME"}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel join-with-aggregation-reference-in-fields-metadata-test
   (mt/dataset sample-dataset
@@ -92,7 +92,7 @@
                 :lib/desired-column-alias "Orders__sum"
                 :display-name "Sum of Quantity"
                 :source-alias "Orders"}]
-              (lib.metadata.calculation/metadata mlv2-query))))))
+              (lib.metadata.calculation/returned-columns mlv2-query))))))
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
   (t2.with-temp/with-temp [Card card {:dataset_query
@@ -144,7 +144,7 @@
                 :effective-type :type/Text
                 :semantic-type :type/Name}]
               (map #(lib/display-info mlv2-query %)
-                   (lib.metadata.calculation/metadata mlv2-query))))
+                   (lib.metadata.calculation/returned-columns mlv2-query))))
       (is (=? [{:display-name "Name"
                 :long-display-name "Name"
                 :effective-type :type/Text
@@ -154,4 +154,4 @@
                 :effective-type :type/Text
                 :semantic-type :type/Name}]
               (map #(lib/display-info agg-query %)
-                   (lib.metadata.calculation/metadata agg-query)))))))
+                   (lib.metadata.calculation/returned-columns agg-query)))))))

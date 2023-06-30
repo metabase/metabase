@@ -101,6 +101,6 @@
 
 (mr/def ::operator
   [:map
-   [:lib/type [:= :mbql.filter/operator]]
+   [:lib/type [:= :operator/filter]]
    [:short [:enum := :!= :inside :between :< :> :<= :>= :is-null :not-null :is-empty :not-empty :contains :does-not-contain :starts-with :ends-with]]
    [:display-name :string]])

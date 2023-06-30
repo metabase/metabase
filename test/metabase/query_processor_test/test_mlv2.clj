@@ -42,7 +42,7 @@
            pMBQL
            (^:once fn* []
             (let [mlv2-query    (lib/query (qp.store/metadata-provider) pMBQL)
-                  mlv2-metadata (lib.metadata.calculation/metadata mlv2-query)]
+                  mlv2-metadata (lib.metadata.calculation/returned-columns mlv2-query)]
               ;; Just make sure we can calculate some metadata (any metadata, even nothing) without throwing an
               ;; Exception at this point; making sure it is CORRECT will be the next step after this.
               (is (any? mlv2-metadata)))))))))))
