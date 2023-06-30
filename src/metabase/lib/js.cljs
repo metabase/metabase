@@ -585,3 +585,10 @@
   metadata objects."
   [a-query]
   (to-array (lib.core/available-metrics a-query)))
+
+(defn ^:export joinable-columns
+  "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
+  something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
+  selected columns (those in the join's `:fields`) will include `:selected true` information."
+  [query stage-number join-or-joinable]
+  (lib.core/joinable-columns query stage-number join-or-joinable))

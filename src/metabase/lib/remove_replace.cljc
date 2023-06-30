@@ -6,6 +6,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.match]
@@ -14,12 +15,15 @@
 
 (defn- stage-paths
   [query stage-number]
-  (let [join-indices (range (count (lib.join/joins query stage-number)))
+  (let [joins (lib.join/joins query stage-number)
+        join-indices (range (count joins))
         join-condition-paths (for [idx join-indices]
                                [:joins idx :conditions])
-        join-field-paths (for [idx join-indices]
+        join-field-paths (for [idx join-indices
+                               :let [join (nth joins idx)]
+                               :when (not (keyword? (:fields join)))]
                            [:joins idx :fields])]
-    (concat [[:order-by] [:breakout] [:filters] [:fields] [:aggregation] [:expressions]]
+    (concat [[:order-by] [:breakout] [:filters] [:fields] [:aggregation] [:expressions] [:joins]]
             join-field-paths
             join-condition-paths)))
 
@@ -63,7 +67,7 @@
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
   (let [result (lib.util/update-query-stage query stage-number
                                             remove-replace-fn location target-clause)
-        target-uuid (lib.util/clause-uuid target-clause)]
+        target-uuid (lib.options/uuid target-clause)]
     (if (not= query result)
       (mbql.match/match-one location
         [:expressions]
@@ -131,12 +135,12 @@
     (let [target-clause (lib.common/->op-arg target-clause)
           stage (lib.util/query-stage query stage-number)
           location (m/find-first
-                     (fn [possible-location]
-                       (when-let [clauses (get-in stage possible-location)]
-                         (let [target-uuid (lib.util/clause-uuid target-clause)]
-                           (when (some (comp #{target-uuid} :lib/uuid second) clauses)
-                             possible-location))))
-                     (stage-paths query stage-number))
+                    (fn [possible-location]
+                      (when-let [clauses (get-in stage possible-location)]
+                        (let [target-uuid (lib.options/uuid target-clause)]
+                          (when (some (comp #{target-uuid} lib.options/uuid) clauses)
+                            possible-location))))
+                    (stage-paths query stage-number))
           replace? (= :replace remove-or-replace)
           replacement-clause (when replace?
                                (lib.common/->op-arg replacement))
@@ -145,18 +149,18 @@
                               lib.util/remove-clause)
           changing-breakout? (= [:breakout] location)
           sync-breakout-ordering? (and replace?
-                                    changing-breakout?
-                                    (and (= (first target-clause)
-                                            (first replacement-clause))
-                                         (= (last target-clause)
-                                            (last replacement-clause))))
+                                       changing-breakout?
+                                       (and (= (first target-clause)
+                                               (first replacement-clause))
+                                            (= (last target-clause)
+                                               (last replacement-clause))))
           query (cond
                   sync-breakout-ordering?
                   (sync-order-by-options-with-breakout
-                    query
-                    stage-number
-                    target-clause
-                    (select-keys (second replacement-clause) [:binning :temporal-unit]))
+                   query
+                   stage-number
+                   target-clause
+                   (select-keys (second replacement-clause) [:binning :temporal-unit]))
 
                   changing-breakout?
                   (remove-breakout-order-by query stage-number target-clause)

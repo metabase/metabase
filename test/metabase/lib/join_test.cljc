@@ -535,3 +535,64 @@
               [:field {} (meta/id :venues :category-id)]
               [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
             (lib/join-conditions (first joins))))))
+
+(deftest ^:parallel joinable-columns-test
+  (are [table-or-card] (=? [{:lib/type :metadata/column, :name "ID"}
+                            {:lib/type :metadata/column, :name "NAME"}
+                            {:lib/type :metadata/column, :name "CATEGORY_ID"}
+                            {:lib/type :metadata/column, :name "LATITUDE"}
+                            {:lib/type :metadata/column, :name "LONGITUDE"}
+                            {:lib/type :metadata/column, :name "PRICE"}]
+                           (lib/joinable-columns lib.tu/venues-query -1 table-or-card))
+    (meta/table-metadata :venues)
+    meta/saved-question-CardMetadata))
+
+(deftest ^:parallel joinable-columns-join-test
+  (let [query           (lib.tu/query-with-join)
+        [original-join] (lib/joins query)]
+    (is (=? {:lib/type :mbql/join, :alias "Cat", :fields :all}
+            original-join))
+    (doseq [{:keys [fields id-selected? name-selected?]} [{:fields         :all
+                                                           :id-selected?   true
+                                                           :name-selected? true}
+                                                          {:fields         :none
+                                                           :id-selected?   false
+                                                           :name-selected? false}
+                                                          {:fields         nil
+                                                           :id-selected?   false
+                                                           :name-selected? false}
+                                                          {:fields         [[:field {:lib/uuid   (str (random-uuid))
+                                                                                     :join-alias "Cat"}
+                                                                             (meta/id :categories :id)]]
+                                                           :id-selected?   true
+                                                           :name-selected? false}]]
+      (testing (str "fields = " (pr-str fields))
+        (let [join  (lib/with-join-fields original-join fields)
+              query (lib/replace-clause query original-join join)
+              cols  (lib/joinable-columns query -1 join)]
+          (is (=? [{:name                         "ID"
+                    :metabase.lib.join/join-alias "Cat"
+                    :lib/source-column-alias      "ID"
+                    :lib/desired-column-alias     "Cat__ID"
+                    :selected?                    id-selected?}
+                   {:name                         "NAME"
+                    :metabase.lib.join/join-alias "Cat"
+                    :lib/source-column-alias      "NAME"
+                    :lib/desired-column-alias     "Cat__NAME"
+                    :selected?                    name-selected?}]
+                  cols))
+          (testing `lib/display-info
+            (is (=? [{:display-name "ID", :long-display-name "Cat → ID", :selected id-selected?}
+                     {:display-name "Name", :long-display-name "Cat → Name", :selected name-selected?}]
+                    (map (partial lib/display-info query) cols))))
+          (testing `lib/with-join-fields
+            (is (=? {:lib/type :mbql/join
+                     ;; TODO -- these should probably be using string names rather than integer IDs, see #29763. Okay for
+                     ;; now since the QP will do the right thing.
+                     :fields   [[:field
+                                 {:lib/uuid string?, :join-alias "Cat"}
+                                 (meta/id :categories :id)]
+                                [:field
+                                 {:lib/uuid string?, :join-alias "Cat"}
+                                 (meta/id :categories :name)]]}
+                    (lib/with-join-fields join cols)))))))))

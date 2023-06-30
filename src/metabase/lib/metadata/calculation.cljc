@@ -354,7 +354,7 @@
         :is-from-join           (= source :source/joins)
         :is-calculated          (= source :source/expressions)
         :is-implicitly-joinable (= source :source/implicitly-joinable)})
-     (when-let [selected (:selected? x-metadata)]
+     (when-some [selected (:selected? x-metadata)]
        {:selected selected})
      (select-keys x-metadata [:breakout-position :order-by-position]))))
 

@@ -55,12 +55,6 @@
   [clause]
   (clause-of-type? clause :field))
 
-(defn clause-uuid
-  "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
-  [clause]
-  (when (clause? clause)
-    (get-in clause [1 :lib/uuid])))
-
 (defn expression-name
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
   [clause]
@@ -83,7 +77,7 @@
    If a clause has :lib/uuid equal to the `target-clause` it is swapped with `new-clause`.
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
-  {:pre [(clause? target-clause)]}
+  {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
                      (named-expression-clause new-clause (expression-name target-clause))
                      new-clause)]
@@ -92,7 +86,7 @@
       location
       (fn [clause-or-clauses]
         (->> (for [clause clause-or-clauses]
-               (if (= (clause-uuid clause) (clause-uuid target-clause))
+               (if (= (lib.options/uuid clause) (lib.options/uuid target-clause))
                  new-clause
                  clause))
              vec)))))
@@ -106,9 +100,9 @@
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
-    (let [target-uuid (clause-uuid target-clause)
+    (let [target-uuid (lib.options/uuid target-clause)
           [first-loc last-loc] [(first location) (last location)]
-          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)
+          result (into [] (remove (comp #{target-uuid} lib.options/uuid)) target)
           result (when-not (and (= location [:fields])
                                 (every? #(clause-of-type? % :expression) result))
                    result)]

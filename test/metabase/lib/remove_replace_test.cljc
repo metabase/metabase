@@ -1,11 +1,14 @@
 (ns metabase.lib.remove-replace-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel remove-clause-order-bys-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -734,3 +737,18 @@
         (testing "by name"
           (is (=? result
                   (lib/remove-join query' 0 (second (lib/joins query' 0))))))))))
+
+(deftest ^:parallel replace-join-test
+  (testing "#32026"
+    (let [query           (lib.tu/query-with-join)
+          [original-join] (lib/joins query)]
+      (is (=? {:lib/type :mbql/join, :alias "Cat", :fields :all, :lib/options {:lib/uuid string?}}
+              original-join))
+      (is (string? (lib.options/uuid original-join)))
+      (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all, :lib/options {:lib/uuid string?}}]}]}
+              query))
+      (let [new-join (lib/with-join-fields original-join :none)]
+        (is (=? {:lib/type :mbql/join, :alias "Cat", :fields :none, :lib/options {:lib/uuid string?}}
+                new-join))
+        (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :none, :lib/options {:lib/uuid string?}}]}]}
+                (lib/replace-clause query original-join new-join)))))))

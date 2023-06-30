@@ -171,6 +171,7 @@
    join-conditions
    join-fields
    join-strategy
+   joinable-columns
    joins
    suggested-join-condition
    with-join-alias

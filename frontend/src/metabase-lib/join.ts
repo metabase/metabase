@@ -132,3 +132,11 @@ export type PickerInfo = {
 export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
   return ML.picker_info(query, metadata);
 }
+
+export function joinableColumns(
+  Query: Query,
+  stageIndex: number,
+  joinOrJoinable: Join | Joinable,
+): ColumnMetadata[] {
+  return ML.joinable_columns(query, stageIndex, joinOrJoinable);
+}
