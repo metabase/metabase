@@ -1,0 +1,172 @@
+(ns metabase.lib.filter.operator
+  (:require
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
+
+(mu/defn operator-def :- ::lib.schema.filter/operator
+  "Get a filter operator definition for the MBQL filter with `tag`, e.g. `:=`. In some cases various tags have alternate
+  display names used for different situations e.g. for numbers vs temporal values; pass in the
+  `display-name-style` to choose a non-default display-name."
+  ([tag]
+   (operator-def tag :default))
+
+  ([tag display-name-style]
+   {:lib/type             :operator/filter
+    :short                tag
+    :display-name-variant display-name-style}))
+
+(def ^:private key-operators
+  [(operator-def :=)
+   (operator-def :!=)
+   (operator-def :>)
+   (operator-def :<)
+   (operator-def :between)
+   (operator-def :>=)
+   (operator-def :<=)
+   (operator-def :is-null :is-empty)
+   (operator-def :not-null :not-empty)])
+
+(def ^:private location-operators
+  [(operator-def :=)
+   (operator-def :!=)
+   (operator-def :is-empty)
+   (operator-def :not-empty)
+   (operator-def :contains)
+   (operator-def :does-not-contain)
+   (operator-def :starts-with)
+   (operator-def :ends-with)])
+
+(def ^:private temporal-operators
+  [(operator-def :!= :excludes)
+   (operator-def :=)
+   (operator-def :< :before)
+   (operator-def :> :after)
+   (operator-def :between)
+   (operator-def :is-null :is-empty)
+   (operator-def :not-null :not-empty)])
+
+(def ^:private coordinate-operators
+  [(operator-def :=)
+   (operator-def :!=)
+   (operator-def :inside)
+   (operator-def :>)
+   (operator-def :<)
+   (operator-def :between)
+   (operator-def :>=)
+   (operator-def :<=)])
+
+(def ^:private number-operators
+  [(operator-def := :equal-to)
+   (operator-def :!= :not-equal-to)
+   (operator-def :>)
+   (operator-def :<)
+   (operator-def :between)
+   (operator-def :>=)
+   (operator-def :<=)
+   (operator-def :is-null :is-empty)
+   (operator-def :not-null :not-empty)])
+
+(def ^:private text-operators
+  [(operator-def :=)
+   (operator-def :!=)
+   (operator-def :contains)
+   (operator-def :does-not-contain)
+   (operator-def :is-null)
+   (operator-def :not-null)
+   (operator-def :is-empty)
+   (operator-def :not-empty)
+   (operator-def :starts-with)
+   (operator-def :ends-with)])
+
+(def ^:private text-like-operators
+  [(operator-def :=)
+   (operator-def :!=)
+   (operator-def :is-null)
+   (operator-def :not-null)
+   (operator-def :is-empty)
+   (operator-def :not-empty)])
+
+(def ^:private boolean-operators
+  [(operator-def :=)
+   (operator-def :is-null :is-empty)
+   (operator-def :not-null :not-empty)])
+
+(def ^:private default-operators
+  [(operator-def :=)
+   (operator-def :!=)
+   (operator-def :is-null)
+   (operator-def :not-null)])
+
+(def join-operators
+  "Operators that should be listed as options in join conditions."
+  [(operator-def :=)
+   (operator-def :>)
+   (operator-def :<)
+   (operator-def :>=)
+   (operator-def :<=)
+   (operator-def :!=)])
+
+(mu/defn filter-operators :- [:sequential ::lib.schema.filter/operator]
+  "The list of available filter operators.
+   The order of operators is relevant for the front end.
+   There are slight differences between names and ordering for the different base types."
+  [column :- lib.metadata/ColumnMetadata]
+  ;; The order of these clauses is important since we want to match the most relevant type
+  (condp #(lib.types.isa/isa? %2 %1) column
+    :type/PK         key-operators
+    :type/FK         key-operators
+    :type/Location   location-operators
+    :type/Temporal   temporal-operators
+    :type/Coordinate coordinate-operators
+    :type/Number     number-operators
+    :type/Text       text-operators
+    :type/TextLike   text-like-operators
+    :type/Boolean    boolean-operators
+    ;; default
+    default-operators))
+
+(defn- filter-operator-display-name [tag display-name-variant]
+  (case tag
+    :=                (case display-name-variant
+                        :equal-to (i18n/tru "Equal to")
+                        (i18n/tru "Is"))
+    :!=               (case display-name-variant
+                        :not-equal-to (i18n/tru "Not equal to")
+                        :excludes     (i18n/tru "Excludes")
+                        (i18n/tru "Is not"))
+    :>                (case display-name-variant
+                        :after (i18n/tru "After")
+                        (i18n/tru "Greater than"))
+    :<                (case display-name-variant
+                        :before (i18n/tru "Before")
+                        (i18n/tru "Less than"))
+    :between          (i18n/tru "Between")
+    :>=               (i18n/tru "Greater than or equal to")
+    :<=               (i18n/tru "Less than or equal to")
+    :is-null          (case display-name-variant
+                        :is-empty (i18n/tru "Is empty")
+                        (i18n/tru "Is null"))
+    :not-null         (case display-name-variant
+                        :not-empty (i18n/tru "Not empty")
+                        (i18n/tru "Not null"))
+    :is-empty         (i18n/tru "Is empty")
+    :not-empty        (i18n/tru "Not empty")
+    :contains         (i18n/tru "Contains")
+    :does-not-contain (i18n/tru "Does not contain")
+    :starts-with      (i18n/tru "Starts with")
+    :ends-with        (i18n/tru "Ends with")
+    :inside           (i18n/tru "Inside")))
+
+(defmethod lib.metadata.calculation/display-name-method :operator/filter
+  [_query _stage-number {short-name :short, :keys [display-name-variant]} _display-name-style]
+  (filter-operator-display-name short-name display-name-variant))
+
+(defmethod lib.metadata.calculation/display-info-method :operator/filter
+  [_query _stage-number {short-name :short, :keys [display-name-variant]}]
+  {:short-name   (u/qualified-name short-name)
+   :display-name (filter-operator-display-name short-name display-name-variant)})
