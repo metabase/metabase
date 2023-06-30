@@ -506,7 +506,7 @@ class TableInteractive extends Component {
     const { rows, cols } = data;
 
     const column = cols[columnIndex];
-    const isEntryHack = column.expression_name === "Comments";
+    const isEntryHack = column.expression_name?.includes("Comments");
     const row = rows[rowIndex];
     const value = row[columnIndex];
 
@@ -536,11 +536,7 @@ class TableInteractive extends Component {
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
-    const show = window.localStorage.getItem("mb-comments");
-    if (isEntryHack && !show) {
-      return null;
-    }
-    if (isEntryHack && show) {
+    if (isEntryHack) {
       return (
         <div
           key={key}
@@ -785,13 +781,6 @@ class TableInteractive extends Component {
     );
     const isSorted = sortIndex >= 0;
     const isAscending = isSorted && sort[sortIndex][0] === "asc";
-
-    if (
-      columnTitle === "Comments" &&
-      !window.localStorage.getItem("mb-comments")
-    ) {
-      return null;
-    }
 
     return (
       <Draggable
@@ -1054,9 +1043,6 @@ class TableInteractive extends Component {
       return <div className={className} />;
     }
 
-    window.query = this.props.query;
-    window.daprops = this.props;
-
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
     const addColumn = this.state.showAddControl ? 1 : 0;
@@ -1176,10 +1162,13 @@ class TableInteractive extends Component {
                     <span
                       className="text-brand text-bold px2"
                       onClick={() => {
-                        window.localStorage.setItem(
-                          "mb-comments",
-                          JSON.stringify({}),
+                        const updated = this.props.query.addExpression(
+                          "Comments",
+                          ["+", 1, 1],
                         );
+                        this.props.updateQuestion(updated.question(), {
+                          run: true,
+                        });
                       }}
                     >
                       +

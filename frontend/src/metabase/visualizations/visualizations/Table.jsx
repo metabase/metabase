@@ -416,6 +416,7 @@ export default class Table extends Component {
         isPivoted={isPivoted}
         sort={sort}
         getColumnTitle={this.getColumnTitle}
+        updateQuestion={this.props.updateQuestion}
       />
     );
   }
