@@ -48,6 +48,9 @@
 (mu/defn ^:export display-name :- :string
   "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
   different `style`s."
+  ([query]
+   (display-name query query))
+
   ([query x]
    (display-name query -1 x))
 
@@ -214,24 +217,23 @@
      :base-type    (type-of query stage-number x)
      :name         (column-name query stage-number x)
      :display-name (display-name query stage-number x)}
+    ;; if you see this error it's usually because you're calling [[metadata]] on something that you shouldn't be, for
+    ;; example a query
     (catch #?(:clj Throwable :cljs js/Error) e
-      (throw (ex-info (i18n/tru "Error calculating metadata {0}" (ex-message e))
+      (throw (ex-info (i18n/tru "Error calculating metadata for {0}: {1}"
+                                (pr-str (lib.dispatch/dispatch-value x))
+                                (ex-message e))
                       {:query query, :stage-number stage-number, :x x}
                       e)))))
 
-(def ColumnMetadataWithSource
-  "Schema for the column metadata that should be returned by [[metadata]]."
-  [:merge
-   lib.metadata/ColumnMetadata
-   [:map
-    [:lib/source ::lib.metadata/column-source]]])
-
-(mu/defn metadata
-  "Calculate appropriate metadata for something. What this looks like depends on what we're calculating metadata for.
-  If it's a reference or expression of some sort, this should return a single `:metadata/column` map (i.e., something
-  satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema. If it's something like a stage of a query or a join
-  definition, it should return a sequence of metadata maps for all the columns 'returned' at that stage of the query,
-  and include the `:lib/source` of where they came from."
+(mu/defn metadata :- [:map [:lib/type [:and
+                                       :keyword
+                                       [:fn
+                                        {:error/message ":lib/type should be a :metadata/ keyword"}
+                                        #(= (namespace %) "metadata")]]]]
+  "Calculate an appropriate `:metadata/*` object for something. What this looks like depends on what we're calculating
+  metadata for. If it's a reference or expression of some sort, this should return a single `:metadata/column`
+  map (i.e., something satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema."
   ([query]
    (metadata query -1 query))
   ([query x]
@@ -365,6 +367,13 @@
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table-id query) (:id table))}))
 
+(def ColumnMetadataWithSource
+  "Schema for the column metadata that should be returned by [[metadata]]."
+  [:merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:lib/source ::lib.metadata/column-source]]])
+
 (def ColumnsWithUniqueAliases
   "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
   to power metadata calculation for stages (see [[metabase.lib.stage]]."
@@ -386,13 +395,59 @@
        (empty? columns)
        (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
 
+(def ^:private UniqueNameFn
+  [:=>
+   [:cat ::lib.schema.common/non-blank-string]
+   ::lib.schema.common/non-blank-string])
+
+(def ExpectedColumnsOptions
+  "Schema for options passed to [[expected-columns]] and [[expected-columns-method]]."
+  [:map
+   ;; has the signature (f str) => str
+   [:unique-name-fn {:optional true} UniqueNameFn]])
+
+(mu/defn ^:private default-expected-columns-options :- ExpectedColumnsOptions
+  []
+  {:unique-name-fn (lib.util/unique-name-generator)})
+
+(defmulti expected-columns-method
+  "Impl for [[expected-columns]]."
+  {:arglists '([query stage-number x options])}
+  (fn [_query _stage-number x _options]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod expected-columns-method :dispatch-type/nil
+  [_query _stage-number _x _options]
+  [])
+
+(mu/defn expected-columns :- [:maybe ColumnsWithUniqueAliases]
+  "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
+  join, and include the `:lib/source` of where they came from. This should only include columns that will be present
+  in the results; DOES NOT include 'expected' columns that are not 'exported' to subsequent stages.
+
+  See [[ExpectedColumnsOptions]] for allowed options and [[default-expected-columns-options]] for default values."
+  ([query]
+   (expected-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (expected-columns query -1 x))
+
+  ([query stage-number x]
+   (expected-columns query stage-number x nil))
+
+  ([query          :- ::lib.schema/query
+    stage-number   :- :int
+    x
+    options        :- [:maybe ExpectedColumnsOptions]]
+   (let [options (merge (default-expected-columns-options) options)]
+     (expected-columns-method query stage-number x options))))
+
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
   [:map
    ;; has the signature (f str) => str
-   [:unique-name-fn               {:optional true} [:=>
-                                                    [:cat ::lib.schema.common/non-blank-string]
-                                                    ::lib.schema.common/non-blank-string]]
+   [:unique-name-fn               {:optional true} UniqueNameFn]
    ;; these all default to true
    [:include-joined?              {:optional true} :boolean]
    [:include-expressions?         {:optional true} :boolean]
@@ -423,6 +478,11 @@
 (defmethod visible-columns-method :dispatch-type/nil
   [_query _stage-number _x _options]
   [])
+
+;;; default impl is just the impl for [[expected-columns-method]]
+(defmethod visible-columns-method :default
+  [query stage-number x options]
+  (expected-columns-method query stage-number x options))
 
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a

@@ -21,8 +21,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(declare stage-metadata)
-
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
 
@@ -34,18 +32,28 @@
    {:aggregation (partial mapv lib.normalize/normalize)
     :filters     (partial mapv lib.normalize/normalize)}))
 
+(defmethod lib.metadata.calculation/metadata-method :mbql/stage
+  [_query _stage-number _stage]
+  ;; not i18n'ed because this shouldn't be developer-facing.
+  (throw (ex-info "You can't calculate a metadata map for a stage! Use lib.metadata.calculation/expected-columns-method instead."
+                  {})))
+
 (mu/defn ensure-previous-stages-have-metadata :- ::lib.schema/query
   "Recursively calculate the metadata for the previous stages and add it to them, we'll need it for metadata
-  calculations for `stage-number` and we don't want to have to calculate it more than once..."
+  calculations for [[lib.metadata.calculation/expected-columns]] and [[lib.metadata.calculation/visible-columns]], and
+  we don't want to have to calculate it more than once..."
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-    (cond-> query
-      previous-stage-number
-      (lib.util/update-query-stage previous-stage-number
-                                   assoc
-                                   ::cached-metadata
-                                   (stage-metadata query previous-stage-number)))))
+  (reduce
+   (fn [query stage-number]
+     (lib.util/update-query-stage query
+                                  stage-number
+                                  assoc ::cached-metadata
+                                  (lib.metadata.calculation/expected-columns query
+                                                                             stage-number
+                                                                             (lib.util/query-stage query stage-number))))
+   query
+   (range 0 (lib.util/absolute-stage-number query stage-number))))
 
 (mu/defn ^:private existing-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Return existing stage metadata attached to a stage if is already present: return it as-is, but only if this is a
@@ -128,7 +136,9 @@
    unique-name-fn :- fn?]
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (not-empty
-     (for [col  (stage-metadata query previous-stage-number)
+     (for [col  (lib.metadata.calculation/expected-columns query
+                                                           previous-stage-number
+                                                           (lib.util/query-stage query previous-stage-number))
            :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
                                   (lib.metadata.calculation/column-name query stage-number col))]]
        (-> col
@@ -301,8 +311,7 @@
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
-  (let [;; query   (lib.util/update-query-stage query stage-number dissoc :fields :breakout :aggregation)
-        query            (ensure-previous-stages-have-metadata query stage-number)
+  (let [query            (ensure-previous-stages-have-metadata query stage-number)
         existing-columns (existing-visible-columns query stage-number options)]
     (->> (concat
            existing-columns
@@ -311,48 +320,38 @@
              (implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          (mark-selected-breakouts query stage-number))))
 
-(mu/defn ^:private stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  "Return results metadata about the expected columns in an MBQL query stage. If the query has
-  aggregations/breakouts, then return those and the fields columns.
-  Otherwise if there are fields columns return those and the joined columns.
-  Otherwise return the defaults based on the source Table or previous stage + joins."
-  ([query stage-number]
-   (stage-metadata query stage-number (lib.util/unique-name-generator)))
+;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
+;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
+;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
+(defmethod lib.metadata.calculation/expected-columns-method ::stage
+  [query stage-number _stage {:keys [unique-name-fn], :as options}]
+  (or
+   (existing-stage-metadata query stage-number)
+   (let [query        (ensure-previous-stages-have-metadata query stage-number)
+         summary-cols (summary-columns query stage-number unique-name-fn)
+         field-cols   (fields-columns query stage-number unique-name-fn)]
+     ;; ... then calculate metadata for this stage
+     (cond
+       summary-cols
+       (into summary-cols field-cols)
 
-  ([query          :- ::lib.schema/query
-    stage-number   :- :int
-    unique-name-fn :- fn?]
-   (or
-    (existing-stage-metadata query stage-number)
-    (let [query        (ensure-previous-stages-have-metadata query stage-number)
-          summary-cols (summary-columns query stage-number unique-name-fn)
-          field-cols   (fields-columns query stage-number unique-name-fn)]
-      ;; ... then calculate metadata for this stage
-      (cond
-        summary-cols
-        (into summary-cols field-cols)
+       field-cols
+       (do (doall field-cols)           ; force generation of unique names before join columns
+           (into []
+                 (m/distinct-by #(dissoc % :source-alias :lib/source :lib/source-uuid :lib/desired-column-alias))
+                 (concat field-cols
+                         (lib.join/all-joins-expected-columns query stage-number options))))
 
-        field-cols
-        (do (doall field-cols)          ; force generation of unique names before join columns
-            (into []
-                  (m/distinct-by #(dissoc % :source-alias :lib/source :lib/source-uuid :lib/desired-column-alias))
-                  (concat field-cols
-                          (lib.join/all-joins-metadata query stage-number unique-name-fn))))
-
-        :else
-        ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible
-        ;; columns from the source or previous stage plus all the expressions. We return only the `:fields` from any
-        ;; joins
-        (concat
-         ;; we don't want to include all visible joined columns, so calculate that separately
-         (previous-stage-or-source-visible-columns query stage-number {:include-implicitly-joinable? false
-                                                                       :unique-name-fn               unique-name-fn})
-         (expressions-metadata query stage-number unique-name-fn)
-         (lib.join/all-joins-metadata query stage-number unique-name-fn)))))))
-
-(defmethod lib.metadata.calculation/metadata-method ::stage
-  [query stage-number _stage]
-  (stage-metadata query stage-number))
+       :else
+       ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible
+       ;; columns from the source or previous stage plus all the expressions. We return only the `:fields` from any
+       ;; joins
+       (concat
+        ;; we don't want to include all visible joined columns, so calculate that separately
+        (previous-stage-or-source-visible-columns query stage-number {:include-implicitly-joinable? false
+                                                                      :unique-name-fn               unique-name-fn})
+        (expressions-metadata query stage-number unique-name-fn)
+        (lib.join/all-joins-expected-columns query stage-number options))))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
   [_query _stage-number _stage _style]

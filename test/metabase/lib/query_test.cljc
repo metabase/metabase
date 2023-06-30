@@ -25,7 +25,7 @@
                 " Filtered by Name equals \"Toucannery\","
                 " Sorted by ID ascending,"
                 " 100 rows")
-           (lib.metadata.calculation/display-name query -1 query)
+           (lib.metadata.calculation/display-name query)
            (lib.metadata.calculation/describe-query query)
            (lib.metadata.calculation/suggested-name query)))))
 

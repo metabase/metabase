@@ -147,7 +147,7 @@
                            :dataset-query card-query}
           ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
           ;; sure we're not including it twice.
-          result-metadata (for [col (lib.metadata.calculation/metadata
+          result-metadata (for [col (lib.metadata.calculation/expected-columns
                                      (lib/saved-question-query
                                       meta/metadata-provider
                                       {:dataset-query card-query}))]
@@ -419,7 +419,7 @@
   (testing "There should be no binning strategies for expressions as they are not supported (#31367)"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
-      (is (empty? (->> (lib.metadata.calculation/metadata query)
+      (is (empty? (->> (lib.metadata.calculation/expected-columns query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-binning-strategies query)))))))
 
@@ -476,7 +476,7 @@
              {:lib/desired-column-alias "PRICE"}
              {:lib/desired-column-alias "Cat__ID"}
              {:lib/desired-column-alias "Cat__NAME"}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib.metadata.calculation/expected-columns query)))))
 
 (deftest ^:parallel field-ref-type-of-test
   (testing "Make sure we can calculate field ref type information correctly"
@@ -579,7 +579,7 @@
                 :lib/source               :source/aggregations
                 :lib/source-column-alias  "avg"
                 :lib/desired-column-alias "avg"}]
-              (lib.metadata.calculation/metadata query))))))
+              (lib.metadata.calculation/expected-columns query))))))
 
 (deftest ^:parallel with-fields-test
   (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -674,7 +674,7 @@
                :lib/card-id              3
                :lib/source-column-alias  "Field 4"
                :lib/desired-column-alias "Field 4"}]
-             (lib.metadata.calculation/metadata query)))
+             (lib.metadata.calculation/expected-columns query)))
       (is (= {:lib/type                :metadata/column
               :base-type               :type/Text
               :effective-type          :type/Text
@@ -711,7 +711,7 @@
              :lib/desired-column-alias "Categories__NAME"}
             joined-col))
     (testing "Metadata should not contain inherited join information"
-      (is (not-any? :metabase.lib.join/join-alias (lib.metadata.calculation/metadata query))))
+      (is (not-any? :metabase.lib.join/join-alias (lib.metadata.calculation/expected-columns query))))
     (testing "Reference a joined column from a previous stage w/ desired-column-alias and w/o join-alias"
       (is (=? {:lib/type :mbql.stage/mbql,
                :breakout [[:field
