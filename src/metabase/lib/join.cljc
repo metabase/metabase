@@ -560,7 +560,7 @@
     (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false}))))
 
 (defn- join-condition-operator-definitions []
-  [(lib.filter/operator-def := :equal-to)
+  [(assoc (lib.filter/operator-def := :equal-to) :default true)
    (lib.filter/operator-def :>)
    (lib.filter/operator-def :<)
    (lib.filter/operator-def :>=)

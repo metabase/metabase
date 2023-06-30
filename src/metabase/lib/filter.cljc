@@ -177,9 +177,10 @@
   display-name)
 
 (defmethod lib.metadata.calculation/display-info-method :operator/filter
-  [_query _stage-number {:keys [display-name] short-name :short}]
-  {:short-name (u/qualified-name short-name)
-   :display-name display-name})
+  [_query _stage-number {:keys [display-name default] short-name :short}]
+  (cond-> {:short-name   (u/qualified-name short-name)
+           :display-name display-name}
+    default (assoc :default true)))
 
 (defn operator-def
   "Get a filter operator definition for the MBQL filter with `tag`, e.g. `:=`. In some cases various tags have alternate
