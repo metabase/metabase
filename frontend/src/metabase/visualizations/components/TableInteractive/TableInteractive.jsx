@@ -552,7 +552,10 @@ class TableInteractive extends Component {
           }}
         >
           {this.props.renderTableCellWrapper(
-            <EditableCell data={data} row={row} />,
+            <EditableCell
+              row={row}
+              questionId={this.props.query.question()._card.id}
+            />,
           )}
         </div>
       );
