@@ -400,65 +400,66 @@
    [:cat ::lib.schema.common/non-blank-string]
    ::lib.schema.common/non-blank-string])
 
-(def ExpectedColumnsOptions
-  "Schema for options passed to [[expected-columns]] and [[expected-columns-method]]."
+(def ReturnedColumnsOptions
+  "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:map
    ;; has the signature (f str) => str
    [:unique-name-fn {:optional true} UniqueNameFn]])
 
-(mu/defn ^:private default-expected-columns-options :- ExpectedColumnsOptions
+(mu/defn ^:private default-returned-columns-options :- ReturnedColumnsOptions
   []
   {:unique-name-fn (lib.util/unique-name-generator)})
 
-(defmulti expected-columns-method
-  "Impl for [[expected-columns]]."
+(defmulti returned-columns-method
+  "Impl for [[returned-columns]]."
   {:arglists '([query stage-number x options])}
   (fn [_query _stage-number x _options]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod expected-columns-method :dispatch-type/nil
+(defmethod returned-columns-method :dispatch-type/nil
   [_query _stage-number _x _options]
   [])
 
-(mu/defn expected-columns :- [:maybe ColumnsWithUniqueAliases]
+(mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
   in the results; DOES NOT include 'expected' columns that are not 'exported' to subsequent stages.
 
-  See [[ExpectedColumnsOptions]] for allowed options and [[default-expected-columns-options]] for default values."
+  See [[ReturnedColumnsOptions]] for allowed options and [[default-returned-columns-options]] for default values."
   ([query]
-   (expected-columns query (lib.util/query-stage query -1)))
+   (returned-columns query (lib.util/query-stage query -1)))
 
   ([query x]
-   (expected-columns query -1 x))
+   (returned-columns query -1 x))
 
   ([query stage-number x]
-   (expected-columns query stage-number x nil))
+   (returned-columns query stage-number x nil))
 
   ([query          :- ::lib.schema/query
     stage-number   :- :int
     x
-    options        :- [:maybe ExpectedColumnsOptions]]
-   (let [options (merge (default-expected-columns-options) options)]
-     (expected-columns-method query stage-number x options))))
+    options        :- [:maybe ReturnedColumnsOptions]]
+   (let [options (merge (default-returned-columns-options) options)]
+     (returned-columns-method query stage-number x options))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
-  [:map
-   ;; has the signature (f str) => str
-   [:unique-name-fn               {:optional true} UniqueNameFn]
-   ;; these all default to true
-   [:include-joined?              {:optional true} :boolean]
-   [:include-expressions?         {:optional true} :boolean]
-   [:include-implicitly-joinable? {:optional true} :boolean]])
+  [:merge
+   ReturnedColumnsOptions
+   [:map
+    ;; these all default to true
+    [:include-joined?              {:optional true} :boolean]
+    [:include-expressions?         {:optional true} :boolean]
+    [:include-implicitly-joinable? {:optional true} :boolean]]])
 
 (mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
   []
-  {:unique-name-fn               (lib.util/unique-name-generator)
-   :include-joined?              true
-   :include-expressions?         true
-   :include-implicitly-joinable? true})
+  (merge
+   (default-returned-columns-options)
+   {:include-joined?              true
+    :include-expressions?         true
+    :include-implicitly-joinable? true}))
 
 (defmulti visible-columns-method
   "Impl for [[visible-columns]].
@@ -479,10 +480,10 @@
   [_query _stage-number _x _options]
   [])
 
-;;; default impl is just the impl for [[expected-columns-method]]
+;;; default impl is just the impl for [[returned-columns-method]]
 (defmethod visible-columns-method :default
   [query stage-number x options]
-  (expected-columns-method query stage-number x options))
+  (returned-columns-method query stage-number x options))
 
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a

@@ -25,12 +25,12 @@
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
   [_query _stage-number _query]
   ;; not i18n'ed because this shouldn't be developer-facing.
-  (throw (ex-info "You can't calculate a metadata map for a query! Use lib.metadata.calculation/expected-columns-method instead."
+  (throw (ex-info "You can't calculate a metadata map for a query! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(defmethod lib.metadata.calculation/expected-columns-method :mbql/query
+(defmethod lib.metadata.calculation/returned-columns-method :mbql/query
   [query stage-number a-query options]
-  (lib.metadata.calculation/expected-columns query stage-number (lib.util/query-stage a-query stage-number) options))
+  (lib.metadata.calculation/returned-columns query stage-number (lib.util/query-stage a-query stage-number) options))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/query
   [query stage-number x style]

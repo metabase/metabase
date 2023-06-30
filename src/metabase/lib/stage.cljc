@@ -32,15 +32,15 @@
    {:aggregation (partial mapv lib.normalize/normalize)
     :filters     (partial mapv lib.normalize/normalize)}))
 
-(defmethod lib.metadata.calculation/metadata-method :mbql/stage
+(defmethod lib.metadata.calculation/metadata-method ::stage
   [_query _stage-number _stage]
   ;; not i18n'ed because this shouldn't be developer-facing.
-  (throw (ex-info "You can't calculate a metadata map for a stage! Use lib.metadata.calculation/expected-columns-method instead."
+  (throw (ex-info "You can't calculate a metadata map for a stage! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
 (mu/defn ensure-previous-stages-have-metadata :- ::lib.schema/query
   "Recursively calculate the metadata for the previous stages and add it to them, we'll need it for metadata
-  calculations for [[lib.metadata.calculation/expected-columns]] and [[lib.metadata.calculation/visible-columns]], and
+  calculations for [[lib.metadata.calculation/returned-columns]] and [[lib.metadata.calculation/visible-columns]], and
   we don't want to have to calculate it more than once..."
   [query        :- ::lib.schema/query
    stage-number :- :int]
@@ -49,11 +49,11 @@
      (lib.util/update-query-stage query
                                   stage-number
                                   assoc ::cached-metadata
-                                  (lib.metadata.calculation/expected-columns query
+                                  (lib.metadata.calculation/returned-columns query
                                                                              stage-number
                                                                              (lib.util/query-stage query stage-number))))
    query
-   (range 0 (lib.util/absolute-stage-number query stage-number))))
+   (range 0 (lib.util/canonical-stage-index query stage-number))))
 
 (mu/defn ^:private existing-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Return existing stage metadata attached to a stage if is already present: return it as-is, but only if this is a
@@ -136,7 +136,7 @@
    unique-name-fn :- fn?]
   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
     (not-empty
-     (for [col  (lib.metadata.calculation/expected-columns query
+     (for [col  (lib.metadata.calculation/returned-columns query
                                                            previous-stage-number
                                                            (lib.util/query-stage query previous-stage-number))
            :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
@@ -323,7 +323,7 @@
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
-(defmethod lib.metadata.calculation/expected-columns-method ::stage
+(defmethod lib.metadata.calculation/returned-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn], :as options}]
   (or
    (existing-stage-metadata query stage-number)

@@ -107,7 +107,7 @@
               :display-name "prev_month"
               :base-type    :type/DateTime
               :lib/source   :source/expressions}]
-            (lib.metadata.calculation/expected-columns query)))))
+            (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add

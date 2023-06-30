@@ -103,7 +103,7 @@
 (defmethod lib.metadata.calculation/metadata-method :mbql/join
   [_query _stage-number _query]
   ;; not i18n'ed because this shouldn't be developer-facing.
-  (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/expected-columns-method instead."
+  (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
 (mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
@@ -142,7 +142,7 @@
          :lib/source-column-alias  (:name col)
          :lib/desired-column-alias (unique-name-fn (joined-field-desired-alias (:alias join) (:name col)))))
 
-(defmethod lib.metadata.calculation/expected-columns-method :mbql/join
+(defmethod lib.metadata.calculation/returned-columns-method :mbql/join
   [query
    stage-number
    {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join}
@@ -153,7 +153,7 @@
                        ensure-previous-stages-have-metadata
                        (ensure-previous-stages-have-metadata -1))
           field-metadatas (if (= fields :all)
-                            (lib.metadata.calculation/expected-columns join-query -1 (peek stages) options)
+                            (lib.metadata.calculation/returned-columns join-query -1 (peek stages) options)
                             (for [field-ref fields
                                   :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
                               (lib.metadata.calculation/metadata join-query -1 join-field)))]
@@ -164,7 +164,7 @@
 
 (defmethod lib.metadata.calculation/visible-columns-method :mbql/join
   [query stage-number join options]
-  (lib.metadata.calculation/expected-columns query stage-number (assoc join :fields :all) options))
+  (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all) options))
 
 (mu/defn all-joins-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
@@ -181,13 +181,13 @@
         (:joins (lib.util/query-stage query stage-number))))
 
 (mu/defn all-joins-expected-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
-  "Convenience for calling [[lib.metadata.calculation/expected-columns-method]] on all the joins in a query stage."
+  "Convenience for calling [[lib.metadata.calculation/returned-columns-method]] on all the joins in a query stage."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   options      :- lib.metadata.calculation/ExpectedColumnsOptions]
+   options      :- lib.metadata.calculation/ReturnedColumnsOptions]
   (into []
         (mapcat (fn [join]
-                  (lib.metadata.calculation/expected-columns query stage-number join options)))
+                  (lib.metadata.calculation/returned-columns query stage-number join options)))
         (:joins (lib.util/query-stage query stage-number))))
 
 (defmulti join-clause-method
@@ -228,8 +228,8 @@
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([joinable]
-   (merge {:fields :all}
-          (join-clause-method joinable)))
+   ;; FIXME -- we should add `:fields :all` by default, but blocked by #32026
+   (join-clause-method joinable))
 
   ([joinable conditions]
    (with-join-conditions (join-clause joinable) conditions)))
@@ -359,7 +359,7 @@
                         (generate-unique-name (map :alias (:joins stage))))
         home-refs   (mapv lib.ref/ref home-cols)
         join-refs   (mapv lib.ref/ref
-                          (lib.metadata.calculation/expected-columns
+                          (lib.metadata.calculation/returned-columns
                            (lib.query/query-with-stages query (:stages a-join))))]
     (-> a-join
         (update :conditions
@@ -618,11 +618,9 @@
   [cols a-join]
   (let [j-fields (join-fields a-join)]
     (case j-fields
-      :all        (mapv (fn [col]
-                          (assoc col :selected? true))
+      :all        (mapv #(assoc % :selected? true)
                         cols)
-      (:none nil) (mapv (fn [col]
-                          (assoc col :selected? false))
+      (:none nil) (mapv #(assoc % :selected? false)
                         cols)
       ;; figure out which columns are in `:fields`, and then match them to the closest match out of `all-source-refs`.
       (let [selected-fields-refs (mapv lib.ref/ref j-fields)
@@ -652,7 +650,7 @@
         source (if a-join
                  (joined-thing query join-or-joinable)
                  join-or-joinable)
-        cols   (lib.metadata.calculation/expected-columns query stage-number source)]
+        cols   (lib.metadata.calculation/returned-columns query stage-number source)]
     (cond-> cols
       a-join (add-join-alias-to-joinable-columns a-join)
       a-join (mark-selected-joinable-columns a-join))))

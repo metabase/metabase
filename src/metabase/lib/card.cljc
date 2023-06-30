@@ -33,7 +33,7 @@
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
   (when (some? card-query)
-    (lib.metadata.calculation/expected-columns (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
+    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
 
 (def ^:private Card
   [:map
@@ -75,7 +75,7 @@
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
     (card-metadata-columns metadata-providerable card)))
 
-(defmethod lib.metadata.calculation/expected-columns-method :metadata/card
+(defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as _options}]
   (mapv (fn [col]
           (assoc col :lib/desired-column-alias (unique-name-fn (:name col))))
