@@ -437,7 +437,7 @@ describe("Question", () => {
         expect(question.display()).toBe("table");
       });
 
-      it("should unlock and use new sensible display when it was locked with sensible display which has become unsensible", () => {
+      it("should unlock and use new sensible display when it was locked with sensible display which has become not sensible", () => {
         const previousSensibleDisplays = ["funnel"];
         const sensibleDisplays = ["table", "scalar"];
         const question = orders_count_question
@@ -450,7 +450,7 @@ describe("Question", () => {
         expect(sensibleDisplays).toContain(question.display());
       });
 
-      it("should keep sensible display when display was locked", () => {
+      it("should keep any sensible display when display was locked", () => {
         const sensibleDisplays = ["table", "scalar"];
         const question = base_question
           .setDisplay("scalar")
@@ -461,7 +461,7 @@ describe("Question", () => {
         expect(question.display()).toBe("scalar");
       });
 
-      it("should keep sensible display when display was not locked", () => {
+      it("should keep any sensible display when display was not locked", () => {
         const sensibleDisplays = ["table", "scalar"];
         const question = base_question
           .setDisplay("scalar")
