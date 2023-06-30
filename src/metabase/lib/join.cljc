@@ -132,6 +132,20 @@
               (column-from-join-fields query stage-number field-metadata join-alias))
             field-metadatas))))
 
+(defmethod lib.metadata.calculation/display-name-method :option/join.strategy
+  [_query _stage-number {:keys [strategy]} _style]
+  (case strategy
+    :left-join  (i18n/tru "Left outer join")
+    :right-join (i18n/tru "Right outer join")
+    :inner-join (i18n/tru "Inner join")
+    :full-join  (i18n/tru "Full outer join")))
+
+(defmethod lib.metadata.calculation/display-info-method :option/join.strategy
+  [query stage-number {:keys [strategy default], :as option}]
+  (cond-> {:short-name   (u/qualified-name strategy)
+           :display-name (lib.metadata.calculation/display-name query stage-number option)}
+    default (assoc :default true)))
+
 (mu/defn joined-field-desired-alias :- ::lib.schema.common/non-blank-string
   "Desired alias for a Field that comes from a join, e.g.
 
@@ -396,24 +410,40 @@
   [j :- ::lib.schema.join/join]
   (:conditions j))
 
-(mu/defn join-fields :- [:maybe ::lib.schema/fields]
+(mu/defn join-fields :- [:maybe ::lib.schema.join/fields]
   "Get all join conditions for the given join"
   [j :- ::lib.schema.join/join]
   (:fields j))
 
-(mu/defn join-strategy :- ::lib.schema.join/strategy
+(defn- raw-join-strategy->strategy-option [raw-strategy]
+  (merge
+   {:lib/type :option/join.strategy
+    :strategy raw-strategy}
+   (when (= raw-strategy :left-join)
+     {:default true})))
+
+(mu/defn raw-join-strategy :- ::lib.schema.join/strategy
   "Get the raw keyword strategy (type) of a given join, e.g. `:left-join` or `:right-join`. This is either the value
   of the optional `:strategy` key or the default, `:left-join`, if `:strategy` is not specified."
   [a-join :- ::lib.schema.join/join]
   (get a-join :strategy :left-join))
 
+(mu/defn join-strategy :- ::lib.schema.join/strategy.option
+  "Get the strategy (type) of a given join, as a `:option/join.strategy` map. If `:stategy` is unspecified, returns
+  the default, left join."
+  [a-join :- ::lib.schema.join/join]
+  (raw-join-strategy->strategy-option (raw-join-strategy a-join)))
+
 (mu/defn with-join-strategy :- PartialJoin
   "Return a copy of `a-join` with its `:strategy` set to `strategy`."
   [a-join   :- PartialJoin
-   strategy :- ::lib.schema.join/strategy]
-  (assoc a-join :strategy strategy))
+   strategy :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
+  ;; unwrap the strategy to a raw keyword if needed.
+  (assoc a-join :strategy (cond-> strategy
+                            (= (lib.dispatch/dispatch-value strategy) :option/join.strategy)
+                            :strategy)))
 
-(mu/defn available-join-strategies :- [:sequential ::lib.schema.join/strategy]
+(mu/defn available-join-strategies :- [:sequential ::lib.schema.join/strategy.option]
   "Get available join strategies for the current Database (based on the Database's
   supported [[metabase.driver/driver-features]]) as raw keywords like `:left-join`."
   ([query]
@@ -424,11 +454,10 @@
     _stage-number :- :int]
    (let [database (lib.metadata/database query)
          features (:features database)]
-     (filterv (partial contains? features)
-              [:left-join
-               :right-join
-               :inner-join
-               :full-join]))))
+     (into []
+           (comp (filter (partial contains? features))
+                 (map raw-join-strategy->strategy-option))
+           [:left-join :right-join :inner-join :full-join]))))
 
 ;;; Building join conditions:
 ;;;
@@ -518,18 +547,13 @@
    (sort-join-condition-columns
     (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false}))))
 
-;;; TODO -- definitions duplicated with code in [[metabase.lib.filter]]
-
-(defn- equals-join-condition-operator-definition []
-  {:lib/type :mbql.filter/operator, :short :=, :display-name  (i18n/tru "Equal to"), :default true})
-
 (defn- join-condition-operator-definitions []
-  [(equals-join-condition-operator-definition)
-   {:lib/type :mbql.filter/operator, :short :>, :display-name  (i18n/tru "Greater than")}
-   {:lib/type :mbql.filter/operator, :short :<, :display-name  (i18n/tru "Less than")}
-   {:lib/type :mbql.filter/operator, :short :>=, :display-name (i18n/tru "Greater than or equal to")}
-   {:lib/type :mbql.filter/operator, :short :<=, :display-name (i18n/tru "Less than or equal to")}
-   {:lib/type :mbql.filter/operator, :short :!=, :display-name (i18n/tru "Not equal to")}])
+  [(assoc (lib.filter/operator-def := :equal-to) :default true)
+   (lib.filter/operator-def :>)
+   (lib.filter/operator-def :<)
+   (lib.filter/operator-def :>=)
+   (lib.filter/operator-def :<=)
+   (lib.filter/operator-def :!= :not-equal-to)])
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
@@ -578,7 +602,7 @@
     joinable]
    (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
-       (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))
+       (lib.filter/filter-clause (lib.filter/operator-def := :equal-to) fk-col pk-col)))))
 
 (mu/defn joined-thing :- [:maybe [:or lib.metadata/TableMetadata lib.metadata/CardMetadata]]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."

@@ -212,7 +212,9 @@
               :lib/source               :source/joins
               :lib/source-column-alias  "count"
               :lib/desired-column-alias "count"}]
-            (lib.metadata.calculation/metadata query -1 join)))))
+            (lib.metadata.calculation/metadata query -1 join)))
+    (is (= (assoc card-1 :lib/type :metadata/card)
+           (lib.join/joined-thing query join)))))
 
 (deftest ^:parallel joins-source-and-desired-aliases-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -240,6 +242,12 @@
               ::lib.join/join-alias     "Cat"
               :lib/source               :source/joins}]
             (lib.metadata.calculation/metadata query)))
+    (is (=? {:lib/type :metadata/table
+             :db-id (meta/id)
+             :name "CATEGORIES"
+             :id (meta/id :categories)
+             :display-name "Categories"}
+            (lib.join/joined-thing query (first (lib/joins query)))))
     (is (=? [{:table             {:name              "VENUES"
                                   :display-name      "Venues"
                                   :long-display-name "Venues"
@@ -323,36 +331,57 @@
         [join] (lib/joins query)]
     (testing "join without :strategy"
       (is (= :left-join
+             (lib/raw-join-strategy join)))
+      (is (= {:lib/type :option/join.strategy, :strategy :left-join, :default true}
              (lib/join-strategy join))))
     (testing "join with explicit :strategy"
       (let [join' (lib/with-join-strategy join :right-join)]
         (is (=? {:strategy :right-join}
                 join'))
         (is (= :right-join
+               (lib/raw-join-strategy join')))
+        (is (= {:lib/type :option/join.strategy, :strategy :right-join}
                (lib/join-strategy join')))))))
 
 (deftest ^:parallel with-join-strategy-test
-  (testing "Make sure `with-join-alias` works with unresolved functions"
-    (is (=? {:stages [{:joins [{:conditions [[:=
-                                              {}
-                                              [:field
-                                               {:join-alias (symbol "nil #_\"key is not present.\"")}
-                                               (meta/id :venues :category-id)]
-                                              [:field
-                                               {:join-alias "Categories"}
-                                               (meta/id :categories :id)]]],
-                                :strategy :right-join,
-                                :alias "Categories"}]}]}
-            (-> lib.tu/venues-query
-                (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
-                                               [(lib/=
-                                                 (meta/field-metadata :venues :category-id)
-                                                 (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
-                              (lib/with-join-strategy :right-join))))))))
+  (are [strategy] (=? {:stages [{:joins [{:conditions [[:=
+                                                        {}
+                                                        [:field
+                                                         {:join-alias (symbol "nil #_\"key is not present.\"")}
+                                                         (meta/id :venues :category-id)]
+                                                        [:field
+                                                         {:join-alias "Categories"}
+                                                         (meta/id :categories :id)]]],
+                                          :strategy :right-join,
+                                          :alias "Categories"}]}]}
+                      (-> lib.tu/venues-query
+                          (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                         [(lib/=
+                                                           (meta/field-metadata :venues :category-id)
+                                                           (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                        (lib/with-join-strategy strategy)))))
+    :right-join
+    {:lib/type :option/join.strategy, :strategy :right-join}))
 
 (deftest ^:parallel available-join-strategies-test
-  (is (= [:left-join :right-join :inner-join]
+  (is (= [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
+          {:lib/type :option/join.strategy, :strategy :right-join}
+          {:lib/type :option/join.strategy, :strategy :inner-join}]
          (lib/available-join-strategies (lib.tu/query-with-join)))))
+
+(deftest ^:parallel join-strategy-display-name-test
+  (let [query (lib.tu/query-with-join)]
+    (is (= ["Left outer join" "Right outer join" "Inner join"]
+           (map (partial lib.metadata.calculation/display-name query)
+                (lib/available-join-strategies query))))))
+
+(deftest ^:parallel join-strategy-display-info-test
+  (let [query (lib.tu/query-with-join)]
+    (is (= [{:short-name "left-join", :display-name "Left outer join", :default true}
+            {:short-name "right-join", :display-name "Right outer join"}
+            {:short-name "inner-join", :display-name "Inner join"}]
+           (map (partial lib.metadata.calculation/display-info query)
+                (lib/available-join-strategies query))))))
 
 (deftest ^:parallel with-join-fields-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -368,7 +397,9 @@
                                 :conditions [[:= {}
                                               [:field {} (meta/id :venues :category-id)]
                                               [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
-            query))))
+            query))
+    (is (= :all
+           (lib/join-fields (first (lib/joins query)))))))
 
 (defn- query-with-join-with-fields
   "A query against `VENUES` joining `CATEGORIES` with `:fields` set to return only `NAME`."

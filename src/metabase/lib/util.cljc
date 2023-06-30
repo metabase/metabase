@@ -330,46 +330,6 @@
            conjunction
            (last coll)))))))
 
-(defn update-stages-ignore-joins
-  "Like [[update-stages]], but does not recurse into the stages inside joins.
-
-  `f` has the signature
-
-    (f query stage-number stage)"
-  [query f]
-  (reduce
-   (fn [query stage-number]
-     (update-in query [:stages stage-number] (fn [stage]
-                                               (f query stage-number stage))))
-   query
-   (range 0 (count (:stages query)))))
-
-(defn update-stages
-  "Apply function `f` to every stage of a query, depth-first. Also applied to all query stages.
-
-  `f` has the signature
-
-    (f query stage-number stage)
-
-  `query` reflects the results of the previous call to `f`.
-
-  As a convenience, if `f` returns nil, the original stage will be used without changes."
-  [query f]
-  (letfn [(update-join [join]
-            (-> query
-                (assoc :stages (:stages join))
-                (update-stages f)
-                :stages))
-          (update-joins [joins]
-            (mapv update-join joins))]
-    (update-stages-ignore-joins
-     query
-     (fn [query stage-number stage]
-       (let [stage (cond-> stage
-                     (:joins stage)
-                     update-joins)]
-         (f query stage-number stage))))))
-
 (mu/defn ^:private string-byte-count :- [:int {:min 0}]
   "Number of bytes in a string using UTF-8 encoding."
   [s :- :string]

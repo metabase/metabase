@@ -525,11 +525,11 @@
                                                                    :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
 
       (testing "Valid hash and email"
-        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+        (mt/with-temp* [Pulse        [{pulse-id :id} {:name "title"}]
                         PulseChannel [_ {:pulse_id     pulse-id
                                          :channel_type "email"
                                          :details      {:emails [email]}}]]
-          (is (= {:status "success"}
+          (is (= {:status "success" :title "title"}
                  (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
                                                                    :email    email
                                                                    :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))
@@ -544,9 +544,9 @@
                                                                       :hash     "fake-hash"}))))
 
       (testing "Valid hash and email doesn't exist"
-        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+        (mt/with-temp* [Pulse        [{pulse-id :id} {:name "title"}]
                         PulseChannel [_ {:pulse_id pulse-id}]]
-          (is (= {:status "success"}
+          (is (= {:status "success" :title "title"}
                  (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                         :email    email
                                                                         :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
