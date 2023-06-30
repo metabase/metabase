@@ -169,6 +169,7 @@ export const getCanShowAutoApplyFiltersToast = createSelector(
     isParameterValuesEmpty,
   ) => {
     return (
+      dashboard &&
       dashboard.can_write &&
       dashboard.id !== toastDashboardId &&
       isAutoApply &&

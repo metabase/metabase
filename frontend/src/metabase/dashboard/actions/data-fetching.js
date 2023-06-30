@@ -457,14 +457,17 @@ export const fetchDashboardCardData = createThunkAction(
 export const fetchDashboardCardMetadata = createThunkAction(
   FETCH_DASHBOARD_CARD_METADATA,
   () => async (dispatch, getState) => {
-    const allDashCards = getDashboardComplete(getState()).ordered_cards;
-    const selectedTabId = getSelectedTabId(getState());
+    const state = getState();
+    const allDashCards = getDashboardComplete(state)?.ordered_cards;
+    const selectedTabId = getSelectedTabId(state);
 
-    const cards = allDashCards.filter(
-      dc =>
-        selectedTabId !== undefined && dc.dashboard_tab_id === selectedTabId,
-    );
-    await dispatch(loadMetadataForDashboard(cards));
+    if (allDashCards && selectedTabId) {
+      const cards = allDashCards.filter(
+        dc => dc.dashboard_tab_id === selectedTabId,
+      );
+
+      await dispatch(loadMetadataForDashboard(cards));
+    }
   },
 );
 
