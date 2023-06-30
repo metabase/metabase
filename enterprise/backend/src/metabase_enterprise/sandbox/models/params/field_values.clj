@@ -1,8 +1,12 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require
+   [metabase-enterprise.advanced-permissions.api.util
+    :as advanced-perms.api.u]
    [metabase-enterprise.sandbox.api.table :as table]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+    :as row-level-restrictions]
    [metabase.api.common :as api]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Field PermissionsGroupMembership]]
@@ -100,8 +104,17 @@
   should be filtered as appropriate for the current User (currently this only applies to the EE impl)."
   :feature :sandboxes
   [field]
-  (if (field-is-sandboxed? field)
+  (cond
+    (field-is-sandboxed? field)
     (params.field-values/get-or-create-advanced-field-values! :sandbox field)
+
+    ;; Impersonation can have row-level security enforced by the database, so we still need to store field values per-user.
+    ;; TODO: only do this for DBs with impersonation in effect
+    (and api/*current-user-id*
+         (advanced-perms.api.u/impersonated-user?))
+    (params.field-values/get-or-create-advanced-field-values! :impersonation field)
+
+    :else
     (params.field-values/default-get-or-create-field-values-for-current-user! field)))
 
 (defenterprise hash-key-for-linked-filters
@@ -116,7 +129,7 @@
       (field-values/default-hash-key-for-linked-filters field-id constraints))))
 
 (defenterprise hash-key-for-sandbox
-  "Returns a hash-key for linked-filter FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
+  "Returns a hash-key for FieldValues if the field is sandboxed, otherwise fallback to the OSS impl."
   :feature :sandboxes
   [field-id]
   (let [field (t2/select-one Field :id field-id)]

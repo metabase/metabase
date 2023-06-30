@@ -180,7 +180,7 @@ export interface Settings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
-  "dismissed-custom-dashboard-toast": boolean;
+  "dismissed-custom-dashboard-toast"?: boolean;
   "email-configured?": boolean;
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;
@@ -205,6 +205,7 @@ export interface Settings {
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "map-tile-server-url": string;
   "openai-api-key": string | null;
   "openai-organization": string | null;
   "openai-model": string | null;

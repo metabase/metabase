@@ -17,7 +17,9 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { TYPE } from "metabase-lib/types/constants";
+import { TITLE_ICON_SIZE } from "./constants";
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
+import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -31,7 +33,7 @@ function legacyScalarSettingsToFormatOptions(settings) {
 
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
-export default class Scalar extends Component {
+export class Scalar extends Component {
   static uiName = t`Number`;
   static identifier = "scalar";
   static iconName = "number";
@@ -167,6 +169,7 @@ export default class Scalar extends Component {
       settings,
       visualizationIsClickable,
       onVisualizationClick,
+      height,
       width,
       gridSize,
       totalNumGridCols,
@@ -202,6 +205,8 @@ export default class Scalar extends Component {
       isDashboard &&
       (gridSize?.width < 2 || gridSize?.height < 2);
 
+    const titleLinesCount = getTitleLinesCount(height);
+
     return (
       <ScalarWrapper>
         <div className="Card-title absolute top right p1 px2">
@@ -209,6 +214,7 @@ export default class Scalar extends Component {
         </div>
         <ScalarContainer
           className="fullscreen-normal-text fullscreen-night-text"
+          data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
@@ -224,11 +230,12 @@ export default class Scalar extends Component {
             ref={scalar => (this._scalar = scalar)}
           >
             <ScalarValue
-              value={displayValue}
-              width={width}
-              gridSize={gridSize}
-              totalNumGridCols={totalNumGridCols}
               fontFamily={fontFamily}
+              gridSize={gridSize}
+              height={getValueHeight(height, { isDashboard, showSmallTitle })}
+              totalNumGridCols={totalNumGridCols}
+              value={displayValue}
+              width={getValueWidth(width)}
             />
           </span>
         </ScalarContainer>
@@ -236,12 +243,14 @@ export default class Scalar extends Component {
         {isDashboard &&
           (showSmallTitle ? (
             <LabelIcon
+              data-testid="scalar-title-icon"
               name="ellipsis"
               tooltip={settings["card.title"]}
-              size={10}
+              size={TITLE_ICON_SIZE}
             />
           ) : (
             <ScalarTitle
+              lines={titleLinesCount}
               title={settings["card.title"]}
               description={settings["card.description"]}
               onClick={
