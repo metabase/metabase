@@ -105,7 +105,7 @@
 
 (def join-operators
   "Operators that should be listed as options in join conditions."
-  [(operator-def :=)
+  [(assoc (operator-def :=) :default true)
    (operator-def :>)
    (operator-def :<)
    (operator-def :>=)

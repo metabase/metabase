@@ -488,7 +488,7 @@
     (doseq [lhs [nil (lib.metadata/field query (meta/id :categories :id))]
             rhs [nil (lib.metadata/field query (meta/id :venues :category-id))]]
       (testing (pr-str (list `lib/join-condition-operators `lib.tu/venues-query lhs rhs))
-        (is (=? [{:short :=}
+        (is (=? [{:short :=, :default true}
                  {:short :>}
                  {:short :<}
                  {:short :>=}
@@ -504,7 +504,16 @@
                 (map (partial lib/display-info query)
                      (lib/join-condition-operators lib.tu/venues-query lhs rhs))))
         (is (= (lib/join-condition-operators lib.tu/venues-query lhs rhs)
-               (lib/join-condition-operators lib.tu/venues-query -1 lhs rhs)))))))
+               (lib/join-condition-operators lib.tu/venues-query -1 lhs rhs))))
+      (testing `lib/display-info
+        (is (=? [{:short-name "=", :default true}
+                 {:short-name ">"}
+                 {:short-name "<"}
+                 {:short-name ">="}
+                 {:short-name "<="}
+                 {:short-name "!="}]
+                (map (partial lib/display-info query)
+                     (lib/join-condition-operators lib.tu/venues-query lhs rhs))))))))
 
 (deftest ^:parallel join-alias-single-table-multiple-times-test
   (testing "joining the same table twice results in different join aliases"
