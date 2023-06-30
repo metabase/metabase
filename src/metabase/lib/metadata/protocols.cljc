@@ -61,7 +61,11 @@
 
   (fields [metadata-provider table-id]
     "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
-  the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error."))
+  the [[metabase.lib.metadata/ColumnMetadata]] schema. If no such Table exists, this should error.")
+
+  (metrics [metadata-provider table-id]
+    "Return a sequence of legacy v1 Metrics associated with a Table with the given `table-id`. Metrics should satisfy
+  the [[metabase.lib.metadata/MetricMetadata]] schema. If no such Table exists, this should error."))
 
 (defn metadata-provider?
   "Whether `x` is a valid [[MetadataProvider]]."

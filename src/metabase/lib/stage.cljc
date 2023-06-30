@@ -149,8 +149,18 @@
    unique-name-fn :- fn?]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (lib.metadata.calculation/visible-columns query stage-number card {:unique-name-fn               unique-name-fn
-                                                                         :include-implicitly-joinable? false}))))
+      (->> (lib.metadata.calculation/visible-columns
+            query stage-number card {:unique-name-fn               unique-name-fn
+                                     :include-implicitly-joinable? false})
+           ;; Questions should not have implicitly joinable columns (#30950).
+           ;; :include-implicitly-joinable? false in the call above makes sure
+           ;; no implicitly joinable columns show up in the list, but this is
+           ;; not enough. If the returned columns contain :fk-target-field-id
+           ;; fields, then [[metabase.lib.metadata.calculation/visible-columns-method]]
+           ;; for :metabase.lib.stage/stage would add the implicitly joinable
+           ;; columns. Dissocing these fields prevents that.
+           (mapv #(dissoc % :fk-target-field-id))
+           not-empty))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query           :- ::lib.schema/query
