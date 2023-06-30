@@ -30,6 +30,7 @@ import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
 import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useSelector } from "metabase/lib/redux";
 import View from "../components/view/View";
 
 import {
@@ -140,9 +141,7 @@ const mapStateToProps = (state, props) => {
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
-    isQuestionEdited: getIsQuestionEdited(state),
     isObjectDetail: getIsObjectDetail(state),
-    isEditingModel: getIsEditingModel(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isVisualized: getIsVisualized(state),
@@ -199,7 +198,6 @@ function QueryBuilder(props) {
     params,
     fromUrl,
     uiControls,
-    isEditingModel,
     isNativeEditorOpen,
     isAnySidebarOpen,
     closeNavbar,
@@ -218,9 +216,6 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
-    isDirty,
-    isQuestionEdited,
-    isMetadataDirty,
     closeQB,
   } = props;
 
@@ -303,15 +298,8 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   });
 
-  const shouldShowUnsavedChangesWarningForModels =
-    isEditingModel && (isDirty || isMetadataDirty);
-  const shouldShowUnsavedChangesWarningForSqlQuery =
-    question != null && question.isNative() && isQuestionEdited;
-
-  useBeforeUnload(
-    shouldShowUnsavedChangesWarningForModels ||
-      shouldShowUnsavedChangesWarningForSqlQuery,
-  );
+  const shouldShowUnsavedChangesWarning = useShouldShowUnsavedChangesWarning();
+  useBeforeUnload(shouldShowUnsavedChangesWarning);
 
   useUnmount(() => {
     cancelQuery();
@@ -437,3 +425,21 @@ export default _.compose(
   })),
   titleWithLoadingTime("queryStartTime"),
 )(QueryBuilder);
+
+function useShouldShowUnsavedChangesWarning() {
+  const isEditingModel = useSelector(getIsEditingModel);
+  const isDirty = useSelector(getIsDirty);
+  const isMetadataDirty = useSelector(isResultsMetadataDirty);
+  const question = useSelector(getQuestion);
+  const isQuestionEdited = useSelector(getIsQuestionEdited);
+
+  const shouldShowUnsavedChangesWarningForModels =
+    isEditingModel && (isDirty || isMetadataDirty);
+  const shouldShowUnsavedChangesWarningForSqlQuery =
+    question != null && question.isNative() && isQuestionEdited;
+
+  return (
+    shouldShowUnsavedChangesWarningForModels ||
+    shouldShowUnsavedChangesWarningForSqlQuery
+  );
+}
