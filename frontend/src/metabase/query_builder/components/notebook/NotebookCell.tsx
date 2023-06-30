@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import { isValidElement } from "react";
+import { forwardRef, isValidElement } from "react";
 
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
@@ -10,7 +9,9 @@ import { alpha } from "metabase/lib/colors";
 
 const CONTAINER_PADDING = "10px";
 
-const _NotebookCell = styled.div`
+type BorderSide = "top" | "right" | "bottom" | "left";
+
+const _NotebookCell = styled.div<{ color: string; padding?: string }>`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -25,7 +26,10 @@ export const NotebookCell = Object.assign(_NotebookCell, {
   CONTAINER_PADDING,
 });
 
-const NotebookCellItemContainer = styled.div`
+const NotebookCellItemContainer = styled.div<{
+  color: string;
+  inactive?: boolean;
+}>`
   display: flex;
   align-items: center;
   font-weight: bold;
@@ -48,7 +52,12 @@ const NotebookCellItemContainer = styled.div`
   }
 `;
 
-const NotebookCellItemContentContainer = styled.div`
+const NotebookCellItemContentContainer = styled.div<{
+  color: string;
+  inactive?: boolean;
+  border?: BorderSide;
+  roundedCorners: BorderSide[];
+}>`
   display: flex;
   align-items: center;
   padding: ${CONTAINER_PADDING};
@@ -81,8 +90,24 @@ const NotebookCellItemContentContainer = styled.div`
   transition: background 300ms linear;
 `;
 
-export function NotebookCellItem(props) {
-  const {
+interface NotebookCellItemProps {
+  color: string;
+  inactive?: boolean;
+  readOnly?: boolean;
+  right?: React.ReactNode;
+  containerStyle?: React.CSSProperties;
+  rightContainerStyle?: React.CSSProperties;
+  children?: React.ReactNode;
+  onClick?: React.MouseEventHandler;
+  "data-testid"?: string;
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+export const NotebookCellItem = forwardRef<
+  HTMLDivElement,
+  NotebookCellItemProps
+>(function NotebookCellItem(
+  {
     inactive,
     color,
     containerStyle,
@@ -91,10 +116,11 @@ export function NotebookCellItem(props) {
     children,
     readOnly,
     ...restProps
-  } = props;
-
+  },
+  ref,
+) {
   const hasRightSide = isValidElement(right) && !readOnly;
-  const mainContentRoundedCorners = ["left"];
+  const mainContentRoundedCorners: BorderSide[] = ["left"];
   if (!hasRightSide) {
     mainContentRoundedCorners.push("right");
   }
@@ -103,7 +129,8 @@ export function NotebookCellItem(props) {
       inactive={inactive}
       color={color}
       {...restProps}
-      data-testid={props["data-testid"] ?? "notebook-cell-item"}
+      data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
+      ref={ref}
     >
       <NotebookCellItemContentContainer
         inactive={inactive}
@@ -126,14 +153,18 @@ export function NotebookCellItem(props) {
       )}
     </NotebookCellItemContainer>
   );
+});
+
+interface NotebookCellAddProps extends NotebookCellItemProps {
+  initialAddText?: React.ReactNode;
 }
 
-NotebookCellItem.displayName = "NotebookCellItem";
-
-export const NotebookCellAdd = ({ initialAddText, ...props }) => (
-  <NotebookCellItem {...props} inactive={!!initialAddText}>
-    {initialAddText || <Icon name="add" className="text-white" />}
-  </NotebookCellItem>
+export const NotebookCellAdd = forwardRef<HTMLDivElement, NotebookCellAddProps>(
+  function NotebookCellAdd({ initialAddText, ...props }, ref) {
+    return (
+      <NotebookCellItem {...props} inactive={!!initialAddText} ref={ref}>
+        {initialAddText || <Icon name="add" className="text-white" />}
+      </NotebookCellItem>
+    );
+  },
 );
-
-NotebookCellAdd.displayName = "NotebookCellAdd";
