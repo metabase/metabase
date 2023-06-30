@@ -43,6 +43,7 @@ import {
   HeaderCell,
   ResizeHandle,
 } from "./TableInteractive.styled";
+import { EditableCell } from "./EditableCell";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -505,6 +506,7 @@ class TableInteractive extends Component {
     const { rows, cols } = data;
 
     const column = cols[columnIndex];
+    const isEntryHack = column.expression_name === "Comments";
     const row = rows[rowIndex];
     const value = row[columnIndex];
 
@@ -533,6 +535,76 @@ class TableInteractive extends Component {
     );
 
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
+
+    const show = window.localStorage.getItem("mb-comments");
+    if (isEntryHack && !show) {
+      return null;
+    }
+    if (isEntryHack && show) {
+      return (
+        <div
+          key={key}
+          className={cx("flex align-center text-dark relative", {})}
+          style={{
+            ...style,
+            // use computed left if dragging
+            left: this.getColumnLeft(style, columnIndex),
+          }}
+        >
+          {this.props.renderTableCellWrapper(
+            <EditableCell data={data} row={row} />,
+          )}
+        </div>
+      );
+      // return (
+      //   <div
+      //     key={key}
+      //     style={{
+      //       ...style,
+      //       // use computed left if dragging
+      //       left: this.getColumnLeft(style, columnIndex),
+      //       // add a transition while dragging column
+      //       transition: dragColIndex != null ? "left 200ms" : null,
+      //       backgroundColor,
+      //     }}
+      //     className={cx(
+      //       "TableInteractive-cellWrapper text-dark hover-parent hover--visibility",
+      //       {
+      //         "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+      //         padLeft: columnIndex === 0 && !showDetailShortcut,
+      //         "TableInteractive-cellWrapper--lastColumn":
+      //           columnIndex === cols.length - 1,
+      //         "TableInteractive-emptyCell": value == null,
+      //         "cursor-pointer": isClickable,
+      //         "justify-end": isColumnRightAligned(column),
+      //         "Table-ID": value != null && isID(column),
+      //         "Table-FK": value != null && isFK(column),
+      //         link: isClickable && isID(column),
+      //       },
+      //     )}
+      //     onClick={
+      //       isClickable
+      //         ? e => {
+      //           this.onVisualizationClick(clicked, e.currentTarget);
+      //         }
+      //         : undefined
+      //     }
+      //   >
+      //     {this.props.renderTableCellWrapper(cellData)}
+      //     {isCollapsed && (
+      //       <ExpandButton
+      //         data-testid="expand-column"
+      //         className="hover-child"
+      //         small
+      //         borderless
+      //         iconSize={10}
+      //         icon="ellipsis"
+      //         onlyIcon
+      //         onClick={e => this.handleExpandButtonClick(e, columnIndex)}
+      //       />
+      //     )}
+      //   </div>
+    }
 
     return (
       <div
@@ -710,6 +782,13 @@ class TableInteractive extends Component {
     );
     const isSorted = sortIndex >= 0;
     const isAscending = isSorted && sort[sortIndex][0] === "asc";
+
+    if (
+      columnTitle === "Comments" &&
+      !window.localStorage.getItem("mb-comments")
+    ) {
+      return null;
+    }
 
     return (
       <Draggable
@@ -972,6 +1051,9 @@ class TableInteractive extends Component {
       return <div className={className} />;
     }
 
+    window.query = this.props.query;
+    window.daprops = this.props;
+
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
     const addColumn = this.state.showAddControl ? 1 : 0;
@@ -1090,7 +1172,12 @@ class TableInteractive extends Component {
                   >
                     <span
                       className="text-brand text-bold px2"
-                      onClick={() => alert("You added a new col!")}
+                      onClick={() => {
+                        window.localStorage.setItem(
+                          "mb-comments",
+                          JSON.stringify({}),
+                        );
+                      }}
                     >
                       +
                     </span>
