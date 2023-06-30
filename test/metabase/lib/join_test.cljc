@@ -212,7 +212,9 @@
               :lib/source               :source/joins
               :lib/source-column-alias  "count"
               :lib/desired-column-alias "count"}]
-            (lib.metadata.calculation/metadata query -1 join)))))
+            (lib.metadata.calculation/metadata query -1 join)))
+    (is (= (assoc card-1 :lib/type :metadata/card)
+           (lib.join/joined-thing query join)))))
 
 (deftest ^:parallel joins-source-and-desired-aliases-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -240,6 +242,12 @@
               ::lib.join/join-alias     "Cat"
               :lib/source               :source/joins}]
             (lib.metadata.calculation/metadata query)))
+    (is (=? {:lib/type :metadata/table
+             :db-id (meta/id)
+             :name "CATEGORIES"
+             :id (meta/id :categories)
+             :display-name "Categories"}
+            (lib.join/joined-thing query (first (lib/joins query)))))
     (is (=? [{:table             {:name              "VENUES"
                                   :display-name      "Venues"
                                   :long-display-name "Venues"

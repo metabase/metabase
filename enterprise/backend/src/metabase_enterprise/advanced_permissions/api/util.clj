@@ -7,9 +7,11 @@
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
+;; TODO: this function should only return true if an impersonation policy is enforced for the user
 (defenterprise impersonated-user?
-  "Returns a boolean if the current user uses connection impersonation for any database. Will throw an error if
-  [[api/*current-user-id*]] is not bound."
+  "Returns a boolean if the current user is in a group that has a connection impersonation in place for any database.
+  Note: this function does not check whether the impersonation is *enforced* for the current user, since another group's
+  permissions may supercede it. Will throw an error if [[api/*current-user-id*]] is not bound."
   :feature :advanced-permissions
   []
   (boolean
