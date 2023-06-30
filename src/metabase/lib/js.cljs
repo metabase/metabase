@@ -556,6 +556,30 @@
   [a-query]
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
 
+(defn ^:export does-require-native-collection
+  "Returns whether this database requires a native colletion."
+  [database-id metadata]
+  (lib.core/requires-native-collection? (metadataProvider database-id metadata)))
+
+(defn ^:export with-native-collection
+  "Changes the db collection to run this query against.
+   The first stage must be a native type. The database must support `native-specified-collection`"
+  [a-query collection-name]
+  (lib.core/with-native-collection a-query collection-name))
+
+(defn ^:export native-collection
+  "Returns the db collection associated with this query."
+  [a-query]
+  (lib.core/native-collection a-query))
+
+(defn ^:export with-different-database
+  "Changes the database for this query. The first stage must be a native type.
+   A collection-name must be provided if the new database requires it."
+  ([a-query database-id metadata]
+   (with-different-database a-query database-id metadata nil))
+  ([a-query database-id metadata collection-name]
+   (lib.core/with-different-database a-query (metadataProvider database-id metadata) collection-name)))
+
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."

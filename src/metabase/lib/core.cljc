@@ -198,6 +198,10 @@
    with-native-query
    template-tags
    with-template-tags
+   requires-native-collection?
+   native-collection
+   with-native-collection
+   with-different-database
    extract-template-tags]
   [lib.order-by
    change-direction
