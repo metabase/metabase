@@ -78,7 +78,7 @@ describe("scenarios > organization > timelines > question", () => {
         events: [
           { name: "v1", timestamp: "2027-01-01T00:00:00Z" },
           { name: "v2", timestamp: "2023-01-01T00:00:00Z" },
-          { name: "v3", timestamp: "2020-01-01T00:00:00Z" },
+          { name: "v3", timestamp: "2026-01-01T00:00:00Z" },
         ],
       });
 

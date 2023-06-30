@@ -534,7 +534,7 @@ const MODEL_NAME = "Test Action Model";
               fieldName: "Date",
               fieldType: "date",
               oldValue: oldRow.date,
-              newValue: "2020-05-01",
+              newValue: "2026-05-01",
             });
 
             // we can't assert on this value because mysql and postgres seem to
@@ -542,7 +542,7 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("TimestampTZ")
               .should("have.attr", "type", "datetime-local")
               .clear()
-              .type("2020-05-01T16:45:00");
+              .type("2026-05-01T16:45:00");
 
             cy.button("Update").click();
           });
@@ -568,8 +568,8 @@ const MODEL_NAME = "Test Action Model";
               "boolean",
               dialect === "mysql" ? 0 : false,
             );
-            expect(row.date).to.include("2020-05-01"); // js converts this to a full date obj
-            expect(row.timestampTZ).to.include("2020-05-01"); // we got timezone issues here
+            expect(row.date).to.include("2026-05-01"); // js converts this to a full date obj
+            expect(row.timestampTZ).to.include("2026-05-01"); // we got timezone issues here
           });
         });
 
@@ -608,12 +608,12 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("String").type("Zany Zebras");
             cy.findByPlaceholderText("Text").type("Zany Zebras");
 
-            cy.findByPlaceholderText("Date").type("2020-02-01");
-            cy.findByPlaceholderText("Datetime").type("2020-03-01T12:00:00");
-            cy.findByPlaceholderText("DatetimeTZ").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("Date").type("2026-02-01");
+            cy.findByPlaceholderText("Datetime").type("2026-03-01T12:00:00");
+            cy.findByPlaceholderText("DatetimeTZ").type("2026-03-01T12:00:00");
             cy.findByPlaceholderText("Time").type("12:57:57");
-            cy.findByPlaceholderText("Timestamp").type("2020-03-01T12:00:00");
-            cy.findByPlaceholderText("TimestampTZ").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("Timestamp").type("2026-03-01T12:00:00");
+            cy.findByPlaceholderText("TimestampTZ").type("2026-03-01T12:00:00");
 
             cy.button("Save").click();
           });
@@ -647,14 +647,14 @@ const MODEL_NAME = "Test Action Model";
             expect(row.string).to.equal("Zany Zebras");
             expect(row.text).to.equal("Zany Zebras");
 
-            expect(row.date).to.include("2020-02-01"); // js converts this to a full date
+            expect(row.date).to.include("2026-02-01"); // js converts this to a full date
 
             // timezones are problematic here
-            expect(row.datetime).to.include("2020-03-01");
-            expect(row.datetimeTZ).to.include("2020-03-01");
+            expect(row.datetime).to.include("2026-03-01");
+            expect(row.datetimeTZ).to.include("2026-03-01");
             expect(row.time).to.include("57:57");
-            expect(row.timestamp).to.include("2020-03-01");
-            expect(row.timestampTZ).to.include("2020-03-01");
+            expect(row.timestamp).to.include("2026-03-01");
+            expect(row.timestampTZ).to.include("2026-03-01");
           });
         });
 
@@ -707,7 +707,7 @@ const MODEL_NAME = "Test Action Model";
           cy.wait("@executePrefetch");
 
           const oldRow = many_data_types_rows[0];
-          const newTime = "2020-01-10T01:35:55";
+          const newTime = "2026-01-10T01:35:55";
 
           modal().within(() => {
             changeValue({
@@ -744,14 +744,14 @@ const MODEL_NAME = "Test Action Model";
               changeValue({
                 fieldName: "DatetimeTZ",
                 fieldType: "datetime-local",
-                oldValue: "2020-01-01T00:35:55",
+                oldValue: "2026-01-01T00:35:55",
                 newValue: newTime,
               });
 
               changeValue({
                 fieldName: "TimestampTZ",
                 fieldType: "datetime-local",
-                oldValue: "2020-01-01T00:35:55",
+                oldValue: "2026-01-01T00:35:55",
                 newValue: newTime,
               });
             }

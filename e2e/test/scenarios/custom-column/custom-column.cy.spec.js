@@ -230,7 +230,7 @@ describe("scenarios > question > custom column", () => {
     visualize();
 
     cy.log(
-      "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
+      "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2026-10-21)**",
     );
     cy.log("Works in 0.35.3");
     // ID should be "1" but it is picking the product ID and is showing "14"

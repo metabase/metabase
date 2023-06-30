@@ -56,8 +56,8 @@ describe("scenarios > admin > localization", () => {
         filter: [
           "between",
           ["field", ORDERS.CREATED_AT, null],
-          "2020-03-02", // Monday
-          "2020-03-03", // Tuesday
+          "2026-03-02", // Monday
+          "2026-03-03", // Tuesday
         ],
       },
       display: "bar",
@@ -178,11 +178,11 @@ describe("scenarios > admin > localization", () => {
 
     // update the date style setting to YYYY/MM/DD
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("January 7, 2024").click();
+    cy.findByText("January 7, 2018").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2024/1/7").click();
+    cy.findByText("2018/1/7").click();
     cy.wait("@updateFormatting");
-    cy.findAllByTestId("select-button-content").should("contain", "2024/1/7");
+    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
 
     // update the time style setting to 24 hour
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

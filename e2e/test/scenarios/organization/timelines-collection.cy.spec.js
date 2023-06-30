@@ -37,14 +37,14 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add an event").click();
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByLabelText("Date").type("10/20/2020");
+      cy.findByLabelText("Date").type("10/20/2026");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("RC1").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("October 20, 2020").should("be.visible");
+      cy.findByText("October 20, 2026").should("be.visible");
       cy.icon("star").should("be.visible");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -74,7 +74,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add an event").click();
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByLabelText("Date").type("10/20/2020");
+      cy.findByLabelText("Date").type("10/20/2026");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -613,7 +613,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add an event").click();
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByLabelText("Date").type("10/20/2020");
+      cy.findByLabelText("Date").type("10/20/2026");
       cy.button("Create").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First collection events");
@@ -734,7 +734,7 @@ describeWithSnowplow("scenarios > collections > timelines", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add an event").click();
     cy.findByLabelText("Event name").type("Event");
-    cy.findByLabelText("Date").type("10/20/2020");
+    cy.findByLabelText("Date").type("10/20/2026");
 
     // 4 - new_event_created
     // 5 - pageview

@@ -181,7 +181,7 @@ describe("scenarios > question > filter", () => {
         query: {
           "source-query": {
             "source-table": ORDERS_ID,
-            filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+            filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
             aggregation: [["count"]],
             breakout: [
               ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],

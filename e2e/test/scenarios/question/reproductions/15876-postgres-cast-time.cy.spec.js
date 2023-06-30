@@ -8,7 +8,7 @@ const questionDetails = {
       select '2022-05-04 16:29:59.268160-04:00'::timestamptz as mytz, 'incorrect' AS state union all
       select '2022-05-04 16:29:59.412459-04:00'::timestamptz, 'good' union all
       select '2022-05-08 13:14:42.926221-04:00'::timestamptz, 'incorrect' union all
-      select '2022-05-08 13:14:42.132020-04:00'::timestamptz, 'good' union all
+      select '2022-05-08 13:14:42.132026-04:00'::timestamptz, 'good' union all
       select '2022-05-10 07:38:58.987352-04:00'::timestamptz, 'incorrect' union all
       select '2022-05-10 07:38:58.001001-04:00'::timestamptz, 'good' union all
       select '2022-05-12 11:01:23.000000-04:00'::timestamptz, 'ALWAYS incorrect' union all
