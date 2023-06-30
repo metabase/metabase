@@ -2,6 +2,7 @@
   (:require
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.shared.util.i18n :as i18n]
@@ -130,43 +131,70 @@
     ;; default
     default-operators))
 
-(defn- filter-operator-display-name [tag display-name-variant]
+(mu/defn ^:private filter-operator-long-display-name :- ::lib.schema.common/non-blank-string
+  [tag                  :- :keyword
+   display-name-variant :- :keyword]
   (case tag
     :=                (case display-name-variant
                         :equal-to (i18n/tru "Equal to")
-                        (i18n/tru "Is"))
+                        :default  (i18n/tru "Is"))
     :!=               (case display-name-variant
                         :not-equal-to (i18n/tru "Not equal to")
                         :excludes     (i18n/tru "Excludes")
-                        (i18n/tru "Is not"))
+                        :default      (i18n/tru "Is not"))
     :>                (case display-name-variant
-                        :after (i18n/tru "After")
-                        (i18n/tru "Greater than"))
+                        :after   (i18n/tru "After")
+                        :default (i18n/tru "Greater than"))
     :<                (case display-name-variant
-                        :before (i18n/tru "Before")
-                        (i18n/tru "Less than"))
-    :between          (i18n/tru "Between")
-    :>=               (i18n/tru "Greater than or equal to")
-    :<=               (i18n/tru "Less than or equal to")
+                        :before  (i18n/tru "Before")
+                        :default (i18n/tru "Less than"))
+    :>=               (case display-name-variant
+                        :default (i18n/tru "Greater than or equal to"))
+    :<=               (case display-name-variant
+                        :default (i18n/tru "Less than or equal to"))
+    :between          (case display-name-variant
+                        :default (i18n/tru "Between"))
     :is-null          (case display-name-variant
                         :is-empty (i18n/tru "Is empty")
-                        (i18n/tru "Is null"))
+                        :default  (i18n/tru "Is null"))
     :not-null         (case display-name-variant
                         :not-empty (i18n/tru "Not empty")
-                        (i18n/tru "Not null"))
-    :is-empty         (i18n/tru "Is empty")
-    :not-empty        (i18n/tru "Not empty")
-    :contains         (i18n/tru "Contains")
-    :does-not-contain (i18n/tru "Does not contain")
-    :starts-with      (i18n/tru "Starts with")
-    :ends-with        (i18n/tru "Ends with")
-    :inside           (i18n/tru "Inside")))
+                        :default   (i18n/tru "Not null"))
+    :is-empty         (case display-name-variant
+                        :default (i18n/tru "Is empty"))
+    :not-empty        (case display-name-variant
+                        :default (i18n/tru "Not empty"))
+    :contains         (case display-name-variant
+                        :default (i18n/tru "Contains"))
+    :does-not-contain (case display-name-variant
+                        :default (i18n/tru "Does not contain"))
+    :starts-with      (case display-name-variant
+                        :default (i18n/tru "Starts with"))
+    :ends-with        (case display-name-variant
+                        :default (i18n/tru "Ends with"))
+    :inside           (case display-name-variant
+                        :default (i18n/tru "Inside"))))
+
+(mu/defn ^:private filter-operator-display-name :- ::lib.schema.common/non-blank-string
+  [tag                  :- :keyword
+   display-name-variant :- :keyword]
+  (case tag
+    :=  "="
+    :!= "≠"
+    :>  ">"
+    :<  "<"
+    :>= "≥"
+    :<= "≤"
+    (filter-operator-long-display-name tag display-name-variant)))
 
 (defmethod lib.metadata.calculation/display-name-method :operator/filter
-  [_query _stage-number {short-name :short, :keys [display-name-variant]} _display-name-style]
-  (filter-operator-display-name short-name display-name-variant))
+  [_query _stage-number {short-name :short, :keys [display-name-variant]} display-name-style]
+  (case display-name-style
+    :default (filter-operator-display-name short-name display-name-variant)
+    :long    (filter-operator-long-display-name short-name display-name-variant)))
 
 (defmethod lib.metadata.calculation/display-info-method :operator/filter
   [_query _stage-number {short-name :short, :keys [display-name-variant]}]
-  {:short-name   (u/qualified-name short-name)
-   :display-name (filter-operator-display-name short-name display-name-variant)})
+  {:short-name        (u/qualified-name short-name)
+   :display-name      (filter-operator-display-name short-name display-name-variant)
+   :long-display-name (filter-operator-long-display-name short-name display-name-variant)})

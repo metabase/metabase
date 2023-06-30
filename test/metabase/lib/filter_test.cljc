@@ -255,7 +255,7 @@
                                                         (fn [col]
                                                           (->> col
                                                                lib/filterable-column-operators
-                                                               (map (comp (juxt :short-name :display-name) #(lib/display-info query %)))
+                                                               (map (comp (juxt :short-name :long-display-name) #(lib/display-info query %)))
                                                                (into {})))))
                                              (into {}))]
         (is (=? {"ID" {"=" "Is" "is-null" "Is empty" ">" "Greater than"}
