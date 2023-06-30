@@ -32,8 +32,9 @@
             (perms/revoke-data-perms! (perms-group/all-users) (data/db))
             ;; create new perms group
             (test.users/with-group-for-user [group test-user-name-or-user-id]
-              ;; grant native access to the group
+              ;; grant full data access to the group
               (perms/update-data-perms-graph! [(u/the-id group) (data/id) :data :native] :write)
+              (perms/update-data-perms-graph! [(u/the-id group) (data/id) :data :schemas] :all)
               (let [{:keys [impersonations attributes]} args]
                 ;; set user login_attributes
                 (met/with-user-attributes test-user-name-or-user-id attributes

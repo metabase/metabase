@@ -745,6 +745,7 @@ describe("scenarios > dashboard", () => {
 
 describeWithSnowplow("scenarios > dashboard", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/activity/recent_views").as("recentViews");
     resetSnowplow();
     restore();
     cy.signInAsAdmin();
@@ -760,6 +761,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
     editDashboard();
     cy.findByTestId("dashboard-header").icon("link").click();
 
+    cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");
 
     saveDashboard();

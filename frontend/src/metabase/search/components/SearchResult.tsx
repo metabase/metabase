@@ -128,7 +128,7 @@ export function SearchResult({
       active={active}
       compact={compact}
       to={!onClick ? result.getUrl() : ""}
-      onClick={onClick ? () => onClick(result) : undefined}
+      onClick={onClick && active ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
       <ResultLinkContent>
