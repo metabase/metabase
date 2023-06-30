@@ -68,6 +68,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
           objectId,
         },
       );
+
       dispatch(openUrl(url));
     },
 );
