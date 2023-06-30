@@ -379,20 +379,20 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Before").click();
 
       popover().within(() => {
-        cy.get("input").eq(0).clear().type("01/01/2017", { delay: 0 });
+        cy.get("input").eq(0).clear().type("01/01/2023", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
 
       modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
-          cy.findByText("is before January 1, 2017").should("be.visible");
+          cy.findByText("is before January 1, 2023").should("be.visible");
         });
       });
       applyFilters();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At is before January 1, 2017").should(
+      cy.findByText("Created At is before January 1, 2023").should(
         "be.visible",
       );
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

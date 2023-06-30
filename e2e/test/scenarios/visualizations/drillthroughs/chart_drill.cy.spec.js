@@ -51,7 +51,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gadget");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January, 2017");
+    cy.contains("January, 2023");
     cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
 
     // drag across to filter

@@ -194,7 +194,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.contains("December 12, 1986");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("October 7, 2017, 1:34 AM");
+    cy.contains("October 7, 2023, 1:34 AM");
   });
 
   it("should display according to `locale` parameter metabase#22561", () => {
