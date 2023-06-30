@@ -173,6 +173,7 @@
    join-strategy
    joinable-columns
    joins
+   raw-join-strategy
    suggested-join-condition
    with-join-alias
    with-join-fields

@@ -541,7 +541,7 @@
           aggregations (lib/aggregations query)
           aggregation-operators (lib/available-aggregation-operators query)]
       (testing "selected-aggregation-operators w/o column"
-        (is (=? [{:lib/type :mbql.aggregation/operator
+        (is (=? [{:lib/type :operator/aggregation
                   :short :max
                   :selected? true
                   :columns

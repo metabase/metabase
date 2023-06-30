@@ -274,11 +274,11 @@
    [:map
     [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]]])
 
-(defmethod lib.metadata.calculation/display-name-method :mbql.aggregation/operator
+(defmethod lib.metadata.calculation/display-name-method :operator/aggregation
   [_query _stage-number {:keys [display-info]} _display-name-style]
   (:display-name (display-info)))
 
-(defmethod lib.metadata.calculation/display-info-method :mbql.aggregation/operator
+(defmethod lib.metadata.calculation/display-info-method :operator/aggregation
   [_query _stage-number {:keys [display-info requires-column? selected?] short-name :short}]
   (cond-> (assoc (display-info)
                  :short-name (u/qualified-name short-name)
@@ -320,7 +320,7 @@
                             (let [feature (:driver-feature op)]
                               (or (nil? feature) (db-features feature)))))
                   (keep with-columns)
-                  (map #(assoc % :lib/type :mbql.aggregation/operator)))
+                  (map #(assoc % :lib/type :operator/aggregation)))
             lib.schema.aggregation/aggregation-operators)))))
 
 (mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation

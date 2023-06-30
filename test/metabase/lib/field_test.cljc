@@ -217,7 +217,7 @@
     (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
             field))
     (testing "(lib/temporal-bucket <field-ref>)"
-      (is (= {:lib/type :type/temporal-bucketing-option
+      (is (= {:lib/type :option/temporal-bucketing
               :unit     :day-of-month}
              (lib/temporal-bucket field))))
     (is (= "Date: Day of month"
@@ -261,7 +261,7 @@
         (is (= effective-type
                (lib.metadata.calculation/type-of (:query temporal-bucketing-mock-metadata) x'))))
       (testing "lib/temporal-bucket should return the option"
-        (is (= {:lib/type :type/temporal-bucketing-option
+        (is (= {:lib/type :option/temporal-bucketing
                 :unit     unit}
                (lib/temporal-bucket x')))
         (testing "should generate a :field ref with correct :temporal-unit"
@@ -309,7 +309,7 @@
                  (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata) x)))
           (testing "Bucketing with any of the options should work"
             (doseq [expected-option expected-options]
-              (is (= {:lib/type :type/temporal-bucketing-option
+              (is (= {:lib/type :option/temporal-bucketing
                      :unit      (:unit expected-option)}
                      (lib/temporal-bucket (lib/with-temporal-bucket x expected-option))))))
           (let [bucketed (lib/with-temporal-bucket x selected-unit)
