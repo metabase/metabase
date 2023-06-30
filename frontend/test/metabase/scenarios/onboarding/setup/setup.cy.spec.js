@@ -244,17 +244,18 @@ describeWithSnowplow("scenarios > setup", () => {
   });
 
   it("should send snowplow events", () => {
-    // 1 - pageview
+    // 1 - new_instance_created
+    // 2 - pageview
     cy.visit(`/setup`);
 
-    // 2 - setup/step_seen
+    // 3 - setup/step_seen
     cy.findByText("Welcome to Metabase");
     cy.button("Let's get started").click();
 
-    // 3 - setup/step_seen
+    // 4 - setup/step_seen
     cy.findByText("What's your preferred language?");
 
-    expectGoodSnowplowEvents(3);
+    expectGoodSnowplowEvents(4);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
@@ -264,6 +265,6 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.findByText("Welcome to Metabase");
     cy.button("Let's get started").click();
 
-    expectGoodSnowplowEvents(0);
+    expectGoodSnowplowEvents(1);
   });
 });

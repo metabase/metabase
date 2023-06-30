@@ -137,15 +137,12 @@ export function tableRowsQuery(
   segmentId?: number | string,
 ) {
   let query = `?db=${databaseId}&table=${tableId}`;
-
   if (metricId) {
     query += `&metric=${metricId}`;
   }
-
   if (segmentId) {
     query += `&segment=${segmentId}`;
   }
-
   // This will result in a URL like "/question#?db=1&table=1"
   // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
   // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
