@@ -285,7 +285,6 @@ describe("QueryBuilder", () => {
     it("should trigger beforeunload event when leaving edited question", async () => {
       const { mockEventListener } = await setup({
         card: TEST_NATIVE_CARD,
-        initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
 
       const inputArea = within(
@@ -327,7 +326,6 @@ describe("QueryBuilder", () => {
     it("should not trigger beforeunload event when query is unedited", async () => {
       const { mockEventListener } = await setup({
         card: TEST_NATIVE_CARD,
-        initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
@@ -349,7 +347,6 @@ describe("QueryBuilder", () => {
         await setup({
           card,
           dataset,
-          initialRoute: `/question/${card.id}`,
         });
 
         await waitFor(() => {
