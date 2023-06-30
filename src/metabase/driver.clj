@@ -509,7 +509,7 @@
     :connection-impersonation
 
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
-    :native-specified-collection})
+    :native-requires-specified-collection})
 
 
 (defmulti supports?

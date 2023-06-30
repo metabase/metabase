@@ -142,7 +142,7 @@
 (mu/defn requires-native-collection? :- :boolean
   "Returns whether this metadata-provider or query requires a native colletion."
   [metadata-provider :- lib.metadata/MetadataProviderable]
-  (boolean (get-in (lib.metadata/database metadata-provider) [:features :native-specified-collection])))
+  (boolean (get-in (lib.metadata/database metadata-provider) [:features :native-requires-specified-collection])))
 
 (mu/defn with-native-collection :- ::lib.schema/query
   "Changes the db collection to run this query against.

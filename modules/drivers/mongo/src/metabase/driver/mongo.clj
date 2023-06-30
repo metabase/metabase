@@ -302,7 +302,7 @@
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
-(defmethod driver/database-supports? [:mongo :native-specified-collection]
+(defmethod driver/database-supports? [:mongo :native-requires-specified-collection]
   [_driver _feature _db]
   true)
 
