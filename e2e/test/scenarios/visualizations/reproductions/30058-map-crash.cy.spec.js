@@ -34,7 +34,7 @@ describe("issue 30058", () => {
     cy.signInAsNormalUser();
   });
 
-  it("visualization does not crash after adding a filter", () => {
+  it("visualization does not crash after adding a filter (metabase#30058)", () => {
     visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "map",
