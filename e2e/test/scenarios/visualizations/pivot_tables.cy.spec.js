@@ -780,7 +780,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.wait("@datasetPivot");
     cy.get(".Visualization").within(() => {
       cy.contains("Row totals");
-      cy.findByText("333"); // Row totals for 2018
+      cy.findByText("333"); // Row totals for 2024
       cy.findByText("Grand totals");
     });
   });
@@ -863,7 +863,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
           ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
         },
         database: SAMPLE_DB_ID,
       },
@@ -904,7 +904,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
           ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
         },
         database: SAMPLE_DB_ID,
       },

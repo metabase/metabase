@@ -70,7 +70,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.findByText("€39.72");
     // Question settings: Abbreviated date, day enabled, 24H clock with seconds
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mon, Feb 11, 2019, 21:40:27");
+    cy.findByText("Mon, Feb 11, 2025, 21:40:27");
     // Question settings: Show mini-bar
     cy.findAllByTestId("mini-bar");
 
@@ -145,7 +145,7 @@ describe("scenarios > embedding > questions ", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("February 11, 2019, 9:40 PM");
+    cy.findByText("February 11, 2025, 9:40 PM");
 
     cy.findAllByTestId("mini-bar").should("not.exist");
 
@@ -179,7 +179,7 @@ describe("scenarios > embedding > questions ", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("€39.72");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mon, Feb 11, 2019, 21:40:27");
+    cy.findByText("Mon, Feb 11, 2025, 21:40:27");
     cy.findAllByTestId("mini-bar");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
@@ -219,7 +219,7 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Februar 11, 2019, 9:40 PM");
+    cy.findByText("Februar 11, 2025, 9:40 PM");
   });
 });
 

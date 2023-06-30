@@ -151,11 +151,11 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/localization");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("January 7, 2018").click({ force: true });
+    cy.findByText("January 7, 2024").click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018/1/7").click({ force: true });
+    cy.findByText("2024/1/7").click({ force: true });
     cy.wait("@saveFormatting");
-    cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
+    cy.findAllByTestId("select-button-content").should("contain", "2024/1/7");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("17:24 (24-hour clock)").click();
@@ -167,7 +167,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByTextEnsureVisible("Created At");
     cy.get(".cellData")
       .should("contain", "Created At")
-      .and("contain", "2019/2/11, 21:40");
+      .and("contain", "2025/2/11, 21:40");
 
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
@@ -180,7 +180,7 @@ describe("scenarios > admin > settings", () => {
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get(".cellData").and("contain", "2019/2/11, 9:40 PM");
+    cy.get(".cellData").and("contain", "2025/2/11, 9:40 PM");
   });
 
   it("should search for and select a new timezone", () => {

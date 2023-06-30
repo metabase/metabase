@@ -494,7 +494,7 @@ describe("scenarios > question > custom column", () => {
       name: "15316",
       query: {
         "source-table": ORDERS_ID,
-        expressions: { "MyCC [2021]": ["+", 1, 1] },
+        expressions: { "MyCC [2027]": ["+", 1, 1] },
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
@@ -502,15 +502,15 @@ describe("scenarios > question > custom column", () => {
     summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sum of ...").click();
-    popover().findByText("MyCC [2021]").click();
+    popover().findByText("MyCC [2027]").click();
     cy.findAllByTestId("notebook-cell-item")
-      .contains("Sum of MyCC [2021]")
+      .contains("Sum of MyCC [2027]")
       .click();
     popover().within(() => {
       cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
     });
-    cy.get(".ace_line").contains("Sum([MyCC \\[2021\\]]");
+    cy.get(".ace_line").contains("Sum([MyCC \\[2027\\]]");
   });
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {
@@ -552,8 +552,8 @@ describe("scenarios > question > custom column", () => {
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Specific dates...").click();
-      enterDateFilter("12/10/2018", 0);
-      enterDateFilter("01/05/2019", 1);
+      enterDateFilter("12/10/2024", 0);
+      enterDateFilter("01/05/2025", 1);
       cy.button("Add filter").click();
     });
 

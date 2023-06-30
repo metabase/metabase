@@ -5,7 +5,7 @@ const questionDetails = {
   name: "27279",
   native: {
     query:
-      "select -3 o, 'F2021' k, 1 v\nunion all select -2, 'V2021', 2\nunion all select -1, 'S2022', 3\nunion all select 0, 'F2022', 4",
+      "select -3 o, 'F2027' k, 1 v\nunion all select -2, 'V2027', 2\nunion all select -1, 'S2022', 3\nunion all select 0, 'F2022', 4",
     "template-tags": {},
   },
   visualization_settings: {
@@ -51,13 +51,13 @@ describe("issue 27279", () => {
     const legendItems = ["-3", "-2", "-1", "0"];
     compareValuesInOrder(cy.findAllByTestId("legend-item"), legendItems);
 
-    const xAxisTicks = ["F2021", "V2021", "S2022", "F2022"];
+    const xAxisTicks = ["F2027", "V2027", "S2022", "F2022"];
     compareValuesInOrder(cy.get(".x.axis .tick"), xAxisTicks);
 
     // Extra step, just to be overly cautious
     cy.get(".bar").first().realHover();
     popover().within(() => {
-      testPairedTooltipValues("K", "F2021");
+      testPairedTooltipValues("K", "F2027");
       testPairedTooltipValues("O", "-3");
       testPairedTooltipValues("Sum of V", "1");
     });

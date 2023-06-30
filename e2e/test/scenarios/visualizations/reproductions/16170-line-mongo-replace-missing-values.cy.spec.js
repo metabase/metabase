@@ -44,7 +44,7 @@ describe("issue 16170", { tags: "@external" }, () => {
       cy.get(".dot").eq(-2).trigger("mousemove", { force: true });
 
       popover().within(() => {
-        testPairedTooltipValues("Created At", "2019");
+        testPairedTooltipValues("Created At", "2025");
         testPairedTooltipValues("Count", "6,524");
       });
     });
