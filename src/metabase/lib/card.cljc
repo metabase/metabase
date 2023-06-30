@@ -29,7 +29,7 @@
           ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
           (i18n/tru "Saved Question {0}" (pr-str source-card))))))
 
-(mu/defn ^:private infer-expected-columns
+(mu/defn ^:private infer-returned-columns
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
   (when (some? card-query)
@@ -45,7 +45,7 @@
    card                  :- Card]
   (when-let [result-metadata (or (:result-metadata card)
                                  (:fields card)
-                                 (infer-expected-columns metadata-providerable (:dataset-query card)))]
+                                 (infer-returned-columns metadata-providerable (:dataset-query card)))]
     ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
     ;; contains` :columns` as well.
     (when-let [cols (not-empty (cond

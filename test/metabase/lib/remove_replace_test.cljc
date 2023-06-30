@@ -1,19 +1,18 @@
 (ns metabase.lib.remove-replace-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.test-metadata :as meta]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel remove-clause-order-bys-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/order-by (meta/field-metadata :venues :name))
-                  (lib/order-by (meta/field-metadata :venues :name))
-                  )
+                  (lib/order-by (meta/field-metadata :venues :name)))
         order-bys (lib/order-bys query)]
     (is (= 2 (count order-bys)))
     (is (= 1 (-> query
