@@ -47,6 +47,18 @@ describe("issue 30057", () => {
     visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
+    cy.get(".PinMap").should("exist");
+  });
+
+  it("visualization is still displayed as a map after adding another column to group by", () => {
+    visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+
+    visualize();
+    groupByBirthDateColumn();
+    visualize();
+
+    cy.findByTestId("TableInteractive-root").should("not.exist");
+    cy.get(".PinMap").should("exist");
   });
 });
 
@@ -69,6 +81,12 @@ describe("issue 30058", () => {
     cy.get(".Icon-warning").should("not.exist");
   });
 });
+
+const groupByBirthDateColumn = () => {
+  cy.icon("notebook").click();
+  cy.findByTestId("breakout-step").icon("add").click();
+  popover().findByText("Birth Date").click();
+};
 
 const addCountGreaterThan2Filter = () => {
   cy.icon("notebook").click();
