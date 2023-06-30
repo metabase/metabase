@@ -211,7 +211,7 @@
              {:name                     "count"
               :lib/source               :source/joins
               :lib/source-column-alias  "count"
-              :lib/desired-column-alias "count"}]
+              :lib/desired-column-alias "checkins_by_user__count"}]
             (lib.metadata.calculation/expected-columns query -1 join)))
     (is (= (assoc card-1 :lib/type :metadata/card)
            (lib.join/joined-thing query join)))))
