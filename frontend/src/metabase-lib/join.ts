@@ -134,7 +134,7 @@ export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
 }
 
 export function joinableColumns(
-  Query: Query,
+  query: Query,
   stageIndex: number,
   joinOrJoinable: Join | Joinable,
 ): ColumnMetadata[] {
