@@ -61,6 +61,17 @@ describe("issue 30057", () => {
     cy.get(".PinMap").should("exist");
   });
 
+  it("should still display visualization as a map after adding another aggregation", () => {
+    visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+
+    visualize();
+    addAverageOfLongitudeAggregation();
+    visualize();
+
+    cy.findByTestId("TableInteractive-root").should("not.exist");
+    cy.get(".PinMap").should("exist");
+  });
+
   it("should change display to default after removing a column to group by when map is not sensible anymore", () => {
     visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
@@ -92,6 +103,15 @@ describe("issue 30058", () => {
     cy.get(".Icon-warning").should("not.exist");
   });
 });
+
+const addAverageOfLongitudeAggregation = () => {
+  cy.icon("notebook").click();
+  cy.findByTestId("aggregate-step").icon("add").click();
+  popover().within(() => {
+    cy.findByText("Average of ...").click();
+    cy.findByText("Longitude").click();
+  });
+};
 
 const removeLatitudeColumn = () => {
   cy.icon("notebook").click();
