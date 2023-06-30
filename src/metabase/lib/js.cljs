@@ -467,14 +467,18 @@
   (lib.core/suggested-join-condition a-query stage-number joinable))
 
 (defn ^:export join-fields
-  "Get the join conditions for a given join."
+  "Get the `:fields` associated with a join."
   [a-join]
-  (to-array (lib.core/join-fields a-join)))
+  (let [joined-fields (lib.core/join-fields a-join)]
+    (if (keyword? joined-fields)
+      (u/qualified-name joined-fields)
+      (to-array joined-fields))))
 
 (defn ^:export with-join-fields
   "Set the `:fields` for `a-join`."
   [a-join new-fields]
-  (lib.core/with-join-fields a-join new-fields))
+  (lib.core/with-join-fields a-join (cond-> new-fields
+                                      (string? new-fields) keyword)))
 
 (defn ^:export join-clause
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
@@ -582,6 +586,13 @@
   metadata objects."
   [a-query]
   (to-array (lib.core/available-metrics a-query)))
+
+(defn ^:export joinable-columns
+  "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
+  something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
+  selected columns (those in the join's `:fields`) will include `:selected true` information."
+  [a-query stage-number join-or-joinable]
+  (lib.core/joinable-columns a-query stage-number join-or-joinable))
 
 (defn ^:export table-or-card-metadata
   "Get TableMetadata if passed an integer `table-id`, or CardMetadata if passed a legacy-style `card__<id>` string.

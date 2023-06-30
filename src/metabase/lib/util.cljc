@@ -55,6 +55,8 @@
   [clause]
   (clause-of-type? clause :field))
 
+;;; TODO -- you should use [[metabase.lib.options/uuid]] instead of this, since it also handles stuff with
+;;; `:lib/options` maps (e.g. joins)
 (defn clause-uuid
   "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
   [clause]
@@ -83,7 +85,7 @@
    If a clause has :lib/uuid equal to the `target-clause` it is swapped with `new-clause`.
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
-  {:pre [(clause? target-clause)]}
+  {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
                      (named-expression-clause new-clause (expression-name target-clause))
                      new-clause)]
@@ -92,7 +94,7 @@
       location
       (fn [clause-or-clauses]
         (->> (for [clause clause-or-clauses]
-               (if (= (clause-uuid clause) (clause-uuid target-clause))
+               (if (= (lib.options/uuid clause) (lib.options/uuid target-clause))
                  new-clause
                  clause))
              vec)))))
@@ -106,9 +108,9 @@
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
-    (let [target-uuid (clause-uuid target-clause)
+    (let [target-uuid (lib.options/uuid target-clause)
           [first-loc last-loc] [(first location) (last location)]
-          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)
+          result (into [] (remove (comp #{target-uuid} lib.options/uuid)) target)
           result (when-not (and (= location [:fields])
                                 (every? #(clause-of-type? % :expression) result))
                    result)]
@@ -237,11 +239,11 @@
       :native (native-query->pipeline query)
       :query  (mbql-query->pipeline query))))
 
-(mu/defn ^:private non-negative-stage-index :- [:int {:min 0}]
+(mu/defn canonical-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
-  [stages       :- [:sequential [:ref ::lib.schema/stage]]
-   stage-number :- :int]
+  [{:keys [stages], :as _query} :- :map
+   stage-number                 :- :int]
   (let [stage-number' (if (neg? stage-number)
                         (+ (count stages) stage-number)
                         stage-number)]
@@ -253,9 +255,9 @@
 
 (mu/defn previous-stage-number :- [:maybe [:int {:min 0}]]
   "The index of the previous stage, if there is one. `nil` if there is no previous stage."
-  [{:keys [stages], :as _query} :- :map
-   stage-number                 :- :int]
-  (let [stage-number (non-negative-stage-index stages stage-number)]
+  [query        :- :map
+   stage-number :- :int]
+  (let [stage-number (canonical-stage-index query stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
 
@@ -278,8 +280,8 @@
   the query."
   [query        :- LegacyOrPMBQLQuery
    stage-number :- :int]
-  (let [{:keys [stages]} (pipeline query)]
-    (get (vec stages) (non-negative-stage-index stages stage-number))))
+  (let [{:keys [stages], :as query} (pipeline query)]
+    (get (vec stages) (canonical-stage-index query stage-number))))
 
 (mu/defn previous-stage :- [:maybe ::lib.schema/stage]
   "Return the previous stage of the query, if there is one; otherwise return `nil`."
@@ -297,7 +299,7 @@
    stage-number :- :int
    f & args]
   (let [{:keys [stages], :as query} (pipeline query)
-        stage-number'               (non-negative-stage-index stages stage-number)
+        stage-number'               (canonical-stage-index query stage-number)
         stages'                     (apply update (vec stages) stage-number' f args)]
     (assoc query :stages stages')))
 
@@ -464,7 +466,7 @@
    stage-number :- :int
    location :- [:enum :breakout :aggregation]
    a-summary-clause]
-  (let [{:keys [stages] :as query} (pipeline query)
+  (let [query (pipeline query)
         stage-number (or stage-number -1)
         stage (query-stage query stage-number)
         new-summary? (not (or (seq (:aggregation stage)) (seq (:breakout stage))))
@@ -482,7 +484,7 @@
                   (dissoc :order-by :fields)
                   (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
           ;; subvec holds onto references, so create a new vector
-          (update :stages (comp #(into [] %) subvec) 0 (inc (non-negative-stage-index stages stage-number))))
+          (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))
 
 (defn with-default-effective-type
