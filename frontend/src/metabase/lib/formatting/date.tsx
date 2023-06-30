@@ -127,8 +127,8 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
 
 /** This formats a time with unit as a date range */
 export function formatDateTimeRangeWithUnit(
-  value: string | number,
-  unit: DatetimeUnit,
+  value: string | number, // TODO: support array for value range
+  unit: DatetimeUnit, // TODO: support month and quarter abbreviations, e.g. [Jan - Feb 2017], [Q1 - Q3 2017]
   options: OptionsType = {},
 ) {
   const m = parseTimestamp(value, unit, options.local);

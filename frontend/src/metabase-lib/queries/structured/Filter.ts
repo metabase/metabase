@@ -7,6 +7,7 @@ import type {
   FieldFilter,
   FieldReference,
 } from "metabase-types/api";
+import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { isExpression } from "metabase-lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
 import {
@@ -61,6 +62,20 @@ export default class Filter extends MBQLClause {
     return this._query.removeFilter(this._index);
   }
 
+  shortDateRangeLabel() {
+    const dimension = this.dimension();
+    const unit = dimension?.temporalUnit();
+    const op = this.operatorName();
+    const args = this.arguments();
+    const allStrs = args.all(arg => typeof arg === "string");
+    const isDate = ["day", "week", "month", "quarter", "year"].includes(unit);
+    const betweenDates = op === "between" && isDate;
+    const equalsWeek = op === "=" && unit === "week";
+    if (allStrs && (betweenDates || equalsWeek)) {
+      formatDateTimeRangeWithUnit(args, unit);
+    }
+  }
+
   /**
    * Returns the display name for the filter
    */
@@ -81,7 +96,8 @@ export default class Filter extends MBQLClause {
         includeOperator &&
         !isStartingFrom(this) &&
         operator.moreVerboseName;
-      const argumentNames = this.formattedArguments().join(" ");
+      const argumentNames =
+        this.shortDateRangeLabel() ?? this.formattedArguments().join(" ");
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
