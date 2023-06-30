@@ -229,7 +229,7 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
     permissions,
   addTablePermissionOptions: (permissions: any[], _value: string) =>
     permissions,
-  isBlockPermission: (_value: string) => false,
+  getDatabaseLimitedAccessPermission: (_value: string) => null,
   isAccessPermissionDisabled: (
     _value: string,
     _subject: "schemas" | "tables" | "fields",
