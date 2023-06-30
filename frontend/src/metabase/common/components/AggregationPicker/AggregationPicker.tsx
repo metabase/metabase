@@ -228,7 +228,10 @@ export function AggregationPicker({
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
     return (
-      <ColumnPickerContainer className={className}>
+      <ColumnPickerContainer
+        className={className}
+        data-testid="aggregation-column-picker"
+      >
         <ColumnPickerHeader onClick={handleResetOperator}>
           {operatorInfo.displayName}
         </ColumnPickerHeader>
@@ -271,7 +274,7 @@ function ColumnPickerHeader({
 }) {
   return (
     <ColumnPickerHeaderContainer>
-      <ColumnPickerHeaderTitleContainer onClick={onClick}>
+      <ColumnPickerHeaderTitleContainer onClick={onClick} aria-label={t`Back`}>
         <Icon name="chevronleft" size={18} />
         <ColumnPickerHeaderTitle>{children}</ColumnPickerHeaderTitle>
       </ColumnPickerHeaderTitleContainer>

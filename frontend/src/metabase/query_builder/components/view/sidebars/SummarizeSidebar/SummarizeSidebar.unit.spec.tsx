@@ -252,6 +252,30 @@ describe("SummarizeSidebar", () => {
     expect(getNextAggregations()).toHaveLength(1);
   });
 
+  it("shouldn't allow adding an expression aggregation", async () => {
+    setup();
+
+    userEvent.click(screen.getByLabelText("Add aggregation"));
+
+    const popover = await screen.findByLabelText("grid");
+    expect(
+      within(popover).queryByText(/Custom Expression/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shouldn't allow changing an aggregation to an expression", async () => {
+    setup({ card: createSummarizedCard() });
+
+    userEvent.click(screen.getByText("Max of Quantity"));
+    let popover = await screen.findByTestId("aggregation-column-picker");
+    userEvent.click(within(popover).getByLabelText("Back"));
+    popover = await screen.findByLabelText("grid");
+
+    expect(
+      within(popover).queryByText(/Custom Expression/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("should add a breakout", async () => {
     const { getNextBreakouts } = setup();
 

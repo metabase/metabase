@@ -48,6 +48,7 @@ export function AddAggregationButton({
           legacyQuery={legacyQuery}
           stageIndex={STAGE_INDEX}
           operators={operators}
+          hasExpressionInput={false}
           onSelect={aggregation => {
             onAddAggregation(aggregation);
             closePopover();
