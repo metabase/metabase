@@ -172,6 +172,7 @@
    join-fields
    join-strategy
    joins
+   raw-join-strategy
    suggested-join-condition
    with-join-alias
    with-join-fields
