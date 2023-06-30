@@ -157,7 +157,7 @@ describe("hasQuestionCacheSection", () => {
     expect(hasQuestionCacheSection(question)).toBe(true);
   });
 
-  it("should have the cache section when the user has write access abd the question is cached", () => {
+  it("should have the cache section when the user has write access and the question is cached", () => {
     const question = setup({ canWrite: true, lastQueryStart: "2020-01-01" });
     expect(hasQuestionCacheSection(question)).toBe(true);
   });
