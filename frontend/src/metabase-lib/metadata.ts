@@ -11,6 +11,7 @@ import type {
   BreakoutClauseDisplayInfo,
   Bucket,
   BucketDisplayInfo,
+  CardMetadata,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
@@ -22,6 +23,7 @@ import type {
   OrderByClause,
   OrderByClauseDisplayInfo,
   TableDisplayInfo,
+  TableMetadata,
   Query,
 } from "./types";
 
@@ -117,4 +119,11 @@ export function describeRelativeDatetime(
   unit?: string,
 ): string {
   return ML.describe_relative_datetime(n, unit);
+}
+
+export function tableOrCardMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  tableID: number | string,
+): CardMetadata | TableMetadata {
+  return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }

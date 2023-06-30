@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib.core]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
@@ -581,3 +582,9 @@
   metadata objects."
   [a-query]
   (to-array (lib.core/available-metrics a-query)))
+
+(defn ^:export table-or-card-metadata
+  "Get TableMetadata if passed an integer `table-id`, or CardMetadata if passed a legacy-style `card__<id>` string.
+  Returns `nil` if no matching metadata is found."
+  [query-or-metadata-provider table-id]
+  (lib.metadata/table-or-card query-or-metadata-provider table-id))
