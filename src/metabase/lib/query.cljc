@@ -23,8 +23,14 @@
     :stages (partial mapv lib.normalize/normalize)}))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
-  [query stage-number x]
-  (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage x stage-number)))
+  [_query _stage-number _query]
+  ;; not i18n'ed because this shouldn't be developer-facing.
+  (throw (ex-info "You can't calculate a metadata map for a query! Use lib.metadata.calculation/returned-columns-method instead."
+                  {})))
+
+(defmethod lib.metadata.calculation/returned-columns-method :mbql/query
+  [query stage-number a-query options]
+  (lib.metadata.calculation/returned-columns query stage-number (lib.util/query-stage a-query stage-number) options))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/query
   [query stage-number x style]

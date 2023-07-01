@@ -91,11 +91,13 @@ export function suggestedJoinCondition(
   return ML.suggested_join_condition(query, stageIndex, joinable);
 }
 
-export function joinFields(join: Join): ColumnMetadata[] {
+type JoinFields = ColumnMetadata[] | "all" | "none";
+
+export function joinFields(join: Join): JoinFields {
   return ML.join_fields(join);
 }
 
-export function withJoinFields(join: Join, newFields: ColumnMetadata[]): Join {
+export function withJoinFields(join: Join, newFields: JoinFields): Join {
   return ML.with_join_fields(join, newFields);
 }
 
@@ -129,4 +131,12 @@ export type PickerInfo = {
 
 export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
   return ML.picker_info(query, metadata);
+}
+
+export function joinableColumns(
+  query: Query,
+  stageIndex: number,
+  joinOrJoinable: Join | Joinable,
+): ColumnMetadata[] {
+  return ML.joinable_columns(query, stageIndex, joinOrJoinable);
 }

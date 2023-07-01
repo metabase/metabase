@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -13,6 +14,18 @@
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel ensure-previous-stages-have-metadata-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
+                  lib/append-stage
+                  lib/append-stage)]
+    (is (=? {:stages [{::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/fields}
+                                                    {:name "NAME", :lib/source :source/fields}]}
+                      {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
+                                                    {:name "NAME", :lib/source :source/previous-stage}]}
+                      {}]}
+            (#'lib.stage/ensure-previous-stages-have-metadata query -1)))))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
@@ -26,7 +39,7 @@
       (is (mc/validate ::lib.schema/query query))
       (is (=? [(merge (meta/field-metadata :venues :price)
                       {:lib/source :source/fields})]
-              (lib.metadata.calculation/metadata query -1 query))))))
+              (lib.metadata.calculation/returned-columns query))))))
 
 (deftest ^:parallel deduplicate-expression-names-in-aggregations-test
   (testing "make sure multiple expressions come back with deduplicated names"
@@ -54,12 +67,12 @@
                   :display-name             "0.8 × Average of Price"
                   :lib/source-column-alias  "expression"
                   :lib/desired-column-alias "expression_2"}]
-                (lib.metadata.calculation/metadata query -1 query)))))))
+                (lib.metadata.calculation/returned-columns query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
   (let [query (lib.tu/query-with-card-source-table)]
     (is (= "My Card"
-           (lib.metadata.calculation/display-name query -1 query)))))
+           (lib.metadata.calculation/display-name query)))))
 
 (deftest ^:parallel adding-and-removing-stages
   (let [query                (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -94,7 +107,7 @@
              {:id (meta/id :venues :price),       :name "PRICE",       :lib/source :source/table-defaults}
              {:name "ID + 1", :lib/source :source/expressions}
              {:name "ID + 2", :lib/source :source/expressions}]
-            (lib.metadata.calculation/metadata (query-with-expressions))))))
+            (lib.metadata.calculation/returned-columns (query-with-expressions))))))
 
 (deftest ^:parallel default-fields-metadata-return-expressions-before-joins-test
   (testing "expressions should come back BEFORE columns from joins"
@@ -115,7 +128,7 @@
                          :expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
                                        [:+ {:lib/expression-name "ID + 2"} [:field {} (meta/id :venues :id)] 2]]}]}
               query))
-      (let [metadata (lib.metadata.calculation/metadata query)]
+      (let [metadata (lib.metadata.calculation/returned-columns query)]
         (is (=? [{:id (meta/id :venues :id), :name "ID", :lib/source :source/table-defaults}
                  {:id (meta/id :venues :name), :name "NAME", :lib/source :source/table-defaults}
                  {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :lib/source :source/table-defaults}

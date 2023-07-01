@@ -36,7 +36,8 @@ const MARKDOWN_RENDERERS = {
   ),
 };
 
-export function formatValue(value: unknown, options: OptionsType = {}) {
+export function formatValue(value: unknown, _options: OptionsType = {}) {
+  let { prefix, suffix, ...options } = _options;
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (
     options.click_behavior &&
@@ -76,17 +77,17 @@ export function formatValue(value: unknown, options: OptionsType = {}) {
       return formatted;
     }
   }
-  if (options.prefix || options.suffix) {
+  if (prefix || suffix) {
     if (options.jsx && typeof formatted !== "string") {
       return (
         <span>
-          {options.prefix || ""}
+          {prefix || ""}
           {formatted}
-          {options.suffix || ""}
+          {suffix || ""}
         </span>
       );
     } else {
-      return `${options.prefix || ""}${formatted}${options.suffix || ""}`;
+      return `${prefix || ""}${formatted}${suffix || ""}`;
     }
   } else {
     return formatted;

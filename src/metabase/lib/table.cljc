@@ -44,7 +44,7 @@
              [(or position 0) (u/lower-case-en (or field-name ""))])
            field-metadatas))
 
-(defmethod lib.metadata.calculation/visible-columns-method :metadata/table
+(defmethod lib.metadata.calculation/returned-columns-method :metadata/table
   [query _stage-number table-metadata {:keys [unique-name-fn], :as _options}]
   (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
     (->> field-metadatas

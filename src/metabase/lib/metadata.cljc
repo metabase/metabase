@@ -65,6 +65,7 @@
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
   [:map
+   {:error/message "Valid column metadata"}
    [:lib/type  [:= :metadata/column]]
    [:name      ::lib.schema.common/non-blank-string]
    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
@@ -107,6 +108,7 @@
   massaged into a sequence of `ColumnMetadata`s just yet. See [[metabase.lib.card/card-metadata-columns]] that
   converts these as needed."
   [:map
+   {:error/message "Valid Card metadata"}
    [:lib/type [:= :metadata/card]]
    [:id   ::lib.schema.id/card]
    [:name ::lib.schema.common/non-blank-string]
@@ -121,6 +123,7 @@
 (def SegmentMetadata
   "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
   [:map
+   {:error/message "Valid Segment metadata"}
    [:lib/type [:= :metadata/segment]]
    [:id       ::lib.schema.id/segment]
    [:name     ::lib.schema.common/non-blank-string]])
@@ -131,6 +134,7 @@
   MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
   see [[metabase.query-processor.middleware.expand-macros]]."
   [:map
+   {:error/message "Valid Metric metadata"}
    [:lib/type   [:= :metadata/metric]]
    [:id         ::lib.schema.id/metric]
    [:name       ::lib.schema.common/non-blank-string]
@@ -144,6 +148,7 @@
   "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
   but with kebab-case keys."
   [:map
+   {:error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]
    [:id       ::lib.schema.id/table]
    [:name     ::lib.schema.common/non-blank-string]
@@ -154,6 +159,7 @@
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
   the frontend Query Builder."
   [:map
+   {:error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
    ;; Like `:fields` for [[TableMetadata]], this is now optional -- we can fetch the Tables separately if needed.
@@ -298,3 +304,15 @@
   [metadata-providerable :- MetadataProviderable
    metric-id             :- ::lib.schema.id/metric]
   (lib.metadata.protocols/metric (->metadata-provider metadata-providerable) metric-id))
+
+(mu/defn table-or-card :- [:maybe [:or CardMetadata TableMetadata]]
+  "Convenience, for frontend JS usage (see #31915): look up metadata based on Table ID, handling legacy-style
+  `card__<id>` strings as well. Throws an Exception (Clj-only, due to Malli validation) if passed an integer Table ID
+  and the Table does not exist, since this is a real error; however if passed a `card__<id>` that does not exist,
+  simply returns `nil` (since we do not have a strict expectation that Cards always be present in the
+  MetadataProvider)."
+  [metadata-providerable :- MetadataProviderable
+   table-id              :- [:or ::lib.schema.id/table :string]]
+  (if-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
+    (card metadata-providerable card-id)
+    (table metadata-providerable table-id)))

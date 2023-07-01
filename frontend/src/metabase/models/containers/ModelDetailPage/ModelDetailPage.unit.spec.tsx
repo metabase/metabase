@@ -76,6 +76,7 @@ const TEST_TABLE_ID = 1;
 const TEST_FIELD = createMockField({
   id: 1,
   display_name: "Field 1",
+  semantic_type: TYPE.PK,
   table_id: TEST_TABLE_ID,
 });
 
