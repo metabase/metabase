@@ -5,58 +5,56 @@
   3. It provides a central location of MBQL examples
   4. It can be used as a centralized, data-driven location to source MBQL for your tests"
   (:require
-    [clojure.core.async :as a]
-    [clojure.math.numeric-tower :as math]
-    [clojure.test :refer :all]
-    [metabase.query-processor :as qp]
-    [metabase.query-processor.async :as qp.async]
-    [metabase.test :as mt]
-    [metabase.models.card :refer [Card]]
-    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-    [toucan2.tools.with-temp :as t2.with-temp]))
+   [clojure.core.async :as a]
+   [clojure.math.numeric-tower :as math]
+   [clojure.test :refer :all]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.async :as qp.async]
+   [metabase.test :as mt]
+   [metabase.models.card :refer [Card]]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn full-join-orders-test-query
   "This query does a full natural join of the orders, products, and people tables by user and product id."
   []
   (mt/$ids
-    {:source-table :$$orders
-     :joins        [{:fields       [:&u.people.address
-                                    :&u.people.birth_date
-                                    :&u.people.city
-                                    :&u.people.created_at
-                                    :&u.people.email
-                                    :&u.people.id
-                                    :&u.people.latitude
-                                    :&u.people.longitude
-                                    :&u.people.name
-                                    :&u.people.password
-                                    :&u.people.source
-                                    :&u.people.state
-                                    :&u.people.zip]
-                     :source-table :$$people
-                     :alias        :u
-                     :condition    [:= :$orders.user_id :&u.people.id]}
-                    {:fields       [:&p.products.category
-                                    :&p.products.created_at
-                                    :&p.products.ean
-                                    :&p.products.id
-                                    :&p.products.price
-                                    :&p.products.rating
-                                    :&p.products.title
-                                    :&p.products.vendor]
-                     :source-table :$$products
-                     :alias        :p
-                     :condition    [:= :$orders.product_id :&p.products.id]}]
-     :fields       [:$orders.created_at
-                    :$orders.discount
-                    :$orders.id
-                    :$orders.product_id
-                    :$orders.quantity
-                    :$orders.subtotal
-                    :$orders.tax
-                    :$orders.total
-                    :$orders.user_id]}))
-
+   {:source-table :$$orders
+    :joins        [{:fields       [:&u.people.address
+                                   :&u.people.birth_date
+                                   :&u.people.city
+                                   :&u.people.created_at
+                                   :&u.people.email
+                                   :&u.people.id
+                                   :&u.people.latitude
+                                   :&u.people.longitude
+                                   :&u.people.name
+                                   :&u.people.password
+                                   :&u.people.source
+                                   :&u.people.state
+                                   :&u.people.zip]
+                    :source-table :$$people
+                    :alias        :u
+                    :condition    [:= :$orders.user_id :&u.people.id]}
+                   {:fields       [:&p.products.category
+                                   :&p.products.created_at
+                                   :&p.products.ean
+                                   :&p.products.id
+                                   :&p.products.price
+                                   :&p.products.rating
+                                   :&p.products.title
+                                   :&p.products.vendor]
+                    :source-table :$$products
+                    :alias        :p
+                    :condition    [:= :$orders.product_id :&p.products.id]}]
+    :fields       [:$orders.created_at
+                   :$orders.discount
+                   :$orders.id
+                   :$orders.product_id
+                   :$orders.quantity
+                   :$orders.subtotal
+                   :$orders.tax
+                   :$orders.total
+                   :$orders.user_id]}))
 
 (def joined-metadata-map
   "`full-join-orders-test-query` will create aliased column names. The following map can be used to rename each of these
@@ -94,9 +92,9 @@
 
 (defn- result-metadata-for-query [query]
   (first
-    (a/alts!!
-      [(qp.async/result-metadata-for-query-async query)
-       (a/timeout 1000)])))
+   (a/alts!!
+    [(qp.async/result-metadata-for-query-async query)
+     (a/timeout 1000)])))
 
 (deftest select-*-with-limit-test
   (testing "Using a model as the base, select the first N of everything."
@@ -106,9 +104,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-            [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                          :dataset_query source-query
-                                          :dataset       true}]
+           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
+                                         :dataset_query source-query
+                                         :dataset       true}]
             (let [limit         10
                   dataset-query {:database   (mt/id)
                                  :type       :query
@@ -131,9 +129,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-            [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                          :dataset_query source-query
-                                          :dataset       true}]
+           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
+                                         :dataset_query source-query
+                                         :dataset       true}]
             (let [limit           10
                   selected-fields [[:field "SUBTOTAL" {:base-type "type/Float"}]
                                    [:field "TAX" {:base-type "type/Float"}]
@@ -159,9 +157,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-            [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                          :dataset_query source-query
-                                          :dataset       true}]
+           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
+                                         :dataset_query source-query
+                                         :dataset       true}]
             (let [dataset-query {:type       :query
                                  :query      {:source-table (format "card__%s" card-id)
                                               :fields       [[:field (mt/id :people :state)]
@@ -186,9 +184,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-            [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                          :dataset_query source-query
-                                          :dataset       true}]
+           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
+                                         :dataset_query source-query
+                                         :dataset       true}]
             (testing "Fields can be referenced by id"
               (let [dataset-query {:type       :query
                                    :query      {:source-table (format "card__%s" card-id)
@@ -220,9 +218,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-            [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                          :dataset_query source-query
-                                          :dataset       true}]
+           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
+                                         :dataset_query source-query
+                                         :dataset       true}]
             (testing "Fields can be referenced by id"
               (let [dataset-query {:type       :query
                                    :query      {:breakout     [[:field (mt/id :people :state)]],
@@ -256,11 +254,11 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-            [Card {card-id :id :as card} {:table_id        (mt/id :orders)
-                                          :dataset_query   source-query
-                                          :result_metadata (->> (mt/with-test-user :rasta (result-metadata-for-query source-query))
-                                                                (map (fn [m] (update m :display_name joined-metadata-map))))
-                                          :dataset         true}]
+           [Card {card-id :id :as card} {:table_id        (mt/id :orders)
+                                         :dataset_query   source-query
+                                         :result_metadata (->> (mt/with-test-user :rasta (result-metadata-for-query source-query))
+                                                               (map (fn [m] (update m :display_name joined-metadata-map))))
+                                         :dataset         true}]
             (let [dataset-query {:type       :query
 
                                  :query      {;; Not CUSTOMER_STATE
@@ -284,9 +282,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-            [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                          :dataset_query source-query
-                                          :dataset       true}]
+           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
+                                         :dataset_query source-query
+                                         :dataset       true}]
             (let [dataset-query {:type       :query
                                  :query      {:expressions {"Discount percentage"
                                                             ["*"
@@ -312,9 +310,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-            [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                          :dataset_query source-query
-                                          :dataset       true}]
+           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
+                                         :dataset_query source-query
+                                         :dataset       true}]
             (let [dataset-query {:type       :query
                                  :query      {:expressions  {"Unit price" [:/
                                                                            ;[:field "SUBTOTAL" {:base-type "type/Float"}]
