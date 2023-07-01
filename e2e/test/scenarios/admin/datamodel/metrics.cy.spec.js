@@ -146,7 +146,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should update that metric", () => {
       cy.visit("/admin");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Data Model").click();
+      cy.contains("Table Metadata").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Metrics").click();
 

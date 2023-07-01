@@ -178,7 +178,7 @@ describe("order by", () => {
         orderedQuery,
         0,
         orderBys[0],
-        ML.orderByClause(orderedQuery, 0, productCategory, "desc"),
+        ML.orderByClause(productCategory, "desc"),
       );
       const nextOrderBys = ML.orderBys(nextQuery, 0);
       expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(

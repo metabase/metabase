@@ -155,7 +155,7 @@
          [jdbc-metadata fallback-metadata])))))
 
 (defn describe-table-fields-xf
-  "Returns a transducer for computing metatdata about the fields in `table`."
+  "Returns a transducer for computing metadata about the fields in `table`."
   [driver table]
   (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
                  (let [base-type      (database-type->base-type-or-warn driver database-type)

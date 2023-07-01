@@ -87,7 +87,6 @@
                                 (count limited-values))
                              has_more_values)}))
 
-    :sandbox
     (field-values/distinct-values field)))
 
 (defn hash-key-for-advanced-field-values
@@ -98,7 +97,10 @@
     (field-values/hash-key-for-linked-filters field-id constraints)
 
     :sandbox
-    (field-values/hash-key-for-sandbox field-id)))
+    (field-values/hash-key-for-sandbox field-id)
+
+    :impersonation
+    (field-values/hash-key-for-impersonation field-id)))
 
 (defn create-advanced-field-values!
   "Fetch and create a FieldValues for `field` with type `fv-type`.

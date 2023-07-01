@@ -1,3 +1,5 @@
+import { ORDERS_PRODUCTS_ACCESS } from "./test_roles";
+
 /**
  * We are keeping the references to most commonly used ids and objects in this file.
  *
@@ -135,6 +137,19 @@ export const USERS = {
     email: "none@metabase.test",
     password: "12341234",
     user_group_memberships: [{ id: ALL_USERS_GROUP, is_group_manager: false }],
+  },
+  impersonated: {
+    first_name: "User",
+    last_name: "Impersonated",
+    email: "impersonated@metabase.test",
+    password: "12341234",
+    login_attributes: {
+      role: ORDERS_PRODUCTS_ACCESS,
+    },
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: COLLECTION_GROUP, is_group_manager: false },
+    ],
   },
 };
 

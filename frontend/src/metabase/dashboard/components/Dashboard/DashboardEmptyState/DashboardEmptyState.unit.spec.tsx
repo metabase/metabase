@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react";
-
+import { createMockDashboard } from "metabase-types/api/mocks";
 import { DashboardEmptyState, TabEmptyState } from "./DashboardEmptyState";
 
 describe("DashboardEmptyState", () => {
   it("renders", () => {
     render(
       <DashboardEmptyState
+        dashboard={createMockDashboard()}
         isNightMode={false}
         addQuestion={jest.fn()}
         closeNavbar={jest.fn()}

@@ -7,7 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.util :as mdb.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
@@ -22,12 +21,12 @@
    [potemkin :as p]
    [schema.core :as schema]
    [taoensso.nippy :as nippy]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
+   [toucan2.tools.identity-query :as t2.identity-query]
    [toucan2.util :as t2.u])
   (:import
    (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
@@ -54,256 +53,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(models/set-root-namespace! 'metabase.models)
-
-
-;;; types
-
-(defn json-in
-  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
-  [obj]
-  (if (string? obj)
-    obj
-    (json/generate-string obj)))
-
-(defn- json-out [s keywordize-keys?]
-  (if (string? s)
-    (try
-      (json/parse-string s keywordize-keys?)
-      (catch Throwable e
-        (log/error e (str (trs "Error parsing JSON")))
-        s))
-    s))
-
-(defn json-out-with-keywordization
-  "Default out function for columns given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
-  [obj]
-  (json-out obj true))
-
-(defn json-out-without-keywordization
-  "Out function for columns given a Toucan type `:json-no-keywordization`. Similar to `:json-out` but does leaves keys
-  as strings."
-  [obj]
-  (json-out obj false))
-
-(models/add-type! :json
-  :in  json-in
-  :out json-out-with-keywordization)
-
-(models/add-type! :json-no-keywordization
-  :in  json-in
-  :out json-out-without-keywordization)
-
-;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
-(defn- maybe-normalize [query]
-  (cond-> query
-    (seq query) mbql.normalize/normalize))
-
-(defn catch-normalization-exceptions
-  "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
-  invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
-  letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
-  [f]
-  (fn [query]
-    (try
-      (doall (f query))
-      (catch Throwable e
-        (log/error e (tru "Unable to normalize:") "\n"
-                   (u/pprint-to-str 'red query))
-        nil))))
-
-(models/add-type! :metabase-query
-  :in  (comp json-in maybe-normalize)
-  :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
-
-(defn normalize-parameters-list
-  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameters]
-  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
-      []))
-
-(models/add-type! :parameters-list
-  :in  (comp json-in normalize-parameters-list)
-  :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
-
-(def ^:private MetricSegmentDefinition
-  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
-   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
-   schema/Keyword                     schema/Any})
-
-(def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (schema/validator MetricSegmentDefinition))
-
-;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
-(defn- normalize-metric-segment-definition [definition]
-  (when (seq definition)
-    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
-      (validate-metric-segment-definition <>))))
-
-;; For inner queries like those in Metric definitions
-(models/add-type! :metric-segment-definition
-  :in  (comp json-in normalize-metric-segment-definition)
-  :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
-
-(defn normalize-visualization-settings
-  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
-   to modern MBQL clauses so things work correctly."
-  [viz-settings]
-  (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
-          (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings]
-                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
-          (mbql-field-clause? [form]
-            (and (vector? form)
-                 (#{"field-id" "fk->" "datetime-field" "joined-field" "binning-strategy" "field"
-                    "aggregation" "expression"}
-                  (first form))))
-          (normalize-mbql-clauses [form]
-            (walk/postwalk
-             (fn [form]
-               (cond-> form
-                 (mbql-field-clause? form) mbql.normalize/normalize))
-             form))]
-    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
-      (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
-      true                                 normalize-mbql-clauses
-      ;; exclude graph.metrics from normalization as it may start with
-      ;; the word "expression" but it is not MBQL (metabase#15882)
-      (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
-
-(jm/def-json-migration migrate-viz-settings*)
-
-(def ^:private viz-settings-current-version 2)
-
-(defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
-  (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} viz-settings]
-    (if-let [new-value (cond
-                         legend?  "inside"
-                         percent? "legend")]
-      (assoc viz-settings :pie.percent_visibility new-value)
-      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
-
-(defn- migrate-viz-settings
-  [viz-settings]
-  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
-    (cond-> new-viz-settings
-      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
-
-;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
-;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
-
-(models/add-type! :visualization-settings
-  :in  (comp json-in migrate-viz-settings)
-  :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization))
-
-;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
-;; permissions set
-(models/add-type! :json-set
-  :in  json-in
-  :out #(some-> % json-out-with-keywordization set))
-
-(def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
-(def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
-
-;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
-
-(models/add-type! :encrypted-json
-  :in  encrypted-json-in
-  :out cached-encrypted-json-out)
-
-(models/add-type! :encrypted-text
-  :in  encryption/maybe-encrypt
-  :out encryption/maybe-decrypt)
-
-(defn- blob->bytes [^Blob b]
-  (.getBytes ^Blob b 0 (.length ^Blob b)))
-
-(defn- maybe-blob->bytes [v]
-  (if (instance? Blob v)
-    (blob->bytes v)
-    v))
-
-(defn decompress
-  "Decompress `compressed-bytes`."
-  [compressed-bytes]
-  (if (instance? Blob compressed-bytes)
-    (recur (blob->bytes compressed-bytes))
-    (with-open [bis     (ByteArrayInputStream. compressed-bytes)
-                bif     (BufferedInputStream. bis)
-                gz-in   (GZIPInputStream. bif)
-                data-in (DataInputStream. gz-in)]
-      (nippy/thaw-from-in! data-in))))
-
-(models/add-type! :compressed
-  :in  identity
-  :out decompress)
-
-(defn- validate-cron-string [s]
-  (schema/validate (schema/maybe u.cron/CronScheduleString) s))
-
-(models/add-type! :cron-string
-  :in  validate-cron-string
-  :out identity)
-
-;; Toucan ships with a Keyword type, but on columns that are marked 'TEXT' it doesn't work properly since the values
-;; might need to get de-CLOB-bered first. So replace the default Toucan `:keyword` implementation with one that
-;; handles those cases.
-(models/add-type! :keyword
-  :in  u/qualified-name
-  :out keyword)
-
-;;; properties
-
-(defn now
-  "Return a HoneySQL form for a SQL function call to get current moment in time. Currently this is `now()` for Postgres
-  and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
-  max (nanosecond) resolution)."
-  []
-  (classloader/require 'metabase.driver.sql.query-processor)
-  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
-
-(defn- add-created-at-timestamp [obj & _]
-  (cond-> obj
-    (not (:created_at obj)) (assoc :created_at (now))))
-
-(defn- add-updated-at-timestamp [obj]
-  ;; don't stomp on `:updated_at` if it's already explicitly specified.
-  (let [changes-already-include-updated-at? (if (t2/instance? obj)
-                                              (:updated_at (t2/changes obj))
-                                              (:updated_at obj))]
-    (cond-> obj
-      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
-
-(models/add-property! ::timestamped?
-  :insert (comp add-created-at-timestamp add-updated-at-timestamp)
-  :update add-updated-at-timestamp)
-
-;; like `timestamped?`, but for models that only have an `:created_at` column
-(models/add-property! ::created-at-timestamped?
-  :insert add-created-at-timestamp)
-
-;; like `timestamped?`, but for models that only have an `:updated_at` column
-(models/add-property! ::updated-at-timestamped?
-  :insert add-updated-at-timestamp
-  :update add-updated-at-timestamp)
-
-(defn- add-entity-id [obj & _]
-  (if (or (contains? obj :entity_id)
-          *deserializing?*)
-    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
-    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
-    obj
-    (assoc obj :entity_id (u/generate-nano-id))))
-
-(models/add-property! ::entity-id
-  :insert add-entity-id)
-
-(methodical/prefer-method! #'t2.before-insert/before-insert ::timestamped? ::entity-id)
 
 ;;;; [[define-simple-hydration-method]] and [[define-batched-hydration-method]]
 
@@ -373,12 +122,73 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan 2 Extensions                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 ;; --- transforms methods
+
+(defn json-in
+  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
+  [obj]
+  (if (string? obj)
+    obj
+    (json/generate-string obj)))
+
+(defn- json-out [s keywordize-keys?]
+  (if (string? s)
+    (try
+      (json/parse-string s keywordize-keys?)
+      (catch Throwable e
+        (log/error e (str (trs "Error parsing JSON")))
+        s))
+    s))
+
+(defn json-out-with-keywordization
+  "Default out function for columns given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
+  [obj]
+  (json-out obj true))
+
+(defn json-out-without-keywordization
+  "Out function for columns given a Toucan type `:json-no-keywordization`. Similar to `:json-out` but does leaves keys
+  as strings."
+  [obj]
+  (json-out obj false))
+
+(def transform-json
+  "Transform for json."
+  {:in  json-in
+   :out json-out-with-keywordization})
+
+;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
+(defn- maybe-normalize [query]
+  (cond-> query
+    (seq query) mbql.normalize/normalize))
+
+(defn catch-normalization-exceptions
+  "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
+  invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
+  letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
+  [f]
+  (fn [query]
+    (try
+      (doall (f query))
+      (catch Throwable e
+        (log/error e (tru "Unable to normalize:") "\n"
+                   (u/pprint-to-str 'red query))
+        nil))))
+
+(defn normalize-parameters-list
+  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
+  [parameters]
+  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
+      []))
+
 (def transform-metabase-query
   "Transform for metabase-query."
   {:in  (comp json-in maybe-normalize)
    :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
+
+(def transform-parameters-list
+  "Transform for parameters list."
+  {:in  (comp json-in normalize-parameters-list)
+   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
 
 (def normalize-field-ref
   "Normalize the field ref. Ensure it's well-formed mbql, not just json."
@@ -406,52 +216,165 @@
   {:in  u/qualified-name
    :out keyword})
 
-(def transform-json
-  "Transform for json."
-  {:in  json-in
-   :out json-out-with-keywordization})
-
 (def transform-json-no-keywordization
   "Transform for json-no-keywordization"
   {:in  json-in
    :out json-out-without-keywordization})
+
+(def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
+(def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
+
+;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
+;; cache the decrypted JSON for one hour
+(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
 (def transform-encrypted-json
   "Transform for encrypted json."
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
+(def transform-encrypted-text
+  "Transform for encrypted text."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
+
+(defn normalize-visualization-settings
+  "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
+   to modern MBQL clauses so things work correctly."
+  [viz-settings]
+  (letfn [(normalize-column-settings-key [k]
+            (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
+          (normalize-column-settings [column-settings]
+            (into {} (for [[k v] column-settings]
+                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+          (mbql-field-clause? [form]
+            (and (vector? form)
+                 (#{"field-id" "fk->" "datetime-field" "joined-field" "binning-strategy" "field"
+                    "aggregation" "expression"}
+                  (first form))))
+          (normalize-mbql-clauses [form]
+            (walk/postwalk
+             (fn [form]
+               (cond-> form
+                 (mbql-field-clause? form) mbql.normalize/normalize))
+             form))]
+    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
+      (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
+      true                                 normalize-mbql-clauses
+      ;; exclude graph.metrics from normalization as it may start with
+      ;; the word "expression" but it is not MBQL (metabase#15882)
+      (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
+
+(jm/def-json-migration migrate-viz-settings*)
+
+(def ^:private viz-settings-current-version 2)
+
+(defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
+  (let [{percent? :pie.show_legend_perecent ;; [sic]
+         legend?  :pie.show_legend} viz-settings]
+    (if-let [new-value (cond
+                         legend?  "inside"
+                         percent? "legend")]
+      (assoc viz-settings :pie.percent_visibility new-value)
+      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+
+(defn- migrate-viz-settings
+  [viz-settings]
+  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
+    (cond-> new-viz-settings
+      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
+
+;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
+;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
+
+
 (def transform-visualization-settings
   "Transform for viz-settings."
   {:in  (comp json-in migrate-viz-settings)
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
-(def transform-parameters-list
-  "Transform for parameters list."
-  {:in  (comp json-in normalize-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
 
-(def transform-secret-value
-  "Transform for secret value."
-  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
 
-(def transform-encrypted-text
-  "Transform for encrypted text."
-  {:in  encryption/maybe-encrypt
-   :out encryption/maybe-decrypt})
+(defn- validate-cron-string [s]
+  (schema/validate (schema/maybe u.cron/CronScheduleString) s))
 
 (def transform-cron-string
   "Transform for encrypted json."
   {:in  validate-cron-string
    :out identity})
 
+(def ^:private MetricSegmentDefinition
+  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
+   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
+   schema/Keyword                     schema/Any})
+
+(def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
+  (schema/validator MetricSegmentDefinition))
+
+;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
+(defn- normalize-metric-segment-definition [definition]
+  (when (seq definition)
+    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
+      (validate-metric-segment-definition <>))))
+
+
 (def transform-metric-segment-definition
   "Transform for inner queries like those in Metric definitions."
   {:in  (comp json-in normalize-metric-segment-definition)
    :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization)})
 
+(defn- blob->bytes [^Blob b]
+  (.getBytes ^Blob b 0 (.length ^Blob b)))
+
+(defn- maybe-blob->bytes [v]
+  (if (instance? Blob v)
+    (blob->bytes v)
+    v))
+
+(def transform-secret-value
+  "Transform for secret value."
+  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
+   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+
+(defn decompress
+  "Decompress `compressed-bytes`."
+  [compressed-bytes]
+  (if (instance? Blob compressed-bytes)
+    (recur (blob->bytes compressed-bytes))
+    (with-open [bis     (ByteArrayInputStream. compressed-bytes)
+                bif     (BufferedInputStream. bis)
+                gz-in   (GZIPInputStream. bif)
+                data-in (DataInputStream. gz-in)]
+      (nippy/thaw-from-in! data-in))))
+
+#_{:clj-kondo/ignore [:unused-public-var]}
+(def transform-compressed
+  "Transform for compressed fields."
+  {:in identity
+   :out decompress})
+
 ;; --- predefined hooks
+
+(defn now
+  "Return a HoneySQL form for a SQL function call to get current moment in time. Currently this is `now()` for Postgres
+  and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
+  max (nanosecond) resolution)."
+  []
+  (classloader/require 'metabase.driver.sql.query-processor)
+  ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
+
+(defn- add-created-at-timestamp [obj & _]
+  (cond-> obj
+    (not (:created_at obj)) (assoc :created_at (now))))
+
+(defn- add-updated-at-timestamp [obj]
+  ;; don't stomp on `:updated_at` if it's already explicitly specified.
+  (let [changes-already-include-updated-at? (if (t2/instance? obj)
+                                              (:updated_at (t2/changes obj))
+                                              (:updated_at obj))]
+    (cond-> obj
+      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
+
 
 (t2/define-before-insert :hook/timestamped?
   [instance]
@@ -479,10 +402,20 @@
   (-> instance
       add-updated-at-timestamp))
 
+(defn- add-entity-id [obj & _]
+  (if (or (contains? obj :entity_id)
+          *deserializing?*)
+    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
+    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
+    obj
+    (assoc obj :entity_id (u/generate-nano-id))))
+
 (t2/define-before-insert :hook/entity-id
   [instance]
   (-> instance
       add-entity-id))
+
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
 ;; --- helper fns
 (defn pre-update-changes
@@ -492,7 +425,12 @@
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
                                         (t2.protocols/changes row))))
 
-(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+(defn do-after-select
+  "Do [[toucan2.tools.after-select]] stuff for row map `object` using methods for `modelable`."
+  [modelable row-map]
+  {:pre [(map? row-map)]}
+  (let [model (t2/resolve-model modelable)]
+    (t2/select-one model (t2.identity-query/identity-query [row-map]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -599,7 +537,7 @@
 (defn- check-perms-with-fn
   ([fn-symb read-or-write a-model object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (mdb.u/primary-key a-model) object-id))))
+       (check-perms-with-fn fn-symb read-or-write (t2/select-one a-model (first (t2/primary-keys a-model)) object-id))))
 
   ([fn-symb read-or-write object]
    (and object
@@ -676,15 +614,6 @@
 (defmethod can-create? ::create-policy.superuser
   [_model _m]
   (superuser?))
-
-;;;; [[define-methods]]
-
-(defn define-methods
-  "Helper for defining Toucan 2 methods using a Toucan-1-style `IModel` method map. This should be considered deprecated
-  and will be removed at some point in the future."
-  {:style/indent [:form]}
-  [model method-map]
-  (models/define-methods-with-IModel-method-map model method-map))
 
 ;;;; [[to-json]]
 

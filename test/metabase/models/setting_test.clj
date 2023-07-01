@@ -335,6 +335,26 @@
             (is (= "TEST SETTING - WITH I18N"
                    (description)))))))))
 
+(defsetting test-dynamic-i18n-setting
+  (deferred-tru "Test setting - with i18n: {0}" (test-i18n-setting)))
+
+(deftest dynamic-description-test
+  (testing "Descriptions with i18n string should update if it depends on another setting's value."
+    (mt/with-test-user :crowberto
+      (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n: {0}" "TEST SETTING - WITH I18N: {0}"}}}
+        (letfn [(description []
+                  (some (fn [{:keys [key description]}]
+                          (when (= :test-dynamic-i18n-setting key)
+                            description))
+                        (setting/admin-writable-site-wide-settings)))]
+          (test-i18n-setting! "test-setting-value!")
+          (is (= "Test setting - with i18n: test-setting-value!"
+                 (description)))
+          (mt/with-user-locale "zz"
+            (is (= "TEST SETTING - WITH I18N: test-setting-value!"
+                   (description))))
+          (test-i18n-setting! nil))))))
+
 
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
 

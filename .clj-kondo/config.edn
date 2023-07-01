@@ -3,11 +3,11 @@
  {:unresolved-symbol
   {:exclude
    [instaparse.core/transform
-    (cljs.test/is [=?])
+    (cljs.test/is [=? malli=])
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= sql= =?])
+    (clojure.test/is [query= sql= =? malli=])
     (clojure.tools.macro/macrolet)
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
@@ -163,6 +163,7 @@
    toucan.db/execute!                   {:message "Use t2/query-one instead of toucan.db/execute!"}
    toucan.db/reducible-query            {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
    toucan.db/resolve-model              {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
+   toucan.models/defmodel               {:message "Define a method for t2/table-name instead of toucan.models/defmodel"}
    toucan.models/primary-key            {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
    toucan.models/model?                 {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}
    toucan.hydrate/hydrate               {:message "Use t2/hydrate instead of toucan.hydrate/hydrate"}
@@ -292,10 +293,6 @@
     metabase.driver.druid.js                                        druid.js
     metabase.driver.druid.query-processor                           druid.qp
     metabase.driver.druid.sync                                      druid.sync
-    metabase.driver.googleanalytics.client                          ga.client
-    metabase.driver.googleanalytics.execute                         ga.execute
-    metabase.driver.googleanalytics.metadata                        ga.metadata
-    metabase.driver.googleanalytics.query-processor                 ga.qp
     metabase.driver.impl                                            driver.impl
     metabase.driver.mongo.execute                                   mongo.execute
     metabase.driver.mongo.parameters                                mongo.params
@@ -319,6 +316,7 @@
     metabase.email-test                                             et
     metabase.email.messages                                         messages
     metabase.http-client                                            client
+    metabase.lib.util                                               lib.util
     metabase.mbql.normalize                                         mbql.normalize
     metabase.mbql.schema                                            mbql.s
     metabase.mbql.util                                              mbql.u

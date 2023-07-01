@@ -314,46 +314,6 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   /**
-   *
-   */
-  setDefaultQuery(): StructuredQuery {
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which doesn't allow raw queries:
-    if (
-      table &&
-      table.entity_type === "entity/GoogleAnalyticsTable" &&
-      !this.isEmpty() &&
-      !this.hasAnyClauses()
-    ) {
-      // NOTE: shold we check that a
-      const dateField = _.findWhere(table.fields, {
-        name: "ga:date",
-      });
-
-      if (dateField) {
-        return this.filter([
-          "time-interval",
-          ["field", dateField.id, null],
-          -365,
-          "day",
-        ])
-          .aggregate(["metric", "ga:users"])
-          .aggregate(["metric", "ga:pageviews"])
-          .breakout([
-            "field",
-            dateField.id,
-            {
-              "temporal-unit": "week",
-            },
-          ]);
-      }
-    }
-
-    return this;
-  }
-
-  /**
    * @returns the table object, if a table is selected and loaded.
    */
   table(): Table | null {
@@ -381,8 +341,6 @@ class StructuredQueryInner extends AtomicQuery {
       .cleanJoins()
       .cleanExpressions()
       .cleanFilters()
-      .cleanAggregations()
-      .cleanBreakouts()
       .cleanFields()
       .cleanEmpty();
   }
@@ -415,14 +373,6 @@ class StructuredQueryInner extends AtomicQuery {
 
   cleanFilters(): StructuredQuery {
     return this._cleanClauseList("filters");
-  }
-
-  cleanAggregations(): StructuredQuery {
-    return this._cleanClauseList("aggregations");
-  }
-
-  cleanBreakouts(): StructuredQuery {
-    return this._cleanClauseList("breakouts");
   }
 
   cleanFields(): StructuredQuery {
@@ -460,15 +410,6 @@ class StructuredQueryInner extends AtomicQuery {
       !this._isValidClauseList("breakouts")
     ) {
       return false;
-    }
-
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which requires an aggregation
-    if (table.entity_type === "entity/GoogleAnalyticsTable") {
-      if (!this.hasAggregations()) {
-        return false;
-      }
     }
 
     return true;

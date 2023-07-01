@@ -88,7 +88,7 @@
            (sql.qp/format-honeysql :postgres <>)
            (update (vec <>) 0 #(str/split-lines (mdb.query/format-sql % :postgres)))))))
 
-(defn- drop-if-exists-and-create-db!
+(defn drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
   [db-name]
   (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]

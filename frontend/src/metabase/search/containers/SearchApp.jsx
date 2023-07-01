@@ -9,7 +9,7 @@ import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import SearchResult from "metabase/search/components/SearchResult";
+import { SearchResult } from "metabase/search/components/SearchResult";
 import Subhead from "metabase/components/type/Subhead";
 
 import { Icon } from "metabase/core/components/Icon";

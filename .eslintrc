@@ -77,7 +77,10 @@
     ],
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
-    "no-only-tests/no-only-tests": "error",
+    "no-only-tests/no-only-tests": [
+      "error",
+      {"block": ["describe", "it", "context", "test", "tape", "fixture", "serial", "Feature", "Scenario", "Given", "And", "When", "Then", "describeWithSnowplow", "describeEE"]}
+    ],
     "complexity": ["error", { "max": 54 }]
   },
   "globals": {

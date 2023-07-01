@@ -23,7 +23,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
    (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
@@ -270,7 +269,7 @@
 (defn- randomize-db-schedules-if-needed
   []
   ;; todo: when we can use json operations on h2 we can check details in the query and drop the transducer
-  (transduce (comp (map (partial models/do-post-select Database))
+  (transduce (comp (map (partial mi/do-after-select Database))
                    (filter metabase-controls-schedule?))
              (fn
                ([] 0)

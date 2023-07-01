@@ -6,14 +6,19 @@ title: Driver interface changelog
 
 ## Metabase 0.47.0
 
-- The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload
-  CSVs to, and it should include all schemas that are able to be synced to. Currently it only needs to be implemented
-  if the database has schema, and the database supports the `uploads` feature.
-
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
-  schemas (also known as namespaces) or not. Most databases have schemas so this feature is supported on by default.
+  schemas (also known as namespaces) or not. Most databases have schemas so this feature is on by default.
   An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
+
+- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports 
+  uploading CSV files to tables in the database. To support the uploads feature, implement the following new 
+  multimethods: `metabase.driver/create-table!` (creates a table), `metabase.driver/drop-table!` (drops
+  a table), and `metabase.driver/insert-into!` (inserts values into a table).
+
+- The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload
+  CSVs to, and it should include all schemas that can be synced. Currently it only needs to be implemented
+  if the database has schema, and the database supports the `:uploads` feature.
 
 - The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`.
   The existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in
@@ -24,6 +29,11 @@ title: Driver interface changelog
   Migration to the new method is straightforward. See PR [#22166](https://github.com/metabase/metabase/pull/22166) for
   more information. You should use `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` instead of
   `clojure.java.jdbc/with-db-connection` or `clojure.java.jdbc/get-connection` going forward.
+
+- The multimethods `set-role!`, `set-role-statement`, and `default-database-role` have been added. These methods are
+  used to enable connection impersonation, which is a new feature added in 0.47.0. Connection impersonation allows users
+  to be assigned to specific database roles which are set before any queries are executed, so that access to tables can
+  be restricted at the database level instead of (or in conjunction with) Metabase's built-in permissions system.
 
 ## Metabase 0.46.0
 

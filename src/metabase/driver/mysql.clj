@@ -665,13 +665,13 @@
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
                 ["show global variables like ?" var-name]))))
 
-(defmethod driver/insert-into :mysql
+(defmethod driver/insert-into! :mysql
   [driver db-id ^String table-name column-names values]
   ;; `local_infile` must be turned on per
   ;; https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
-    ((get-method driver/insert-into :sql-jdbc) driver db-id table-name column-names values)
+    ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
     (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try

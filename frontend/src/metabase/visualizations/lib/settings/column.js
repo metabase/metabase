@@ -3,7 +3,7 @@ import moment from "moment-timezone";
 import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+import { ChartSettingOrderedColumns } from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -534,17 +534,22 @@ export const tableColumnSettings = {
     title: t`Columns`,
     widget: ChartSettingOrderedColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    isValid: ([{ card, data }]) =>
+    isValid: ([{ card, data }]) => {
+      const columns = card.visualization_settings["table.columns"];
+      const enabledColumns = columns.filter(column => column.enabled);
       // If "table.columns" happened to be an empty array,
       // it will be treated as "all columns are hidden",
       // This check ensures it's not empty,
       // otherwise it will be overwritten by `getDefault` below
-      card.visualization_settings["table.columns"].length !== 0 &&
-      _.all(
-        card.visualization_settings["table.columns"],
-        columnSetting =>
-          findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-      ),
+      return (
+        card.visualization_settings["table.columns"].length !== 0 &&
+        _.all(
+          enabledColumns,
+          columnSetting =>
+            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
+        )
+      );
+    },
     getDefault: ([
       {
         data: { cols },

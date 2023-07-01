@@ -322,7 +322,7 @@
   (or (nil? x)
       (f x)))
 
-(def ^String ^{:arglists '([emoji-string])} ^:redef emoji
+(def ^String ^{:arglists '([emoji-string])} emoji
   "Returns the `emoji-string` passed in if emoji in logs are enabled, otherwise always returns an empty string."
   #?(:clj  (if (config/config-bool :mb-emoji-in-logs)
              identity

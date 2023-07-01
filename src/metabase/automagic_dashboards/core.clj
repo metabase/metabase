@@ -34,7 +34,7 @@
    [metabase.sync.analyze.classify :as classify]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
@@ -151,10 +151,6 @@
   "Encode given object as base-64 encoded JSON."
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
-(defn- ga-table?
-  [table]
-  (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
-
 (defmulti ->root
   "root is a datatype that is an entity augmented with metadata for the purposes of creating an automatic dashboard with
   respect to that entity. It is called a root because the automated dashboard uses productions to recursively create a
@@ -190,7 +186,7 @@
   (let [table (->> metric :table_id (t2/select-one Table :id))]
     {:entity       metric
      :full-name    (if (:id metric)
-                     (tru "{0} metric" (:name metric))
+                     (trun "{0} metric" "{0} metrics" (:name metric))
                      (:name metric))
      :short-name   (:name metric)
      :source       table
@@ -204,7 +200,7 @@
   [field]
   (let [table (field/table field)]
     {:entity       field
-     :full-name    (tru "{0} field" (:display_name field))
+     :full-name    (trun "{0} field" "{0} fields" (:display_name field))
      :short-name   (:display_name field)
      :source       table
      :database     (:db_id table)
@@ -385,15 +381,12 @@
 (defn- fieldspec-matcher
   "Generate a predicate of the form (f field) -> truthy value based on a fieldspec."
   [fieldspec]
-  (if (and (string? fieldspec)
-           (rules/ga-dimension? fieldspec))
-    (comp #{fieldspec} :name)
-    (fn [{:keys [semantic_type target] :as field}]
-      (cond
-        ;; This case is mostly relevant for native queries
-        (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
-        target (recur target)
-        :else (and (not (key-col? field)) (field-isa? field fieldspec))))))
+  (fn [{:keys [semantic_type target] :as field}]
+    (cond
+      ;; This case is mostly relevant for native queries
+      (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
+      target (recur target)
+      :else (and (not (key-col? field)) (field-isa? field fieldspec)))))
 
 (defn- name-regex-matcher
   "Generate a truthy predicate of the form (f field) -> truthy value based on a regex applied to the field name."
@@ -909,8 +902,7 @@
 
 (defn- drilldown-fields
   [context]
-  (when (and (->> context :root :source (mi/instance-of? Table))
-             (-> context :root :entity ga-table? not))
+  (when (->> context :root :source (mi/instance-of? Table))
     (->> context
          :dimensions
          vals

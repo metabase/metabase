@@ -28,8 +28,8 @@
               :type/Text)))))
 
 (deftest ^:parallel column-isa-test
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))
         orderable-columns (lib/orderable-columns query)
         columns-of-type (fn [typ] (filter #(lib.types.isa/isa? % typ)
                                          orderable-columns))]

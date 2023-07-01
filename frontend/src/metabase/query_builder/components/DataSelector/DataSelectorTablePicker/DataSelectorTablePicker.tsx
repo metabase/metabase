@@ -98,6 +98,9 @@ const DataSelectorTablePicker = ({
     const renderItemIcon = ({ table }: { table: Table }) =>
       table ? <Icon name="table" /> : null;
 
+    const showSpinner = ({ table }: { table: Table }) =>
+      Boolean(table && !isSyncCompleted(table));
+
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 
     const isSearchable = hasFiltering && tables.length >= minTablesToShowSearch;
@@ -114,6 +117,7 @@ const DataSelectorTablePicker = ({
           width="100%"
           searchable={isSearchable}
           onChange={handleChange}
+          showSpinner={showSpinner}
           itemIsSelected={checkIfItemIsSelected}
           itemIsClickable={checkIfItemIsClickable}
           renderItemIcon={renderItemIcon}

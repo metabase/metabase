@@ -14,7 +14,18 @@ export type TableMetadata = unknown & { _opaque: typeof TableMetadata };
 declare const CardMetadata: unique symbol;
 export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 
-export type Limit = number | null;
+declare const MetricMetadata: unique symbol;
+export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
+
+declare const AggregationClause: unique symbol;
+export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
+
+export type Aggregatable = AggregationClause | MetricMetadata;
+
+declare const AggregationOperator: unique symbol;
+export type AggregationOperator = unknown & {
+  _opaque: typeof AggregationOperator;
+};
 
 declare const BreakoutClause: unique symbol;
 export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
@@ -24,10 +35,24 @@ export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
 export type OrderByDirection = "asc" | "desc";
 
-export type Clause = BreakoutClause | OrderByClause;
+declare const FilterClause: unique symbol;
+export type FilterClause = unknown & { _opaque: typeof FilterClause };
+
+export type Clause =
+  | AggregationClause
+  | BreakoutClause
+  | FilterClause
+  | OrderByClause;
+
+export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
+
+declare const ColumnWithOperators: unique symbol;
+export type ColumnWithOperators = unknown & {
+  _opaque: typeof ColumnWithOperators;
+};
 
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
@@ -61,12 +86,33 @@ export type ColumnDisplayInfo = {
 
   breakoutPosition?: number;
   orderByPosition?: number;
+  selected?: boolean; // used in aggregation and field clauses
+};
+
+export type AggregationOperatorDisplayInfo = {
+  columnName: string;
+  displayName: string;
+  description: string;
+  shortName: string;
+  requiresColumn: boolean;
+
+  selected?: boolean;
+};
+
+export type MetricDisplayInfo = {
+  name: string;
+  displayName: string;
+  longDisplayName: string;
+  description: string;
+  selected?: boolean;
 };
 
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "longDisplayName" | "table"
 >;
+
+export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
 export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
 
@@ -83,15 +129,31 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
-// ExternalOp is a special representation of a filter clause or aggregation clause.
+export type ExpressionArg =
+  | null
+  | boolean
+  | number
+  | string
+  | ColumnMetadata
+  | Clause;
+
+// ExternalOp is a JS-friendly representation of a filter clause or aggregation clause.
 declare const ExternalOp: unique symbol;
-export type ExternalOp = unknown & { _opaque: typeof ExternalOp };
+export type ExternalOp = {
+  _opaque: typeof ExternalOp;
+  operator: string;
+  options: Record<string, unknown>;
+  args: ExpressionArg[];
+};
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 
-export type JoinStrategy =
-  | "left-join"
-  | "right-join"
-  | "inner-join"
-  | "full-join";
+declare const JoinStrategy: unique symbol;
+export type JoinStrategy = unknown & { _opaque: typeof Join };
+
+export type JoinStrategyDisplayInfo = {
+  displayName: string;
+  default?: boolean;
+  shortName: string;
+};

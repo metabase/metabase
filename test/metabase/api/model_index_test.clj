@@ -1,5 +1,6 @@
 (ns metabase.api.model-index-test
   (:require [clojure.test :refer :all]
+            [metabase.analytics.snowplow-test :as snowplow-test]
             [metabase.models.card :refer [Card]]
             [metabase.test :as mt]
             [toucan2.tools.with-temp :as t2.with-temp]
@@ -92,3 +93,21 @@
                                                     :value_ref not-in-query})]
                 (is (=? {:cause #"Could not identify field by ref.*"}
                         response))))))))))
+
+(deftest snowplow-create-model-index-event-test
+  (testing "Send a snowplow event when “Surface individual records matching against column” is toggled on (and saved)"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/dataset sample-dataset
+        (let [query     (mt/mbql-query products)
+              pk_ref    (mt/$ids $products.id)
+              value_ref (mt/$ids $products.title)]
+          (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                     :dataset true
+                                                     :name "model index test")]
+            (mt/user-http-request :crowberto :post 200 "/model-index" {:model_id  (:id model)
+                                                                       :pk_ref    pk_ref
+                                                                       :value_ref value_ref})
+            (is (=? {:data {"event"    "index_model_entities_enabled"
+                            "model_id" (:id model)}
+                     :user-id (str (mt/user->id :crowberto))}
+                    (last (snowplow-test/pop-event-data-and-user-id!))))))))))

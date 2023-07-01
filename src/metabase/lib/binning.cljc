@@ -16,12 +16,6 @@
   (fn [x _binning]
     (lib.dispatch/dispatch-value x)) :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod with-binning-method :dispatch-type/fn
-  [f binning]
-  (fn [query stage-number]
-    (let [x (f query stage-number)]
-      (with-binning-method x binning))))
-
 (mu/defn with-binning
   "Add binning to an MBQL clause or something that can be converted to an MBQL clause.
   Eg. for a Field or Field metadata or `:field` clause, this might do something like this:
@@ -81,7 +75,7 @@
    :mbql         {:strategy :default}})
 
 (defn- with-binning-option-type [m]
-  (assoc m :lib/type ::binning-option))
+  (assoc m :lib/type :option/binning))
 
 (def ^:private *numeric-binning-strategies
   (delay (mapv with-binning-option-type
@@ -112,7 +106,7 @@
 
 (defn binning-display-name
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
-  It's called directly by `:field` or `:metadata/field`'s [[lib.metadata.calculation/display-name]]."
+  It's called directly by `:field` or `:metadata/column`'s [[lib.metadata.calculation/display-name]]."
   [{:keys [bin-width num-bins strategy] :as binning-options} field-metadata]
   (when binning-options
     (case strategy
@@ -122,7 +116,7 @@
                         "°"))
       :default   (i18n/tru "Auto binned"))))
 
-(defmethod lib.metadata.calculation/display-info-method ::binning-option
+(defmethod lib.metadata.calculation/display-info-method :option/binning
   [_query _stage-number binning-option]
   (select-keys binning-option [:display-name :default :selected]))
 

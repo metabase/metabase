@@ -15,9 +15,24 @@
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
+   [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
+
+(defn- ordered-cards-schema-check
+  [ordered_cards]
+  (testing "check if all cards in ordered_cards contain the required fields"
+    (doseq [card ordered_cards]
+      (is (schema= {:id                     (s/cond-pre s/Str s/Int)
+                    :dashboard_tab_id       (s/maybe s/Int)
+                    :row                    s/Int
+                    :col                    s/Int
+                    :size_x                 s/Int
+                    :size_y                 s/Int
+                    :visualization_settings (s/maybe (s/named clojure.lang.IPersistentMap "valid map"))
+                    s/Any                   s/Any}
+                   card)))))
 
 (defn- api-call
   ([template args]
@@ -30,7 +45,9 @@
    (mt/with-test-user :rasta
      (with-dashboard-cleanup
        (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
-             result       (validation-fn (mt/user-http-request :rasta :get 200 api-endpoint))]
+             resp         (mt/user-http-request :rasta :get 200 api-endpoint)
+             _            (ordered-cards-schema-check (:ordered_cards resp))
+             result       (validation-fn resp)]
          (when (and result
                     (try
                       (testing "Endpoint should return 403 if user does not have permissions"

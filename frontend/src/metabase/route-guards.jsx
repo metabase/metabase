@@ -2,6 +2,7 @@ import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import MetabaseSettings from "metabase/lib/settings";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { getIsMetabotEnabled } from "metabase/home/selectors";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -48,9 +49,9 @@ const UserCanAccessSettings = UserAuthWrapper({
 });
 
 export const UserCanAccessMetabot = UserAuthWrapper({
-  predicate: isMetabotEnabled => true, // FIXME [AL]: fix this guard
+  predicate: isMetabotEnabled => isMetabotEnabled,
   failureRedirectPath: "/",
-  authSelector: () => MetabaseSettings.isMetabotEnabled(),
+  authSelector: state => getIsMetabotEnabled(state),
   allowRedirectBack: false,
   wrapperDisplayName: "UserCanAccessMetabot",
   redirectAction: routerActions.replace,

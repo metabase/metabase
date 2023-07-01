@@ -11,7 +11,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-test
-  (let [query   (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (let [query   (lib/query meta/metadata-provider (meta/table-metadata :venues))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (not (mc/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
@@ -45,9 +45,9 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel aggregation-and-breakout-test
-  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
-                    (lib/breakout (lib/field "VENUES" "NAME")))
+  (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
+                    (lib/breakout (meta/field-metadata :venues :name)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -66,9 +66,9 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel multi-stage-test
-  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
-                    (lib/breakout (lib/field "VENUES" "NAME"))
+  (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
+                    (lib/breakout (meta/field-metadata :venues :name))
                     (lib/append-stage))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -92,23 +92,13 @@
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "User ID", :lib/source :source/card}
-                                             {:display-name "Count", :lib/source :source/card}]}
-             {::lib.column-group/group-type :group-type/join.implicit
-              :fk-field-id                  (meta/id :checkins :user-id)
-              ::lib.column-group/columns    [{:display-name "ID", :lib/source :source/implicitly-joinable}
-                                             {:display-name "Name", :lib/source :source/implicitly-joinable}
-                                             {:display-name "Last Login", :lib/source :source/implicitly-joinable}]}]
+                                             {:display-name "Count", :lib/source :source/card}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"
                 :display-name           "My Card"
                 :is-from-join           false
-                :is-implicitly-joinable false}
-               {:name                   "USER_ID"
-                :display-name           "User ID"
-                :fk-reference-name      "User"
-                :is-from-join           false
-                :is-implicitly-joinable true}]
+                :is-implicitly-joinable false}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -187,23 +177,13 @@
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "User ID", :lib/source :source/card}
                                              {:display-name "Count", :lib/source :source/card}
-                                             {:display-name "expr", :lib/source :source/expressions}]}
-             {::lib.column-group/group-type :group-type/join.implicit
-              :fk-field-id                  (meta/id :checkins :user-id)
-              ::lib.column-group/columns    [{:display-name "ID", :lib/source :source/implicitly-joinable}
-                                             {:display-name "Name", :lib/source :source/implicitly-joinable}
-                                             {:display-name "Last Login", :lib/source :source/implicitly-joinable}] }]
+                                             {:display-name "expr", :lib/source :source/expressions}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"
                 :display-name           "My Card"
                 :is-from-join           false
-                :is-implicitly-joinable false}
-               {:name                   "USER_ID"
-                :display-name           "User ID"
-                :fk-reference-name      "User"
-                :is-from-join           false
-                :is-implicitly-joinable true}]
+                :is-implicitly-joinable false}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns

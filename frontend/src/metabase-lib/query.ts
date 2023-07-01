@@ -1,6 +1,12 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatabaseId, DatasetQuery } from "metabase-types/api";
-import type { Clause, ColumnMetadata, MetadataProvider, Query } from "./types";
+import type {
+  Clause,
+  ColumnMetadata,
+  MetadataProvider,
+  MetricMetadata,
+  Query,
+} from "./types";
 
 export function fromLegacyQuery(
   databaseId: DatabaseId,
@@ -38,7 +44,7 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause,
-  newClause: Clause | ColumnMetadata,
+  newClause: Clause | ColumnMetadata | MetricMetadata,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }

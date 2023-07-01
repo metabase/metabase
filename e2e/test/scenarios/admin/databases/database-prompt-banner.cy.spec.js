@@ -6,9 +6,11 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
+  rightSidebar,
+  visitDashboard,
 } from "e2e/support/helpers";
 
-describe("banner", () => {
+describe("database prompt banner", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -55,12 +57,32 @@ describe("banner", () => {
       });
   });
 
+  // Until we enable multi-browser support, this repro will be skipped by Cypress in CI
+  // Issue was specific to Firefox only - it is still possible to test it locally
+  it(
+    "should show info sidebar correctly on Firefox",
+    { browser: "firefox" },
+    function () {
+      visitDashboard(1);
+      cy.findByRole("main").findByText("Loading...").should("not.exist");
+      cy.findByRole("main").icon("info").click();
+
+      rightSidebar().within(() => {
+        cy.findByRole("heading", { name: "About" }).should("be.visible");
+        cy.findByRole("heading", { name: "History" }).should("be.visible");
+      });
+    },
+  );
+
   describe("embeddings", () => {
     // Public and signed embeds are tested in `PublicQuestion.unit.spec.tsx`
 
     describe("full-app embeddings", () => {
       it("should render database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
-        visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+        visitFullAppEmbeddingUrl({
+          url: "/",
+          qs: { side_nav: false, logo: false },
+        });
 
         cy.findByRole("link", { name: "Metabase tips" }).should("exist");
 
@@ -80,7 +102,10 @@ describe("banner", () => {
         // Adding a second database should prevent the database prompt
         cy.addH2SampleDatabase({ name: "H2 DB" });
 
-        visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+        visitFullAppEmbeddingUrl({
+          url: "/",
+          qs: { side_nav: false, logo: false },
+        });
 
         cy.findByRole("link", { name: "Metabase tips" }).should("exist");
 
@@ -94,44 +119,42 @@ describe("banner", () => {
   });
 });
 
-describeWithSnowplow(
-  "should send snowplow events when clicking on links in the database prompt banner",
-  () => {
-    const PAGE_VIEW_EVENT = 1;
+describeWithSnowplow("database prompt banner", () => {
+  const PAGE_VIEW_EVENT = 1;
 
-    beforeEach(() => {
-      restore();
-      resetSnowplow();
-      cy.signInAsAdmin();
-      enableTracking();
-      cy.visit("/");
-      cy.findByRole("main").findByText("Loading...").should("not.exist");
-    });
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+    cy.visit("/");
+    cy.findByRole("main").findByText("Loading...").should("not.exist");
+  });
 
-    afterEach(() => {
-      expectNoBadSnowplowEvents();
-    });
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
 
-    it("should send snowplow events when disabling auto-apply filters", () => {
-      expectNoBadSnowplowEvents();
-      expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
-      cy.findAllByRole("banner")
-        .first()
-        .within(() => {
-          cy.findByRole("link", { name: "Get help connecting" }).click();
-          expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1);
+  it("should send snowplow events when clicking on links in the database prompt banner", () => {
+    expectNoBadSnowplowEvents();
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
+    cy.findAllByRole("banner")
+      .first()
+      .within(() => {
+        cy.findByRole("link", { name: "Get help connecting" }).click();
+        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1);
 
-          cy.findByRole("link", { name: "Connect your database" }).click();
-          // clicking this link also brings us to the admin page causing a new page_view event
-          expectGoodSnowplowEvents(2 * PAGE_VIEW_EVENT + 2);
-        });
-    });
-  },
-);
+        cy.findByRole("link", { name: "Connect your database" }).click();
+        // clicking this link also brings us to the admin page causing a new page_view event
+        expectGoodSnowplowEvents(2 * PAGE_VIEW_EVENT + 2);
+      });
+  });
+});
 
-const visitUrl = url => {
+const visitFullAppEmbeddingUrl = ({ url, qs }) => {
   cy.visit({
-    ...url,
+    url,
+    qs,
     onBeforeLoad(window) {
       // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
       // by removing the property the app would work in embedding mode

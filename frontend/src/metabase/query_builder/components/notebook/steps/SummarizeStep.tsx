@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import type { NotebookStepUiComponentProps } from "../types";
-import AggregateStep from "./AggregateStep";
+import { AggregateStep } from "./AggregateStep";
 import BreakoutStep from "./BreakoutStep";
 import { StepContainer, StepLabel, StepRoot } from "./SummarizeStep.styled";
 
