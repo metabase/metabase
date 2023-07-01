@@ -10,14 +10,13 @@
 (set! *warn-on-reflection* true)
 
 (defn- token->sigil [token]
-  (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (name token))]
+  (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
     sigil))
 
 (defmulti ^:private parse-token-by-sigil
   {:arglists '([source-table-symb token])}
   (fn [_ token]
-    (when (or (symbol? token)
-              (keyword? token))
+    (when (symbol? token)
       (token->sigil token))))
 
 (defn- field-id-call
@@ -102,22 +101,22 @@
 ;; $ = wrapped Field ID
 (defmethod parse-token-by-sigil "$"
   [source-table-symb token]
-  (mbql-field-with-strategy :id source-table-symb (.substring (name token) 1)))
+  (mbql-field-with-strategy :id source-table-symb (.substring (str token) 1)))
 
 ;; % = raw Field ID
 (defmethod parse-token-by-sigil "%"
   [source-table-symb token]
-  (mbql-field-with-strategy :raw source-table-symb (.substring (name token) 1)))
+  (mbql-field-with-strategy :raw source-table-symb (.substring (str token) 1)))
 
 ;; * = Field Literal
 (defmethod parse-token-by-sigil "*"
   [source-table-symb token]
-  (mbql-field-with-strategy :literal source-table-symb (.substring (name token) 1)))
+  (mbql-field-with-strategy :literal source-table-symb (.substring (str token) 1)))
 
 ;; & = Field qualified by JOIN ALIAS
 (defmethod parse-token-by-sigil "&"
   [source-table-symb token]
-  (if-let [[_ alias-name token] (re-matches #"^&([^.]+)\.(.+$)" (name token))]
+  (if-let [[_ alias-name token] (re-matches #"^&([^.]+)\.(.+$)" (str token))]
     (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
                                                                         (symbol token)
                                                                         (symbol (str \$ token))))]
@@ -128,7 +127,7 @@
 ;; `!unit.<field> = datetime field
 (defmethod parse-token-by-sigil "!"
   [source-table-symb token]
-  (if-let [[_ unit token] (re-matches #"^!([^.]+)\.(.+$)" (name token))]
+  (if-let [[_ unit token] (re-matches #"^!([^.]+)\.(.+$)" (str token))]
     (let [[_ id-or-name opts] (parse-token-by-sigil source-table-symb (if (token->sigil token)
                                                                        (symbol token)
                                                                        (symbol (str \$ token))))]
@@ -138,7 +137,7 @@
 ;; $$ = table ID.
 (defmethod parse-token-by-sigil "$$"
   [_ token]
-  (list 'metabase.test.data/id (keyword (.substring (name token) 2))))
+  (list 'metabase.test.data/id (keyword (.substring (str token) 2))))
 
 (defn parse-tokens
   "Internal impl fn of `$ids` and `mbql-query` macros. Walk `body` and replace `$field` (and related) tokens with calls
