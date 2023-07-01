@@ -131,7 +131,8 @@ export function formatDateTimeRangeWithUnit(
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
-  const [a, b] = (Array.isArray(value) ? value : [value, value]).map(d =>
+  const values = Array.isArray(value) ? value : [value];
+  const [a, b] = [values[0], values[1] ?? values[0]].map(d =>
     parseTimestamp(d, unit, options.local),
   );
   if (!a.isValid() || !b.isValid()) {
@@ -150,32 +151,66 @@ export function formatDateTimeRangeWithUnit(
   const shift = a.diff(start, "days");
   [start, end].forEach(d => d.add(shift, "days"));
 
-  // TODO: support month and quarter abbreviations, e.g. [Jan - Feb 2017], [Q1 - Q3 2017]
-  // for check if both start and end are on unit boundary before using month/quarter/year abbrevs
+  // Drop down to day resolution if shift causes misalignment with desired resolution boundaries
+  const resolution = (shift === 0 ? options.date_resolution : null) ?? "day";
 
   if (start.isValid() && end.isValid()) {
-    if (!condensed || start.year() !== end.year()) {
-      // January 1, 2018 - January 2, 2019
-      return (
-        start.format(`${monthFormat} D, YYYY`) +
-        RANGE_SEPARATOR +
-        end.format(`${monthFormat} D, YYYY`)
-      );
-    } else if (start.month() !== end.month()) {
-      // January 1 - Feburary 2, 2018
-      return (
-        start.format(`${monthFormat} D`) +
-        RANGE_SEPARATOR +
-        end.format(`${monthFormat} D, YYYY`)
-      );
-    } else {
-      // January 1 - 2, 2018
-      return (
-        start.format(`${monthFormat} D`) +
-        RANGE_SEPARATOR +
-        end.format(`D, YYYY`)
-      );
+    const isDiffYear = start.year() !== end.year();
+    const isDiffQuarter = start.quarter() !== end.quarter();
+    const isDiffMonth = start.month() !== end.month();
+    const isDiffDay = start.date() !== end.date();
+
+    let startFormat, endFormat;
+
+    switch (resolution) {
+      case "year": {
+        const Y = "YYYY";
+        [startFormat, endFormat] =
+          isDiffYear || !condensed
+            ? [Y, Y] // 2018 - 2019
+            : [Y]; //   2018
+        break;
+      }
+      case "quarter": {
+        const Q = "[Q]Q";
+        const QY = "[Q]Q YYYY";
+        [startFormat, endFormat] =
+          isDiffYear || !condensed
+            ? [QY, QY] // Q2 2018 - Q3 2019
+            : isDiffQuarter
+            ? [Q, QY] // Q2 - Q4 2019
+            : [QY]; // Q3 2019
+        break;
+      }
+      case "month": {
+        const M = monthFormat;
+        const MY = `${monthFormat} YYYY`;
+        [startFormat, endFormat] =
+          isDiffYear || !condensed
+            ? [MY, MY] // September 2018 - January 2019
+            : isDiffMonth
+            ? [M, MY] // September - December 2018
+            : [MY]; // October 2018
+        break;
+      }
+      case "day": {
+        const MDY = `${monthFormat} D, YYYY`;
+        const MD = `${monthFormat} D`;
+        const DY = `D, YYYY`;
+        [startFormat, endFormat] =
+          isDiffYear || !condensed
+            ? [MDY, MDY] // January 1, 2018 - January 2, 2019
+            : isDiffMonth
+            ? [MD, MDY] // January 1 - February 2, 2018
+            : isDiffDay
+            ? [MD, DY] // January 1 - 2, 2018
+            : [MDY]; // January 2, 2018
+        break;
+      }
     }
+    return !endFormat
+      ? start.format(startFormat)
+      : start.format(startFormat) + RANGE_SEPARATOR + end.format(endFormat);
   } else {
     // TODO: when is this used?
     return formatWeek(a, options);

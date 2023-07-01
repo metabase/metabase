@@ -72,7 +72,10 @@ export default class Filter extends MBQLClause {
     const betweenDates = op === "between" && isDate;
     const equalsWeek = op === "=" && unit === "week";
     if (allStrs && (betweenDates || equalsWeek)) {
-      return formatDateTimeRangeWithUnit(args, unit);
+      return formatDateTimeRangeWithUnit(args, unit, {
+        type: "tooltip",
+        date_resolution: unit === "week" ? "day" : unit,
+      });
     }
   }
 
@@ -98,6 +101,7 @@ export default class Filter extends MBQLClause {
         operator.moreVerboseName;
       const argumentNames =
         this.shortDateRangeLabel() ?? this.formattedArguments().join(" ");
+      // TODO: display "is" instead of "between" when shortDateRangeLabel is returned
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
