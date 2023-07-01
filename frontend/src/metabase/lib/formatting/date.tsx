@@ -127,13 +127,15 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
 
 /** This formats a time with unit as a date range */
 export function formatDateTimeRangeWithUnit(
-  value: string | number, // TODO: support array for value range
-  unit: DatetimeUnit, // TODO: support month and quarter abbreviations, e.g. [Jan - Feb 2017], [Q1 - Q3 2017]
+  value: string | number | (string | number)[],
+  unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
-  const m = parseTimestamp(value, unit, options.local);
-  if (!m.isValid()) {
-    return String(value);
+  const [a, b] = (Array.isArray(value) ? value : [value, value]).map(d =>
+    parseTimestamp(d, unit, options.local),
+  );
+  if (!a.isValid() || !b.isValid()) {
+    return String(a);
   }
 
   // Tooltips should show full month name, but condense "MMMM D, YYYY - MMMM D, YYYY" to "MMMM D - D, YYYY" etc
@@ -143,10 +145,13 @@ export function formatDateTimeRangeWithUnit(
 
   // The client's unit boundaries might not line up with the data returned from the server.
   // We shift the range so that the start lines up with the value.
-  const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
-  const shift = m.diff(start, "days");
+  const start = a.clone().startOf(unit);
+  const end = b.clone().endOf(unit);
+  const shift = a.diff(start, "days");
   [start, end].forEach(d => d.add(shift, "days"));
+
+  // TODO: support month and quarter abbreviations, e.g. [Jan - Feb 2017], [Q1 - Q3 2017]
+  // for check if both start and end are on unit boundary before using month/quarter/year abbrevs
 
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
@@ -173,7 +178,7 @@ export function formatDateTimeRangeWithUnit(
     }
   } else {
     // TODO: when is this used?
-    return formatWeek(m, options);
+    return formatWeek(a, options);
   }
 }
 

@@ -67,12 +67,12 @@ export default class Filter extends MBQLClause {
     const unit = dimension?.temporalUnit();
     const op = this.operatorName();
     const args = this.arguments();
-    const allStrs = args.all(arg => typeof arg === "string");
+    const allStrs = args.every(arg => typeof arg === "string");
     const isDate = ["day", "week", "month", "quarter", "year"].includes(unit);
     const betweenDates = op === "between" && isDate;
     const equalsWeek = op === "=" && unit === "week";
     if (allStrs && (betweenDates || equalsWeek)) {
-      formatDateTimeRangeWithUnit(args, unit);
+      return formatDateTimeRangeWithUnit(args, unit);
     }
   }
 
