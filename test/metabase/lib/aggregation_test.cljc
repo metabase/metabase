@@ -541,7 +541,7 @@
           aggregations (lib/aggregations query)
           aggregation-operators (lib/available-aggregation-operators query)]
       (testing "selected-aggregation-operators w/o column"
-        (is (=? [{:lib/type :mbql.aggregation/operator
+        (is (=? [{:lib/type :operator/aggregation
                   :short :max
                   :selected? true
                   :columns
@@ -720,7 +720,7 @@
               :lib/source-uuid          string?
               :lib/source-column-alias  "sum"
               :lib/desired-column-alias "sum"}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel count-display-name-test
   (testing "#31255"
@@ -746,7 +746,7 @@
                   "query")
               (is (= [(expected (if field? :with-field :without-field))]
                      (map (partial lib/display-name query)
-                          (lib.metadata.calculation/metadata query)))
+                          (lib.metadata.calculation/returned-columns query)))
                   "display name"))))))))
 
 (deftest ^:parallel aggregation-name-from-previous-stage-test

@@ -7,6 +7,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel remove-clause-order-bys-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/order-by (meta/field-metadata :venues :name))

@@ -43,3 +43,23 @@
     (is (= "Venue ID"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 {:lib/type :metadata/column
                                                                           :name     "venue_id"})))))
+
+(deftest ^:parallel table-or-card-test
+  (are [id expected] (=? expected
+                         (lib.metadata/table-or-card lib.tu/metadata-provider-with-card id))
+    (meta/id :venues) {:lib/type :metadata/table, :name "VENUES"}
+    "card__1"         {:lib/type :metadata/card, :name "My Card"}
+    ;; If Card doesn't exist, return `nil`. Generally we have to live with Card not existing sometimes so we don't
+    ;; throw...
+    "card__2"         nil)
+  ;; but if Table isn't present then that is a legitimate error.
+  #?(:clj
+     (is (thrown-with-msg?
+          Throwable
+          #"Valid Table metadata, received: nil"
+          (lib.metadata/table-or-card lib.tu/metadata-provider-with-card Integer/MAX_VALUE)))
+     ;; doesn't currently throw an error in Cljs because we don't have Malli validation enabled... probably fine for
+     ;; now.
+     :cljs
+     ;; `Integer/MAX_VALUE`, but I don't know what the Cljs way to do this
+     (is (nil? (lib.metadata/table-or-card lib.tu/metadata-provider-with-card 2147483647)))))
