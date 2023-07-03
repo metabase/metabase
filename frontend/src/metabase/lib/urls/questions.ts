@@ -39,7 +39,7 @@ export function question(
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
       .map(([key, value]) =>
-        value === null
+        value == null
           ? encodeURIComponent(key) + "="
           : [key, value].map(encodeURIComponent).join("="),
       )
