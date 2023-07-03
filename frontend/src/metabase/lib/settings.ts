@@ -317,14 +317,16 @@ class MetabaseSettings {
     return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
   }
 
-  pricingUrl() {
-    return "https://www.metabase.com/pricing";
-  }
-
+  /**
+   * @deprecated use getLearnUrl
+   */
   learnUrl(path = "") {
     return `https://www.metabase.com/learn/${path}`;
   }
 
+  /**
+   * @deprecated use getStoreUrl
+   */
   storeUrl(path = "") {
     return `https://store.metabase.com/${path}`;
   }
