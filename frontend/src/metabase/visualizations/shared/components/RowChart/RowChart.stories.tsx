@@ -72,7 +72,7 @@ Default.args = {
 
   theme: getStaticChartTheme(color),
 
-  measureText: measureText,
+  measureText,
 
   style: { fontFamily: "Lato" },
 };

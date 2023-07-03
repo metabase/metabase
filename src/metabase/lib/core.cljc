@@ -9,7 +9,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
-   [metabase.lib.dev :as lib.dev]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -34,7 +34,7 @@
          lib.breakout/keep-me
          lib.card/keep-me
          lib.column-group/keep-me
-         lib.dev/keep-me
+         lib.common/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
@@ -56,6 +56,7 @@
   [lib.aggregation
    aggregate
    aggregation-clause
+   aggregation-ref
    aggregation-operator-columns
    aggregations
    aggregations-metadata
@@ -83,21 +84,19 @@
   [lib.breakout
    breakout
    breakoutable-columns
-   breakouts]
+   breakouts
+   breakouts-metadata]
   [lib.column-group
    columns-group-columns
    group-columns]
-  [lib.dev
-   field
-   query-for-table-id
-   query-for-table-name
-   table
-   ref-lookup]
+  [lib.common
+   external-op]
   [lib.expression
    expression
    expressions
    expressions-metadata
    expressionable-columns
+   expression-ref
    +
    -
    *
@@ -148,6 +147,7 @@
    filterable-columns
    filterable-column-operators
    filter-clause
+   filter-operator
    and
    or
    not
@@ -163,19 +163,23 @@
    time-interval
    segment]
   [lib.join
+   available-join-strategies
    join
    join-clause
+   join-condition-lhs-columns
+   join-condition-operators
+   join-condition-rhs-columns
    join-conditions
    join-fields
+   join-strategy
+   joinable-columns
    joins
+   raw-join-strategy
+   suggested-join-condition
    with-join-alias
    with-join-fields
-   join-strategy
    with-join-strategy
-   available-join-strategies
-   join-condition-lhs-columns
-   join-condition-rhs-columns
-   join-condition-operators]
+   with-join-conditions]
   [lib.limit
    current-limit
    limit]
@@ -187,11 +191,17 @@
    display-info
    suggested-name
    type-of]
+  [lib.metric
+   available-metrics]
   [lib.native
    #?@(:cljs [->TemplateTags
               TemplateTags->])
-   recognize-template-tags
-   template-tags]
+   native-query
+   raw-native-query
+   with-native-query
+   template-tags
+   with-template-tags
+   extract-template-tags]
   [lib.order-by
    change-direction
    order-by
@@ -201,13 +211,14 @@
   [lib.normalize
    normalize]
   [lib.query
-   native-query
    query
    saved-question-query]
   [lib.ref
    ref]
   [lib.remove-replace
    remove-clause
+   remove-join
+   rename-join
    replace-clause]
   [lib.stage
    append-stage

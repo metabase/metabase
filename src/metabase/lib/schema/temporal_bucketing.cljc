@@ -150,6 +150,6 @@
 
 (mr/def ::option
   [:map
-   [:lib/type [:= :type/temporal-bucketing-option]]
+   [:lib/type [:= :option/temporal-bucketing]]
    [:unit ::unit]
    [:default {:optional true} :boolean]])

@@ -193,8 +193,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -688,30 +688,33 @@
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(models/defmodel Permissions :permissions)
+(def Permissions
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Permissions)
 
-(defn- pre-insert [permissions]
+(methodical/defmethod t2/table-name :model/Permissions [_model] :permissions)
+
+(derive :model/Permissions :metabase/model)
+
+(t2/define-before-insert :model/Permissions
+  [permissions]
   (u/prog1 permissions
     (assert-valid permissions)
     (log/debug (u/colorize 'green (trs "Granting permissions for group {0}: {1}"
                                        (:group_id permissions)
                                        (:object permissions))))))
 
-(defn- pre-update [_]
+(t2/define-before-update :model/Permissions
+  [_]
   (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
 
-(defn- pre-delete [permissions]
+(t2/define-before-delete :model/Permissions
+  [permissions]
   (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}"
                                    (:group_id permissions)
                                    (:object permissions))))
   (assert-not-admin-group permissions))
-
-(mi/define-methods
- Permissions
- {:pre-insert pre-insert
-  :pre-update pre-update
-  :pre-delete pre-delete})
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH SCHEMA                                                  |
@@ -838,6 +841,12 @@
             {}
             permissions)))
 
+(defenterprise add-impersonations-to-permissions-graph
+  "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
+  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  [graph]
+  graph)
+
 (defn- post-process-graph [graph]
   (->>
    graph
@@ -854,7 +863,8 @@
             (if (= permissions-graph :all)
               (all-permissions db-ids)
               (:db permissions-graph)))))
-       post-process-graph))
+       post-process-graph
+       add-impersonations-to-permissions-graph))
 
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
@@ -1057,13 +1067,22 @@
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (adhoc-native-query-path database-or-id)))
 
+(defn- group-has-native-perms?
+  [group-or-id database-or-id]
+  (set-has-full-permissions?
+   (t2/select-fn-set :object Permissions :group_id (u/the-id group-or-id))
+   (adhoc-native-query-path database-or-id)))
+
 (defn revoke-db-schema-permissions!
   "Remove all permissions entries for a DB and *any* child objects.
    This does *not* revoke native permissions; use `revoke-native-permssions!` to do that."
   [group-or-id database-or-id]
-  ;; TODO - if permissions for this DB are DB root entries like `/db/1/` won't this end up removing our native perms?
-  (delete-related-permissions! group-or-id (data-perms-path database-or-id)
-    [:not= :object (adhoc-native-query-path database-or-id)]))
+  (let [has-native-perms? (group-has-native-perms? group-or-id database-or-id)]
+    (delete-related-permissions! group-or-id (data-perms-path database-or-id)
+      [:not= :object (adhoc-native-query-path database-or-id)])
+    ;; If we've removed native perms as a consequence of deleting a root database path like `/db/1/`, add them back
+    (when (and has-native-perms? (not (group-has-native-perms? group-or-id database-or-id)))
+      (grant-native-readwrite-permissions! group-or-id database-or-id))))
 
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
@@ -1133,6 +1152,12 @@
   "Delete GTAPs (sandboxes) that are no longer needed after the permissions graph is updated. This is EE-specific --
   OSS impl is a no-op, since sandboxes are an EE-only feature."
   metabase-enterprise.sandbox.models.permissions.delete-sandboxes
+  [_])
+
+(defenterprise ^:private delete-impersonations-if-needed-after-permissions-change!
+  "Delete connection impersonation policies that are no longer needed after the permissions graph is updated. This is
+  EE-specific -- OSS impl is a no-op, since connection impersonation is an EE-only feature."
+  metabase-enterprise.advanced-permissions.models.connection-impersonation
   [_])
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
@@ -1279,6 +1304,16 @@
     :write (grant-native-readwrite-permissions! group-id db-id)
     :none  nil))
 
+(defn- delete-block-perms-for-db!
+  [group-id db-id]
+  (log/trace "Deleting block permissions entries for Group %d for Database %d" group-id db-id)
+  (t2/delete! Permissions :group_id group-id, :object (database-block-perms-path db-id)))
+
+(defn- revoke-schema-and-block-perms!
+  [group-id db-id]
+  (revoke-db-schema-permissions! group-id db-id)
+  (delete-block-perms-for-db! group-id db-id))
+
 (mu/defn ^:private update-db-data-access-permissions!
   [group-id :- pos-int?
    db-id :- pos-int?
@@ -1288,28 +1323,35 @@
   (when-let [schemas (:schemas new-db-perms)]
     ;; TODO -- consider whether `delete-block-perms-for-this-db!` should be enterprise-only... not sure how to make it
     ;; work, especially if you downgraded from enterprise... FWIW the sandboxing code (for updating the graph) is not enterprise only.
-    (letfn [(delete-block-perms-for-this-db! []
-              (log/trace "Deleting block permissions entries for Group %d for Database %d" group-id db-id)
-              (t2/delete! Permissions :group_id group-id, :object (database-block-perms-path db-id)))]
-      (condp = schemas
-        :all (do
-               (revoke-db-schema-permissions! group-id db-id)
-               (delete-block-perms-for-this-db!)
-               (grant-permissions-for-all-schemas! group-id db-id))
-        :none  (do
-                 (revoke-db-schema-permissions! group-id db-id)
-                 (delete-block-perms-for-this-db!))
-        ;; TODO -- should this code be enterprise only?
-        :block (do
-                 (when-not (premium-features/has-feature? :advanced-permissions)
-                   (throw (ee-permissions-exception :block)))
-                 (revoke-data-perms! group-id db-id)
-                 (revoke-download-perms! group-id db-id)
-                 (grant-permissions! group-id (database-block-perms-path db-id)))
-        (when (map? schemas)
-          (delete-block-perms-for-this-db!)
-          (doseq [schema (keys schemas)]
-            (update-schema-data-access-permissions! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
+    (condp = schemas
+      :all
+      (do
+        (revoke-schema-and-block-perms! group-id db-id)
+        (grant-permissions-for-all-schemas! group-id db-id))
+
+      :none
+      (revoke-schema-and-block-perms! group-id db-id)
+
+      ;; Groups using connection impersonation for a DB should be treated the same as if they had full self-service
+      ;; data access.
+      :impersonated
+      (do
+        (revoke-schema-and-block-perms! group-id db-id)
+        (grant-permissions-for-all-schemas! group-id db-id))
+
+      ;; TODO -- should this code be enterprise only?
+      :block
+      (do
+        (when-not (premium-features/has-feature? :advanced-permissions)
+          (throw (ee-permissions-exception :block)))
+        (revoke-data-perms! group-id db-id)
+        (revoke-download-perms! group-id db-id)
+        (grant-permissions! group-id (database-block-perms-path db-id)))
+
+      (when (map? schemas)
+        (delete-block-perms-for-db! group-id db-id)
+        (doseq [schema (keys schemas)]
+          (update-schema-data-access-permissions! group-id db-id schema (get-in new-db-perms [:schemas schema])))))))
 
 (defn- update-feature-level-permission!
   [group-id db-id new-perms perm-type]
@@ -1412,6 +1454,7 @@
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
+        (delete-impersonations-if-needed-after-permissions-change! new)
         (delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage

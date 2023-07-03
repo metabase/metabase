@@ -28,7 +28,8 @@
               :type/Text)))))
 
 (deftest ^:parallel column-isa-test
-  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))
         orderable-columns (lib/orderable-columns query)
         columns-of-type (fn [typ] (filter #(lib.types.isa/isa? % typ)
                                          orderable-columns))]
@@ -55,7 +56,36 @@
                   :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
                   :semantic-type :type/PK
                   :effective-type :type/BigInteger}]
-                (columns-of-type :Relation/*))))))
+                (columns-of-type :Relation/*))))
+      (testing "experssions"
+        (is (=? [{:name "ID"
+                  :lib/desired-column-alias "ID"
+                  :semantic-type :type/PK
+                  :effective-type :type/BigInteger}
+                 {:name "CATEGORY_ID"
+                  :lib/desired-column-alias "CATEGORY_ID"
+                  :semantic-type :type/FK
+                  :effective-type :type/Integer}
+                 {:name "LATITUDE"
+                  :lib/desired-column-alias "LATITUDE"
+                  :semantic-type :type/Latitude
+                  :effective-type :type/Float}
+                 {:name "LONGITUDE"
+                  :lib/desired-column-alias "LONGITUDE"
+                  :semantic-type :type/Longitude
+                  :effective-type :type/Float}
+                 {:name "PRICE"
+                  :lib/desired-column-alias "PRICE"
+                  :semantic-type :type/Category
+                  :effective-type :type/Integer}
+                 {:name "myadd"
+                  :lib/desired-column-alias "myadd"
+                  :effective-type :type/Integer}
+                 {:name "ID"
+                  :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                  :semantic-type :type/PK
+                  :effective-type :type/BigInteger}]
+                (filter lib.types.isa/numeric? orderable-columns))))))
 
 (deftest ^:parallel field-type-test
   (testing "temporal"

@@ -1,7 +1,6 @@
 import Question from "metabase-lib/Question";
 import Mode, { getModeType } from "metabase-lib/Mode";
 import {
-  MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
   MODE_TYPE_SEGMENT,
   MODE_TYPE_METRIC,
@@ -10,7 +9,6 @@ import {
   MODE_TYPE_PIVOT,
 } from "metabase-lib/Mode/constants";
 import type { QueryMode } from "metabase-lib/queries/drills/types";
-import ActionMode from "../components/modes/ActionMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
 import TimeseriesMode from "../components/modes/TimeseriesMode";
@@ -32,9 +30,6 @@ export function getQueryMode(question: Question): QueryMode | any | null {
   }
 
   switch (mode) {
-    case MODE_TYPE_ACTION:
-      return ActionMode;
-
     case MODE_TYPE_NATIVE:
       return NativeMode;
 

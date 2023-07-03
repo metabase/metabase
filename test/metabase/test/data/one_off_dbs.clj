@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.db.spec :as mdb.spec]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.sync :as sync]
    [metabase.test.data :as data]
@@ -19,13 +20,17 @@
 
 (defn do-with-blank-db
   "Impl for `with-blank-db` macro; prefer that to using this directly."
-  [f]
+  [thunk]
   (let [details {:db (str "mem:" (tu.random/random-name) ";DB_CLOSE_DELAY=10")}]
     (t2.with-temp/with-temp [Database db {:engine :h2, :details details}]
       (data/with-db db
-        (jdbc/with-db-connection [conn (mdb.spec/spec :h2 details)]
-          (binding [*conn* conn]
-            (f)))))))
+        (sql-jdbc.execute/do-with-connection-with-options
+         :h2
+         (mdb.spec/spec :h2 details)
+         {:write? true}
+         (fn [^java.sql.Connection conn]
+           (binding [*conn* {:connection conn}]
+             (thunk))))))))
 
 (defmacro with-blank-db
   "An empty canvas upon which you may paint your dreams.

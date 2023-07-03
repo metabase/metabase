@@ -16,6 +16,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -70,6 +71,22 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByLabelText(backButtonLabel).should("not.exist");
   });
 
+  it("should expand the native editor when editing a question from a dashboard", () => {
+    createDashboardWithNativeCard();
+    cy.get("@dashboardId").then(visitDashboard);
+    getDashboardCard().realHover();
+    getDashboardCardMenu().click();
+    popover().findByText("Edit question").click();
+    cy.findByTestId("native-query-editor").should("be.visible");
+
+    queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
+    getDashboardCard().findByText("Orders SQL").click();
+    cy.findByTestId("native-query-top-bar")
+      .findByText("This question is written in SQL.")
+      .should("be.visible");
+    cy.findByTestId("native-query-editor").should("not.be.visible");
+  });
+
   it("should display a back to the dashboard button in table x-ray dashboards", () => {
     const cardTitle = "Sales per state";
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
@@ -90,7 +107,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
     const cardTitle = "Orders by Subtotal";
-    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     cy.visit("/auto/dashboard/model/1");
     cy.wait("@dataset");
 
@@ -337,6 +354,19 @@ const createDashboardWithCards = () => {
 
     cy.wrap(dashboard_id).as("dashboardId");
   });
+};
+
+const createDashboardWithNativeCard = () => {
+  const questionDetails = {
+    name: "Orders SQL",
+    native: {
+      query: "SELECT * FROM ORDERS",
+    },
+  };
+
+  cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    ({ body: { dashboard_id } }) => cy.wrap(dashboard_id).as("dashboardId"),
+  );
 };
 
 const createDashboardWithSlowCard = () => {

@@ -23,6 +23,10 @@ import { formatValue } from "metabase/lib/formatting";
 
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import ChartWithLegend from "../../components/ChartWithLegend";
 import styles from "./PieChart.css";
 
@@ -55,8 +59,8 @@ export default class PieChart extends Component {
   static identifier = "pie";
   static iconName = "pie";
 
-  static minSize = { width: 4, height: 4 };
-  static defaultSize = { width: 4, height: 4 };
+  static minSize = getMinSize("pie");
+  static defaultSize = getDefaultSize("pie");
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;

@@ -426,10 +426,6 @@ class QuestionInner {
     return this.setDisplay("table");
   }
 
-  setDefaultQuery() {
-    return this.query().setDefaultQuery().question();
-  }
-
   settings(): VisualizationSettings {
     return (this._card && this._card.visualization_settings) || {};
   }
@@ -490,7 +486,16 @@ class QuestionInner {
 
   supportsImplicitActions(): boolean {
     const query = this.query();
-    return query instanceof StructuredQuery && !query.hasAnyClauses();
+
+    // we want to check the metadata for the underlying table, not the model
+    const table = query.sourceTable();
+
+    const hasSinglePk =
+      table?.fields?.filter(field => field.isPK())?.length === 1;
+
+    return (
+      query instanceof StructuredQuery && !query.hasAnyClauses() && hasSinglePk
+    );
   }
 
   canAutoRun(): boolean {

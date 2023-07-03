@@ -6,6 +6,8 @@ import MetabaseSettings from "metabase/lib/settings";
 MetabaseSettings.docsTag = () => "latest";
 MetabaseSettings.isEnterprise = () => true;
 
+import "./shared";
+
 // PLUGINS:
 
 import "./tools";

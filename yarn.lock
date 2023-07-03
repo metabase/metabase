@@ -6870,10 +6870,10 @@
     "@babel/runtime" "^7.11.2"
     "@testing-library/dom" "^7.26.0"
 
-"@testing-library/user-event@^12.6.0":
-  version "12.6.0"
-  resolved "https://registry.yarnpkg.com/@testing-library/user-event/-/user-event-12.6.0.tgz#2d0229e399eb5a0c6c112e848611432356cac886"
-  integrity sha512-FNEH/HLmOk5GO70I52tKjs7WvGYckeE/SrnLX/ip7z2IGbffyd5zOUM1tZ10vsTphqm+VbDFI0oaXu0wcfQsAQ==
+"@testing-library/user-event@^13.1.3":
+  version "13.5.0"
+  resolved "https://registry.yarnpkg.com/@testing-library/user-event/-/user-event-13.5.0.tgz#69d77007f1e124d55314a2b73fd204b333b13295"
+  integrity sha512-5Kwtbo3Y/NowpkbRuSepbyMFkZmHgD+vPzYB/RJ4oxt5Gj/avFFBYjhw27cqSVPVw/3a67NK1PbiIr9k4Gwmdg==
   dependencies:
     "@babel/runtime" "^7.12.5"
 
@@ -10470,15 +10470,10 @@ camelcase@^6.2.0:
   resolved "https://registry.yarnpkg.com/camelcase/-/camelcase-6.2.0.tgz#924af881c9d525ac9d87f40d964e5cea982a1809"
   integrity sha512-c7wVvbw3f37nuobQNtgsgG9POC9qMbNuMQmTCqZv23b6MIz0fcYpBiOlv9gEN/hdLdnZTDQhg6e9Dq5M1vKvfg==
 
-caniuse-lite@^1.0.30000981, caniuse-lite@^1.0.30001109, caniuse-lite@^1.0.30001219, caniuse-lite@^1.0.30001274, caniuse-lite@^1.0.30001280, caniuse-lite@^1.0.30001400:
-  version "1.0.30001439"
-  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001439.tgz"
-  integrity sha512-1MgUzEkoMO6gKfXflStpYgZDlFM7M/ck/bgfVCACO5vnAf0fXoNVHdWtqGU+MYca+4bL9Z5bpOVmR33cWW9G2A==
-
-caniuse-lite@^1.0.30001489:
-  version "1.0.30001489"
-  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001489.tgz#ca82ee2d4e4dbf2bd2589c9360d3fcc2c7ba3bd8"
-  integrity sha512-x1mgZEXK8jHIfAxm+xgdpHpk50IN3z3q3zP261/WS+uvePxW8izXuCu6AHz0lkuYTlATDehiZ/tNyYBdSQsOUQ==
+caniuse-lite@^1.0.30000981, caniuse-lite@^1.0.30001109, caniuse-lite@^1.0.30001219, caniuse-lite@^1.0.30001274, caniuse-lite@^1.0.30001280, caniuse-lite@^1.0.30001400, caniuse-lite@^1.0.30001489:
+  version "1.0.30001505"
+  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001505.tgz"
+  integrity sha512-jaAOR5zVtxHfL0NjZyflVTtXm3D3J9P15zSJ7HmQF8dSKGA6tqzQq+0ZI3xkjyQj46I4/M0K2GbMpcAFOcbr3A==
 
 canvg@^3.0.6:
   version "3.0.10"
@@ -17542,7 +17537,7 @@ lodash._topath@^3.0.0:
 lodash.debounce@^4.0.8:
   version "4.0.8"
   resolved "https://registry.yarnpkg.com/lodash.debounce/-/lodash.debounce-4.0.8.tgz#82d79bff30a67c4005ffd5e2515300ad9ca4d7af"
-  integrity sha1-gteb/zCmfEAF/9XiUVMArZyk168=
+  integrity sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==
 
 lodash.get@^3.7.0:
   version "3.7.0"
@@ -22647,19 +22642,19 @@ sha1@^1.1.1:
     charenc ">= 0.0.1"
     crypt ">= 0.0.1"
 
-shadow-cljs-jar@1.3.2:
-  version "1.3.2"
-  resolved "https://registry.yarnpkg.com/shadow-cljs-jar/-/shadow-cljs-jar-1.3.2.tgz#97273afe1747b6a2311917c1c88d9e243c81957b"
-  integrity sha512-XmeffAZHv8z7451kzeq9oKh8fh278Ak+UIOGGrapyqrFBB773xN8vMQ3O7J7TYLnb9BUwcqadKkmgaq7q6fhZg==
+shadow-cljs-jar@1.3.4:
+  version "1.3.4"
+  resolved "https://registry.yarnpkg.com/shadow-cljs-jar/-/shadow-cljs-jar-1.3.4.tgz#0939d91c468b4bc5eab5a958f79e7ef5696fdf62"
+  integrity sha512-cZB2pzVXBnhpJ6PQdsjO+j/MksR28mv4QD/hP/2y1fsIa9Z9RutYgh3N34FZ8Ktl4puAXaIGlct+gMCJ5BmwmA==
 
-shadow-cljs@2.19.6:
-  version "2.19.6"
-  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.19.6.tgz#c0143434a87e215ca53658060357ea00775d3074"
-  integrity sha512-WL74UvWIWBhNt6p9bE4oAJqYpONe80EMRRA23K9zDZEC1y3Y8D1/n77wPM9oGmDo2fD4UpkRNAq1uf22d71Pug==
+shadow-cljs@2.24.0:
+  version "2.24.0"
+  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.24.0.tgz#fa63825199efa005ae2ba95cf7957ea86d13b05d"
+  integrity sha512-6MVlsPPCrFWyaS3x7zvi+LX4SMx3nI8o0Lph5RegUeIPb2WqztRPyKxzCDgZ7WkvmnbYn2Of2p0oisAFvjSIlA==
   dependencies:
     node-libs-browser "^2.2.1"
     readline-sync "^1.4.7"
-    shadow-cljs-jar "1.3.2"
+    shadow-cljs-jar "1.3.4"
     source-map-support "^0.4.15"
     which "^1.3.1"
     ws "^7.4.6"

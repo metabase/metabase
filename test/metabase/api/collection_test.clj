@@ -1034,7 +1034,7 @@
                (api-get-collection-ancestors a :archived true))))
       (testing "children"
         (is (partial= [(collection-item "B")]
-                       (api-get-collection-children a :archived true)))))))
+                      (api-get-collection-children a :archived true)))))))
 
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"

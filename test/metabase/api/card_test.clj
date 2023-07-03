@@ -11,6 +11,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
@@ -50,6 +51,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.upload :as upload]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -768,47 +770,6 @@
                                            200
                                            "card"
                                            (assoc card :result_metadata []))))))))
-
-(deftest save-new-card-with-result-metadata-test
-  (mt/with-model-cleanup [:model/Card]
-    (testing "we should ignore result_metadata on new Cards"
-      (let [outdated-metadata (->> (qp/process-query (mt/mbql-query venues))
-                                   :data
-                                   :results_metadata
-                                   :columns
-                                   (mapv #(assoc % :description "User edits")))
-            saved-query (mt/mbql-query venues {:fields [$id $name]})]
-        (is (=? {:result_metadata [{:display_name "ID"
-                                    :description nil}
-                                   {:display_name "Name"
-                                    :description nil}]}
-                (mt/user-http-request :rasta
-                                      :post
-                                      200
-                                      "card"
-                                      (merge (mt/with-temp-defaults :model/Card)
-                                             {:dataset_query saved-query
-                                              :result_metadata outdated-metadata}))))))
-    (testing "we should incorporate result_metadata on new Models"
-      ;; query has changed but we can still preserve user edits
-      (let [outdated-metadata (->> (qp/process-query (mt/mbql-query venues))
-                                   :data
-                                   :results_metadata
-                                   :columns
-                                   (mapv #(assoc % :description "User edits")))
-            saved-query (mt/mbql-query venues {:fields [$id $name]})]
-        (is (=? {:result_metadata [{:display_name "ID"
-                                    :description "User edits"}
-                                   {:display_name "Name"
-                                    :description "User edits"}]}
-                (mt/user-http-request :rasta
-                                      :post
-                                      200
-                                      "card"
-                                      (merge (mt/with-temp-defaults :model/Card)
-                                             {:dataset true
-                                              :dataset_query saved-query
-                                              :result_metadata outdated-metadata}))))))))
 
 (deftest cache-ttl-save
   (testing "POST /api/card/:id"
@@ -2840,33 +2801,56 @@
 (deftest upload-csv!-schema-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
     (mt/with-empty-db
-      (let [db-id (u/the-id (mt/db))]
-        (testing "Happy path with schema, and without table-prefix"
-          ;; create not_public schema in the db
-          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                           ["CREATE SCHEMA \"not_public\";"]))
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  "not_public"
-                                             uploads-table-prefix nil]
-            (let [new-model (upload-example-csv! nil)
-                  new-table (t2/select-one Table :db_id db-id)]
-              (is (=? {:display          :table
-                       :database_id      db-id
-                       :dataset_query    {:database db-id
-                                          :query    {:source-table (:id new-table)}
-                                          :type     :query}
-                       :creator_id       (mt/user->id :rasta)
-                       :name             "Example Csv File"
-                       :collection_id    nil} new-model))
-              (is (=? {:name #"(?i)example(.*)"
-                       :schema #"(?i)not_public"}
-                      new-table))
-              (is (= #{"id" "name"}
-                     (->> (t2/select Field :table_id (:id new-table))
-                          (map (comp u/lower-case-en :name))
-                          set))))))))))
+      (let [db                   (mt/db)
+            db-id                (u/the-id db)
+            original-sync-values (select-keys db [:is_on_demand :is_full_sync])
+            in-future?           (atom false)
+            _                    (t2/update! Database db-id {:is_on_demand false
+                                                             :is_full_sync false})]
+        (try
+          (with-redefs [ ;; do away with the `future` invocation since we don't want race conditions in a test
+                        future-call (fn [thunk]
+                                      (swap! in-future? (constantly true))
+                                      (thunk))]
+            (testing "Happy path with schema, and without table-prefix"
+              ;; create not_public schema in the db
+              (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+                (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                               ["CREATE SCHEMA \"not_public\";"]))
+              (mt/with-temporary-setting-values [uploads-enabled      true
+                                                 uploads-database-id  db-id
+                                                 uploads-schema-name  "not_public"
+                                                 uploads-table-prefix nil]
+                (let [new-model (upload-example-csv! nil)
+                      new-table (t2/select-one Table :db_id db-id)]
+                  (is (=? {:display          :table
+                           :database_id      db-id
+                           :dataset_query    {:database db-id
+                                              :query    {:source-table (:id new-table)}
+                                              :type     :query}
+                           :creator_id       (mt/user->id :rasta)
+                           :name             "Example Csv File"
+                           :collection_id    nil} new-model)
+                      "A new model is created")
+                  (is (=? {:name      #"(?i)example(.*)"
+                           :schema    #"(?i)not_public"
+                           :is_upload true}
+                          new-table)
+                      "A new table is created")
+                  (is (= "complete"
+                         (:initial_sync_status new-table))
+                      "The table is synced and marked as complete")
+                  (is (= #{["id"   :type/PK]
+                           ["name" :type/Name]}
+                         (->> (t2/select Field :table_id (:id new-table))
+                              (map (fn [field] [(u/lower-case-en (:name field))
+                                                (:semantic_type field)]))
+                              set))
+                      "The sync actually runs")
+                  (is (true? @in-future?)
+                      "Table has been synced in a separate thread")))))
+          (finally
+            (t2/update! Database db-id original-sync-values)))))))
 
 (deftest upload-csv!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -2877,14 +2861,20 @@
                                              uploads-database-id  db-id
                                              uploads-schema-name  nil
                                              uploads-table-prefix "uploaded_magic_"]
-            (let [new-model (upload-example-csv! nil)
-                  new-table (t2/select-one Table :db_id db-id)]
-              (is (= "Example Csv File" (:name new-model)))
-              (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
-                      new-table))
-              (if (= driver/*driver* :mysql)
-                (is (nil? (:schema new-table)))
-                (is (=? {:schema #"(?i)public"} new-table))))))))))
+            (if (= driver/*driver* :mysql)
+              (let [new-model (upload-example-csv! nil)
+                    new-table (t2/select-one Table :db_id db-id)]
+                (is (= "Example Csv File" (:name new-model)))
+                (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
+                        new-table))
+                (if (= driver/*driver* :mysql)
+                  (is (nil? (:schema new-table)))
+                  (is (=? {:schema #"(?i)public"} new-table))))
+              ;; Else, for drivers that support schemas
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^A schema has not been set."
+                   (upload-example-csv! nil))))))))))
 
 (deftest upload-csv!-failure-test
   ;; Just test with postgres because failure should be independent of the driver
@@ -2973,3 +2963,33 @@
                           (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                           ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
                               first :exists))))))))))
+
+(deftest csv-upload-snowplow-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (mt/with-temporary-setting-values [uploads-enabled      true
+                                           uploads-database-id  db-id
+                                           uploads-schema-name  "PUBLIC"
+                                           uploads-table-prefix nil]
+          (snowplow-test/with-fake-snowplow-collector
+            (upload-example-csv! nil)
+            (is (=? {:data {"model_id"        pos?
+                            "size_mb"         3.910064697265625E-5
+                            "num_columns"     2
+                            "num_rows"        2
+                            "upload_seconds"  pos?
+                            "event"           "csv_upload_successful"}
+                     :user-id (str (mt/user->id :rasta))}
+                    (last (snowplow-test/pop-event-data-and-user-id!))))
+            (with-redefs [upload/load-from-csv! (fn [_ _ _ _]
+                                                  (throw (Exception.)))]
+              (try (upload-example-csv! nil)
+                   (catch Throwable _
+                     nil))
+              (is (= {:data {"size_mb"     3.910064697265625E-5
+                             "num_columns" 2
+                             "num_rows"    2
+                             "event"       "csv_upload_failed"}
+                      :user-id (str (mt/user->id :rasta))}
+                     (last (snowplow-test/pop-event-data-and-user-id!)))))))))))

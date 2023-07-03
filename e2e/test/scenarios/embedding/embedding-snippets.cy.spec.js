@@ -5,6 +5,7 @@ import {
   visitQuestion,
   isEE,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { JS_CODE, IFRAME_CODE } from "./shared/embedding-snippets";
 
@@ -71,7 +72,7 @@ describe("scenarios > embedding > code snippets", () => {
   });
 
   it("question should have the correct embed snippet", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("share").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Embed in your application").click();

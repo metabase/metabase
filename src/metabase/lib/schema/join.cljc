@@ -58,8 +58,8 @@
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
    [:conditions  ::conditions]
-   [:fields {:optional true} ::fields]
-   [:alias  {:optional true} ::alias]
+   [:alias       ::alias]
+   [:fields   {:optional true} ::fields]
    [:strategy {:optional true} ::strategy]])
 
 (mr/def ::joins
@@ -72,3 +72,9 @@
       (if-let [aliases (not-empty (filter some? (map :alias joins)))]
         (apply distinct? aliases)
         true))]])
+
+(mr/def ::strategy.option
+  [:map
+   [:lib/type [:= :option/join.strategy]]
+   [:strategy [:ref ::strategy]]
+   [:default {:optional true} :boolean]])

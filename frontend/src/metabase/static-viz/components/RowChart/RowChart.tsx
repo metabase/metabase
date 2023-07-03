@@ -1,6 +1,6 @@
 import { Group } from "@visx/group";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
-import {
+import type {
   FontStyle,
   TextMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
@@ -51,12 +51,18 @@ interface StaticRowChartProps {
   getColor: ColorGetter;
 }
 
-const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
-  measureText(
+const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) => {
+  const textWidth = measureText(
     text,
     parseInt(style.size.toString(), 10),
     style.weight ? parseInt(style.weight.toString(), 10) : 400,
   );
+
+  return {
+    width: textWidth,
+    height: -1, // this will be ignored by RowChart
+  };
+};
 
 const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const remappedColumnsData = extractRemappedColumns(

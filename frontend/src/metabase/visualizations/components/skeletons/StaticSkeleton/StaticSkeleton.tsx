@@ -1,6 +1,8 @@
 import { HTMLAttributes } from "react";
-import Tooltip from "metabase/core/components/Tooltip";
+
 import { IconName } from "metabase/core/components/Icon";
+import Tooltip from "metabase/core/components/Tooltip";
+
 import {
   SkeletonDescription,
   SkeletonIcon,
@@ -29,6 +31,8 @@ const StaticSkeleton = ({
   tooltip,
   ...props
 }: StaticSkeletonProps): JSX.Element => {
+  const defaultedDescription = description || "";
+
   return (
     <SkeletonRoot {...props}>
       {icon && (
@@ -44,7 +48,8 @@ const StaticSkeleton = ({
         </Tooltip>
       )}
       <SkeletonTitle>{name}</SkeletonTitle>
-      {description && <SkeletonDescription>{description}</SkeletonDescription>}
+
+      <SkeletonDescription>{defaultedDescription}</SkeletonDescription>
     </SkeletonRoot>
   );
 };

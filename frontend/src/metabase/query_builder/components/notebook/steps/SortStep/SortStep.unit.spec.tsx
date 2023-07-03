@@ -101,6 +101,17 @@ describe("SortStep", () => {
     expect(orderBy.direction).toBe("asc");
   });
 
+  it("shouldn't show already used columns when adding a new order-by", () => {
+    const { query, columnInfo } = createQueryWithOrderBy();
+    setup(createMockNotebookStep({ topLevelQuery: query }));
+
+    userEvent.click(getIcon("add"));
+
+    expect(
+      screen.queryByRole("option", { name: columnInfo.displayName }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should toggle an order by direction", () => {
     const { query, columnInfo } = createQueryWithOrderBy();
     const { gerRecentOrderByClause } = setup(

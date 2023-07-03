@@ -20,7 +20,7 @@ import {
 import { setErrorPage } from "metabase/redux/app";
 import { initializeIframeResizer } from "metabase/lib/dom";
 
-import AppBanner from "metabase/components/AppBanner";
+import { AppBanner } from "metabase/components/AppBanner";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/components/StatusListing";
@@ -87,6 +87,7 @@ function App({
   isNavBarEnabled,
   children,
   onError,
+  location,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
@@ -98,7 +99,7 @@ function App({
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <AppContainer className="spread">
-          <AppBanner />
+          <AppBanner location={location} />
           {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}

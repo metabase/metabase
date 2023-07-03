@@ -3,14 +3,29 @@ import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation"
 import type { DatabaseId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
 import type {
+  AggregationClause,
+  AggregationClauseDisplayInfo,
+  AggregationOperator,
+  AggregationOperatorDisplayInfo,
+  BreakoutClause,
+  BreakoutClauseDisplayInfo,
+  Bucket,
+  BucketDisplayInfo,
+  CardMetadata,
   Clause,
+  ClauseDisplayInfo,
   ColumnDisplayInfo,
   ColumnGroup,
   ColumnMetadata,
+  JoinStrategy,
+  JoinStrategyDisplayInfo,
   MetadataProvider,
+  MetricMetadata,
+  MetricDisplayInfo,
   OrderByClause,
   OrderByClauseDisplayInfo,
   TableDisplayInfo,
+  TableMetadata,
   Query,
 } from "./types";
 
@@ -38,8 +53,43 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
+  aggregationClause: AggregationClause,
+): AggregationClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  aggregationOperator: AggregationOperator,
+): AggregationOperatorDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  breakoutClause: BreakoutClause,
+): BreakoutClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
   orderByClause: OrderByClause,
 ): OrderByClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  clause: Clause,
+): ClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  bucket: Bucket,
+): BucketDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  metric: MetricMetadata,
+): MetricDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  joinStrategy: JoinStrategy,
+): JoinStrategyDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
@@ -76,4 +126,11 @@ export function describeRelativeDatetime(
   unit?: string,
 ): string {
   return ML.describe_relative_datetime(n, unit);
+}
+
+export function tableOrCardMetadata(
+  queryOrMetadataProvider: Query | MetadataProvider,
+  tableID: number | string,
+): CardMetadata | TableMetadata {
+  return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }

@@ -1,6 +1,5 @@
 (ns metabase.driver.presto-jdbc-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [honeysql.format :as hformat]
    [java-time :as t]
@@ -9,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.presto-jdbc :as presto-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -185,11 +185,14 @@
 
 (defn- execute-ddl! [ddl-statements]
   (mt/with-driver :presto-jdbc
-    (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc (clone-db-details))]
-      (with-open [conn (jdbc/get-connection jdbc-spec)]
-        (doseq [ddl-stmt ddl-statements]
-          (with-open [stmt (.prepareStatement conn ddl-stmt)]
-            (.executeUpdate stmt)))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     :presto-jdbc
+     (sql-jdbc.conn/connection-details->spec :presto-jdbc (clone-db-details))
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       (doseq [ddl-stmt ddl-statements]
+         (with-open [stmt (.prepareStatement conn ddl-stmt)]
+           (.executeUpdate stmt)))))))
 
 (deftest specific-schema-sync-test
   (mt/test-driver :presto-jdbc

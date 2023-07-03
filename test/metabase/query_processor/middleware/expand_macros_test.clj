@@ -159,26 +159,6 @@
                    {:aggregation [[:metric (u/the-id metric)]]
                     :breakout    [$price]}))))))))
 
-(deftest dont-expand-ga-metrics-test
-  (testing "make sure that we don't try to expand GA \"metrics\" (#6104)"
-    (doseq [metric ["ga:users" "gaid:users"]]
-      (is (= (mbql-query {:aggregation [[:metric metric]]})
-             (#'expand-macros/expand-metrics-and-segments
-              (mbql-query {:aggregation [[:metric metric]]}))))))
-
-  (testing "make sure expansion works with multiple GA \"metrics\" (#7399)"
-    (is (= (mbql-query {:aggregation [[:metric "ga:users"]
-                                      [:metric "ga:1dayUsers"]]})
-           (#'expand-macros/expand-metrics-and-segments
-            (mbql-query {:aggregation [[:metric "ga:users"]
-                                       [:metric "ga:1dayUsers"]]}))))))
-
-(deftest dont-expand-ga-segments-test
-  (testing "make sure we don't try to expand GA 'segments'"
-    (is (= (mbql-query {:filter [:segment "gaid:-11"]})
-           (#'expand-macros/expand-metrics-and-segments
-            (mbql-query {:filter [:segment "gaid:-11"]}))))))
-
 (deftest named-metrics-test
   (testing "make sure we can name a :metric"
     (t2.with-temp/with-temp [Metric metric {:definition {:aggregation [[:sum [:field 20 nil]]]}}]

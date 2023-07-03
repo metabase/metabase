@@ -26,7 +26,6 @@ You can start a question from:
 Note that there are some kinds of saved questions that can't be used as source data:
 
 - Druid questions
-- Google Analytics questions
 - Mongo questions
 - Questions that use `Cumulative Sum` or `Cumulative Count` aggregations
 - Questions that have columns that are named the same or similar thing, like `Count` and `Count 2`

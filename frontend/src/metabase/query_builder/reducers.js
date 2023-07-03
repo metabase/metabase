@@ -82,6 +82,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
+  isNativeEditorOpen: false,
   initialChartSetting: null,
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
@@ -94,6 +95,11 @@ const DEFAULT_LOADING_CONTROLS = {
   showLoadCompleteFavicon: false,
   documentTitle: "",
   timeoutId: "",
+};
+
+const DEFAULT_DASHBOARD_STATE = {
+  dashboardId: null,
+  isEditing: false,
 };
 
 const DEFAULT_QUERY_STATUS = "idle";
@@ -548,17 +554,23 @@ export const currentState = handleActions(
   null,
 );
 
-export const dashboardId = handleActions(
+export const parentDashboard = handleActions(
   {
     [NAVIGATE_TO_NEW_CARD]: {
-      next: (state, { payload: { dashboardId } }) => dashboardId,
+      next: (state, { payload: { dashboardId } }) => ({
+        dashboardId,
+        isEditing: false,
+      }),
     },
     [EDIT_QUESTION]: {
-      next: (state, { payload: { dashboardId } }) => dashboardId,
+      next: (state, { payload: { dashboardId } }) => ({
+        dashboardId,
+        isEditing: true,
+      }),
     },
-    [CLOSE_QB]: { next: () => null },
+    [CLOSE_QB]: { next: () => DEFAULT_DASHBOARD_STATE },
   },
-  null,
+  DEFAULT_DASHBOARD_STATE,
 );
 
 export const visibleTimelineEventIds = handleActions(

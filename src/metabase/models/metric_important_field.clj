@@ -2,14 +2,20 @@
   "Intersection table for `Metric` and `Field`; this is used to keep track of the top 0-3 important fields for a metric as shown in the Getting Started guide."
   (:require
    [metabase.models.interface :as mi]
-   [toucan.models :as models]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
-(models/defmodel MetricImportantField :metric_important_field)
+(def MetricImportantField
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/MetricImportantField)
 
-(doto MetricImportantField
+(methodical/defmethod t2/table-name :model/MetricImportantField [_model] :metric_important_field)
+
+(doto :model/MetricImportantField
+  (derive :metabase/model)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
-(mi/define-methods
- MetricImportantField
- {:types (constantly {:definition :json})})
+(t2/deftransforms :model/MetricImportantField
+ {:definition mi/transform-json})

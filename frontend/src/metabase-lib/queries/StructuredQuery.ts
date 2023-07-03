@@ -314,46 +314,6 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   /**
-   *
-   */
-  setDefaultQuery(): StructuredQuery {
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which doesn't allow raw queries:
-    if (
-      table &&
-      table.entity_type === "entity/GoogleAnalyticsTable" &&
-      !this.isEmpty() &&
-      !this.hasAnyClauses()
-    ) {
-      // NOTE: shold we check that a
-      const dateField = _.findWhere(table.fields, {
-        name: "ga:date",
-      });
-
-      if (dateField) {
-        return this.filter([
-          "time-interval",
-          ["field", dateField.id, null],
-          -365,
-          "day",
-        ])
-          .aggregate(["metric", "ga:users"])
-          .aggregate(["metric", "ga:pageviews"])
-          .breakout([
-            "field",
-            dateField.id,
-            {
-              "temporal-unit": "week",
-            },
-          ]);
-      }
-    }
-
-    return this;
-  }
-
-  /**
    * @returns the table object, if a table is selected and loaded.
    */
   table(): Table | null {
@@ -381,8 +341,6 @@ class StructuredQueryInner extends AtomicQuery {
       .cleanJoins()
       .cleanExpressions()
       .cleanFilters()
-      .cleanAggregations()
-      .cleanBreakouts()
       .cleanFields()
       .cleanEmpty();
   }
@@ -415,14 +373,6 @@ class StructuredQueryInner extends AtomicQuery {
 
   cleanFilters(): StructuredQuery {
     return this._cleanClauseList("filters");
-  }
-
-  cleanAggregations(): StructuredQuery {
-    return this._cleanClauseList("aggregations");
-  }
-
-  cleanBreakouts(): StructuredQuery {
-    return this._cleanClauseList("breakouts");
   }
 
   cleanFields(): StructuredQuery {
@@ -460,15 +410,6 @@ class StructuredQueryInner extends AtomicQuery {
       !this._isValidClauseList("breakouts")
     ) {
       return false;
-    }
-
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which requires an aggregation
-    if (table.entity_type === "entity/GoogleAnalyticsTable") {
-      if (!this.hasAggregations()) {
-        return false;
-      }
     }
 
     return true;
@@ -790,11 +731,13 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @param includedBreakout The breakout to include in the options even if it's already used. If true, include all options.
    * @param fieldFilter An option @type {Field} predicate to filter out options
+   * @param isValidation Temporary flag to ensure MLv1 and MLv2 compat during query clean phase
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
   breakoutOptions(
     includedBreakout?: any,
     fieldFilter: FieldFilterFn = () => true,
+    isValidation = false,
   ): DimensionOptions {
     // the collection of field dimensions
     const breakoutDimensions =
@@ -804,13 +747,18 @@ class StructuredQueryInner extends AtomicQuery {
             .filter(breakout => !_.isEqual(breakout, includedBreakout))
             .map(breakout => breakout.dimension());
 
-    return this.dimensionOptions(
-      dimension =>
+    function filter(dimension: Dimension) {
+      return (
         fieldFilter(dimension.field()) &&
         !breakoutDimensions.some(breakoutDimension =>
           breakoutDimension.isSameBaseDimension(dimension),
-        ),
-    );
+        )
+      );
+    }
+
+    return isValidation
+      ? this.dimensionOptionsForValidation(filter)
+      : this.dimensionOptions(filter);
   }
 
   /**
@@ -1333,6 +1281,7 @@ class StructuredQueryInner extends AtomicQuery {
         // They won't be available in MLv2's field literals,
         // so we need to remove them.
         const mlv2Options = _.omit(options, "join-alias");
+        mlv2Options["base-type"] = field.base_type;
 
         if (isVirtualCardId(field.table_id)) {
           const mlv2Dimension = Dimension.parseMBQL([

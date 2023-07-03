@@ -13,6 +13,7 @@ import { updateSettings } from "metabase/admin/settings/settings";
 
 import type { State } from "metabase-types/store";
 
+import { Stack, Group } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import Input from "metabase/core/components/Input";
@@ -23,12 +24,7 @@ import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
 
 import SettingHeader from "../SettingHeader";
-import {
-  FlexContainer,
-  SectionTitle,
-  ColorText,
-  PaddedForm,
-} from "./UploadSetting.styled";
+import { SectionTitle, ColorText, PaddedForm } from "./UploadSetting.styled";
 import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
 
 const FEEDBACK_TIMEOUT = 5000;
@@ -73,8 +69,8 @@ const Header = () => (
   <SettingHeader
     id="upload-settings"
     setting={{
-      display_name: t`Allow users to upload data to Collections`,
-      description: jt`Users will be able to upload CSV files that will be stored in the ${(
+      display_name: t`Allow people to upload data to Collections`,
+      description: jt`People will be able to upload CSV files that will be stored in the ${(
         <Link
           className="link"
           key="db-link"
@@ -170,8 +166,8 @@ export function UploadSettingsView({
   return (
     <PaddedForm aria-label={t`Upload Settings Form`}>
       <Header />
-      <FlexContainer>
-        <div>
+      <Group>
+        <Stack>
           <SectionTitle>{t`Database to use for uploads`}</SectionTitle>
           <Select
             value={dbId ?? 0}
@@ -189,11 +185,11 @@ export function UploadSettingsView({
               }
             }}
           />
-        </div>
+        </Stack>
         {!!showSchema && (
           <Schemas.ListLoader query={{ dbId, getAll: true }}>
             {({ list: schemaList }: { list: Schema[] }) => (
-              <div>
+              <Stack>
                 <SectionTitle>{t`Schema`}</SectionTitle>
                 {schemaList?.length ? (
                   <Select
@@ -208,12 +204,12 @@ export function UploadSettingsView({
                 ) : (
                   <EmptyState message={t`We couldn't find any schema.`} />
                 )}
-              </div>
+              </Stack>
             )}
           </Schemas.ListLoader>
         )}
         {!!showPrefix && (
-          <div>
+          <Stack>
             <SectionTitle>{t`Upload Table Prefix (optional)`}</SectionTitle>
             <Input
               value={tablePrefix ?? ""}
@@ -223,10 +219,10 @@ export function UploadSettingsView({
                 setTablePrefix(e.target.value);
               }}
             />
-          </div>
+          </Stack>
         )}
-      </FlexContainer>
-      <FlexContainer>
+      </Group>
+      <Group mt="lg">
         {settings.uploads_enabled ? (
           settingsChanged ? (
             <ActionButton
@@ -269,7 +265,7 @@ export function UploadSettingsView({
             type="submit"
           />
         )}
-      </FlexContainer>
+      </Group>
       {!hasValidDatabases && <NoValidDatabasesMessage />}
       {errorMessage && <ColorText color="danger">{errorMessage}</ColorText>}
     </PaddedForm>

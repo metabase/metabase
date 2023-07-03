@@ -72,6 +72,22 @@ export interface Dataset {
   status?: string;
 }
 
+export interface PublicDatasetData {
+  rows: RowValues[];
+  cols: DatasetColumn[];
+  rows_truncated: number;
+  // TODO: Correct this type
+  insights: any;
+  requested_timezone?: string;
+  results_timezone?: string;
+}
+
+export interface PublicDataset {
+  data: PublicDatasetData;
+  json_query?: JsonQuery;
+  status?: string;
+}
+
 export interface NativeQueryForm {
   query: string;
 }
