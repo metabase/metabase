@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "dashboard",
     "format": "jsonschema",
-    "version": "1-1-1"
+    "version": "1-1-2"
   },
   "type": "object",
   "properties": {
