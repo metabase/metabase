@@ -147,6 +147,7 @@
    filterable-columns
    filterable-column-operators
    filter-clause
+   filter-operator
    and
    or
    not
@@ -171,7 +172,9 @@
    join-conditions
    join-fields
    join-strategy
+   joinable-columns
    joins
+   raw-join-strategy
    suggested-join-condition
    with-join-alias
    with-join-fields
@@ -188,6 +191,8 @@
    display-info
    suggested-name
    type-of]
+  [lib.metric
+   available-metrics]
   [lib.native
    #?@(:cljs [->TemplateTags
               TemplateTags->])

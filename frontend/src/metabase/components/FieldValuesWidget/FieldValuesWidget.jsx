@@ -21,9 +21,9 @@ import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
 import {
-  fetchParameterValues,
   fetchCardParameterValues,
   fetchDashboardParameterValues,
+  fetchParameterValues,
 } from "metabase/parameters/actions";
 
 import Fields from "metabase/entities/fields";
@@ -90,6 +90,10 @@ async function searchFieldValues(
 
   options = options.map(result => [].concat(result));
   return options;
+}
+
+function getNonVirtualFields(fields) {
+  return fields.filter(field => !field.isVirtual());
 }
 
 class FieldValuesWidgetInner extends Component {
@@ -183,9 +187,17 @@ class FieldValuesWidgetInner extends Component {
 
   fetchFieldValues = async query => {
     if (query == null) {
-      const { fields, fetchFieldValues } = this.props;
-      await Promise.all(fields.map(field => fetchFieldValues(field.id)));
-      return dedupeValues(this.props.fields.map(field => field.values));
+      const { fetchFieldValues } = this.props;
+      await Promise.all(
+        getNonVirtualFields(this.props.fields).map(field =>
+          fetchFieldValues(field.id),
+        ),
+      );
+      // when field values are updated, new fields are created,
+      // that's why we need to reference them as this.props.fields here
+      return dedupeValues(
+        getNonVirtualFields(this.props.fields).map(field => field.values),
+      );
     } else {
       const { fields } = this.props;
       const cancelDeferred = defer();

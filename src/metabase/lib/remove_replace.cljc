@@ -98,17 +98,19 @@
 (defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-ref-id]
   (let [stage (lib.util/query-stage query stage-number)
         to-remove (mapcat
-                    (fn [location]
-                      (when-let [clauses (get-in stage location)]
-                        (->> clauses
-                             (keep #(mbql.match/match-one %
-                                      [target-op _ target-ref-id] [location %])))))
-                    (stage-paths query stage-number))]
+                   (fn [location]
+                     (when-let [clauses (get-in stage location)]
+                       ;; :fields in a join can be just :all or :none (#31858)
+                       (when (seqable? clauses)
+                         (->> clauses
+                              (keep #(mbql.match/match-one %
+                                       [target-op _ target-ref-id] [location %]))))))
+                   (stage-paths query stage-number))]
     (reduce
-      (fn [query [location target-clause]]
-        (remove-replace-location query stage-number unmodified-query-for-stage location target-clause lib.util/remove-clause))
-      query
-      to-remove)))
+     (fn [query [location target-clause]]
+       (remove-replace-location query stage-number unmodified-query-for-stage location target-clause lib.util/remove-clause))
+     query
+     to-remove)))
 
 (defn- remove-stage-references
   [query previous-stage-number unmodified-query-for-stage target-uuid]
@@ -284,8 +286,8 @@
   (let [stage-before (lib.util/query-stage query-before stage-number)
         stage-after  (lib.util/query-stage query-after stage-number)
         removed-cols (set/difference
-                      (set (lib.metadata.calculation/metadata query-before stage-number stage-before))
-                      (set (lib.metadata.calculation/metadata query-after stage-number stage-after)))
+                      (set (lib.metadata.calculation/returned-columns query-before stage-number stage-before))
+                      (set (lib.metadata.calculation/returned-columns query-after stage-number stage-after)))
         invalid-locs (referring-locations query-after stage-after removed-cols)
         paths        (stage-paths query-after stage-number)
         to-remove    (concat (clauses-to-remove stage-after paths (map first invalid-locs))

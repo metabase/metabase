@@ -124,7 +124,9 @@ describe("QuestionInfoSidebar", () => {
       });
 
       it("is shown if caching is enabled", async () => {
-        await setup({ card: getQuestionCard({ cache_ttl: 2 }) });
+        await setup({
+          card: getQuestionCard({ can_write: true, cache_ttl: 2 }),
+        });
         expect(screen.getByText("Cache Configuration")).toBeInTheDocument();
       });
 

@@ -6,7 +6,10 @@
   (:require
    [clojure.data :as data]
    [clojure.test :as t]
-   [clojure.walk :as walk]))
+   [clojure.walk :as walk]
+   [metabase.test-runner.assert-exprs.malli-equals]))
+
+(comment metabase.test-runner.assert-exprs.malli-equals/keep-me)
 
 (defn derecordize
   "Convert all record types in `form` to plain maps, so tests won't fail."

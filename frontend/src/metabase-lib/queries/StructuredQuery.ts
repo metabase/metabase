@@ -341,8 +341,6 @@ class StructuredQueryInner extends AtomicQuery {
       .cleanJoins()
       .cleanExpressions()
       .cleanFilters()
-      .cleanAggregations()
-      .cleanBreakouts()
       .cleanFields()
       .cleanEmpty();
   }
@@ -375,14 +373,6 @@ class StructuredQueryInner extends AtomicQuery {
 
   cleanFilters(): StructuredQuery {
     return this._cleanClauseList("filters");
-  }
-
-  cleanAggregations(): StructuredQuery {
-    return this._cleanClauseList("aggregations");
-  }
-
-  cleanBreakouts(): StructuredQuery {
-    return this._cleanClauseList("breakouts");
   }
 
   cleanFields(): StructuredQuery {

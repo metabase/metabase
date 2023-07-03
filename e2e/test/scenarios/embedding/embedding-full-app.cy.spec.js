@@ -325,9 +325,10 @@ describe("scenarios > embedding > full app", () => {
   });
 });
 
-const visitUrl = url => {
+const visitUrl = ({ url, qs }) => {
   cy.visit({
-    ...url,
+    url,
+    qs,
     onBeforeLoad(window) {
       // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
       // by removing the property the app would work in embedding mode
@@ -336,19 +337,19 @@ const visitUrl = url => {
   });
 };
 
-const visitQuestionUrl = url => {
-  visitUrl(url);
+const visitQuestionUrl = urlOptions => {
+  visitUrl(urlOptions);
   cy.wait("@getCardQuery");
 };
 
-const visitDashboardUrl = url => {
-  visitUrl(url);
+const visitDashboardUrl = urlOptions => {
+  visitUrl(urlOptions);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
 
-const visitXrayDashboardUrl = url => {
-  visitUrl(url);
+const visitXrayDashboardUrl = urlOptions => {
+  visitUrl(urlOptions);
   cy.wait("@getXrayDashboard");
 };
 

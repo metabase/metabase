@@ -1,6 +1,5 @@
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
-
 import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
 
@@ -129,7 +128,7 @@ export function SearchResult({
       active={active}
       compact={compact}
       to={!onClick ? result.getUrl() : ""}
-      onClick={onClick ? () => onClick(result) : undefined}
+      onClick={onClick && active ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
       <ResultLinkContent>

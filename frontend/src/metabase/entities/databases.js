@@ -1,4 +1,3 @@
-import { normalize } from "normalizr";
 import _ from "underscore";
 
 import { createSelector } from "@reduxjs/toolkit";
@@ -6,8 +5,6 @@ import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import {
-  fetchData,
-  createThunkAction,
   compose,
   withAction,
   withCachedDataAndRequestState,
@@ -42,26 +39,6 @@ const Databases = createEntity({
 
   // ACTION CREATORS
   objectActions: {
-    fetchDatabaseMetadata: createThunkAction(
-      FETCH_DATABASE_METADATA,
-      ({ id }, { reload = false, params } = {}) =>
-        (dispatch, getState) =>
-          fetchData({
-            dispatch,
-            getState,
-            requestStatePath: ["metadata", "databases", id],
-            existingStatePath: ["metadata", "databases", id],
-            getData: async () => {
-              const databaseMetadata = await MetabaseApi.db_metadata({
-                dbId: id,
-                ...params,
-              });
-              return normalize(databaseMetadata, DatabaseSchema);
-            },
-            reload,
-          }),
-    ),
-
     fetchIdFields: compose(
       withAction(FETCH_DATABASE_IDFIELDS),
       withCachedDataAndRequestState(

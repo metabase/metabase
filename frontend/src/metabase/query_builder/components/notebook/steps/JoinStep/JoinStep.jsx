@@ -14,13 +14,13 @@ import Join from "metabase-lib/queries/structured/Join";
 import Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { NotebookCellAdd, NotebookCellItem } from "../NotebookCell";
+import { NotebookCellAdd, NotebookCellItem } from "../../NotebookCell";
 import {
   FieldPickerContentContainer,
   FIELDS_PICKER_STYLES,
   FieldsPickerIcon,
-} from "../FieldsPickerIcon";
-import FieldsPicker from "./FieldsPicker";
+} from "../../FieldsPickerIcon";
+import FieldsPicker from "../FieldsPicker";
 import {
   DimensionContainer,
   DimensionSourceName,
@@ -84,7 +84,7 @@ const JOIN_OPERATOR_OPTIONS = [
   { name: "≠", value: "!=" },
 ];
 
-export default function JoinStep({
+export function JoinStep({
   color,
   query,
   step,
@@ -487,7 +487,7 @@ function JoinTablePicker({
         isInitiallyOpen={!hasSourceTable}
         triggerElement={
           <FieldPickerContentContainer>
-            {joinedTable ? joinedTable.displayName() : t`Pick a table...`}
+            {joinedTable ? joinedTable.displayName() : t`Pick data…`}
           </FieldPickerContentContainer>
         }
       />

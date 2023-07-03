@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -196,7 +195,7 @@
               (-> q
                   (lib/aggregate {:operator :sum
                                   :lib/type :lib/external-op
-                                  :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
+                                  :args [(lib/ref (meta/field-metadata :venues :category-id))]})
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel type-of-sum-test
@@ -542,7 +541,7 @@
           aggregations (lib/aggregations query)
           aggregation-operators (lib/available-aggregation-operators query)]
       (testing "selected-aggregation-operators w/o column"
-        (is (=? [{:lib/type :mbql.aggregation/operator
+        (is (=? [{:lib/type :operator/aggregation
                   :short :max
                   :selected? true
                   :columns
@@ -721,7 +720,7 @@
               :lib/source-uuid          string?
               :lib/source-column-alias  "sum"
               :lib/desired-column-alias "sum"}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel count-display-name-test
   (testing "#31255"
@@ -747,7 +746,7 @@
                   "query")
               (is (= [(expected (if field? :with-field :without-field))]
                      (map (partial lib/display-name query)
-                          (lib.metadata.calculation/metadata query)))
+                          (lib.metadata.calculation/returned-columns query)))
                   "display name"))))))))
 
 (deftest ^:parallel aggregation-name-from-previous-stage-test

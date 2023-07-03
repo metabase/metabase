@@ -147,7 +147,7 @@
                            :dataset-query card-query}
           ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
           ;; sure we're not including it twice.
-          result-metadata (for [col (lib.metadata.calculation/metadata
+          result-metadata (for [col (lib.metadata.calculation/returned-columns
                                      (lib/saved-question-query
                                       meta/metadata-provider
                                       {:dataset-query card-query}))]
@@ -217,7 +217,7 @@
     (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
             field))
     (testing "(lib/temporal-bucket <field-ref>)"
-      (is (= {:lib/type :type/temporal-bucketing-option
+      (is (= {:lib/type :option/temporal-bucketing
               :unit     :day-of-month}
              (lib/temporal-bucket field))))
     (is (= "Date: Day of month"
@@ -261,7 +261,7 @@
         (is (= effective-type
                (lib.metadata.calculation/type-of (:query temporal-bucketing-mock-metadata) x'))))
       (testing "lib/temporal-bucket should return the option"
-        (is (= {:lib/type :type/temporal-bucketing-option
+        (is (= {:lib/type :option/temporal-bucketing
                 :unit     unit}
                (lib/temporal-bucket x')))
         (testing "should generate a :field ref with correct :temporal-unit"
@@ -309,7 +309,7 @@
                  (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata) x)))
           (testing "Bucketing with any of the options should work"
             (doseq [expected-option expected-options]
-              (is (= {:lib/type :type/temporal-bucketing-option
+              (is (= {:lib/type :option/temporal-bucketing
                      :unit      (:unit expected-option)}
                      (lib/temporal-bucket (lib/with-temporal-bucket x expected-option))))))
           (let [bucketed (lib/with-temporal-bucket x selected-unit)
@@ -352,7 +352,7 @@
                                               {:strategy :num-bins  :num-bins  10}
                                               {:strategy :bin-width :bin-width 1.0}
                                               {:strategy :default}])
-          :let                  [field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")]
+          :let                  [field-metadata (meta/field-metadata :orders :subtotal)]
           [what x]              {"column metadata" field-metadata
                                  "field ref"       (lib/ref field-metadata)}
           :let                  [x' (lib/with-binning x binning1)]]
@@ -387,10 +387,10 @@
 (deftest ^:parallel available-binning-strategies-test
   (doseq [{:keys [expected-options field-metadata query]}
           [{:query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
-            :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+            :field-metadata   (meta/field-metadata :orders :subtotal)
             :expected-options (lib.binning/numeric-binning-strategies)}
            {:query            (lib/query meta/metadata-provider (meta/table-metadata :people))
-            :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+            :field-metadata   (meta/field-metadata :people :latitude)
             :expected-options (lib.binning/coordinate-binning-strategies)}]]
     (testing (str (:semantic-type field-metadata) " Field")
       (doseq [[what x] [["column metadata" field-metadata]
@@ -419,14 +419,14 @@
   (testing "There should be no binning strategies for expressions as they are not supported (#31367)"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
-      (is (empty? (->> (lib.metadata.calculation/metadata query)
+      (is (empty? (->> (lib.metadata.calculation/returned-columns query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-binning-strategies query)))))))
 
 (deftest ^:parallel binning-display-info-test
   (testing "numeric binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+          field-metadata (meta/field-metadata :orders :subtotal)
           strategies     (lib.binning/numeric-binning-strategies)]
       (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
                                               {:display-name "10 bins"}
@@ -441,7 +441,7 @@
 
   (testing "coordinate binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :people))
-          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+          field-metadata (meta/field-metadata :people :latitude)
           strategies     (lib.binning/coordinate-binning-strategies)]
       (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
                                               {:display-name "0.1°"}
@@ -476,7 +476,7 @@
              {:lib/desired-column-alias "PRICE"}
              {:lib/desired-column-alias "Cat__ID"}
              {:lib/desired-column-alias "Cat__NAME"}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel field-ref-type-of-test
   (testing "Make sure we can calculate field ref type information correctly"
@@ -579,7 +579,7 @@
                 :lib/source               :source/aggregations
                 :lib/source-column-alias  "avg"
                 :lib/desired-column-alias "avg"}]
-              (lib.metadata.calculation/metadata query))))))
+              (lib.metadata.calculation/returned-columns query))))))
 
 (deftest ^:parallel with-fields-test
   (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -674,7 +674,7 @@
                :lib/card-id              3
                :lib/source-column-alias  "Field 4"
                :lib/desired-column-alias "Field 4"}]
-             (lib.metadata.calculation/metadata query)))
+             (lib.metadata.calculation/returned-columns query)))
       (is (= {:lib/type                :metadata/column
               :base-type               :type/Text
               :effective-type          :type/Text
@@ -711,7 +711,7 @@
              :lib/desired-column-alias "Categories__NAME"}
             joined-col))
     (testing "Metadata should not contain inherited join information"
-      (is (not-any? :metabase.lib.join/join-alias (lib.metadata.calculation/metadata query))))
+      (is (not-any? :metabase.lib.join/join-alias (lib.metadata.calculation/returned-columns query))))
     (testing "Reference a joined column from a previous stage w/ desired-column-alias and w/o join-alias"
       (is (=? {:lib/type :mbql.stage/mbql,
                :breakout [[:field
