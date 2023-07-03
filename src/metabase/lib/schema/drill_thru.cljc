@@ -6,6 +6,7 @@
   (:require
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.util.malli.registry :as mr]))
 
@@ -65,6 +66,18 @@
      [:lib/type     [:= :metabase.lib.drill-thru/drill-thru]]
      [:column       lib.metadata/ColumnMetadata]
      [:aggregations [:sequential [:enum :avg :distinct :sum]]]]]
+   [:drill-thru/summarize-column-by-time
+    [:map
+     [:type         keyword?]
+     [:lib/type     [:= :metabase.lib.drill-thru/drill-thru]]
+     [:column       lib.metadata/ColumnMetadata]
+     [:breakout     lib.metadata/ColumnMetadata]]]
+   [:drill-thru/column-filter
+    [:map
+     [:type         keyword?]
+     [:lib/type     [:= :metabase.lib.drill-thru/drill-thru]]
+     [:column       lib.metadata/ColumnMetadata]
+     [:initial-op   [:maybe ::lib.schema.filter/operator]]]]
    [:drill-thru/automatic-insights
     [:map
      [:type         keyword?]
