@@ -6,7 +6,6 @@ import {
   setupMetabaseCloud,
   isOSS,
   isEE,
-  isPremium,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -241,7 +240,7 @@ describe("scenarios > admin > settings", () => {
     () => {
       isEE && cy.setTokenFeatures("all");
 
-      const lastItem = isPremium ? "Appearance" : "Caching";
+      const lastItem = isOSS ? "Caching" : "Appearance";
 
       cy.visit("/admin/settings/setup");
       cy.get(".AdminList .AdminList-item")

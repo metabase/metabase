@@ -8,15 +8,17 @@ import {
   restore,
   rightSidebar,
   visitDashboard,
+  describeEE,
 } from "e2e/support/helpers";
 
-describe("database prompt banner", () => {
+describeEE("database prompt banner", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
-  it("should show a database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
+  it("should show a database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labelled", () => {
     cy.visit("/");
     cy.findByRole("main").findByText("Loading...").should("not.exist");
 
@@ -43,7 +45,7 @@ describe("database prompt banner", () => {
     });
   });
 
-  it("should not show a database prompt banner when logged in as an admin, an instance is on a paid plan, and only have a single sample dataset, but is white labeling", () => {
+  it("should not show a database prompt banner when logged in as an admin, an instance is on a paid plan, and only have a single sample dataset, but is white labelled", () => {
     cy.request("PUT", "/api/setting/application-name", { value: "Acme Corp." });
     cy.visit("/");
     cy.findByRole("main").findByText("Loading...").should("not.exist");
