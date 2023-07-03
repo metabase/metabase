@@ -9,7 +9,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [schema.core :as s]
+   [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
    (liquibase Contexts LabelExpression Liquibase)
@@ -57,27 +58,29 @@
   "Impl for [[with-liquibase-macro]]."
   [conn-or-data-source :- (s/cond-pre java.sql.Connection javax.sql.DataSource)
    f]
-  ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
-  ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
-  ;; it's safe to assume the caller is managing its lifecycle.
-  (if (instance? java.sql.Connection conn-or-data-source)
-    (f (-> conn-or-data-source liquibase-connection database liquibase))
-    (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
-                liquibase-conn (liquibase-connection conn)
-                database       (database liquibase-conn)]
-      (f (liquibase database)))))
+  ;; for custom migrations we need to make sure all toucans method use the provided connection
+  (binding [t2.conn/*current-connectable* conn-or-data-source]
+    (if (instance? java.sql.Connection conn-or-data-source)
+      (f (-> conn-or-data-source liquibase-connection database liquibase))
+      ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
+      ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
+      ;; it's safe to assume the caller is managing its lifecycle.
+      (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
+                  liquibase-conn (liquibase-connection conn)
+                  database       (database liquibase-conn)]
+        (f (liquibase database))))))
 
 (defmacro with-liquibase
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
 
-    (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
-      (liquibase/migrate-up-if-needed! liquibase))"
+  (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
+  (liquibase/migrate-up-if-needed! liquibase))"
   {:style/indent 1}
   [[liquibase-binding conn-or-data-source] & body]
   `(do-with-liquibase
-    ~conn-or-data-source
-    (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
-      ~@body)))
+     ~conn-or-data-source
+     (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
+       ~@body)))
 
 (defn migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations."
@@ -87,7 +90,7 @@
     (.toString writer)))
 
 (defn migrations-lines
-  "Return a sequnce of DDL statements that should be used to perform migrations for `liquibase`.
+  "Return a sequence of DDL statements that should be used to perform migrations for `liquibase`.
 
   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
   one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
@@ -96,6 +99,8 @@
 
   As of 0.31.1 this is only used for printing the migrations without running or when force migrating."
   [^Liquibase liquibase]
+  ;; I think calling this will execute the custom migrations which is unexpected
+  ;; because we only want the migrations to be prepared
   (for [line  (str/split-lines (migrations-sql liquibase))
         :when (not (or (str/blank? line)
                        (re-find #"^--" line)))]
