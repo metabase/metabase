@@ -268,16 +268,18 @@ function FieldValuesWidgetInner({
     return value;
   };
 
-  const search = _.debounce(async value => {
-    if (!value) {
-      setLoadingState("LOADED");
-      return;
-    }
+  const search = useRef(
+    _.debounce(async value => {
+      if (!value) {
+        setLoadingState("LOADED");
+        return;
+      }
 
-    await fetchValues(value);
+      await fetchValues(value);
 
-    setLastValue(value);
-  }, 500);
+      setLastValue(value);
+    }, 500),
+  );
 
   const _search = value => {
     if (_cancel.current) {
@@ -285,7 +287,7 @@ function FieldValuesWidgetInner({
     }
 
     setLoadingState("LOADING");
-    search(value);
+    search.current(value);
   };
 
   if (!valueRenderer) {
