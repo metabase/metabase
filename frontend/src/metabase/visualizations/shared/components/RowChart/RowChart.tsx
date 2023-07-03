@@ -1,9 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import * as React from "react";
 
 import type { NumberValue } from "d3-scale";
 
-import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type {
+  TextWidthMeasurer,
+  TextMeasurer,
+} from "metabase/visualizations/shared/types/measure-text";
 import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
@@ -48,7 +51,7 @@ export interface RowChartProps<TDatum> {
 
   tickFormatters?: ChartTicksFormatters;
   labelsFormatter?: (value: NumberValue) => string;
-  measureText: TextWidthMeasurer;
+  measureText: TextMeasurer;
 
   xScaleType?: ContinuousScaleType;
 
@@ -89,7 +92,7 @@ export const RowChart = <TDatum,>({
 
   xScaleType = "linear",
 
-  measureText,
+  measureText: measureTextSize,
 
   style,
 
@@ -133,6 +136,12 @@ export const RowChart = <TDatum,>({
   );
 
   const { xTickFormatter, yTickFormatter } = tickFormatters;
+
+  // in this component, we expect a measurer that only measures width
+  const measureText: TextWidthMeasurer = useCallback(
+    (text, style) => measureTextSize(text, style)?.width,
+    [measureTextSize],
+  );
 
   const margin = useMemo(
     () =>
