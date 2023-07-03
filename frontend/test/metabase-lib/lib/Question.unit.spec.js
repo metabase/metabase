@@ -1416,7 +1416,7 @@ describe("Question", () => {
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question/1",
-          query: { objectId: "" },
+          query: {},
           card: null,
         });
       });
@@ -1437,7 +1437,7 @@ describe("Question", () => {
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
-          query: { objectId: "" },
+          query: {},
           card: deserializedCard,
         });
       });
@@ -1449,7 +1449,7 @@ describe("Question", () => {
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
-          query: { objectId: "" },
+          query: {},
           card: {
             ...assocIn(
               dissoc(card, "id"),
@@ -1468,7 +1468,7 @@ describe("Question", () => {
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
-          query: { objectId: "" },
+          query: {},
           card: {
             ...assocIn(
               dissoc(card, "id"),
