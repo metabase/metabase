@@ -6,6 +6,7 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
@@ -49,9 +50,11 @@
   "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
   substituted into connected variables in the text."
   [dashcard parameters]
-  (let [escaped-dashcard   (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars % shared.params/escaped-markdown-chars-regex)))
-        text               (-> escaped-dashcard :visualization_settings :text)
-        parameter-mappings (:parameter_mappings escaped-dashcard)
+  (let [dashcard           (if (= "heading" (get-in dashcard [:visualization_settings :virtual_card :display]))
+                             (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars % shared.params/escaped-markdown-chars-regex)))
+                             dashcard)
+        text               (-> dashcard :visualization_settings :text)
+        parameter-mappings (:parameter_mappings dashcard)
         tag-names          (shared.params/tag_names text)
         param-id->param    (into {} (map (juxt :id identity) parameters))
         tag-name->param-id (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
@@ -60,4 +63,4 @@
                                        (assoc m tag-name (get param-id->param param-id))))
                                    {}
                                    tag-names)]
-    (update-in escaped-dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
