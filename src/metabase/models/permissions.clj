@@ -1120,14 +1120,6 @@
       (throw (ex-info (tru
                        (str "Unable to update audit database, that requires updating through monitoring permissions."))
                       {:status-code 400})))))
-
-(defn collection-permissions
-  "tmp"
-  []
-  (let [audit-collections        (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-entity-ids)]})
-        audit-collection-reports (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})]
-    (concat (map :id audit-collections) (map :id audit-collection-reports))))
-
 (defn- config-monitoring-permissions!
   "Will either remove or grant monitoring (audit) permissions, depending on the config parameter."
   [group-or-id perm-type config]
