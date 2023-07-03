@@ -350,7 +350,7 @@
        (t2.with-temp/with-temp [DashboardCard _ {:dashboard_id dashboard-id
                                                  :row 1
                                                  :col 1
-                                                 :visualization_settings {:text "header"}}]
+                                                 :visualization_settings {:text "# header"}}]
          (mt/with-temporary-setting-values [site-name "Metabase Test"]
            (thunk))))
 
@@ -378,7 +378,7 @@
                     :attachment-name "image.png"
                     :channel-id      "FOO"
                     :fallback        pulse.test-util/card-name}
-                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "header"}}]}
+                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*header*"}}]}
                    {:blocks [{:type "divider"}
                              {:type "context"
                               :elements [{:type "mrkdwn"

@@ -490,7 +490,7 @@
                                                                   :target       [:text-tag "foo"]}]
                                         :visualization_settings {:virtual_card {:display "text"}
                                                                  :text         "Text card with variable: {{foo}}"}}]]
-        (is (= "## Text card with variable: bar"
+        (is (= "Text card with variable: bar"
                (-> (client/client :get 200 (dashboard-url dash {:params {:a "bar"}}))
                    :ordered_cards
                    first
