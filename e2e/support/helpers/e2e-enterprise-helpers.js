@@ -2,11 +2,21 @@
  * Just because an instance is using an Enterprise artifact (jar or Docker image),
  * doesn't mean that the token is active or that it has all feature flags enabled.
  *
- * `isEE` means enterprise instance without a token.
+ * `isEE` means enterprise instance without a token and `isOSS` means open-source instance.
+ * Conversely, custom `describe` blocks are used to conditionally run tests only against a
+ * specific Metabase instance.
+ *
+ * There is a subset UI elements that appear only on open-source instance. Test those
+ * using a `describeOSS` block, and vice-versa.
+ *
  */
 export const isEE = Cypress.env("IS_ENTERPRISE");
 export const isOSS = !isEE;
 
+/**
+ *
+ * @param {boolean} cond
+ */
 const conditionalDescribe = cond => (cond ? describe : describe.skip);
 
 export const describeEE = conditionalDescribe(isEE);
