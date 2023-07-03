@@ -362,6 +362,11 @@
   [filter-operator column & args]
   (apply lib.core/filter-clause filter-operator column args))
 
+(defn ^:export filter-operator
+  "Returns the filter operator of `filter-clause`."
+  [a-query stage-number a-filter-clause]
+  (lib.core/filter-operator a-query stage-number a-filter-clause))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
