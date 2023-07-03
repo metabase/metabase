@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -53,14 +52,20 @@ Add any other context about the problem here.
 **Metabase Diagnostic Info**
 `;
 
-function githubIssueLink(bugReportDetails) {
+function githubIssueLink(bugReportDetails: string) {
   return (
     "https://github.com/metabase/metabase/issues/new?title=&labels=.Needs+Triage%2C+Type%3ABug&body=" +
     encodeURIComponent(template + "\n```json\n" + bugReportDetails + "\n```")
   );
 }
 
-const HelpLink = ({ title, description, link }) => (
+interface HelpLinkProps {
+  title: string;
+  description: string;
+  link: string;
+}
+
+const HelpLink = ({ title, description, link }: HelpLinkProps) => (
   <li className="mb2">
     <ExternalLink
       className="bordered border-brand-hover rounded transition-border flex p2 no-decoration"
@@ -75,7 +80,11 @@ const HelpLink = ({ title, description, link }) => (
   </li>
 );
 
-const InfoBlock = ({ children }) => (
+interface InfoBlockProps {
+  children?: ReactNode;
+}
+
+const InfoBlock = ({ children }: InfoBlockProps) => (
   <InfoBlockRoot className="bordered rounded bg-light relative">
     <InfoBlockButton className="absolute top right text-brand-hover cursor-pointer">
       <CopyButton value={children} />
