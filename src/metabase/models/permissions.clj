@@ -1077,17 +1077,17 @@
 
 ; Audit Permissions helper fns
 
-(defenterprise ^:private default-audit-db-id
+(defenterprise default-audit-db-id
   "OSS implementation of `audit-db/default-audit-db-id`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
 
-(defenterprise ^:private default-audit-collection-entity-ids
+(defenterprise default-audit-collection-entity-ids
   "OSS implementation of `audit-db/default-audit-collection-entity-ids`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
 
-(defenterprise ^:private default-audit-collection-report-entity-ids
+(defenterprise default-audit-collection-report-entity-ids
   "OSS implementation of `audit-db/default-audit-collection-report-entity-ids`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
@@ -1120,6 +1120,7 @@
       (throw (ex-info (tru
                        (str "Unable to update audit database, that requires updating through monitoring permissions."))
                       {:status-code 400})))))
+
 (defn- config-monitoring-permissions!
   "Will either remove or grant monitoring (audit) permissions, depending on the config parameter."
   [group-or-id perm-type config]
