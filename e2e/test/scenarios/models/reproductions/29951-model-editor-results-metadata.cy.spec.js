@@ -24,13 +24,12 @@ describe("issue 29951", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
+
     cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    cy.wait("@dataset");
 
     openQuestionActions();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
