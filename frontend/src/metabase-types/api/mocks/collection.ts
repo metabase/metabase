@@ -9,6 +9,7 @@ export const createMockCollection = (
   location: "/",
   can_write: false,
   archived: false,
+  authority_level: null,
   ...opts,
 });
 

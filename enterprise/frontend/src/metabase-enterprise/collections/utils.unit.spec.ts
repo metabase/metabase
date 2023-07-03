@@ -1,5 +1,5 @@
 import { createMockCollection } from "metabase-types/api/mocks";
-import { isRegularCollection } from "./utils";
+import { getCollectionType, isRegularCollection } from "./utils";
 
 describe("Collections plugin utils", () => {
   const COLLECTION = {
@@ -25,6 +25,23 @@ describe("Collections plugin utils", () => {
     it("returns 'false' for official collections", () => {
       const collection = COLLECTION.OFFICIAL;
       expect(isRegularCollection(collection)).toBe(false);
+    });
+  });
+
+  describe("getCollectionType", () => {
+    it("regular collection", () => {
+      const collection = createMockCollection();
+      expect(getCollectionType(collection).icon).toBe("folder");
+    });
+
+    it("official collection", () => {
+      const collection = createMockCollection({ authority_level: "official" });
+      expect(getCollectionType(collection).icon).toBe("badge");
+    });
+
+    it("instance analytics collection", () => {
+      const collection = createMockCollection({ type: "instance-analytics" });
+      expect(getCollectionType(collection).icon).toBe("beaker");
     });
   });
 });
