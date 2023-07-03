@@ -378,7 +378,7 @@
                     :attachment-name "image.png"
                     :channel-id      "FOO"
                     :fallback        pulse.test-util/card-name}
-                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "*# header*"}}]}
+                   {:blocks [{:type "section" :text {:type "mrkdwn" :text "header"}}]}
                    {:blocks [{:type "divider"}
                              {:type "context"
                               :elements [{:type "mrkdwn"
