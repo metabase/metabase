@@ -4,6 +4,7 @@ import {
   restore,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -32,8 +33,13 @@ describe("issue 29951", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
     openQuestionActions();
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
+      "schema",
+    );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").should("be.visible").click();
+    cy.wait("@schema");
+
     removeExpression("CC2");
     cy.findByRole("button", { name: "Save changes" }).click();
     cy.wait("@updateCard");
