@@ -405,7 +405,7 @@
   "Get available join strategies for the current Database (based on the Database's
   supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
-  (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))
+  (to-array (lib.core/available-join-strategies a-query stage-number)))
 
 (defn ^:export join-condition-lhs-columns
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
