@@ -28,8 +28,9 @@ export const setTokenFeatures = featuresScope => {
       break;
 
     default:
-      token = "";
-      break;
+      throw new Error(
+        `You must set the token features scope to either "all" or "none"!`,
+      );
   }
 
   cy.log(`Set the "${featuresScope}" token`);
