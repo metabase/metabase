@@ -24,7 +24,7 @@
                 :lib/source               :source/card
                 :lib/source-column-alias  "count"
                 :lib/desired-column-alias "count"}]
-              (lib.metadata.calculation/metadata query)))
+              (lib.metadata.calculation/returned-columns query)))
       (testing `lib/display-info
         (is (=? [{:name                   "USER_ID"
                   :display-name           "User ID"
@@ -45,7 +45,7 @@
                   :is-from-join           false
                   :is-calculated          false
                   :is-implicitly-joinable false}]
-                (for [col (lib.metadata.calculation/metadata query)]
+                (for [col (lib.metadata.calculation/returned-columns query)]
                   (lib/display-info query col))))))))
 
 (deftest ^:parallel card-source-query-metadata-test
@@ -69,7 +69,7 @@
                                    :source-card 1}]}]
         (is (=? (for [col meta/card-results-metadata]
                   (assoc col :lib/source :source/card))
-                (lib.metadata.calculation/metadata query)))))))
+                (lib.metadata.calculation/returned-columns query)))))))
 
 (deftest ^:parallel card-results-metadata-merge-metadata-provider-metadata-test
   (testing "Merge metadata from the metadata provider into result-metadata (#30046)"
@@ -78,9 +78,7 @@
                 :id                       (meta/id :checkins :user-id)
                 :table-id                 (meta/id :checkins)
                 :semantic-type            :type/FK
-                ;; this comes from the metadata provider, it's not present in `result-metadata`
-                :fk-target-field-id       (meta/id :users :id)
                 :lib/desired-column-alias "USER_ID"}
                {:lib/type :metadata/column
                 :name     "count"}]
-              (lib.metadata.calculation/metadata query))))))
+              (lib.metadata.calculation/returned-columns query))))))

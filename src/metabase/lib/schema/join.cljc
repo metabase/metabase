@@ -72,3 +72,9 @@
       (if-let [aliases (not-empty (filter some? (map :alias joins)))]
         (apply distinct? aliases)
         true))]])
+
+(mr/def ::strategy.option
+  [:map
+   [:lib/type [:= :option/join.strategy]]
+   [:strategy [:ref ::strategy]]
+   [:default {:optional true} :boolean]])

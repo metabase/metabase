@@ -37,7 +37,7 @@ describe("csv uploads", () => {
 
     beforeEach(() => {
       dispatch = jest.fn();
-      jest.useFakeTimers().setSystemTime(now);
+      jest.useFakeTimers({ advanceTimers: true }).setSystemTime(now);
     });
 
     afterAll(() => {
@@ -94,14 +94,8 @@ describe("csv uploads", () => {
         type: UPLOAD_FILE_TO_COLLECTION_ERROR,
         payload: {
           id: now,
-          message: "It's dead Jim",
-        },
-      });
-
-      expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_CLEAR,
-        payload: {
-          id: now,
+          message: "There was an error uploading the file",
+          error: "It's dead Jim",
         },
       });
     });
@@ -126,13 +120,6 @@ describe("csv uploads", () => {
         payload: {
           id: now,
           message: `You cannot upload files larger than ${MAX_UPLOAD_STRING}mb`,
-        },
-      });
-
-      expect(dispatch).toHaveBeenCalledWith({
-        type: UPLOAD_FILE_TO_COLLECTION_CLEAR,
-        payload: {
-          id: now,
         },
       });
     });

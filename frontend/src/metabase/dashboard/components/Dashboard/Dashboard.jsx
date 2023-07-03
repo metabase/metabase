@@ -59,6 +59,7 @@ class Dashboard extends Component {
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
+    dashcardData: PropTypes.object,
     selectedTabId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
@@ -73,6 +74,7 @@ class Dashboard extends Component {
     cancelFetchDashboardCardData: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     fetchDashboardCardData: PropTypes.func.isRequired,
+    fetchDashboardCardMetadata: PropTypes.func.isRequired,
     initialize: PropTypes.func.isRequired,
     onRefreshPeriodChange: PropTypes.func,
     saveDashboardAndCards: PropTypes.func.isRequired,
@@ -140,7 +142,16 @@ class Dashboard extends Component {
     if (prevProps.dashboardId !== this.props.dashboardId) {
       await this.loadDashboard(this.props.dashboardId);
       this.throttleParameterWidgetStickiness();
-    } else if (
+      return;
+    }
+
+    if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
+      this.props.fetchDashboardCardData();
+      this.props.fetchDashboardCardMetadata();
+      return;
+    }
+
+    if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
     ) {
@@ -353,6 +364,7 @@ class Dashboard extends Component {
                     <TabEmptyState isNightMode={shouldRenderAsNightMode} />
                   ) : (
                     <DashboardEmptyState
+                      dashboard={dashboard}
                       isNightMode={shouldRenderAsNightMode}
                       addQuestion={this.onAddQuestion}
                       closeNavbar={this.props.closeNavbar}

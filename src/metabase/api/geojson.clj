@@ -107,6 +107,8 @@
                (setting/set-value-of-type! :json :custom-geojson new-value)))
   :visibility :public)
 
+(def ^:private connection-timeout-ms 8000)
+
 (defn- read-url-and-respond
   "Reads the provided URL and responds with the contents as a stream."
   [url respond]
@@ -114,8 +116,8 @@
                                        (io/reader resource)
                                        (:body (http/get url {:as                 :reader
                                                              :redirect-strategy  :none
-                                                             :socket-timeout     8000
-                                                             :connection-timeout 8000})))
+                                                             :socket-timeout     connection-timeout-ms
+                                                             :connection-timeout connection-timeout-ms})))
               is                     (ReaderInputStream. reader)]
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))

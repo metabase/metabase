@@ -16,7 +16,6 @@ import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
-import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { closeNavbar, getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -114,7 +113,6 @@ const mapDispatchToProps = {
   ...dashboardActions,
   closeNavbar,
   archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
-  fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,
 };

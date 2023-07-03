@@ -83,18 +83,25 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    column-name  :- ::lib.schema.common/non-blank-string]
-  (let [stage         (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                        (lib.util/query-stage query previous-stage-number)
-                        (lib.util/query-stage query stage-number))
+  (let [previous-stage-number (lib.util/previous-stage-number query stage-number)
+        stage                 (if previous-stage-number
+                                (lib.util/query-stage query previous-stage-number)
+                                (lib.util/query-stage query stage-number))
         ;; TODO -- it seems a little icky that the existence of `:metabase.lib.stage/cached-metadata` is leaking here,
         ;; we should look in to fixing this if we can.
-        stage-columns (or (:metabase.lib.stage/cached-metadata stage)
-                          (get-in stage [:lib/stage-metadata :columns])
-                          (when (:source-card stage)
-                            (lib.metadata.calculation/visible-columns query stage-number stage))
-                          (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
-    (when (seq stage-columns)
-      (resolve-column-name-in-metadata column-name stage-columns))))
+        stage-columns         (or (:metabase.lib.stage/cached-metadata stage)
+                                  (get-in stage [:lib/stage-metadata :columns])
+                                  (when (:source-card stage)
+                                    (lib.metadata.calculation/visible-columns query stage-number stage))
+                                  (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
+    (when-let [column (and (seq stage-columns)
+                           (resolve-column-name-in-metadata column-name stage-columns))]
+      (cond-> column
+        previous-stage-number (-> (dissoc :id :table-id
+                                          ::binning ::temporal-unit
+                                          :metabase.lib.join/join-alias)
+                                  (assoc :name (or (:lib/desired-column-alias column) (:name column)))
+                                  (assoc :lib/source :source/previous-stage))))))
 
 (mu/defn ^:private resolve-field-metadata :- lib.metadata/ColumnMetadata
   "Resolve metadata for a `:field` ref. This is part of the implementation
@@ -157,7 +164,7 @@
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))
 
-;;; TODO -- base type should be affected by `temporal-unit`, right?
+;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
   [query
    stage-number
@@ -457,8 +464,15 @@
     (:name field-metadata)))
 
 (defn- expression-refs
+  "Create refs for all the expressions in a stage of a query."
   [query stage-number]
-  (for [col (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage query stage-number))
+  (for [col   (lib.metadata.calculation/visible-columns
+               query
+               stage-number
+               (lib.util/query-stage query stage-number)
+               {:include-joined?              false
+                :include-expressions?         true
+                :include-implicitly-joinable? false})
         :when (= (:lib/source col) :source/expressions)]
     (lib.ref/ref col)))
 

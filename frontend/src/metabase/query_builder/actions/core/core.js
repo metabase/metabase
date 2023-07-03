@@ -238,7 +238,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       );
     }
 
-    rerunQuery = rerunQuery ?? isResultDirty;
+    if (question.isStructured()) {
+      rerunQuery = rerunQuery ?? isResultDirty;
+    }
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -298,9 +300,21 @@ export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => {
-    return { id: parameterId, value };
+    return { id: parameterId, value: normalizeValue(value) };
   },
 );
+
+function normalizeValue(value) {
+  if (value === "") {
+    return null;
+  }
+
+  if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+
+  return value;
+}
 
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(

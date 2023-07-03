@@ -1,7 +1,7 @@
 import _ from "underscore";
 import type { ScaleContinuousNumeric } from "d3-scale";
 import { ValueFormatter } from "metabase/visualizations/shared/types/format";
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 
@@ -14,7 +14,7 @@ const omitOverlappingTicks = (
   tickFont: ChartFont,
   xScale: ScaleContinuousNumeric<number, number, never>,
   tickFormatter: ValueFormatter,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
 ) => {
   if (ticks.length <= 1) {
     return ticks;
@@ -47,7 +47,7 @@ const omitOverlappingTicks = (
 
 const getMaxTickWidth = (
   scale: ScaleContinuousNumeric<number, number, never>,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
   tickFormatter: ValueFormatter,
   tickFont: ChartFont,
 ) => {
@@ -61,7 +61,7 @@ const getMaxTickWidth = (
 
 const getMinTicksInterval = (
   scale: ScaleContinuousNumeric<number, number, never>,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
   tickFormatter: ValueFormatter,
   tickFont: ChartFont,
   innerWidth: number,
@@ -111,7 +111,7 @@ export const getXTicks = (
   innerWidth: number,
   xScale: ScaleContinuousNumeric<number, number, never>,
   tickFormatter: ValueFormatter,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
   scaleType: ContinuousScaleType,
 ) => {
   const ticksInterval = getMinTicksInterval(

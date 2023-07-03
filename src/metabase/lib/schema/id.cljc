@@ -12,6 +12,9 @@
 
 ;;; not sure under what circumstances we actually want to allow this, this is an icky hack. How are we supposed to
 ;;; resolve stuff with a fake Database ID? I guess as far as the schema is concerned we can allow this tho.
+;;;
+;;; EDIT: Sometimes the FE uses this when starting a query based on a Card if it doesn't know the database associated
+;;; with that Card. The QP will resolve this to the correct Database later.
 (mr/def ::saved-questions-virtual-database
   [:= mbql.s/saved-questions-virtual-database-id])
 
@@ -28,4 +31,7 @@
   ::common/int-greater-than-or-equal-to-zero)
 
 (mr/def ::metric
+  ::common/int-greater-than-or-equal-to-zero)
+
+(mr/def ::snippet
   ::common/int-greater-than-or-equal-to-zero)

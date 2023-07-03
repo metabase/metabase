@@ -25,23 +25,9 @@
                 " Filtered by Name equals \"Toucannery\","
                 " Sorted by ID ascending,"
                 " 100 rows")
-           (lib.metadata.calculation/display-name query -1 query)
+           (lib.metadata.calculation/display-name query)
            (lib.metadata.calculation/describe-query query)
            (lib.metadata.calculation/suggested-name query)))))
-
-(deftest ^:parallel native-query-test
-  (is (=? {:lib/type :mbql/query
-           :database (meta/id)
-           :stages   [{:lib/type    :mbql.stage/native
-                       :lib/options {:lib/uuid string?}
-                       :native      "SELECT * FROM VENUES;"}]}
-          (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;"))))
-
-(deftest ^:parallel native-query-suggested-name-test
-  (let [query (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;")]
-    (is (= "Native query"
-           (lib.metadata.calculation/describe-query query)))
-    (is (nil? (lib.metadata.calculation/suggested-name query)))))
 
 (deftest ^:parallel card-source-query-test
   (is (=? {:lib/type :mbql/query

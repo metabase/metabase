@@ -75,7 +75,7 @@
    :mbql         {:strategy :default}})
 
 (defn- with-binning-option-type [m]
-  (assoc m :lib/type ::binning-option))
+  (assoc m :lib/type :option/binning))
 
 (def ^:private *numeric-binning-strategies
   (delay (mapv with-binning-option-type
@@ -116,7 +116,7 @@
                         "°"))
       :default   (i18n/tru "Auto binned"))))
 
-(defmethod lib.metadata.calculation/display-info-method ::binning-option
+(defmethod lib.metadata.calculation/display-info-method :option/binning
   [_query _stage-number binning-option]
   (select-keys binning-option [:display-name :default :selected]))
 

@@ -1,5 +1,7 @@
 (ns metabase.lib.options
+  (:refer-clojure :exclude [uuid])
   (:require
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -79,3 +81,8 @@
                       (cond-> options-map
                         (not (:lib/uuid options-map))
                         (assoc :lib/uuid (str (random-uuid)))))))
+
+(mu/defn uuid :- [:maybe ::lib.schema.common/non-blank-string]
+  "Get the `:lib/uuid` associated with something, e.g. an MBQL clause or join."
+  [x]
+  (:lib/uuid (options x)))
