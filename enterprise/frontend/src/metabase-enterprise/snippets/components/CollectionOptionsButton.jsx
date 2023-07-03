@@ -6,6 +6,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 const ICON_SIZE = 16;
 
@@ -70,7 +71,11 @@ export default class CollectionOptionsButton extends Component {
         onClick: () => onEdit(collection),
       });
     }
-    if (user && user.is_superuser) {
+    if (
+      user &&
+      user.is_superuser &&
+      hasPremiumFeature("advanced_permissions")
+    ) {
       options.push({
         name: t`Change permissions`,
         onClick: onEditCollectionPermissions,
