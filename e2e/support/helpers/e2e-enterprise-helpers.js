@@ -3,10 +3,10 @@
  * doesn't mean that the token is active or that it has all feature flags enabled.
  *
  * `isEE` means enterprise instance without a token and `isOSS` means open-source instance.
- * Conversely, custom `describe` blocks are used to conditionally run tests only against a
- * specific Metabase instance.
+ * In the same way, custom `describe` blocks `describeEE` and `describeOSS` are used to
+ * conditionally run tests only against a corresponding Metabase instance.
  *
- * There is a subset UI elements that appear only on open-source instance. Test those
+ * There is a subset of UI elements that appear only in an open-source instance. Test those
  * using a `describeOSS` block, and vice-versa.
  *
  */
