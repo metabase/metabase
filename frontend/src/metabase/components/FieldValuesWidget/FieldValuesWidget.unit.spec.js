@@ -1,8 +1,9 @@
 import "mutationobserver-shim";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 
+import { checkNotNull } from "metabase/core/utils/types";
 import {
   FieldValuesWidget,
   searchField,
@@ -28,9 +29,11 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 const LISTABLE_PK_FIELD_ID = 100;
+const LISTABLE_PK_FIELD_VALUE = "1234";
 const STRING_PK_FIELD_ID = 101;
 const SEARCHABLE_FK_FIELD_ID = 102;
 const LISTABLE_FIELD_WITH_MANY_VALUES_ID = 103;
+const EXPRESSION_FIELD_ID = ["field", "CC", { "base-type": "type/Text" }];
 
 const database = createSampleDatabase({
   tables: [
@@ -47,7 +50,7 @@ const database = createSampleDatabase({
           effective_type: "type/BigInteger",
           semantic_type: "type/PK",
           has_field_values: "list",
-          values: [[1234]],
+          values: [[LISTABLE_PK_FIELD_VALUE]],
         }),
         createMockField({
           id: STRING_PK_FIELD_ID,
@@ -75,6 +78,10 @@ const database = createSampleDatabase({
           has_field_values: "list",
           has_more_values: true,
         }),
+        createMockField({
+          id: EXPRESSION_FIELD_ID,
+          field_ref: ["expression", "CC"],
+        }),
       ],
     }),
   ],
@@ -88,7 +95,7 @@ const state = createMockState({
 
 const metadata = getMetadata(state);
 
-function renderFieldValuesWidget({ fields, values, ...props }) {
+async function setup({ fields, values, ...props }) {
   const fetchFieldValues = jest.fn();
 
   renderWithProviders(
@@ -105,6 +112,10 @@ function renderFieldValuesWidget({ fields, values, ...props }) {
     },
   );
 
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+  });
+
   return { fetchFieldValues };
 }
 
@@ -113,17 +124,17 @@ describe("FieldValuesWidget", () => {
     describe("has_field_values = none", () => {
       const field = metadata.field(PEOPLE.PASSWORD);
 
-      it("should not call fetchFieldValues", () => {
-        const { fetchFieldValues } = renderFieldValuesWidget({
+      it("should not call fetchFieldValues", async () => {
+        const { fetchFieldValues } = await setup({
           fields: [field],
         });
         expect(fetchFieldValues).not.toHaveBeenCalled();
       });
 
       it("should have 'Enter some text' as the placeholder text", async () => {
-        renderFieldValuesWidget({ fields: [field] });
+        await setup({ fields: [field] });
         expect(
-          await screen.findByPlaceholderText("Enter some text"),
+          screen.getByPlaceholderText("Enter some text"),
         ).toBeInTheDocument();
       });
     });
@@ -131,15 +142,15 @@ describe("FieldValuesWidget", () => {
     describe("has_field_values = list", () => {
       const field = metadata.field(PRODUCTS.CATEGORY);
 
-      it("should call fetchFieldValues", () => {
-        const { fetchFieldValues } = renderFieldValuesWidget({
+      it("should call fetchFieldValues", async () => {
+        const { fetchFieldValues } = await setup({
           fields: [field],
         });
         expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCTS.CATEGORY);
       });
 
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
-        renderFieldValuesWidget({ fields: [field] });
+        await setup({ fields: [field] });
         expect(
           screen.queryByPlaceholderText("Search the list"),
         ).not.toBeInTheDocument();
@@ -147,9 +158,9 @@ describe("FieldValuesWidget", () => {
 
       it("should have 'Enter some text' as the placeholder text for fields with more than 10 values", async () => {
         const field = metadata.field(PEOPLE.STATE);
-        renderFieldValuesWidget({ fields: [field] });
+        await setup({ fields: [field] });
         expect(
-          await screen.findByPlaceholderText("Enter some text"),
+          screen.getByPlaceholderText("Enter some text"),
         ).toBeInTheDocument();
       });
     });
@@ -157,17 +168,17 @@ describe("FieldValuesWidget", () => {
     describe("has_field_values = search", () => {
       const field = metadata.field(PRODUCTS.VENDOR);
 
-      it("should not call fetchFieldValues", () => {
-        const { fetchFieldValues } = renderFieldValuesWidget({
+      it("should not call fetchFieldValues", async () => {
+        const { fetchFieldValues } = await setup({
           fields: [field],
         });
         expect(fetchFieldValues).not.toHaveBeenCalled();
       });
 
       it("should have 'Search by Vendor' as the placeholder text", async () => {
-        renderFieldValuesWidget({ fields: [field] });
+        await setup({ fields: [field] });
         expect(
-          await screen.findByPlaceholderText("Search by Vendor"),
+          screen.getByPlaceholderText("Search by Vendor"),
         ).toBeInTheDocument();
       });
     });
@@ -176,22 +187,20 @@ describe("FieldValuesWidget", () => {
   describe("id field", () => {
     describe("has_field_values = none", () => {
       it("should have 'Enter an ID' as the placeholder text", async () => {
-        renderFieldValuesWidget({
+        await setup({
           fields: [metadata.field(ORDERS.PRODUCT_ID)],
         });
-        expect(
-          await screen.findByPlaceholderText("Enter an ID"),
-        ).toBeInTheDocument();
+        expect(screen.getByPlaceholderText("Enter an ID")).toBeInTheDocument();
       });
     });
 
     describe("has_field_values = list", () => {
       it("should have 'Search the list' as the placeholder text", async () => {
-        renderFieldValuesWidget({
+        await setup({
           fields: [metadata.field(LISTABLE_PK_FIELD_ID)],
         });
         expect(
-          await screen.findByPlaceholderText("Search the list"),
+          screen.getByPlaceholderText("Search the list"),
         ).toBeInTheDocument();
       });
     });
@@ -202,21 +211,19 @@ describe("FieldValuesWidget", () => {
         const remappedField = metadata.field(PRODUCTS.CATEGORY);
         field.remappedField = () => remappedField;
 
-        renderFieldValuesWidget({ fields: [field] });
+        await setup({ fields: [field] });
 
         expect(
-          await screen.findByPlaceholderText(
-            "Search by Category or enter an ID",
-          ),
+          screen.getByPlaceholderText("Search by Category or enter an ID"),
         ).toBeInTheDocument();
       });
 
       it("should not duplicate 'ID' in placeholder when ID itself is searchable", async () => {
-        renderFieldValuesWidget({
+        await setup({
           fields: [metadata.field(SEARCHABLE_FK_FIELD_ID)],
         });
         expect(
-          await screen.findByPlaceholderText("Search by Product"),
+          screen.getByPlaceholderText("Search by Product"),
         ).toBeInTheDocument();
       });
     });
@@ -230,52 +237,52 @@ describe("FieldValuesWidget", () => {
       const sourceField = metadata.field(PEOPLE.SOURCE).clone();
       sourceField.values = PEOPLE_SOURCE_VALUES.values;
 
-      renderFieldValuesWidget({ fields: [categoryField, sourceField] });
+      await setup({ fields: [categoryField, sourceField] });
 
       expect(
-        await screen.findByPlaceholderText("Search the list"),
+        screen.getByPlaceholderText("Search the list"),
       ).toBeInTheDocument();
-      expect(await screen.findByText("Doohickey")).toBeInTheDocument();
-      expect(await screen.findByText("Affiliate")).toBeInTheDocument();
+      expect(screen.getByText("Doohickey")).toBeInTheDocument();
+      expect(screen.getByText("Affiliate")).toBeInTheDocument();
     });
 
     it("search if any field is a search", async () => {
-      renderFieldValuesWidget({
+      await setup({
         fields: [
           metadata.field(PRODUCTS.CATEGORY),
           metadata.field(PRODUCTS.VENDOR),
         ],
       });
 
-      await screen.findByPlaceholderText("Search");
-
+      expect(screen.getByPlaceholderText("Search")).toBeInTheDocument();
       expect(screen.queryByText("AZ")).not.toBeInTheDocument();
       expect(screen.queryByText("Facebook")).not.toBeInTheDocument();
     });
 
     it("don't list any values if any is set to 'plain input box'", async () => {
-      renderFieldValuesWidget({
+      await setup({
         fields: [metadata.field(PEOPLE.PASSWORD), metadata.field(PEOPLE.STATE)],
       });
 
-      await screen.findByPlaceholderText("Enter some text");
-
+      expect(
+        screen.getByPlaceholderText("Enter some text"),
+      ).toBeInTheDocument();
       expect(screen.queryByText("AZ")).not.toBeInTheDocument();
       expect(screen.queryByText("Facebook")).not.toBeInTheDocument();
     });
   });
 
   describe("prefix", () => {
-    it("should render a passed prefix", () => {
-      renderFieldValuesWidget({
+    it("should render a passed prefix", async () => {
+      await setup({
         fields: [metadata.field(PRODUCTS.PRICE)],
         prefix: "$$$",
       });
       expect(screen.getByTestId("input-prefix")).toHaveTextContent("$$$");
     });
 
-    it("should not render a prefix if omitted", () => {
-      renderFieldValuesWidget({ fields: [metadata.field(PRODUCTS.PRICE)] });
+    it("should not render a prefix if omitted", async () => {
+      await setup({ fields: [metadata.field(PRODUCTS.PRICE)] });
       expect(screen.queryByTestId("input-prefix")).not.toBeInTheDocument();
     });
   });
@@ -403,6 +410,21 @@ describe("FieldValuesWidget", () => {
         const fields = [metadata.field(ORDERS.SUBTOTAL)];
         expect(getValuesMode({ fields })).toBe("none");
       });
+    });
+  });
+
+  describe("custom expressions", () => {
+    const valuesField = checkNotNull(metadata.field(LISTABLE_PK_FIELD_ID));
+    const expressionField = checkNotNull(metadata.field(EXPRESSION_FIELD_ID));
+
+    it("should not call fetchFieldValues", async () => {
+      const { fetchFieldValues } = await setup({
+        fields: [valuesField, expressionField],
+      });
+
+      expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
+      expect(fetchFieldValues).toHaveBeenCalledWith(LISTABLE_PK_FIELD_ID);
+      expect(fetchFieldValues).not.toHaveBeenCalledWith(EXPRESSION_FIELD_ID);
     });
   });
 });
