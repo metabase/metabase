@@ -63,7 +63,7 @@ export default class Filter extends MBQLClause {
     return this._query.removeFilter(this._index);
   }
 
-  shortDateRangeLabel() {
+  betterDateLabel() {
     const dimension = this.dimension();
     const unit = dimension?.temporalUnit();
     const op = this.operatorName();
@@ -116,8 +116,7 @@ export default class Filter extends MBQLClause {
         !isStartingFrom(this) &&
         operator.moreVerboseName;
       const argumentNames =
-        this.shortDateRangeLabel() ?? this.formattedArguments().join(" ");
-      // TODO: display "is" instead of "between" when shortDateRangeLabel is returned
+        this.betterDateLabel() ?? this.formattedArguments().join(" ");
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
