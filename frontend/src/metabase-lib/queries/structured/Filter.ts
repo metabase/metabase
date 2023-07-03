@@ -2,6 +2,7 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
+import moment from "moment-timezone";
 import type {
   Filter as FilterObject,
   FieldFilter,
@@ -71,11 +72,26 @@ export default class Filter extends MBQLClause {
     const isDate = ["day", "week", "month", "quarter", "year"].includes(unit);
     const betweenDates = op === "between" && isDate;
     const equalsWeek = op === "=" && unit === "week";
-    if (allStrs && (betweenDates || equalsWeek)) {
-      return formatDateTimeRangeWithUnit(args, unit, {
-        type: "tooltip",
-        date_resolution: unit === "week" ? "day" : unit,
-      });
+    // modifying some of DEFAULT_DATE_FORMATS
+    const sliceFormats = {
+      "hour-of-day": "[hour] H",
+      "minute-of-hour": "[minute] m",
+      "day-of-month": "Do [day of month]",
+      "day-of-year": "DDDo [day of year]",
+      "week-of-year": "wo [week of year]",
+    };
+    if (allStrs) {
+      if (betweenDates || equalsWeek) {
+        return formatDateTimeRangeWithUnit(args, unit, {
+          type: "tooltip",
+          date_resolution: unit === "week" ? "day" : unit,
+        });
+      } else if (op === "=" && unit in sliceFormats) {
+        const m = moment(args[0]);
+        if (m.isValid()) {
+          return m.format(sliceFormats[unit]);
+        }
+      }
     }
   }
 
