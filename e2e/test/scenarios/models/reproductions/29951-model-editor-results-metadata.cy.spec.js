@@ -21,7 +21,7 @@ const questionDetails = {
   dataset: true,
 };
 
-describe("issue 29951", () => {
+describe("issue 29951", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
