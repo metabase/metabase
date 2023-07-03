@@ -1,7 +1,8 @@
 (ns metabase.lib.js-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.lib.js :as lib.js]))
+   [metabase.lib.js :as lib.js]
+   [metabase.lib.test-util :as lib.tu]))
 
 (deftest query=-test
   (doseq [q1 [nil js/undefined]
@@ -64,3 +65,12 @@
       (is (not= join join-class))
       (is (not= (js->clj join) (js->clj join-class)))
       (is (lib.js/query= basic-query classy-query)))))
+
+(deftest available-join-strategies-test
+  (testing "available-join-strategies returns an array of opaque strategy objects (#32089)"
+    (let [strategies (lib.js/available-join-strategies (lib.tu/query-with-join) -1)]
+      (is (array? strategies))
+      (is (= [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
+              {:lib/type :option/join.strategy, :strategy :right-join}
+              {:lib/type :option/join.strategy, :strategy :inner-join}]
+             (vec strategies))))))
