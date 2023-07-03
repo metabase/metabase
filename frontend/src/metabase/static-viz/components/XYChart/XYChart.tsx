@@ -29,7 +29,7 @@ import {
   fixTimeseriesTicksExceedXTickCount,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
-import { measureText } from "metabase/static-viz/lib/text";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
 
 import type {
   Series,
@@ -102,7 +102,10 @@ export const XYChart = ({
     width,
     height,
   );
-  const VALUE_CHAR_SIZE = measureText("0", style.value?.fontSize as number);
+  const VALUE_CHAR_SIZE = measureTextWidth(
+    "0",
+    style.value?.fontSize as number,
+  );
   const valuesLeftOffset = getValuesLeftOffset(
     settings,
     series,
