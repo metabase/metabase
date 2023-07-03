@@ -264,7 +264,7 @@
                     DashboardCard [_ {:dashboard_id dashboard-id
                                       :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
-      (is (= [{:virtual_card {} :text "## test" :type :text}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+      (is (= [{:virtual_card {} :text "test" :type :text}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
@@ -350,7 +350,7 @@
        (t2.with-temp/with-temp [DashboardCard _ {:dashboard_id dashboard-id
                                                  :row 1
                                                  :col 1
-                                                 :visualization_settings {:text "# header"}}]
+                                                 :visualization_settings {:text "header"}}]
          (mt/with-temporary-setting-values [site-name "Metabase Test"]
            (thunk))))
 
@@ -551,7 +551,7 @@
        :assert
        {:slack
         (fn [_object-ids [pulse-results]]
-          (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "*abcdefgh…"}}]}
+          (is (= {:blocks [{:type "section" :text {:type "mrkdwn" :text "abcdefghi…"}}]}
                  (nth (:attachments (pulse.test-util/thunk->boolean pulse-results)) 2))))}})))
 
 (deftest archived-dashboard-test
@@ -637,7 +637,7 @@
                                                             :target       [:text-tag "foo"]}]
                                       :dashboard_id       dashboard-id
                                       :visualization_settings {:text "{{foo}}"}}]]
-      (is (= [{:text "## Doohickey and Gizmo" :type :text}]
+      (is (= [{:text "Doohickey and Gizmo" :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest no-native-perms-test
@@ -674,7 +674,7 @@
        DashboardCard _                 {:dashboard_id           dashboard-id
                                         :visualization_settings {:virtual_card {:display "action"}}
                                         :row                    3}]
-      (is (=? [{:text "## Markdown"}
+      (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
 
@@ -739,11 +739,11 @@
                                             :visualization_settings {:text "Card 1 tab-2"}}]
     (testing "tabs are correctly rendered"
       (is (= [{:text "The first tab", :type :tab-title}
-              {:text "## Card 1 tab\\-1", :type :text}
-              {:text "## Card 2 tab\\-1", :type :text}
+              {:text "Card 1 tab\\-1", :type :text}
+              {:text "Card 2 tab\\-1", :type :text}
               {:text "The second tab", :type :tab-title}
-              {:text "## Card 1 tab\\-2", :type :text}
-              {:text "## Card 2 tab\\-2", :type :text}]
+              {:text "Card 1 tab\\-2", :type :text}
+              {:text "Card 2 tab\\-2", :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest render-dashboard-with-tabs-test
@@ -817,11 +817,11 @@
                   :attachment-name "image.png",
                   :channel-id "FOO",
                   :fallback "Test card"}
-                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "*Card 1 tab-1*"}}]}
-                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "*Card 2 tab-1*"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 1 tab-1"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-1"}}]}
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The second tab*"}}]}
-                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "*Card 1 tab-2*"}}]}
-                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "*Card 2 tab-2*"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 1 tab-2"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-2"}}]}
                  {:blocks
                   [{:type "divider"}
                    {:type "context",
