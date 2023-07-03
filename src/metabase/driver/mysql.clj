@@ -73,10 +73,6 @@
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-(defmethod driver/database-supports? [:mysql :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
-
 (doseq [feature [:actions :actions/custom]]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feat _db]

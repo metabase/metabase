@@ -416,9 +416,9 @@
 
 (defn reschedule-refresh!
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
-  `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
+  `:persist-models-enabled` in the settings at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
   []
-  (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (t2/select Database))
+  (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (t2/select Database))
         cron-schedule        (public-settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]

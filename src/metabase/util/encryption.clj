@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]))

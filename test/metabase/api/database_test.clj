@@ -1607,7 +1607,7 @@
               (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
                                                   :database_id db-id
                                                   :card_id     (:id card))))
-              (is (true? (t2/select-one-fn (comp :persist-models-enabled :options)
+              (is (true? (t2/select-one-fn (comp :persist-models-enabled :settings)
                                            Database
                                            :id db-id))))
             (testing "it's okay to trigger persist even though the database is already persisted"
@@ -1628,7 +1628,7 @@
             (testing "should be able to persit an database"
               ;; trigger persist first
               (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist"))
-              (is (nil? (t2/select-one-fn (comp :persist-models-enabled :options)
+              (is (nil? (t2/select-one-fn (comp :persist-models-enabled :settings)
                                           Database
                                           :id db-id))))
             (testing "it's okay to unpersist even though the database is not persisted"

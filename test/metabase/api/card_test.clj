@@ -2508,7 +2508,7 @@
         (#'task.persist-refresh/job-init!)
         (#'task.sync-databases/job-init)
         (mt/with-temporary-setting-values [:persisted-models-enabled true]
-          (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]]
+          (mt/with-temp* [Database [db {:settings {:persist-models-enabled true}}]]
             (f db)))
         (finally
           (qs/shutdown sched))))))

@@ -83,8 +83,8 @@
 
 (deftest reschedule-refresh-test
   (mt/with-temp-scheduler
-    (mt/with-temp* [Database [db-1 {:options {:persist-models-enabled true}}]
-                    Database [db-2 {:options {:persist-models-enabled true}}]]
+    (mt/with-temp* [Database [db-1 {:settings {:persist-models-enabled true}}]
+                    Database [db-2 {:settings {:persist-models-enabled true}}]]
       (#'task.persist-refresh/job-init!)
       (mt/with-temporary-setting-values [persisted-model-refresh-cron-schedule "0 0 0/4 * * ? *"]
         (task.persist-refresh/reschedule-refresh!)
@@ -117,7 +117,7 @@
 
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [TaskHistory]
-    (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]
+    (mt/with-temp* [Database [db {:settings {:persist-models-enabled true}}]
                     Card     [model1 {:dataset true :database_id (u/the-id db)}]
                     Card     [model2 {:dataset true :database_id (u/the-id db)}]
                     Card     [archived {:archived true :dataset true :database_id (u/the-id db)}]
@@ -161,7 +161,7 @@
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]}))))))
     (testing "Deletes any in a deletable state"
-      (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]
+      (mt/with-temp* [Database [db {:settings {:persist-models-enabled true}}]
                       Card     [model3 {:dataset true :database_id (u/the-id db)}]
                       Card     [archived {:archived true :dataset true :database_id (u/the-id db)}]
                       Card     [unmodeled {:dataset false :database_id (u/the-id db)}]

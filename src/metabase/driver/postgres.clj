@@ -69,10 +69,6 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
-
 (doseq [feature [:actions :actions/custom :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
