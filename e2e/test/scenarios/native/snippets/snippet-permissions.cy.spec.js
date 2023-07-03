@@ -12,7 +12,53 @@ import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-describeEE("scenarios > question > snippets", () => {
+describe("scenarios > question > snippets (OSS)", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it(
+    "user should not be able to see snippet permissions",
+    { tags: "@OSS" },
+    () => {
+      // Manually create snippet folder
+      cy.request("POST", "/api/collection", {
+        name: "Snippet Folder",
+        description: null,
+        color: "#509EE3",
+        parent_id: null,
+        namespace: "snippets",
+      });
+
+      // Open editor and sidebar
+      openNativeEditor();
+      cy.icon("snippet").click();
+
+      // Confirm root level permissions are not visible
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Snippets")
+          .parent()
+          .next()
+          .find(".Icon-ellipsis")
+          .should("not.exist");
+      });
+
+      // Confirm folder level permissions are not visible
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Snippet Folder")
+          .next()
+          .find(".Icon-ellipsis")
+          .click({ force: true });
+      });
+      popover().within(() => {
+        cy.findByText("Change permissions").should("not.exist");
+      });
+    },
+  );
+});
+
+describeEE("scenarios > question > snippets (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -57,8 +103,6 @@ describeEE("scenarios > question > snippets", () => {
       name: "snippet 1",
       collection_id: null,
     });
-
-    cy.intercept("GET", "api/collection/*").as("collection");
 
     openNativeEditor();
 
