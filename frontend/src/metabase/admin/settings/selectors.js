@@ -5,7 +5,10 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
-import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_EMBEDDING,
+} from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
@@ -29,7 +32,7 @@ import {
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
-import FullAppEmbeddingLinkWidget from "./components/widgets/FullAppEmbeddingLinkWidget";
+import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 
@@ -555,8 +558,7 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         widget: FullAppEmbeddingLinkWidget,
         getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] ||
-          MetabaseSettings.isEnterprise(),
+          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
         widget: () => (
