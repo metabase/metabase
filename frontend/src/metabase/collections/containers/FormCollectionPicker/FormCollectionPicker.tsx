@@ -25,6 +25,7 @@ import { isValidCollectionId } from "metabase/collections/utils";
 import type { CollectionId } from "metabase-types/api";
 
 import { ButtonProps } from "metabase/core/components/Button";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
@@ -56,10 +57,18 @@ function ItemName({
 }
 
 export const NewCollectionButton = (props: ButtonProps) => {
-  return (
+  const button = (
     <NewButton light icon="add" {...props}>
       {t`New collection`}
     </NewButton>
+  );
+  // button has to be wrapped in a span when disabled or the tooltip doesn’t show
+  return props.disabled === true ? (
+    <Tooltip tooltip={t`You must first fix the required fields above.`}>
+      <span>{button}</span>
+    </Tooltip>
+  ) : (
+    button
   );
 };
 
