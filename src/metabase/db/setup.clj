@@ -21,6 +21,7 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [schema.core :as s]
+   [toucan2.connection :as t2.conn]
    [toucan2.jdbc :as t2.jdbc]
    [toucan2.map-backend.honeysql2 :as t2.honeysql]
    [toucan2.pipeline :as t2.pipeline])
@@ -70,7 +71,7 @@
     (.setAutoCommit conn false)
     ;; Set up liquibase and let it do its thing
     (log/info (trs "Setting up Liquibase..."))
-    (binding [toucan2.connection/*current-connectable* data-source]
+    (binding [t2.conn/*current-connectable* data-source]
       (liquibase/with-liquibase [liquibase conn]
         (try
           (liquibase/consolidate-liquibase-changesets! db-type conn)
