@@ -15,7 +15,7 @@ const questionDetails = {
       CC1: ["+", ["field", ORDERS.TOTAL], 1],
       CC2: ["+", ["field", ORDERS.TOTAL], 1],
     },
-    limit: 200,
+    limit: 5,
   },
   dataset: true,
 };
@@ -43,8 +43,9 @@ describe("issue 29951", () => {
     dragColumn(0, 100);
     cy.findAllByRole("button", { name: "Get Answer" }).first().click();
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 200 rows").should("be.visible");
+    cy.findByTestId("question-row-count")
+      .should("be.visible")
+      .and("have.text", `Showing ${questionDetails.query.limit} rows`);
   });
 });
 
