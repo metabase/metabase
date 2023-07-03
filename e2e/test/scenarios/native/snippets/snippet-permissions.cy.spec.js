@@ -6,56 +6,55 @@ import {
   openNativeEditor,
   rightSidebar,
   setTokenFeatures,
+  isOSS,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-describe("scenarios > question > snippets (OSS)", () => {
+describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });
 
-  it(
-    "user should not be able to see snippet permissions",
-    { tags: "@OSS" },
-    () => {
-      // Manually create snippet folder
-      cy.request("POST", "/api/collection", {
-        name: "Snippet Folder",
-        description: null,
-        color: "#509EE3",
-        parent_id: null,
-        namespace: "snippets",
-      });
+  it("user should not be able to see snippet permissions", () => {
+    // Manually create snippet folder
+    cy.request("POST", "/api/collection", {
+      name: "Snippet Folder",
+      description: null,
+      color: "#509EE3",
+      parent_id: null,
+      namespace: "snippets",
+    });
 
-      // Open editor and sidebar
-      openNativeEditor();
-      cy.icon("snippet").click();
+    // Open editor and sidebar
+    openNativeEditor();
+    cy.icon("snippet").click();
 
-      // Confirm root level permissions are not visible
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("Snippets")
-          .parent()
-          .next()
-          .find(".Icon-ellipsis")
-          .should("not.exist");
-      });
+    // Confirm root level permissions are not visible
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Snippets")
+        .parent()
+        .next()
+        .find(".Icon-ellipsis")
+        .should("not.exist");
+    });
 
-      // Confirm folder level permissions are not visible
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("Snippet Folder")
-          .next()
-          .find(".Icon-ellipsis")
-          .click({ force: true });
-      });
-      popover().within(() => {
-        cy.findByText("Change permissions").should("not.exist");
-      });
-    },
-  );
+    // Confirm folder level permissions are not visible
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Snippet Folder")
+        .next()
+        .find(".Icon-ellipsis")
+        .click({ force: true });
+    });
+    popover().within(() => {
+      cy.findByText("Change permissions").should("not.exist");
+    });
+  });
 });
 
 describeEE("scenarios > question > snippets (EE)", () => {
