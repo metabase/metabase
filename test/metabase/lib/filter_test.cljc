@@ -5,7 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]))
 
 (defn- test-clause [result-filter f & args]
   (is (=? result-filter
@@ -223,7 +224,7 @@
         columns (lib/filterable-columns query)
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
-        coordinate-operators [:= :!= :is-empty :not-empty :contains :does-not-contain :starts-with :ends-with]
+        coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
         text-operators [:= :!= :contains :does-not-contain :is-null :not-null :is-empty :not-empty :starts-with :ends-with]]
     (is (= ["ID"
             "NAME"
@@ -278,9 +279,34 @@
   (testing "standalone clause"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
           [id-col] (lib/filterable-columns query)
-          [eq-op] (lib/filterable-column-operators id-col)]
+          [eq-op] (lib/filterable-column-operators id-col)
+          filter-clause (lib/filter-clause eq-op id-col 123)]
       (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
-              (lib/filter-clause eq-op id-col 123))))))
+              filter-clause)))))
+
+(deftest ^:parallel filter-operator-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
+                                                 [(lib/=
+                                                   (meta/field-metadata :checkins :user-id)
+                                                   (meta/field-metadata :users :id))])
+                                (lib/with-join-fields :all)))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
+                                                 [(lib/=
+                                                   (meta/field-metadata :checkins :venue-id)
+                                                   (meta/field-metadata :venues :id))])
+                                (lib/with-join-fields :all))))]
+    (doseq [col (lib/filterable-columns query)
+            op (lib/filterable-column-operators col)
+            :let [filter-clause (case (:short op)
+                                  :between (lib/filter-clause op col 123 456)
+                                  (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
+                                  (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
+                                  :inside (lib/filter-clause op col 12 34 56 78 90)
+                                  (lib/filter-clause op col 123))]]
+      (testing (str (:short op) " with " (lib.types.isa/field-type col))
+        (is (= op
+               (lib/filter-operator query filter-clause)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
