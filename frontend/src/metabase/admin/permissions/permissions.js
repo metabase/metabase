@@ -2,7 +2,10 @@ import { t } from "ttag";
 import { push } from "react-router-redux";
 import { assocIn } from "icepick";
 
-import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_ADVANCED_PERMISSIONS,
+} from "metabase/plugins";
 import {
   createAction,
   createThunkAction,
@@ -71,7 +74,12 @@ export const LIMIT_DATABASE_PERMISSION =
   "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
 export const limitDatabasePermission = createThunkAction(
   LIMIT_DATABASE_PERMISSION,
-  (groupId, entityId, newValue) => dispatch => {
+  (groupId, entityId, accessPermissionValue) => dispatch => {
+    const newValue =
+      PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission(
+        accessPermissionValue,
+      );
+
     if (newValue) {
       dispatch(
         updateDataPermission({
