@@ -129,6 +129,7 @@ describeWithSnowplow("database prompt banner", () => {
     restore();
     resetSnowplow();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     enableTracking();
     cy.visit("/");
     cy.findByRole("main").findByText("Loading...").should("not.exist");
