@@ -58,9 +58,7 @@ export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
     .click();
 
   popover().within(() => {
-    if (field) {
-      cy.findByText(field).click();
-    }
+    cy.findByText(field).click();
   });
 }
 
