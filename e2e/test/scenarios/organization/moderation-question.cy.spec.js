@@ -21,6 +21,7 @@ describeEE("scenarios > saved question moderation", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.setTokenFeatures("all");
     });
 
     it("should be able to verify and unverify a saved question", () => {

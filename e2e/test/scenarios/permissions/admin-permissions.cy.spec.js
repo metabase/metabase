@@ -605,6 +605,7 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   it("allows editing sandboxed access in the database focused view", () => {

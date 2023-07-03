@@ -75,6 +75,7 @@ describe("scenarios > auth > signin > SSO", () => {
 
   describeEE("EE", () => {
     beforeEach(() => {
+      cy.setTokenFeatures("all");
       // Disable password log-in
       cy.request("PUT", "api/setting/enable-password-login", {
         value: false,

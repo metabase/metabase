@@ -144,6 +144,7 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
           "currentlyEmbeddedObject",
         );
+        isEE && cy.setTokenFeatures("all");
 
         visitAndEnableSharing(object);
 

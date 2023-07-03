@@ -12,6 +12,7 @@ describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
     cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 

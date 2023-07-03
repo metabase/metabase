@@ -292,6 +292,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
   describeEE("custom caching", () => {
     it("should set custom cache ttl", () => {
+      cy.setTokenFeatures("all");
       cy.request("PUT", "api/setting/enable-query-caching", { value: true });
 
       visitDatabase(SAMPLE_DB_ID).then(({ response: { body } }) => {

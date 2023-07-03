@@ -464,6 +464,7 @@ describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {

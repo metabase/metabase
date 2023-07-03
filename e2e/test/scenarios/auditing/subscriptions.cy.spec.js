@@ -70,6 +70,7 @@ describeEE("audit > auditing > subscriptions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   describe("subscriptions", () => {

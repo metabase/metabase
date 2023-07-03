@@ -15,6 +15,7 @@ describeEE("issue 30535", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
 
     cy.sandboxTable({
       table_id: PRODUCTS_ID,

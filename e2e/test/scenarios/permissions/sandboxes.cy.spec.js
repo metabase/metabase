@@ -39,6 +39,7 @@ describeEE("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.setTokenFeatures("all");
       cy.visit("/admin/people");
     });
 

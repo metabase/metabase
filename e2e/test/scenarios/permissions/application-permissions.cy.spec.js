@@ -25,6 +25,7 @@ describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   it("shows permissions help", () => {

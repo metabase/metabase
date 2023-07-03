@@ -18,6 +18,7 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
 
     cy.intercept("PUT", "/api/table/*").as("tableUpdate");
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");

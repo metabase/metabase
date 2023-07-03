@@ -27,10 +27,11 @@ const TEST_QUESTION_QUERY = {
 describeEE("collections types", () => {
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   it("should be able to manage collection authority level", () => {
-    cy.signInAsAdmin();
     cy.visit("/collection/root");
 
     createAndOpenOfficialCollection({ name: COLLECTION_NAME });
@@ -47,12 +48,10 @@ describeEE("collections types", () => {
   });
 
   it("displays official badge throughout the application", () => {
-    cy.signInAsAdmin();
     testOfficialBadgePresence();
   });
 
   it("should display a badge next to official questions in regular dashboards", () => {
-    cy.signInAsAdmin();
     testOfficialQuestionBadgeInRegularDashboard();
   });
 
@@ -75,7 +74,6 @@ describeEE("collections types", () => {
   });
 
   it("should not be able to manage collection authority level for personal collections and their children", () => {
-    cy.signInAsAdmin();
     cy.visit("/collection/root");
 
     openCollection("Your personal collection");

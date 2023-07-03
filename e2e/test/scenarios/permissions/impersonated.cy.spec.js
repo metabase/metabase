@@ -24,6 +24,7 @@ describeEE("impersonated permission", () => {
       restore("postgres-12");
       createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
+      cy.setTokenFeatures("all");
     });
 
     it("can set impersonated permissions", () => {
@@ -319,6 +320,7 @@ describeEE("impersonated permission", () => {
       restore("postgres-12");
       createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
+      cy.setTokenFeatures("all");
 
       setImpersonatedPermission();
 

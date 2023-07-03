@@ -311,8 +311,9 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describeEE("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
-      cy.visit(`/dashboard/1`);
+      cy.setTokenFeatures("all");
       setupSMTP();
+      cy.visit(`/dashboard/1`);
     });
 
     describe("with no parameters", () => {

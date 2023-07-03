@@ -10,6 +10,7 @@ describeEE("audit > auditing > questions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   describe("table", () => {

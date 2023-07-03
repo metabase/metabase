@@ -23,6 +23,7 @@ describeEE(
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.setTokenFeatures("all");
       setupSMTP();
       setAllowedDomains();
     });

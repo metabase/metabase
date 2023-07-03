@@ -10,6 +10,7 @@ describeEE("issue 29076", () => {
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
 
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
       attribute_remappings: {

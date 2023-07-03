@@ -7,6 +7,7 @@ describeEE("issue 17763", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {

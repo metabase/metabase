@@ -18,6 +18,7 @@ describeEE("issue 18669", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
     setupSMTP();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(

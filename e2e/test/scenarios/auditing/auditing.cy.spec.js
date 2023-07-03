@@ -86,7 +86,10 @@ describeEE("audit > auditing", () => {
     cy.findByText(/ID/i);
   });
 
-  beforeEach(cy.signInAsAdmin);
+  beforeEach(() => {
+    cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
+  });
 
   describe("See expected info on team member pages", () => {
     it("should load the Overview tab", () => {

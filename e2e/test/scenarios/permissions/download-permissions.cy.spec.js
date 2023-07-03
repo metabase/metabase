@@ -36,6 +36,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   it("setting downloads permission UI flow should work", () => {

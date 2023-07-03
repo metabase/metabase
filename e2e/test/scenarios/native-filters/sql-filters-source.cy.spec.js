@@ -346,6 +346,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
     cy.intercept("GET", "/api/card/*/params/*/values").as(
       "cardParameterValues",

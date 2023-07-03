@@ -14,6 +14,8 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 describeEE("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   ["admin", "normal"].forEach(user => {

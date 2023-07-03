@@ -21,6 +21,7 @@ describeEE("audit > ad-hoc", () => {
 
       // Sign in as admin to be able to access audit logs in tests
       cy.signInAsAdmin();
+      cy.setTokenFeatures("all");
     });
 
     it("should appear in audit log (metabase#16845 metabase-enterprise#486)", () => {

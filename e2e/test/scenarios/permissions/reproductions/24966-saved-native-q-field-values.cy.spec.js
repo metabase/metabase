@@ -49,6 +49,7 @@ describeEE("issue 24966", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
 
     // Add user attribute to existing ("nodata" / id:3 user
     cy.request("PUT", "/api/user/3", {

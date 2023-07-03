@@ -18,6 +18,7 @@ describeEE("issue 23689", () => {
 
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
 
     visitGroupPermissionsPage(COLLECTION_GROUP);
 

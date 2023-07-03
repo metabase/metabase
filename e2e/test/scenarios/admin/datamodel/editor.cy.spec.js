@@ -388,6 +388,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.setTokenFeatures("all");
     });
 
     it("should allow changing the table name with data model permissions only", () => {

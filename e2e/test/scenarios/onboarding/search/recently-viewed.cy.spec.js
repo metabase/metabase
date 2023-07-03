@@ -75,6 +75,7 @@ describeEE("search > recently viewed > enterprise features", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
 
     cy.request("POST", "/api/moderation-review", {
       status: "verified",

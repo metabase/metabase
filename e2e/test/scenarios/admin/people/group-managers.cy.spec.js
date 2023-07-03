@@ -16,6 +16,8 @@ describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
+
     cy.visit("/admin/people");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(normalUserName)

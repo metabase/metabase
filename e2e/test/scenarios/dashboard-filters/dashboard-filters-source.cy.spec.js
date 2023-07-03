@@ -242,6 +242,7 @@ describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   it("should sandbox parameter values in dashboards", () => {

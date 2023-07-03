@@ -17,6 +17,7 @@ describeEE("formatting > whitelabel", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   describe("company name", () => {

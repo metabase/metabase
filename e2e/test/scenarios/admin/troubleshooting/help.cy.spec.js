@@ -51,6 +51,7 @@ describeEE("scenarios > admin > troubleshooting > help (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.setTokenFeatures("all");
   });
 
   it("should link `Get Help` to help-premium", () => {
