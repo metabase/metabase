@@ -16,7 +16,7 @@ describe("date range formatting", () => {
     singleDateVariants("2018").forEach(d =>
       expect(format(d, unit, opts)).toBe("2018"),
     );
-    expect(format(["2018", "2020"], unit, opts)).toBe("2018 – 2020");
+    expect(format(["2018", "2020"], unit, opts)).toBe("2018–2020");
   });
   it("should display quarter ranges", () => {
     const opts: OptionsType = { date_resolution: "quarter" };
@@ -32,7 +32,7 @@ describe("date range formatting", () => {
     );
     expect(
       format(["2018-01-01", "2018-04-01"], unit, { ...opts, ...abbrev }),
-    ).toBe("Q1 – Q2 2018");
+    ).toBe("Q1–Q2 2018");
   });
   it("should display month ranges", () => {
     const opts: OptionsType = { date_resolution: "month" };
@@ -48,7 +48,7 @@ describe("date range formatting", () => {
     );
     expect(
       format(["2018-01-01", "2018-04-01"], unit, { ...opts, ...abbrev }),
-    ).toBe("January – April 2018");
+    ).toBe("January–April 2018");
   });
   it("should display day ranges for a single unit", () => {
     const opts: OptionsType = { ...abbrev };
@@ -56,10 +56,10 @@ describe("date range formatting", () => {
       expect(format(d, "day", opts)).toBe("January 1, 2018"),
     );
     singleDateVariants("2018-01-01").forEach(d =>
-      expect(format(d, "week", opts)).toBe("January 1 – 7, 2018"),
+      expect(format(d, "week", opts)).toBe("January 1–7, 2018"),
     );
     singleDateVariants("2018-01-01").forEach(d =>
-      expect(format(d, "month", opts)).toBe("January 1 – 31, 2018"),
+      expect(format(d, "month", opts)).toBe("January 1–31, 2018"),
     );
     singleDateVariants("2018-01-01").forEach(d =>
       expect(format(d, "quarter", opts)).toBe("January 1 – March 31, 2018"),
@@ -71,10 +71,10 @@ describe("date range formatting", () => {
   it("should display day ranges between two units", () => {
     const opts: OptionsType = { ...abbrev };
     expect(format(["2018-01-01", "2018-01-02"], "day", opts)).toBe(
-      "January 1 – 2, 2018",
+      "January 1–2, 2018",
     );
     expect(format(["2018-01-01", "2018-01-08"], "week", opts)).toBe(
-      "January 1 – 14, 2018",
+      "January 1–14, 2018",
     );
     expect(format(["2018-01-01", "2018-02-01"], "month", opts)).toBe(
       "January 1 – February 28, 2018",

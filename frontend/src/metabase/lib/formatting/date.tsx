@@ -13,7 +13,7 @@ import {
 
 import type { OptionsType } from "./types";
 
-const RANGE_SEPARATOR = ` – `;
+const EN_DASH = `–`;
 
 type DEFAULT_DATE_FORMATS_TYPE = { [key: string]: string };
 const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
@@ -170,36 +170,40 @@ export function formatDateTimeRangeWithUnit(
     const date_resolution =
       (shift === 0 ? options.date_resolution : null) ?? "day";
 
-    const [startFormat, endFormat] = {
+    // Use Wikipedia’s date range formatting guidelines
+    // https://en.wikipedia.org/wiki/Wikipedia:Manual_of_Style/Dates_and_numbers#Ranges
+    const [startFormat, endFormat, pad = ""] = {
       year:
         !sameYear || !condensed
-          ? [Y, Y] // 2018 - 2019
+          ? [Y, Y] // 2018–2019
           : [Y], // 2018
       quarter:
         !sameYear || !condensed
-          ? [QY, QY] // Q2 2018 - Q3 2019
+          ? [QY, QY, " "] // Q2 2018 – Q3 2019
           : !sameQuarter
-          ? [Q, QY] // Q2 - Q4 2019
+          ? [Q, QY] // Q2–Q4 2019
           : [QY], // Q2 2018
       month:
         !sameYear || !condensed
-          ? [MY, MY] // September 2018 - January 2019
+          ? [MY, MY, " "] // September 2018 – January 2019
           : !sameMonth
-          ? [M, MY] // September - December 2018
+          ? [M, MY] // September–December 2018
           : [MY], // September 2018
       day:
         !sameYear || !condensed
-          ? [MDY, MDY] // January 1, 2018 - January 2, 2019
+          ? [MDY, MDY, " "] // January 1, 2018 – January 2, 2019
           : !sameMonth
-          ? [MD, MDY] // January 1 - February 2, 2018
+          ? [MD, MDY, " "] // January 1 – February 2, 2018
           : !sameDayOfMonth
-          ? [MD, DY] // January 1 - 2, 2018
+          ? [MD, DY] // January 1–2, 2018
           : [MDY], // January 1, 2018
     }[date_resolution];
 
     const startStr = start.format(startFormat);
     const endStr = end.format(endFormat ?? startFormat);
-    return startStr === endStr ? startStr : startStr + RANGE_SEPARATOR + endStr;
+    return startStr === endStr
+      ? startStr
+      : startStr + pad + EN_DASH + pad + endStr;
   } else {
     // TODO: when is this used?
     return formatWeek(a, options);
@@ -215,11 +219,11 @@ export function formatRange(
   if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
     return (
       <span>
-        {start} {RANGE_SEPARATOR} {end}
+        {start} {EN_DASH} {end}
       </span>
     );
   } else {
-    return `${start} ${RANGE_SEPARATOR} ${end}`;
+    return `${start} ${EN_DASH} ${end}`;
   }
 }
 
