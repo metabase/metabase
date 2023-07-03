@@ -39,11 +39,14 @@ describe("issue 29951", () => {
     popover().findByText("Edit query definition").click();
     cy.wait("@publicShema");
     removeExpression("CC2");
+    // The UI shows us the "play" icon, indicating we should refresh the query,
+    // but the point of this repro is to save without refreshing
+    refreshButton().should("have.length", 1);
     cy.findByRole("button", { name: "Save changes" }).click();
     cy.wait(["@updateCard", "@dataset"]);
 
     dragColumn(0, 100);
-    cy.findAllByRole("button", { name: "Get Answer" }).first().click();
+    refreshButton().first().click();
     cy.wait("@dataset");
     cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
   });
@@ -58,8 +61,13 @@ const removeExpression = name => {
 
 const dragColumn = (index, distance) => {
   cy.get(".react-draggable")
+    .should("have.length", 20) // 10 columns X 2 draggable elements
     .eq(index)
     .trigger("mousedown", 0, 0, { force: true })
     .trigger("mousemove", distance, 0, { force: true })
     .trigger("mouseup", distance, 0, { force: true });
 };
+
+function refreshButton() {
+  return cy.findAllByRole("button", { name: "Get Answer" });
+}
