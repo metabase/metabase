@@ -1075,6 +1075,8 @@
   (delete-related-permissions! group-or-id (data-perms-path database-or-id)
     [:not= :object (adhoc-native-query-path database-or-id)]))
 
+; Audit Permissions helper fns
+
 (defenterprise ^:private default-audit-db-id
   "OSS implementation of `audit-db/default-audit-db-id`, which is an enterprise feature, so does nothing in the OSS
   version."
@@ -1090,6 +1092,42 @@
   version."
   metabase-enterprise.audit-db [] ::noop)
 
+(defn check-audit-collection-permissions
+  "Check that the changes coming in does not attempt to change audit collection permissions. Admins should
+  change these permissions in application monitoring permissions."
+  [changes]
+  (let [audit-collections        (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-entity-ids)]})
+        audit-collection-reports (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})
+        audit-ids                (into #{} (concat (map :id audit-collections) (map :id audit-collection-reports)))
+        changes-ids              (->> changes
+                                      vals
+                                      (map keys)
+                                      (apply concat))]
+    (when (some #(contains? audit-ids %) changes-ids)
+      (throw (ex-info (tru
+                       (str "Unable to update audit collections, that requires updating through monitoring permissions."))
+                      {:status-code 400})))))
+
+(defn check-audit-db-permissions
+  "Check that the changes coming in does not attempt to change audit database permission. Admins should
+  change these permissions in application monitoring permissions."
+  [changes]
+  (let [changes-ids (->> changes
+                         vals
+                         (map keys)
+                         (apply concat))]
+    (when (contains? changes-ids (default-audit-db-id))
+      (throw (ex-info (tru
+                       (str "Unable to update audit database, that requires updating through monitoring permissions."))
+                      {:status-code 400})))))
+
+(defn collection-permissions
+  "tmp"
+  []
+  (let [audit-collections        (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-entity-ids)]})
+        audit-collection-reports (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})]
+    (concat (map :id audit-collections) (map :id audit-collection-reports))))
+
 (defn- config-monitoring-permissions!
   "Will either remove or grant monitoring (audit) permissions, depending on the config parameter."
   [group-or-id perm-type config]
@@ -1102,6 +1140,8 @@
         (change-permissions! group-or-id (collection-read-path audit-collection)))
       (doseq [audit-collection-report (t2/select ['Collection :id] {:where [:in :entity_id (default-audit-collection-report-entity-ids)]})]
         (change-permissions! group-or-id (all-schemas-path audit-collection-report))))))
+
+; Audit permissions helper fns end
 
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permisisons"
@@ -1471,6 +1511,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
+       (check-audit-db-permissions new)
        (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))

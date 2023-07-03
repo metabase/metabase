@@ -12,6 +12,7 @@
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -103,7 +104,6 @@
          non-personal-collection-ids
          (collection-permission-graph collection-namespace)))))
 
-
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (s/defn ^:private update-collection-permissions!
@@ -149,6 +149,7 @@
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
+     (perms/check-audit-collection-permissions changes)
      (when (seq changes)
        (t2/with-transaction [_conn]
          (doseq [[group-id changes] changes]

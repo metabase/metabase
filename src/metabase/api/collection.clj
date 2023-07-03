@@ -138,6 +138,7 @@
                            (when exclude-archived?
                              [:= :archived false])
                            [:= :namespace namespace]
+                           [:not [:in :entity_id (concat (perms/default-audit-collection-entity-ids) (perms/default-audit-collection-report-entity-ids))]]
                            (collection/visible-collection-ids->honeysql-filter-clause
                             :id
                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
