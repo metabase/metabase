@@ -123,13 +123,14 @@ class SettingsEmailForm extends Component {
   }
 }
 
-export default connect(
-  state => ({
-    isPaidPlan: getIsPaidPlan(state),
-  }),
-  {
-    sendTestEmail,
-    updateEmailSettings,
-    clearEmailSettings,
-  },
-)(SettingsEmailForm);
+const mapStateToProps = state => ({
+  isPaidPlan: getIsPaidPlan(state),
+});
+
+const mapDispatchToProps = {
+  sendTestEmail,
+  updateEmailSettings,
+  clearEmailSettings,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(SettingsEmailForm);
