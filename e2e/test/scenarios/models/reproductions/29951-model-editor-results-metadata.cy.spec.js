@@ -33,11 +33,15 @@ describe("issue 29951", () => {
 
     openQuestionActions();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit query definition").click();
+    cy.findByText("Edit query definition").should("be.visible").click();
     removeExpression("CC2");
     cy.findByRole("button", { name: "Save changes" }).click();
     cy.wait("@updateCard");
     cy.wait("@dataset");
+    cy.findAllByTestId("header-cell")
+      .last()
+      .should("be.visible")
+      .and("have.text", "CC1");
 
     dragColumn(0, 100);
     cy.findAllByRole("button", { name: "Get Answer" }).first().click();
