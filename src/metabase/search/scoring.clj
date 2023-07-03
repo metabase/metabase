@@ -225,9 +225,9 @@
   "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
   separately. Should return a sequence of maps with
 
-  {:weight number,
-  :score  number,
-  :name   string}"
+    {:weight number,
+     :score  number,
+     :name   string}"
   metabase-enterprise.search.scoring
   [result]
   (weights-and-scores result))
