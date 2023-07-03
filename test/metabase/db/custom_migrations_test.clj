@@ -944,17 +944,17 @@
                   success-id                (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
-                                                            {:options  {:persist-models-enabled true}
+                                                            {:options  (json/generate-string {:persist-models-enabled true})
                                                              :settings {:database-enable-actions true}})))
                   options-nil-settings-id   (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
-                                                            {:options  {:persist-models-enabled true}
+                                                            {:options  (json/generate-string {:persist-models-enabled true})
                                                              :settings nil})))
                   options-empty-settings-id (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
-                                                            {:options  {:persist-models-enabled true}
+                                                            {:options  (json/generate-string {:persist-models-enabled true})
                                                              :settings {}})))
                   nil-options-id            (first (t2/insert-returning-pks!
                                                      :model/Database
@@ -964,7 +964,7 @@
                   empty-options-id          (first (t2/insert-returning-pks!
                                                      :model/Database
                                                      (merge default-db
-                                                            {:options  {}
+                                                            {:options  "{}"
                                                              :settings {:database-enable-actions true}})))]
               (testing "fowward migration\n"
                 (when encrypted?
@@ -1002,7 +1002,7 @@
                (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
                  (db.setup/migrate! db-type data-source :down 46)
                  (testing "the persist-models-enabled is assoced back to options"
-                   (is (= {:options  {:persist-models-enabled true}
+                   (is (= {:options  "{\"persist-models-enabled\":true}"
                            :settings {:database-enable-actions true}}
                           (t2/select-one [:model/Database :settings :options] success-id)))
                    (is (= {:options  nil
