@@ -6,7 +6,6 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
 
