@@ -16,7 +16,7 @@ const questionDetails = {
       CC1: ["+", ["field", ORDERS.TOTAL], 1],
       CC2: ["+", ["field", ORDERS.TOTAL], 1],
     },
-    limit: 200,
+    limit: 5,
   },
   dataset: true,
 };
@@ -40,7 +40,7 @@ describe("issue 29951", () => {
     dragColumn(0, 100);
     cy.findAllByRole("button", { name: "Get Answer" }).first().click();
     cy.wait("@dataset");
-    cy.findByTestId("view-footer").should("contain", "Showing 200 rows");
+    cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
   });
 });
 
