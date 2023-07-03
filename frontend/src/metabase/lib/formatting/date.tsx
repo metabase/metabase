@@ -152,21 +152,22 @@ export function formatDateTimeRangeWithUnit(
   [start, end].forEach(d => d.add(shift, "days"));
 
   // Drop down to day resolution if shift causes misalignment with desired resolution boundaries
-  const resolution = (shift === 0 ? options.date_resolution : null) ?? "day";
+  const date_resolution =
+    (shift === 0 ? options.date_resolution : null) ?? "day";
 
   if (start.isValid() && end.isValid()) {
-    const isDiffYear = start.year() !== end.year();
-    const isDiffQuarter = start.quarter() !== end.quarter();
-    const isDiffMonth = start.month() !== end.month();
-    const isDiffDay = start.date() !== end.date();
+    const sameYear = start.year() === end.year();
+    const sameQuarter = start.quarter() === end.quarter();
+    const sameMonth = start.month() === end.month();
+    const sameDayOfMonth = start.date() === end.date();
 
     let startFormat, endFormat;
 
-    switch (resolution) {
+    switch (date_resolution) {
       case "year": {
         const Y = "YYYY";
         [startFormat, endFormat] =
-          isDiffYear || !condensed
+          !sameYear || !condensed
             ? [Y, Y] // 2018 - 2019
             : [Y]; //   2018
         break;
@@ -175,9 +176,9 @@ export function formatDateTimeRangeWithUnit(
         const Q = "[Q]Q";
         const QY = "[Q]Q YYYY";
         [startFormat, endFormat] =
-          isDiffYear || !condensed
+          !sameYear || !condensed
             ? [QY, QY] // Q2 2018 - Q3 2019
-            : isDiffQuarter
+            : !sameQuarter
             ? [Q, QY] // Q2 - Q4 2019
             : [QY]; // Q3 2019
         break;
@@ -186,9 +187,9 @@ export function formatDateTimeRangeWithUnit(
         const M = monthFormat;
         const MY = `${monthFormat} YYYY`;
         [startFormat, endFormat] =
-          isDiffYear || !condensed
+          !sameYear || !condensed
             ? [MY, MY] // September 2018 - January 2019
-            : isDiffMonth
+            : !sameMonth
             ? [M, MY] // September - December 2018
             : [MY]; // October 2018
         break;
@@ -198,11 +199,11 @@ export function formatDateTimeRangeWithUnit(
         const MD = `${monthFormat} D`;
         const DY = `D, YYYY`;
         [startFormat, endFormat] =
-          isDiffYear || !condensed
+          !sameYear || !condensed
             ? [MDY, MDY] // January 1, 2018 - January 2, 2019
-            : isDiffMonth
+            : !sameMonth
             ? [MD, MDY] // January 1 - February 2, 2018
-            : isDiffDay
+            : !sameDayOfMonth
             ? [MD, DY] // January 1 - 2, 2018
             : [MDY]; // January 2, 2018
         break;
