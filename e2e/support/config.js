@@ -5,16 +5,6 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 
-/**
- * This env var provides the token to the backend.
- * If it is not present, we skip some tests that depend on a valid token.
- *
- * @type {boolean}
- */
-const hasPremiumFeatures =
-  process.env["MB_PREMIUM_EMBEDDING_TOKEN"] &&
-  process.env["MB_EDITION"] === "ee";
-
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
@@ -101,7 +91,6 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
-    config.env.HAS_PREMIUM_FEATURES = hasPremiumFeatures;
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;

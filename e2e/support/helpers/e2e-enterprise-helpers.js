@@ -6,7 +6,7 @@
  * 2. `isPremium` means enterprise instance with all premium features enabled.
  */
 export const isEE = Cypress.env("IS_ENTERPRISE");
-export const isPremium = Cypress.env("HAS_PREMIUM_FEATURES");
+export const isPremium = Cypress.env("activeToken") === "premium";
 
 export const isOSS = !isEE;
 
