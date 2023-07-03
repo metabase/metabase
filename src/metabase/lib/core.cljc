@@ -219,7 +219,8 @@
    remove-clause
    remove-join
    rename-join
-   replace-clause]
+   replace-clause
+   replace-join]
   [lib.stage
    append-stage
    drop-stage]

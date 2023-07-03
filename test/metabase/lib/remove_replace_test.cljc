@@ -759,6 +759,25 @@
         (testing "by name"
           (is (=? result
                   (lib/remove-join query' 0 "Users"))))
-        (testing "by name"
+        (testing "by join-clause"
           (is (=? result
-                  (lib/remove-join query' 0 (second (lib/joins query' 0))))))))))
+                  (lib/remove-join query' 0 (second (lib/joins query' 0)))))
+          (testing "using remove-clause"
+            (is (=? result
+                    (lib/remove-clause query' 0 (second (lib/joins query' 0)))))))))))
+
+(deftest ^:parallel replace-join-test
+  (let [query           (lib.tu/query-with-join)
+        [original-join] (lib/joins query)]
+    (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all}]}]}
+            query))
+    (let [new-join (lib/with-join-fields original-join :none)]
+      (testing "using index"
+        (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :none}]}]}
+                (lib/replace-join query 0 new-join))))
+      (testing "using alias"
+        (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :none}]}]}
+                (lib/replace-join query "Cat" new-join))))
+      (testing "using replace-clause"
+        (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :none}]}]}
+                (lib/replace-clause query original-join new-join)))))))
