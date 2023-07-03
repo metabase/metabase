@@ -691,12 +691,12 @@
                                                     [:not= :options "{}"]
                                                     [:not= :options nil]]})))
   (let [rollback-one! (fn [{:keys [id settings options]}]
-                       (let [settings (or (mi/encrypted-json-out settings) {})
-                             options  (or (mi/json-out-with-keywordization options) {})]
-                         (when (some? (:persist-models-enabled settings))
-                           (t2/query {:update :metabase_database
-                                      :set    {:options (json/generate-string (select-keys settings [:persist-models-enabled]))
-                                               :settings (mi/encrypted-json-in (dissoc settings :persist-models-enabled))}
-                                      :where  [:= :id id]}))))]
+                        (let [settings (mi/encrypted-json-out settings)
+                              options  (mi/json-out-with-keywordization options)]
+                          (when (some? (:persist-models-enabled settings))
+                            (t2/query {:update :metabase_database
+                                       :set    {:options (json/generate-string (select-keys settings [:persist-models-enabled]))
+                                                :settings (mi/encrypted-json-in (dissoc settings :persist-models-enabled))}
+                                       :where  [:= :id id]}))))]
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))

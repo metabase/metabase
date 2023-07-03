@@ -15945,7 +15945,6 @@ databaseChangeLog:
               - column:
                   name: options
                   type: ${text.type}
-                  defaultValue: "{}"
                   remarks: "Serialized JSON containing various options like QB behavior."
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

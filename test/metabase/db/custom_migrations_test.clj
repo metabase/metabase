@@ -18,9 +18,9 @@
    [metabase.models :refer [Card Database Revision User]]
    [metabase.models.interface :as mi]
    [metabase.task :as task]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -936,7 +936,7 @@
 (deftest migrate-database-options-to-database-settings-test
   (let [do-test
         (fn [encrypted?]
-          (impl/test-migrations "v48.00-001" [migrate!]
+          (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
             (let [default-db                {:name       "DB"
                                              :engine     "postgres"
                                              :created_at :%now
@@ -1005,11 +1005,11 @@
                    (is (= {:options  {:persist-models-enabled true}
                            :settings {:database-enable-actions true}}
                           (t2/select-one [:model/Database :settings :options] success-id)))
-                   (is (= {:options  {}
+                   (is (= {:options  nil
                            :settings {:database-enable-actions true}}
                           (t2/select-one [:model/Database :settings :options] empty-options-id))))
 
                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
     (do-test false)
-    (encryption-test/with-secret-key "a-very-secret-key"
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
