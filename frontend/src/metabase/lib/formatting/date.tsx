@@ -151,67 +151,55 @@ export function formatDateTimeRangeWithUnit(
   const shift = a.diff(start, "days");
   [start, end].forEach(d => d.add(shift, "days"));
 
-  // Drop down to day resolution if shift causes misalignment with desired resolution boundaries
-  const date_resolution =
-    (shift === 0 ? options.date_resolution : null) ?? "day";
-
   if (start.isValid() && end.isValid()) {
     const sameYear = start.year() === end.year();
     const sameQuarter = start.quarter() === end.quarter();
     const sameMonth = start.month() === end.month();
     const sameDayOfMonth = start.date() === end.date();
 
-    let startFormat, endFormat;
+    const Y = "YYYY";
+    const Q = "[Q]Q";
+    const QY = "[Q]Q YYYY";
+    const M = monthFormat;
+    const MY = `${monthFormat} YYYY`;
+    const MDY = `${monthFormat} D, YYYY`;
+    const MD = `${monthFormat} D`;
+    const DY = `D, YYYY`;
 
-    switch (date_resolution) {
-      case "year": {
-        const Y = "YYYY";
-        [startFormat, endFormat] =
-          !sameYear || !condensed
-            ? [Y, Y] // 2018 - 2019
-            : [Y]; //   2018
-        break;
-      }
-      case "quarter": {
-        const Q = "[Q]Q";
-        const QY = "[Q]Q YYYY";
-        [startFormat, endFormat] =
-          !sameYear || !condensed
-            ? [QY, QY] // Q2 2018 - Q3 2019
-            : !sameQuarter
-            ? [Q, QY] // Q2 - Q4 2019
-            : [QY]; // Q3 2019
-        break;
-      }
-      case "month": {
-        const M = monthFormat;
-        const MY = `${monthFormat} YYYY`;
-        [startFormat, endFormat] =
-          !sameYear || !condensed
-            ? [MY, MY] // September 2018 - January 2019
-            : !sameMonth
-            ? [M, MY] // September - December 2018
-            : [MY]; // October 2018
-        break;
-      }
-      case "day": {
-        const MDY = `${monthFormat} D, YYYY`;
-        const MD = `${monthFormat} D`;
-        const DY = `D, YYYY`;
-        [startFormat, endFormat] =
-          !sameYear || !condensed
-            ? [MDY, MDY] // January 1, 2018 - January 2, 2019
-            : !sameMonth
-            ? [MD, MDY] // January 1 - February 2, 2018
-            : !sameDayOfMonth
-            ? [MD, DY] // January 1 - 2, 2018
-            : [MDY]; // January 2, 2018
-        break;
-      }
-    }
-    return !endFormat
-      ? start.format(startFormat)
-      : start.format(startFormat) + RANGE_SEPARATOR + end.format(endFormat);
+    // Drop down to day resolution if shift causes misalignment with desired resolution boundaries
+    const date_resolution =
+      (shift === 0 ? options.date_resolution : null) ?? "day";
+
+    const [startFormat, endFormat] = {
+      year:
+        !sameYear || !condensed
+          ? [Y, Y] // 2018 - 2019
+          : [Y], // 2018
+      quarter:
+        !sameYear || !condensed
+          ? [QY, QY] // Q2 2018 - Q3 2019
+          : !sameQuarter
+          ? [Q, QY] // Q2 - Q4 2019
+          : [QY], // Q2 2018
+      month:
+        !sameYear || !condensed
+          ? [MY, MY] // September 2018 - January 2019
+          : !sameMonth
+          ? [M, MY] // September - December 2018
+          : [MY], // September 2018
+      day:
+        !sameYear || !condensed
+          ? [MDY, MDY] // January 1, 2018 - January 2, 2019
+          : !sameMonth
+          ? [MD, MDY] // January 1 - February 2, 2018
+          : !sameDayOfMonth
+          ? [MD, DY] // January 1 - 2, 2018
+          : [MDY], // January 1, 2018
+    }[date_resolution];
+
+    const startStr = start.format(startFormat);
+    const endStr = end.format(endFormat ?? startFormat);
+    return startStr === endStr ? startStr : startStr + RANGE_SEPARATOR + endStr;
   } else {
     // TODO: when is this used?
     return formatWeek(a, options);
