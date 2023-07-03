@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { useState } from "react";
+import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,7 +10,8 @@ import CopyButton from "metabase/components/CopyButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { UtilApi } from "metabase/services";
-import MetabaseSettings from "metabase/lib/settings";
+import { useSelector } from "metabase/lib/redux";
+import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 import {
   HelpBody,
   HelpLinks,
@@ -82,63 +84,54 @@ const InfoBlock = ({ children }) => (
   </InfoBlockRoot>
 );
 
-export default class Help extends Component {
-  state = {
-    details: { "browser-info": navigatorInfo() },
-  };
+export const Help = () => {
+  const [details, setDetails] = useState({ "browser-info": navigatorInfo() });
+  const { tag } = useSelector(state => getSetting(state, "version"));
+  const isPainPlan = useSelector(getIsPaidPlan);
 
-  async fetchDetails() {
-    const details = await UtilApi.bug_report_details();
-    this.setState({ details: { ...this.state.details, ...details } });
-  }
+  useMount(async () => {
+    const newDetails = await UtilApi.bug_report_details();
+    setDetails(oldDetails => ({ ...oldDetails, ...newDetails }));
+  });
 
-  componentDidMount() {
-    this.fetchDetails();
-  }
+  const detailString = JSON.stringify(details, null, 2);
+  const compactDetailStringForUrl = encodeURIComponent(JSON.stringify(details));
 
-  render() {
-    const { details } = this.state;
-    const detailString = JSON.stringify(details, null, 2);
-    const { tag } = MetabaseSettings.get("version");
-    const compactDetailStringForUrl = encodeURIComponent(
-      JSON.stringify(details),
-    );
-    return (
-      <HelpRoot>
-        <AdminHeader title={t`Help`} className="mb2" />
-        <HelpLinks>
-          <ol>
-            <HelpLink
-              title={t`Get Help`}
-              description={t`Resources and support`}
-              link={
-                MetabaseSettings.isPaidPlan()
-                  ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
-                  : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
-              }
-            />
-            <HelpLink
-              title={t`File a bug report`}
-              description={t`Create a GitHub issue (includes the diagnostic info below)`}
-              link={githubIssueLink(detailString)}
-            />
-          </ol>
-        </HelpLinks>
+  return (
+    <HelpRoot>
+      <AdminHeader title={t`Help`} className="mb2" />
+      <HelpLinks>
+        <ol>
+          <HelpLink
+            title={t`Get Help`}
+            description={t`Resources and support`}
+            link={
+              isPainPlan
+                ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
+                : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
+            }
+          />
+          <HelpLink
+            title={t`File a bug report`}
+            description={t`Create a GitHub issue (includes the diagnostic info below)`}
+            link={githubIssueLink(detailString)}
+          />
+        </ol>
+      </HelpLinks>
 
-        <HelpBody>
-          <AdminHeader title={t`Diagnostic Info`} className="mb2" />
-          <p>{t`Please include these details in support requests. Thank you!`}</p>
-          <InfoBlock>{detailString}</InfoBlock>
-          <div className="text-medium text-bold text-uppercase py2">{t`Advanced Details (click to download)`}</div>
-          <ol>
-            <HelpLink
-              title={t`Connection Pool Details`}
-              description={t`Information about active and idle connections for all pools`}
-              link={UtilApi.connection_pool_details_url}
-            />
-          </ol>
-        </HelpBody>
-      </HelpRoot>
-    );
-  }
-}
+      <HelpBody>
+        <AdminHeader title={t`Diagnostic Info`} className="mb2" />
+        <p>{t`Please include these details in support requests. Thank you!`}</p>
+        <InfoBlock>{detailString}</InfoBlock>
+        <div className="text-medium text-bold text-uppercase py2">{t`Advanced Details (click to download)`}</div>
+        <ol>
+          <HelpLink
+            title={t`Connection Pool Details`}
+            description={t`Information about active and idle connections for all pools`}
+            link={UtilApi.connection_pool_details_url}
+          />
+        </ol>
+      </HelpBody>
+    </HelpRoot>
+  );
+};
