@@ -58,8 +58,18 @@ export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
     .click();
 
   popover().within(() => {
-    cy.findByText(field).click();
+    if (field) {
+      cy.findByText(field).click();
+    }
   });
+}
+
+export function removeSummaryGroupingField({ field, stage = 0, index = 0 }) {
+  getNotebookStep("summarize", { stage, index })
+    .findByTestId("breakout-step")
+    .findByText(field)
+    .icon("close")
+    .click();
 }
 
 export function selectSavedQuestionsToJoin(

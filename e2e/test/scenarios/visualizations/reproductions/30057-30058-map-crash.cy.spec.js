@@ -1,5 +1,9 @@
 import {
+  addSummaryField,
+  addSummaryGroupingField,
+  openNotebook,
   popover,
+  removeSummaryGroupingField,
   restore,
   visitQuestionAdhoc,
   visualize,
@@ -54,7 +58,8 @@ describe("issue 30057", () => {
     visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
     visualize();
-    groupByBirthDateColumn();
+    openNotebook();
+    addSummaryGroupingField({ field: "Birth Date" });
     visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
@@ -65,7 +70,8 @@ describe("issue 30057", () => {
     visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
     visualize();
-    addAverageOfLongitudeAggregation();
+    openNotebook();
+    addSummaryField({ metric: "Average of ...", field: "Longitude" });
     visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
@@ -76,7 +82,8 @@ describe("issue 30057", () => {
     visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
     visualize();
-    removeLatitudeColumn();
+    openNotebook();
+    removeSummaryGroupingField({ field: "Latitude: Auto binned" });
     visualize();
 
     cy.get(".PinMap").should("not.exist");
@@ -104,31 +111,8 @@ describe("issue 30058", () => {
   });
 });
 
-const addAverageOfLongitudeAggregation = () => {
-  cy.icon("notebook").click();
-  cy.findByTestId("aggregate-step").icon("add").click();
-  popover().within(() => {
-    cy.findByText("Average of ...").click();
-    cy.findByText("Longitude").click();
-  });
-};
-
-const removeLatitudeColumn = () => {
-  cy.icon("notebook").click();
-  cy.findByTestId("breakout-step")
-    .findByText("Latitude: Auto binned")
-    .icon("close")
-    .click();
-};
-
-const groupByBirthDateColumn = () => {
-  cy.icon("notebook").click();
-  cy.findByTestId("breakout-step").icon("add").click();
-  popover().findByText("Birth Date").click();
-};
-
 const addCountGreaterThan2Filter = () => {
-  cy.icon("notebook").click();
+  openNotebook();
   cy.button("Filter").click();
   popover().within(() => {
     cy.findByText("Count").click();
