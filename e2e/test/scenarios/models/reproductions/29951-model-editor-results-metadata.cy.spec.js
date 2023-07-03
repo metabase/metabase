@@ -5,6 +5,7 @@ import {
   popover,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -26,6 +27,9 @@ describe("issue 29951", () => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
+      "publicShema",
+    );
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
@@ -33,6 +37,7 @@ describe("issue 29951", () => {
 
     openQuestionActions();
     popover().findByText("Edit query definition").click();
+    cy.wait("@publicShema");
     removeExpression("CC2");
     cy.findByRole("button", { name: "Save changes" }).click();
     cy.wait(["@updateCard", "@dataset"]);
