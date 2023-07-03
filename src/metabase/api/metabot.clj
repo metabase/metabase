@@ -1,7 +1,6 @@
 (ns metabase.api.metabot
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
@@ -58,12 +57,7 @@
                  :prompt_task :infer_sql}
         card (infer-sql-or-throw context question)
         data    (qp/process-query
-                 (walk/postwalk
-                  (fn [uuid]
-                    (if (uuid? uuid)
-                      (str uuid)
-                      uuid))
-                  (get-in card [:card :dataset_query])))
+                  (get-in card [:card :dataset_query]))
         viz (mda/select-viz (get-in data [:data :results_metadata :columns]))]
     (update card :card merge viz)))
 
@@ -86,12 +80,7 @@
       (let [context (merge context {:model model :prompt_task :infer_sql})
             card (infer-sql-or-throw context question)
             data    (qp/process-query
-                     (walk/postwalk
-                      (fn [uuid]
-                        (if (uuid? uuid)
-                          (str uuid)
-                          uuid))
-                      (get-in card [:card :dataset_query])))
+                      (get-in card [:card :dataset_query]))
             viz (mda/select-viz (get-in data [:data :results_metadata :columns]))]
         (update card :card merge viz))
       (throw
