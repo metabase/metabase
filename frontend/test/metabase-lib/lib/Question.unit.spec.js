@@ -465,6 +465,18 @@ describe("Question", () => {
     });
 
     describe("maybeResetDisplay", () => {
+      it("should do nothing when it was locked with sensible display", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const previousSensibleDisplays = sensibleDisplays;
+        const question = new Question(orders_count_card, metadata)
+          .setDisplay("scalar")
+          .lockDisplay()
+          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
+
+        expect(question.displayIsLocked()).toBe(true);
+        expect(question.display()).toBe("scalar");
+      });
+
       it("should do nothing when it was locked with nonsense display", () => {
         const sensibleDisplays = ["table", "scalar"];
         const previousSensibleDisplays = sensibleDisplays;
