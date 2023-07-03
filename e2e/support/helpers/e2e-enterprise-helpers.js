@@ -17,6 +17,12 @@ export const describeOSS = conditionalDescribe(isOSS);
  * @param {("all"|"none")} featuresScope
  */
 export const setTokenFeatures = featuresScope => {
+  if (!isEE) {
+    throw new Error(
+      "You must run Metabase® Enterprise Edition™ for token to make sense.\nMake sure you have `MB_EDITION=ee` in your environment variables.",
+    );
+  }
+
   let token;
 
   switch (featuresScope) {
