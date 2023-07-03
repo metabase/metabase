@@ -144,12 +144,6 @@
   [username]
   (format "Hi %s, you're an OSS customer!" (name username)))
 
-(defenterprise greeting-with-valid-token
-  "Returns a non-special greeting for OSS users, and EE users who don't have a valid premium token"
-  metabase-enterprise.util-test
-  [username]
-  (format "Hi %s, you're not extra special :(" (name username)))
-
 (defenterprise special-greeting
   "Returns a non-special greeting for OSS users, and EE users who don't have the :special-greeting feature token."
   metabase-enterprise.util-test
@@ -173,15 +167,6 @@
       (testing "a call to a defenterprise function calls the EE version"
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                (greeting :rasta))))
-
-     (testing "if :feature = :any or nil, it will check if any feature exists, and fall back to the OSS version by default"
-       (with-premium-features #{:some-feature}
-         (is (= "Hi rasta, you're an EE customer with a valid token!"
-                (greeting-with-valid-token :rasta))))
-
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're not extra special :("
-                (greeting-with-valid-token :rasta)))))
 
      (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
        (with-premium-features #{:special-greeting}
