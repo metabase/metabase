@@ -91,7 +91,10 @@
         ;; we should look in to fixing this if we can.
         stage-columns         (or (:metabase.lib.stage/cached-metadata stage)
                                   (get-in stage [:lib/stage-metadata :columns])
-                                  (when (:source-card stage)
+                                  (when (or (:source-card  stage)
+                                            (:source-table stage)
+                                            (:expressions  stage)
+                                            (:fields       stage))
                                     (lib.metadata.calculation/visible-columns query stage-number stage))
                                   (log/warn (i18n/tru "Cannot resolve column {0}: stage has no metadata" (pr-str column-name))))]
     (when-let [column (and (seq stage-columns)

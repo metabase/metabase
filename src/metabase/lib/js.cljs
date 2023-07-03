@@ -643,12 +643,12 @@
   - Nullable value
   - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)"
   [a-query stage-number column value row]
-  (->> {:column (js.metadata/parse-column column)
-        :value  (cond
-                  (identical? value js/undefined) nil   ; Missing a value, ie. a column click
-                  (nil? value)                    :null ; Provided value is null, ie. database NULL
-                  :else                           value)
-        :row    (mapv row-cell row)}
+  (->> (merge {:column (js.metadata/parse-column column)
+               :value  (cond
+                         (identical? value js/undefined) nil   ; Missing a value, ie. a column click
+                         (nil? value)                    :null ; Provided value is null, ie. database NULL
+                         :else                           value)}
+              (when row {:row (mapv row-cell row)}))
        (lib.core/available-drill-thrus a-query stage-number)
        to-array))
 
