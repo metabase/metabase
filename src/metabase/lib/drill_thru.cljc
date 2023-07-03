@@ -3,6 +3,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -239,7 +240,6 @@
              column
              (nil? value)
              (not (lib.types.isa/primary-key? column))
-             (not (lib.types.isa/foreign-key? column))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/comment?     column))
              (not (lib.types.isa/description? column)))
@@ -374,15 +374,13 @@
              column
              (nil? value)
              (not (lib.types.isa/structured? column))
-             (:lib/source column))
+             (or (:lib/source column)
+                 (:id column)))
     (let [orderable  (->> (lib.order-by/orderable-columns query stage-number)
                           (map :id)
                           set)
-          order-bys  (lib.order-by/order-bys query stage-number)
-          this-order (first (for [[dir [clause _opts arg :as _field]] order-bys
-                                  :when (and (= clause :field)
-                                             (or (= arg (:id column))
-                                                 (= arg (:name column))))]
+          this-order (first (for [[dir _opts field] (lib.order-by/order-bys query stage-number)
+                                  :when (lib.equality/find-closest-matching-ref query (lib.ref/ref column) [field])]
                               dir))]
       (when (orderable (:id column))
         {:lib/type        ::drill-thru
@@ -398,9 +396,10 @@
   {:type       :drill-thru/sort
    :directions directions})
 
-;;; ------------------------------------ Summarize Column ----------------------------------------
+;;; ------------------------------ Summarize Column (single value) -------------------------------
 (mu/defn ^:private summarize-column-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
-  "A set of possible aggregations that can summarize this column: distinct values, sum, average."
+  "A set of possible aggregations that can summarize this column: distinct values, sum, average.
+  Separate from [[summarize-column-by-time-drill]] which breaks out a column over time."
   [query                  :- ::lib.schema/query
    stage-number           :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context]
@@ -429,6 +428,68 @@
                          :sum      lib.aggregation/sum
                          :avg      lib.aggregation/avg)]
     (lib.aggregation/aggregate query stage-number (aggregation-fn column))))
+
+;;; -------------------------------- Summarize Column (by time) ----------------------------------
+(mu/defn ^:private summarize-column-by-time-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
+  "A breakout summarizing a column over time.
+  Separate from single-value [[summarize-column-drill]] for sum, average, and distinct value count."
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  (when (and (structured-query? query stage-number)
+             column
+             (nil? value)
+             (not (lib.types.isa/structured? column))
+             (lib.types.isa/summable? column))
+    ;; There must be a date dimension available.
+    (when-let [breakout-column (->> (lib.breakout/breakoutable-columns query stage-number)
+                                    (filter lib.types.isa/date?)
+                                    first)]
+      {:lib/type ::drill-thru
+       :type     :drill-thru/summarize-column-by-time
+       :column   column
+       :breakout breakout-column})))
+
+(defmethod drill-thru-method :drill-thru/summarize-column-by-time
+  [query stage-number {:keys [breakout column] :as _drill-thru} & _]
+  (let [bucketed (->> (lib.temporal-bucket/available-temporal-buckets query stage-number breakout)
+                      (filter :default)
+                      first
+                      (lib.temporal-bucket/with-temporal-bucket breakout))]
+    (-> query
+        (lib.aggregation/aggregate stage-number (lib.aggregation/sum column))
+        (lib.breakout/breakout stage-number bucketed))))
+
+;;; ------------------------------------- Column Filter ------------------------------------------
+(mu/defn ^:private column-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
+  "Filtering at the column level, based on its type. Displays a submenu of eg. \"Today\", \"This Week\", etc. for date
+  columns."
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  (when (and (structured-query? query stage-number)
+             column
+             (nil? value)
+             (not (lib.types.isa/structured? column))
+             ;; Must be a real field in the DB. Note: original code uses `clicked.column.field_ref != null` for this.
+             (some? (:id column)))
+    (let [initial-op (when-not (lib.types.isa/date? column) ; Date fields have special handling in the FE.
+                       (-> (lib.filter/filter-operators column)
+                           first
+                           (assoc :lib/type :mbql.filter/operator)))]
+      {:lib/type   ::drill-thru
+       :type       :drill-thru/column-filter
+       :column     column
+       :initial-op initial-op})))
+
+(defmethod drill-thru-info-method :drill-thru/column-filter
+  [_query _stage-number {:keys [initial-op]}]
+  {:type       :drill-thru/column-filter
+   :initial-op initial-op})
+
+(defmethod drill-thru-method :drill-thru/column-filter
+  [query stage-number {:keys [column] :as _drill-thru} filter-op value & _]
+  (lib.filter/filter query stage-number (lib.options/ensure-uuid [(keyword filter-op) {} (lib.ref/ref column) value])))
 
 ;;; ----------------------------------- Automatic Insights ---------------------------------------
 #_(mu/defn ^:private automatic-insights-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
@@ -459,12 +520,14 @@
   (keep #(% query stage-number context)
         ;; TODO: Missing drills: automatic insights, format.
         [distribution-drill
+         column-filter-drill
          foreign-key-drill
          object-detail-drill
          pivot-drill
          quick-filter-drill
          sort-drill
-         summarize-column-drill]))
+         summarize-column-drill
+         summarize-column-by-time-drill]))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`
