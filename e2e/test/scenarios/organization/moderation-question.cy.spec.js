@@ -5,6 +5,7 @@ import {
   openQuestionActions,
   questionInfoButton,
   getFullName,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -21,7 +22,7 @@ describeEE("scenarios > saved question moderation", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.setTokenFeatures("all");
+      setTokenFeatures("all");
     });
 
     it("should be able to verify and unverify a saved question", () => {
@@ -104,6 +105,7 @@ describeEE("scenarios > saved question moderation", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       cy.createModerationReview({
         status: "verified",

@@ -6,6 +6,7 @@ import {
   getFullName,
   visitQuestion,
   visitDashboard,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -25,7 +26,7 @@ describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
   });
 
   it("shows permissions help", () => {

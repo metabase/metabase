@@ -3,7 +3,8 @@ import {
   popover,
   visitDashboard,
   visitQuestion,
-  isPremium,
+  isPremiumActive,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -16,7 +17,7 @@ features.forEach(feature => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.setTokenFeatures(feature);
+      setTokenFeatures(feature);
     });
 
     it("dashboard should have the correct embed snippet", () => {
@@ -104,7 +105,7 @@ features.forEach(feature => {
         .should("match", JS_CODE({ type: "question", theme: "transparent" }));
 
       // hide download button for pro/enterprise users metabase#23477
-      if (isPremium) {
+      if (isPremiumActive()) {
         cy.findByLabelText(
           "Enable users to download data from this embed?",
         ).click();

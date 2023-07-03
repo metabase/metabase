@@ -4,6 +4,7 @@ import {
   popover,
   describeEE,
   getFullName,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -70,7 +71,7 @@ describeEE("audit > auditing > subscriptions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
   });
 
   describe("subscriptions", () => {

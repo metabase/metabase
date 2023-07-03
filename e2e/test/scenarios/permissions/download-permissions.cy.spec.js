@@ -10,6 +10,7 @@ import {
   visitQuestion,
   visitDashboard,
   popover,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -36,7 +37,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
   });
 
   it("setting downloads permission UI flow should work", () => {

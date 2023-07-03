@@ -12,6 +12,7 @@ import {
   resyncDatabase,
   createModelFromTableName,
   queryWritableDB,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import {
@@ -749,6 +750,7 @@ describe(
         role,
         `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
       );
+      setTokenFeatures("all");
       queryWritableDB(sql);
 
       const impersonatedUserId = 9;

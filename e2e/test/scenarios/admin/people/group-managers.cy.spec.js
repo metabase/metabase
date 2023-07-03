@@ -4,6 +4,7 @@ import {
   popover,
   describeEE,
   getFullName,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -16,7 +17,7 @@ describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
 
     cy.visit("/admin/people");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

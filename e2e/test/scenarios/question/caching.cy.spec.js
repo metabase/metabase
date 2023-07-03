@@ -5,6 +5,7 @@ import {
   questionInfoButton,
   rightSidebar,
   popover,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -12,7 +13,7 @@ describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
     cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 

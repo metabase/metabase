@@ -3,6 +3,7 @@ import {
   describeEE,
   restore,
   setupMetabaseCloud,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 describe("scenarios > admin > troubleshooting > help", () => {
@@ -51,7 +52,7 @@ describeEE("scenarios > admin > troubleshooting > help (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
   });
 
   it("should link `Get Help` to help-premium", () => {

@@ -6,6 +6,7 @@ import {
   popover,
   restore,
   startNewQuestion,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import {
   SAMPLE_DB_ID,
@@ -388,7 +389,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.setTokenFeatures("all");
+      setTokenFeatures("all");
     });
 
     it("should allow changing the table name with data model permissions only", () => {

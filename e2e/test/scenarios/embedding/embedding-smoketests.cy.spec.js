@@ -2,9 +2,10 @@ import {
   restore,
   visitQuestion,
   isEE,
-  isPremium,
+  isPremiumActive,
   isOSS,
   visitDashboard,
+  setTokenFeatures,
   visitIframe,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -144,11 +145,11 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
           "currentlyEmbeddedObject",
         );
-        isEE && cy.setTokenFeatures("all");
+        isEE && setTokenFeatures("all");
 
         visitAndEnableSharing(object);
 
-        if (isPremium) {
+        if (isPremiumActive()) {
           cy.findByText("Font");
         }
 
@@ -178,7 +179,7 @@ describe("scenarios > embedding > smoke tests", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
 
-        if (isPremium) {
+        if (isPremiumActive()) {
           cy.contains("Powered by Metabase").should("not.exist");
         } else {
           cy.contains("Powered by Metabase")

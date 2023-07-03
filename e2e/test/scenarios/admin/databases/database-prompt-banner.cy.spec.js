@@ -9,13 +9,14 @@ import {
   rightSidebar,
   visitDashboard,
   describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 describeEE("database prompt banner", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
   });
 
   it("should show a database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labelled", () => {

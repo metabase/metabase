@@ -2,7 +2,8 @@ import {
   restore,
   typeAndBlurUsingLabel,
   isEE,
-  isPremium,
+  isPremiumActive,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 describe("scenarios > admin > databases > exceptions", () => {
@@ -67,13 +68,13 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    isEE && cy.setTokenFeatures("all");
+    isEE && setTokenFeatures("all");
 
     cy.intercept(
       {
         method: "GET",
         pathname: "/api/database",
-        query: isPremium
+        query: isPremiumActive()
           ? {
               exclude_uneditable_details: "true",
             }

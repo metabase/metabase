@@ -1,4 +1,4 @@
-import { restore, isEE } from "e2e/support/helpers";
+import { restore, isEE, setTokenFeatures } from "e2e/support/helpers";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
 
@@ -36,7 +36,7 @@ describe.skip(
 
       restore();
       cy.signInAsAdmin();
-      cy.setTokenFeatures("all");
+      setTokenFeatures("all");
 
       cy.intercept("POST", "/api/dataset").as("dataset");
     });

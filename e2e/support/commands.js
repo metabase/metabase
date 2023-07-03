@@ -10,7 +10,6 @@ import "./commands/api/moderation";
 import "./commands/api/pulse";
 import "./commands/api/user";
 import "./commands/api/timeline";
-import "./commands/api/token";
 
 import "./commands/api/composite/createQuestionAndDashboard";
 import "./commands/api/composite/createNativeQuestionAndDashboard";

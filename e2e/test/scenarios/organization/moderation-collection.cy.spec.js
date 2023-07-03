@@ -10,6 +10,7 @@ import {
   getCollectionActions,
   popover,
   openCollectionMenu,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -28,7 +29,7 @@ describeEE("collections types", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
   });
 
   it("should be able to manage collection authority level", () => {

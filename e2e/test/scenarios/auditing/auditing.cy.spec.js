@@ -3,6 +3,7 @@ import {
   describeEE,
   visitQuestion,
   getDashboardCard,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -88,7 +89,7 @@ describeEE("audit > auditing", () => {
 
   beforeEach(() => {
     cy.signInAsAdmin();
-    cy.setTokenFeatures("all");
+    setTokenFeatures("all");
   });
 
   describe("See expected info on team member pages", () => {

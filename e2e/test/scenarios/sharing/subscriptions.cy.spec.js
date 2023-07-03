@@ -10,6 +10,7 @@ import {
   sendEmailAndAssert,
   addOrUpdateDashboardCard,
   addTextBox,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -311,7 +312,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describeEE("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
-      cy.setTokenFeatures("all");
+      setTokenFeatures("all");
       setupSMTP();
       cy.visit(`/dashboard/1`);
     });
