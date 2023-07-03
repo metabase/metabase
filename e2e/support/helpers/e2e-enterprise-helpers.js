@@ -55,7 +55,7 @@ export const setTokenFeatures = featuresScope => {
     );
   }
 
-  cy.log(`Set the "${featuresScope}" token`);
+  cy.log(`Set the token with features: "${featuresScope}"`);
   return cy.request({
     method: "PUT",
     url: "/api/setting/premium-embedding-token",
