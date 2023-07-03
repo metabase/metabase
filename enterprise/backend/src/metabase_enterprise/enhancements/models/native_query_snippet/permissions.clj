@@ -18,7 +18,7 @@
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"
-  :feature :any
+  :feature :advanced-permissions
   ([snippet]
    (and
     (not (premium-features/sandboxed-user?))
@@ -29,7 +29,7 @@
 
 (defenterprise can-write?
   "Can the current User edit this `snippet`?"
-  :feature :any
+  :feature :advanced-permissions
   ([snippet]
    (and
     (not (premium-features/sandboxed-user?))
@@ -40,7 +40,7 @@
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"
-  :feature :any
+  :feature :advanced-permissions
   [_model m]
   (and
    (not (premium-features/sandboxed-user?))
@@ -49,7 +49,7 @@
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"
-  :feature :any
+  :feature :advanced-permissions
   [snippet changes]
   (and
    (not (premium-features/sandboxed-user?))

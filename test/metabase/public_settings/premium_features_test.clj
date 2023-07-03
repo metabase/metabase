@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
@@ -34,6 +35,19 @@
   {:style/indent 1}
   [features & body]
   `(do-with-premium-features ~features (fn [] ~@body)))
+
+(defmacro with-additional-premium-features
+  "Execute `body` with the allowed premium features for the Premium-Features token set to the union of `features` and
+  the current feature set. Intended for use testing feature-flagging, if you don't want to override other features
+  that are already enabled.
+
+    (with-additional-premium-features #{:audit-app}
+      ;; audit app will be enabled for body, as well as any that are already enabled
+      ...)"
+  {:style/indent 1}
+  [features & body]
+  `(do-with-premium-features (set/union (premium-features/token-features) ~features)
+                             (fn [] ~@body)))
 
 (defn- token-status-response
   [token premium-features-response]
