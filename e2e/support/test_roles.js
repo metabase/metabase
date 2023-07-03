@@ -1,6 +1,6 @@
 export const ORDERS_PRODUCTS_ACCESS = "orders_products_access";
 
-const createPostgresRoleIfNotExist = (roleName, grantSql) => {
+export const getCreatePostgresRoleIfNotExistSql = (roleName, grantSql) => {
   return `
     DO
     $do$
@@ -19,7 +19,7 @@ const createPostgresRoleIfNotExist = (roleName, grantSql) => {
 
 export const Roles = {
   postgres: {
-    [ORDERS_PRODUCTS_ACCESS]: createPostgresRoleIfNotExist(
+    [ORDERS_PRODUCTS_ACCESS]: getCreatePostgresRoleIfNotExistSql(
       ORDERS_PRODUCTS_ACCESS,
       `
     GRANT SELECT, INSERT, UPDATE, DELETE ON Orders TO ${ORDERS_PRODUCTS_ACCESS};

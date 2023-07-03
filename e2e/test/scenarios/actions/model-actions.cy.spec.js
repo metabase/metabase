@@ -12,7 +12,6 @@ import {
   resyncDatabase,
   createModelFromTableName,
   queryWritableDB,
-  createTestRoles,
 } from "e2e/support/helpers";
 
 import {
@@ -22,6 +21,7 @@ import {
 } from "e2e/support/cypress_data";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
+import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 
 const PG_DB_ID = 2;
 const PG_ORDERS_TABLE_ID = 9;
@@ -335,7 +335,6 @@ describe(
 
       resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
       restore(`${dialect}-writable`);
-      createTestRoles({ type: "postgres", isWritable: true });
       cy.signInAsAdmin();
       resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TEST_TABLE });
 
@@ -745,6 +744,17 @@ describe(
 
     it("should respect impersonated permission", () => {
       cy.onlyOn(dialect === "postgres");
+      const role = "readonly_role";
+      const sql = getCreatePostgresRoleIfNotExistSql(
+        role,
+        `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
+      );
+      queryWritableDB(sql);
+
+      const impersonatedUserId = 9;
+      cy.request("PUT", `/api/user/${impersonatedUserId}`, {
+        login_attributes: { role },
+      });
 
       cy.updatePermissionsGraph(
         {
