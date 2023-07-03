@@ -33,6 +33,12 @@ export const setTokenFeatures = featuresScope => {
       );
   }
 
+  if (token === undefined) {
+    throw new Error(
+      "Please make sure you have correctly set the `CYPRESS_ALL_FEATURES_TOKEN` and/or `CYPRESS_NO_FEATURES_TOKEN` in your environment variables.",
+    );
+  }
+
   cy.log(`Set the "${featuresScope}" token`);
   return cy.request({
     method: "PUT",
