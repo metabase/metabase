@@ -2,7 +2,6 @@ import {
   restore,
   typeAndBlurUsingLabel,
   isEE,
-  isPremiumActive,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
@@ -74,7 +73,7 @@ describe("scenarios > admin > databases > exceptions", () => {
       {
         method: "GET",
         pathname: "/api/database",
-        query: isPremiumActive()
+        query: isEE
           ? {
               exclude_uneditable_details: "true",
             }

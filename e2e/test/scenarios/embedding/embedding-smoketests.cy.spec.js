@@ -2,7 +2,6 @@ import {
   restore,
   visitQuestion,
   isEE,
-  isPremiumActive,
   isOSS,
   visitDashboard,
   setTokenFeatures,
@@ -149,7 +148,7 @@ describe("scenarios > embedding > smoke tests", () => {
 
         visitAndEnableSharing(object);
 
-        if (isPremiumActive()) {
+        if (isEE) {
           cy.findByText("Font");
         }
 
@@ -179,7 +178,7 @@ describe("scenarios > embedding > smoke tests", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
 
-        if (isPremiumActive()) {
+        if (isEE) {
           cy.contains("Powered by Metabase").should("not.exist");
         } else {
           cy.contains("Powered by Metabase")

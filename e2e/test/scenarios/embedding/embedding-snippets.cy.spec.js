@@ -3,7 +3,6 @@ import {
   popover,
   visitDashboard,
   visitQuestion,
-  isPremiumActive,
   setTokenFeatures,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -105,7 +104,7 @@ features.forEach(feature => {
         .should("match", JS_CODE({ type: "question", theme: "transparent" }));
 
       // hide download button for pro/enterprise users metabase#23477
-      if (isPremiumActive()) {
+      if (feature === "all") {
         cy.findByLabelText(
           "Enable users to download data from this embed?",
         ).click();
