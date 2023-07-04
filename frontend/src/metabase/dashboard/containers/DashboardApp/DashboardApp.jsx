@@ -119,7 +119,7 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { isRunning, isLoadingComplete, dashboard, isEditing, isDirty } = props;
+  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
