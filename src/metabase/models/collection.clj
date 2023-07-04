@@ -864,11 +864,11 @@
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
-    ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more detailsj
-    (when (contains? collection-updates :location)
+    ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
+    (when (api/column-will-change? :location collection-before-updates collection-updates)
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
     ;; (5) make sure hex color is valid
-    (when (contains? collection-updates :color)
+    (when (api/column-will-change? :color collection-before-updates collection-updates)
      (assert-valid-hex-color color))
     ;; (6) check requires EE token if authority_level is changed
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
