@@ -629,26 +629,33 @@
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
 
-(defn- row-cell
-  "Converts a JS object `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map `{:column-name \"ID\", :value 12}`.
-  The column's name is used because it must be unique (eg. aliased by a join) while the ID might be duplicated if the
-  same field were joined multiple times."
-  [^js cell]
-  {:column-name (.. cell -col -name)
-   :value       (.-value cell)})
+(defn- js-cells-by
+  "Given a `col-fn`, returns a function that will extract a JS object like
+  `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like `{:column-name \"ID\", :value 12}`.
+
+  The spelling of the column key differs between multiple JS objects of this same general shape
+  (`col` on data rows, `column` on dimensions), etc., hence the abstraction."
+  [col-fn]
+  (fn [^js cell]
+    {:column-name (.-name (col-fn cell))
+     :value       (.-value cell)}))
+
+(def ^:private row-cell       (js-cells-by #(.-col %)))
+(def ^:private dimension-cell (js-cells-by #(.-column %)))
 
 (defn ^:export available-drill-thrus
   "Return an array (possibly empty) of drill-thrus given:
   - Required column
   - Nullable value
   - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)"
-  [a-query stage-number column value row]
+  [a-query stage-number column value row dimensions]
   (->> (merge {:column (js.metadata/parse-column column)
                :value  (cond
                          (identical? value js/undefined) nil   ; Missing a value, ie. a column click
                          (nil? value)                    :null ; Provided value is null, ie. database NULL
                          :else                           value)}
-              (when row {:row (mapv row-cell row)}))
+              (when row                    {:row        (mapv row-cell       row)})
+              (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
        (lib.core/available-drill-thrus a-query stage-number)
        to-array))
 
