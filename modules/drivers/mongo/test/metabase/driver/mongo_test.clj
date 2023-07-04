@@ -96,7 +96,7 @@
         (is (= expected
                (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
                  (driver/database-supports? :mongo :expressions db))))))
-    (is (true? (lib/requires-native-collection? (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
+    (is (= #{:collection} (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
 
 
 (def ^:private native-query
