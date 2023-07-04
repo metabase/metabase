@@ -21,7 +21,6 @@ import { isObscured } from "metabase/lib/dom";
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
 import {
-  OptionContent,
   TokenInputItem,
   TokenFieldContainer,
   PrefixContainer,
@@ -633,7 +632,7 @@ class TokenField extends Component<TokenFieldProps, TokenFieldState> {
         >
           {filteredOptions.map(option => (
             <li className="mr1" key={this._key(option)}>
-              <OptionContent
+              <div
                 className={cx(
                   `py1 pl1 pr2 block rounded text-bold text-${color}-hover inline-block full cursor-pointer`,
                   `bg-light-hover`,
@@ -655,7 +654,7 @@ class TokenField extends Component<TokenFieldProps, TokenFieldState> {
                 onMouseDown={e => e.preventDefault()}
               >
                 {optionRenderer(option)}
-              </OptionContent>
+              </div>
             </li>
           ))}
         </ul>
