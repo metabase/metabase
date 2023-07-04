@@ -28,6 +28,11 @@ export function addWidgetStringFilter(value) {
   cy.button("Add filter").click();
 }
 
+export function addToWidgetStringFilter(value) {
+  setWidgetStringFilter(value);
+  cy.button("Update filter").click();
+}
+
 export function setWidgetStringFilter(value) {
   popover().find("input").first().type(`${value}{enter}`);
 }

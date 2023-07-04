@@ -35,7 +35,8 @@ describe("issue 15444", () => {
       cy.button("Add filter").click();
     });
 
-    SQLFilter.runQuery();
+    SQLFilter.saveNewQuestion();
+    SQLFilter.reloadWithoutQueryParams();
 
     cy.get(".Visualization").within(() => {
       cy.findAllByText("Doohickey");

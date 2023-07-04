@@ -39,7 +39,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       SQLFilter.toggleRequired();
       SQLFilter.setDefaultValue("Gizmo");
 
-      SQLFilter.runQuery();
+      SQLFilter.saveNewQuestion();
+      SQLFilter.reloadWithoutQueryParams();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("Rustic Paper Wallet");
@@ -73,7 +74,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       SQLFilter.toggleRequired();
       SQLFilter.setDefaultValue("4.3");
 
-      SQLFilter.runQuery();
+      SQLFilter.saveNewQuestion();
+      SQLFilter.reloadWithoutQueryParams();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("Aerodynamic Linen Coat");

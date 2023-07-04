@@ -50,7 +50,7 @@ describe("issue 16756", () => {
     popover().contains("Single Date").click();
 
     // The previous filter value should reset
-    cy.location("search").should("eq", "");
+    cy.location("search").should("eq", "?filter=");
 
     // Set the date to the 15th of whichever the month and year are when this tests runs
     filterWidget().click();

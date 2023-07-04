@@ -1,4 +1,4 @@
-import { filterWidget, popover } from "e2e/support/helpers";
+import { filterWidget, modal, popover } from "e2e/support/helpers";
 
 // FILTER TYPES
 
@@ -87,5 +87,34 @@ export function enterParameterizedQuery(query, options = {}) {
   cy.get("@editor").type(query, {
     parseSpecialCharSequences: false,
     ...options,
+  });
+}
+
+export function saveNewQuestion() {
+  cy.intercept("POST", "/api/card").as("saveNewQuestion");
+  cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+  modal().within(() => {
+    cy.findByPlaceholderText("What is the name of your question?").type("Q");
+    cy.findByText("Save").click();
+  });
+  cy.wait("@saveNewQuestion");
+  modal().within(() => {
+    cy.findByText("Not now").click();
+  });
+}
+
+export function saveExistingQuestion() {
+  cy.intercept("PUT", "/api/card/*").as("saveExistingQuestion");
+  cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+  modal().within(() => {
+    cy.findByText("Save").click();
+  });
+  cy.wait("@saveExistingQuestion");
+}
+
+export function reloadWithoutQueryParams() {
+  cy.location().then(loc => {
+    const path = loc.href.split("?")[0];
+    cy.visit(path);
   });
 }

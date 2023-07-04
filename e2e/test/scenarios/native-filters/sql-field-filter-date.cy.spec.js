@@ -61,7 +61,8 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         isFilterRequired: true,
       });
 
-      SQLFilter.runQuery();
+      SQLFilter.saveNewQuestion();
+      SQLFilter.reloadWithoutQueryParams();
 
       cy.get(".Visualization").within(() => {
         cy.findByText(representativeResult);

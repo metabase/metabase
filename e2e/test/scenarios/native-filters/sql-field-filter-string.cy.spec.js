@@ -50,6 +50,12 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
 
     stringFilters.forEach(
       ([subType, { searchTerm, value, representativeResult }], index) => {
+        // When we run iterations following the first, we need to open the editor
+        if (index !== 0) {
+          cy.findByText("Open Editor").click();
+          cy.icon("variable").click();
+        }
+
         FieldFilter.setWidgetType(subType);
 
         // When we run the first iteration, there will be no default filter value set
@@ -63,7 +69,11 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
           ? FieldFilter.pickDefaultValue(searchTerm, value)
           : FieldFilter.addDefaultStringFilter(value);
 
-        SQLFilter.runQuery();
+        index === 0
+          ? SQLFilter.saveNewQuestion()
+          : SQLFilter.saveExistingQuestion();
+
+        SQLFilter.reloadWithoutQueryParams();
 
         cy.get(".Visualization").within(() => {
           cy.findByText(representativeResult);
