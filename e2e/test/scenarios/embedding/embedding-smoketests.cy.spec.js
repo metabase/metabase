@@ -2,6 +2,7 @@ import {
   restore,
   visitQuestion,
   isEE,
+  isPremium,
   isOSS,
   visitDashboard,
   visitIframe,
@@ -146,7 +147,7 @@ describe("scenarios > embedding > smoke tests", () => {
 
         visitAndEnableSharing(object);
 
-        if (isEE) {
+        if (isPremium) {
           cy.findByText("Font");
         }
 
@@ -176,13 +177,13 @@ describe("scenarios > embedding > smoke tests", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
 
-        if (isOSS) {
+        if (isPremium) {
+          cy.contains("Powered by Metabase").should("not.exist");
+        } else {
           cy.contains("Powered by Metabase")
             .closest("a")
             .should("have.attr", "href")
             .and("eq", "https://metabase.com/");
-        } else {
-          cy.contains("Powered by Metabase").should("not.exist");
         }
 
         cy.signInAsAdmin();
