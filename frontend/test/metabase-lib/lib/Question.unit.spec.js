@@ -523,7 +523,7 @@ describe("Question", () => {
         expect(question.display()).toBe("scalar");
       });
 
-      it("should keep any sensible display when display was not locked (metabase#30057)", () => {
+      it("should keep any sensible display when display was not locked (metabase#32075)", () => {
         const sensibleDisplays = ["table", "scalar"];
         const question = base_question
           .setDisplay("scalar")

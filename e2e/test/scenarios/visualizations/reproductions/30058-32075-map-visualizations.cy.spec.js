@@ -37,13 +37,13 @@ const testQuery = {
   database: SAMPLE_DB_ID,
 };
 
-describe("issue 30057", () => {
+describe("issue 32075", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
   });
 
-  it("should still display visualization as a map after adding a filter (metabase#30057)", () => {
+  it("should still display visualization as a map after adding a filter (metabase#32075)", () => {
     visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
     visualize();
