@@ -7,15 +7,13 @@ import {
 } from "./parameter-source";
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
-  return parameterValues
-    ? parameters.map(parameter => ({
-        ...parameter,
-        value:
-          parameter.id in parameterValues
-            ? parameterValues[parameter.id]
-            : null,
-      }))
-    : parameters;
+  return parameters.map(parameter => ({
+    ...parameter,
+    value:
+      parameterValues && parameter.id in parameterValues
+        ? parameterValues[parameter.id]
+        : null,
+  }));
 }
 
 export function hasDefaultParameterValue(parameter) {

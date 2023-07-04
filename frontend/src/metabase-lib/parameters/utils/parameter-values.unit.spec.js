@@ -105,10 +105,30 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should handle there being an undefined or null parameterValues object", () => {
+      const parametersWithNulls = [
+        {
+          ...parameter1,
+          value: null,
+        },
+        {
+          ...parameter2,
+          value: null,
+        },
+        {
+          ...parameter3,
+          value: null,
+        },
+        {
+          ...parameter4,
+          value: null,
+        },
+      ];
       expect(getValuePopulatedParameters(parameters, undefined)).toEqual(
-        parameters,
+        parametersWithNulls,
       );
-      expect(getValuePopulatedParameters(parameters, null)).toEqual(parameters);
+      expect(getValuePopulatedParameters(parameters, null)).toEqual(
+        parametersWithNulls,
+      );
     });
   });
 
