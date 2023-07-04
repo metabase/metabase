@@ -176,8 +176,8 @@ export function resetTestTable({ type, table }) {
   cy.task("resetTable", { type, table });
 }
 
-export function createTestRoles({ type }) {
-  cy.task("createTestRoles", { type });
+export function createTestRoles({ type, isWritable }) {
+  cy.task("createTestRoles", { type, isWritable });
 }
 
 // will this work for multiple schemas?

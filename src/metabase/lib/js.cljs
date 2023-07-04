@@ -362,6 +362,11 @@
   [filter-operator column & args]
   (apply lib.core/filter-clause filter-operator column args))
 
+(defn ^:export filter-operator
+  "Returns the filter operator of `filter-clause`."
+  [a-query stage-number a-filter-clause]
+  (lib.core/filter-operator a-query stage-number a-filter-clause))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
@@ -405,7 +410,7 @@
   "Get available join strategies for the current Database (based on the Database's
   supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
-  (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))
+  (to-array (lib.core/available-join-strategies a-query stage-number)))
 
 (defn ^:export join-condition-lhs-columns
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column

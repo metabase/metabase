@@ -493,6 +493,7 @@ class Visualization extends PureComponent {
                 // NOTE: CardVisualization class used to target ExplicitSize HOC
                 className="CardVisualization flex-full flex-basis-none"
                 isPlaceholder={isPlaceholder}
+                isMobile={isMobile}
                 series={series}
                 settings={settings}
                 card={series[0].card} // convenience for single-series visualizations

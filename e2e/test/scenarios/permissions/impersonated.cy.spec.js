@@ -2,6 +2,7 @@ import {
   assertPermissionTable,
   createTestRoles,
   describeEE,
+  getPermissionRowPermissions,
   isPermissionDisabled,
   modifyPermission,
   openNativeEditor,
@@ -11,7 +12,7 @@ import {
 } from "e2e/support/helpers";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
-const { ALL_USERS_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const PG_DB_ID = 2;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
@@ -26,7 +27,7 @@ describeEE("impersonated permission", () => {
     });
 
     it("can set impersonated permissions", () => {
-      cy.visit("/admin/permissions/data/group/1");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
       // Check there is no Impersonated option on H2
       cy.get("main").findByText("No self-service").click();
@@ -155,9 +156,103 @@ describeEE("impersonated permission", () => {
       ]);
     });
 
+    it("warns when All Users have impersonated access and the target group has no self-service access", () => {
+      cy.visit(`/admin/permissions/data/group/${COLLECTION_GROUP}`);
+
+      modifyPermission(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Impersonated",
+      );
+
+      // Warns that All Users group has greater access
+      cy.findByRole("dialog").within(() => {
+        cy.findByText(
+          'Revoke access even though "All Users" has greater access?',
+        );
+
+        cy.findByText("Revoke access").click();
+      });
+
+      selectImpersonatedAttribute("role");
+      saveImpersonationSettings();
+      savePermissions();
+
+      getPermissionRowPermissions("QA Postgres12")
+        .eq(DATA_ACCESS_PERMISSION_INDEX)
+        .findByLabelText("warning icon")
+        .realHover();
+
+      popover().findByText(
+        'The "All Users" group has a higher level of access than this, which will override this setting. You should limit or revoke the "All Users" group\'s access to this item.',
+      );
+    });
+
+    it("allows switching to the granular access and update table permissions", () => {
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+      modifyPermission(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Impersonated",
+      );
+
+      selectImpersonatedAttribute("role");
+      saveImpersonationSettings();
+      savePermissions();
+
+      modifyPermission(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Granular",
+      );
+
+      // Resets table permissions from Impersonated to No self-service
+      assertPermissionTable([
+        ["Accounts", "No self-service", "No", "1 million rows", "No", "No"],
+        [
+          "Analytic Events",
+          "No self-service",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+        ],
+        ["Feedback", "No self-service", "No", "1 million rows", "No", "No"],
+        ["Invoices", "No self-service", "No", "1 million rows", "No", "No"],
+        ["Orders", "No self-service", "No", "1 million rows", "No", "No"],
+        ["People", "No self-service", "No", "1 million rows", "No", "No"],
+        ["Products", "No self-service", "No", "1 million rows", "No", "No"],
+        ["Reviews", "No self-service", "No", "1 million rows", "No", "No"],
+      ]);
+
+      // Return back to the database view
+      cy.get("main").findByText("All Users group").click();
+
+      // On database level it got reset to No self-service too
+      assertPermissionTable([
+        [
+          "Sample Database",
+          "No self-service",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+        ],
+        [
+          "QA Postgres12",
+          "No self-service",
+          "No",
+          "1 million rows",
+          "No",
+          "No",
+        ],
+      ]);
+    });
+
     it("impersonation modal should be positioned behind the page leave confirmation modal", () => {
       // Try leaving the page
-      cy.visit("/admin/permissions/data/group/1");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
       modifyPermission(
         "QA Postgres12",

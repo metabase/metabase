@@ -147,6 +147,7 @@
    filterable-columns
    filterable-column-operators
    filter-clause
+   filter-operator
    and
    or
    not

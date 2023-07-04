@@ -180,6 +180,12 @@ describe("scenarios > visualizations > bar chart", () => {
           cy.findAllByTestId("legend-item").should("have.length", 4);
           cy.get(".enable-dots").should("have.length", 4);
         });
+
+      cy.findAllByTestId("legend-item").contains("Gadget").click();
+      popover().findByText("See these Orders").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Category is Gadget")
+        .should("exist");
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {

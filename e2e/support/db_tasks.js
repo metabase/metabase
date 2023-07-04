@@ -38,11 +38,20 @@ export async function resetTable({ type = "postgres", table = "testTable1" }) {
   return testTables?.[table]?.(dbClient);
 }
 
-export async function createTestRoles({ type = "postgres" }) {
-  const dbClient = getDbClient(QA_DB_CONFIG[type]);
+export async function createTestRoles({
+  type = "postgres",
+  isWritable = false,
+}) {
+  const config = isWritable ? WRITABLE_DB_CONFIG : QA_DB_CONFIG;
+  const dbClient = getDbClient(config[type]);
+
+  const dbRoles = Roles[type];
+  if (!dbRoles) {
+    return;
+  }
 
   return await Promise.all(
-    Object.values(Roles).map(async sql => {
+    Object.values(dbRoles).map(async sql => {
       await dbClient.raw(sql);
     }),
   );
