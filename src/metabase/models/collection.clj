@@ -64,9 +64,8 @@
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (def AuthorityLevel
-  "Schema for valid collection authority levels"
-  (s/maybe (s/enum "official")))
-
+  "Malli Schema for valid collection authority levels."
+  [:maybe [:enum "official"]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Slug & Hex Color & Validation                                          |

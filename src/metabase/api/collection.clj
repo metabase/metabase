@@ -29,6 +29,7 @@
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -797,9 +798,11 @@
   [{:keys [name color description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
+  (when (some? authority_level)
+    ;; make sure only admin and an EE token is present to be able to create an Official token
+    (premium-features/assert-has-feature :content-management "Official Collection")
+    (api/check-superuser))
   ;; Now create the new Collection :)
-  (api/check-403 (or (nil? authority_level)
-                     (and api/*is-superuser?* authority_level)))
   (first
     (t2/insert-returning-instances!
       Collection
@@ -812,15 +815,14 @@
         (when parent_id
           {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new Collection."
   [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
-  {name            su/NonBlankString
-   color           collection/hex-color-regex
-   description     (s/maybe su/NonBlankString)
-   parent_id       (s/maybe su/IntGreaterThanZero)
-   namespace       (s/maybe su/NonBlankString)
+  {name            ms/NonBlankString
+   color           [:maybe [:re collection/hex-color-regex]]
+   description     [:maybe ms/NonBlankString]
+   parent_id       [:maybe ms/PositiveInt]
+   namespace       [:maybe ms/NonBlankString]
    authority_level collection/AuthorityLevel}
   (create-collection! body))
 
@@ -871,22 +873,23 @@
                             {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
-  {name                                   (s/maybe su/NonBlankString)
-   color                                  (s/maybe collection/hex-color-regex)
-   description                            (s/maybe su/NonBlankString)
-   archived                               (s/maybe s/Bool)
-   parent_id                              (s/maybe su/IntGreaterThanZero)
+  {name                                   ms/NonBlankString
+   color                                  [:maybe [:re collection/hex-color-regex]]
+   description                            [:maybe ms/NonBlankString]
+   archived                               [:maybe ms/BooleanValue]
+   parent_id                              [:maybe ms/PositiveInt]
    authority_level                        collection/AuthorityLevel}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
+    ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
-               (not= authority_level (:authority_level collection-before-update)))
+               (not= (keyword authority_level) (:authority_level collection-before-update)))
+      (premium-features/assert-has-feature :content-management "Official Collection")
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
                           ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
