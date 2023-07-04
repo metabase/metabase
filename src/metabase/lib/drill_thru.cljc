@@ -491,6 +491,46 @@
   [query stage-number {:keys [column] :as _drill-thru} filter-op value & _]
   (lib.filter/filter query stage-number (lib.options/ensure-uuid [(keyword filter-op) {} (lib.ref/ref column) value])))
 
+;;; ----------------------------------- Underlying Records ---------------------------------------
+(mu/defn ^:private underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
+  "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
+  bucket. Eg. distribution of People by State, then click New York and see the table of all People filtered by
+  `STATE = 'New York'`."
+  [query                             :- ::lib.schema/query
+   stage-number                      :- :int
+   {:keys [column dimensions value]} :- ::lib.schema.drill-thru/context]
+  ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
+  ;; - column is COUNT
+  ;; - row[0] has col: STATE, value: "Minnesota"
+  ;; - row[1] has col: count (source: "aggregation")
+  ;; - dimensions which is [{column: STATE, value: "MN"}]
+  ;; - value: the count.
+  ;; So dimensions is exactly what we want.
+  ;; It returns the table name and row count, since that's used for pluralization of the name.
+  (when (and (structured-query? query stage-number)
+             column
+             (some? value)
+             (not-empty dimensions)
+             (not (lib.types.isa/structured? column)))
+    {:lib/type   ::drill-thru
+     :type       :drill-thru/underlying-records
+     ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?
+     ;; Note that some languages have different plurals for exactly 2, or for 1, 2-5, and 6+.
+     :row-count  (if (number? value) value 2)
+     :table-name (some->> (lib.util/source-table-id query)
+                          (lib.metadata/table query)
+                          (lib.metadata.calculation/display-name query stage-number))}))
+
+(defmethod drill-thru-info-method :drill-thru/underlying-records
+  [_query _stage-number {:keys [row-count table-name]}]
+  {:type       :drill-thru/underlying-records
+   :row-count  row-count
+   :table-name table-name})
+
+(defmethod drill-thru-method :drill-thru/underlying-records
+  [query stage-number _drill-thru & _]
+  (lib.filter/filter query stage-number (lib.options/ensure-uuid [(keyword filter-op) {} (lib.ref/ref column) value])))
+
 ;;; ----------------------------------- Automatic Insights ---------------------------------------
 #_(mu/defn ^:private automatic-insights-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   ""
