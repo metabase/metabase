@@ -14,7 +14,7 @@
 (defn- by-name [cols name]
   (first (filter #(= (:name %) name) cols)))
 
-(deftest ^:parallel available-drill-thrus-test
+(deftest ^:parallel table-view-available-drill-thrus-test
   (testing "table view"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
           row   [{:column-name "ID" :value 2}
@@ -256,6 +256,30 @@
                   (lib/available-drill-thrus query -1 {:column (meta/field-metadata :orders :created-at)
                                                        :value  "2018-05-15T08:04:04.58Z"
                                                        :row    row}))))))))
+
+(deftest ^:parallel histogram-available-drill-thrus-test
+  (testing "histogram breakout view"
+    (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (meta/field-metadata :products :state)))
+            row   [{:column-name "STATE" :value "WI"}
+                   {:column-name "COUNT" :value 96}]]
+        (is (=? [{:lib/type        :metabase.lib.drill-thru/drill-thru
+                  :type            :drill-thru/underlying-records
+                  :column          (meta/field-metadata :orders :id)
+                  :initial-op      {:short := :display-name "Is"}}
+                 {:lib/type        :metabase.lib.drill-thru/drill-thru
+                  :type            :drill-thru/sort
+                  :column          (meta/field-metadata :orders :id)
+                  :sort-directions [:asc :desc]}
+                 {:lib/type        :metabase.lib.drill-thru/drill-thru
+                  :type            :drill-thru/summarize-column
+                  :column          (meta/field-metadata :orders :id)
+                  :aggregations    [:distinct]}]
+                (lib/available-drill-thrus query -1 {:column (meta/field-metadata :orders :id)
+                                                     :value  nil})))))))
+
 (comment
   (let [metadata-provider (metabase.lib.metadata.jvm/application-database-metadata-provider 1)
         orders            2
