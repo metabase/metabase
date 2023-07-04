@@ -759,6 +759,71 @@
         (testing "by name"
           (is (=? result
                   (lib/remove-join query' 0 "Users"))))
-        (testing "by name"
+        (testing "by join-clause"
           (is (=? result
-                  (lib/remove-join query' 0 (second (lib/joins query' 0))))))))))
+                  (lib/remove-join query' 0 (second (lib/joins query' 0)))))
+          (testing "using remove-clause"
+            (is (=? result
+                    (lib/remove-clause query' 0 (second (lib/joins query' 0)))))))))))
+
+(deftest ^:parallel replace-join-test
+  (let [query             (lib.tu/query-with-join)
+        expected-original {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all}]}]}
+        [original-join]   (lib/joins query)
+        new-join          (lib/with-join-fields original-join :none)]
+    (is (=? expected-original
+            query))
+    (testing "danglig join-spec leads to no change"
+      (are [join-spec] (=? expected-original
+                           (lib/replace-join query 0 join-spec new-join))
+        -1 1 "missing-alias"))
+    (testing "replace using index"
+      (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :none}]}]}
+              (lib/replace-join query 0 new-join))))
+    (testing "replace using alias"
+      (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :none}]}]}
+              (lib/replace-join query "Cat" new-join))))
+    (testing "replace using replace-clause"
+      (is (=? {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :none}]}]}
+              (lib/replace-clause query original-join new-join))))
+    (let [join-alias "alias"
+          price-name (str join-alias "__PRICE")
+          joined-column (-> (meta/field-metadata :venues :id)
+                            (lib/with-join-alias join-alias))
+          users-alias "Users"
+          last-login-name (str users-alias "__LAST_LOGIN")
+          breakout-field [:field {:base-type :type/DateTime} last-login-name]
+          query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :venues)
+                                   [(lib/= (meta/field-metadata :checkins :venue-id)
+                                           (-> (meta/field-metadata :venues :id)
+                                               (lib/with-join-alias join-alias)))])
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-alias join-alias)))
+                    (lib/filter (lib/> joined-column 3))
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :users)
+                                   [(lib/= (meta/field-metadata :checkins :user-id)
+                                           (-> (meta/field-metadata :users :id)
+                                               (lib/with-join-alias users-alias)))])
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-alias users-alias)))
+                    lib/append-stage
+                    (lib/filter (lib/< (lib.options/ensure-uuid [:field {:base-type :type/Integer} price-name]) 3))
+                    (lib/filter (lib/not-null (lib.options/ensure-uuid breakout-field)))
+                    (lib/breakout (lib.options/ensure-uuid breakout-field)))
+          [join0 join1] (lib/joins query 0)]
+      (testing "effects are reflected in subsequent stages"
+        (is (=? {:stages [{:joins [{:fields :none, :alias join-alias}
+                                   {:fields :all, :alias users-alias}]
+                           :filters [[:> {} [:field {:join-alias join-alias} (meta/id :venues :id)] 3]]}
+                          {:filters [[:not-null {} [:field {} last-login-name]]]
+                           :breakout [[:field {} last-login-name]]}]}
+                (lib/replace-clause query 0 join0 (lib/with-join-fields join0 :none)))))
+      (testing "replacing with nil removes the join"
+        (is (=? {:stages
+                 [{:joins [{:fields :all, :alias join-alias}]
+                   :filters [[:> {} [:field {:join-alias join-alias} (meta/id :venues :id)] 3]]}
+                  {:filters [[:< {} [:field {} price-name] 3]]}]}
+                (lib/replace-clause query 0 join1 nil)))))))
