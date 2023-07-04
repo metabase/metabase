@@ -56,7 +56,6 @@
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."
   [key :as {{:keys [value]} :body}]
   {key kebab-cased-keyword}
-  #p [key, value]
   (with-setting-access-control
     (setting/set! key value))
   api/generic-204-no-content)
