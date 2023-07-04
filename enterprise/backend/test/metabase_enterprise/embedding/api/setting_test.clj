@@ -24,7 +24,7 @@
       (testing "when :embedding is not enabled"
         (premium-features-test/with-premium-features #{}
           (testing "can't set embedding-app-origin"
-            (is (= "Embedding is an enterprise feature. Please upgrade to a paid plan to use this feature."
+            (is (= "Embedding is an Enterprise feature. Please upgrade to a paid plan to use this feature."
                    (mt/user-http-request :crowberto :put 402 "setting/embedding-app-origin"
                                          {:value "https://metabase.com"}))))
 

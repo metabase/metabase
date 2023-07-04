@@ -247,7 +247,7 @@
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."
   [feature-name]
-  (ex-info (tru "{0} is an enterprise feature. Please upgrade to a paid plan to use this feature." (str/capitalize feature-name))
+  (ex-info (tru "{0} is an Enterprise feature. Please upgrade to a paid plan to use this feature." (str/capitalize feature-name))
            {:status-code 402}))
 
 (defn assert-has-feature
