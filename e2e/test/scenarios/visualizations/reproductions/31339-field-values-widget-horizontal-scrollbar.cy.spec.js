@@ -7,9 +7,31 @@ describe("issue 31339", () => {
     cy.intercept("GET", "/api/field/*/search/*").as("findSuggestions");
   });
 
-  it("should not show horizontal scrollbar on overflow (metabase#31339)", () => {
+  it("should not show horizontal scrollbar in the popover (metabase#31339)", () => {
     openPeopleTable();
     headerCells().filter(":contains('Password')").click();
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+
+      const input = cy.findByPlaceholderText("Search by Password");
+
+      input.type("e").blur();
+      cy.wait("@findSuggestions");
+    });
+
+    popover().then(popoverElement => {
+      expect(
+        popoverElement[0].clientHeight,
+        "horizontal scrollbar is not shown",
+      ).to.eq(popoverElement[0].offsetHeight);
+    });
+  });
+
+  it("should not show horizontal scrollbar in default picker container", () => {
+    openPeopleTable();
+    headerCells().filter(":contains('Password')").click();
+
     popover().within(() => {
       cy.findByText("Filter by this column").click();
 
