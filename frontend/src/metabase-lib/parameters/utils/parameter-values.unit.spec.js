@@ -78,7 +78,7 @@ describe("parameters/utils/parameter-values", () => {
   });
 
   describe("getValuePopulatedParameters", () => {
-    it("should return an array of parameter objects with the `value` property set if it exists in the given `parameterValues` id, value map", () => {
+    it("should return an array of parameter objects with the `value` property set if it exists in the given `parameterValues` id, value map, and null if it doesn't exist", () => {
       expect(
         getValuePopulatedParameters(parameters, {
           [parameter1.id]: "parameter1 value",
@@ -93,8 +93,14 @@ describe("parameters/utils/parameter-values", () => {
           ...parameter2,
           value: "parameter2 value",
         },
-        parameter3,
-        parameter4,
+        {
+          ...parameter3,
+          value: null,
+        },
+        {
+          ...parameter4,
+          value: null,
+        },
       ]);
     });
 

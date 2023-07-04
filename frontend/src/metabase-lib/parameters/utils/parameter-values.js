@@ -8,14 +8,13 @@ import {
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
   return parameterValues
-    ? parameters.map(parameter => {
-        return parameter.id in parameterValues
-          ? {
-              ...parameter,
-              value: parameterValues[parameter.id],
-            }
-          : parameter;
-      })
+    ? parameters.map(parameter => ({
+        ...parameter,
+        value:
+          parameter.id in parameterValues
+            ? parameterValues[parameter.id]
+            : null,
+      }))
     : parameters;
 }
 
