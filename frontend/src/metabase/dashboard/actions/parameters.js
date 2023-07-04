@@ -337,6 +337,7 @@ export const toggleAutoApplyFilters = createThunkAction(
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {
+      dispatch(applyDraftParameterValues());
       dispatch(
         setDashboardAttributes({
           id: dashboardId,
