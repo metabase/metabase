@@ -13,10 +13,7 @@ describe("issue 31339", () => {
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
-
-      const input = cy.findByPlaceholderText("Search by Password");
-
-      input.type("e").blur();
+      cy.findByPlaceholderText("Search by Password").type("e").blur();
       cy.wait("@findSuggestions");
     });
 
@@ -36,16 +33,12 @@ describe("issue 31339", () => {
       cy.findByText("Filter by this column").click();
 
       const input = cy.findByPlaceholderText("Search by Password");
-
       input.type("e").blur();
       cy.wait("@findSuggestions");
-
       input.type("f");
       cy.wait("@findSuggestions");
 
-      const container = cy.findByTestId("default-picker-container");
-
-      container.then(containerElement => {
+      cy.findByTestId("default-picker-container").then(containerElement => {
         expect(
           containerElement[0].clientHeight,
           "horizontal scrollbar is not shown",
