@@ -107,6 +107,18 @@ describe("managing question from the question's details sidebar", () => {
                 });
               });
 
+              it("should be able to move the question to a collection created on the go", () => {
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                const NEW_COLLECTION = "Foo";
+                modal().within(() => {
+                  cy.findByText("New collection").click();
+                  cy.findByLabelText("Name").type(NEW_COLLECTION, { delay: 0 });
+                  cy.findByText("Create").click();
+                });
+                cy.get("header").findByText(NEW_COLLECTION);
+              });
+
               it("should be able to move models", () => {
                 // TODO: Currently nodata users can't turn a question into a model
                 cy.skipOn(user === "nodata");
