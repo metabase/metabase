@@ -1,11 +1,11 @@
 (ns metabase-enterprise.content-management.api.collection-test
   (:require
-    [clojure.test :refer :all]
-    [metabase.models.collection :as collection]
-    [metabase.public-settings.premium-features-test :as premium-features-test]
-    [metabase.test :as mt]
-    [toucan2.core :as t2]
-    [toucan2.tools.with-temp :as t2.with-temp]))
+   [clojure.test :refer :all]
+   [metabase.models.collection :as collection]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest create-collection-authority-test
   (testing "POST /api/collection/:id"

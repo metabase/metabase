@@ -258,6 +258,10 @@
 (defsetting embedding-app-origin
   (deferred-tru "Allow this origin to embed the full {0} application"
                 (application-name-for-setting-descriptions))
+  :setter     (fn [new-value]
+                (when-not (empty? new-value)
+                  (premium-features/assert-has-feature :embedding "Embedding"))
+                (setting/set-value-of-type! :string :embedding-app-origin new-value))
   :visibility :public)
 
 (defsetting enable-nested-queries
