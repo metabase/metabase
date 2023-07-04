@@ -118,16 +118,16 @@
    There are slight differences between names and ordering for the different base types."
   [column :- lib.metadata/ColumnMetadata]
   ;; The order of these clauses is important since we want to match the most relevant type
-  (condp #(lib.types.isa/isa? %2 %1) column
-    :type/PK         key-operators
-    :type/FK         key-operators
-    :type/Location   location-operators
-    :type/Temporal   temporal-operators
-    :type/Coordinate coordinate-operators
-    :type/Number     number-operators
-    :type/Text       text-operators
-    :type/TextLike   text-like-operators
-    :type/Boolean    boolean-operators
+  (condp lib.types.isa/field-type? column
+    :metabase.lib.types.constants/primary_key key-operators
+    :metabase.lib.types.constants/foreign_key key-operators
+    :metabase.lib.types.constants/location    location-operators
+    :metabase.lib.types.constants/temporal    temporal-operators
+    :metabase.lib.types.constants/coordinate  coordinate-operators
+    :metabase.lib.types.constants/number      number-operators
+    :metabase.lib.types.constants/string      text-operators
+    :metabase.lib.types.constants/string_like text-like-operators
+    :metabase.lib.types.constants/boolean     boolean-operators
     ;; default
     default-operators))
 

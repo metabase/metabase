@@ -4,12 +4,15 @@
    [filter and or not = < <= > >= not-empty case])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
@@ -220,3 +223,22 @@
    & args]
   (lib.options/ensure-uuid (into [(:short filter-operator) {} (lib.common/->op-arg column)]
                                  (map lib.common/->op-arg args))))
+
+(mu/defn filter-operator :- ::lib.schema.filter/operator
+  "Return the filter operator of the boolean expression `filter-clause`
+  at `stage-number` in `query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([query a-filter-clause]
+   (filter-operator query -1 a-filter-clause))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (let [[op _ first-arg] a-filter-clause
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         ref->col (zipmap (map lib.ref/ref columns) columns)
+         col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))]
+     (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
+                                    (lib.filter.operator/filter-operators (ref->col col-ref)))
+                      (lib.filter.operator/operator-def op)))))

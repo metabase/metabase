@@ -193,15 +193,15 @@ jobs:
           }
 
           console.log();
-          console.log("Enumerating all git tag...");
+          console.log("Enumerating all git tags...");
           const allTags = execSync("git tag -l").toString("utf-8").split("\n");
           console.log("Found total", allTags.length, "tags");
 
           console.log();
-          console.log("Filtering for", currentVersion.isOSS ? "OSS" : "EE");
+          console.log("Filtering for", currentVersion.isOSS ? "OSS" : "EE", "which excludes prerelease tags...");
           const relevantTags = allTags.filter(tag => {
-            const { prefix } = parseVersion(tag);
-            return prefix === currentVersion.prefix;
+            const { prefix, prerelease } = parseVersion(tag);
+            return !prerelease && prefix === currentVersion.prefix;
           });
           console.log("Found total", relevantTags.length, "filtered tags");
           if (relevantTags.length < 10) {
@@ -223,7 +223,7 @@ jobs:
           const isLatest = latestTag === currentTag;
           console.log();
           if (isLatest) {
-            console.log("Thus, the container image for ", currentTag, "must be marked as latest.");
+            console.log("Thus, the container image for", currentTag, "must be marked as latest.");
           } else {
             console.log("The latest container image stays as", latestTag);
             console.log("There is no need to tag the", currentTag, "container image as latest.");

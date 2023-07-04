@@ -11,9 +11,11 @@ const {
  *
  * @type {boolean}
  */
-const hasEnterpriseToken =
+const hasPremiumFeatures =
   process.env["MB_PREMIUM_EMBEDDING_TOKEN"] &&
   process.env["MB_EDITION"] === "ee";
+
+const isEnterprise = process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
@@ -98,7 +100,8 @@ const defaultConfig = {
     config.env.grepIntegrationFolder = "../../";
     config.env.grepFilterSpecs = true;
 
-    config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
+    config.env.IS_ENTERPRISE = isEnterprise;
+    config.env.HAS_PREMIUM_FEATURES = hasPremiumFeatures;
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
