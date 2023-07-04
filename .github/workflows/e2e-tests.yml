@@ -1,7 +1,7 @@
 name: E2E Tests (aggregate)
 
 # env:
-# RECORD_REPLAY_CHROMIUM_DOWNLOAD_FILE: linux-chromium-20230619-5c885a9fbef7-c3586eaaeb1d.tar.xz
+RECORD_REPLAY_CHROMIUM_DOWNLOAD_FILE: linux-chromium-20230704-9d0c94da8309-0dd39349954f.tar.xz
 # RECORD_REPLAY_DISABLE_FEATURES: "[\"record-replay\"]"
 # RECORD_REPLAY_DRIVER: /tmp/not-here
 
@@ -221,7 +221,7 @@ jobs:
           DEPLOYSENTINEL_ENABLED: 1
           CYPRESS_DEPLOYSENTINEL_ENABLED: 1
           CYPRESS_DEPLOYSENTINEL_KEY: c554175b-4bda-4378-8bb3-b1fe62ccb868
-          
+
       - name: Upload Replay.io recordings
         uses: replayio/action-upload@v0.5.0
         if: always()
