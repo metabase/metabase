@@ -9,7 +9,7 @@ describe("issue 31339", () => {
 
   it("should not show horizontal scrollbar in the popover (metabase#31339)", () => {
     openPeopleTable();
-    headerCells().filter(":contains('Password')").click();
+    cy.findAllByTestId("header-cell").filter(":contains('Password')").click();
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
@@ -30,7 +30,7 @@ describe("issue 31339", () => {
 
   it("should not show horizontal scrollbar in default picker container", () => {
     openPeopleTable();
-    headerCells().filter(":contains('Password')").click();
+    cy.findAllByTestId("header-cell").filter(":contains('Password')").click();
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
@@ -54,7 +54,3 @@ describe("issue 31339", () => {
     });
   });
 });
-
-function headerCells() {
-  return cy.findAllByTestId("header-cell");
-}
