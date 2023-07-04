@@ -21,7 +21,7 @@
                    (mt/user-http-request :rasta :put 403 "setting/embedding-app-origin"
                                          {:value "https://metabase.com"}))))))
 
-      (testing "when :embedding is disabled"
+      (testing "when :embedding is not enabled"
         (premium-features-test/with-premium-features #{}
           (testing "can't set embedding-app-origin"
             (is (= "Embedding is an enterprise feature. Please upgrade to a paid plan to use this feature."
@@ -35,3 +35,19 @@
                                   {:value ""})
             (is (= nil
                    (mt/user-http-request :crowberto :get 204 "setting/embedding-app-origin")))))))))
+
+(deftest set-app-embedding-origin-via-env-test
+  (mt/with-temp-env-var-value [mb-embedding-app-origin "https://metabase.com"]
+    (testing "getting embedding-app-origin when :embedding is not enabled return nil
+             even when the value is set via env"
+      (is (nil? (:embedding-app-origin (mt/user-http-request :crowberto :get 200 "session/properties")))))
+
+    (premium-features-test/with-premium-features #{:embedding}
+      (testing "getting session properties return the value from env"
+        (is (= "https://metabase.com"
+               (:embedding-app-origin (mt/user-http-request :crowberto :get 200 "session/properties")))))
+      (testing "getting setting key mention this key is from env"
+        (is (true? (->> (mt/user-http-request :crowberto :get 200 "setting")
+                      (filter #(= (:key %) "embedding-app-origin"))
+                      first
+                      :is_env_setting)))))))

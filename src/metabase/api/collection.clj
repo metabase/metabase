@@ -876,13 +876,13 @@
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
-  {id                                     ms/PositiveInt
-   name                                   [:maybe ms/NonBlankString]
-   color                                  [:maybe [:re collection/hex-color-regex]]
-   description                            [:maybe ms/NonBlankString]
-   archived                               [:maybe ms/BooleanValue]
-   parent_id                              [:maybe ms/PositiveInt]
-   authority_level                        collection/AuthorityLevel}
+  {id              ms/PositiveInt
+   name            [:maybe ms/NonBlankString]
+   color           [:maybe [:re collection/hex-color-regex]]
+   description     [:maybe ms/NonBlankString]
+   archived        [:maybe ms/BooleanValue]
+   parent_id       [:maybe ms/PositiveInt]
+   authority_level collection/AuthorityLevel}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that

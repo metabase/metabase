@@ -262,6 +262,11 @@
                 (when-not (empty? new-value)
                   (premium-features/assert-has-feature :embedding "Embedding"))
                 (setting/set-value-of-type! :string :embedding-app-origin new-value))
+  :getter     (fn []
+                ;; setting value can be set via env and it doesn't go through :setter
+                ;; so we put a guard in getter here to prevent setting via env
+                (when (premium-features/has-feature? :embedding)
+                  (setting/get-value-of-type :string :embedding-app-origin)))
   :visibility :public)
 
 (defsetting enable-nested-queries
