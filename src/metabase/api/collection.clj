@@ -876,7 +876,8 @@
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
-  {name                                   ms/NonBlankString
+  {id                                     ms/PositiveInt
+   name                                   [:maybe ms/NonBlankString]
    color                                  [:maybe [:re collection/hex-color-regex]]
    description                            [:maybe ms/NonBlankString]
    archived                               [:maybe ms/BooleanValue]
