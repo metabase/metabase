@@ -34,3 +34,7 @@ export const PrefixContainer = styled.div`
   align-items: center;
   color: ${color("text-medium")};
 `;
+
+export const OptionContent = styled.div`
+  word-break: break-word;
+`;
