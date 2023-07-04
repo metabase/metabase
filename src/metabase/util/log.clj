@@ -10,6 +10,14 @@
    [clojure.tools.logging.impl]
    [net.cgrand.macrovich :as macros]))
 
+;; Only in `:dev`/`:tests`: include a little bit of extra magic in the macros to enable log captures.
+(defonce ^:private enable-capturing?
+  (try
+    (require 'metabase.util.log.capture)
+    true
+    (catch Throwable _
+      false)))
+
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
   "Macro helper for [[logp]] in CLJS."
@@ -78,17 +86,23 @@
   You shouldn't have to use this directly; prefer the level-specific macros like [[info]]."
   {:arglists '([level message & more] [level throwable message & more])}
   [level x & more]
-  (macros/case
-    :cljs (glogi-logp (str *ns*) level x more)
-    :clj  (tools-logp *ns*       level x more)))
+  `(do
+     ~(when enable-capturing?
+        `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
+     ~(macros/case
+       :cljs (glogi-logp (str *ns*) level x more)
+       :clj  (tools-logp *ns*       level x more))))
 
 (defmacro logf
   "Implementation for printf-style `logf`.
   You shouldn't have to use this directly; prefer the level-specific macros like [[infof]]."
   [level x & args]
-  (macros/case
-    :cljs (glogi-logf (str *ns*) level x args)
-    :clj  (tools-logf *ns*       level x args)))
+  `(do
+     ~(when enable-capturing?
+        `(metabase.util.log.capture/capture-logf ~(str *ns*) ~level ~x ~@args))
+     ~(macros/case
+        :cljs (glogi-logf (str *ns*) level x args)
+        :clj  (tools-logf *ns*       level x args))))
 
 ;;; --------------------------------------------------- Public API ---------------------------------------------------
 (defmacro trace
