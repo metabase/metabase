@@ -3,15 +3,18 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
-import { setup } from "./common";
+import { setup, SetupOpts } from "./common";
 
-const TOKEN_FEATURES = createMockTokenFeatures({ content_management: true });
+const setupWithToken = (opts?: SetupOpts) => {
+  setup({
+    ...opts,
+    tokenFeatures: createMockTokenFeatures({ content_management: true }),
+  });
+};
 
 describe("CreateCollectionForm", () => {
   it("shows authority level controls", () => {
-    setup({
-      tokenFeatures: TOKEN_FEATURES,
-    });
+    setupWithToken();
 
     expect(screen.getByText("Collection type")).toBeInTheDocument();
     expect(screen.getByText("Regular")).toBeInTheDocument();
@@ -19,9 +22,8 @@ describe("CreateCollectionForm", () => {
   });
 
   it("does not show authority level controls when the user is not an admin", () => {
-    setup({
+    setupWithToken({
       user: createMockUser({ is_superuser: false }),
-      tokenFeatures: TOKEN_FEATURES,
     });
 
     expect(screen.queryByText("Collection type")).not.toBeInTheDocument();

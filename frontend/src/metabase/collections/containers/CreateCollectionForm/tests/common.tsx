@@ -18,15 +18,15 @@ const ROOT_COLLECTION = createMockCollection({
   can_write: true,
 });
 
-type SetupOpts = {
+export interface SetupOpts {
   user?: User;
   tokenFeatures?: TokenFeatures;
-};
+}
 
-export function setup({
+export const setup = ({
   user = createMockUser({ is_superuser: true }),
   tokenFeatures = createMockTokenFeatures(),
-}: SetupOpts = {}) {
+}: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
 
@@ -46,4 +46,4 @@ export function setup({
   });
 
   return { onCancel };
-}
+};
