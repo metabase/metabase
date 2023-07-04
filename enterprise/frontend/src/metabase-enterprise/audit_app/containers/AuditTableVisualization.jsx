@@ -117,6 +117,7 @@ export default class AuditTableVisualization extends React.Component {
         />
       );
     }
+
     return (
       <table className="ContentTable">
         <thead>
