@@ -119,14 +119,7 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const {
-    isRunning,
-    isLoadingComplete,
-    dashboard,
-    closeDashboard,
-    isEditing,
-    isDirty,
-  } = props;
+  const { isRunning, isLoadingComplete, dashboard, isEditing, isDirty } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -136,7 +129,10 @@ const DashboardApp = props => {
 
   const [requestPermission, showNotification] = useWebNotification();
 
-  useUnmount(props.reset);
+  useUnmount(() => {
+    dispatch(dashboardActions.reset());
+    dispatch(dashboardActions.closeDashboard());
+  });
 
   const slowToastId = useUniqueId();
   useBeforeUnload(isEditing && isDirty);
@@ -188,10 +184,6 @@ const DashboardApp = props => {
   useLoadingTimer(isRunning, {
     timer: DASHBOARD_SLOW_TIMEOUT,
     onTimeout,
-  });
-
-  useUnmount(() => {
-    closeDashboard();
   });
 
   return (
