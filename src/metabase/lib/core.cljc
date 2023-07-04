@@ -198,9 +198,9 @@
    with-native-query
    template-tags
    with-template-tags
-   requires-native-collection?
-   native-collection
-   with-native-collection
+   required-native-extras
+   native-extras
+   with-native-extras
    with-different-database
    extract-template-tags]
   [lib.order-by

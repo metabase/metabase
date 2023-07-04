@@ -556,29 +556,29 @@
   [a-query]
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
 
-(defn ^:export does-require-native-collection
-  "Returns whether this database requires a native colletion."
+(defn ^:export required-native-extras
+  "Returns whether the extra keys required by the database."
   [database-id metadata]
-  (lib.core/requires-native-collection? (metadataProvider database-id metadata)))
-
-(defn ^:export with-native-collection
-  "Changes the db collection to run this query against.
-   The first stage must be a native type. The database must support `native-specified-collection`"
-  [a-query collection-name]
-  (lib.core/with-native-collection a-query collection-name))
-
-(defn ^:export native-collection
-  "Returns the db collection associated with this query."
-  [a-query]
-  (lib.core/native-collection a-query))
+  (to-array (lib.core/required-native-extras (metadataProvider database-id metadata))))
 
 (defn ^:export with-different-database
   "Changes the database for this query. The first stage must be a native type.
-   A collection-name must be provided if the new database requires it."
+   Native extras must be provided if the new database requires it."
   ([a-query database-id metadata]
    (with-different-database a-query database-id metadata nil))
-  ([a-query database-id metadata collection-name]
-   (lib.core/with-different-database a-query (metadataProvider database-id metadata) collection-name)))
+  ([a-query database-id metadata native-extras]
+   (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
+
+(defn ^:export with-native-extras
+  "Updates the extras required for the db to run this query.
+   The first stage must be a native type. Will ignore extras not in `required-native-extras`"
+  [a-query native-extras]
+  (lib.core/with-native-extras a-query (js->clj native-extras :keywordize-keys true)))
+
+(defn ^:export native-extras
+  "Returns the extra keys for native queries associated with this query."
+  [a-query]
+  (clj->js (lib.core/native-extras a-query)))
 
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric

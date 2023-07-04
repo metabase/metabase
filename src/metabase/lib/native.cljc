@@ -13,7 +13,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private TemplateTag
   [:map
@@ -139,43 +140,39 @@
 (defn- assert-native-query! [stage]
   (assert (= (:lib/type stage) :mbql.stage/native) (i18n/tru "Must be a native query")))
 
-(mu/defn requires-native-collection? :- :boolean
-  "Returns whether this metadata-provider or query requires a native colletion."
+(def ^:private all-native-extra-keys
+  #{:collection})
+
+(mr/def ::native-extras
+  [:map
+   [:collection {:optional true} ::common/non-blank-string]])
+
+(mu/defn required-native-extras :- set?
+  "Returns the extra keys that are required for this database's native queries."
   [metadata-provider :- lib.metadata/MetadataProviderable]
-  (boolean (get-in (lib.metadata/database metadata-provider) [:features :native-requires-specified-collection])))
+  (let [db (lib.metadata/database metadata-provider)]
+   (cond-> #{}
+    (get-in db [:features :native-requires-specified-collection])
+    (conj :collection))))
 
-(mu/defn with-native-collection :- ::lib.schema/query
-  "Changes the db collection to run this query against.
-   The first stage must be a native type. The database must support `native-specified-collection`"
+(mu/defn with-native-extras :- ::lib.schema/query
+  "Updates the extras required for the db to run this query.
+   The first stage must be a native type. Will ignore extras not in `required-native-extras`"
   [query :- ::lib.schema/query
-   collection-name :- ::common/non-blank-string]
-  (assert (requires-native-collection? query)
-          (i18n/tru "Database does not support collection"))
-  (lib.util/update-query-stage
-    query 0
-    (fn [stage]
-      (assert-native-query! (lib.util/query-stage query 0))
-      (assoc stage :collection collection-name))))
-
-(mu/defn native-collection :- [:maybe ::common/non-blank-string]
-  "Returns the db collection associated with this query."
-  [query :- ::lib.schema/query]
-  (:collection (lib.util/query-stage query 0)))
-
-(defn- update-collection!
-  "Updates the collection, setting or clearing based on db feature and asserting it is set when required."
-  [query collection-name]
-  (if (requires-native-collection? query)
-    (do
-      (assert (or collection-name (native-collection query)) (i18n/tru "Database requires collection"))
-      (cond-> query
-        collection-name (with-native-collection collection-name)))
-    (do
-      (assert (nil? collection-name) (i18n/tru "Database does not support collection"))
-      (lib.util/update-query-stage
-        query 0
-        (fn [stage]
-          (dissoc stage :collection))))))
+   native-extras :- [:maybe ::native-extras]]
+  (let [required-extras (required-native-extras query)]
+    (lib.util/update-query-stage
+      query 0
+      (fn [stage]
+        (let [extras-to-remove (set/difference all-native-extra-keys required-extras)
+              stage-without-old-extras (apply dissoc stage extras-to-remove)
+              result (merge stage-without-old-extras (select-keys native-extras required-extras))
+              missing-keys (set/difference required-extras (set (keys native-extras)))]
+          (assert-native-query! (lib.util/query-stage query 0))
+          (assert (empty? missing-keys)
+                  (i18n/tru "Missing extra, required keys for native query: {0}"
+                            (pr-str missing-keys)))
+          result)))))
 
 (mu/defn native-query :- ::lib.schema/query
   "Create a new native query.
@@ -188,7 +185,7 @@
   ([metadata-providerable :- lib.metadata/MetadataProviderable
     inner-query :- ::common/non-blank-string
     results-metadata :- [:maybe lib.metadata/StageMetadata]
-    collection-name :- [:maybe ::common/non-blank-string]]
+    native-extras :- [:maybe ::native-extras]]
    (let [tags (extract-template-tags inner-query)]
      (-> (lib.query/query-with-stages metadata-providerable
                                       [(-> {:lib/type           :mbql.stage/native
@@ -196,7 +193,26 @@
                                             :template-tags      tags
                                             :native             inner-query}
                                            lib.options/ensure-uuid)])
-         (update-collection! collection-name)))))
+         (with-native-extras native-extras)))))
+
+(mu/defn with-different-database :- ::lib.schema/query
+  "Changes the database for this query. The first stage must be a native type.
+   Native extras must be provided if the new database requires it."
+  ([query :- ::lib.schema/query
+    metadata-provider :- lib.metadata/MetadataProviderable]
+   (with-different-database query metadata-provider nil))
+  ([query :- ::lib.schema/query
+    metadata-provider :- lib.metadata/MetadataProviderable
+    native-extras :- [:maybe ::native-extras]]
+   (assert-native-query! (lib.util/query-stage query 0))
+   ;; Changing the database should also clean up template tags, see #31926
+   (-> (lib.query/query-with-stages metadata-provider (:stages query))
+       (with-native-extras native-extras))))
+
+(mu/defn native-extras :- [:maybe ::native-extras]
+  "Returns the extra keys for native queries associated with this query."
+  [query :- ::lib.schema/query]
+  (not-empty (select-keys (lib.util/query-stage query 0) (required-native-extras query))))
 
 (mu/defn with-native-query :- ::lib.schema/query
   "Update the raw native query, the first stage must already be a native type.
@@ -232,17 +248,3 @@
   "Returns the native query's template tags"
   [query :- ::lib.schema/query]
   (:template-tags (lib.util/query-stage query 0)))
-
-(mu/defn with-different-database :- ::lib.schema/query
-  "Changes the database for this query. The first stage must be a native type.
-   A collection-name must be provided if the new database requires it."
-  ([query :- ::lib.schema/query
-    metadata-provider :- lib.metadata/MetadataProviderable]
-   (with-different-database query metadata-provider nil))
-  ([query :- ::lib.schema/query
-    metadata-provider :- lib.metadata/MetadataProviderable
-    collection-name :- [:maybe ::common/non-blank-string]]
-   (assert-native-query! (lib.util/query-stage query 0))
-   ;; Changing the database should also clean up template tags, see #31926
-   (-> (lib.query/query-with-stages metadata-provider (:stages query))
-       (update-collection! collection-name))))
