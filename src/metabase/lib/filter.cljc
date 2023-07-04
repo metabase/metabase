@@ -4,11 +4,14 @@
    [filter and or not = < <= > >= not-empty case])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
@@ -241,14 +244,14 @@
              (operator-def :is-null :is-empty)
              (operator-def :not-null :not-empty)])]
     ;; The order of these clauses is important since we want to match the most relevant type
-    (condp #(lib.types.isa/isa? %2 %1) column
-      :type/PK
+    (condp lib.types.isa/field-type? column
+      :metabase.lib.types.constants/primary_key
       (key-operators)
 
-      :type/FK
+      :metabase.lib.types.constants/foreign_key
       (key-operators)
 
-      :type/Location
+      :metabase.lib.types.constants/location
       [(operator-def :=)
        (operator-def :!=)
        (operator-def :is-empty)
@@ -258,7 +261,7 @@
        (operator-def :starts-with)
        (operator-def :ends-with)]
 
-      :type/Temporal
+      :metabase.lib.types.constants/temporal
       [(operator-def :!= :excludes)
        (operator-def :=)
        (operator-def :< :before)
@@ -267,7 +270,7 @@
        (operator-def :is-null :is-empty)
        (operator-def :not-null :not-empty)]
 
-      :type/Coordinate
+      :metabase.lib.types.constants/coordinate
       [(operator-def :=)
        (operator-def :!=)
        (operator-def :inside nil)
@@ -277,7 +280,7 @@
        (operator-def :>=)
        (operator-def :<=)]
 
-      :type/Number
+      :metabase.lib.types.constants/number
       [(operator-def := :equal-to)
        (operator-def :!= :not-equal-to)
        (operator-def :>)
@@ -288,7 +291,7 @@
        (operator-def :is-null :is-empty)
        (operator-def :not-null :not-empty)]
 
-      :type/Text
+      :metabase.lib.types.constants/string
       [(operator-def :=)
        (operator-def :!=)
        (operator-def :contains)
@@ -300,7 +303,7 @@
        (operator-def :starts-with)
        (operator-def :ends-with)]
 
-      :type/TextLike
+      :metabase.lib.types.constants/string_like
       [(operator-def :=)
        (operator-def :!=)
        (operator-def :is-null)
@@ -308,7 +311,7 @@
        (operator-def :is-empty)
        (operator-def :not-empty)]
 
-      :type/Boolean
+      :metabase.lib.types.constants/boolean
       [(operator-def :=)
        (operator-def :is-null :is-empty)
        (operator-def :not-null :not-empty)]
@@ -368,3 +371,22 @@
    & args]
   (lib.options/ensure-uuid (into [(:short filter-operator) {} (lib.common/->op-arg column)]
                                  (map lib.common/->op-arg args))))
+
+(mu/defn filter-operator :- ::lib.schema.filter/operator
+  "Return the filter operator of the boolean expression `filter-clause`
+  at `stage-number` in `query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([query a-filter-clause]
+   (filter-operator query -1 a-filter-clause))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (let [[op _ first-arg] a-filter-clause
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         ref->col (zipmap (map lib.ref/ref columns) columns)
+         col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))]
+     (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
+                                    (filter-operators (ref->col col-ref)))
+                      (operator-def op)))))
