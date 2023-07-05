@@ -19,7 +19,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
-import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
+import { addRemappings } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import {
   fetchCardParameterValues,
@@ -59,7 +59,7 @@ const optionsMessagePropTypes = {
 
 const mapDispatchToProps = {
   addRemappings,
-  fetchFieldValues,
+  fetchFieldValues: Fields.objectActions.fetchFieldValues,
   fetchParameterValues,
   fetchCardParameterValues,
   fetchDashboardParameterValues,
@@ -180,16 +180,23 @@ function FieldValuesWidgetInner({
 
   const fetchFieldValues = async query => {
     if (query == null) {
-      await Promise.all(
-        getNonVirtualFields(fields).map(field =>
-          fetchFieldValuesProp(field.id),
-        ),
+      const nonVirtualFields = getNonVirtualFields(fields);
+
+      const results = await Promise.all(
+        nonVirtualFields.map(field => fetchFieldValuesProp({ id: field.id })),
       );
-      // when field values are updated, new fields are created,
-      // that's why we need to reference them as this.props.fields here
-      return dedupeValues(
-        getNonVirtualFields(fields).map(field => field.values),
+
+      // extract the field values from the API response(s)
+      // the entity loader has inconsistent return structure, so we have to handle both
+      const fieldValues = nonVirtualFields.map(
+        (field, index) =>
+          results[index]?.payload?.values ??
+          Fields.selectors.getFieldValues(results[index]?.payload, {
+            entityId: field.id,
+          }),
       );
+
+      return dedupeValues(fieldValues);
     } else {
       const cancelDeferred = defer();
       const cancelled = cancelDeferred.promise;
