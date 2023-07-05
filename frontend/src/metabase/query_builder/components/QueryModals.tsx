@@ -36,7 +36,7 @@ import {
   QueryBuilderUIControls,
   State,
 } from "metabase-types/store";
-import { getOriginalQuestionWithParameters } from "metabase/query_builder/selectors";
+import { getQuestionWithParameters } from "metabase/query_builder/selectors";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
@@ -46,7 +46,7 @@ const mapDispatchToProps = {
 };
 
 const mapStateToProps = (state: State) => ({
-  originalQuestionWithParameters: getOriginalQuestionWithParameters(state),
+  questionWithParameters: getQuestionWithParameters(state) as Question,
 });
 
 type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
@@ -62,7 +62,7 @@ interface QueryModalsProps {
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
   originalQuestion: Question;
-  originalQuestionWithParameters: Question | undefined;
+  questionWithParameters: Question;
   card: Card;
   onCreate: (question: Question) => void;
   onSave: (question: Question, config?: { rerunQuery: boolean }) => void;
@@ -105,7 +105,7 @@ class QueryModals extends Component<QueryModalsProps> {
       modal,
       modalContext,
       question,
-      originalQuestion,
+      questionWithParameters,
       initialCollectionId,
       onCloseModal,
       onOpenModal,
@@ -297,7 +297,7 @@ class QueryModals extends Component<QueryModalsProps> {
               }}
               copy={async formValues => {
                 const object = await this.props.onCreate(
-                  originalQuestion
+                  questionWithParameters
                     .setDisplayName(formValues.name)
                     .setCollectionId(formValues.collection_id)
                     .setDescription(formValues.description || null),

@@ -314,7 +314,7 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getOriginalQuestionWithParameters = createSelector(
+export const getQuestionWithParameters = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) => {
     if (!card || !metadata) {
@@ -324,7 +324,7 @@ export const getOriginalQuestionWithParameters = createSelector(
   },
 );
 export const getQuestion = createSelector(
-  [getOriginalQuestionWithParameters, getQueryBuilderMode],
+  [getQuestionWithParameters, getQueryBuilderMode],
   (question, queryBuilderMode) => {
     if (!question) {
       return;
