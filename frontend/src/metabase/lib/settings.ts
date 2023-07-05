@@ -377,13 +377,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated
-   */
-  isPaidPlan() {
-    return this.isHosted() || this.isEnterprise();
-  }
-
-  /**
    * @deprecated use getSetting(state, "is-metabot-enabled")
    */
   isMetabotEnabled() {
