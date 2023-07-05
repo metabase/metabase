@@ -4,7 +4,6 @@
    [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.test :as mt]
