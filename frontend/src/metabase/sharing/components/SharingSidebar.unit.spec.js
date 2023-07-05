@@ -1,97 +1,90 @@
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockDashboard,
-  createMockActionDashboardCard,
-  createMockDashboardOrderedCard,
-  createMockUser,
-  createMockCard,
-} from "metabase-types/api/mocks";
+import { screen } from "__support__/ui";
 
-import SharingSidebar from "./SharingSidebar";
-
-const dashcard = createMockDashboardOrderedCard({ name: "dashcard" });
-const actionDashcard = createMockActionDashboardCard({
-  id: 2,
-  name: "actionDashcard",
-});
-const linkDashcard = createMockActionDashboardCard({
-  id: 3,
-  name: "linkDashcard",
-  card: createMockCard({ display: "link" }),
-});
-
-const user = createMockUser();
-
-const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, linkDashcard],
-});
-
-function setup() {
-  fetchMock.get("path:/api/pulse/form_input", {
-    channels: {
-      email: {
-        type: "email",
-        name: "Email",
-        allows_recipients: true,
-        recipients: ["user", "email"],
-        schedules: ["hourly"],
-        configured: true,
-      },
-    },
-  });
-
-  fetchMock.get("path:/api/user", {
-    data: [user],
-  });
-
-  fetchMock.get(
-    { url: `path:/api/pulse`, query: { dashboard_id: dashboard.id } },
-    [],
-  );
-
-  fetchMock.post("path:/api/pulse/test", 200);
-
-  renderWithProviders(<SharingSidebar dashboard={dashboard} />, {
-    storeInitialState: {
-      dashboard: {
-        dashboardId: dashboard.id,
-        dashcards: {
-          [dashcard.id]: dashcard,
-          [actionDashcard.id]: actionDashcard,
-          [linkDashcard.id]: linkDashcard,
-        },
-        dashboards: {
-          [dashboard.id]: {
-            ...dashboard,
-            ordered_cards: [dashcard.id, actionDashcard.id, linkDashcard.id],
-          },
-        },
-      },
-    },
-  });
-}
+import { setup, dashcard, user } from "./testSetup";
 
 describe("SharingSidebar", () => {
-  it("should filter out actions and links when sending a test subscription", async () => {
-    setup();
+  it("should have options for email and slack", async () => {
+    setup({ email: true });
 
-    userEvent.click(await screen.findByText("Email it"));
-    userEvent.click(
-      await screen.findByPlaceholderText("Enter user names or email addresses"),
-    );
+    expect(await screen.findByText("Email it")).toBeInTheDocument();
+    expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
+  });
 
-    userEvent.click(
-      await screen.findByText(`${user.first_name} ${user.last_name}`),
-    );
+  it("should disable slack option when slack is not configured", async () => {
+    setup({ email: true, slack: false });
 
-    userEvent.click(await screen.findByText("Send email now"));
+    expect(await screen.findByText(/First, you'll have to/i)).toBeVisible();
+    expect(await screen.findByText(/configure Slack/i)).toBeVisible();
+  });
 
-    const payload = await fetchMock
-      .lastCall("path:/api/pulse/test")
-      .request.json();
-    expect(payload.cards).toHaveLength(1);
-    expect(payload.cards[0].id).toEqual(dashcard.id);
+  it("should disable email option when email is not configured", async () => {
+    setup({ email: false, slack: true });
+
+    expect(await screen.findByText(/you'll need to/i)).toBeVisible();
+    expect(await screen.findByText(/set up Email/i)).toBeVisible();
+    expect(await screen.findByText(/first/i)).toBeVisible();
+  });
+
+  describe("Slack Subscription sidebar", () => {
+    it("should not show advanced filter options in OSS", async () => {
+      setup();
+      userEvent.click(await screen.findByText("Send it to Slack"));
+
+      await screen.findByText("Send this dashboard to Slack");
+
+      expect(
+        screen.getByText(
+          /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
+        ),
+      ).toBeVisible();
+
+      expect(
+        screen.queryByText(/set filter values for when this gets sent/i),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Email Subscription sidebar", () => {
+    it("should not show advanced filter options in OSS", async () => {
+      setup();
+      userEvent.click(await screen.findByText("Email it"));
+
+      await screen.findByText("Email this dashboard");
+
+      expect(
+        screen.getByText(
+          /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
+        ),
+      ).toBeVisible();
+
+      expect(
+        screen.queryByText(/set filter values for when this gets sent/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should filter out actions and links when sending a test subscription", async () => {
+      setup();
+
+      userEvent.click(await screen.findByText("Email it"));
+      userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+
+      userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+
+      userEvent.click(await screen.findByText("Send email now"));
+
+      const payload = await fetchMock
+        .lastCall("path:/api/pulse/test")
+        .request.json();
+      expect(payload.cards).toHaveLength(1);
+      expect(payload.cards[0].id).toEqual(dashcard.id);
+    });
   });
 });
