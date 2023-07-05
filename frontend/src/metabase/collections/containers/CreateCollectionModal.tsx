@@ -11,7 +11,8 @@ import * as Urls from "metabase/lib/urls";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import CreateCollectionForm, {
+import {
+  CreateCollectionForm,
   CreateCollectionFormOwnProps,
 } from "../components/CreateCollectionForm";
 
