@@ -9,7 +9,6 @@ import {
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import Modal from "metabase/components/Modal";
-import MetabaseSettings from "metabase/lib/settings";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
@@ -17,7 +16,7 @@ import CollectionRow from "./components/CollectionRow";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
 import CollectionOptionsButton from "./components/CollectionOptionsButton";
 
-if (MetabaseSettings.enhancementsEnabled()) {
+if (hasPremiumFeature("content_management")) {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(snippetSidebar => ({
     icon: "folder",
     name: t`New folder`,
@@ -73,7 +72,7 @@ PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
 
 PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
 
-if (hasPremiumFeature("advanced_permissions")) {
+if (hasPremiumFeature("content_management")) {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
     const collection = snippetSidebar.props.snippetCollection;
     return (
