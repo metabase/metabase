@@ -4,7 +4,7 @@ import { setup, SetupOpts } from "./setup";
 const setupEnterprise = (opts?: SetupOpts) => {
   setup({
     ...opts,
-    hasPlugins: true,
+    hasEnterprisePlugins: true,
   });
 };
 

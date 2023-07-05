@@ -21,18 +21,18 @@ const ROOT_COLLECTION = createMockCollection({
 export interface SetupOpts {
   user?: User;
   tokenFeatures?: TokenFeatures;
-  hasPlugins?: boolean;
+  hasEnterprisePlugins?: boolean;
 }
 
 export const setup = ({
   user = createMockUser({ is_superuser: true }),
   tokenFeatures = createMockTokenFeatures(),
-  hasPlugins = false,
+  hasEnterprisePlugins = false,
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
 
-  if (hasPlugins) {
+  if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
   setupCollectionsEndpoints({

@@ -9,7 +9,7 @@ const setupPremium = (opts?: SetupOpts) => {
   setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({ content_management: true }),
-    hasPlugins: true,
+    hasEnterprisePlugins: true,
   });
 };
 
