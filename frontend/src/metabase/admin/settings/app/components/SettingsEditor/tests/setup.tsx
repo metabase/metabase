@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { IndexRedirect, Route } from "react-router";
 import { SettingDefinition, Settings, TokenFeatures } from "metabase-types/api";
 import {
