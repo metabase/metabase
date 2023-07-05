@@ -8,6 +8,7 @@ import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginH
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
 
 import {
   sendTestEmail,
@@ -30,6 +31,7 @@ class SettingsEmailForm extends Component {
 
   static propTypes = {
     elements: PropTypes.array.isRequired,
+    isPaidPlan: PropTypes.bool,
     sendTestEmail: PropTypes.func.isRequired,
     updateEmailSettings: PropTypes.func.isRequired,
     clearEmailSettings: PropTypes.func.isRequired,
@@ -81,7 +83,7 @@ class SettingsEmailForm extends Component {
 
   render() {
     const { sendingEmail } = this.state;
-    const { elements } = this.props;
+    const { elements, isPaidPlan } = this.props;
     const visibleElements = elements.filter(setting => !setting.getHidden?.());
     return (
       <EmailFormRoot>
@@ -113,7 +115,7 @@ class SettingsEmailForm extends Component {
             </Fragment>
           )}
         />
-        {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
+        {!MetabaseSettings.isHosted() && !isPaidPlan && (
           <MarginHostingCTA tagline={t`Have your email configured for you.`} />
         )}
       </EmailFormRoot>
@@ -121,8 +123,14 @@ class SettingsEmailForm extends Component {
   }
 }
 
-export default connect(null, {
+const mapStateToProps = state => ({
+  isPaidPlan: getIsPaidPlan(state),
+});
+
+const mapDispatchToProps = {
   sendTestEmail,
   updateEmailSettings,
   clearEmailSettings,
-})(SettingsEmailForm);
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(SettingsEmailForm);

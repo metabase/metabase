@@ -147,6 +147,7 @@
    filterable-columns
    filterable-column-operators
    filter-clause
+   filter-operator
    and
    or
    not
@@ -218,7 +219,8 @@
    remove-clause
    remove-join
    rename-join
-   replace-clause]
+   replace-clause
+   replace-join]
   [lib.stage
    append-stage
    drop-stage]
