@@ -174,6 +174,7 @@ export default function DefaultPicker({
 
   return (
     <DefaultPickerContainer
+      data-testid="default-picker-container"
       limitHeight
       className={cx(className, "PopoverBody--marginBottom")}
     >
