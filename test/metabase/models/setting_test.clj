@@ -886,18 +886,22 @@
   (testing "Settings can be disabled"
     (testing "With no default returns nil"
       (is (nil? (test-enabled-setting-no-default)))
-      (testing "Updating the value succeeds but still get nil because no default"
-        (test-enabled-setting-default! "a value")
-        (is (nil? (test-enabled-setting-no-default)))))
+      (testing "Updating the value throws an exception"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting test-enabled-setting-no-default is not enabled"
+             (test-enabled-setting-no-default! "a value")))))
     (testing "Returns default value"
       (is (= "setting-default" (test-enabled-setting-default)))
-      (testing "Updating the value succeeds but still get default"
-        (test-enabled-setting-default! "non-default-value")
-        (is (= "setting-default" (test-enabled-setting-default))))))
-  (testing "When enabled get the value"
-    (test-enabled-setting-default! "custom")
-    (test-enabled-setting-no-default! "custom")
+      (testing "Updating the value throws an exception"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting test-enabled-setting-default is not enabled"
+             (test-enabled-setting-default! "a value"))))))
+  (testing "When enabled, the setting can be read and written as normal"
     (binding [*enabled?* true]
+      (test-enabled-setting-default! "custom")
+      (test-enabled-setting-no-default! "custom")
       (is (= "custom" (test-enabled-setting-default)))
       (is (= "custom" (test-enabled-setting-no-default))))))
 

@@ -296,8 +296,13 @@
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
    :on-change   (s/maybe clojure.lang.IFn)
 
-   ;; optional fn called whether to allow the getter to return a value. Useful for ensuring premium settings are not available to
-   :enabled?    (s/maybe clojure.lang.IFn)})
+   ;; If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
+   ;; the setting will behave the same as if `enabled?` returns `false` (see below).
+   :feature     (s/maybe s/Keyword)
+
+   ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
+   ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
+   :enabled?    clojure.lang.IFn})
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -406,6 +411,14 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
+(defn- has-feature?
+  [feature]
+  (u/ignore-exceptions
+   (classloader/require 'metabase.public-settings.premium-features))
+  (if-let [has-feature? (resolve 'metabase.public-settings.premium-features/has-feature?)]
+    (has-feature? feature)
+    false))
+
 (defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
   Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
@@ -416,7 +429,7 @@
          (classloader/require 'metabase-enterprise.advanced-permissions.common
                               'metabase.public-settings.premium-features))
         (if-let [current-user-has-application-permissions?
-                 (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
+                 (and (has-feature? :advanced-permissions)
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
           (current-user-has-application-permissions? :setting)
           false))))
@@ -614,14 +627,15 @@
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
   if any."
   [setting-definition-or-name]
-  (let [{:keys [cache? getter enabled? default]} (resolve-setting setting-definition-or-name)
-        disable-cache?                           (not cache?)]
-    (if (or (nil? enabled?) (enabled?))
-      (if (= *disable-cache* disable-cache?)
-        (getter)
-        (binding [*disable-cache* disable-cache?]
-          (getter)))
-      default)))
+  (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
+        disable-cache?                                   (not cache?)]
+    (if (or (and feature (not (has-feature? feature)))
+            (and enabled? (not (enabled?))))
+       default
+       (if (= *disable-cache* disable-cache?)
+         (getter)
+         (binding [*disable-cache* disable-cache?]
+           (getter))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -798,8 +812,13 @@
 
     (mandrill-api-key \"xyz123\")"
   [setting-definition-or-name new-value]
-  (let [{:keys [setter cache?], :as setting} (resolve-setting setting-definition-or-name)
-        name                                 (setting-name setting)]
+  (let [{:keys [setter cache? enabled? feature], :as setting} (resolve-setting setting-definition-or-name)
+        name                                                  (setting-name setting)]
+    (def enabled? enabled?)
+    (when (and feature (not (has-feature? feature)))
+      (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
+    (when (and enabled? (not (enabled?)))
+      (throw (ex-info (tru "Setting {0} is not enabled" name) setting)))
     (when-not (current-user-can-access-setting? setting)
       (throw (ex-info (tru "You do not have access to the setting {0}" name) setting)))
     (when (= setter :none)
@@ -833,10 +852,11 @@
                  :visibility     :admin
                  :sensitive?     false
                  :cache?         true
+                 :feature        nil
                  :database-local :never
                  :user-local     :never
                  :deprecated     nil
-                 :enabled?       nil}
+                 :enabled?       (constantly true)}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
