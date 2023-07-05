@@ -2,9 +2,12 @@
   (:require
    [metabase.public-settings.premium-features :refer [defenterprise]]))
 
-(defenterprise db-cache-ttl
-  "Fetches the cache TTL set for a given database. Since this is EE-only functionality, the corresponding OSS function
-  always returns nil."
+(defenterprise granular-ttl
+  "Returns the cache ttl (in seconds), by first checking whether there is a stored value for the database,
+      dashboard, or card (in that order of increasing preference)."
   :feature :advanced-config
-  [database]
-  (:cache_ttl database))
+  [card dashboard database]
+  (let [ttls              [(:cache_ttl card) (:cache_ttl dashboard) (:cache_ttl database)]
+        most-granular-ttl (first (filter some? ttls))]
+    (and most-granular-ttl ; stored TTLs are in hours; convert to seconds
+         (* most-granular-ttl 3600))))
