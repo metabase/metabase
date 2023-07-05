@@ -42,11 +42,6 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
-(defenterprise db-cache-ttl
-  "Fetches the cache TTL set for the given database. Returns nil on OSS."
-  metabase-enterprise.advanced-config.caching
-  [_database])
-
 (defn- ttl-hierarchy
   "Returns the cache ttl (in seconds), by first checking whether there is a stored value for the database,
   dashboard, or card (in that order of increasing preference), and if all of those don't exist, then the
