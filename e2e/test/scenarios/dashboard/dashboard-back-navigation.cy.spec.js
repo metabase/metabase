@@ -14,6 +14,7 @@ import {
   summarize,
   visitDashboard,
   visualize,
+  filterWidget,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -258,6 +259,28 @@ describe(
       getDashboardCard().within(() => {
         cy.findByText("Sleep card").should("be.visible");
       });
+    });
+
+    it("should preserve filter value when navigating between the dashboard and the question", () => {
+      createDashboardWithSlowCard();
+      cy.get("@dashboardId").then(visitDashboard);
+
+      filterWidget().findByPlaceholderText("sleep").type("5{enter}");
+
+      getDashboardCard().within(() => {
+        cy.findByText("Sleep card").click();
+        cy.wait("@card");
+      });
+
+      filterWidget().findByPlaceholderText("sleep").should("have.value", "5");
+
+      queryBuilderHeader().findByLabelText("Back to Sleep dashboard").click();
+
+      getDashboardCard().within(() => {
+        cy.findByText("Sleep card").should("be.visible");
+      });
+
+      filterWidget().findByPlaceholderText("sleep").should("have.value", "5");
     });
   },
 );
