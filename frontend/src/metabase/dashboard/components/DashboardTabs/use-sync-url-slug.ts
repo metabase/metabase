@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { push, replace } from "react-router-redux";
 import type { Location } from "history";
@@ -52,6 +52,8 @@ function useUpdateURLSlug({ location }: { location: Location }) {
 }
 
 export function useSyncURLSlug({ location }: { location: Location }) {
+  const [tabInitialized, setTabInitialized] = useState(false);
+
   const slug = parseSlug({ location });
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
@@ -71,25 +73,30 @@ export function useSyncURLSlug({ location }: { location: Location }) {
     }
 
     const tabSelected = selectedTabId !== prevSelectedTabId;
-    const tabInitialized = selectedTabId != null && prevSelectedTabId == null;
+    // const tabInitialized = selectedTabId != null && prevSelectedTabId == null;
     const tabRenamed =
       tabs.find(t => t.id === selectedTabId)?.name !==
       prevTabs?.find(t => t.id === selectedTabId)?.name;
     const penultimateTabDeleted = tabs.length === 1 && prevTabs?.length === 2;
 
     if (tabSelected || tabRenamed || penultimateTabDeleted) {
-      updateURLSlug({
-        slug:
-          tabs.length <= 1
-            ? ""
-            : getSlug({
-                tabId: selectedTabId,
-                name: tabs.find(t => t.id === selectedTabId)?.name,
-              }),
-        shouldReplace: tabInitialized,
-      });
+      const newSlug =
+        tabs.length <= 1
+          ? ""
+          : getSlug({
+              tabId: selectedTabId,
+              name: tabs.find(t => t.id === selectedTabId)?.name,
+            });
+      if (newSlug) {
+        updateURLSlug({
+          slug: newSlug,
+          shouldReplace: !tabInitialized,
+        });
+        setTabInitialized(true);
+      }
     }
   }, [
+    tabInitialized,
     slug,
     selectedTabId,
     tabs,
