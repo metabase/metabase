@@ -434,6 +434,10 @@ class QuestionInner {
     return this.setDisplay("table");
   }
 
+  setDefaultQuery() {
+    return this.query().setDefaultQuery().question();
+  }
+
   settings(): VisualizationSettings {
     return (this._card && this._card.visualization_settings) || {};
   }
