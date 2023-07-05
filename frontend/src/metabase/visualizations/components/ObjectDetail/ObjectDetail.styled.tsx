@@ -54,8 +54,11 @@ export const CloseButton = styled.div`
   margin-left: 1rem;
   padding-left: 1rem;
   border-left: 1px solid ${color("border")};
+
   ${breakpointMinMedium} {
-    display: none;
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
   }
 `;
 
