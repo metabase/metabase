@@ -59,6 +59,11 @@ class Database {
     return Object.fromEntries(this.getTables().map(table => [table.id, table]));
   }
 
+  getFields() {
+    const tables = this.getTables();
+    return tables.flatMap(table => table.fields);
+  }
+
   // @deprecated: use tablesLookup
   get tables_lookup() {
     return this.tablesLookup();
