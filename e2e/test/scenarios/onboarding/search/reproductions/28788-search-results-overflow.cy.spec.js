@@ -3,17 +3,10 @@ import { restore } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
-const markdownDescription = `This is a complex query built using SQL.
-
-You can reference other questions (or models) and add parameters to make your question interactive.
-
-More on: https://www.metabase.com/docs/latest/questions/native-editor/writing-sql
-`;
-
 const questionDetails = {
   name: "28788",
   dataset: true,
-  description: markdownDescription,
+  description: "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789",
   query: {
     "source-table": PEOPLE_ID,
   },
