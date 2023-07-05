@@ -8,8 +8,6 @@ chai.Assertion.addProperty("scrollableHorizontally", function () {
     const horizontalScrollbarHeight = offsetHeight - clientHeight - borderWidth;
     const isHorizontalScrollbarVisible = horizontalScrollbarHeight > 0;
 
-    console.log({ horizontalScrollbarHeight, isHorizontalScrollbarVisible });
-
     this.assert(
       isHorizontalScrollbarVisible,
       "expected #{this} to be scrollable horizontally",
