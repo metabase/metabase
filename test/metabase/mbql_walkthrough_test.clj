@@ -8,10 +8,10 @@
    [clojure.core.async :as a]
    [clojure.math.numeric-tower :as math]
    [clojure.test :refer :all]
+   [metabase.models.card :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.test :as mt]
-   [metabase.models.card :refer [Card]]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn full-join-orders-test-query
