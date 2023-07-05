@@ -343,11 +343,10 @@ const draftParameterValues = handleActions(
       next: (
         state,
         { payload: { dashboard, parameterValues, preserveParameters } },
-      ) => {
-        return preserveParameters && !dashboard.auto_apply_filters
+      ) =>
+        preserveParameters && !dashboard.auto_apply_filters
           ? state
-          : parameterValues;
-      },
+          : parameterValues,
     },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value } }) =>
