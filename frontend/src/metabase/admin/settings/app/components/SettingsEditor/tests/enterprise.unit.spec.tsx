@@ -25,6 +25,7 @@ describe("SettingsEditor", () => {
       });
 
       expect(await screen.findByText("Full-app embedding")).toBeInTheDocument();
+      expect(screen.getByText(/some of our paid plans/)).toBeInTheDocument();
       expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
     });
   });
