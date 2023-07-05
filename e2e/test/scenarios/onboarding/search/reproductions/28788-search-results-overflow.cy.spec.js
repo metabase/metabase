@@ -3,10 +3,12 @@ import { restore } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
+const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
+
 const questionDetails = {
-  name: "28788",
+  name: `28788-${LONG_STRING}`,
   dataset: true,
-  description: "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789",
+  description: LONG_STRING,
   query: {
     "source-table": PEOPLE_ID,
   },
@@ -20,7 +22,15 @@ describe("issue 28788", () => {
   });
 
   it("search results container should not be scrollable horizontally (metabase#28788)", () => {
-    cy.createQuestion(questionDetails);
+    cy.createCollection({
+      name: `Collection-${LONG_STRING}`,
+    }).then(({ body: collection }) => {
+      cy.createQuestion({
+        ...questionDetails,
+        collection_id: collection.id,
+      });
+    });
+
     cy.visit("/");
     cy.findByPlaceholderText("Search…").type(questionDetails.name);
     cy.wait("@search");
