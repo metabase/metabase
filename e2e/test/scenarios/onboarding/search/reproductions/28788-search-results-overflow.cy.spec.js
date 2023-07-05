@@ -2,17 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { restore } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
-
 const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
-
-const questionDetails = {
-  name: `28788-${LONG_STRING}`,
-  dataset: true,
-  description: LONG_STRING,
-  query: {
-    "source-table": PEOPLE_ID,
-  },
-};
 
 describe("issue 28788", () => {
   beforeEach(() => {
@@ -22,6 +12,15 @@ describe("issue 28788", () => {
   });
 
   it("search results container should not be scrollable horizontally (metabase#28788)", () => {
+    const questionDetails = {
+      name: `28788-${LONG_STRING}`,
+      dataset: true,
+      description: LONG_STRING,
+      query: {
+        "source-table": PEOPLE_ID,
+      },
+    };
+
     cy.createCollection({
       name: `Collection-${LONG_STRING}`,
     }).then(({ body: collection }) => {
