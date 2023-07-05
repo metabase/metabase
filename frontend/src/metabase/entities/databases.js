@@ -81,12 +81,11 @@ const Databases = createEntity({
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
 
     getIdFields: createSelector(
-      [state => getMetadata(state).fields, (state, props) => props.databaseId],
-      (fields, databaseId) =>
-        Object.values(fields).filter(f => {
-          const { db_id } = f.table || {}; // a field's table can be null
-          return db_id === databaseId && f.isPK();
-        }),
+      [state => getMetadata(state), (state, props) => props.databaseId],
+      (metadata, databaseId) => {
+        const database = metadata.database(databaseId);
+        return database.getFields().filter(field => field.isPK());
+      },
     ),
   },
 });
