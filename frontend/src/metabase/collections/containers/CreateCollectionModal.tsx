@@ -13,7 +13,7 @@ import type { State } from "metabase-types/store";
 
 import CreateCollectionForm, {
   CreateCollectionFormOwnProps,
-} from "./CreateCollectionForm";
+} from "../components/CreateCollectionForm";
 
 interface CreateCollectionModalOwnProps
   extends Omit<CreateCollectionFormOwnProps, "onCancel"> {
