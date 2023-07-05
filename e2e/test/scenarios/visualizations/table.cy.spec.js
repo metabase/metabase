@@ -281,12 +281,7 @@ describe("scenarios > visualizations > table", () => {
       cy.wait("@findSuggestions");
     });
 
-    popover().then(popoverElement => {
-      expect(
-        popoverElement[0].clientHeight,
-        "horizontal scrollbar is not shown",
-      ).to.eq(popoverElement[0].offsetHeight);
-    });
+    expect(popover()).to.not.be.scrollableHorizontally;
   });
 
   it("default picker container should not be horizontally scrollable", () => {
@@ -302,12 +297,8 @@ describe("scenarios > visualizations > table", () => {
       input.type("f");
       cy.wait("@findSuggestions");
 
-      cy.findByTestId("default-picker-container").then(containerElement => {
-        expect(
-          containerElement[0].clientHeight,
-          "horizontal scrollbar is not shown",
-        ).to.eq(containerElement[0].offsetHeight);
-      });
+      expect(cy.findByTestId("default-picker-container")).to.not.be
+        .scrollableHorizontally;
     });
   });
 });
