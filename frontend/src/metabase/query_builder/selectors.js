@@ -314,17 +314,17 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getRawQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues],
-  (metadata, card, parameterValues) => {
-    if (!metadata || !card) {
+export const getOriginalQuestionWithParameters = createSelector(
+  [getCard, getMetadata, getParameterValues],
+  (card, metadata, parameterValues) => {
+    if (!card || !metadata) {
       return;
     }
     return new Question(card, metadata, parameterValues);
   },
 );
 export const getQuestion = createSelector(
-  [getRawQuestion, getQueryBuilderMode],
+  [getOriginalQuestionWithParameters, getQueryBuilderMode],
   (question, queryBuilderMode) => {
     if (!question) {
       return;

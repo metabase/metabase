@@ -36,17 +36,17 @@ import {
   QueryBuilderUIControls,
   State,
 } from "metabase-types/store";
+import { getOriginalQuestionWithParameters } from "metabase/query_builder/selectors";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
-import { getRawQuestion } from "../selectors";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
 
 const mapStateToProps = (state: State) => ({
-  rawQuestion: getRawQuestion(state),
+  originalQuestionWithParameters: getOriginalQuestionWithParameters(state),
 });
 
 type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
@@ -57,12 +57,12 @@ interface QueryModalsProps {
   modal: ModalType;
   modalContext: number;
   question: Question;
-  rawQuestion: Question | undefined;
   initialCollectionId: number;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
-  originalQuestion: Question | null;
+  originalQuestion: Question;
+  originalQuestionWithParameters: Question | undefined;
   card: Card;
   onCreate: (question: Question) => void;
   onSave: (question: Question, config?: { rerunQuery: boolean }) => void;
@@ -105,7 +105,7 @@ class QueryModals extends Component<QueryModalsProps> {
       modal,
       modalContext,
       question,
-      rawQuestion,
+      originalQuestion,
       initialCollectionId,
       onCloseModal,
       onOpenModal,
@@ -290,19 +290,17 @@ class QueryModals extends Component<QueryModalsProps> {
             <EntityCopyModal
               entityType="questions"
               entityObject={{
-                ...rawQuestion.card(),
-                collection_id: rawQuestion.canWrite()
-                  ? rawQuestion.collectionId()
+                ...question.card(),
+                collection_id: question.canWrite()
+                  ? question.collectionId()
                   : initialCollectionId,
               }}
               copy={async formValues => {
                 const object = await this.props.onCreate(
-                  new Question({
-                    ...rawQuestion.card(),
-                    name: formValues.name,
-                    collection_id: formValues.collection_id,
-                    description: formValues.description || null,
-                  }),
+                  originalQuestion
+                    .setDisplayName(formValues.name)
+                    .setCollectionId(formValues.collection_id)
+                    .setDescription(formValues.description || null),
                 );
 
                 return { payload: { object } };
