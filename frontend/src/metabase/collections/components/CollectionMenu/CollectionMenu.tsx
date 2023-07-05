@@ -17,7 +17,7 @@ export interface CollectionMenuProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
-const CollectionMenu = ({
+export const CollectionMenu = ({
   collection,
   isAdmin,
   isPersonalCollectionChild,
@@ -75,6 +75,3 @@ const CollectionMenu = ({
     return null;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CollectionMenu;
