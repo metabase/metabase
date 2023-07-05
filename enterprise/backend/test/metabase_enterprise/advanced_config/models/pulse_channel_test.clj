@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models :refer [Pulse PulseChannel]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -50,3 +51,14 @@
                        (thunk))))
                 (testing "should succeed"
                   (is (thunk)))))))))))
+
+(deftest subscription-allowed-domains!-test
+  (testing "Should be able to set the subscription-allowed-domains setting with the advanced-config feature"
+    (premium-features-test/with-premium-features #{:advanced-config}
+      (is (= "metabase.com"
+             (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
+  (testing "Should be unable to set the subscription-allowed-domains setting without the advanced-config feature"
+    (is (thrown-with-msg?
+         IllegalArgumentException
+         #"Updating subscription-allowed-domains is not allowed" ;; TODO: replace
+         (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
