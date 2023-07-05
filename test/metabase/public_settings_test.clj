@@ -14,6 +14,13 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(deftest reset-token-ttl-h-test
+  (testing "test that reset token ttl is set"
+    (mt/discard-setting-changes [reset-token-ttl-h]
+      (public-settings/reset-token-ttl-h! 36)
+      (is (= 36
+            (public-settings/reset-token-ttl-h))))))
+
 (deftest site-url-settings
   (testing "double-check that setting the `site-url` setting will automatically strip off trailing slashes"
     (mt/discard-setting-changes [site-url]

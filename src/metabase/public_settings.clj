@@ -69,6 +69,12 @@
   :type    :boolean
   :default true)
 
+(defsetting reset-token-ttl-h
+  (deferred-tru "Number of hours a password reset is considered valid.")
+  :visibility :settings-manager
+  :type       :integer
+  :default    48)
+
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
   :type    :json

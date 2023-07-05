@@ -232,9 +232,10 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-(def ^:private ^:const reset-token-ttl-ms
+(defn reset-token-ttl-ms
   "Number of milliseconds a password reset is considered valid."
-  (* 48 60 60 1000)) ; token considered valid for 48 hours
+  []
+  (* (metabase.public-settings/reset-token-ttl-h) 60 60 1000))
 
 (defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
