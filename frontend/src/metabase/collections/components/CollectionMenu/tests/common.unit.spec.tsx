@@ -97,4 +97,18 @@ describe("CollectionMenu", () => {
 
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
+
+  it("should not be able to make the collection official", () => {
+    setup({
+      collection: createMockCollection({
+        can_write: true,
+      }),
+      isAdmin: true,
+    });
+
+    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    expect(
+      screen.queryByText("Make collection official"),
+    ).not.toBeInTheDocument();
+  });
 });

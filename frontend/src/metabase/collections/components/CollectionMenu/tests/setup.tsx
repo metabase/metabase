@@ -1,11 +1,18 @@
-import { Collection } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+/* istanbul ignore file */
+import { Collection, TokenFeatures } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { CollectionMenu } from "../CollectionMenu";
 
 export interface SetupOpts {
   collection?: Collection;
+  tokenFeatures?: TokenFeatures;
   isAdmin?: boolean;
   isPersonalCollectionChild?: boolean;
   hasEnterprisePlugins?: boolean;
@@ -13,10 +20,13 @@ export interface SetupOpts {
 
 export const setup = ({
   collection = createMockCollection(),
+  tokenFeatures = createMockTokenFeatures(),
   isAdmin = false,
   isPersonalCollectionChild = false,
   hasEnterprisePlugins = false,
 }: SetupOpts) => {
+  const settings = mockSettings({ "token-features": tokenFeatures });
+  const state = createMockState({ settings });
   const onUpdateCollection = jest.fn();
 
   if (hasEnterprisePlugins) {
@@ -30,6 +40,7 @@ export const setup = ({
       isPersonalCollectionChild={isPersonalCollectionChild}
       onUpdateCollection={onUpdateCollection}
     />,
+    { storeInitialState: state },
   );
 
   return { onUpdateCollection };
