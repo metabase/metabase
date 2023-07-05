@@ -27,7 +27,7 @@ import EditUserModal from "metabase/admin/people/containers/EditUserModal";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
 // Settings
-import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp";
+import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import PremiumEmbeddingLicensePage from "metabase/admin/settings/containers/PremiumEmbeddingLicensePage";
 
 //  DB Add / list
@@ -174,7 +174,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             path="premium-embedding-license"
             component={PremiumEmbeddingLicensePage}
           />
-          <Route path="*" component={SettingsEditorApp} />
+          <Route path="*" component={SettingsEditor} />
         </Route>
       </Route>
 
