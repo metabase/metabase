@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import testDataset from "__support__/testDataset";
+import { testDataset } from "__support__/testDataset";
 import { setupCardDataset } from "__support__/server-mocks";
 import { createMockCard } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";

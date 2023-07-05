@@ -17,6 +17,7 @@ const defaultProps = {
   settings: {},
   isEditing: false,
   parameterValues: {},
+  isMobile: false,
 };
 
 const setup = (options = {}) => {

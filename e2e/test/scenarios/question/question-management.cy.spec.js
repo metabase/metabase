@@ -2,6 +2,7 @@ import { onlyOn } from "@cypress/skip-test";
 import {
   restore,
   visitQuestion,
+  visitDashboard,
   saveDashboard,
   popover,
   openNavigationSidebar,
@@ -14,9 +15,10 @@ import {
   enableTracking,
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvents,
+  modal,
 } from "e2e/support/helpers";
 
-import { USERS } from "e2e/support/cypress_data";
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
@@ -105,6 +107,18 @@ describe("managing question from the question's details sidebar", () => {
                 });
               });
 
+              it("should be able to move the question to a collection created on the go", () => {
+                openQuestionActions();
+                cy.findByTestId("move-button").click();
+                const NEW_COLLECTION = "Foo";
+                modal().within(() => {
+                  cy.findByText("New collection").click();
+                  cy.findByLabelText("Name").type(NEW_COLLECTION, { delay: 0 });
+                  cy.findByText("Create").click();
+                });
+                cy.get("header").findByText(NEW_COLLECTION);
+              });
+
               it("should be able to move models", () => {
                 // TODO: Currently nodata users can't turn a question into a model
                 cy.skipOn(user === "nodata");
@@ -178,19 +192,89 @@ describe("managing question from the question's details sidebar", () => {
               cy.findByText("This question has been archived");
             });
 
-            it("should be able to add question to dashboard", () => {
-              openQuestionActions();
-              cy.findByTestId("add-to-dashboard-button").click();
+            describe("Add to Dashboard", () => {
+              it("should be able to add question to dashboard", () => {
+                openQuestionActions();
+                cy.findByTestId("add-to-dashboard-button").click();
 
-              cy.get(".Modal")
-                .as("modal")
-                .findByText("Orders in a dashboard")
-                .click();
+                modal().as("modal").findByText("Orders in a dashboard").click();
 
-              cy.get("@modal").should("not.exist");
-              // By default, the dashboard contains one question
-              // After we add a new one, we check there are two questions now
-              cy.get(".DashCard").should("have.length", 2);
+                cy.get("@modal").should("not.exist");
+                // By default, the dashboard contains one question
+                // After we add a new one, we check there are two questions now
+                cy.get(".DashCard").should("have.length", 2);
+              });
+
+              onlyOn(user === "normal", () => {
+                it("should preselect the most recently visited dashboard", () => {
+                  openQuestionActions();
+                  cy.findByTestId("add-to-dashboard-button").click();
+
+                  findSelectedItem().should("not.exist");
+
+                  // before visiting the dashboard, we don't have any history
+                  visitDashboard(1);
+
+                  visitQuestion(ORDERS_QUESTION_ID);
+
+                  openQuestionActions();
+                  cy.findByTestId("add-to-dashboard-button").click();
+
+                  findSelectedItem().should(
+                    "have.text",
+                    "Orders in a dashboard",
+                  );
+                });
+
+                it("should handle lost access", () => {
+                  cy.intercept(
+                    "GET",
+                    "/api/activity/most_recently_viewed_dashboard",
+                  ).as("mostRecentlyViewedDashboard");
+
+                  openQuestionActions();
+                  cy.findByTestId("add-to-dashboard-button").click();
+
+                  cy.wait("@mostRecentlyViewedDashboard");
+
+                  findSelectedItem().should("not.exist");
+
+                  // before visiting the dashboard, we don't have any history
+                  visitDashboard(1);
+                  visitQuestion(ORDERS_QUESTION_ID);
+
+                  openQuestionActions();
+                  cy.findByTestId("add-to-dashboard-button").click();
+
+                  cy.wait("@mostRecentlyViewedDashboard");
+
+                  findSelectedItem().should(
+                    "have.text",
+                    "Orders in a dashboard",
+                  );
+
+                  cy.findByRole("dialog").within(() => {
+                    cy.icon("close").click();
+                  });
+
+                  cy.signInAsAdmin();
+
+                  // Let's revoke access to "Our analytics"
+                  cy.updateCollectionGraph({
+                    [USER_GROUPS.COLLECTION_GROUP]: { root: "none" },
+                  });
+
+                  cy.signIn(user);
+
+                  openQuestionActions();
+                  cy.findByTestId("add-to-dashboard-button").click();
+
+                  cy.wait("@mostRecentlyViewedDashboard");
+
+                  // no access - no dashboard
+                  findSelectedItem().should("not.exist");
+                });
+              });
             });
           });
         });
@@ -251,6 +335,24 @@ describe("managing question from the question's details sidebar", () => {
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Revert").should("not.exist");
             });
+
+            it("should not preselect the most recently visited dashboard", () => {
+              openQuestionActions();
+              cy.findByTestId("add-to-dashboard-button").click();
+
+              findSelectedItem().should("not.exist");
+
+              // before visiting the dashboard, we don't have any history
+              visitDashboard(1);
+
+              visitQuestion(ORDERS_QUESTION_ID);
+
+              openQuestionActions();
+              cy.findByTestId("add-to-dashboard-button").click();
+
+              // still no data
+              findSelectedItem().should("not.exist");
+            });
           });
         });
       });
@@ -305,4 +407,8 @@ function turnIntoModel() {
   openQuestionActions();
   cy.findByText("Turn into a model").click();
   cy.findByText("Turn this into a model").click();
+}
+
+function findSelectedItem() {
+  return cy.findByRole("dialog").findByRole("option", { selected: true });
 }

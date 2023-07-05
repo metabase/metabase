@@ -136,6 +136,7 @@ export const setParameterMapping = createThunkAction(
         target,
       });
     }
+
     dispatch(
       setDashCardAttributes({
         id: dashcard_id,
@@ -336,6 +337,7 @@ export const toggleAutoApplyFilters = createThunkAction(
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {
+      dispatch(applyDraftParameterValues());
       dispatch(
         setDashboardAttributes({
           id: dashboardId,

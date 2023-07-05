@@ -29,6 +29,10 @@ jobs:
             const prAuthor = context.payload.pull_request.user.login;
             const prNumber = context.payload.pull_request.number;
 
+            if (prAuthor.endsWith('[bot]')) {
+              return false;
+            }
+
             // Assign PR author
             await github.rest.issues.addAssignees({
               owner: context.repo.owner,

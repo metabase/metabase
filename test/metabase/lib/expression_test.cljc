@@ -107,7 +107,7 @@
               :display-name "prev_month"
               :base-type    :type/DateTime
               :lib/source   :source/expressions}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add
@@ -258,7 +258,7 @@
              (ex-data ex))))))
 
 (deftest ^:parallel literal-expression-test
-  (is (=? [{:lib/type :metadata/field,
+  (is (=? [{:lib/type :metadata/column,
             :base-type :type/Integer,
             :name "expr",
             :display-name "expr",

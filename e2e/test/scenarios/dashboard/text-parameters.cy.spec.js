@@ -3,6 +3,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
+  getDashboardCard,
   setFilter,
   filterWidget,
   addTextBox,
@@ -63,6 +64,30 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     cy.findByText("Equal to").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo").should("exist");
+  });
+
+  it("should not transform text variables to plain text (metabase#31626)", () => {
+    const textContent = "Variable: {{foo}}";
+    addTextBox(textContent, { parseSpecialCharSequences: false });
+    setFilter("Number", "Equal to");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Select…").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("foo").click();
+    saveDashboard();
+
+    filterWidget().click();
+    cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
+    cy.button("Add filter").click();
+
+    // view mode
+    getDashboardCard(0).click().findByText("Variable: 1").should("be.visible");
+
+    editDashboard();
+
+    // edit mode
+    getDashboardCard(0).click().findByText(textContent).should("be.visible");
   });
 
   it("should translate parameter values into the instance language", () => {

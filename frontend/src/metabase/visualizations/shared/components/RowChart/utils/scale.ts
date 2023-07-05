@@ -7,7 +7,7 @@ import {
 } from "@visx/scale";
 import type { ScaleContinuousNumeric } from "d3-scale";
 import { ValueFormatter } from "metabase/visualizations/shared/types/format";
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import {
   ContinuousScaleType,
   Range,
@@ -100,7 +100,7 @@ const getTickInfo = (
   tickX: number,
   tickFormatter: ValueFormatter,
   tickFont: ChartFont,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
 ) => {
   const value = xScale.invert(tickX);
@@ -117,7 +117,7 @@ const Y_AXIS_LEFT_PADDING = 16;
 
 export const addSideSpacingForTicksAndLabels = (
   xScale: ScaleContinuousNumeric<number, number, never>,
-  measureText: TextMeasurer,
+  measureText: TextWidthMeasurer,
   tickFont: ChartFont,
   tickFormatter: ValueFormatter,
   labelFont: ChartFont,

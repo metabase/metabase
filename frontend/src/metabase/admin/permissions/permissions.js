@@ -2,7 +2,10 @@ import { t } from "ttag";
 import { push } from "react-router-redux";
 import { assocIn } from "icepick";
 
-import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_ADVANCED_PERMISSIONS,
+} from "metabase/plugins";
 import {
   createAction,
   createThunkAction,
@@ -71,7 +74,12 @@ export const LIMIT_DATABASE_PERMISSION =
   "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
 export const limitDatabasePermission = createThunkAction(
   LIMIT_DATABASE_PERMISSION,
-  (groupId, entityId, newValue) => dispatch => {
+  (groupId, entityId, accessPermissionValue) => dispatch => {
+    const newValue =
+      PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission(
+        accessPermissionValue,
+      );
+
     if (newValue) {
       dispatch(
         updateDataPermission({
@@ -380,6 +388,19 @@ const collectionPermissionsRevision = handleActions(
   null,
 );
 
+export const TOGGLE_HELP_REFERENCE =
+  "metabase/admin/permissions/TOGGLE_HELP_REFERENCE";
+export const toggleHelpReference = createAction(TOGGLE_HELP_REFERENCE);
+
+export const isHelpReferenceOpen = handleActions(
+  {
+    [toggleHelpReference]: {
+      next: state => !state,
+    },
+  },
+  false,
+);
+
 export default combineReducers({
   saveError,
   dataPermissions,
@@ -388,4 +409,5 @@ export default combineReducers({
   collectionPermissions,
   originalCollectionPermissions,
   collectionPermissionsRevision,
+  isHelpReferenceOpen,
 });

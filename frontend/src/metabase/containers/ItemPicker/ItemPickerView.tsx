@@ -50,6 +50,7 @@ interface Props<TId> {
   checkIsItemSelected: (item: PickerItem<TId>) => boolean;
   checkHasWritePermissionForItem: (item: PickerItem<TId>) => boolean;
   getCollectionIcon: (collection: Collection) => IconProps;
+  children: React.ReactNode;
 }
 
 const getDefaultCollectionIconColor = () => color("text-light");
@@ -71,6 +72,7 @@ function ItemPickerView<TId>({
   checkIsItemSelected,
   checkHasWritePermissionForItem,
   getCollectionIcon,
+  children,
 }: Props<TId>) {
   const [isSearchEnabled, setIsSearchEnabled] = useState(false);
 
@@ -212,8 +214,9 @@ function ItemPickerView<TId>({
   return (
     <ItemPickerRoot className={className} style={style}>
       {renderHeader()}
-      <ItemPickerList data-testid="item-picker-list">
+      <ItemPickerList data-testid="item-picker-list" role="list">
         {!searchString && collections.map(renderCollectionListItem)}
+        {children}
         {canFetch && (
           <Search.ListLoader query={searchQuery} wrapped>
             {({ list }: SearchEntityListLoaderProps<TId>) => (

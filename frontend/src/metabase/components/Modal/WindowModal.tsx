@@ -18,6 +18,7 @@ export type WindowModalProps = BaseModalProps & {
   formModal?: boolean;
   style?: CSSProperties;
   "data-testid"?: string;
+  zIndex?: number;
 } & {
   [size in ModalSize]?: boolean;
 };
@@ -36,6 +37,10 @@ export class WindowModal extends Component<WindowModalProps> {
 
     this._modalElement = document.createElement("div");
     this._modalElement.className = "ModalContainer";
+
+    if (props.zIndex != null) {
+      this._modalElement.setAttribute("style", `z-index:${props.zIndex}`);
+    }
     document.body.appendChild(this._modalElement);
   }
 

@@ -13,6 +13,7 @@ describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("GET", "/api/field/*/search/*").as("findSuggestions");
   });
 
   function joinTable(table) {
@@ -32,22 +33,39 @@ describe("scenarios > visualizations > table", () => {
     selectFromDropdown("User ID");
     visualize();
 
-    function headerCells() {
-      return cy.findAllByTestId("header-cell");
-    }
-
     // Rename the first ID column, and make sure the second one is not updated
     headerCells().findByText("ID").click();
     popover().within(() => {
       cy.findByText("Filter by this column");
       cy.icon("gear").click();
-      cy.findByTestId("column_title").type(" updated");
+      cy.findByLabelText("Column title").type(" updated");
       // This defocuses the input, which triggers the update
-      cy.get("#column_title").click();
+      cy.findByText("Column title").click();
     });
     // click somewhere else to close the popover
     headerCells().last().click();
     headerCells().findAllByText("ID updated").should("have.length", 1);
+  });
+
+  it("should allow you to reorder columns in the table header", () => {
+    openNativeEditor().type("select * from orders LIMIT 2");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findByTestId(/subtotal-hide-button/i).click();
+    cy.findByTestId(/tax-hide-button/i).click();
+    cy.findByTestId("sidebar-left").findByText("Done").click();
+
+    headerCells().eq(3).should("contain.text", "TOTAL").as("total");
+
+    cy.get("@total")
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 5, 5, { force: true })
+      .trigger("mousemove", -220, 0, { force: true })
+      .trigger("mouseup", -220, 0, { force: true });
+
+    headerCells().eq(1).should("contain.text", "TOTAL");
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
@@ -63,18 +81,18 @@ describe("scenarios > visualizations > table", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link").click();
 
-    cy.findByTestId("link_text").type("{{C");
+    cy.findByLabelText("Link text").type("{{C");
     cy.findByTestId("select-list").within(() => {
       cy.findAllByText("CITY").click();
     });
 
-    cy.findByTestId("link_text")
+    cy.findByLabelText("Link text")
       .type(" {{ID}} fixed text", {
         parseSpecialCharSequences: false,
       })
       .blur();
 
-    cy.findByTestId("link_url")
+    cy.findByLabelText("Link URL")
       .type("http://metabase.com/people/{{ID}}", {
         parseSpecialCharSequences: false,
       })
@@ -252,4 +270,48 @@ describe("scenarios > visualizations > table", () => {
     cy.wait(100);
     popover().should("not.exist");
   });
+
+  it("popover should not be horizontally scrollable (metabase#31339)", () => {
+    openPeopleTable();
+    headerCells().filter(":contains('Password')").click();
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByPlaceholderText("Search by Password").type("e").blur();
+      cy.wait("@findSuggestions");
+    });
+
+    popover().then(popoverElement => {
+      expect(
+        popoverElement[0].clientHeight,
+        "horizontal scrollbar is not shown",
+      ).to.eq(popoverElement[0].offsetHeight);
+    });
+  });
+
+  it("default picker container should not be horizontally scrollable", () => {
+    openPeopleTable();
+    headerCells().filter(":contains('Password')").click();
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+
+      const input = cy.findByPlaceholderText("Search by Password");
+      input.type("e").blur();
+      cy.wait("@findSuggestions");
+      input.type("f");
+      cy.wait("@findSuggestions");
+
+      cy.findByTestId("default-picker-container").then(containerElement => {
+        expect(
+          containerElement[0].clientHeight,
+          "horizontal scrollbar is not shown",
+        ).to.eq(containerElement[0].offsetHeight);
+      });
+    });
+  });
 });
+
+function headerCells() {
+  return cy.findAllByTestId("header-cell");
+}

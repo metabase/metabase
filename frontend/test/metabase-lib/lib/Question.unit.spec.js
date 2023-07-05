@@ -46,6 +46,31 @@ const metadata = createMockMetadata({
   ],
 });
 
+const metadata_without_order_pk = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createProductsTable(),
+        createPeopleTable(),
+        createReviewsTable(),
+        createOrdersTable({
+          fields: [
+            createOrdersIdField({ semantic_type: "type/Integer" }),
+            createOrdersUserIdField(),
+            createOrdersProductIdField(),
+            createOrdersSubtotalField(),
+            createOrdersTaxField(),
+            createOrdersTotalField(),
+            createOrdersDiscountField(),
+            createOrdersCreatedAtField(),
+            createOrdersQuantityField(),
+          ],
+        }),
+      ],
+    }),
+  ],
+});
+
 const card = {
   display: "table",
   visualization_settings: {},
@@ -74,6 +99,30 @@ const orders_raw_card = {
   },
 };
 const orders_raw_question = new Question(orders_raw_card, metadata);
+
+const orders_card_without_pk = {
+  id: 1,
+  name: "Orders Model",
+  display: "table",
+  visualization_settings: {},
+  can_write: true,
+  dataset: true,
+  database_id: SAMPLE_DB_ID,
+  table_id: ORDERS_ID,
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  },
+  result_metadata: [
+    createOrdersIdField({
+      semantic_type: "type/Integer",
+      field_ref: ["field", 11, null],
+    }),
+  ],
+};
 
 const orders_count_card = {
   id: 2,
@@ -257,6 +306,7 @@ const orders_count_by_id_card = {
     },
   },
 };
+
 const orders_count_by_id_question = new Question(
   orders_count_by_id_card,
   metadata,
@@ -399,8 +449,7 @@ describe("Question", () => {
         const question = orders_count_question
           .setDisplay("table")
           .lockDisplay()
-          .maybeUnlockDisplay(["table", "scalar"])
-          .setDefaultDisplay();
+          .maybeResetDisplay(["table", "scalar"]);
 
         expect(question.display()).toBe("table");
       });
@@ -409,34 +458,79 @@ describe("Question", () => {
         const question = orders_count_question
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeUnlockDisplay(["table", "scalar"])
-          .setDefaultDisplay();
+          .maybeResetDisplay(["table", "scalar"]);
 
         expect(question.display()).toBe("scalar");
       });
     });
 
-    describe("maybeUnlockDisplay", () => {
-      it("should keep display locked when it was locked with nonsense display", () => {
+    describe("maybeResetDisplay", () => {
+      it("should do nothing when it was locked with sensible display", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const previousSensibleDisplays = sensibleDisplays;
+        const question = new Question(orders_count_card, metadata)
+          .setDisplay("scalar")
+          .lockDisplay()
+          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
+
+        expect(question.displayIsLocked()).toBe(true);
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should do nothing when it was locked with nonsense display", () => {
         const sensibleDisplays = ["table", "scalar"];
         const previousSensibleDisplays = sensibleDisplays;
         const question = new Question(orders_count_card, metadata)
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays);
+          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
 
         expect(question.displayIsLocked()).toBe(true);
+        expect(question.display()).toBe("funnel");
       });
 
-      it("should unlock display it was locked with sensible display which has become unsensible", () => {
+      it("should use default display when nonsense display is used and was not locked", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("funnel")
+          .maybeResetDisplay(sensibleDisplays, sensibleDisplays);
+
+        expect(question.display()).not.toBe("funnel");
+        expect(question.display()).toBe("table");
+      });
+
+      it("should unlock and use new sensible display when it was locked with sensible display which has become not sensible", () => {
         const previousSensibleDisplays = ["funnel"];
         const sensibleDisplays = ["table", "scalar"];
         const question = orders_count_question
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays);
+          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
 
         expect(question.displayIsLocked()).toBe(false);
+        expect(question.display()).not.toBe("funnel");
+        expect(sensibleDisplays).toContain(question.display());
+      });
+
+      it("should keep any sensible display when display was locked", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("scalar")
+          .lockDisplay()
+          .maybeResetDisplay(sensibleDisplays);
+
+        expect(question.display()).not.toBe("table");
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should keep any sensible display when display was not locked (metabase#32075)", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("scalar")
+          .maybeResetDisplay(sensibleDisplays);
+
+        expect(question.display()).not.toBe("table");
+        expect(question.display()).toBe("scalar");
       });
     });
   });
@@ -1634,6 +1728,27 @@ describe("Question", () => {
 
     it("should not allow to create implicit actions for a model with filters", () => {
       const question = new Question(orders_filter_card, metadata);
+      expect(question.supportsImplicitActions()).toBeFalsy();
+    });
+
+    it("should allow to create implicit actions where the underlying table has a primary key but the model does not", () => {
+      const orders_question_without_pk = new Question(
+        orders_card_without_pk,
+        metadata,
+      );
+      expect(orders_question_without_pk.supportsImplicitActions()).toBeTruthy();
+    });
+
+    it("should not allow to create implicit actions where the underlying table has no primary key", () => {
+      const question = new Question(orders_raw_card, metadata_without_order_pk);
+      expect(question.supportsImplicitActions()).toBeFalsy();
+    });
+
+    it("should not allow to create implicit actions where the model has a primary key, but the underlying table does not", () => {
+      const question = new Question(
+        orders_card_without_pk,
+        metadata_without_order_pk,
+      );
       expect(question.supportsImplicitActions()).toBeFalsy();
     });
 

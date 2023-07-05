@@ -1,18 +1,24 @@
 (ns metabase.lib.native
   "Functions for working with native queries."
   (:require
+   #?@(:cljs ([metabase.domain-entities.converters :as converters]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
+   [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.domain-entities.converters :as converters]))))
+   [metabase.util.malli :as mu]))
 
 (def ^:private TemplateTag
   [:map
    [:type [:enum :text :snippet :card]]
-   [:id :uuid]
+   [:id :string]
    [:name ::common/non-blank-string]
    [:display-name {:js/prop "display-name" :optional true} ::common/non-blank-string]
    [:snippet-name {:js/prop "snippet-name" :optional true} ::common/non-blank-string]
@@ -35,7 +41,7 @@
 (def ^:private tag-regexes
   [variable-tag-regex snippet-tag-regex card-tag-regex])
 
-(mu/defn recognize-template-tags :- [:set ::common/non-blank-string]
+(mu/defn ^:private recognize-template-tags :- [:set ::common/non-blank-string]
   "Given the text of a native query, extract a possibly-empty set of template tag strings from it."
   [query-text :- ::common/non-blank-string]
   (into #{}
@@ -54,7 +60,7 @@
 (defn- fresh-tag [tag-name]
   {:type :text
    :name tag-name
-   :id   (m/random-uuid)})
+   :id   (str (m/random-uuid))})
 
 (defn- finish-tag [{tag-name :name :as tag}]
   (merge tag
@@ -95,15 +101,21 @@
                           (m/index-by :name (map fresh-tag new-tags))))]
     (update-vals tags finish-tag)))
 
-(mu/defn ^:export template-tags :- TemplateTags
+(mu/defn extract-template-tags :- TemplateTags
   "Extract the template tags from a native query's text.
 
   If the optional map of existing tags previously parsed is given, this will reuse the existing tags where
   they match up with the new one (in particular, it will preserve the UUIDs).
 
-  See [[recognize-template-tags]] for how the tags are parsed."
+  Given the text of a native query, extract a possibly-empty set of template tag strings from it.
+
+  These looks like mustache templates. For variables, we only allow alphanumeric characters, eg. `{{foo}}`.
+  For snippets they start with `snippet:`, eg. `{{ snippet: arbitrary text here }}`.
+  And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
+
+  Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded."
   ([query-text :- ::common/non-blank-string]
-   (template-tags query-text nil))
+   (extract-template-tags query-text nil))
   ([query-text    :- ::common/non-blank-string
     existing-tags :- [:maybe TemplateTags]]
    (let [query-tag-names    (not-empty (recognize-template-tags query-text))
@@ -123,3 +135,57 @@
      (def TemplateTags->
        "Converter from a map of `TemplateTag`s keyed by their string names to vanilla JS."
        (converters/outgoing TemplateTags))))
+
+(mu/defn native-query :- ::lib.schema/query
+  "Create a new native query.
+
+  Native in this sense means a pMBQL query with a first stage that is a native query."
+  ([metadata-providerable :- lib.metadata/MetadataProviderable
+    inner-query :- ::common/non-blank-string]
+   (native-query metadata-providerable nil inner-query))
+
+  ([metadata-providerable :- lib.metadata/MetadataProviderable
+    results-metadata      :- [:maybe lib.metadata/StageMetadata]
+    inner-query :- ::common/non-blank-string]
+   (let [tags (extract-template-tags inner-query)]
+     (lib.query/query-with-stages metadata-providerable
+                                  [(-> {:lib/type           :mbql.stage/native
+                                        :lib/stage-metadata results-metadata
+                                        :template-tags      tags
+                                        :native             inner-query}
+                                       lib.options/ensure-uuid)]))))
+
+(mu/defn with-native-query :- ::lib.schema/query
+  "Update the raw native query, the first stage must already be a native type.
+   Replaces templates tags"
+  [query :- ::lib.schema/query
+   inner-query :- ::common/non-blank-string]
+  (lib.util/update-query-stage
+    query 0
+    (fn [{existing-tags :template-tags stage-type :lib/type :as stage}]
+      (assert (= stage-type :mbql.stage/native) (i18n/tru "Must be a native query"))
+      (assoc stage
+        :native inner-query
+        :template-tags (extract-template-tags inner-query existing-tags)))))
+
+(mu/defn with-template-tags :- ::lib.schema/query
+  "Updates the native query's template tags."
+  [query :- ::lib.schema/query
+   tags :- TemplateTags]
+  (lib.util/update-query-stage
+    query 0
+    (fn [{existing-tags :template-tags stage-type :lib/type :as stage}]
+      (assert (= stage-type :mbql.stage/native) (i18n/tru "Must be a native query"))
+      (let [valid-tags (keys existing-tags)]
+        (assoc stage :template-tags
+               (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
+
+(mu/defn raw-native-query :- ::common/non-blank-string
+  "Returns the native query string"
+  [query :- ::lib.schema/query]
+  (:native (lib.util/query-stage query 0)))
+
+(mu/defn template-tags :- TemplateTags
+  "Returns the native query's template tags"
+  [query :- ::lib.schema/query]
+  (:template-tags (lib.util/query-stage query 0)))

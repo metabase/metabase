@@ -5,22 +5,21 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]))
 
 (defn- test-clause [result-filter f & args]
   (is (=? result-filter
           (apply f args))))
 
 (deftest ^:parallel general-filter-clause-test
-  (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        q3                          (lib/query meta/metadata-provider (meta/table-metadata :checkins))
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
-        venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
-        venues-latitude-metadata    (lib.metadata/field q1 nil "VENUES" "LATITUDE")
-        venues-longitude-metadata   (lib.metadata/field q1 nil "VENUES" "LONGITUDE")
+  (let [q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
+        venues-category-id-metadata (meta/field-metadata :venues :category-id)
+        venues-name-metadata        (meta/field-metadata :venues :name)
+        venues-latitude-metadata    (meta/field-metadata :venues :latitude)
+        venues-longitude-metadata   (meta/field-metadata :venues :longitude)
         categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
-        checkins-date-metadata      (lib.metadata/field q3 nil "CHECKINS" "DATE")]
+        checkins-date-metadata      (meta/field-metadata :checkins :date)]
     (testing "comparisons"
       (doseq [[op f] [[:=  lib/=]
                       [:!= lib/!=]
@@ -109,7 +108,7 @@
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
         q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+        venues-category-id-metadata (meta/field-metadata :venues :category-id)
         original-filter
         [:between
          {:lib/uuid string?}
@@ -145,7 +144,7 @@
 
 (deftest ^:parallel add-filter-test
   (let [simple-query         (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        venues-name-metadata (lib.metadata/field simple-query nil "VENUES" "NAME")
+        venues-name-metadata (meta/field-metadata :venues :name)
         first-filter         [:between
                               {:lib/uuid string?}
                               [:field
@@ -225,7 +224,7 @@
         columns (lib/filterable-columns query)
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
-        coordinate-operators [:= :!= :is-empty :not-empty :contains :does-not-contain :starts-with :ends-with]
+        coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
         text-operators [:= :!= :contains :does-not-contain :is-null :not-null :is-empty :not-empty :starts-with :ends-with]]
     (is (= ["ID"
             "NAME"
@@ -257,13 +256,21 @@
                                                         (fn [col]
                                                           (->> col
                                                                lib/filterable-column-operators
-                                                               (map (comp (juxt :short-name :display-name) #(lib/display-info query %)))
+                                                               (map (comp (juxt :short-name identity)
+                                                                          #(lib/display-info query %)))
                                                                (into {})))))
                                              (into {}))]
-        (is (=? {"ID" {"=" "Is" "is-null" "Is empty" ">" "Greater than"}
-                 "NAME" {"=" "Is" "is-null" "Is null" "is-empty" "Is empty"}
-                 "LAST_LOGIN" {"!=" "Excludes" ">" "After"}
-                 "Venues__PRICE" {"=" "Equal to" "is-null" "Is empty"}}
+        (is (=? {"ID"            {"="       {:display-name "=", :long-display-name "Is"}
+                                  "is-null" {:display-name "Is empty", :long-display-name "Is empty"}
+                                  ">"       {:display-name ">", :long-display-name "Greater than"}
+                                  ">="      {:display-name "≥", :long-display-name "Greater than or equal to"},}
+                 "NAME"          {"="        {:display-name "=", :long-display-name "Is"}
+                                  "is-null" {:display-name "Is null", :long-display-name "Is null"}
+                                  "is-empty" {:display-name "Is empty", :long-display-name "Is empty"}}
+                 "LAST_LOGIN"    {"!=" {:display-name "≠", :long-display-name "Excludes"}
+                                  ">"  {:display-name ">", :long-display-name "After"}}
+                 "Venues__PRICE" {"="       {:display-name "=", :long-display-name "Equal to"}
+                                  "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
 
 (deftest ^:parallel filter-clause-test
@@ -276,16 +283,47 @@
     (is (=? [[:= {} [:field {} (meta/id :users :id)] 515]]
             (-> query
                 (lib/filter new-filter)
-                lib/filters)))))
+                lib/filters))))
+  (testing "standalone clause"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          [id-col] (lib/filterable-columns query)
+          [eq-op] (lib/filterable-column-operators id-col)
+          filter-clause (lib/filter-clause eq-op id-col 123)]
+      (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
+              filter-clause)))))
+
+(deftest ^:parallel filter-operator-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
+                                                 [(lib/=
+                                                   (meta/field-metadata :checkins :user-id)
+                                                   (meta/field-metadata :users :id))])
+                                (lib/with-join-fields :all)))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
+                                                 [(lib/=
+                                                   (meta/field-metadata :checkins :venue-id)
+                                                   (meta/field-metadata :venues :id))])
+                                (lib/with-join-fields :all))))]
+    (doseq [col (lib/filterable-columns query)
+            op (lib/filterable-column-operators col)
+            :let [filter-clause (case (:short op)
+                                  :between (lib/filter-clause op col 123 456)
+                                  (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
+                                  (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
+                                  :inside (lib/filter-clause op col 12 34 56 78 90)
+                                  (lib/filter-clause op col 123))]]
+      (testing (str (:short op) " with " (lib.types.isa/field-type col))
+        (is (= op
+               (lib/filter-operator query filter-clause)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
     (let [query           (lib/query meta/metadata-provider (meta/table-metadata :users))
           [first-col]     (lib/filterable-columns query)
           query           (lib/filter query (lib/filter-clause
-                                             (first (lib/filterable-column-operators first-col))
-                                             first-col
-                                             515))
+                                              (first (lib/filterable-column-operators first-col))
+                                              first-col
+                                              515))
           [filter-clause] (lib/filters query)
           external-op     (lib/external-op filter-clause)]
       (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :users :id)] 515]]}]}

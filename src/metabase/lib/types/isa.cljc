@@ -3,7 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.types.constants :as lib.types.constants]
-   [metabase.lib.util :as lib.u]
+   [metabase.lib.util :as lib.util]
    [metabase.types])
   (:refer-clojure :exclude [isa? any? boolean? number? string? integer?]))
 
@@ -253,6 +253,6 @@
       ;; comment from isa.js:
       ;; > FIXME: columns of nested questions at this moment miss table_id value
       ;; > which makes it impossible to match them with their tables that are nested cards
-      (if (lib.u/string-table-id->card-id table-id)
+      (if (lib.util/legacy-string-table-id->card-id table-id)
         pk?
         (and pk? (= (:table-id column) table-id))))))

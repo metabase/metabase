@@ -311,16 +311,24 @@ class QuestionInner {
     return this._card && this._card.displayIsLocked;
   }
 
-  // If we're locked to a display that is no longer "sensible", unlock it
-  // unless it was locked in unsensible
-  maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays): Question {
+  maybeResetDisplay(sensibleDisplays, previousSensibleDisplays): Question {
     const wasSensible =
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());
     const isSensible = sensibleDisplays.includes(this.display());
     const shouldUnlock = wasSensible && !isSensible;
-    const locked = this.displayIsLocked() && !shouldUnlock;
-    return this.setDisplayIsLocked(locked);
+    const defaultDisplay = this.setDefaultDisplay().display();
+
+    if (isSensible && defaultDisplay === "table") {
+      // any sensible display is better than the default table display
+      return this;
+    }
+
+    if (shouldUnlock && this.displayIsLocked()) {
+      return this.setDisplayIsLocked(false).setDefaultDisplay();
+    }
+
+    return this.setDefaultDisplay();
   }
 
   // Switches display based on data shape. For 1x1 data, we show a scalar. If
@@ -426,6 +434,10 @@ class QuestionInner {
     return this.setDisplay("table");
   }
 
+  setDefaultQuery() {
+    return this.query().setDefaultQuery().question();
+  }
+
   settings(): VisualizationSettings {
     return (this._card && this._card.visualization_settings) || {};
   }
@@ -486,7 +498,16 @@ class QuestionInner {
 
   supportsImplicitActions(): boolean {
     const query = this.query();
-    return query instanceof StructuredQuery && !query.hasAnyClauses();
+
+    // we want to check the metadata for the underlying table, not the model
+    const table = query.sourceTable();
+
+    const hasSinglePk =
+      table?.fields?.filter(field => field.isPK())?.length === 1;
+
+    return (
+      query instanceof StructuredQuery && !query.hasAnyClauses() && hasSinglePk
+    );
   }
 
   canAutoRun(): boolean {

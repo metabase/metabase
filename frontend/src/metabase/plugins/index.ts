@@ -150,7 +150,7 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Collection | Bookmark) => true,
+  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
@@ -210,6 +210,7 @@ export const PLUGIN_CACHING = {
   DashboardCacheSection: PluginPlaceholder,
   DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
+  hasQuestionCacheSection: (question: Question) => false,
 };
 
 export const PLUGIN_REDUCERS: {
@@ -229,7 +230,7 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
     permissions,
   addTablePermissionOptions: (permissions: any[], _value: string) =>
     permissions,
-  isBlockPermission: (_value: string) => false,
+  getDatabaseLimitedAccessPermission: (_value: string) => null,
   isAccessPermissionDisabled: (
     _value: string,
     _subject: "schemas" | "tables" | "fields",
