@@ -132,12 +132,9 @@
     :else
     (str value)))
 
-(def ^:private escaped-chars-regex
+(def escaped-chars-regex
+  "Used markdown characters."
   #"[\\/*_`'\[\](){}<>#+-.!$@%^&=|\?~]")
-
-(def escaped-markdown-chars-regex
-  "Regex for virtual dashboards conversion to markdown. Excludes {} as its used for subsitution."
-  #"[\\/*_`'\[\]()<>#+-.!$@%^&=|\?~]")
 
 (defn escape-chars
   "Escape markdown characters."

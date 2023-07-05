@@ -50,7 +50,7 @@
   substituted into connected variables in the text."
   [dashcard parameters]
   (let [dashcard           (if (= "heading" (get-in dashcard [:visualization_settings :virtual_card :display]))
-                             (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars % shared.params/escaped-markdown-chars-regex)))
+                             (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars % shared.params/escaped-chars-regex)))
                              dashcard)
         text               (-> dashcard :visualization_settings :text)
         parameter-mappings (:parameter_mappings dashcard)
