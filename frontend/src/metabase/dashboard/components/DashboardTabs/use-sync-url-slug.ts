@@ -73,7 +73,6 @@ export function useSyncURLSlug({ location }: { location: Location }) {
     }
 
     const tabSelected = selectedTabId !== prevSelectedTabId;
-    // const tabInitialized = selectedTabId != null && prevSelectedTabId == null;
     const tabRenamed =
       tabs.find(t => t.id === selectedTabId)?.name !==
       prevTabs?.find(t => t.id === selectedTabId)?.name;
