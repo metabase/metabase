@@ -70,7 +70,7 @@ function updateSectionsWithPlugins(sections) {
   }
 }
 
-const SECTIONS = updateSectionsWithPlugins({
+const SECTIONS = {
   setup: {
     name: t`Setup`,
     order: 10,
@@ -703,7 +703,11 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-});
+};
+
+const getSectionsWithPlugins = _.once(() =>
+  updateSectionsWithPlugins(SECTIONS),
+);
 
 export const getSettings = createSelector(
   state => state.admin.settings.settings,
@@ -742,9 +746,10 @@ export const getSections = createSelector(
       return {};
     }
 
+    const sections = getSectionsWithPlugins();
     const settingsByKey = _.groupBy(settings, "key");
     const sectionsWithAPISettings = {};
-    for (const [slug, section] of Object.entries(SECTIONS)) {
+    for (const [slug, section] of Object.entries(sections)) {
       const isHidden = section.getHidden?.(derivedSettingValues);
 
       if (isHidden || (section.adminOnly && !isAdmin)) {

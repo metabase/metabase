@@ -4,7 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 export const EmbeddingAppOriginDescription = () => {
   return (
-    <>
+    <div>
       {jt`With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. ${(
         <ExternalLink
           key="learn-more"
@@ -26,6 +26,6 @@ export const EmbeddingAppOriginDescription = () => {
           </ExternalLink>
         )} for what can be entered.`}
       </div>
-    </>
+    </div>
   );
 };
