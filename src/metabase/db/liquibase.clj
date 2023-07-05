@@ -98,7 +98,7 @@
   filter out blank / comment lines. Even though this is not necessary for H2 or Postgres go ahead and do it anyway
   because it keeps the code simple and doesn't make a significant performance difference.
 
-  As of 0.31.1 this is only used for printing the migrations without running or when force migrating."
+  As of 0.47.0 this is only used for printing the migrations without running."
   [^Liquibase liquibase]
   (for [line  (str/split-lines (migrations-sql liquibase))
         :when (not (or (str/blank? line)
