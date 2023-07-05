@@ -281,7 +281,7 @@ describe("scenarios > visualizations > table", () => {
       cy.wait("@findSuggestions");
     });
 
-    expect(popover()).to.not.be.scrollableHorizontally;
+    expect(popover()).not.to.be.scrollableHorizontally;
   });
 
   it("default picker container should not be scrollable horizontally", () => {
@@ -297,7 +297,7 @@ describe("scenarios > visualizations > table", () => {
       input.type("f");
       cy.wait("@findSuggestions");
 
-      expect(cy.findByTestId("default-picker-container")).to.not.be
+      expect(cy.findByTestId("default-picker-container")).not.to.be
         .scrollableHorizontally;
     });
   });

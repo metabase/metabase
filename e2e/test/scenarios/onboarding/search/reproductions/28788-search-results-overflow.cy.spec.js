@@ -33,7 +33,7 @@ describe("issue 28788", () => {
     cy.wait("@search");
     cy.icon("hourglass").should("not.exist");
 
-    expect(cy.findByTestId("search-bar-results-container")).to.not.be
+    expect(cy.findByTestId("search-bar-results-container")).not.to.be
       .scrollableHorizontally;
   });
 });
