@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+import { getIcon, screen } from "__support__/ui";
 import { setup, SetupOpts } from "./setup";
 
 const setupEnterprise = (opts?: SetupOpts) => {
@@ -16,7 +16,7 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(getIcon("ellipsis"));
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();

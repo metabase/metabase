@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { screen } from "__support__/ui";
+import { getIcon, queryIcon, screen } from "__support__/ui";
 import { setup } from "./setup";
 
 describe("CollectionMenu", () => {
@@ -12,7 +12,7 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(getIcon("ellipsis"));
     expect(screen.getByText("Edit permissions")).toBeInTheDocument();
   });
 
@@ -24,7 +24,7 @@ describe("CollectionMenu", () => {
       isAdmin: false,
     });
 
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(getIcon("ellipsis"));
     expect(screen.queryByText("Edit permissions")).not.toBeInTheDocument();
   });
 
@@ -37,7 +37,7 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
   it("should not be able to edit permissions for personal subcollections", () => {
@@ -49,7 +49,7 @@ describe("CollectionMenu", () => {
       isPersonalCollectionChild: true,
     });
 
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(getIcon("ellipsis"));
     expect(screen.queryByText("Edit permissions")).not.toBeInTheDocument();
   });
 
@@ -60,7 +60,7 @@ describe("CollectionMenu", () => {
       }),
     });
 
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(getIcon("ellipsis"));
     expect(screen.getByText("Move")).toBeInTheDocument();
     expect(screen.getByText("Archive")).toBeInTheDocument();
   });
@@ -72,7 +72,7 @@ describe("CollectionMenu", () => {
       }),
     });
 
-    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
   it("should not be able to move and archive the root collection", () => {
@@ -84,7 +84,7 @@ describe("CollectionMenu", () => {
       }),
     });
 
-    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
   it("should not be able to move and archive personal collections", () => {
@@ -95,7 +95,7 @@ describe("CollectionMenu", () => {
       }),
     });
 
-    expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
   it("should not be able to make the collection official", () => {
@@ -106,7 +106,7 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    userEvent.click(getIcon("ellipsis"));
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
