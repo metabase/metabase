@@ -1239,6 +1239,7 @@ describe("Question", () => {
                 "display-name": "Bar",
                 id: "aaa",
                 type: "text",
+                value: null,
               },
             },
           },
@@ -1260,6 +1261,7 @@ describe("Question", () => {
           slug: "foo",
           target: ["dimension", ["template-tag", "foo"]],
           type: "category",
+          value: null,
         },
         {
           default: undefined,
@@ -1269,6 +1271,7 @@ describe("Question", () => {
           slug: "bar",
           target: ["variable", ["template-tag", "bar"]],
           type: "category",
+          value: null,
         },
       ]);
     });
@@ -1311,6 +1314,7 @@ describe("Question", () => {
           name: "bar",
           id: "bar_id",
           hasVariableTemplateTagTarget: true,
+          value: null,
         },
       ]);
     });
