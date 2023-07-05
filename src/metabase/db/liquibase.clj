@@ -13,6 +13,7 @@
    [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
+   (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeSet)
    (liquibase Contexts LabelExpression Liquibase)
    (liquibase.database Database DatabaseFactory)
@@ -83,28 +84,6 @@
     (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
       ~@body)))
 
-(defn migrations-sql
-  "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations."
-  ^String [^Liquibase liquibase]
-  (let [writer (StringWriter.)]
-    (.update liquibase "" writer)
-    (.toString writer)))
-
-(defn migrations-lines
-  "Return a sequnce of DDL statements that should be used to perform migrations for `liquibase`.
-
-  MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run
-  one statement at a time; Liquibase puts each DDL statement on its own line automatically so just split by lines and
-  filter out blank / comment lines. Even though this is not necessary for H2 or Postgres go ahead and do it anyway
-  because it keeps the code simple and doesn't make a significant performance difference.
-
-  As of 0.47.0 this is only used for printing the migrations without running."
-  [^Liquibase liquibase]
-  (for [line  (str/split-lines (migrations-sql liquibase))
-        :when (not (or (str/blank? line)
-                       (re-find #"^--" line)))]
-    line))
-
 (defn has-unrun-migrations?
   "Does `liquibase` have migration change sets that haven't been run yet?
 
@@ -112,8 +91,7 @@
   skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
   using them.
 
-  (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date, but
-  `migrations-lines` certainly does; duplicating the skipping logic doesn't hurt anything.)"
+  (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date)"
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listUnrunChangeSets liquibase nil (LabelExpression.)))))
 
@@ -136,6 +114,19 @@
       (force-release-locks! liquibase)
       (catch Exception e
         (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
+
+(defn migrations-sql
+  "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations.
+  Note that custom migrations are not included."
+  ^String [^Liquibase liquibase]
+  ;; calling update on custom migrations will execute them, and we don't want it to happen
+  ;; so ignore its
+  (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil nil)]
+    (when (instance? CustomChangeWrapper (first (.getChanges change)))
+      (.setIgnore change true)))
+  (let [writer (StringWriter.)]
+    (.update liquibase "" writer)
+    (.toString writer)))
 
 (defn- wait-for-migration-lock-to-be-cleared
   "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times. There's a
@@ -187,7 +178,7 @@
   (when (has-unrun-migrations? liquibase)
    (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil (LabelExpression.))]
      (try
-       (log/info (format "Start execute migration with id %s" (.getId change)))
+       (log/info (format "Start executing migration with id %s" (.getId change)))
        ;; Migrate changes from the current state upto the change with id `(.getId change)`
        ;; Practically, we're running one change at time
        ;; each .update will be excuted under a transaction, so if it's fails

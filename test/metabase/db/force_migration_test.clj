@@ -17,7 +17,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(custom-migrations/define-migration FailingCustomMigration
+(custom-migrations/define-migration FailCustomMigration
   (do
     (t2/insert! :ancient_civilization
                 {:name   "Greek"
@@ -35,26 +35,26 @@
 ;; - All custom migrations are executed in a transaction, if it fails, nothing should be commited
 ;; - All migrations are executed in the order it's defined
 (deftest force-migration-test
- (mt/test-drivers #{:h2 :mysql :postgres}
-   (impl/with-temp-empty-app-db [conn driver/*driver*]
-     (with-redefs [liquibase/changelog-file "force-migration.yaml"]
-       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-             database (->> (if (instance? java.sql.Connection conn)
-                             conn
-                             (.getConnection ^javax.sql.DataSource conn))
-                           (#'liquibase/liquibase-connection)
-                           (#'liquibase/database))
-             lock-service (.getLockService (LockServiceFactory/getInstance) database)]
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (impl/with-temp-empty-app-db [conn driver/*driver*]
+      (with-redefs [liquibase/changelog-file "force-migration.yaml"]
+        (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+              database (->> (if (instance? java.sql.Connection conn)
+                              conn
+                              (.getConnection ^javax.sql.DataSource conn))
+                            (#'liquibase/liquibase-connection)
+                            (#'liquibase/database))
+              lock-service (.getLockService (LockServiceFactory/getInstance) database)]
 
-         (.acquireLock lock-service)
-         (db.setup/migrate! db-type data-source :force)
+          (.acquireLock lock-service)
+          (db.setup/migrate! db-type data-source :force)
 
-         (testing "Make sure the migrations that intended to succeed are succeed"
-           (is (= #{"1" "2" "5"}
-                  (t2/select-pks-set :databasechangelog))))
+          (testing "Make sure the migrations that intended to succeed are succeed"
+            (is (= ["1" "2" "5"]
+                   (t2/select-pks-vec :databasechangelog {:order-by [:dateexecuted :id]}))))
 
-         (testing "the custom migration that fails doesn't commit its operation"
-           (is (nil? (t2/select-one :ancient_civilization :name "Greek"))))
+          (testing "the custom migration that fails doesn't commit its operation"
+            (is (nil? (t2/select-one :ancient_civilization :name "Greek"))))
 
-         (testing "the custom migration that success will persists it result successfully"
-           (is (some? (t2/select-one :ancient_civilization :name "Egypt")))))))))
+          (testing "the custom migration that success will persists it result successfully"
+            (is (some? (t2/select-one :ancient_civilization :name "Egypt")))))))))
