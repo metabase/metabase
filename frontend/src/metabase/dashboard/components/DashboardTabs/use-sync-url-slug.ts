@@ -86,11 +86,12 @@ export function useSyncURLSlug({ location }: { location: Location }) {
               tabId: selectedTabId,
               name: tabs.find(t => t.id === selectedTabId)?.name,
             });
+      updateURLSlug({
+        slug: newSlug,
+        shouldReplace: !tabInitialized,
+      });
+
       if (newSlug) {
-        updateURLSlug({
-          slug: newSlug,
-          shouldReplace: !tabInitialized,
-        });
         setTabInitialized(true);
       }
     }
