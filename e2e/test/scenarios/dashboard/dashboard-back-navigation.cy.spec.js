@@ -233,7 +233,7 @@ describe(
       );
     });
 
-    it("should restore a dashboard with loading cards", () => {
+    it("should restore a dashboard with loading cards and re-fetch query data", () => {
       createDashboardWithSlowCard();
       cy.get("@dashboardId").then(dashboardId => {
         cy.visit({
@@ -256,7 +256,7 @@ describe(
       });
 
       getDashboardCard().within(() => {
-        cy.findByText("0").should("be.visible");
+        cy.findByText("Sleep card").should("be.visible");
       });
     });
   },
