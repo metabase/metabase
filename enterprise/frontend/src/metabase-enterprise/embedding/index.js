@@ -22,7 +22,8 @@ if (hasPremiumFeature("embedding")) {
           description: <EmbeddingAppOriginDescription />,
           placeholder: "https://*.example.com",
           type: "string",
-          getHidden: settings => !settings["enable-embedding"],
+          getHidden: (_, derivedSettings) =>
+            !derivedSettings["enable-embedding"],
         },
       ],
     );
