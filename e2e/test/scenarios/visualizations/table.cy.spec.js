@@ -271,7 +271,7 @@ describe("scenarios > visualizations > table", () => {
     popover().should("not.exist");
   });
 
-  it("popover should not be horizontally scrollable (metabase#31339)", () => {
+  it("popover should not be scrollable horizontally (metabase#31339)", () => {
     openPeopleTable();
     headerCells().filter(":contains('Password')").click();
 
@@ -284,7 +284,7 @@ describe("scenarios > visualizations > table", () => {
     expect(popover()).to.not.be.scrollableHorizontally;
   });
 
-  it("default picker container should not be horizontally scrollable", () => {
+  it("default picker container should not be scrollable horizontally", () => {
     openPeopleTable();
     headerCells().filter(":contains('Password')").click();
 
