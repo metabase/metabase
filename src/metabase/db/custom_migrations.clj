@@ -20,6 +20,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
+   [toucan2.connection :as t2.conn]
    [toucan2.execute :as t2.execute])
   (:import
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
@@ -42,7 +43,8 @@
   `(defrecord ~name []
      CustomTaskChange
      (execute [_# database#]
-       ~migration-body)
+       (t2/with-transaction [_conn#]
+         ~migration-body))
      (getConfirmationMessage [_#]
        (str "Custom migration: " ~name))
      (setUp [_#])
@@ -52,7 +54,8 @@
 
      CustomTaskRollback
      (rollback [_# database#]
-       ~reverse-migration-body)))
+       (t2/with-transaction [_conn#]
+         ~reverse-migration-body))))
 
 (defn no-op
   "No-op logging rollback function"

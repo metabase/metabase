@@ -9,9 +9,11 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [schema.core :as s]
+   [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
+   (liquibase.changelog ChangeSet)
    (liquibase Contexts LabelExpression Liquibase)
    (liquibase.database Database DatabaseFactory)
    (liquibase.database.jvm JdbcConnection)
@@ -57,15 +59,17 @@
   "Impl for [[with-liquibase-macro]]."
   [conn-or-data-source :- (s/cond-pre java.sql.Connection javax.sql.DataSource)
    f]
-  ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
-  ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
-  ;; it's safe to assume the caller is managing its lifecycle.
-  (if (instance? java.sql.Connection conn-or-data-source)
-    (f (-> conn-or-data-source liquibase-connection database liquibase))
-    (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
-                liquibase-conn (liquibase-connection conn)
-                database       (database liquibase-conn)]
-      (f (liquibase database)))))
+  ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
+  (binding [t2.conn/*current-connectable* conn-or-data-source]
+   (if (instance? java.sql.Connection conn-or-data-source)
+     (f (-> conn-or-data-source liquibase-connection database liquibase))
+     ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
+     ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
+     ;; it's safe to assume the caller is managing its lifecycle.
+     (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
+                 liquibase-conn (liquibase-connection conn)
+                 database       (database liquibase-conn)]
+       (f (liquibase database))))))
 
 (defmacro with-liquibase
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
@@ -118,6 +122,21 @@
   ^Boolean [^Liquibase liquibase]
   (boolean (seq (.listLocks liquibase))))
 
+(defn force-release-locks!
+  "(Attempt to) force release Liquibase migration locks."
+  [^Liquibase liquibase]
+  (.forceReleaseLocks liquibase))
+
+(defn release-lock-if-needed!
+  "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
+  intended to be used when a failure has occurred and bubbling up this exception would hide the real exception."
+  [^Liquibase liquibase]
+  (when (migration-lock-exists? liquibase)
+    (try
+      (force-release-locks! liquibase)
+      (catch Exception e
+        (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
+
 (defn- wait-for-migration-lock-to-be-cleared
   "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times. There's a
   chance the lock will end up clearing up so we can run migrations normally."
@@ -151,30 +170,32 @@
 (s/defn force-migrate-up-if-needed!
   "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:
 
-  1.  This doesn't check to make sure the DB locks are cleared
-  2.  This generates a sequence of individual DDL statements with [[migrations-lines]] and runs them each in turn
-  3.  Any DDL statements that fail are ignored
+  1.  This will force release the locks before start running
+  2.  This will attempt to run each migrations one a time
+  3.  Migrations that fail will be ignored
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
   #3295.
 
-  Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back
+  Each migration is ran inside a nested transaction; that way if the nested transaction fails we can roll it back
   without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you can't
   do anything futher until you clear the error state by doing something like calling `.rollback`.)"
-  [conn      :- java.sql.Connection
-   liquibase :- Liquibase]
+  [liquibase :- Liquibase]
   (.clearCheckSums liquibase)
   (when (has-unrun-migrations? liquibase)
-    (doseq [line (migrations-lines liquibase)]
-      (log/info line)
-      ;; try executing `line` in a nested transaction
-      (let [save-point (.setSavepoint conn)]
-        (try
-          (jdbc/execute! {:connection conn} [line])
-          (log/info (u/format-color 'green "[SUCCESS]"))
-          (catch Throwable e
-            (.rollback conn save-point)
-            (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
+    (force-release-locks! liquibase)
+    (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil (LabelExpression.))]
+      (try
+        ;; Migrate changes from the current state upto the change with id `(.getId change)`
+        ;; Practically, we're running one change at time
+        ;; each .update will be excuted under a transaction, so if it's fails
+        ;; it'll be automatically rollbacked
+        (.update liquibase (.getId change) nil (LabelExpression.))
+        (log/info (u/format-color 'green "[SUCCESS]"))
+        (catch Throwable e
+          ;; if this migration fails, ignore it for the next run
+          (.setIgnore change true)
+          (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))))))
 
 (defn- changelog-table-name
   "Returns case-sensitive database-specific name for Liquibase changelog table for db-type"
@@ -232,18 +253,3 @@
          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
      (log/infof "Rolling back app database schema to version %d" target-version)
      (.rollback liquibase (count ids-to-drop) ""))))
-
-(defn force-release-locks!
-  "(Attempt to) force release Liquibase migration locks."
-  [^Liquibase liquibase]
-  (.forceReleaseLocks liquibase))
-
-(defn release-lock-if-needed!
-  "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
-  intended to be used when a failure has occurred and bubbling up this exception would hide the real exception."
-  [^Liquibase liquibase]
-  (when (migration-lock-exists? liquibase)
-    (try
-      (force-release-locks! liquibase)
-      (catch Exception e
-        (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
