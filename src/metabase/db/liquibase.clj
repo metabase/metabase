@@ -181,21 +181,23 @@
   without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you can't
   do anything futher until you clear the error state by doing something like calling `.rollback`.)"
   [liquibase :- Liquibase]
+  ;; have to do this before clear the checksums
+  (release-lock-if-needed! liquibase)
   (.clearCheckSums liquibase)
   (when (has-unrun-migrations? liquibase)
-    (force-release-locks! liquibase)
-    (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil (LabelExpression.))]
-      (try
-        ;; Migrate changes from the current state upto the change with id `(.getId change)`
-        ;; Practically, we're running one change at time
-        ;; each .update will be excuted under a transaction, so if it's fails
-        ;; it'll be automatically rollbacked
-        (.update liquibase (.getId change) nil (LabelExpression.))
-        (log/info (u/format-color 'green "[SUCCESS]"))
-        (catch Throwable e
-          ;; if this migration fails, ignore it for the next run
-          (.setIgnore change true)
-          (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))))))
+   (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil (LabelExpression.))]
+     (try
+       (log/info (format "Start execute migration with id %s" (.getId change)))
+       ;; Migrate changes from the current state upto the change with id `(.getId change)`
+       ;; Practically, we're running one change at time
+       ;; each .update will be excuted under a transaction, so if it's fails
+       ;; it'll be automatically rollbacked
+       (.update liquibase (.getId change) nil (LabelExpression.))
+       (log/info (u/format-color 'green "[SUCCESS]"))
+       (catch Throwable e
+         ;; if this migration fails, ignore it for the next run
+         (.setIgnore change true)
+         (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))))))
 
 (defn- changelog-table-name
   "Returns case-sensitive database-specific name for Liquibase changelog table for db-type"
