@@ -120,7 +120,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Update filter").click();
 
-      SQLFilter.runQuery();
+      SQLFilter.saveNewQuestion();
+      SQLFilter.reloadWithoutQueryParams();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("No results!");
