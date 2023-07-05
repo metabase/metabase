@@ -1,12 +1,13 @@
 import {
-  restore,
-  openPeopleTable,
-  openOrdersTable,
-  openNativeEditor,
-  popover,
   enterCustomColumnDetails,
-  visualize,
+  isScrollableHorizontally,
+  openNativeEditor,
+  openOrdersTable,
+  openPeopleTable,
+  popover,
+  restore,
   summarize,
+  visualize,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -281,7 +282,9 @@ describe("scenarios > visualizations > table", () => {
       cy.wait("@findSuggestions");
     });
 
-    expect(popover()).not.to.be.scrollableHorizontally;
+    popover().then($popover => {
+      expect(isScrollableHorizontally($popover[0])).to.be.false;
+    });
   });
 
   it("default picker container should not be scrollable horizontally", () => {
@@ -297,8 +300,9 @@ describe("scenarios > visualizations > table", () => {
       input.type("f");
       cy.wait("@findSuggestions");
 
-      expect(cy.findByTestId("default-picker-container")).not.to.be
-        .scrollableHorizontally;
+      cy.findByTestId("default-picker-container").then($container => {
+        expect(isScrollableHorizontally($container[0])).to.be.false;
+      });
     });
   });
 });

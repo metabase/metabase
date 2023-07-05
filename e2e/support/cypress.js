@@ -10,7 +10,6 @@ import "cypress-real-events/support";
 import "@cypress/skip-test/support";
 import "@percy/cypress";
 import "./commands";
-import "./properties";
 
 const runWithReplay = Cypress.env("REPLAYIO_ENABLED");
 

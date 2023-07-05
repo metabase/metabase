@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers";
+import { isScrollableHorizontally, restore } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
@@ -35,7 +35,8 @@ describe("issue 28788", () => {
     cy.wait("@search");
     cy.icon("hourglass").should("not.exist");
 
-    expect(cy.findByTestId("search-bar-results-container")).not.to.be
-      .scrollableHorizontally;
+    cy.findByTestId("search-bar-results-container").then($container => {
+      expect(isScrollableHorizontally($container[0])).to.be.false;
+    });
   });
 });
