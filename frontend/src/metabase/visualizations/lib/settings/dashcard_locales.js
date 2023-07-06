@@ -93,8 +93,8 @@ const TITLE_LOCALES_BN = {
       'bn': 'শূন্য পদ'
   },
   'school.dashboard.teacher.education': {
-      'en': 'Statistics of Education Degree',
-      'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
+      'en': 'Educational qualification of teachers',
+      'bn': 'শিক্ষকদের শিক্ষাগত যোগ্যতা'
   },
   'school.dashboard.teacher.gender': {
       'en': 'Statistics of Gender',
