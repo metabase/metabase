@@ -85,7 +85,8 @@
 
 (defn- default-options []
   {:namespace-pattern   #"^metabase.*test$"
-   :exclude-directories excluded-directories})
+   :exclude-directories excluded-directories
+   :test-warn-time      1500})
 
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."

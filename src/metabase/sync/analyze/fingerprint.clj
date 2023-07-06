@@ -209,7 +209,9 @@
      (qp.store/store-database! database)
      (reduce (fn [acc table]
                (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-               (let [results (fingerprint-fields! table)
+               (let [results (if (= :googleanalytics (:engine database))
+                               (empty-stats-map 0)
+                               (fingerprint-fields! table))
                      new-acc (merge-with + acc results)]
                  (if (continue? new-acc)
                    new-acc

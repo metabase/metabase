@@ -149,8 +149,11 @@ export type ExternalOp = {
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
 
-export type JoinStrategy =
-  | "left-join"
-  | "right-join"
-  | "inner-join"
-  | "full-join";
+declare const JoinStrategy: unique symbol;
+export type JoinStrategy = unknown & { _opaque: typeof Join };
+
+export type JoinStrategyDisplayInfo = {
+  displayName: string;
+  default?: boolean;
+  shortName: string;
+};

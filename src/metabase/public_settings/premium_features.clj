@@ -221,7 +221,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn ^:private token-features :- #{su/NonBlankString}
+  (schema/defn token-features :- #{su/NonBlankString}
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -363,10 +363,7 @@
 (defn- check-feature
   [feature]
   (or (= feature :none)
-      (if (= feature :any)
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        (enable-enhancements?)
-        (has-feature? feature))))
+      (has-feature? feature)))
 
 (defn dynamic-ee-oss-fn
   "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the
@@ -473,9 +470,9 @@
 
   ###### `:feature`
 
-  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:any` to
-  require a valid premium token with at least one feature, but no specific feature. Use `:none` to always run the
-  EE implementation if available, regardless of token.
+  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:none` to
+  always run the EE implementation if available, regardless of token (WARNING: this is not recommended for most use
+  cases. You probably want to gate your code by a specific premium feature.)
 
   ###### `:fallback`
 

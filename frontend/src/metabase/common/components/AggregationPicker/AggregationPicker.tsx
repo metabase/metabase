@@ -34,6 +34,7 @@ interface AggregationPickerProps {
   query: Lib.Query;
   stageIndex: number;
   operators: Lib.AggregationOperator[];
+  hasExpressionInput?: boolean;
   legacyQuery: StructuredQuery;
   legacyClause?: LegacyAggregation;
   maxHeight?: number;
@@ -68,6 +69,7 @@ export function AggregationPicker({
   query,
   stageIndex,
   operators,
+  hasExpressionInput = true,
   legacyQuery,
   legacyClause,
   maxHeight = DEFAULT_MAX_HEIGHT,
@@ -124,7 +126,7 @@ export function AggregationPicker({
       });
     }
 
-    if (canUseExpressions) {
+    if (hasExpressionInput && canUseExpressions) {
       sections.push({
         key: "custom-expression",
         name: t`Custom Expression`,
@@ -134,7 +136,7 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [query, legacyQuery, stageIndex, operators]);
+  }, [query, legacyQuery, stageIndex, operators, hasExpressionInput]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,
@@ -226,7 +228,10 @@ export function AggregationPicker({
     const columns = Lib.aggregationOperatorColumns(operator);
     const columnGroups = Lib.groupColumns(columns);
     return (
-      <ColumnPickerContainer className={className}>
+      <ColumnPickerContainer
+        className={className}
+        data-testid="aggregation-column-picker"
+      >
         <ColumnPickerHeader onClick={handleResetOperator}>
           {operatorInfo.displayName}
         </ColumnPickerHeader>
@@ -269,7 +274,7 @@ function ColumnPickerHeader({
 }) {
   return (
     <ColumnPickerHeaderContainer>
-      <ColumnPickerHeaderTitleContainer onClick={onClick}>
+      <ColumnPickerHeaderTitleContainer onClick={onClick} aria-label={t`Back`}>
         <Icon name="chevronleft" size={18} />
         <ColumnPickerHeaderTitle>{children}</ColumnPickerHeaderTitle>
       </ColumnPickerHeaderTitleContainer>
