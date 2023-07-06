@@ -9,7 +9,7 @@ import {
   NumberFormatOptions,
 } from "metabase/static-viz/lib/numbers";
 import {
-  measureText,
+  measureTextWidth,
   measureTextHeight,
   truncateText,
 } from "metabase/static-viz/lib/text";
@@ -83,7 +83,7 @@ export const getXTicksDimensions = (
     .flatMap(s => s.data)
     .map(datum => {
       const tick = formatXTick(getX(datum), settings.type, settings.format);
-      return measureText(tick.toString(), fontSize);
+      return measureTextWidth(tick.toString(), fontSize);
     })
     .reduce((a, b) => Math.max(a, b), 0);
 
@@ -137,7 +137,7 @@ export const calculateYTickWidth = (
 ) => {
   const domainValuesWidths = domain
     .map(value => formatNumber(value, settings))
-    .map(formatted => measureText(formatted, fontSize));
+    .map(formatted => measureTextWidth(formatted, fontSize));
 
   return Math.max(...domainValuesWidths);
 };
