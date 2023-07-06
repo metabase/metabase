@@ -26,12 +26,10 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defsetting user-visibility
