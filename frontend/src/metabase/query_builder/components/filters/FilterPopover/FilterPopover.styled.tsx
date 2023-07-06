@@ -20,3 +20,13 @@ export const Button = styled(BaseButton)<Props>`
       alpha(primaryColor, 0.8)};
   }
 `;
+
+export const FilterPopoverSeparator = styled.hr`
+  border: 0;
+  height: 0;
+  border-top: 1px solid ${color("border")};
+`;
+
+export const EmptyFilterPickerPlaceholder = styled.div`
+  margin-bottom: 60px;
+`;

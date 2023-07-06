@@ -169,13 +169,13 @@ describe("FilterPopover", () => {
         />,
       );
 
+      expect(
+        screen.queryByTestId("filter-popover-separator"),
+      ).not.toBeInTheDocument();
+
       expect(screen.getByTestId("select-button-content")).toHaveTextContent(
         "Is empty",
       );
-
-      expect(
-        screen.getByTestId("default-picker-container").childNodes.length,
-      ).toBe(0);
     });
 
     it("should render a space for a filter if filter is not 'empty' or 'not empty'", async () => {
@@ -187,6 +187,10 @@ describe("FilterPopover", () => {
           onChangeFilter={dummyFunction}
         />,
       );
+
+      expect(
+        screen.getByTestId("filter-popover-separator"),
+      ).toBeInTheDocument();
 
       expect(screen.getByTestId("select-button-content")).toHaveTextContent(
         "Contains",
