@@ -235,7 +235,8 @@
   [& {:keys [export-format card-id embedding-params token-params query-params qp-runner constraints options]
       :or   {qp-runner qp/process-query-and-save-execution!}}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
-  (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+  (let [merged-slug->value (-> (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+                               (update-vals not-empty))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply api.public/run-query-for-card-with-id-async
               card-id export-format parameters
@@ -269,7 +270,8 @@
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
-  (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+  (let [slug->value (-> (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+                        (update-vals not-empty))
         parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
     (api.public/public-dashcard-results-async
      :dashboard-id  dashboard-id
