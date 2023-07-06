@@ -4,10 +4,6 @@ import { screen } from "__support__/ui";
 import { setup, hasBasicFilterOptions } from "./setup";
 
 describe("SharingSidebar Enterprise Bundle", () => {
-  const tokenFeatures = {
-    advanced_config: true,
-  };
-
   describe("Email Subscription sidebar", () => {
     it("should only show advanced filtering options with the advanced_config flag", async () => {
       setup({ email: true, hasEnterprisePlugins: true });
@@ -22,7 +18,7 @@ describe("SharingSidebar Enterprise Bundle", () => {
 
   describe("Slack Subscription sidebar", () => {
     it("should only show advanced filtering options with the advanced_config flag", async () => {
-      setup({ slack: true, tokenFeatures, hasEnterprisePlugins: true });
+      setup({ slack: true, hasEnterprisePlugins: true });
 
       userEvent.click(await screen.findByText("Send it to Slack"));
 

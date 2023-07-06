@@ -139,6 +139,7 @@ export type DayOfWeekId =
 
 export interface TokenFeatures {
   advanced_config: boolean;
+  advanced_config_legacy: boolean;
   advanced_permissions: boolean;
   audit_app: boolean;
   content_management: boolean;
