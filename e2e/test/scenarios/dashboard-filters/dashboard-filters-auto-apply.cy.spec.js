@@ -440,12 +440,22 @@ describe("scenarios > dashboards > filters > auto apply", () => {
           cy.findByText("Widget").click();
           cy.button("Add filter").click();
         });
-        getDashboardCard().findByText("Rows 1-5 of 200").should("be.visible");
         dashboardParametersContainer()
           .button("Apply")
           .should("be.visible")
           .click();
         getDashboardCard().findByText("Rows 1-5 of 54").should("be.visible");
+        filterWidget().findByText("Widget").click();
+        popover().within(() => {
+          cy.findByText("Gizmo").click();
+          cy.button("Update filter").click();
+        });
+        getDashboardCard().findByText("Rows 1-5 of 54").should("be.visible");
+        dashboardParametersContainer()
+          .button("Apply")
+          .should("be.visible")
+          .click();
+        getDashboardCard().findByText("Rows 1-5 of 105").should("be.visible");
       });
 
       it("should not show toast", () => {
