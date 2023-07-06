@@ -159,10 +159,6 @@ describe("FilterPopover", () => {
     });
   });
   describe("filter rendering", () => {
-    beforeEach(() => {
-      jest.unmock("metabase/components/Popover");
-    });
-
     it("should not render filter picker when filter type is 'Is empty'", async () => {
       const filter = new Filter(IS_EMPTY_FILTER, null, QUERY);
       renderWithProviders(
