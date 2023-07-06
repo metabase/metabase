@@ -21,7 +21,7 @@ LastEditInfoLabel.propTypes = {
       id: PropTypes.number.isRequired,
       email: PropTypes.string.isRequired,
       first_name: PropTypes.string.isRequired,
-      last_name: PropTypes.string.isRequired,
+      last_name: PropTypes.string,
       timestamp: PropTypes.string.isRequired,
     }).isRequired,
   }),
