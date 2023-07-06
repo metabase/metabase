@@ -13,7 +13,11 @@ import {
   setActionsEnabledForDB,
   summarize,
   visitDashboard,
+  visitDashboardAndCreateTab,
   visualize,
+  openQuestionsSidebar,
+  sidebar,
+  saveDashboard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -216,6 +220,29 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     getDashboardCard(1).findByText(PERMISSION_ERROR);
     cy.get("@dashboard.all").should("have.length", 1);
     cy.get("@dashcardQuery.all").should("have.length", 1);
+  });
+
+  it("should return to dashboard with specific tab selected", () => {
+    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+
+    // Add card to second tab
+    cy.icon("pencil").click();
+    openQuestionsSidebar();
+    sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+    saveDashboard();
+
+    getDashboardCard().within(() => {
+      cy.findByText("Orders, Count").click();
+      cy.wait("@card");
+    });
+
+    queryBuilderHeader()
+      .findByLabelText("Back to Orders in a dashboard")
+      .click();
+
+    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
   });
 });
 
