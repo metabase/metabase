@@ -2,7 +2,7 @@ import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
 import { WindowModal } from "metabase/components/Modal/WindowModal";
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 
 const WINDOW_MODAL_CONTENT = "Close modal";
 
@@ -24,7 +24,7 @@ const TestWindowModalComponent = () => {
 };
 
 const setup = () => {
-  renderWithProviders(<TestWindowModalComponent />);
+  render(<TestWindowModalComponent />);
 };
 
 describe("WindowModal", () => {
@@ -54,7 +54,7 @@ describe("WindowModal", () => {
     userEvent.tab();
     expect(screen.getByTestId("modal-button")).toHaveFocus();
 
-    // second tab to make sure that focus doesn't leave the modal or the button
+    // second tab to make sure that focus doesn't leave the modal or the button.
     userEvent.tab();
     expect(screen.getByTestId("modal-button")).toHaveFocus();
   });
