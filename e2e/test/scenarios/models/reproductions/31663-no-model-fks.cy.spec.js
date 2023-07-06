@@ -42,7 +42,7 @@ describe("issue 31663", () => {
 
     cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
     cy.wait("@idFields");
-    cy.findByLabelText("Foreign key target").click();
+    cy.findByTestId("foreign-key-target-picker").click();
     popover().within(() => {
       cy.findByText("Orders Model → ID").should("not.exist");
       cy.findByText("Products Model → ID").should("not.exist");

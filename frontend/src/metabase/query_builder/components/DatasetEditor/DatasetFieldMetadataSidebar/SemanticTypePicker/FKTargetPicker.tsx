@@ -94,7 +94,7 @@ function FKTargetPicker({
       searchable
       searchProp={SEARCH_PROPERTIES}
       buttonProps={{
-        "aria-label": t`Foreign key target`,
+        "data-testid": "foreign-key-target-picker",
       }}
       optionValueFn={getOptionValue}
       optionNameFn={getFieldName}
