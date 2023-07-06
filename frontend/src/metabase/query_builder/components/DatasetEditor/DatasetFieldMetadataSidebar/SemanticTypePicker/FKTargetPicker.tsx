@@ -93,6 +93,9 @@ function FKTargetPicker({
       onChange={onChange}
       searchable
       searchProp={SEARCH_PROPERTIES}
+      buttonProps={{
+        "data-testid": "foreign-key-target-picker",
+      }}
       optionValueFn={getOptionValue}
       optionNameFn={getFieldName}
       optionIconFn={getOptionIcon}
