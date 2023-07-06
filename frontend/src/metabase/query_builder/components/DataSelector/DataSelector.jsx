@@ -878,7 +878,7 @@ export class UnconnectedDataSelector extends Component {
 
     switch (this.state.activeStep) {
       case DATA_BUCKET_STEP:
-        return <DataBucketPicker {...props} />;
+        return <DataBucketPicker {...props} buckets={this.getBuckets()} />;
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
@@ -904,6 +904,16 @@ export class UnconnectedDataSelector extends Component {
     }
 
     return null;
+  }
+
+  getBuckets() {
+    const buckets = [DATA_BUCKET.DATASETS, DATA_BUCKET.RAW_DATA];
+
+    if (this.state.isSavedQuestionPickerShown) {
+      return [...buckets, DATA_BUCKET.SAVED_QUESTIONS];
+    }
+
+    return buckets;
   }
 
   isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
