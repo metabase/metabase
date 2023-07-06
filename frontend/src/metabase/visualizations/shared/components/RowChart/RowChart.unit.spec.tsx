@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { NumberValue } from "d3-scale";
 import userEvent from "@testing-library/user-event";
-import { measureText } from "metabase/lib/measure-text";
+import { measureTextWidth } from "metabase/lib/measure-text";
 import { ChartFont } from "../../types/style";
 import type { RowChartTheme } from "./types";
 
@@ -53,7 +53,7 @@ const defaultProps = {
   },
   theme,
   stackOffset: null,
-  measureText,
+  measureTextWidth,
 };
 
 const setup = (props?: Partial<RowChartProps<TestDatum>>) => {
