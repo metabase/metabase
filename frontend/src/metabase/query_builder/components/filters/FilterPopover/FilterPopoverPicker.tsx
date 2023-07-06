@@ -54,41 +54,32 @@ export default class FilterPopoverPicker extends Component<Props> {
 
     const dimension = filter.dimension();
     const field = dimension?.field();
-    const isEmptyPicker = filter.operator()?.fields?.length === 0;
 
-    if (isEmptyPicker) {
-      return <div className="PopoverBody--marginBottom" />;
-    } else if (field?.isTime()) {
-      return (
-        <TimePicker
-          className={className}
-          filter={filter}
-          onFilterChange={onFilterChange}
-          minWidth={minWidth}
-          maxWidth={maxWidth}
-        />
-      );
-    } else if (field?.isBoolean()) {
-      return (
-        <BooleanPicker
-          className={className}
-          filter={filter}
-          onFilterChange={onFilterChange}
-        />
-      );
-    } else {
-      return (
-        <DefaultPicker
-          className={className}
-          filter={filter}
-          setValue={setValue}
-          setValues={setValues}
-          onCommit={onCommit}
-          minWidth={minWidth}
-          maxWidth={maxWidth}
-          checkedColor={checkedColor}
-        />
-      );
-    }
+    return field?.isTime() ? (
+      <TimePicker
+        className={className}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        minWidth={minWidth}
+        maxWidth={maxWidth}
+      />
+    ) : field?.isBoolean() ? (
+      <BooleanPicker
+        className={className}
+        filter={filter}
+        onFilterChange={onFilterChange}
+      />
+    ) : (
+      <DefaultPicker
+        className={className}
+        filter={filter}
+        setValue={setValue}
+        setValues={setValues}
+        onCommit={onCommit}
+        minWidth={minWidth}
+        maxWidth={maxWidth}
+        checkedColor={checkedColor}
+      />
+    );
   }
 }
