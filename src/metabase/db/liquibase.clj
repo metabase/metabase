@@ -58,7 +58,7 @@
   "Impl for [[with-liquibase-macro]]."
   [conn-or-data-source :- (s/cond-pre java.sql.Connection javax.sql.DataSource)
    f]
-  ;; for custom migrations we need to make sure all toucans method use the provided connection
+  ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
   (binding [t2.conn/*current-connectable* conn-or-data-source]
     (if (instance? java.sql.Connection conn-or-data-source)
       (f (-> conn-or-data-source liquibase-connection database liquibase))
