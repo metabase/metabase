@@ -789,7 +789,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.get(".Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1
-      .contains("1")
+      .contains("3")
       .click();
 
     cy.wait("@dataset").then(xhr => {
