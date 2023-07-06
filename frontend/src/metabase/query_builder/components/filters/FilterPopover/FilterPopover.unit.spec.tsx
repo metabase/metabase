@@ -35,14 +35,11 @@ const QUERY = Question.create({
     "contains",
     ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
     "asdf",
-  ])
-  .filter(["is-empty", ["field", PRODUCTS.TITLE, null]]);
-const [
-  RELATIVE_DAY_FILTER,
-  NUMERIC_FILTER,
-  STRING_CONTAINS_FILTER,
-  IS_EMPTY_FILTER,
-] = QUERY.filters();
+  ]);
+const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER] =
+  QUERY.filters();
+
+console.log(RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER);
 
 const dummyFunction = jest.fn();
 
@@ -159,46 +156,72 @@ describe("FilterPopover", () => {
     });
   });
   describe("filter rendering", () => {
-    it("should not render filter picker when filter type is 'Is empty'", async () => {
-      const filter = new Filter(IS_EMPTY_FILTER, null, QUERY);
-      renderWithProviders(
-        <FilterPopover
-          query={QUERY}
-          filter={filter}
-          onChangeFilter={dummyFunction}
-        />,
-      );
+    describe("no-value filters", () => {
+      it.each(["is-null", "not-null", "is-empty", "not-empty"])(
+        "should not render filter picker or separator for the '%s' filter",
+        async operator => {
+          const filter = new Filter(
+            [operator, ["field", PRODUCTS.TITLE, null], null],
+            null,
+            QUERY,
+          );
 
-      expect(
-        screen.queryByTestId("filter-popover-separator"),
-      ).not.toBeInTheDocument();
+          renderWithProviders(
+            <FilterPopover
+              query={QUERY}
+              filter={filter}
+              onChangeFilter={dummyFunction}
+            />,
+          );
 
-      expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-        "Is empty",
+          expect(
+            screen.queryByTestId("filter-popover-separator"),
+          ).not.toBeInTheDocument();
+
+          // if the "empty filter picker" boolean check fails, we will see the default filter picker
+          expect(
+            screen.queryByTestId("default-filter-picker"),
+          ).not.toBeInTheDocument();
+        },
       );
     });
 
-    it("should render a space for a filter if filter is not 'empty' or 'not empty'", async () => {
-      const filter = new Filter(STRING_CONTAINS_FILTER, null, QUERY);
-      renderWithProviders(
-        <FilterPopover
-          query={QUERY}
-          filter={filter}
-          onChangeFilter={dummyFunction}
-        />,
+    describe("non datetime filters", () => {
+      it.each([
+        { filterElem: STRING_CONTAINS_FILTER, label: "contains" },
+        { filterElem: NUMERIC_FILTER, label: "equals" },
+      ])(
+        "should render a filter picker with a separator if the $label filter has arguments",
+        async ({ filterElem }) => {
+          const filter = new Filter(filterElem, null, QUERY);
+          renderWithProviders(
+            <FilterPopover
+              query={QUERY}
+              filter={filter}
+              onChangeFilter={dummyFunction}
+            />,
+          );
+
+          expect(
+            screen.getByTestId("filter-popover-separator"),
+          ).toBeInTheDocument();
+        },
       );
+    });
 
-      expect(
-        screen.getByTestId("filter-popover-separator"),
-      ).toBeInTheDocument();
+    describe("datetime filters", () => {
+      it("should render a filter picker with a separator if the $label filter has arguments", () => {
+        const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
+        renderWithProviders(
+          <FilterPopover
+            query={QUERY}
+            filter={filter}
+            onChangeFilter={dummyFunction}
+          />,
+        );
 
-      expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-        "Contains",
-      );
-
-      expect(
-        screen.getByTestId("default-picker-container").childNodes.length,
-      ).toBeGreaterThan(0);
+        expect(screen.getByTestId("date-picker")).toBeInTheDocument();
+      });
     });
   });
 });
