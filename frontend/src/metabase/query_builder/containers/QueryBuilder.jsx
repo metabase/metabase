@@ -87,7 +87,7 @@ import {
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
   getIsEditingModel,
-  getIsQuestionEdited,
+  getIsSavedQuestionChanged,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -431,12 +431,12 @@ function useShouldShowUnsavedChangesWarning() {
   const isDirty = useSelector(getIsDirty);
   const isMetadataDirty = useSelector(isResultsMetadataDirty);
   const question = useSelector(getQuestion);
-  const isQuestionEdited = useSelector(getIsQuestionEdited);
+  const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
 
   const shouldShowUnsavedChangesWarningForModels =
     isEditingModel && (isDirty || isMetadataDirty);
   const shouldShowUnsavedChangesWarningForSqlQuery =
-    question != null && question.isNative() && isQuestionEdited;
+    question != null && question.isNative() && isSavedQuestionChanged;
 
   return (
     shouldShowUnsavedChangesWarningForModels ||

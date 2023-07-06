@@ -3,7 +3,6 @@ import * as Urls from "metabase/lib/urls";
 import { serializeCardForUrl } from "metabase/lib/card";
 import type { Card } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
-import Question from "metabase-lib/Question";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -57,16 +56,4 @@ export function getURLForCardState(
     }
   }
   return Urls.question(card, options);
-}
-
-export function isQuestionEdited(
-  question: Question | null,
-  originalQuestion: Question | null,
-): originalQuestion is Question {
-  return (
-    question != null &&
-    !question.isSaved() &&
-    originalQuestion != null &&
-    !originalQuestion.isDataset()
-  );
 }

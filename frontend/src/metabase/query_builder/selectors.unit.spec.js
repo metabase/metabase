@@ -5,6 +5,7 @@ import {
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
+  getIsSavedQuestionChanged,
 } from "metabase/query_builder/selectors";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -18,6 +19,7 @@ import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
 } from "metabase-types/store/mocks";
+import { createMockCard } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
 import Breakout from "metabase-lib/queries/structured/Breakout";
@@ -389,5 +391,51 @@ describe("getQuestionDetailsTimelineDrawerState", () => {
       },
     };
     expect(getQuestionDetailsTimelineDrawerState(state)).toBe("foo");
+  });
+});
+
+const MODEL_CARD = createMockCard({ id: 1, dataset: true });
+const SAVED_QUESTION_CARD = createMockCard({ id: 2 });
+const UNSAVED_QUESTION_CARD = createMockCard({ id: undefined });
+describe("getIsSavedQuestionChanged", () => {
+  function getState(card, originalCard) {
+    return getBaseState({
+      card,
+      originalCard,
+    });
+  }
+
+  it("returns true if question is not saved and originalQuestion is not dataset", () => {
+    expect(
+      getIsSavedQuestionChanged(
+        getState(UNSAVED_QUESTION_CARD, SAVED_QUESTION_CARD),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false if question is saved", () => {
+    expect(
+      getIsSavedQuestionChanged(
+        getState(SAVED_QUESTION_CARD, SAVED_QUESTION_CARD),
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false if originalQuestion is for a model", () => {
+    expect(
+      getIsSavedQuestionChanged(getState(UNSAVED_QUESTION_CARD, MODEL_CARD)),
+    ).toBe(false);
+  });
+
+  it("returns false if question is null", () => {
+    expect(getIsSavedQuestionChanged(getState(null, SAVED_QUESTION_CARD))).toBe(
+      false,
+    );
+  });
+
+  it("returns false if originalQuestion is null", () => {
+    expect(
+      getIsSavedQuestionChanged(getState(UNSAVED_QUESTION_CARD, null)),
+    ).toBe(false);
   });
 });

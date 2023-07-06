@@ -7,7 +7,7 @@ import {
   getDashboardId,
 } from "metabase/dashboard/selectors";
 import {
-  getIsQuestionEdited,
+  getIsSavedQuestionChanged,
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
@@ -64,9 +64,9 @@ export const getIsCollectionPathVisible = createSelector(
 );
 
 export const getIsQuestionLineageVisible = createSelector(
-  [getIsQuestionEdited, getRouterPath],
-  (isQuestionEdited, path) =>
-    isQuestionEdited &&
+  [getIsSavedQuestionChanged, getRouterPath],
+  (isSavedQuestionChanged, path) =>
+    isSavedQuestionChanged &&
     PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
 );
 
