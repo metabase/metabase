@@ -120,8 +120,28 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
     if (typeof value === "string") {
       value = formatImage(value, options);
     }
+    if (typeof value === "string") {
+      value = formatMultiline(value, options);
+    }
   }
   return value;
+}
+
+function formatMultiline(
+  value: string,
+  { jsx, rich, view_as = "auto", link_text }: OptionsType = {},
+) {
+  if (jsx && rich && view_as === "multiline") {
+    return (
+      <React.Fragment>
+        {value
+          .split("\n")
+          .map((str, i) => (i === 0 ? str : [<br key={i} />, str]))}
+      </React.Fragment>
+    );
+  } else {
+    return value;
+  }
 }
 
 export function formatValueRaw(

@@ -210,6 +210,7 @@ export default class Table extends Component {
 
     const options = [
       { name: t`Text`, value: null },
+      { name: t`Multiline`, value: "multiline" },
       { name: t`Link`, value: "link" },
     ];
 

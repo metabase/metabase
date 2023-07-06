@@ -17,6 +17,7 @@ import {
 } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import type { OnVisualizationClickType } from "./types";
 import {
@@ -73,10 +74,13 @@ export function DetailsTableCell({
       const formattedJson = JSON.stringify(value, null, 2);
       cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
     } else {
+      const tableColumnSettings =
+        settings.column_settings?.[getColumnKey(column)];
       cellValue = formatValue(value, {
         ...columnSettings,
         jsx: true,
         rich: true,
+        view_as: tableColumnSettings?.view_as,
       });
       if (typeof cellValue === "string") {
         cellValue = <ExpandableString str={cellValue} length={140} />;
