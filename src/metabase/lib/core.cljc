@@ -201,6 +201,10 @@
    with-native-query
    template-tags
    with-template-tags
+   required-native-extras
+   native-extras
+   with-native-extras
+   with-different-database
    extract-template-tags]
   [lib.order-by
    change-direction
@@ -219,7 +223,8 @@
    remove-clause
    remove-join
    rename-join
-   replace-clause]
+   replace-clause
+   replace-join]
   [lib.stage
    append-stage
    drop-stage]

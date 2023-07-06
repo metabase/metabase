@@ -55,14 +55,6 @@
   [clause]
   (clause-of-type? clause :field))
 
-;;; TODO -- you should use [[metabase.lib.options/uuid]] instead of this, since it also handles stuff with
-;;; `:lib/options` maps (e.g. joins)
-(defn clause-uuid
-  "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
-  [clause]
-  (when (clause? clause)
-    (get-in clause [1 :lib/uuid])))
-
 (defn expression-name
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
   [clause]

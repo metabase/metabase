@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const DimensionListTableName = styled.div`
+export const ColumnGroupName = styled.div`
   margin: 1rem 0 0.5rem 0;
   text-transform: uppercase;
   font-weight: 700;
@@ -10,6 +10,6 @@ export const DimensionListTableName = styled.div`
   color: ${color("summarize")};
 `;
 
-export const DimensionListFilterContainer = styled.div`
+export const SearchContainer = styled.div`
   margin-bottom: 1rem;
 `;

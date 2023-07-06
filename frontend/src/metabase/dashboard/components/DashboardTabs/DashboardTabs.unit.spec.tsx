@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Link, Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
 
@@ -8,6 +8,8 @@ import { DashboardOrderedTab } from "metabase-types/api";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 
+import { useSelector } from "metabase/lib/redux";
+import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
@@ -32,7 +34,7 @@ function setup({
     },
   };
 
-  const TestComponent = ({ location }: { location: Location }) => {
+  const DashboardComponent = ({ location }: { location: Location }) => {
     const { selectedTabId } = useDashboardTabs({ location });
 
     return (
@@ -41,12 +43,28 @@ function setup({
         <span>Selected tab id is {selectedTabId}</span>
         <br />
         <span>Path is {location.pathname + location.search}</span>
+        <Link to="/someotherpath">Navigate away</Link>
+      </>
+    );
+  };
+
+  const OtherComponent = () => {
+    const selectedTabId = useSelector(getSelectedTabId);
+
+    return (
+      <>
+        <span>Another route</span>
+        <br />
+        <span>Selected tab id is {selectedTabId}</span>
       </>
     );
   };
 
   const { store } = renderWithProviders(
-    <Route path="dashboard/:slug(/:tabSlug)" component={TestComponent} />,
+    <>
+      <Route path="dashboard/:slug(/:tabSlug)" component={DashboardComponent} />
+      <Route path="someotherpath" component={OtherComponent} />
+    </>,
     {
       storeInitialState: { dashboard },
       initialRoute: slug ? `/dashboard/1?tab=${slug}` : "/dashboard/1",
@@ -322,6 +340,19 @@ describe("DashboardTabs", () => {
         expect(queryTab(name)).toBeInTheDocument();
         expect(await findSlug({ tabId: 1, name })).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("when navigating away from dashboard", () => {
+    it("should preserve selected tab id", () => {
+      setup();
+
+      selectTab(2);
+      expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
+
+      screen.getByText("Navigate away").click();
+      expect(screen.getByText("Another route")).toBeInTheDocument();
+      expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
     });
   });
 });
