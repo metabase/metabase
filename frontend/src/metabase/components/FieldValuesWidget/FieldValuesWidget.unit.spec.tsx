@@ -10,7 +10,7 @@ import {
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 
 import { checkNotNull } from "metabase/core/utils/types";
-import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
+import { FieldValuesWidgetInner } from "metabase/components/FieldValuesWidget";
 
 import {
   ORDERS,
@@ -19,6 +19,7 @@ import {
   PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
 } from "metabase-types/api/mocks/presets";
+import Field from "metabase-lib/metadata/Field";
 
 import {
   state,
@@ -30,9 +31,15 @@ import {
   metadataWithSearchValuesField,
 } from "./testMocks";
 
-async function setup({ fields, values, searchValue, ...props }) {
+async function setup({
+  fields,
+  prefix,
+}: {
+  fields: (Field | null)[];
+  prefix?: string;
+}) {
   const fetchFieldValues = jest.fn(({ id }) => ({
-    payload: fields.find(f => f.id === id),
+    payload: (fields as Field[]).find(f => f.id === id),
   }));
 
   fields.forEach(field => {
@@ -40,13 +47,16 @@ async function setup({ fields, values, searchValue, ...props }) {
   });
 
   renderWithProviders(
-    <FieldValuesWidget
+    <FieldValuesWidgetInner
       value={[]}
-      fields={fields}
+      fields={fields as Field[]}
       onChange={jest.fn()}
-      fetchFieldValues={fetchFieldValues}
+      fetchFieldValues={fetchFieldValues as any}
+      fetchParameterValues={jest.fn()}
+      fetchDashboardParameterValues={jest.fn()}
+      fetchCardParameterValues={jest.fn()}
       addRemappings={jest.fn()}
-      {...props}
+      prefix={prefix}
     />,
     {
       storeInitialState: state,
@@ -150,7 +160,7 @@ describe("FieldValuesWidget", () => {
 
     describe("has_field_values = search", () => {
       it("should have 'Search by Category or enter an ID' as the placeholder text", async () => {
-        const field = metadata.field(SEARCHABLE_FK_FIELD_ID).clone();
+        const field = metadata.field(SEARCHABLE_FK_FIELD_ID)?.clone() as Field;
         const remappedField = metadata.field(PRODUCTS.CATEGORY);
         field.remappedField = () => remappedField;
 
@@ -174,10 +184,10 @@ describe("FieldValuesWidget", () => {
 
   describe("multiple fields", () => {
     it("list multiple fields together", async () => {
-      const categoryField = metadata.field(PRODUCTS.CATEGORY).clone();
+      const categoryField = metadata.field(PRODUCTS.CATEGORY)?.clone() as Field;
       categoryField.values = PRODUCT_CATEGORY_VALUES.values;
 
-      const sourceField = metadata.field(PEOPLE.SOURCE).clone();
+      const sourceField = metadata.field(PEOPLE.SOURCE)?.clone() as Field;
       sourceField.values = PEOPLE_SOURCE_VALUES.values;
 
       await setup({ fields: [categoryField, sourceField] });
@@ -232,7 +242,9 @@ describe("FieldValuesWidget", () => {
 
   describe("custom expressions", () => {
     const valuesField = checkNotNull(metadata.field(LISTABLE_PK_FIELD_ID));
-    const expressionField = checkNotNull(metadata.field(EXPRESSION_FIELD_ID));
+    const expressionField = checkNotNull(
+      metadata.field(EXPRESSION_FIELD_ID as any),
+    );
 
     it("should not call fetchFieldValues", async () => {
       const { fetchFieldValues } = await setup({

@@ -1,9 +1,6 @@
-/* eslint-disable react/prop-types */
-import { useState, useRef } from "react";
-
+import { useState, useRef, StyleHTMLAttributes } from "react";
 import { useMount, useUnmount } from "react-use";
 
-import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -21,6 +18,7 @@ import AutoExpanding from "metabase/hoc/AutoExpanding";
 
 import { addRemappings } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
+import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
@@ -28,6 +26,24 @@ import {
 } from "metabase/parameters/actions";
 
 import Fields from "metabase/entities/fields";
+import type { State } from "metabase-types/store";
+
+import type {
+  CardId,
+  Dashboard,
+  DashboardId,
+  Parameter,
+  FieldId,
+  FieldReference,
+  FieldValue,
+  RowValue,
+  Field as APIField,
+} from "metabase-types/api";
+
+import type Field from "metabase-lib/metadata/Field";
+import type Question from "metabase-lib/Question";
+
+import type { ValuesMode, LoadingStateType } from "./types";
 
 import {
   canUseParameterEndpoints,
@@ -49,11 +65,6 @@ import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 
 const MAX_SEARCH_RESULTS = 100;
 
-const fieldValuesWidgetPropTypes = {
-  addRemappings: PropTypes.func,
-  expand: PropTypes.bool,
-};
-
 const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues: Fields.objectActions.fetchFieldValues,
@@ -62,7 +73,7 @@ const mapDispatchToProps = {
   fetchDashboardParameterValues,
 };
 
-function mapStateToProps(state, { fields = [] }) {
+function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   return {
     fields: fields.map(
       field =>
@@ -71,7 +82,79 @@ function mapStateToProps(state, { fields = [] }) {
   };
 }
 
-function FieldValuesWidgetInner({
+interface ValuesResponse {
+  has_more_values: boolean;
+  values: FieldValue[];
+}
+
+type FieldValuesResponse = {
+  payload: APIField;
+};
+
+interface FetcherOptions {
+  query?: string;
+  parameter?: Parameter;
+  parameters?: Parameter[];
+  dashboardId?: DashboardId;
+  cardId?: CardId;
+}
+
+interface IFieldValuesWidgetProps {
+  color?: string;
+  maxResults?: number;
+  style?: StyleHTMLAttributes<HTMLDivElement>;
+  formatOptions?: Record<string, any>;
+  maxWidth?: number;
+  minWidth?: number;
+
+  expand?: boolean;
+  disableList?: boolean;
+  disableSearch?: boolean;
+  disablePKRemappingForSearch?: boolean;
+  alwaysShowOptions?: boolean;
+  showOptionsInPopover?: boolean;
+
+  fetchFieldValues: ({
+    id,
+  }: {
+    id: FieldId | FieldReference;
+  }) => Promise<FieldValuesResponse>;
+  fetchParameterValues: (options: FetcherOptions) => Promise<ValuesResponse>;
+  fetchCardParameterValues: (
+    options: FetcherOptions,
+  ) => Promise<ValuesResponse>;
+  fetchDashboardParameterValues: (
+    options: FetcherOptions,
+  ) => Promise<ValuesResponse>;
+
+  addRemappings: (
+    value: FieldReference | FieldId,
+    options: FieldValue[],
+  ) => void;
+
+  parameter?: Parameter;
+  parameters?: Parameter[];
+  fields: Field[];
+  dashboard?: Dashboard;
+  question?: Question;
+
+  value: string[];
+  onChange: (value: string[]) => void;
+
+  multi?: boolean;
+  autoFocus?: boolean;
+  className?: string;
+  prefix?: string;
+  placeholder?: string;
+  forceTokenField?: boolean;
+  checkedColor?: string;
+
+  valueRenderer?: (value: string | number) => JSX.Element;
+  optionRenderer?: (option: FieldValue) => JSX.Element;
+  layoutRenderer?: (props: LayoutRendererArgs) => JSX.Element;
+}
+
+export function FieldValuesWidgetInner({
   color = "purple",
   maxResults = MAX_SEARCH_RESULTS,
   alwaysShowOptions = true,
@@ -106,11 +189,11 @@ function FieldValuesWidgetInner({
   valueRenderer,
   optionRenderer,
   layoutRenderer,
-}) {
-  const [options, setOptions] = useState([]);
-  const [loadingState, setLoadingState] = useState("INIT");
-  const [lastValue, setLastValue] = useState("");
-  const [valuesMode, setValuesMode] = useState(
+}: IFieldValuesWidgetProps) {
+  const [options, setOptions] = useState<FieldValue[]>([]);
+  const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
+  const [lastValue, setLastValue] = useState<string>("");
+  const [valuesMode, setValuesMode] = useState<ValuesMode>(
     getValuesMode({
       parameter,
       fields,
@@ -125,34 +208,32 @@ function FieldValuesWidgetInner({
     }
   });
 
-  const _cancel = useRef(null);
+  const _cancel = useRef<null | (() => void)>(null);
 
   useUnmount(() => {
-    if (_cancel.current) {
-      _cancel.current();
-    }
+    _cancel?.current?.();
   });
 
-  const fetchValues = async query => {
+  const fetchValues = async (query?: string) => {
     setLoadingState("LOADING");
     setOptions([]);
 
-    let newOptions = [];
+    let newOptions: FieldValue[] = [];
     let newValuesMode = valuesMode;
     try {
-      if (canUseDashboardEndpoints(dashboard)) {
+      if (dashboard && canUseDashboardEndpoints(dashboard)) {
         const { values, has_more_values } = await fetchDashboardParameterValues(
           query,
         );
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else if (canUseCardEndpoints(question)) {
+      } else if (question && canUseCardEndpoints(question)) {
         const { values, has_more_values } = await fetchCardParameterValues(
           query,
         );
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else if (canUseParameterEndpoints(parameter)) {
+      } else if (parameter && canUseParameterEndpoints(parameter)) {
         const { values, has_more_values } = await fetchParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
@@ -175,7 +256,7 @@ function FieldValuesWidgetInner({
     }
   };
 
-  const fetchFieldValues = async query => {
+  const fetchFieldValues = async (query?: string): Promise<FieldValue[]> => {
     if (query == null) {
       const nonVirtualFields = getNonVirtualFields(fields);
 
@@ -185,7 +266,7 @@ function FieldValuesWidgetInner({
 
       // extract the field values from the API response(s)
       // the entity loader has inconsistent return structure, so we have to handle both
-      const fieldValues = nonVirtualFields.map(
+      const fieldValues: FieldValue[][] = nonVirtualFields.map(
         (field, index) =>
           results[index]?.payload?.values ??
           Fields.selectors.getFieldValues(results[index]?.payload, {
@@ -196,7 +277,7 @@ function FieldValuesWidgetInner({
       return dedupeValues(fieldValues);
     } else {
       const cancelDeferred = defer();
-      const cancelled = cancelDeferred.promise;
+      const cancelled: Promise<unknown> = cancelDeferred.promise;
       _cancel.current = () => {
         _cancel.current = null;
         cancelDeferred.resolve();
@@ -217,22 +298,22 @@ function FieldValuesWidgetInner({
     }
   };
 
-  const fetchParameterValues = async query => {
+  const fetchParameterValues = async (query?: string) => {
     return fetchParameterValuesProp({
       parameter,
       query,
     });
   };
 
-  const fetchCardParameterValues = async query => {
+  const fetchCardParameterValues = async (query?: string) => {
     return fetchCardParameterValuesProp({
-      cardId: question.id(),
+      cardId: question?.id(),
       parameter,
       query,
     });
   };
 
-  const fetchDashboardParameterValues = async query => {
+  const fetchDashboardParameterValues = async (query?: string) => {
     return fetchDashboardParameterValuesProp({
       dashboardId: dashboard?.id,
       parameter,
@@ -241,7 +322,8 @@ function FieldValuesWidgetInner({
     });
   };
 
-  const updateRemappings = options => {
+  // ? this may rely on field mutations
+  const updateRemappings = (options: FieldValue[]) => {
     if (showRemapping(fields)) {
       const [field] = fields;
       if (
@@ -252,7 +334,7 @@ function FieldValuesWidgetInner({
     }
   };
 
-  const onInputChange = value => {
+  const onInputChange = (value: string) => {
     let localValuesMode = valuesMode;
 
     // override "search" mode when searching is unnecessary
@@ -273,7 +355,7 @@ function FieldValuesWidgetInner({
   };
 
   const search = useRef(
-    _.debounce(async value => {
+    _.debounce(async (value: string) => {
       if (!value) {
         setLoadingState("LOADED");
         return;
@@ -285,7 +367,7 @@ function FieldValuesWidgetInner({
     }, 500),
   );
 
-  const _search = value => {
+  const _search = (value: string) => {
     if (_cancel.current) {
       _cancel.current();
     }
@@ -295,26 +377,33 @@ function FieldValuesWidgetInner({
   };
 
   if (!valueRenderer) {
-    valueRenderer = value =>
-      renderValue(fields, formatOptions, value, {
+    valueRenderer = (value: string | number) =>
+      renderValue({
+        fields,
+        formatOptions,
+        value,
         autoLoad: true,
         compact: false,
       });
   }
 
   if (!optionRenderer) {
-    optionRenderer = option =>
-      renderValue(fields, formatOptions, option[0], {
-        autoLoad: false,
-      });
+    optionRenderer = (option: FieldValue) =>
+      renderValue({ fields, formatOptions, value: option[0], autoLoad: false });
   }
 
   if (!layoutRenderer) {
     layoutRenderer = showOptionsInPopover
       ? undefined
-      : layoutProps => (
+      : ({
+          optionsList,
+          isFocused,
+          isAllSelected,
+          isFiltered,
+          valuesList,
+        }: LayoutRendererArgs) => (
           <div>
-            {layoutProps.valuesList}
+            {valuesList}
             {renderOptions({
               alwaysShowOptions,
               parameter,
@@ -324,7 +413,10 @@ function FieldValuesWidgetInner({
               loadingState,
               options,
               valuesMode,
-              ...layoutProps,
+              optionsList,
+              isFocused,
+              isAllSelected,
+              isFiltered,
             })}
           </div>
         );
@@ -336,7 +428,6 @@ function FieldValuesWidgetInner({
     disableSearch,
     placeholder,
     disablePKRemappingForSearch,
-    loadingState,
     options,
     valuesMode,
   });
@@ -354,7 +445,7 @@ function FieldValuesWidgetInner({
     options,
   });
 
-  const parseFreeformValue = value => {
+  const parseFreeformValue = (value: string | number) => {
     return isNumeric(fields[0], parameter)
       ? parseNumberValue(value)
       : parseStringValue(value);
@@ -362,8 +453,9 @@ function FieldValuesWidgetInner({
 
   return (
     <div
+      data-testid="field-values-widget"
       style={{
-        width: expand ? maxWidth : null,
+        width: expand ? maxWidth : undefined,
         minWidth: minWidth,
         maxWidth: maxWidth,
       }}
@@ -372,9 +464,9 @@ function FieldValuesWidgetInner({
         <LoadingState />
       ) : isListMode && hasListValues && multi ? (
         <ListField
-          isDashboardFilter={parameter}
+          isDashboardFilter={!!parameter}
           placeholder={tokenFieldPlaceholder}
-          value={value.filter(v => v != null)}
+          value={value?.filter((v: string) => v != null)}
           onChange={onChange}
           options={options}
           optionRenderer={optionRenderer}
@@ -382,7 +474,7 @@ function FieldValuesWidgetInner({
         />
       ) : isListMode && hasListValues && !multi ? (
         <SingleSelectListField
-          isDashboardFilter={parameter}
+          isDashboardFilter={!!parameter}
           placeholder={tokenFieldPlaceholder}
           value={value.filter(v => v != null)}
           onChange={onChange}
@@ -430,35 +522,55 @@ function FieldValuesWidgetInner({
 
 export const FieldValuesWidget = AutoExpanding(FieldValuesWidgetInner);
 
-FieldValuesWidget.propTypes = fieldValuesWidgetPropTypes;
-
 const LoadingState = () => (
   <div className="flex layout-centered align-center" style={{ minHeight: 82 }}>
     <LoadingSpinner size={32} />
   </div>
 );
 
-const NoMatchState = ({ fields }) => {
-  if (fields.length === 1) {
-    const [{ display_name }] = fields;
-
-    return (
-      <OptionsMessage>
-        {jt`No matching ${(
-          <StyledEllipsified>{display_name}</StyledEllipsified>
-        )} found.`}
-      </OptionsMessage>
-    );
+const NoMatchState = ({ fields }: { fields: (Field | null)[] }) => {
+  if (fields?.length !== 1 || !fields[0]) {
+    // if there is more than one field, don't name them
+    return <OptionsMessage message={t`No matching result`} />;
   }
 
-  return <OptionsMessage>{t`No matching result`}</OptionsMessage>;
+  const [{ display_name }] = fields;
+  return (
+    <OptionsMessage
+      message={jt`No matching ${(
+        <strong>&nbsp;{display_name}&nbsp;</strong>
+      )} found.`}
+    />
+  );
 };
 
 const EveryOptionState = () => (
-  <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
+  <OptionsMessage
+    message={t`Including every option in your filter probably won’t do much…`}
+  />
 );
 
+const OptionsMessage = ({ message }: { message: string | string[] }) => (
+  <div className="flex layout-centered p4">{message}</div>
+);
+
+// eslint-disable-next-line import/no-default-export
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
+
+interface RenderOptionsProps {
+  alwaysShowOptions: boolean;
+  parameter?: Parameter;
+  fields: Field[];
+  disableSearch: boolean;
+  disablePKRemappingForSearch?: boolean;
+  loadingState: LoadingStateType;
+  options: FieldValue[];
+  valuesMode: ValuesMode;
+  optionsList: React.ReactNode;
+  isFocused: boolean;
+  isAllSelected: boolean;
+  isFiltered: boolean;
+}
 
 function renderOptions({
   alwaysShowOptions,
@@ -473,7 +585,7 @@ function renderOptions({
   isFocused,
   isAllSelected,
   isFiltered,
-}) {
+}: RenderOptionsProps) {
   if (alwaysShowOptions || isFocused) {
     if (optionsList) {
       return optionsList;
@@ -503,8 +615,9 @@ function renderOptions({
       } else if (loadingState === "LOADED" && isFiltered) {
         return (
           <NoMatchState
-            fields={fields.map(field =>
-              field.searchField(disablePKRemappingForSearch),
+            fields={fields.map(
+              field =>
+                field.searchField(disablePKRemappingForSearch) as Field | null,
             )}
           />
         );
@@ -513,7 +626,19 @@ function renderOptions({
   }
 }
 
-function renderValue(fields, formatOptions, value, options) {
+export function renderValue({
+  fields,
+  formatOptions,
+  value,
+  autoLoad,
+  compact,
+}: {
+  fields: Field[];
+  formatOptions: Record<string, any>;
+  value: RowValue;
+  autoLoad?: boolean;
+  compact?: boolean;
+}) {
   return (
     <ValueComponent
       value={value}
@@ -521,7 +646,8 @@ function renderValue(fields, formatOptions, value, options) {
       maximumFractionDigits={20}
       remap={showRemapping(fields)}
       {...formatOptions}
-      {...options}
+      autoLoad={autoLoad}
+      compact={compact}
     />
   );
 }
