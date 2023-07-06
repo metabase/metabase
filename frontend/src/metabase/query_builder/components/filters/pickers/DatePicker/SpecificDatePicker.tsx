@@ -66,7 +66,7 @@ const SpecificDatePicker = ({
           value={date ? date.format(dateFormat) : ""}
           autoFocus={autoFocus}
           onFocus={onFocus}
-          onBlurChange={({ target: { value } }: any) => {
+          onBlurChange={({ target: { value } }) => {
             const date = moment(value, dateFormat);
             if (date.isValid()) {
               handleChange(date, hours, minutes);
