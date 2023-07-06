@@ -49,8 +49,8 @@ const TITLE_LOCALES_BN = {
       'bn': 'শূন্য পদ'
   },
   'admin.dashboard.teacher.education': {
-      'en': 'Statistics of Education Degree',
-      'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
+      'en': 'Educational qualification of teachers',
+      'bn': 'শিক্ষকদের শিক্ষাগত যোগ্যতা'
   },
   'admin.dashboard.teacher.gender': {
     'en': 'Statistics of Teacher Gender',
@@ -421,8 +421,8 @@ const TITLE_LOCALES_BN = {
     'bn' : 'বিদ্যালয়ের শিফট'
   },
   'admin.dashboard.teacher.education.except.low.grade': {
-    'en': 'Statistics of Education Degree',
-    'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
+    'en': 'Educational qualification of teachers',
+    'bn': 'শিক্ষকদের শিক্ষাগত যোগ্যতা'
   },
   'case.management.number.ongoing.cases': {
     'en': 'Ongoing cases',
@@ -525,8 +525,8 @@ const TITLE_LOCALES_BN = {
     'bn': 'কর্মকর্তার বয়সের গ্রুপের পরিসংখ্যান'
   },
   'admin.dashboard.officer.education': {
-    'en': 'Statistics of Education Degree',
-    'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
+    'en': 'Educational qualification of officers',
+    'bn': 'অফিসারদের শিক্ষাগত যোগ্যতা'
   },
   'admin.dashboard.officer.job.status': {
     'en': 'Statistics of Job Status',
