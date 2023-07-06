@@ -18,6 +18,7 @@ import {
   createMockCollectionItem,
   createMockNativeQuerySnippet,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -45,6 +46,12 @@ export async function setup({
     models: ["collection", "snippet"],
   });
 
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+  });
+
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
@@ -56,13 +63,10 @@ export async function setup({
       openSnippetModalWithSelectedText={() => null}
       insertSnippet={() => null}
       snippetCollectionId={null}
+      user={createMockUser({ is_superuser: true })}
     />,
     {
-      storeInitialState: createMockState({
-        settings: mockSettings({
-          "token-features": createMockTokenFeatures(tokenFeatures),
-        }),
-      }),
+      storeInitialState: state,
     },
   );
   await waitForElementToBeRemoved(() => screen.queryAllByText(/loading/i));
