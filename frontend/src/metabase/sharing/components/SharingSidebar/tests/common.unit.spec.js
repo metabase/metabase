@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 
-import { setup, dashcard, user } from "./testSetup";
+import { setup, dashcard, user, hasBasicFilterOptions } from "./setup";
 
 describe("SharingSidebar", () => {
   it("should have options for email and slack", async () => {
@@ -34,15 +34,7 @@ describe("SharingSidebar", () => {
 
       await screen.findByText("Send this dashboard to Slack");
 
-      expect(
-        screen.getByText(
-          /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
-        ),
-      ).toBeVisible();
-
-      expect(
-        screen.queryByText(/set filter values for when this gets sent/i),
-      ).not.toBeInTheDocument();
+      expect(hasBasicFilterOptions(screen)).toBe(true);
     });
   });
 
@@ -53,15 +45,7 @@ describe("SharingSidebar", () => {
 
       await screen.findByText("Email this dashboard");
 
-      expect(
-        screen.getByText(
-          /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
-        ),
-      ).toBeVisible();
-
-      expect(
-        screen.queryByText(/set filter values for when this gets sent/i),
-      ).not.toBeInTheDocument();
+      expect(hasBasicFilterOptions(screen)).toBe(true);
     });
 
     it("should filter out actions and links when sending a test subscription", async () => {

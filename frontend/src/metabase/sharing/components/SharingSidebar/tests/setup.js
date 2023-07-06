@@ -13,7 +13,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import SharingSidebar from "./SharingSidebar";
+import SharingSidebar from "../SharingSidebar";
 
 export const dashcard = createMockDashboardOrderedCard({ name: "dashcard" });
 
@@ -43,10 +43,11 @@ const dashboard = createMockDashboard({
 });
 
 export function setup(
-  { email, slack, tokenFeatures = {} } = {
+  { email, slack, tokenFeatures = {}, hasEnterprisePlugins = false } = {
     email: true,
     slack: true,
     tokenFeatures: {},
+    hasEnterprisePlugins: false,
   },
 ) {
   const channelData = { channels: {} };
@@ -97,7 +98,7 @@ export function setup(
   const features = createMockTokenFeatures(tokenFeatures);
   const storeSettings = mockSettings({ "token-features": features });
 
-  if (tokenFeatures) {
+  if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
 
@@ -124,3 +125,31 @@ export function setup(
     },
   );
 }
+
+export const hasAdvancedFilterOptions = screen => {
+  expect(
+    screen.queryByText(
+      /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
+    ),
+  ).not.toBeInTheDocument();
+
+  expect(
+    screen.getByText(/set filter values for when this gets sent/i),
+  ).toBeVisible();
+
+  return true;
+};
+
+export const hasBasicFilterOptions = screen => {
+  expect(
+    screen.getByText(
+      /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
+    ),
+  ).toBeVisible();
+
+  expect(
+    screen.queryByText(/set filter values for when this gets sent/i),
+  ).not.toBeInTheDocument();
+
+  return true;
+};
