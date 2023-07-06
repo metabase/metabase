@@ -393,6 +393,7 @@ const createDashboardWithSlowCard = () => {
     id: "96917420",
     type: "number/=",
     sectionId: "number",
+    default: 0,
   };
 
   const dashboardDetails = {
