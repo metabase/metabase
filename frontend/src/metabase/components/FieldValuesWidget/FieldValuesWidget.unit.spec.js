@@ -23,7 +23,9 @@ import {
 } from "./testMocks";
 
 async function setup({ fields, values, ...props }) {
-  const fetchFieldValues = jest.fn();
+  const fetchFieldValues = jest.fn(({ id }) => ({
+    payload: fields.find(f => f.id === id),
+  }));
 
   renderWithProviders(
     <FieldValuesWidget
@@ -73,7 +75,9 @@ describe("FieldValuesWidget", () => {
         const { fetchFieldValues } = await setup({
           fields: [field],
         });
-        expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCTS.CATEGORY);
+        expect(fetchFieldValues).toHaveBeenCalledWith({
+          id: PRODUCTS.CATEGORY,
+        });
       });
 
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
@@ -224,8 +228,12 @@ describe("FieldValuesWidget", () => {
       });
 
       expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
-      expect(fetchFieldValues).toHaveBeenCalledWith(LISTABLE_PK_FIELD_ID);
-      expect(fetchFieldValues).not.toHaveBeenCalledWith(EXPRESSION_FIELD_ID);
+      expect(fetchFieldValues).toHaveBeenCalledWith({
+        id: LISTABLE_PK_FIELD_ID,
+      });
+      expect(fetchFieldValues).not.toHaveBeenCalledWith({
+        id: EXPRESSION_FIELD_ID,
+      });
     });
   });
 });
