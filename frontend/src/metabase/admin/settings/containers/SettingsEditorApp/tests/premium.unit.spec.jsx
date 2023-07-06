@@ -1,6 +1,6 @@
 import { screen } from "__support__/ui";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { setup } from "./setup.spec";
+import { setup } from "./setup";
 
 const setupPremium = initialRoute => {
   setup({

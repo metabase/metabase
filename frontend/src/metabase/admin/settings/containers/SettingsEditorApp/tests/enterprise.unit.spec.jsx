@@ -1,5 +1,5 @@
 import { screen } from "__support__/ui";
-import { setup } from "./setup.spec";
+import { setup } from "./setup";
 
 const setupEnterprise = initialRoute => {
   setup({

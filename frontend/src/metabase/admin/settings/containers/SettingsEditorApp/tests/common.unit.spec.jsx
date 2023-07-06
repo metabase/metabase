@@ -1,6 +1,6 @@
 import { screen } from "__support__/ui";
 
-import { setup } from "./setup.spec";
+import { setup } from "./setup";
 
 describe("SettingsEditorApp", () => {
   it("should not show JWT and SAML auth options", () => {

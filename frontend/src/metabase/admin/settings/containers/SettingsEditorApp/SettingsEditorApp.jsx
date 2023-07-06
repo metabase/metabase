@@ -16,7 +16,7 @@ import { NotFound } from "metabase/containers/ErrorPages";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import ErrorBoundary from "metabase/ErrorBoundary";
-import SettingsSetting from "../components/SettingsSetting";
+import SettingsSetting from "../../components/SettingsSetting";
 
 import {
   getSettings,
@@ -26,8 +26,12 @@ import {
   getActiveSection,
   getActiveSectionName,
   getNewVersionAvailable,
-} from "../selectors";
-import { initializeSettings, updateSetting, reloadSettings } from "../settings";
+} from "../../selectors";
+import {
+  initializeSettings,
+  updateSetting,
+  reloadSettings,
+} from "../../settings";
 
 const mapStateToProps = (state, props) => {
   return {
