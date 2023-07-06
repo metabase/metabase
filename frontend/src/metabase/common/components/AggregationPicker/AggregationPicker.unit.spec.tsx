@@ -121,11 +121,13 @@ function createMetadata({
 type SetupOpts = {
   query?: Lib.Query;
   metadata?: Metadata;
+  hasExpressionInput?: boolean;
 };
 
 function setup({
   metadata = createMetadata(),
   query = createQuery({ metadata }),
+  hasExpressionInput = true,
 }: SetupOpts = {}) {
   const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
   const question = new Question(createAdHocCard({ dataset_query }), metadata);
@@ -155,6 +157,7 @@ function setup({
       legacyClause={legacyQuery.aggregations()[0]}
       stageIndex={0}
       operators={operators}
+      hasExpressionInput={hasExpressionInput}
       onSelect={handleSelect}
       onSelectLegacy={onSelectLegacy}
     />,
@@ -405,13 +408,28 @@ describe("AggregationPicker", () => {
       );
     });
 
+    it("should open the editor when an expression is used", async () => {
+      setup({ query: createQueryWithInlineExpression() });
+
+      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
+    });
+
     it("shouldn't be available if database doesn't support custom expressions", () => {
       setup({ metadata: createMetadata({ hasExpressionSupport: false }) });
       expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
     });
 
-    it("should open the editor when an expression is used", async () => {
-      setup({ query: createQueryWithInlineExpression() });
+    it("shouldn't be shown if `hasExpressionInput` prop is false", () => {
+      setup({ hasExpressionInput: false });
+      expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
+    });
+
+    it("should open the editor even if `hasExpressionInput` prop is false if expression is used", () => {
+      setup({
+        query: createQueryWithInlineExpression(),
+        hasExpressionInput: false,
+      });
 
       expect(screen.getByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();

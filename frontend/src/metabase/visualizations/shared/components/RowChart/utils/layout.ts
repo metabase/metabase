@@ -16,11 +16,11 @@ const GOAL_LINE_PADDING = 14;
 export const getMaxWidth = (
   formattedYTicks: string[],
   ticksFont: ChartFont,
-  measureText: TextWidthMeasurer,
+  measureTextWidth: TextWidthMeasurer,
 ): number => {
   return Math.max(
     ...formattedYTicks.map(tick =>
-      measureText(tick, {
+      measureTextWidth(tick, {
         size: `${ticksFont.size}px`,
         family: "Lato",
         weight: String(ticksFont.weight ?? 400),
@@ -35,7 +35,7 @@ export const getChartMargin = <TDatum>(
   ticksFont: ChartFont,
   labelFont: ChartFont,
   hasGoalLine: boolean,
-  measureText: TextWidthMeasurer,
+  measureTextWidth: TextWidthMeasurer,
   xLabel?: string | null,
   yLabel?: string | null,
   hasXAxis?: boolean,
@@ -47,7 +47,7 @@ export const getChartMargin = <TDatum>(
           seriesData.bars.map(bar => yTickFormatter(bar.yValue)),
         ),
         ticksFont,
-        measureText,
+        measureTextWidth,
       ) + TICKS_OFFSET
     : 0;
 
@@ -83,14 +83,14 @@ export const getMaxYValuesCount = (
 export const getRowChartGoal = (
   goal: ChartGoal | null | undefined,
   style: GoalStyle,
-  measureText: TextWidthMeasurer,
+  measureTextWidth: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
 ) => {
   if (!goal) {
     return null;
   }
 
-  const labelWidth = measureText(goal.label, style.label);
+  const labelWidth = measureTextWidth(goal.label, style.label);
   const goalX = xScale(goal.value);
   const xMax = xScale.range()[1];
   const availableRightSideSpace = xMax - goalX;

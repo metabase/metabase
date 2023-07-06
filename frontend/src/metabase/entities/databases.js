@@ -20,6 +20,8 @@ import {
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
   "metabase/entities/database/FETCH_DATABASE_METADATA";
@@ -81,11 +83,15 @@ const Databases = createEntity({
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
 
     getIdFields: createSelector(
-      [state => getMetadata(state).fields, (state, props) => props.databaseId],
+      [
+        state => getMetadata(state).fieldsList(),
+        (state, props) => props.databaseId,
+      ],
       (fields, databaseId) =>
-        Object.values(fields).filter(f => {
-          const { db_id } = f.table || {}; // a field's table can be null
-          return db_id === databaseId && f.isPK();
+        fields.filter(field => {
+          const dbId = field?.table?.db_id;
+          const isRealField = !isVirtualCardId(field.table_id);
+          return dbId === databaseId && isRealField && field.isPK();
         }),
     ),
   },
