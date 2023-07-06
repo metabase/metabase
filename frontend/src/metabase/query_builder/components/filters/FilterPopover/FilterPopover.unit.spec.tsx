@@ -35,10 +35,14 @@ const QUERY = Question.create({
     "contains",
     ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
     "asdf",
-  ]);
-
-const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER] =
-  QUERY.filters();
+  ])
+  .filter(["is-empty", ["field", PRODUCTS.TITLE, null]]);
+const [
+  RELATIVE_DAY_FILTER,
+  NUMERIC_FILTER,
+  STRING_CONTAINS_FILTER,
+  IS_EMPTY_FILTER,
+] = QUERY.filters();
 
 const dummyFunction = jest.fn();
 
@@ -152,6 +156,49 @@ describe("FilterPopover", () => {
           await screen.findByTestId("date-picker-shortcuts"),
         ).toBeInTheDocument();
       });
+    });
+  });
+  describe("filter rendering", () => {
+    beforeEach(() => {
+      jest.unmock("metabase/components/Popover");
+    });
+
+    it("should not render filter picker when filter type is 'Is empty'", async () => {
+      const filter = new Filter(IS_EMPTY_FILTER, null, QUERY);
+      renderWithProviders(
+        <FilterPopover
+          query={QUERY}
+          filter={filter}
+          onChangeFilter={dummyFunction}
+        />,
+      );
+
+      expect(screen.getByTestId("select-button-content")).toHaveTextContent(
+        "Is empty",
+      );
+
+      expect(
+        screen.getByTestId("default-picker-container").childNodes.length,
+      ).toBe(0);
+    });
+
+    it("should render a space for a filter if filter is not 'empty' or 'not empty'", async () => {
+      const filter = new Filter(STRING_CONTAINS_FILTER, null, QUERY);
+      renderWithProviders(
+        <FilterPopover
+          query={QUERY}
+          filter={filter}
+          onChangeFilter={dummyFunction}
+        />,
+      );
+
+      expect(screen.getByTestId("select-button-content")).toHaveTextContent(
+        "Contains",
+      );
+
+      expect(
+        screen.getByTestId("default-picker-container").childNodes.length,
+      ).toBeGreaterThan(0);
     });
   });
 });
