@@ -387,6 +387,53 @@
                                                      "|*Sent from Metabase Test*>")}]}]}]}
                  (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
+(deftest virtual-card-heading-test
+  (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
+         "Dashboard subscription that includes a virtual card. For heading cards we escape markdown and add a heading markdown."
+         {:card (pulse.test-util/checkins-query-card {})
+
+          :fixture
+          (fn [{dashboard-id :dashboard-id} thunk]
+            (t2.with-temp/with-temp [DashboardCard _ {:dashboard_id dashboard-id
+                                                      :row 1
+                                                      :col 1
+                                                      :visualization_settings {:text "# header" :virtual_card {:display "heading"}}}]
+              (mt/with-temporary-setting-values [site-name "Metabase Test"]
+                (thunk))))
+
+          :assert
+          {:email
+           (fn [_ _]
+             (testing "Markdown cards are included in email subscriptions"
+               (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
+                                                  "header"      true}
+                                                 pulse.test-util/png-attachment]})
+                      (mt/summarize-multipart-email #"Aviary KPIs"
+                                                    #"header")))))
+
+           :slack
+           (fn [{:keys [card-id dashboard-id]} [pulse-results]]
+             (testing "Markdown cards are included in attachments list as :blocks sublists, and markdown isn't
+                  converted to mrkdwn (Slack markup language)"
+               (is (= {:channel-id "#general"
+                       :attachments
+                       [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                                  {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                        {:title           pulse.test-util/card-name
+                         :rendered-info   {:attachments false, :content true, :render/text true},
+                         :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                         :attachment-name "image.png"
+                         :channel-id      "FOO"
+                         :fallback        pulse.test-util/card-name}
+                        {:blocks [{:type "section" :text {:type "mrkdwn" :text "*# header*"}}]}
+                        {:blocks [{:type "divider"}
+                                  {:type "context"
+                                   :elements [{:type "mrkdwn"
+                                               :text (str "<https://metabase.com/testmb/dashboard/"
+                                                          dashboard-id
+                                                          "|*Sent from Metabase Test*>")}]}]}]}
+                      (pulse.test-util/thunk->boolean pulse-results)))))}}))
+
 (deftest dashboard-filter-test
   (with-redefs [metabase.pulse/attachment-text-length-limit 15]
     (tests {:pulse     {:skip_if_empty false}

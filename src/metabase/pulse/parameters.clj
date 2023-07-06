@@ -49,10 +49,7 @@
   "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
   substituted into connected variables in the text."
   [dashcard parameters]
-  (let [dashcard           (if (= "heading" (get-in dashcard [:visualization_settings :virtual_card :display]))
-                             (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars % shared.params/escaped-chars-regex)))
-                             dashcard)
-        text               (-> dashcard :visualization_settings :text)
+  (let [text               (-> dashcard :visualization_settings :text)
         parameter-mappings (:parameter_mappings dashcard)
         tag-names          (shared.params/tag_names text)
         param-id->param    (into {} (map (juxt :id identity) parameters))
