@@ -43,8 +43,8 @@
         ttl-seconds))))
 
 (defenterprise granular-ttl
-  "Returns the cache ttl (in seconds), by first checking whether there is a stored value for the database,
-    dashboard, or card (in that order of increasing preference)."
+  "Returns the granular cache ttl (in seconds) for a card. On EE, this first checking whether there is a stored value
+   for the card, dashboard, or database (in that order of decreasing preference). Returns nil on OSS."
   metabase-enterprise.advanced-config.caching
   [_card _dashboard _database])
 
