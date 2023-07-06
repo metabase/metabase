@@ -17,4 +17,3 @@
    :where  [:and
             [:= :collection_id (:id collection)]
             [:= :archived (boolean archived?)]]})
-
