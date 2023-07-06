@@ -26,6 +26,7 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
@@ -251,13 +252,10 @@
   [user]
   (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
                           :collection_id
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
-        perms-query {:where [:and
-                             [:= :archived false]
-                             coll-ids-filter]}]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
-                                                 (db/exists? 'Dashboard (perms-query user))))))
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+    (assoc user :has_question_and_dashboard (and coll-ids-filter
+                                                 (t2/exists? 'Card :creator_id (:id user) :archived false)
+                                                 (t2/exists? 'Dashboard :creator_id (:id user) :archived false)))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
