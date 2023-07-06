@@ -29,7 +29,7 @@
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline :refer [Timeline]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -260,13 +260,18 @@
             :description :display :authority_level :moderated_status :icon :personal_owner_id
             :collection_preview :dataset_query)))
 
-(defmethod collection-children-query :snippet
-  [_ collection {:keys [archived?]}]
+(defenterprise snippets-collection-children-query
+  "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
+  collections are an EE feature."
+  metabase-enterprise.content-management.api.native-query-snippet
+  [_ {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
-   :where  [:and
-            [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]})
+   :where  [:= :archived (boolean archived?)]})
+
+(defmethod collection-children-query :snippet
+  [_ collection options]
+  (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
@@ -432,12 +437,20 @@
                 :dataset_query)
        rows))
 
+(defenterprise snippets-collection-filter-clause
+  "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
+  content-management feature flag. EE implementation returns `nil`, so as to not filter out snippet collections."
+  metabase-enterprise.content-management.api.native-query-snippet
+  []
+  [:not= :namespace (u/qualified-name "snippets")])
+
 (defn- collection-query
   [collection {:keys [archived? collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
               collection
               [:= :archived archived?]
-              [:= :namespace (u/qualified-name collection-namespace)])
+              [:= :namespace (u/qualified-name collection-namespace)]
+              (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
              :select [:id
@@ -775,12 +788,12 @@
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
-      root-collection
-      {:models       model-kwds
-       :archived?    (Boolean/parseBoolean archived)
-       :pinned-state (keyword pinned_state)
-       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+     root-collection
+     {:models       model-kwds
+      :archived?    (Boolean/parseBoolean archived)
+      :pinned-state (keyword pinned_state)
+      :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
+                     (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
