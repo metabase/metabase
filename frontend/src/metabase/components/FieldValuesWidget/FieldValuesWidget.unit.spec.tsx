@@ -1,5 +1,3 @@
-import "mutationobserver-shim";
-
 import userEvent from "@testing-library/user-event";
 import {
   getBrokenUpTextMatcher,
@@ -10,7 +8,7 @@ import {
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 
 import { checkNotNull } from "metabase/core/utils/types";
-import { FieldValuesWidgetInner } from "metabase/components/FieldValuesWidget";
+import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 
 import {
   ORDERS,
@@ -47,7 +45,7 @@ async function setup({
   });
 
   renderWithProviders(
-    <FieldValuesWidgetInner
+    <FieldValuesWidget
       value={[]}
       fields={fields as Field[]}
       onChange={jest.fn()}
