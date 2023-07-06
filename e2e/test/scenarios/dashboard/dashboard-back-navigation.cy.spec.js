@@ -265,7 +265,11 @@ describe(
       createDashboardWithSlowCard();
       cy.get("@dashboardId").then(visitDashboard);
 
+      cy.get("@dashcardQuery.all").should("have.length", 1);
+
       filterWidget().findByPlaceholderText("sleep").type("5{enter}");
+
+      cy.get("@dashcardQuery.all").should("have.length", 2);
 
       getDashboardCard().within(() => {
         cy.findByText("Sleep card").click();
@@ -280,6 +284,8 @@ describe(
         cy.findByText("Sleep card").should("be.visible");
       });
 
+      cy.log("Dashcard data is re-requested");
+      cy.get("@dashcardQuery.all").should("have.length", 3);
       filterWidget().findByPlaceholderText("sleep").should("have.value", "5");
     });
   },
