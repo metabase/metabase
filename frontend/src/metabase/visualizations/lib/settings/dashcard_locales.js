@@ -526,7 +526,7 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.officer.education': {
     'en': 'Educational qualification of officers',
-    'bn': 'অফিসারদের শিক্ষাগত যোগ্যতা'
+    'bn': 'কর্মকর্তাদের শিক্ষাগত যোগ্যতা'
   },
   'admin.dashboard.officer.job.status': {
     'en': 'Statistics of Job Status',
