@@ -21,6 +21,7 @@ import {
 } from "e2e/support/cypress_data";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
+import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 
 const PG_DB_ID = 2;
 const PG_ORDERS_TABLE_ID = 9;
@@ -741,9 +742,19 @@ describe(
       });
     });
 
-    // FIXME: unskip before merging
-    it.skip("should respect impersonated permission", () => {
+    it("should respect impersonated permission", () => {
       cy.onlyOn(dialect === "postgres");
+      const role = "readonly_role";
+      const sql = getCreatePostgresRoleIfNotExistSql(
+        role,
+        `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
+      );
+      queryWritableDB(sql);
+
+      const impersonatedUserId = 9;
+      cy.request("PUT", `/api/user/${impersonatedUserId}`, {
+        login_attributes: { role },
+      });
 
       cy.updatePermissionsGraph(
         {
@@ -786,8 +797,9 @@ describe(
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.button(SAMPLE_QUERY_ACTION.name).click();
 
-        // FIXME: update the error once BE restricts access
-        cy.findByText(/Error executing Action/i);
+        cy.findByText(
+          "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+        );
       });
 
       queryWritableDB(

@@ -11,11 +11,11 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import Modal from "metabase/components/Modal";
 
-import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import AddToDashSelectDashModal from "metabase/containers/AddToDashSelectDashModal";
 
-import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 

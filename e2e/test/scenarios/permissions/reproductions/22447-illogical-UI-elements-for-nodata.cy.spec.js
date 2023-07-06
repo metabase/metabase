@@ -1,4 +1,9 @@
-import { restore, visitQuestion, isEE, popover } from "e2e/support/helpers";
+import {
+  restore,
+  visitQuestion,
+  isPremium,
+  popover,
+} from "e2e/support/helpers";
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
@@ -50,7 +55,7 @@ describe("UI elements that make no sense for users without data permissions (met
   });
 
   it("should not show visualization or question settings to users with block data permissions", () => {
-    cy.onlyOn(isEE);
+    cy.onlyOn(isPremium);
 
     cy.signInAsAdmin();
     cy.updatePermissionsGraph({

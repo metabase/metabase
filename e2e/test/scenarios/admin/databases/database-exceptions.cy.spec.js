@@ -1,4 +1,4 @@
-import { restore, typeAndBlurUsingLabel, isEE } from "e2e/support/helpers";
+import { restore, typeAndBlurUsingLabel, isPremium } from "e2e/support/helpers";
 
 describe("scenarios > admin > databases > exceptions", () => {
   beforeEach(() => {
@@ -66,7 +66,7 @@ describe("scenarios > admin > databases > exceptions", () => {
       {
         method: "GET",
         pathname: "/api/database",
-        query: isEE
+        query: isPremium
           ? {
               exclude_uneditable_details: "true",
             }

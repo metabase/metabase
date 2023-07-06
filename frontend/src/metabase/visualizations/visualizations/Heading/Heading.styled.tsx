@@ -47,14 +47,15 @@ export const InputContainer = styled.div<InputContainerProps>`
 export const TextInput = styled.input`
   border: none;
   background: none;
-  max-height: 50%;
+  max-height: 100%;
   color: ${color("text-dark")};
   font-size: 1.375rem;
   font-weight: 700;
   height: inherit;
   min-height: unset;
   outline: none;
-  padding: 0.25rem 0;
+  padding: 0;
+  margin: 0.25rem 0;
   pointer-events: all;
   resize: none;
   width: 100%;
@@ -81,7 +82,7 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
   overflow-y: auto;
   font-size: 1.375rem;
   padding: 0;
-  margin: 0;
+  margin: 0.25rem 0;
   pointer-events: all;
   ${({ isEditing }) =>
     isEditing &&

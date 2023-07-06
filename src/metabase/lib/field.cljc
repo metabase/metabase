@@ -164,7 +164,7 @@
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))
 
-;;; TODO -- base type should be affected by `temporal-unit`, right?
+;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
   [query
    stage-number
@@ -464,8 +464,15 @@
     (:name field-metadata)))
 
 (defn- expression-refs
+  "Create refs for all the expressions in a stage of a query."
   [query stage-number]
-  (for [col (lib.metadata.calculation/metadata query stage-number (lib.util/query-stage query stage-number))
+  (for [col   (lib.metadata.calculation/visible-columns
+               query
+               stage-number
+               (lib.util/query-stage query stage-number)
+               {:include-joined?              false
+                :include-expressions?         true
+                :include-implicitly-joinable? false})
         :when (= (:lib/source col) :source/expressions)]
     (lib.ref/ref col)))
 

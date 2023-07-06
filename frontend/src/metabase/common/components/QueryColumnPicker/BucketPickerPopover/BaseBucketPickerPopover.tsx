@@ -21,18 +21,20 @@ export interface BaseBucketPickerPopoverProps {
   selectedBucket: Lib.Bucket | NoBucket;
   isEditing: boolean;
   triggerLabel?: string;
+  hasArrowIcon?: boolean;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => void;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
 }
 
-export function BaseBucketPickerPopover({
+function _BaseBucketPickerPopover({
   query,
   stageIndex,
   items,
   selectedBucket,
   isEditing,
   triggerLabel,
+  hasArrowIcon = true,
   checkBucketIsSelected,
   renderTriggerContent,
   onSelect,
@@ -52,16 +54,19 @@ export function BaseBucketPickerPopover({
       renderTrigger={({ onClick }) => (
         <TriggerButton
           aria-label={triggerLabel}
-          onClick={onClick}
+          onClick={event => {
+            event.stopPropagation();
+            onClick();
+          }}
           // Compat with E2E tests around MLv1-based components
           // Prefer using a11y role selectors
           data-testid="dimension-list-item-binning"
         >
           {renderTriggerContent(triggerContentBucketDisplayInfo)}
-          <TriggerIcon name="chevronright" />
+          {hasArrowIcon && <TriggerIcon name="chevronright" />}
         </TriggerButton>
       )}
-      popoverContent={
+      popoverContent={({ closePopover }) => (
         <SelectList>
           {items.map(item => (
             <SelectListItem
@@ -69,11 +74,14 @@ export function BaseBucketPickerPopover({
               key={item.displayName}
               name={item.displayName}
               isSelected={checkBucketIsSelected(item)}
-              onSelect={() => onSelect(item.bucket)}
+              onSelect={() => {
+                onSelect(item.bucket);
+                closePopover();
+              }}
             />
           ))}
         </SelectList>
-      }
+      )}
     />
   );
 }
@@ -88,3 +96,8 @@ export function getBucketListItem(
     bucket,
   };
 }
+
+export const BaseBucketPickerPopover = Object.assign(_BaseBucketPickerPopover, {
+  displayName: "BucketPickerPopover",
+  TriggerButton,
+});

@@ -10,7 +10,7 @@ import {
   getChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
-import { measureText } from "metabase/lib/measure-text";
+import { measureTextWidth } from "metabase/lib/measure-text";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import {
   getClickData,
@@ -270,7 +270,7 @@ const RowChartVisualization = ({
 
   const textMeasurer = useMemo(() => {
     return (text: string, style: FontStyle) =>
-      measureText(text, {
+      measureTextWidth(text, {
         ...style,
         family: fontFamily,
       });
@@ -309,7 +309,7 @@ const RowChartVisualization = ({
           stackOffset={stackOffset}
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
-          measureText={textMeasurer}
+          measureTextWidth={textMeasurer}
           hoveredData={hoverData}
           onClick={handleClick}
           onHover={handleHover}

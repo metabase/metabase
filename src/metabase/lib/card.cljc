@@ -29,11 +29,11 @@
           ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
           (i18n/tru "Saved Question {0}" (pr-str source-card))))))
 
-(mu/defn ^:private infer-results-metadata
+(mu/defn ^:private infer-returned-columns
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
   (when (some? card-query)
-    (lib.metadata.calculation/metadata (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
+    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
 
 (def ^:private Card
   [:map
@@ -45,7 +45,7 @@
    card                  :- Card]
   (when-let [result-metadata (or (:result-metadata card)
                                  (:fields card)
-                                 (infer-results-metadata metadata-providerable (:dataset-query card)))]
+                                 (infer-returned-columns metadata-providerable (:dataset-query card)))]
     ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
     ;; contains` :columns` as well.
     (when-let [cols (not-empty (cond
@@ -75,7 +75,7 @@
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
     (card-metadata-columns metadata-providerable card)))
 
-(defmethod lib.metadata.calculation/visible-columns-method :metadata/card
+(defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as _options}]
   (mapv (fn [col]
           (assoc col :lib/desired-column-alias (unique-name-fn (:name col))))

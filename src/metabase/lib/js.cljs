@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib.core]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
@@ -361,6 +362,11 @@
   [filter-operator column & args]
   (apply lib.core/filter-clause filter-operator column args))
 
+(defn ^:export filter-operator
+  "Returns the filter operator of `filter-clause`."
+  [a-query stage-number a-filter-clause]
+  (lib.core/filter-operator a-query stage-number a-filter-clause))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
@@ -391,20 +397,20 @@
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
 (defn ^:export join-strategy
-  "Get the strategy (type) of a given join as a plain string like `left-join`."
+  "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
-  (u/qualified-name (lib.core/join-strategy a-join)))
+  (lib.core/join-strategy a-join))
 
 (defn ^:export with-join-strategy
-  "Return a copy of `a-join` with its `:strategy` set to `strategy`."
+  "Return a copy of `a-join` with its `:strategy` set to an opaque JoinStrategy."
   [a-join strategy]
-  (lib.core/with-join-strategy a-join (keyword strategy)))
+  (lib.core/with-join-strategy a-join strategy))
 
 (defn ^:export available-join-strategies
   "Get available join strategies for the current Database (based on the Database's
-  supported [[metabase.driver/driver-features]]) as strings like `left-join`."
+  supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
-  (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))
+  (to-array (lib.core/available-join-strategies a-query stage-number)))
 
 (defn ^:export join-condition-lhs-columns
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
@@ -466,14 +472,18 @@
   (lib.core/suggested-join-condition a-query stage-number joinable))
 
 (defn ^:export join-fields
-  "Get the join conditions for a given join."
+  "Get the `:fields` associated with a join."
   [a-join]
-  (to-array (lib.core/join-fields a-join)))
+  (let [joined-fields (lib.core/join-fields a-join)]
+    (if (keyword? joined-fields)
+      (u/qualified-name joined-fields)
+      (to-array joined-fields))))
 
 (defn ^:export with-join-fields
   "Set the `:fields` for `a-join`."
   [a-join new-fields]
-  (lib.core/with-join-fields a-join new-fields))
+  (lib.core/with-join-fields a-join (cond-> new-fields
+                                      (string? new-fields) keyword)))
 
 (defn ^:export join-clause
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
@@ -576,8 +586,45 @@
   [a-query]
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
 
+(defn ^:export required-native-extras
+  "Returns whether the extra keys required by the database."
+  [database-id metadata]
+  (to-array (lib.core/required-native-extras (metadataProvider database-id metadata))))
+
+(defn ^:export with-different-database
+  "Changes the database for this query. The first stage must be a native type.
+   Native extras must be provided if the new database requires it."
+  ([a-query database-id metadata]
+   (with-different-database a-query database-id metadata nil))
+  ([a-query database-id metadata native-extras]
+   (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
+
+(defn ^:export with-native-extras
+  "Updates the extras required for the db to run this query.
+   The first stage must be a native type. Will ignore extras not in `required-native-extras`"
+  [a-query native-extras]
+  (lib.core/with-native-extras a-query (js->clj native-extras :keywordize-keys true)))
+
+(defn ^:export native-extras
+  "Returns the extra keys for native queries associated with this query."
+  [a-query]
+  (clj->js (lib.core/native-extras a-query)))
+
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."
   [a-query]
   (to-array (lib.core/available-metrics a-query)))
+
+(defn ^:export joinable-columns
+  "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
+  something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
+  selected columns (those in the join's `:fields`) will include `:selected true` information."
+  [a-query stage-number join-or-joinable]
+  (lib.core/joinable-columns a-query stage-number join-or-joinable))
+
+(defn ^:export table-or-card-metadata
+  "Get TableMetadata if passed an integer `table-id`, or CardMetadata if passed a legacy-style `card__<id>` string.
+  Returns `nil` if no matching metadata is found."
+  [query-or-metadata-provider table-id]
+  (lib.metadata/table-or-card query-or-metadata-provider table-id))
