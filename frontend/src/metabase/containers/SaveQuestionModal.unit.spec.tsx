@@ -14,6 +14,10 @@ import {
   CollectionEndpoints,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { openCollection } from "metabase/containers/ItemPicker/test-utils";
@@ -80,6 +84,13 @@ const setup = async (
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
+  const state = createMockState({
+    settings,
+    qb: createMockQueryBuilderState({
+      card: question.card(),
+      originalCard: originalQuestion?.card(),
+    }),
+  });
   renderWithProviders(
     <SaveQuestionModal
       question={question}
@@ -89,9 +100,7 @@ const setup = async (
       onClose={onCloseMock}
     />,
     {
-      storeInitialState: {
-        settings,
-      },
+      storeInitialState: state,
     },
   );
   await screen.findByRole("button", { name: "Save" });
