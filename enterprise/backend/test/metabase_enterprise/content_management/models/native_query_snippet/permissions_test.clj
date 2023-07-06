@@ -1,4 +1,4 @@
-(ns metabase-enterprise.enhancements.models.native-query-snippet.permissions-test
+(ns metabase-enterprise.content-management.models.native-query-snippet.permissions-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.enhancements.models.native-query-snippet.permissions
+(ns metabase-enterprise.content-management.models.native-query-snippet.permissions
   "EE implementation of NativeQuerySnippet permissions."
   (:require
    [metabase.models.interface :as mi]
