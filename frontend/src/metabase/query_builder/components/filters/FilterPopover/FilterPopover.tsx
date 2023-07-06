@@ -289,7 +289,7 @@ export default function FilterPopover({
                 filter={filter}
                 onFilterChange={handleFilterChange}
                 onBack={onBack}
-                showFieldPicker={showFieldPicker && !hasEmptyPicker}
+                showFieldPicker={showFieldPicker}
                 forceShowOperatorSelector={showOperatorSelector}
               />
               {hasEmptyPicker ? (

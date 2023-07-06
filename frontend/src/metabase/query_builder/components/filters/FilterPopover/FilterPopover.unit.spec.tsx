@@ -39,8 +39,6 @@ const QUERY = Question.create({
 const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER] =
   QUERY.filters();
 
-console.log(RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER);
-
 const dummyFunction = jest.fn();
 
 describe("FilterPopover", () => {
