@@ -86,8 +86,8 @@ import {
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
-  getIsEditingModel,
   getIsSavedQuestionChanged,
+  getQueryBuilderMode,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -427,7 +427,7 @@ export default _.compose(
 )(QueryBuilder);
 
 function useShouldShowUnsavedChangesWarning() {
-  const isEditingModel = useSelector(getIsEditingModel);
+  const isEditingModel = useSelector(getQueryBuilderMode) === "dataset";
   const isDirty = useSelector(getIsDirty);
   const isMetadataDirty = useSelector(isResultsMetadataDirty);
   const question = useSelector(getQuestion);

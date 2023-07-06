@@ -296,11 +296,6 @@ export const getPreviousQueryBuilderMode = createSelector(
   uiControls => uiControls.previousQueryBuilderMode,
 );
 
-export const getIsEditingModel = createSelector(
-  [getQueryBuilderMode],
-  queryBuilderMode => queryBuilderMode === "dataset",
-);
-
 export const getDatasetEditorTab = createSelector(
   [getUiControls],
   uiControls => uiControls.datasetEditorTab,
@@ -317,14 +312,23 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues, getIsEditingModel],
-  (metadata, card, parameterValues, isEditingModel) => {
-    if (!metadata || !card) {
+export const getQuestionWithParameters = createSelector(
+  [getCard, getMetadata, getParameterValues],
+  (card, metadata, parameterValues) => {
+    if (!card || !metadata) {
       return;
     }
-    const question = new Question(card, metadata, parameterValues);
+    return new Question(card, metadata, parameterValues);
+  },
+);
 
+export const getQuestion = createSelector(
+  [getQuestionWithParameters, getQueryBuilderMode],
+  (question, queryBuilderMode) => {
+    if (!question) {
+      return;
+    }
+    const isEditingModel = queryBuilderMode === "dataset";
     if (isEditingModel) {
       return question.lockDisplay();
     }
