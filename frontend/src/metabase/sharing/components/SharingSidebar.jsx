@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 
 import { connect } from "react-redux";
-import NewPulseSidebar from "metabase/sharing/components/NewPulseSidebar";
+import { NewPulseSidebar } from "metabase/sharing/components/NewPulseSidebar";
 import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 import {
   AddEditSlackSidebar,
