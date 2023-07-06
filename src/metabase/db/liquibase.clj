@@ -84,6 +84,18 @@
     (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
       ~@body)))
 
+(defn migrations-sql
+  "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations, custom migrations will be ignored."
+  ^String [^Liquibase liquibase]
+  ;; calling update on custom migrations will execute them, so we ignore it and generates
+  ;; sql for SQL migrations only
+  (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil nil)]
+    (when (instance? CustomChangeWrapper (first (.getChanges change)))
+      (.setIgnore change true)))
+  (let [writer (StringWriter.)]
+    (.update liquibase "" writer)
+    (.toString writer)))
+
 (defn has-unrun-migrations?
   "Does `liquibase` have migration change sets that haven't been run yet?
 
@@ -114,19 +126,6 @@
       (force-release-locks! liquibase)
       (catch Exception e
         (log/error e (trs "Unable to release the Liquibase lock after a migration failure"))))))
-
-(defn migrations-sql
-  "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations.
-  Note that custom migrations are not included."
-  ^String [^Liquibase liquibase]
-  ;; calling update on custom migrations will execute them, and we don't want it to happen
-  ;; so ignore its
-  (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil nil)]
-    (when (instance? CustomChangeWrapper (first (.getChanges change)))
-      (.setIgnore change true)))
-  (let [writer (StringWriter.)]
-    (.update liquibase "" writer)
-    (.toString writer)))
 
 (defn- wait-for-migration-lock-to-be-cleared
   "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times. There's a
@@ -172,7 +171,7 @@
   without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you can't
   do anything futher until you clear the error state by doing something like calling `.rollback`.)"
   [liquibase :- Liquibase]
-  ;; have to do this before clear the checksums
+  ;; have to do this before clear the checksums else it will wait for locks to be released
   (release-lock-if-needed! liquibase)
   (.clearCheckSums liquibase)
   (when (has-unrun-migrations? liquibase)

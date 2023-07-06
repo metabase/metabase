@@ -57,4 +57,3 @@
 
           (testing "the custom migration that success will persists it result successfully"
             (is (some? (t2/select-one :ancient_civilization :name "Egypt")))))))))
-
