@@ -1,12 +1,13 @@
 import {
-  restore,
-  openPeopleTable,
-  openOrdersTable,
-  openNativeEditor,
-  popover,
   enterCustomColumnDetails,
-  visualize,
+  isScrollableHorizontally,
+  openNativeEditor,
+  openOrdersTable,
+  openPeopleTable,
+  popover,
+  restore,
   summarize,
+  visualize,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -271,7 +272,7 @@ describe("scenarios > visualizations > table", () => {
     popover().should("not.exist");
   });
 
-  it("popover should not be horizontally scrollable (metabase#31339)", () => {
+  it("popover should not be scrollable horizontally (metabase#31339)", () => {
     openPeopleTable();
     headerCells().filter(":contains('Password')").click();
 
@@ -281,15 +282,12 @@ describe("scenarios > visualizations > table", () => {
       cy.wait("@findSuggestions");
     });
 
-    popover().then(popoverElement => {
-      expect(
-        popoverElement[0].clientHeight,
-        "horizontal scrollbar is not shown",
-      ).to.eq(popoverElement[0].offsetHeight);
+    popover().then($popover => {
+      expect(isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
 
-  it("default picker container should not be horizontally scrollable", () => {
+  it("default picker container should not be scrollable horizontally", () => {
     openPeopleTable();
     headerCells().filter(":contains('Password')").click();
 
@@ -302,11 +300,8 @@ describe("scenarios > visualizations > table", () => {
       input.type("f");
       cy.wait("@findSuggestions");
 
-      cy.findByTestId("default-picker-container").then(containerElement => {
-        expect(
-          containerElement[0].clientHeight,
-          "horizontal scrollbar is not shown",
-        ).to.eq(containerElement[0].offsetHeight);
+      cy.findByTestId("default-picker-container").then($container => {
+        expect(isScrollableHorizontally($container[0])).to.be.false;
       });
     });
   });
