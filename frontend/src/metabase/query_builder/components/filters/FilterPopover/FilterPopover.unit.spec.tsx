@@ -37,7 +37,7 @@ const QUERY = Question.create({
     ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
     "asdf",
   ]);
-const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER] =
+const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER]: Filter[] =
   QUERY.filters();
 
 const dummyFunction = jest.fn();
@@ -130,17 +130,14 @@ describe("FilterPopover", () => {
     });
   });
   describe("filter rendering", () => {
-    describe.each(["is-null", "not-null", "is-empty", "not-empty"])(
-      "no-value filters: %s filter",
-      operator => {
-        it("should not render picker or separator when selecting a new filter from the column dropdown", async () => {
-          const filter = new Filter(
-            [operator, ["field", PRODUCTS.TITLE, null], null],
-            null,
-            QUERY,
-          );
-
-          setup({ filter });
+    describe("no-value filters: %s filter", () => {
+      it.each(["is-null", "not-null", "is-empty", "not-empty"])(
+        "should not render picker or separator when selecting a new filter from the column dropdown",
+        async operator => {
+          setup({
+            filter: [operator, ["field", PRODUCTS.TITLE, null], null] as Filter,
+            showFieldPicker: false,
+          });
 
           expect(
             screen.queryByTestId("filter-popover-separator"),
@@ -150,27 +147,9 @@ describe("FilterPopover", () => {
           expect(
             screen.queryByTestId("default-filter-picker"),
           ).not.toBeInTheDocument();
-        });
-        it("should not render filter picker or separator when trying to modify the filter", () => {
-          const filter = new Filter(
-            [operator, ["field", PRODUCTS.TITLE, null], null],
-            null,
-            QUERY,
-          );
-
-          setup({ filter });
-
-          expect(
-            screen.queryByTestId("filter-popover-separator"),
-          ).not.toBeInTheDocument();
-
-          // if the "empty filter picker" boolean check fails, we will see the default filter picker
-          expect(
-            screen.queryByTestId("default-filter-picker"),
-          ).not.toBeInTheDocument();
-        });
-      },
-    );
+        },
+      );
+    });
 
     describe("non datetime filters", () => {
       it.each([
