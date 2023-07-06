@@ -25,7 +25,7 @@
   This method is only called for drivers using the default implementation
   of [[metabase.driver.sql-jdbc.execute/do-with-connection-with-options]]; it should be considered deprecated in
   favor of implementing [[metabase.driver.sql-jdbc.execute/do-with-connection-with-options]] directly."
-  {:deprecated "0.35.0", :arglists '([driver])}
+  {:added "0.35.0" :deprecated "0.35.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

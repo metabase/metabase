@@ -136,7 +136,7 @@
 
 (defmulti ->integer
   "Cast to integer"
-  {:arglists '([driver honeysql-expr])}
+  {:added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -146,7 +146,7 @@
 
 (defmulti ->float
   "Cast to float."
-  {:arglists '([driver honeysql-expr])}
+  {:added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -172,7 +172,7 @@
 (defmulti ->honeysql
   "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
   making this easy to override in any places needed for a given driver."
-  {:arglists '([driver mbql-expr-or-object])}
+  {:added "0.37.0" :arglists '([driver mbql-expr-or-object])}
   (fn [driver x]
     [(driver/dispatch-on-initialized-driver driver) (mbql.u/dispatch-by-clause-name-or-class x)])
   :hierarchy #'driver/hierarchy)
@@ -199,7 +199,7 @@
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
   include the database type info on the form (ex: via [[hx/with-type-info]])."
-  {:arglists '([driver])}
+  {:added "0.34.2" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -213,7 +213,7 @@
   component.
 
   `honeysql-expr` is already compiled to Honey SQL, so DO NOT call [[->honeysql]] on it."
-  {:arglists '([driver unit honeysql-expr])}
+  {:added "0.32.0" :arglists '([driver unit honeysql-expr])}
   (fn [driver unit _] [(driver/dispatch-on-initialized-driver driver) unit])
   :hierarchy #'driver/hierarchy)
 
@@ -318,7 +318,7 @@
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hx/call :date_add hsql-form 1 (hx/literal 'day'))
 
   `amount` is usually an integer, but can be floating-point for units like seconds."
-  {:arglists '([driver hsql-form amount unit])}
+  {:added "0.34.2" :arglists '([driver hsql-form amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -378,7 +378,7 @@
   method name is a bit of a misnomer!
 
   TODO -- we should update this method name to better reflect its usage in Honey SQL 2."
-  {:arglists '([driver])}
+  {:added "0.32.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -435,7 +435,7 @@
   of `honeysql-form`. Most drivers can use the default implementations for all of these methods, but some may need to
   override one or more (e.g. SQL Server needs to override this method for the `:limit` clause, since T-SQL uses `TOP`
   instead of `LIMIT`)."
-  {:arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
+  {:added "0.32.0" :arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
   (fn [driver top-level-clause _ _]
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
@@ -1159,13 +1159,13 @@
 
 (defmulti join->honeysql
   "Compile a single MBQL `join` to HoneySQL."
-  {:arglists '([driver join])}
+  {:added "0.32.9" :arglists '([driver join])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti join-source
   "Generate HoneySQL for a table or query to be joined."
-  {:arglists '([driver join])}
+  {:added "0.32.9" :arglists '([driver join])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

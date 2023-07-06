@@ -285,7 +285,7 @@
 
   DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
   deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
-  {:arglists '([driver])}
+  {:added "0.32.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -296,7 +296,7 @@
 
   DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
   deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
-  {:arglists '([driver])}
+  {:added "0.32.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
