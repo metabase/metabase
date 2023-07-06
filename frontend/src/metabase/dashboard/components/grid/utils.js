@@ -5,7 +5,7 @@ function sumVerticalSpace(layout) {
   return layout.reduce((sum, current) => sum + current.h, 0);
 }
 
-function sortCardsForMobile(a, b) {
+export function sortCardsForMobile(a, b) {
   const yDiff = a.y - b.y;
 
   // sort by y position first
