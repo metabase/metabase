@@ -86,8 +86,7 @@ import {
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
-  getIsSavedQuestionChanged,
-  getQueryBuilderMode,
+  getShouldShowUnsavedChangesWarning,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -298,7 +297,9 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   });
 
-  const shouldShowUnsavedChangesWarning = useShouldShowUnsavedChangesWarning();
+  const shouldShowUnsavedChangesWarning = useSelector(
+    getShouldShowUnsavedChangesWarning,
+  );
   useBeforeUnload(shouldShowUnsavedChangesWarning);
 
   useUnmount(() => {
@@ -425,21 +426,3 @@ export default _.compose(
   })),
   titleWithLoadingTime("queryStartTime"),
 )(QueryBuilder);
-
-function useShouldShowUnsavedChangesWarning() {
-  const isEditingModel = useSelector(getQueryBuilderMode) === "dataset";
-  const isDirty = useSelector(getIsDirty);
-  const isMetadataDirty = useSelector(isResultsMetadataDirty);
-  const question = useSelector(getQuestion);
-  const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
-
-  const shouldShowUnsavedChangesWarningForModels =
-    isEditingModel && (isDirty || isMetadataDirty);
-  const shouldShowUnsavedChangesWarningForSqlQuery =
-    question != null && question.isNative() && isSavedQuestionChanged;
-
-  return (
-    shouldShowUnsavedChangesWarningForModels ||
-    shouldShowUnsavedChangesWarningForSqlQuery
-  );
-}

@@ -605,6 +605,35 @@ export const isResultsMetadataDirty = createSelector(
   },
 );
 
+export const getShouldShowUnsavedChangesWarning = createSelector(
+  [
+    getQueryBuilderMode,
+    getIsDirty,
+    isResultsMetadataDirty,
+    getQuestion,
+    getIsSavedQuestionChanged,
+  ],
+  (
+    queryBuilderMode,
+    isDirty,
+    isMetadataDirty,
+    question,
+    isSavedQuestionChanged,
+  ) => {
+    const isEditingModel = queryBuilderMode === "dataset";
+
+    const shouldShowUnsavedChangesWarningForModels =
+      isEditingModel && (isDirty || isMetadataDirty);
+    const shouldShowUnsavedChangesWarningForSqlQuery =
+      question != null && question.isNative() && isSavedQuestionChanged;
+
+    return (
+      shouldShowUnsavedChangesWarningForModels ||
+      shouldShowUnsavedChangesWarningForSqlQuery
+    );
+  },
+);
+
 /**
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */

@@ -7,6 +7,8 @@ import {
   createMockColumn,
   createMockDataset,
   createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
+  createMockStructuredQuery,
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
@@ -81,6 +83,25 @@ const TEST_NATIVE_CARD = createMockCard({
 const TEST_UNSAVED_NATIVE_CARD = createMockUnsavedCard({
   dataset_query: createMockNativeDatasetQuery({
     database: SAMPLE_DB_ID,
+  }),
+});
+
+const TEST_STRUCTURED_CARD = createMockCard({
+  name: "Orders question",
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: createMockStructuredQuery({
+      "source-table": ORDERS_ID,
+    }),
+  }),
+});
+
+const TEST_UNSAVED_STRUCTURED_CARD = createMockUnsavedCard({
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: createMockStructuredQuery({
+      "source-table": ORDERS_ID,
+    }),
   }),
 });
 
@@ -326,6 +347,52 @@ describe("QueryBuilder", () => {
     it("should not trigger beforeunload event when query is unedited", async () => {
       const { mockEventListener } = await setup({
         card: TEST_NATIVE_CARD,
+      });
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
+  });
+
+  describe("beforeunload events in structured queries", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should not trigger beforeunload event when leaving edited question which will turn the question ad-hoc", async () => {
+      const { mockEventListener } = await setup({
+        card: TEST_STRUCTURED_CARD,
+      });
+
+      expect(screen.queryByText("Count")).not.toBeInTheDocument();
+      userEvent.click(await screen.findByText("Summarize"));
+      userEvent.click(await screen.findByText("Done"));
+      expect(await screen.findByText("Count")).toBeInTheDocument();
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
+
+    it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
+      const { mockEventListener } = await setup({
+        card: TEST_UNSAVED_STRUCTURED_CARD,
+      });
+
+      expect(screen.queryByText("Count")).not.toBeInTheDocument();
+      userEvent.click(await screen.findByText("Summarize"));
+      userEvent.click(await screen.findByText("Done"));
+      expect(await screen.findByText("Count")).toBeInTheDocument();
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
+
+    it("should not trigger beforeunload event when query is unedited", async () => {
+      const { mockEventListener } = await setup({
+        card: TEST_STRUCTURED_CARD,
       });
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
