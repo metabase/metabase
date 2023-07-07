@@ -50,7 +50,7 @@ const ChartNestedSettingsSeriesSingle = ({
           subtitle={
             seriesCardName === computedSettings.title ? "" : seriesCardName
           }
-          onBlurChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          onBlurChange={e =>
             onChangeObjectSettings(object, { title: e.target.value })
           }
         />
