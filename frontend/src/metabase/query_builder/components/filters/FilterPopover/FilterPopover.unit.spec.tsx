@@ -49,7 +49,7 @@ const setup = ({
   onChangeFilter = dummyFunction,
   showFieldPicker = true,
 }: {
-  filter: Array<any>;
+  filter: Filter;
   query?: StructuredQuery;
   onChange?: (filter: Filter) => void;
   onChangeFilter?: (filter: Filter) => void;
