@@ -890,7 +890,7 @@
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority_level) (:authority_level collection-before-update)))
-      (premium-features/assert-has-feature :content-management "Official Collection")
+      (premium-features/assert-has-feature :content-management "Official Collections")
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
                           ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
