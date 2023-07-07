@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
 import { renderWithProviders } from "__support__/ui";
+import type { Screen } from "__support__/ui";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "metabase-types/store/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -13,17 +14,16 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
+import type { DashboardState } from "metabase-types/store";
 import SharingSidebar from "../SharingSidebar";
 
-export const dashcard = createMockDashboardOrderedCard({ name: "dashcard" });
+export const dashcard = createMockDashboardOrderedCard();
 
 const actionDashcard = createMockActionDashboardCard({
   id: 2,
-  name: "actionDashcard",
 });
 const linkDashcard = createMockActionDashboardCard({
   id: 3,
-  name: "linkDashcard",
   card: createMockCard({ display: "link" }),
 });
 
@@ -43,14 +43,29 @@ const dashboard = createMockDashboard({
 });
 
 export function setup(
-  { email, slack, tokenFeatures = {}, hasEnterprisePlugins = false } = {
+  {
+    email,
+    slack,
+    tokenFeatures = {},
+    hasEnterprisePlugins = false,
+  }: {
+    email?: boolean;
+    slack?: boolean;
+    tokenFeatures?: Record<string, boolean>;
+    hasEnterprisePlugins?: boolean;
+  } = {
     email: true,
     slack: true,
     tokenFeatures: {},
     hasEnterprisePlugins: false,
   },
 ) {
-  const channelData = { channels: {} };
+  const channelData: {
+    channels: {
+      email?: any;
+      slack?: any;
+    };
+  } = { channels: {} };
 
   if (email) {
     channelData.channels.email = {
@@ -120,13 +135,13 @@ export function setup(
               ordered_cards: [dashcard.id, actionDashcard.id, linkDashcard.id],
             },
           },
-        },
+        } as DashboardState,
       }),
     },
   );
 }
 
-export const hasAdvancedFilterOptions = screen => {
+export const hasAdvancedFilterOptions = (screen: Screen) => {
   expect(
     screen.queryByText(
       /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
@@ -140,7 +155,7 @@ export const hasAdvancedFilterOptions = screen => {
   return true;
 };
 
-export const hasBasicFilterOptions = screen => {
+export const hasBasicFilterOptions = (screen: Screen) => {
   expect(
     screen.getByText(
       /If a dashboard filter has a default value, it’ll be applied when your subscription is sent./i,
