@@ -49,7 +49,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      FS_CACHE: true # cache webpack
+      FS_CACHE: true # cache webpack build
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
