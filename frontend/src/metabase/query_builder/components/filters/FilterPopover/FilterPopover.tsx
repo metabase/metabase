@@ -294,8 +294,6 @@ export default function FilterPopover({
                 forceShowOperatorSelector={showOperatorSelector}
               />
               {hasPicker ? (
-                <EmptyFilterPickerPlaceholder />
-              ) : (
                 <>
                   <FilterPopoverSeparator data-testid="filter-popover-separator" />
                   <FilterPopoverPicker
@@ -308,6 +306,8 @@ export default function FilterPopover({
                     checkedColor={checkedColor}
                   />
                 </>
+              ) : (
+                <EmptyFilterPickerPlaceholder data-testid="empty-picker-placeholder" />
               )}
             </>
           )}

@@ -139,14 +139,7 @@ describe("FilterPopover", () => {
             showFieldPicker: false,
           });
 
-          expect(
-            screen.queryByTestId("filter-popover-separator"),
-          ).not.toBeInTheDocument();
-
-          // if the "empty filter picker" boolean check fails, we will see the default filter picker
-          expect(
-            screen.queryByTestId("default-filter-picker"),
-          ).not.toBeInTheDocument();
+          expect("empty-picker-placeholder").toBeInTheDocument();
         },
       );
     });
