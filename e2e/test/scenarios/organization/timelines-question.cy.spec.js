@@ -201,6 +201,7 @@ describe("scenarios > organization > timelines > question", () => {
           {
             name: "RC1",
             description: "[Release notes](https://metabase.test)",
+            timestamp: "2024-10-20T00:00:00Z",
           },
         ],
       });
@@ -424,7 +425,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.signInAsAdmin();
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1" }],
+        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
       cy.signOut();
       cy.signIn("readonly");
