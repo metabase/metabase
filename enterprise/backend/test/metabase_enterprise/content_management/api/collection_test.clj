@@ -30,7 +30,7 @@
 
     (testing "fails to add an official collection if doesn't have any premium features"
       (premium-features-test/with-premium-features #{}
-        (is (= "Official collection is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+        (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
                (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
                                                                         :color           "#000000"
                                                                         :authority_level "official"})))))))
@@ -72,14 +72,14 @@
       (premium-features-test/with-premium-features #{}
         (t2.with-temp/with-temp
           [:model/Collection {id :id} {:authority_level nil}]
-          (is (= "Official collection is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+          (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
                  (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))
 
     (testing "fails to update if has some premium-features but not :content-management"
       (premium-features-test/with-premium-features #{:sandboxes}
         (t2.with-temp/with-temp
           [:model/Collection {id :id} {:authority_level nil}]
-          (is (= "Official collection is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+          (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
                  (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))))
 
 

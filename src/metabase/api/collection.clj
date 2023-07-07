@@ -33,6 +33,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -800,7 +801,7 @@
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
     ;; make sure only admin and an EE token is present to be able to create an Official token
-    (premium-features/assert-has-feature :content-management "Official Collection")
+    (premium-features/assert-has-feature :content-management (deferred-tru "Official Collections"))
     (api/check-superuser))
   ;; Now create the new Collection :)
   (first
@@ -890,7 +891,7 @@
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority_level) (:authority_level collection-before-update)))
-      (premium-features/assert-has-feature :content-management "Official Collections")
+      (premium-features/assert-has-feature :content-management (deferred-tru "Official Collections"))
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
                           ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
