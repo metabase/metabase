@@ -40,11 +40,13 @@
   a sequence of all schema names from the JDBC database metadata and filter out any schemas in `excluded-schemas`, along
   with any that shouldn't be included based on the given inclusion and exclusion patterns (see the
   `metabase.driver.sync` namespace for full explanation)."
-  {:added "0.43.0", :arglists '([driver
-                                 ^java.sql.Connection connection
-                                 ^java.sql.DatabaseMetaData metadata
-                                 ^String schema-inclusion-patterns
-                                 ^String schema-exclusion-patterns])}
+  {:changelog-test/ignore true
+   :added "0.43.0"
+   :arglists '([driver
+                ^java.sql.Connection connection
+                ^java.sql.DatabaseMetaData metadata
+                ^String schema-inclusion-patterns
+                ^String schema-exclusion-patterns])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

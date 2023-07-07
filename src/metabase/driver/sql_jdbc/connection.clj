@@ -64,7 +64,7 @@
 
   The default method uses the first non-nil value of the keys `:db`, `:dbname`, `:sid`, or `:catalog`; implement a new
   method if your driver does not have any of these keys in its details."
-  {:arglists '([driver details]), :added "0.45.0"}
+  {:changelog-test/ignore true, :arglists '([driver details]), :added "0.45.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

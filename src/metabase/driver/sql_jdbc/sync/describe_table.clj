@@ -190,7 +190,8 @@
 (defmulti get-table-pks
   "Returns a set of primary keys for `table` using a JDBC DatabaseMetaData from JDBC Connection `conn`.
   Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access."
-  {:added    "0.45.0"
+  {:changelog-test/ignore true
+   :added    "0.45.0"
    :arglists '([driver ^Connection conn db-name-or-nil table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

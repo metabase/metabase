@@ -251,7 +251,7 @@
 
 (defmulti contact-info
   "The contact information for the driver"
-  {:added "0.43.0" :arglists '([driver])}
+  {:changelog-test/ignore true :added "0.43.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
@@ -273,7 +273,7 @@
   "Return a map containing information that describes the version of the DBMS. This typically includes a
   `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`
   specifying the flavor like `MySQL` or `MariaDB`."
-  {:added "0.46.0" :arglists '([driver database])}
+  {:changelog-test/ignore true :added "0.46.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -810,7 +810,7 @@
 (defmulti execute-write-query!
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
   Drivers that support `:actions/custom` must implement this method."
-  {:added "0.44.0", :arglists '([driver query])}
+  {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -842,7 +842,7 @@
 
 (defmulti table-name-length-limit
   "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
-  {:added "0.47.0", :arglists '([driver])}
+  {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -875,6 +875,6 @@
 
 (defmulti upload-type->database-type
   "Returns the database type for a given `metabase.upload` type."
-  {:added "0.47.0", :arglists '([driver upload-type])}
+  {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

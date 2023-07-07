@@ -86,7 +86,7 @@
 
   Drivers likely do not need to implement this method themselves -- instead, you should only need to provide
   implementations of `unprepare-value` for the cases where it is needed."
-  {:added "0.32.0" :arglists '([driver [sql & args]]), :style/indent 1}
+  {:added "0.32.0", :arglists '([driver [sql & args]]), :style/indent 1}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

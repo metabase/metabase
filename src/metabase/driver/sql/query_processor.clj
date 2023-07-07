@@ -136,7 +136,7 @@
 
 (defmulti ->integer
   "Cast to integer"
-  {:added "0.45.0" :arglists '([driver honeysql-expr])}
+  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -146,7 +146,7 @@
 
 (defmulti ->float
   "Cast to float."
-  {:added "0.45.0" :arglists '([driver honeysql-expr])}
+  {:changelog-test/ignore true :added "0.45.0" :arglists '([driver honeysql-expr])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -435,7 +435,7 @@
   of `honeysql-form`. Most drivers can use the default implementations for all of these methods, but some may need to
   override one or more (e.g. SQL Server needs to override this method for the `:limit` clause, since T-SQL uses `TOP`
   instead of `LIMIT`)."
-  {:added "0.32.0" :arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
+  {:added "0.32.0", :arglists '([driver top-level-clause honeysql-form query]), :style/indent 2}
   (fn [driver top-level-clause _ _]
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
@@ -449,7 +449,7 @@
 
   Lots of SQL DB's have denormalized JSON fields and they all have some sort of special syntax for dealing with
   indexing into it. Implement the special syntax in this multimethod."
-  {:arglists '([driver identifier json-field]), :added "0.43.1"}
+  {:changelog-test/ignore true, :arglists '([driver identifier json-field]), :added "0.43.1"}
   (fn [driver _ _] (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
 
@@ -1427,7 +1427,7 @@
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
   same version of the query that we will ultimately be compiling."
-  {:arglists '([driver inner-query]), :added "0.42.0"}
+  {:changelog-test/ignore true, :arglists '([driver inner-query]), :added "0.42.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
