@@ -20,9 +20,14 @@ export const updateParametersWidgetStickiness = dashboard => {
 };
 
 const initializeWidgetOffsetTop = dashboard => {
-  if (!dashboard.state.parametersWidgetOffsetTop) {
+  if (
+    dashboard.parametersWidgetRef.current !== null &&
+    dashboard.parametersWidgetRef.current.offsetTop !==
+      dashboard.state.parametersWidgetOffsetTop
+  ) {
     dashboard.setState({
-      parametersWidgetOffsetTop: dashboard.parametersWidgetRef.offsetTop,
+      parametersWidgetOffsetTop:
+        dashboard.parametersWidgetRef.current.offsetTop,
     });
   }
 };

@@ -14,7 +14,7 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(0);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {},
       setState,
     };
@@ -26,13 +26,29 @@ describe("updateParametersWidgetStickiness", () => {
     });
   });
 
+  it("do not initialize parametersWidgetOffsetTop if there's no parametersWidgetRef", () => {
+    const setState = jest.fn();
+
+    mockMainElementScroll(0);
+
+    const dashboard = {
+      parametersWidgetRef: { current: null },
+      state: {},
+      setState,
+    };
+
+    updateParametersWidgetStickiness(dashboard);
+
+    expect(setState).toHaveBeenCalledTimes(0);
+  });
+
   it("makes filters sticky with enough scrolling down", () => {
     const setState = jest.fn();
 
     mockMainElementScroll(offsetTop + 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {},
       setState,
     };
@@ -50,7 +66,7 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop - 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {},
       setState,
     };
@@ -68,7 +84,7 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop + 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {
         isParametersWidgetSticky: true,
         parametersWidgetOffsetTop: offsetTop,
@@ -87,7 +103,7 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop - 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {
         isParametersWidgetSticky: false,
         parametersWidgetOffsetTop: offsetTop,
