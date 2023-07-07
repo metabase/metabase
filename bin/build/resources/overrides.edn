@@ -25,11 +25,7 @@
  "hiccup"                      {"hiccup" {:resource "EPL.txt"}}
  "io.dropwizard.metrics"       {"metrics-core" {:resource "apache2_0.txt"}}
  "jakarta.xml.bind"            {"jakarta.xml.bind-api" {:resource "EDL.txt"}}
- ;; --- three new additions
  "javax.servlet"               {"servlet-api" {:resource "CDDL_1.txt"}}
- "javax.servlet.jsp"           {"jsp-api" {:resource "GPL2_0.txt"}}
- "metabase"                    {"saml20-clj" {:resource "EPL_2.txt"}}
- ;;; ^^^
  "methodical"                  {"methodical" {:resource "EPL_2.txt"}}
  "net.redhogs.cronparser"      {"cron-parser-core" {:resource "MIT.txt"}}
  "net.shibboleth.utilities"    {"java-support" {:resource "apache2_0.txt"}}
