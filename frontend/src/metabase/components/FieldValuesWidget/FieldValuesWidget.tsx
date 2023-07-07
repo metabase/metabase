@@ -38,6 +38,7 @@ import type {
   FieldValue,
   RowValue,
   Field as APIField,
+  ParameterValues,
 } from "metabase-types/api";
 
 import type Field from "metabase-lib/metadata/Field";
@@ -82,11 +83,6 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
   };
 }
 
-interface ValuesResponse {
-  has_more_values: boolean;
-  values: FieldValue[];
-}
-
 type FieldValuesResponse = {
   payload: APIField;
 };
@@ -119,13 +115,13 @@ interface IFieldValuesWidgetProps {
   }: {
     id: FieldId | FieldReference;
   }) => Promise<FieldValuesResponse>;
-  fetchParameterValues: (options: FetcherOptions) => Promise<ValuesResponse>;
+  fetchParameterValues: (options: FetcherOptions) => Promise<ParameterValues>;
   fetchCardParameterValues: (
     options: FetcherOptions,
-  ) => Promise<ValuesResponse>;
+  ) => Promise<ParameterValues>;
   fetchDashboardParameterValues: (
     options: FetcherOptions,
-  ) => Promise<ValuesResponse>;
+  ) => Promise<ParameterValues>;
 
   addRemappings: (
     value: FieldReference | FieldId,
@@ -221,19 +217,19 @@ export function FieldValuesWidgetInner({
     let newOptions: FieldValue[] = [];
     let newValuesMode = valuesMode;
     try {
-      if (dashboard && canUseDashboardEndpoints(dashboard)) {
+      if (canUseDashboardEndpoints(dashboard)) {
         const { values, has_more_values } = await fetchDashboardParameterValues(
           query,
         );
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else if (question && canUseCardEndpoints(question)) {
+      } else if (canUseCardEndpoints(question)) {
         const { values, has_more_values } = await fetchCardParameterValues(
           query,
         );
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else if (parameter && canUseParameterEndpoints(parameter)) {
+      } else if (canUseParameterEndpoints(parameter)) {
         const { values, has_more_values } = await fetchParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;

@@ -33,11 +33,11 @@ async function setup({
   fields,
   prefix,
 }: {
-  fields: (Field | null)[];
+  fields: (Field | null | undefined)[];
   prefix?: string;
 }) {
   const fetchFieldValues = jest.fn(({ id }) => ({
-    payload: (fields as Field[]).find(f => f.id === id),
+    payload: fields.filter(checkNotNull).find(f => f?.id === id),
   }));
 
   fields.forEach(field => {
@@ -47,7 +47,7 @@ async function setup({
   renderWithProviders(
     <FieldValuesWidget
       value={[]}
-      fields={fields as Field[]}
+      fields={fields.filter(checkNotNull)}
       onChange={jest.fn()}
       fetchFieldValues={fetchFieldValues as any}
       fetchParameterValues={jest.fn()}
@@ -158,9 +158,12 @@ describe("FieldValuesWidget", () => {
 
     describe("has_field_values = search", () => {
       it("should have 'Search by Category or enter an ID' as the placeholder text", async () => {
-        const field = metadata.field(SEARCHABLE_FK_FIELD_ID)?.clone() as Field;
+        const field = metadata.field(SEARCHABLE_FK_FIELD_ID)?.clone();
         const remappedField = metadata.field(PRODUCTS.CATEGORY);
-        field.remappedField = () => remappedField;
+
+        if (field) {
+          field.remappedField = () => remappedField;
+        }
 
         await setup({ fields: [field] });
 
@@ -182,11 +185,13 @@ describe("FieldValuesWidget", () => {
 
   describe("multiple fields", () => {
     it("list multiple fields together", async () => {
-      const categoryField = metadata.field(PRODUCTS.CATEGORY)?.clone() as Field;
-      categoryField.values = PRODUCT_CATEGORY_VALUES.values;
+      const categoryField = metadata.field(PRODUCTS.CATEGORY)?.clone();
+      const sourceField = metadata.field(PEOPLE.SOURCE)?.clone();
 
-      const sourceField = metadata.field(PEOPLE.SOURCE)?.clone() as Field;
-      sourceField.values = PEOPLE_SOURCE_VALUES.values;
+      if (categoryField && sourceField) {
+        categoryField.values = PRODUCT_CATEGORY_VALUES.values;
+        sourceField.values = PEOPLE_SOURCE_VALUES.values;
+      }
 
       await setup({ fields: [categoryField, sourceField] });
 

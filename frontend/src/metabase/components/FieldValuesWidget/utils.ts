@@ -66,15 +66,15 @@ export function dedupeValues(valuesList: FieldValue[][]): FieldValue[] {
   return Array.from(uniqueValueMap.values());
 }
 
-export function canUseParameterEndpoints(parameter: Parameter) {
+export function canUseParameterEndpoints(parameter?: Parameter) {
   return parameter != null;
 }
 
-export function canUseCardEndpoints(question: Question) {
+export function canUseCardEndpoints(question?: Question) {
   return question?.isSaved();
 }
 
-export function canUseDashboardEndpoints(dashboard: Dashboard) {
+export function canUseDashboardEndpoints(dashboard?: Dashboard) {
   return dashboard?.id;
 }
 
