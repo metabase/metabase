@@ -73,7 +73,7 @@ jobs:
           key: .webpack-cache-${{github.event.number}}-${{hashFiles('yarn.lock')}}
           restore-keys: webpack-cache-
 
-      - name: Cache node webpack
+      - name: Cache babel
         uses: actions/cache@v3
         with:
           path: .babel_cache
