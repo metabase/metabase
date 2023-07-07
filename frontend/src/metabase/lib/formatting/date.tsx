@@ -125,9 +125,11 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
   }
 }
 
+type DateVal = string | number;
+
 /** This formats a time with unit as a date range */
 export function formatDateTimeRangeWithUnit(
-  value: string | number | (string | number)[],
+  value: DateVal | [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
