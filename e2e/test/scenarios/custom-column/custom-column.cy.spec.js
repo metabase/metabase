@@ -576,17 +576,13 @@ describe("scenarios > question > custom column", () => {
 
     filter({ mode: "notebook" });
     popover().contains("MiscDate").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Past").click();
-    // The popover shows up with the default value selected - previous 30 days.
-    // Since we don't have any orders in the Sample Database for that period, we have to change it to the previous 30 years.
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("days").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("years").click();
-    cy.button("Add filter").click();
+    popover().findByText("Relative dates...").click();
+    popover().findByText("Past").click();
+    popover().findByText("days").click();
+    popover().last().findByText("years").click();
+    popover().icon("ellipsis").click();
+    popover().last().findByText("Include this year").click();
+    popover().button("Add filter").click();
 
     visualize(({ body }) => {
       expect(body.error).to.not.exist;
