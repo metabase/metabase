@@ -57,8 +57,8 @@ describe("issue 10803", () => {
         // We tell the xlsx library to read raw and not parse dates
         // So for the _date_ format we expect an integer
         // And for timestamp, we expect a float
-        expect(sheet["A2"].v).to.eq(43985);
-        expect(sheet["B2"].v).to.eq(43985.98707175926);
+        expect(sheet["A2"].v).to.eq(46176);
+        expect(sheet["B2"].v).to.eq(46176.98707175926);
       }
     }
   });
