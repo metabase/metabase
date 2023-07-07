@@ -368,7 +368,7 @@ function QueryBuilder(props) {
     onTimeout,
   });
 
-  const [requestPermission, showNotification] = useWebNotification();
+  const { requestPermission, showNotification } = useWebNotification();
 
   useEffect(() => {
     if (isLoadingComplete) {
