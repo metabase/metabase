@@ -242,7 +242,8 @@ export default function FilterPopover({
   const shouldShowDatePicker = field?.isDate() && !field?.isTime();
   const supportsExpressions = query.database()?.supportsExpressions();
 
-  const hasEmptyPicker = filter.operator()?.fields.length === 0;
+  const filterOperator = filter.operator();
+  const hasPicker = filterOperator && filterOperator.fields.length > 0;
 
   return (
     <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
@@ -292,7 +293,7 @@ export default function FilterPopover({
                 showFieldPicker={showFieldPicker}
                 forceShowOperatorSelector={showOperatorSelector}
               />
-              {hasEmptyPicker ? (
+              {hasPicker ? (
                 <EmptyFilterPickerPlaceholder />
               ) : (
                 <>

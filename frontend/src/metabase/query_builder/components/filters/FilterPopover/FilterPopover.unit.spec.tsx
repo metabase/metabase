@@ -49,7 +49,7 @@ const setup = ({
   onChangeFilter = dummyFunction,
   showFieldPicker = true,
 }: {
-  filter: Filter;
+  filter: Array<any>;
   query?: StructuredQuery;
   onChange?: (filter: Filter) => void;
   onChangeFilter?: (filter: Filter) => void;
@@ -130,12 +130,12 @@ describe("FilterPopover", () => {
     });
   });
   describe("filter rendering", () => {
-    describe("no-value filters: %s filter", () => {
+    describe("no-value filters", () => {
       it.each(["is-null", "not-null", "is-empty", "not-empty"])(
-        "should not render picker or separator when selecting a new filter from the column dropdown",
+        "should not render picker or separator when selecting '%s' filter from the column dropdown",
         async operator => {
           setup({
-            filter: [operator, ["field", PRODUCTS.TITLE, null], null] as Filter,
+            filter: [operator, ["field", PRODUCTS.TITLE, null], null],
             showFieldPicker: false,
           });
 
@@ -153,12 +153,12 @@ describe("FilterPopover", () => {
 
     describe("non datetime filters", () => {
       it.each([
-        { filterElem: STRING_CONTAINS_FILTER, label: "contains" },
-        { filterElem: NUMERIC_FILTER, label: "equals" },
+        { filter: STRING_CONTAINS_FILTER, label: "contains" },
+        { filter: NUMERIC_FILTER, label: "equals" },
       ])(
         "should render the default filter picker with a separator if the $label filter has arguments",
-        async ({ filterElem }) => {
-          setup({ filter: filterElem });
+        async ({ filter }) => {
+          setup({ filter });
 
           expect(
             screen.getByTestId("filter-popover-separator"),
