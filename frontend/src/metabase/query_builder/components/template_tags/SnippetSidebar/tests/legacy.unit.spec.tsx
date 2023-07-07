@@ -12,7 +12,7 @@ async function setup(options: SetupOpts = {}) {
   });
 }
 
-describe("SnippetSidebar (EE with token feature)", () => {
+describe("SnippetSidebar (EE with legacy token feature)", () => {
   it("should display the `Change permissions` menu for admin users", async () => {
     await setup();
 

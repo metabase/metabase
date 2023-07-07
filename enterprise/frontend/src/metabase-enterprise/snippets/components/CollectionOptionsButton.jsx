@@ -71,7 +71,12 @@ export default class CollectionOptionsButton extends Component {
         onClick: () => onEdit(collection),
       });
     }
-    if (user && user.is_superuser && hasPremiumFeature("content_management")) {
+    if (
+      user &&
+      user.is_superuser &&
+      (hasPremiumFeature("content_management") ||
+        hasPremiumFeature("content_management_legacy"))
+    ) {
       options.push({
         name: t`Change permissions`,
         onClick: onEditCollectionPermissions,

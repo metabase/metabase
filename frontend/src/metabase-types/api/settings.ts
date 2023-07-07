@@ -158,6 +158,7 @@ export const tokenFeatures = [
   "session_timeout_config",
   "whitelabel",
   "dashboard_subscription_filters",
+  "snippet_collections",
 ] as const;
 
 export type TokenFeature = typeof tokenFeatures[number];

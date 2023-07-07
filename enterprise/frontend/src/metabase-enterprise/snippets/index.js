@@ -16,7 +16,10 @@ import CollectionRow from "./components/CollectionRow";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
 import CollectionOptionsButton from "./components/CollectionOptionsButton";
 
-if (hasPremiumFeature("content_management")) {
+if (
+  hasPremiumFeature("content_management") ||
+  hasPremiumFeature("content_management_legacy")
+) {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(snippetSidebar => ({
     icon: "folder",
     name: t`New folder`,
@@ -72,7 +75,10 @@ PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
 
 PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
 
-if (hasPremiumFeature("content_management")) {
+if (
+  hasPremiumFeature("content_management") ||
+  hasPremiumFeature("content_management_legacy")
+) {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
     const collection = snippetSidebar.props.snippetCollection;
     return (
