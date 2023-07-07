@@ -43,8 +43,7 @@ const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER]: Filter[] =
 const dummyFunction = jest.fn();
 
 const setup = ({
-  filter: filterElem,
-  query = QUERY,
+  filter,
   onChange = dummyFunction,
   onChangeFilter = dummyFunction,
   showFieldPicker = true,
@@ -55,8 +54,6 @@ const setup = ({
   onChangeFilter?: (filter: Filter) => void;
   showFieldPicker?: boolean;
 }) => {
-  const filter = new Filter(filterElem, null, query);
-
   renderWithProviders(
     <FilterPopover
       query={QUERY}
