@@ -104,9 +104,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                         :dataset_query source-query
-                                         :dataset       true}]
+           [Card {card-id :id} {:table_id      (mt/id :orders)
+                                :dataset_query source-query
+                                :dataset       true}]
             (let [limit         10
                   dataset-query {:database   (mt/id)
                                  :type       :query
@@ -129,9 +129,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                         :dataset_query source-query
-                                         :dataset       true}]
+           [Card {card-id :id} {:table_id      (mt/id :orders)
+                                :dataset_query source-query
+                                :dataset       true}]
             (let [limit           10
                   selected-fields [[:field "SUBTOTAL" {:base-type "type/Float"}]
                                    [:field "TAX" {:base-type "type/Float"}]
@@ -157,9 +157,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                         :dataset_query source-query
-                                         :dataset       true}]
+           [Card {card-id :id} {:table_id      (mt/id :orders)
+                                :dataset_query source-query
+                                :dataset       true}]
             (let [dataset-query {:type       :query
                                  :query      {:source-table (format "card__%s" card-id)
                                               :fields       [[:field (mt/id :people :state)]
@@ -184,9 +184,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                         :dataset_query source-query
-                                         :dataset       true}]
+           [Card {card-id :id} {:table_id      (mt/id :orders)
+                                :dataset_query source-query
+                                :dataset       true}]
             (testing "Fields can be referenced by id"
               (let [dataset-query {:type       :query
                                    :query      {:source-table (format "card__%s" card-id)
@@ -218,9 +218,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                         :dataset_query source-query
-                                         :dataset       true}]
+           [Card {card-id :id} {:table_id      (mt/id :orders)
+                                :dataset_query source-query
+                                :dataset       true}]
             (testing "Fields can be referenced by id"
               (let [dataset-query {:type       :query
                                    :query      {:breakout     [[:field (mt/id :people :state)]],
@@ -254,11 +254,11 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-           [Card {card-id :id :as card} {:table_id        (mt/id :orders)
-                                         :dataset_query   source-query
-                                         :result_metadata (->> (mt/with-test-user :rasta (result-metadata-for-query source-query))
-                                                               (map (fn [m] (update m :display_name joined-metadata-map))))
-                                         :dataset         true}]
+           [Card {card-id :id} {:table_id        (mt/id :orders)
+                                :dataset_query   source-query
+                                :result_metadata (->> (mt/with-test-user :rasta (result-metadata-for-query source-query))
+                                                      (map (fn [m] (update m :display_name joined-metadata-map))))
+                                :dataset         true}]
             (let [dataset-query {:type       :query
 
                                  :query      {;; Not CUSTOMER_STATE
@@ -282,9 +282,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                         :dataset_query source-query
-                                         :dataset       true}]
+           [Card {card-id :id} {:table_id      (mt/id :orders)
+                                :dataset_query source-query
+                                :dataset       true}]
             (let [dataset-query {:type       :query
                                  :query      {:expressions  {"Discount percentage"
                                                              ["*"
@@ -310,9 +310,9 @@
                             :type     :query
                             :query    (full-join-orders-test-query)}]
           (t2.with-temp/with-temp
-           [Card {card-id :id :as card} {:table_id      (mt/id :orders)
-                                         :dataset_query source-query
-                                         :dataset       true}]
+           [Card {card-id :id} {:table_id      (mt/id :orders)
+                                :dataset_query source-query
+                                :dataset       true}]
             (let [dataset-query {:type       :query
                                  :query      {:expressions  {"Unit price" [:/
                                                                            ;[:field "SUBTOTAL" {:base-type "type/Float"}]
