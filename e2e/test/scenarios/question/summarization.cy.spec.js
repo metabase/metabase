@@ -295,7 +295,7 @@ describe("scenarios > question > summarize sidebar", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/No results!/i).should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("744"); // `Count` for year 2016
+    cy.contains("744"); // `Count` for year 2022
   });
 
   // flaky test (#19454)
