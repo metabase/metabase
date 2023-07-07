@@ -16,27 +16,17 @@ export function setQuarterAndYear({ quarter, year } = {}) {
   cy.findByText(quarter).click();
 }
 
+function setDate(date, container) {
+  container.findByRole("textbox").clear().type(date).blur();
+}
+
 export function setSingleDate(date) {
-  cy.findByTestId("specific-date-picker")
-    .findByRole("textbox")
-    .clear()
-    .type(date)
-    .blur();
+  setDate(date, cy.findByTestId("specific-date-picker"));
 }
 
 export function setDateRange({ startDate, endDate } = {}) {
-  cy.findAllByTestId("specific-date-picker")
-    .first()
-    .findByRole("textbox")
-    .clear()
-    .type(startDate);
-
-  cy.findAllByTestId("specific-date-picker")
-    .last()
-    .findByRole("textbox")
-    .clear()
-    .type(endDate)
-    .blur();
+  setDate(startDate, cy.findAllByTestId("specific-date-picker").first());
+  setDate(endDate, cy.findAllByTestId("specific-date-picker").last());
 }
 
 export function setRelativeDate(term) {
