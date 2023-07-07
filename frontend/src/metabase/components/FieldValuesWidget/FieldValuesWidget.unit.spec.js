@@ -1,6 +1,13 @@
 import "mutationobserver-shim";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import {
+  getBrokenUpTextMatcher,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
+import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 
 import { checkNotNull } from "metabase/core/utils/types";
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
@@ -20,12 +27,17 @@ import {
   LISTABLE_PK_FIELD_VALUE,
   SEARCHABLE_FK_FIELD_ID,
   EXPRESSION_FIELD_ID,
+  metadataWithSearchValuesField,
 } from "./testMocks";
 
-async function setup({ fields, values, ...props }) {
+async function setup({ fields, values, searchValue, ...props }) {
   const fetchFieldValues = jest.fn(({ id }) => ({
     payload: fields.find(f => f.id === id),
   }));
+
+  fields.forEach(field => {
+    setupFieldSearchValuesEndpoints(field.id, searchValue);
+  });
 
   renderWithProviders(
     <FieldValuesWidget
@@ -234,6 +246,47 @@ describe("FieldValuesWidget", () => {
       expect(fetchFieldValues).not.toHaveBeenCalledWith({
         id: EXPRESSION_FIELD_ID,
       });
+    });
+  });
+
+  describe("NoMatchState", () => {
+    it("should display field title when one field passed and there are no matching results", async () => {
+      const field = metadataWithSearchValuesField.field(PEOPLE.PASSWORD);
+      const displayName = field.display_name; // "Password"
+      const searchValue = "somerandomvalue";
+
+      await setup({
+        fields: [field],
+        multi: true,
+        disablePKRemappingForSearch: true,
+        searchValue,
+      });
+
+      userEvent.type(
+        screen.getByPlaceholderText(`Search by ${displayName}`),
+        searchValue,
+      );
+
+      expect(
+        await screen.findByText(
+          getBrokenUpTextMatcher(`No matching ${displayName} found.`),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should not display field title when multiple fields passed and no matching results found", async () => {
+      const searchValue = "somerandomvalue";
+
+      await setup({
+        fields: [metadata.field(PEOPLE.CITY), metadata.field(PEOPLE.NAME)],
+        multi: true,
+        disablePKRemappingForSearch: true,
+        searchValue,
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
+
+      expect(await screen.findByText(`No matching result`)).toBeInTheDocument();
     });
   });
 });

@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { Field, FieldValues } from "metabase-types/api";
+import { Field, FieldId, FieldValues } from "metabase-types/api";
 import { PERMISSION_ERROR } from "./constants";
 
 export function setupFieldEndpoints(field: Field) {
@@ -23,4 +23,23 @@ export function setupUnauthorizedFieldValuesEndpoints(
 
 export function setupFieldsValuesEndpoints(fieldsValues: FieldValues[]) {
   fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
+}
+
+export function setupFieldSearchValuesEndpoints<T>(
+  fieldId: FieldId,
+  searchValue: string,
+  result: T[] = [],
+) {
+  fetchMock.get(
+    {
+      url: `path:/api/field/${fieldId}/search/${fieldId}`,
+      query: {
+        value: searchValue,
+        limit: 100, // corresponds to MAX_SEARCH_RESULTS in FieldValuesWidget
+      },
+    },
+    {
+      body: result,
+    },
+  );
 }
