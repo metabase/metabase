@@ -442,7 +442,9 @@
   content-management feature flag. EE implementation returns `nil`, so as to not filter out snippet collections."
   metabase-enterprise.content-management.api.native-query-snippet
   []
-  [:not= :namespace (u/qualified-name "snippets")])
+  [:or
+   [:= :namespace nil]
+   [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
   [collection {:keys [archived? collection-namespace pinned-state]}]
