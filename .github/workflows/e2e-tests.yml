@@ -49,6 +49,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
+      FS_CACHE: true # cache webpack
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
@@ -57,6 +58,20 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: e2e-tests
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: node_modules-${{github.event.number}}-${{hashFiles('yarn.lock')}}
+          restore-keys: node_modules-
+
+      - name: Cache node webpack
+        uses: actions/cache@v3
+        with:
+          path: .webpack-cache
+          key: .webpack-cache-${{github.event.number}}-${{hashFiles('yarn.lock')}}
+          restore-keys: webpack-cache-
 
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh

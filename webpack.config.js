@@ -185,6 +185,7 @@ const config = (module.exports = {
   cache: useFilesystemCache
     ? {
         type: "filesystem",
+        cacheDirectory: __dirname + '/.webpack-cache',
         buildDependencies: {
           // invalidates the cache on configuration change
           config: [__filename],

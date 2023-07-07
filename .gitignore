@@ -13,6 +13,7 @@
 .idea/
 .nrepl-port
 .vscode
+.webpack-cache
 /*.h2.db
 /*.lock.db
 /*.mv.db
