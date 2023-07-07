@@ -10,6 +10,10 @@ import {
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { CollectionId } from "metabase-types/api";
@@ -37,6 +41,13 @@ const setup = async (
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
+  const state = createMockState({
+    settings,
+    qb: createMockQueryBuilderState({
+      card: question.card(),
+      originalCard: originalQuestion?.card(),
+    }),
+  });
   renderWithProviders(
     <SaveQuestionModal
       question={question}
@@ -46,9 +57,7 @@ const setup = async (
       onClose={onCloseMock}
     />,
     {
-      storeInitialState: {
-        settings,
-      },
+      storeInitialState: state,
     },
   );
   await screen.findByRole("button", { name: "Save" });
