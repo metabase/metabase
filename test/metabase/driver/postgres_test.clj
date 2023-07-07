@@ -461,7 +461,7 @@
                    (str/split-lines (mdb.query/format-sql (:query only-order) :postgres))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-driver :postgres
     (testing "sync goes and runs with identifier if there is a schema other than default public one"
       (drop-if-exists-and-create-db! "describe-json-with-schema-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-with-schema-test"
@@ -486,7 +486,7 @@
                     {:schema "bobdobbs" :name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
 
 (deftest describe-funky-name-table-nested-field-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+  (mt/test-driver :postgres
     (testing "sync goes and still works with funky schema and table names, including caps and special chars (#23026, #23027)"
       (drop-if-exists-and-create-db! "describe-json-funky-names-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "describe-json-funky-names-test"
