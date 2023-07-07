@@ -823,7 +823,7 @@
    description     [:maybe ms/NonBlankString]
    parent_id       [:maybe ms/PositiveInt]
    namespace       [:maybe ms/NonBlankString]
-   authority_level collection/AuthorityLevel}
+   authority_level [:maybe collection/AuthorityLevel]}
   (create-collection! body))
 
 ;; TODO - I'm not 100% sure it makes sense that moving a Collection requires a special call to `move-collection!`,
@@ -882,7 +882,7 @@
    description     [:maybe ms/NonBlankString]
    archived        [:maybe ms/BooleanValue]
    parent_id       [:maybe ms/PositiveInt]
-   authority_level collection/AuthorityLevel}
+   authority_level [:maybe collection/AuthorityLevel]}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that

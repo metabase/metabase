@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as schema]
    [toucan2.connection :as t2.conn]
@@ -250,13 +251,14 @@
   (ex-info (tru "{0} is an Enterprise feature. Please upgrade to a paid plan to use this feature." (str/capitalize feature-name))
            {:status-code 402}))
 
-(defn assert-has-feature
+(mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error.
 
   (assert-has-feature :sandboxes \"Sandboxing\")
 
   => throw an error with message \"Sandboxing is an enterprise feature. Please upgrade to a paid plan to use this feature.\""
-  [feature-flag feature-name]
+  [feature-flag :- keyword?
+   feature-name :- mu/localized-string-schema]
   (when-not (has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
 

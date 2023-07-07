@@ -134,7 +134,8 @@
   [:and any?
    [:fn {:description "a malli schema"} mc/schema]])
 
-(def ^:private localized-string-schema
+(def localized-string-schema
+  "Schema for localized string."
   #?(:clj  [:fn {:error/message "must be a localized string"}
             i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?

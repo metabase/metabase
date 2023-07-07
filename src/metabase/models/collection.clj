@@ -65,7 +65,7 @@
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
-  [:maybe [:enum "official"]])
+  [:enum "official"])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Slug & Hex Color & Validation                                          |
@@ -870,7 +870,6 @@
     ;; (5) make sure hex color is valid
     (when (api/column-will-change? :color collection-before-updates collection-updates)
      (assert-valid-hex-color color))
-    ;; (6) check requires EE token if authority_level is changed
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)

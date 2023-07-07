@@ -20,7 +20,7 @@
 
           (testing "but the type has to be valid"
             (mt/user-http-request :crowberto :post 400 "collection"
-                                  {:name "foo" :color "#f38630",:authority_level "invalid-type"})))
+                                  {:name "foo" :color "#f38630" :authority_level "invalid-type"})))
 
         (testing "non-admins get 403"
           (is (= "You don't have permissions to do that."
