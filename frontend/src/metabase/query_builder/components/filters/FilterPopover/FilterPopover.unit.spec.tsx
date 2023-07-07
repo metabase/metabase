@@ -149,7 +149,7 @@ describe("FilterPopover", () => {
         { filter: STRING_CONTAINS_FILTER, label: "contains" },
         { filter: NUMERIC_FILTER, label: "equals" },
       ])(
-        "should render the default filter picker with a separator if the $label filter has arguments",
+        "should render the default filter picker and separator if the $label filter has arguments",
         async ({ filter }) => {
           setup({ filter });
 
