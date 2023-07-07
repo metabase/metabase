@@ -180,8 +180,6 @@ export const getPKRowIndexMap = createSelector(
   },
 );
 
-export const getIsNew = state => state.qb.card && !state.qb.card.id;
-
 export const getQueryStartTime = state => state.qb.queryStartTime;
 
 export const getDatabaseId = createSelector(
@@ -323,6 +321,7 @@ export const getQuestionWithParameters = createSelector(
     return new Question(card, metadata, parameterValues);
   },
 );
+
 export const getQuestion = createSelector(
   [getQuestionWithParameters, getQueryBuilderMode],
   (question, queryBuilderMode) => {
@@ -557,6 +556,18 @@ export const getIsDirty = createSelector(
   },
 );
 
+export const getIsSavedQuestionChanged = createSelector(
+  [getQuestion, getOriginalQuestion],
+  (question, originalQuestion) => {
+    return (
+      question != null &&
+      !question.isSaved() &&
+      originalQuestion != null &&
+      !originalQuestion.isDataset()
+    );
+  },
+);
+
 export const getQuery = createSelector(
   [getQuestion],
   question => question && question.query(),
@@ -591,6 +602,35 @@ export const isResultsMetadataDirty = createSelector(
   [getMetadataDiff],
   metadataDiff => {
     return Object.keys(metadataDiff).length > 0;
+  },
+);
+
+export const getShouldShowUnsavedChangesWarning = createSelector(
+  [
+    getQueryBuilderMode,
+    getIsDirty,
+    isResultsMetadataDirty,
+    getQuestion,
+    getIsSavedQuestionChanged,
+  ],
+  (
+    queryBuilderMode,
+    isDirty,
+    isMetadataDirty,
+    question,
+    isSavedQuestionChanged,
+  ) => {
+    const isEditingModel = queryBuilderMode === "dataset";
+
+    const shouldShowUnsavedChangesWarningForModels =
+      isEditingModel && (isDirty || isMetadataDirty);
+    const shouldShowUnsavedChangesWarningForSqlQuery =
+      question != null && question.isNative() && isSavedQuestionChanged;
+
+    return (
+      shouldShowUnsavedChangesWarningForModels ||
+      shouldShowUnsavedChangesWarningForSqlQuery
+    );
   },
 );
 

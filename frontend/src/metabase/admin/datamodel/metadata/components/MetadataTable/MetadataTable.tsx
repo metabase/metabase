@@ -1,4 +1,4 @@
-import { ChangeEvent, ReactNode, useCallback, useState } from "react";
+import { ReactNode, useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -134,7 +134,7 @@ const TableTitleSection = ({
   onChangeDescription,
 }: TableTitleSectionProps) => {
   const handleNameChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onChangeName(event.target.value);
       } else {
@@ -145,7 +145,7 @@ const TableTitleSection = ({
   );
 
   const handleDescriptionChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onChangeDescription(event.target.value);
       } else {
