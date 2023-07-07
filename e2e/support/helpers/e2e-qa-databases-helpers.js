@@ -220,7 +220,7 @@ export function waitForSyncToFinish({
 }) {
   // 100 x 100ms should be plenty of time for the sync to finish.
   if (iteration === 100) {
-    return;
+    throw new Error("The sync is taking too long. Something is wrong.");
   }
 
   cy.wait(100);
