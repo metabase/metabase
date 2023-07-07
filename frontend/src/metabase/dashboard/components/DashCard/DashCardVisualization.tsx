@@ -41,6 +41,7 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
+import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -159,7 +160,7 @@ function DashCardVisualization({
       );
     }
 
-    if (isEditingParameter) {
+    if (shouldShowParameterMapper({ dashcard, isEditingParameter })) {
       return (
         <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
       );
