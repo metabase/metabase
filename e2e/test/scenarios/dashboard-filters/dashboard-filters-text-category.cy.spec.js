@@ -68,7 +68,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     saveDashboard();
     cy.wait("@dashcardQuery1");
 
-    cy.location("search").should("eq", "?text=Organic");
+    cy.location("search").should("eq", "?text=Organic&id=");
     cy.get(".Card").within(() => {
       cy.contains("39.58");
     });
@@ -78,7 +78,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     cy.get("fieldset .Icon-close").click();
     cy.wait("@dashcardQuery1");
 
-    cy.location("search").should("eq", "?text=");
+    cy.location("search").should("eq", "?text=&id=");
 
     filterWidget().contains("ID").click();
     cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();

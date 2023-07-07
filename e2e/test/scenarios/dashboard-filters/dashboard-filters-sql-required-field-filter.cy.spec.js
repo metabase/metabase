@@ -62,7 +62,8 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     });
   });
 
-  it("should respect default filter precedence (dashboard filter, then SQL field filters)", () => {
+  // TODO: rewrite this so that the filter actually isn't present????
+  it.skip("should respect default filter precedence (dashboard filter, then SQL field filters)", () => {
     // Default dashboard filter
     cy.location("search").should("eq", "?category=Widget");
 

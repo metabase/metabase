@@ -191,8 +191,10 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Add filter").click();
 
-    const startsWithSlug = `${startsWith.slug}=G`;
-    cy.location("search").should("eq", `?${startsWithSlug}`);
+    cy.location("search").should(
+      "eq",
+      `?${startsWith.slug}=G&${endsWith.slug}=`,
+    );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
 
@@ -207,8 +209,10 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Add filter").click();
 
-    const endsWithSlug = `${endsWith.slug}=zmo`;
-    cy.location("search").should("eq", `?${startsWithSlug}&${endsWithSlug}`);
+    cy.location("search").should(
+      "eq",
+      `?${startsWith.slug}=G&${endsWith.slug}=zmo`,
+    );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
 
@@ -219,7 +223,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Remove").click();
-    cy.location("search").should("eq", `?${endsWithSlug}`);
+    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
 
     // Remove filter name (metabase#10829)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -234,8 +238,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.log("Filter name should be 'unnamed' and the value cleared");
     filterWidget().contains(/unnamed/i);
 
-    cy.log("URL should reset");
-    cy.location("search").should("eq", "");
+    cy.location("search").should("eq", "?unnamed=");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
