@@ -183,13 +183,10 @@ export function createTestRoles({ type, isWritable }) {
 // will this work for multiple schemas?
 export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
-    .request("GET", `/api/database/${databaseId}/schemas`)
-    .then(({ body: schemas }) => {
-      return cy
-        .request("GET", `/api/database/${databaseId}/schema/${schemas[0]}`)
-        .then(
-          ({ body: tables }) => tables.find(table => table.name === name).id,
-        );
+    .request("GET", `/api/database/${databaseId}/metadata`)
+    .then(({ body }) => {
+      const table = body?.tables?.find(table => table.name === name);
+      return table ? table.id : null;
     });
 }
 
