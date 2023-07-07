@@ -135,11 +135,17 @@ describe("FilterPopover", () => {
         "should not render picker or separator when selecting '%s' filter from the column dropdown",
         async operator => {
           setup({
-            filter: [operator, ["field", PRODUCTS.TITLE, null], null],
+            filter: new Filter(
+              [operator, ["field", PRODUCTS.TITLE, null], null],
+              null,
+              QUERY,
+            ),
             showFieldPicker: false,
           });
 
-          expect("empty-picker-placeholder").toBeInTheDocument();
+          expect(
+            screen.getByTestId("empty-picker-placeholder"),
+          ).toBeInTheDocument();
         },
       );
     });
