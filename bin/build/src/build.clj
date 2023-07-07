@@ -136,7 +136,8 @@
     clojure -X:build:build/list-without-license"
   [_options]
   (let [basis                     (b/create-basis
-                                   {:project (u/filename u/project-root-directory "deps.edn")})
+                                   {:project (u/filename u/project-root-directory "deps.edn")
+                                    :aliases ["ee" "drivers"]})
         {:keys [without-license]} (license/process*
                                    {:libs              (:libs basis)
                                     :backfill          (edn/read-string
