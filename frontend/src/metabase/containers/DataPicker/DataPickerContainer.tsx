@@ -1,71 +1,51 @@
 import { useCallback, useMemo } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
 
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 
-import Databases from "metabase/entities/databases";
-import Search from "metabase/entities/search";
 import { useSelector } from "metabase/lib/redux";
 
 import type { DatabaseId } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import {
+  useDatabaseListQuery,
+  useSearchListQuery,
+} from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-import type {
-  DataPickerDataType,
-  DataPickerProps as DataPickerOwnProps,
-} from "./types";
+import type { DataPickerDataType, DataPickerProps } from "./types";
 
 import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
 import { DEFAULT_DATA_PICKER_FILTERS, getDataTypes } from "./utils";
 
 import DataPickerView from "./DataPickerView";
 
-interface DataPickerStateProps {
-  hasDataAccess: boolean;
-}
-
-interface DatabaseListLoaderProps {
-  databases: Database[];
-}
-
-interface SearchListLoaderProps {
-  search: unknown[];
-}
-
-type DataPickerProps = DataPickerOwnProps &
-  DataPickerStateProps &
-  DatabaseListLoaderProps &
-  SearchListLoaderProps;
-
-function DataPicker({
-  value,
-  databases: allDatabases,
-  search: modelLookupResult,
-  filters: customFilters,
-  ...props
-}: DataPickerProps) {
-  const hasDataAccess = getHasDataAccess(allDatabases);
-  const { onChange } = props;
-
-  const { search } = useDataPicker();
+const useDataPickerConfig = () => {
+  const {
+    data: allDatabases = [],
+    error: databasesError,
+    isLoading: areDatabasesLoading,
+  } = useDatabaseListQuery({ query: { saved: true } });
+  const {
+    data: models,
+    error: hasModelsError,
+    isLoading: isHasModelsLoading,
+  } = useSearchListQuery({ query: { models: "dataset", limit: 1 } });
 
   const databases = useMemo(
     () => allDatabases.filter(database => !database.is_saved_questions),
     [allDatabases],
   );
-  const filters = useMemo(
-    () => ({ ...DEFAULT_DATA_PICKER_FILTERS, ...customFilters }),
-    [customFilters],
+
+  const hasModels = models ? models.length > 0 : false;
+  const hasSavedQuestions = databases.some(
+    database => database.is_saved_questions,
   );
-  const hasModels = modelLookupResult.length > 0;
-  const hasSavedQuestions = allDatabases.length > databases.length;
   const hasNestedQueriesEnabled = useSelector(state =>
     getSetting(state, "enable-nested-queries"),
   );
@@ -75,8 +55,42 @@ function DataPicker({
       hasModels,
       hasSavedQuestions,
       hasNestedQueriesEnabled,
-    }).filter(type => filters.types(type.id));
-  }, [filters, hasModels, hasNestedQueriesEnabled, hasSavedQuestions]);
+    });
+  }, [hasModels, hasSavedQuestions, hasNestedQueriesEnabled]);
+
+  return {
+    databases: allDatabases,
+    dataTypes,
+    hasDataAccess: getHasDataAccess(allDatabases),
+    error: databasesError || hasModelsError,
+    isLoading: areDatabasesLoading || isHasModelsLoading,
+  };
+};
+
+function DataPicker({
+  value,
+  filters: customFilters,
+  ...props
+}: DataPickerProps) {
+  const {
+    databases,
+    dataTypes: allDataTypes,
+    error,
+    hasDataAccess,
+    isLoading,
+  } = useDataPickerConfig();
+
+  const { onChange } = props;
+  const { search } = useDataPicker();
+
+  const filters = useMemo(
+    () => ({ ...DEFAULT_DATA_PICKER_FILTERS, ...customFilters }),
+    [customFilters],
+  );
+
+  const dataTypes = useMemo(() => {
+    return allDataTypes.filter(type => filters.types(type.id));
+  }, [allDataTypes, filters]);
 
   const handleDataTypeChange = useCallback(
     (type: DataPickerDataType) => {
@@ -126,6 +140,10 @@ function DataPicker({
 
   const canGoBack = dataTypes.length > 1;
 
+  if (error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+
   return (
     <DataPickerView
       {...props}
@@ -139,23 +157,7 @@ function DataPicker({
   );
 }
 
-const DataPickerContainer = _.compose(
-  // Required for `hasDataAccess` check
-  Databases.loadList({
-    query: { saved: true },
-  }),
-
-  // Lets the picker check there is
-  // at least one model, to offer for selection
-  Search.loadList({
-    query: {
-      models: "dataset",
-      limit: 1,
-    },
-  }),
-)(DataPicker);
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(DataPickerContainer, {
+export default Object.assign(DataPicker, {
   Provider: DataPickerContextProvider,
 });
