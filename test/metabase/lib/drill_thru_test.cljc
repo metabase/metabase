@@ -31,7 +31,7 @@
           (is (=? [{:lib/type        :metabase.lib.drill-thru/drill-thru
                     :type            :drill-thru/column-filter
                     :column          (meta/field-metadata :orders :id)
-                    :initial-op      {:short := :display-name "Is"}}
+                    :initial-op      {:short := :display-name-variant :default}}
                    {:lib/type        :metabase.lib.drill-thru/drill-thru
                     :type            :drill-thru/sort
                     :column          (meta/field-metadata :orders :id)
@@ -50,7 +50,7 @@
                    {:lib/type        :metabase.lib.drill-thru/drill-thru
                     :type            :drill-thru/column-filter
                     :column          (meta/field-metadata :orders :user-id)
-                    :initial-op      {:short := :display-name "Is"}}
+                    :initial-op      {:short := :display-name-variant :default}}
                    {:lib/type        :metabase.lib.drill-thru/drill-thru
                     :type            :drill-thru/sort
                     :column          (meta/field-metadata :orders :user-id)
@@ -69,7 +69,7 @@
                    {:lib/type        :metabase.lib.drill-thru/drill-thru
                     :type            :drill-thru/column-filter
                     :column          (meta/field-metadata :orders :subtotal)
-                    :initial-op      {:short := :display-name "Equal to"}}
+                    :initial-op      {:short := :display-name-variant :equal-to}}
                    {:lib/type        :metabase.lib.drill-thru/drill-thru
                     :type            :drill-thru/sort
                     :column          (meta/field-metadata :orders :subtotal)
@@ -111,7 +111,7 @@
                           {:lib/type        :metabase.lib.drill-thru/drill-thru
                            :type            :drill-thru/column-filter
                            :column          (meta/field-metadata :orders :subtotal)
-                           :initial-op      {:short := :display-name "Equal to"}}
+                           :initial-op      {:short := :display-name-variant :equal-to}}
                           {:lib/type        :metabase.lib.drill-thru/drill-thru
                            :type            :drill-thru/sort
                            :column          (meta/field-metadata :orders :subtotal)
@@ -260,15 +260,15 @@
 (deftest ^:parallel histogram-available-drill-thrus-test
   (testing "histogram breakout view"
     (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
-      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                       (lib/aggregate (lib/count))
-                      (lib/breakout (meta/field-metadata :products :state)))
+                      (lib/breakout (meta/field-metadata :people :state)))
             row   [{:column-name "STATE" :value "WI"}
                    {:column-name "COUNT" :value 96}]]
         (is (=? [{:lib/type        :metabase.lib.drill-thru/drill-thru
                   :type            :drill-thru/underlying-records
                   :column          (meta/field-metadata :orders :id)
-                  :initial-op      {:short := :display-name "Is"}}
+                  :initial-op      {:short := :display-name-variant :default}}
                  {:lib/type        :metabase.lib.drill-thru/drill-thru
                   :type            :drill-thru/sort
                   :column          (meta/field-metadata :orders :id)

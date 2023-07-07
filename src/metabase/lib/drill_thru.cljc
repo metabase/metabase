@@ -5,6 +5,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -361,7 +362,7 @@
   "A helper for the FE. Returns all the columns of the given type which can be used to pivot the query."
   [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
                   [:map [:type [:= :drill-thru/pivot]]]]
-   pivot-type :- ::lib.schema.drill-thru-pivot-types]
+   pivot-type :- ::lib.schema.drill-thru/drill-thru-pivot-types]
   (get-in drill-thru [:pivots pivot-type]))
 
 ;;; ----------------------------------------- Sort -----------------------------------------------
@@ -474,9 +475,9 @@
              ;; Must be a real field in the DB. Note: original code uses `clicked.column.field_ref != null` for this.
              (some? (:id column)))
     (let [initial-op (when-not (lib.types.isa/date? column) ; Date fields have special handling in the FE.
-                       (-> (lib.filter/filter-operators column)
+                       (-> (lib.filter.operator/filter-operators column)
                            first
-                           (assoc :lib/type :mbql.filter/operator)))]
+                           (assoc :lib/type :operator/filter)))]
       {:lib/type   ::drill-thru
        :type       :drill-thru/column-filter
        :column     column
@@ -528,8 +529,9 @@
    :table-name table-name})
 
 (defmethod drill-thru-method :drill-thru/underlying-records
-  [query stage-number _drill-thru & _]
-  (lib.filter/filter query stage-number (lib.options/ensure-uuid [(keyword filter-op) {} (lib.ref/ref column) value])))
+  [_query _stage-number _drill-thru & _]
+  (throw (ex-info "Not implemented" {}))
+  #_(lib.filter/filter query stage-number (lib.options/ensure-uuid [(keyword filter-op) {} (lib.ref/ref column) value])))
 
 ;;; ----------------------------------- Automatic Insights ---------------------------------------
 #_(mu/defn ^:private automatic-insights-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
@@ -567,7 +569,8 @@
          quick-filter-drill
          sort-drill
          summarize-column-drill
-         summarize-column-by-time-drill]))
+         summarize-column-by-time-drill
+         #_underlying-records-drill]))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`
