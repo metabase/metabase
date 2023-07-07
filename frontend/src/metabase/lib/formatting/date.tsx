@@ -225,7 +225,7 @@ export function formatRange(
       </span>
     );
   } else {
-    return `${start} ${EN_DASH} ${end}`;
+    return `${start}  ${EN_DASH}  ${end}`;
   }
 }
 
