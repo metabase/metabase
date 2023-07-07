@@ -8,7 +8,7 @@ import {
 } from "__support__/ui";
 import { useSearchListQuery } from "./use-search-list-query";
 
-const TEST_ITEM = createMockCollectionItem({ model: "snippet" });
+const TEST_ITEM = createMockCollectionItem();
 
 const TestComponent = () => {
   const {
