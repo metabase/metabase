@@ -1,16 +1,15 @@
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
-import _ from "underscore";
 import { useMount } from "react-use";
+import _ from "underscore";
 
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
+import { useSelector } from "metabase/lib/redux";
 
 import type { DatabaseId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
 
 import {
@@ -19,17 +18,16 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 
 import type {
-  DataPickerProps as DataPickerOwnProps,
   DataPickerDataType,
+  DataPickerProps as DataPickerOwnProps,
 } from "./types";
 
 import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
-import { getDataTypes, DEFAULT_DATA_PICKER_FILTERS } from "./utils";
+import { DEFAULT_DATA_PICKER_FILTERS, getDataTypes } from "./utils";
 
 import DataPickerView from "./DataPickerView";
 
 interface DataPickerStateProps {
-  hasNestedQueriesEnabled: boolean;
   hasDataAccess: boolean;
 }
 
@@ -46,50 +44,39 @@ type DataPickerProps = DataPickerOwnProps &
   DatabaseListLoaderProps &
   SearchListLoaderProps;
 
-function mapStateToProps(state: State, { databases }: DatabaseListLoaderProps) {
-  return {
-    hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-    hasDataAccess: getHasDataAccess(databases),
-  };
-}
-
 function DataPicker({
   value,
   databases: allDatabases,
   search: modelLookupResult,
-  filters: customFilters = {},
-  hasNestedQueriesEnabled,
-  hasDataAccess,
+  filters: customFilters,
   ...props
 }: DataPickerProps) {
+  const hasDataAccess = getHasDataAccess(allDatabases);
   const { onChange } = props;
 
   const { search } = useDataPicker();
-
-  const filters = useMemo(
-    () => ({
-      ...DEFAULT_DATA_PICKER_FILTERS,
-      ...customFilters,
-    }),
-    [customFilters],
-  );
 
   const databases = useMemo(
     () => allDatabases.filter(database => !database.is_saved_questions),
     [allDatabases],
   );
-
-  const dataTypes = useMemo(
-    () =>
-      getDataTypes({
-        hasModels: modelLookupResult.length > 0,
-        hasSavedQuestions: allDatabases.some(
-          database => database.is_saved_questions,
-        ),
-        hasNestedQueriesEnabled,
-      }).filter(type => filters.types(type.id)),
-    [allDatabases, filters, modelLookupResult, hasNestedQueriesEnabled],
+  const filters = useMemo(
+    () => ({ ...DEFAULT_DATA_PICKER_FILTERS, ...customFilters }),
+    [customFilters],
   );
+  const hasModels = modelLookupResult.length > 0;
+  const hasSavedQuestions = allDatabases.length > databases.length;
+  const hasNestedQueriesEnabled = useSelector(state =>
+    getSetting(state, "enable-nested-queries"),
+  );
+
+  const dataTypes = useMemo(() => {
+    return getDataTypes({
+      hasModels,
+      hasSavedQuestions,
+      hasNestedQueriesEnabled,
+    }).filter(type => filters.types(type.id));
+  }, [filters, hasModels, hasNestedQueriesEnabled, hasSavedQuestions]);
 
   const handleDataTypeChange = useCallback(
     (type: DataPickerDataType) => {
@@ -166,8 +153,6 @@ const DataPickerContainer = _.compose(
       limit: 1,
     },
   }),
-
-  connect(mapStateToProps),
 )(DataPicker);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
