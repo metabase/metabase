@@ -31,6 +31,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def default-ssh-tunnel-port
+  "The default port for SSH tunnels (22) used if no port is specified"
+  22)
+
 (def ^:private ^Long default-ssh-timeout 30000)
 
 (def ^:private ^SshClient client
@@ -63,7 +67,8 @@
   [{:keys [^String tunnel-host ^Integer tunnel-port ^String tunnel-user tunnel-pass tunnel-private-key
            tunnel-private-key-passphrase host port]}]
   {:pre [(integer? port)]}
-  (let [^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
+  (let [^Integer tunnel-port       (or tunnel-port default-ssh-tunnel-port)
+        ^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
         ^SessionHolder conn-status (.verify conn-future default-ssh-timeout)
         hb-sec                     (ssh-heartbeat-interval-sec)
         session                    (doto ^ClientSession (.getSession conn-status)
