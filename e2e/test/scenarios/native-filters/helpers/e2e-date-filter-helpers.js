@@ -16,13 +16,27 @@ export function setQuarterAndYear({ quarter, year } = {}) {
   cy.findByText(quarter).click();
 }
 
-export function setSingleDate(day) {
-  cy.findByText(day).click();
+export function setSingleDate(date) {
+  cy.findByTestId("specific-date-picker")
+    .findByRole("textbox")
+    .clear()
+    .type(date)
+    .blur();
 }
 
 export function setDateRange({ startDate, endDate } = {}) {
-  cy.findByText(startDate).click();
-  cy.findByText(endDate).click();
+  cy.findAllByTestId("specific-date-picker")
+    .first()
+    .findByRole("textbox")
+    .clear()
+    .type(startDate);
+
+  cy.findAllByTestId("specific-date-picker")
+    .last()
+    .findByRole("textbox")
+    .clear()
+    .type(endDate)
+    .blur();
 }
 
 export function setRelativeDate(term) {
