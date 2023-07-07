@@ -1,102 +1,31 @@
 import "mutationobserver-shim";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
 
 import { checkNotNull } from "metabase/core/utils/types";
-import {
-  FieldValuesWidget,
-  searchField,
-  isSearchable,
-  getValuesMode,
-} from "metabase/components/FieldValuesWidget";
-import { getMetadata } from "metabase/selectors/metadata";
+import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 
-import { createMockField } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createOrdersTable,
-  createProductsTable,
-  createPeopleTable,
-  createReviewsTable,
   ORDERS,
   PRODUCTS,
   PEOPLE,
-  REVIEWS_ID,
   PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
-const LISTABLE_PK_FIELD_ID = 100;
-const LISTABLE_PK_FIELD_VALUE = "1234";
-const STRING_PK_FIELD_ID = 101;
-const SEARCHABLE_FK_FIELD_ID = 102;
-const LISTABLE_FIELD_WITH_MANY_VALUES_ID = 103;
-const EXPRESSION_FIELD_ID = ["field", "CC", { "base-type": "type/Text" }];
-
-const database = createSampleDatabase({
-  tables: [
-    createOrdersTable(),
-    createProductsTable(),
-    createPeopleTable(),
-    createReviewsTable({
-      fields: [
-        createMockField({
-          id: LISTABLE_PK_FIELD_ID,
-          table_id: REVIEWS_ID,
-          display_name: "ID",
-          base_type: "type/BigInteger",
-          effective_type: "type/BigInteger",
-          semantic_type: "type/PK",
-          has_field_values: "list",
-          values: [[LISTABLE_PK_FIELD_VALUE]],
-        }),
-        createMockField({
-          id: STRING_PK_FIELD_ID,
-          table_id: REVIEWS_ID,
-          display_name: "String ID",
-          base_type: "type/Text",
-          effective_type: "type/Text",
-          semantic_type: "type/PK",
-        }),
-        createMockField({
-          id: SEARCHABLE_FK_FIELD_ID,
-          table_id: REVIEWS_ID,
-          display_name: "Product ID",
-          base_type: "type/Text",
-          effective_type: "type/Text",
-          semantic_type: "type/FK",
-          has_field_values: "search",
-        }),
-        createMockField({
-          id: LISTABLE_FIELD_WITH_MANY_VALUES_ID,
-          table_id: REVIEWS_ID,
-          display_name: "Big list",
-          base_type: "type/Text",
-          effective_type: "type/Text",
-          has_field_values: "list",
-          has_more_values: true,
-        }),
-        createMockField({
-          id: EXPRESSION_FIELD_ID,
-          field_ref: ["expression", "CC"],
-        }),
-      ],
-    }),
-  ],
-});
-
-const state = createMockState({
-  entities: createMockEntitiesState({
-    databases: [database],
-  }),
-});
-
-const metadata = getMetadata(state);
+import {
+  state,
+  metadata,
+  LISTABLE_PK_FIELD_ID,
+  LISTABLE_PK_FIELD_VALUE,
+  SEARCHABLE_FK_FIELD_ID,
+  EXPRESSION_FIELD_ID,
+} from "./testMocks";
 
 async function setup({ fields, values, ...props }) {
-  const fetchFieldValues = jest.fn();
+  const fetchFieldValues = jest.fn(({ id }) => ({
+    payload: fields.find(f => f.id === id),
+  }));
 
   renderWithProviders(
     <FieldValuesWidget
@@ -146,7 +75,9 @@ describe("FieldValuesWidget", () => {
         const { fetchFieldValues } = await setup({
           fields: [field],
         });
-        expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCTS.CATEGORY);
+        expect(fetchFieldValues).toHaveBeenCalledWith({
+          id: PRODUCTS.CATEGORY,
+        });
       });
 
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
@@ -287,132 +218,6 @@ describe("FieldValuesWidget", () => {
     });
   });
 
-  describe("searchField", () => {
-    describe("`disablePKRemappingForSearch` is true and field is a PK", () => {
-      const disablePKRemappingForSearch = true;
-
-      const stringPKField = metadata.field(STRING_PK_FIELD_ID);
-      const numberPKField = metadata.field(PRODUCTS.ID);
-
-      it("should return same field when the field is searchable (the field is a string AND a PK)", () => {
-        expect(searchField(stringPKField, disablePKRemappingForSearch)).toBe(
-          stringPKField,
-        );
-      });
-
-      it("should return null when field is not searchable (the field is NOT a string PK)", () => {
-        expect(
-          searchField(numberPKField, disablePKRemappingForSearch),
-        ).toBeNull();
-      });
-    });
-
-    describe("when the field is remapped to a searchable field", () => {
-      const stringField = metadata.field(PRODUCTS.TITLE);
-      const remappedField = metadata.field(PRODUCTS.CATEGORY).clone();
-      remappedField.remappedField = () => stringField;
-
-      it("should return the remapped field", () => {
-        expect(searchField(remappedField)).toBe(stringField);
-      });
-    });
-
-    describe("when the field is remapped to a non-searchable field", () => {
-      it("should ignore it and return the original field, assuming it is searchable", () => {
-        const numberField = metadata.field(ORDERS.TOTAL);
-
-        const remappedField = metadata.field(PRODUCTS.CATEGORY).clone();
-        remappedField.remappedField = () => numberField;
-
-        const nonSearchableRemappedField = metadata.field(PRODUCTS.ID);
-        nonSearchableRemappedField.remappedField = () => numberField;
-
-        expect(searchField(remappedField)).toBe(remappedField);
-        expect(searchField(nonSearchableRemappedField)).toBeNull();
-      });
-    });
-
-    it("should return the field if it is searchable", () => {
-      const searchableField = metadata.field(PRODUCTS.TITLE);
-      expect(searchField(searchableField)).toBe(searchableField);
-    });
-
-    it("should return null if the field is not searchable", () => {
-      const nonSearchableField = metadata.field(PRODUCTS.ID);
-      expect(searchField(nonSearchableField)).toBeNull();
-    });
-  });
-
-  describe("isSearchable", () => {
-    const listField = metadata.field(PRODUCTS.CATEGORY);
-    const searchField = metadata.field(PRODUCTS.VENDOR);
-    const nonExhaustiveListField = metadata.field(
-      LISTABLE_FIELD_WITH_MANY_VALUES_ID,
-    );
-
-    const idField = metadata.field(PRODUCTS.ID);
-
-    describe("when the `valuesMode` is already set to 'search'", () => {
-      it("should return return true unless fully disabled", () => {
-        expect(
-          isSearchable({ valuesMode: "search", disableSearch: true }),
-        ).toBe(false);
-        expect(isSearchable({ valuesMode: "search" })).toBe(true);
-      });
-    });
-
-    it("should be false when the list of fields includes one that is not searchable", () => {
-      const fields = [searchField, idField];
-      expect(isSearchable({ fields })).toBe(false);
-    });
-
-    describe("when all fields are searchable", () => {
-      it("should be false if there are no fields that require search", () => {
-        const fields = [listField];
-        expect(isSearchable({ fields })).toBe(false);
-      });
-
-      it("should be true if there is at least one field that requires search", () => {
-        const fields = [searchField, listField];
-        expect(isSearchable({ fields })).toBe(true);
-      });
-
-      it("should be true if there is at least one field that shows a list but said list is not exhaustive", () => {
-        const fields = [nonExhaustiveListField, listField];
-        expect(isSearchable({ fields })).toBe(true);
-      });
-    });
-  });
-
-  describe("getValuesMode", () => {
-    describe("when passed no fields", () => {
-      it("should return 'none'", () => {
-        expect(getValuesMode({ fields: [] })).toBe("none");
-      });
-    });
-
-    describe("when passed fields that are searchable", () => {
-      it("should return 'search'", () => {
-        const fields = [metadata.field(PRODUCTS.VENDOR)];
-        expect(getValuesMode({ fields })).toBe("search");
-      });
-    });
-
-    describe("when passed fields that are not searchable but listable", () => {
-      it("should return 'list'", () => {
-        const fields = [metadata.field(PRODUCTS.CATEGORY)];
-        expect(getValuesMode({ fields })).toBe("list");
-      });
-    });
-
-    describe("when passed fields that are not searchable and not listable", () => {
-      it("should return 'none'", () => {
-        const fields = [metadata.field(ORDERS.SUBTOTAL)];
-        expect(getValuesMode({ fields })).toBe("none");
-      });
-    });
-  });
-
   describe("custom expressions", () => {
     const valuesField = checkNotNull(metadata.field(LISTABLE_PK_FIELD_ID));
     const expressionField = checkNotNull(metadata.field(EXPRESSION_FIELD_ID));
@@ -423,8 +228,12 @@ describe("FieldValuesWidget", () => {
       });
 
       expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
-      expect(fetchFieldValues).toHaveBeenCalledWith(LISTABLE_PK_FIELD_ID);
-      expect(fetchFieldValues).not.toHaveBeenCalledWith(EXPRESSION_FIELD_ID);
+      expect(fetchFieldValues).toHaveBeenCalledWith({
+        id: LISTABLE_PK_FIELD_ID,
+      });
+      expect(fetchFieldValues).not.toHaveBeenCalledWith({
+        id: EXPRESSION_FIELD_ID,
+      });
     });
   });
 });

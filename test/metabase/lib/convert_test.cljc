@@ -381,7 +381,26 @@
     ;; card__<id> source table syntax.
     {:database 1
      :type     :query
-     :query    {:source-table "card__1"}}))
+     :query    {:source-table "card__1"}}
+
+    ;; #32055
+    {:type :query
+     :database 5
+     :query {:source-table 5822,
+     :expressions {"Additional Information Capture" [:coalesce
+                                                     [:field 519195 nil]
+                                                     [:field 519196 nil]
+                                                     [:field 519194 nil]
+                                                     [:field 519193 nil]
+                                                     "None"],
+                   "Additional Info Present" [:case
+                                              [[[:= [:expression "Additional Information Capture"] "None"]
+                                                "No"]]
+                                              {:default "Yes"}]},
+      :filter [:= [:field 518086 nil] "active"],
+      :aggregation [[:aggregation-options
+                     [:share [:= [:expression "Additional Info Present"] "Yes"]]
+                     {:name "Additional Information", :display-name "Additional Information"}]]}}))
 
 (deftest ^:parallel round-trip-aggregation-with-case-test
   (test-round-trip

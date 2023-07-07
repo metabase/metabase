@@ -272,15 +272,14 @@
 (defn validate-param-values
   "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
   populated by the defendpoint schema)"
-  [{route :compojure/route body :body} expected-params]
+  [{method :request-method uri :uri body :body} expected-params]
   (when (and (not config/is-prod?)
              (map? body))
     (let [extraneous-params (set/difference (set (keys body))
                                             (set expected-params))]
       (when (seq extraneous-params)
         (log/warnf "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the API client"
-                   route (vec extraneous-params))))))
-
+                   [method uri] (vec extraneous-params))))))
 
 (defn method-symbol->keyword
   "Convert Compojure-style HTTP method symbols (PUT, POST, etc.) to the keywords used internally by

@@ -186,7 +186,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       {isActive && MetabaseSettings.searchTypeaheadEnabled() && (
         <SearchResultsFloatingContainer>
           {hasSearchText ? (
-            <SearchResultsContainer>
+            <SearchResultsContainer data-testid="search-bar-results-container">
               <SearchResults
                 searchText={searchText.trim()}
                 onEntitySelect={onSearchItemSelect}

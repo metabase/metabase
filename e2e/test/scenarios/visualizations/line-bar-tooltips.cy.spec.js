@@ -37,12 +37,12 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Sum of Total", "42,156.87"],
       ];
 
       const updatedTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Custom", "42,156.87"],
       ];
 
@@ -96,20 +96,20 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalSeriesIndex = 0;
       const addedSeriesIndex = 1;
       const originalSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Sum of Total", "42,156.87"],
       ];
       const updatedOriginalSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Custom Q1", "42,156.87"],
       ];
 
       const addedSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Average of Total", "56.66"],
       ];
       const updatedAddedSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Custom Q2", "56.66"],
       ];
 
@@ -158,13 +158,13 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Average of Total", "56.66"],
         ["Sum of Quantity", "3,236"],
       ];
 
       const updatedTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Custom 1", "56.66"],
         ["Custom 2", "3,236"],
       ];
@@ -226,23 +226,23 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalIndices = [0, 1];
       const addedIndices = [2, 3];
       const originalSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Average of Total", "56.66"],
         ["Sum of Quantity", "3,236"],
       ];
       const updatedOriginalSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Q1 Custom 1", "56.66"],
         ["Q1 Custom 2", "3,236"],
       ];
 
       const addedSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Average of Discount", "5.03"],
         ["Sum of Discount", "342.09"],
       ];
       const updatedAddedSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Q2 Custom 1", "5.03"],
         ["Q2 Custom 2", "342.09"],
       ];
@@ -310,12 +310,12 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should show updated column titles in tooltips after editing them via Visualization Options", () => {
       const originalTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Sum of Total", "42,156.87"],
       ];
 
       const updatedTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Custom", "42,156.87"],
       ];
 
@@ -369,20 +369,20 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalSeriesIndex = 0;
       const addedSeriesIndex = 1;
       const originalSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Sum of Total", "42,156.87"],
       ];
       const updatedOriginalSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Custom Q1", "42,156.87"],
       ];
 
       const addedSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Average of Total", "56.66"],
       ];
       const updatedAddedSeriesTooltipText = [
-        ["Created At", "2016"],
+        ["Created At", "2022"],
         ["Custom Q2", "56.66"],
       ];
 

@@ -11,6 +11,7 @@ import {
   breakpointMaxSmall,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
+import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 const activeInputCSS = css`
   border-radius: 6px;
@@ -105,7 +106,9 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
 
 const ICON_MARGIN = "10px";
 
-export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
+export const SearchIcon = styled(Icon, {
+  shouldForwardProp: shouldForwardNonTransientProp,
+})<{ isActive: boolean }>`
   ${breakpointMaxSmall} {
     transition: margin 0.3s;
 

@@ -88,7 +88,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     cy.findByTestId("qb-filters-panel").should(
       "contain",
-      "Created At is May, 2018",
+      "Created At is May, 2024",
     );
     cy.findByTestId("view-footer").should("contain", "Showing 520 rows");
   });

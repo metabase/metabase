@@ -7,7 +7,7 @@
 (defenterprise the-parameters
   "Enterprise way of getting dashboard filter parameters. Blends parameters from dashboard subscription and the
   dashboard itself."
-  :feature :any
+  :feature :advanced-config
   [pulse dashboard]
   (let [pulse-params           (:parameters pulse)
         dashboard-params       (:parameters dashboard)
