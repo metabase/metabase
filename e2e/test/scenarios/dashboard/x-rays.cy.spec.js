@@ -87,7 +87,7 @@ describe("scenarios > x-rays", () => {
     cy.wait("@dataset", { timeout: 30000 });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
-      "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
+      "A closer look at number of Orders where Created At is in March 2024 and Category is Gadget",
     );
     cy.icon("warning").should("not.exist");
   });
