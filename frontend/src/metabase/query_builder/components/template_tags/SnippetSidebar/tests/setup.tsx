@@ -12,7 +12,7 @@ import {
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { TokenFeatures } from "metabase-types/api";
+import { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -30,11 +30,13 @@ const MOCK_SNIPPET = createMockNativeQuerySnippet();
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   hasEnterprisePlugins?: boolean;
+  user?: Partial<User>;
 }
 
 export async function setup({
   tokenFeatures = {},
   hasEnterprisePlugins = false,
+  user = { is_superuser: true },
 }: SetupOpts = {}) {
   setupNativeQuerySnippetEndpoints({ snippets: [MOCK_SNIPPET] });
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
@@ -63,7 +65,7 @@ export async function setup({
       openSnippetModalWithSelectedText={() => null}
       insertSnippet={() => null}
       snippetCollectionId={null}
-      user={createMockUser({ is_superuser: true })}
+      user={createMockUser(user)}
     />,
     {
       storeInitialState: state,

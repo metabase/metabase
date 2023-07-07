@@ -1,22 +1,32 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, screen } from "__support__/ui";
+import { getIcon, queryIcon, screen } from "__support__/ui";
 
-import { setup } from "./setup";
+import { SetupOpts, setup as baseSetup } from "./setup";
+
+async function setup(options: SetupOpts = {}) {
+  await baseSetup({
+    hasEnterprisePlugins: true,
+    tokenFeatures: { content_management: true },
+    ...options,
+  });
+}
 
 describe("SnippetSidebar (EE with token)", () => {
-  beforeEach(async () => {
-    await setup({
-      hasEnterprisePlugins: true,
-      tokenFeatures: { content_management: true },
-    });
-  });
+  it("should display the `Change permissions` menu for admin users", async () => {
+    await setup();
 
-  it("should display the `Change permissions` menu", () => {
     expect(getIcon("ellipsis")).toBeInTheDocument();
   });
 
+  it("should not display the `Change permissions` menu for non-admin users", async () => {
+    await setup({ user: { is_superuser: false } });
+
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
   it("should display the `New snippet` and the `New folder` option", async () => {
+    await setup();
     userEvent.click(getIcon("add"));
 
     expect(await screen.findByText("New snippet")).toBeInTheDocument();
