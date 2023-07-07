@@ -1,7 +1,7 @@
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { OptionsType } from "metabase/lib/formatting/types";
 
-describe("date range formatting", () => {
+describe("formatDateTimeRangeWithUnit", () => {
   const format = formatDateTimeRangeWithUnit;
 
   // use this to test that the variants of a single date (not a date range) will all be equal
