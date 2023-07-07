@@ -29,7 +29,7 @@
                        (has-perms? snippet))
                     "allowed?")))
             (testing "\nWith EE features enabled"
-              (premium-features-test/with-premium-features #{:enhancements}
+              (premium-features-test/with-premium-features #{:content-management}
                 (testing (format "\nShould not be allowed with no perms for %s" collection-name)
                   (is (= false
                          (has-perms? snippet))
@@ -118,7 +118,7 @@
                         (premium-features-test/with-premium-features #{}
                           (is (= true
                                  (has-perms?)))))
-                      (premium-features-test/with-premium-features #{:enhancements}
+                      (premium-features-test/with-premium-features #{:content-management}
                         (doseq [c [source-collection dest-collection]]
                           (testing (format "\nPerms for only %s should fail" (:name c))
                             (try
