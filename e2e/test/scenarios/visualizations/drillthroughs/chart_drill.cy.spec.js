@@ -62,9 +62,11 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // new filter applied
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
-    //       It is enough that we assert that the filter exists and that it starts with May, 2022
+    //       It is enough that we assert that the filter exists and that it starts with May 2022.
+    //       The date range formatter sometimes omits the year of the first month (e.g. May–July 2022),
+    //       so checking that 2022 occurs after May ensures that May 2022 is in fact the first date.
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Created At between May, 2022/);
+    cy.contains(/^Created At is May.*2022/);
     // more granular axis labels
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("June, 2022");
@@ -111,7 +113,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       granularity === "month"
         ? // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Created At between September, 2022 February, 2023")
+          cy.findByText("Created At is September 2022 – February 2023")
         : // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
           null;
 
@@ -325,7 +327,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.log("Filter should show the range between two dates");
     // Now click on the filter widget to see if the proper parameters got passed in
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Created At between").click();
+    cy.contains(/^Created At is .*–/).click(); // en-dash to detect date range
   });
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
