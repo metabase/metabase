@@ -40,7 +40,6 @@ class Dashboard extends Component {
     error: null,
     isParametersWidgetSticky: false,
     parametersListLength: 0,
-    parametersWidgetOffsetTop: null,
   };
 
   static propTypes = {
