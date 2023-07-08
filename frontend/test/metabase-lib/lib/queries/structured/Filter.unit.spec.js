@@ -32,7 +32,7 @@ describe("Filter", () => {
     it("should return the correct string for a segment filter", () => {
       expect(filter(["segment", 1]).displayName()).toEqual("Expensive Things");
     });
-    describe("better date labels", () => {
+    describe("betterDateLabel", () => {
       function createdAtFilter(op, unit, ...args) {
         return filter([
           op,
@@ -61,7 +61,7 @@ describe("Filter", () => {
             "2026-10-04",
             "2026-10-11",
           ).displayName(),
-        ).toEqual("Created At between October 4–17, 2026");
+        ).toEqual("Created At is October 4–17, 2026");
       });
       it("should display slice filters with enough context for understanding them", () => {
         expect(

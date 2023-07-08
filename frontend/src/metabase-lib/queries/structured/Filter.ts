@@ -106,18 +106,18 @@ export default class Filter extends MBQLClause {
       const segment = this.segment();
       return segment ? segment.displayName() : t`Unknown Segment`;
     } else if (this.isStandard()) {
-      const dimension = this.dimension();
-      const operator = this.operator();
-      const dimensionName =
-        dimension && includeDimension && dimension.displayName();
-      const operatorName =
-        operator &&
-        includeOperator &&
-        !isStartingFrom(this) &&
-        operator.moreVerboseName;
-      const argumentNames =
-        this.betterDateLabel() ?? this.formattedArguments().join(" ");
-      return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
+      if (isStartingFrom(this)) {
+        includeOperator = false;
+      }
+      const betterDate = this.betterDateLabel();
+      const op = betterDate ? "=" : this.operatorName();
+      return [
+        includeDimension && this.dimension()?.displayName(),
+        includeOperator && this.operator(op)?.moreVerboseName,
+        betterDate ?? this.formattedArguments().join(" "),
+      ]
+        .map(s => s || "")
+        .join(" ");
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
     } else {
@@ -238,9 +238,9 @@ export default class Filter extends MBQLClause {
     return this[0];
   }
 
-  operator(): FilterOperator | null | undefined {
+  operator(opName = this.operatorName()): FilterOperator | null | undefined {
     const dimension = this.dimension();
-    return dimension ? dimension.filterOperator(this.operatorName()) : null;
+    return dimension ? dimension.filterOperator(opName) : null;
   }
 
   setOperator(operatorName: string) {
