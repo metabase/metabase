@@ -52,7 +52,7 @@ describeEE(
       visitDashboard(1);
       cy.icon("share").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Dashboard subscriptions").click();
+      cy.findByText("Create a dashboard subscription").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Email it").click();
 
