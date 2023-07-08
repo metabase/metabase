@@ -68,30 +68,34 @@ export default class Filter extends MBQLClause {
     if (!args.every(arg => typeof arg === "string")) {
       return undefined;
     }
-    const dimension = this.dimension();
-    const unit = dimension?.temporalUnit();
+    const unit = this.dimension()?.temporalUnit();
+    const isSupportedDateRangeUnit = [
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "year",
+    ].includes(unit);
     const op = this.operatorName();
-    const isDate = ["day", "week", "month", "quarter", "year"].includes(unit);
-    const betweenDates = op === "between" && isDate;
+    const betweenDates = op === "between" && isSupportedDateRangeUnit;
     const equalsWeek = op === "=" && unit === "week";
-    // modifying some of DEFAULT_DATE_FORMATS
-    const sliceFormats = {
-      "hour-of-day": "[hour] H",
-      "minute-of-hour": "[minute] m",
-      "day-of-month": "Do [day of month]",
-      "day-of-year": "DDDo [day of year]",
-      "week-of-year": "wo [week of year]",
-    };
     if (betweenDates || equalsWeek) {
       return formatDateTimeRangeWithUnit(args, unit, {
         type: "tooltip",
         date_resolution: unit === "week" ? "day" : unit,
       });
-    } else if (op === "=" && unit in sliceFormats) {
-      const m = moment(args[0]);
-      if (m.isValid()) {
-        return m.format(sliceFormats[unit]);
-      }
+    }
+    const sliceFormat = {
+      // modified from DEFAULT_DATE_FORMATS in date.tsx to show extra context
+      "hour-of-day": "[hour] H",
+      "minute-of-hour": "[minute] m",
+      "day-of-month": "Do [day of month]",
+      "day-of-year": "DDDo [day of year]",
+      "week-of-year": "wo [week of year]",
+    }[unit];
+    const m = moment(args[0]);
+    if (op === "=" && sliceFormat && m.isValid()) {
+      return m.format(sliceFormat);
     }
   }
 
