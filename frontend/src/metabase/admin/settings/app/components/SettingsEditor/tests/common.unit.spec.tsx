@@ -10,7 +10,7 @@ describe("SettingsEditor", () => {
   describe("full-app embedding", () => {
     it("should show info about full app embedding", async () => {
       setup({
-        settings: [createMockSettingDefinition({ key: "enable-embedding" })],
+        definitions: [createMockSettingDefinition({ key: "enable-embedding" })],
         settingValues: createMockSettings({ "enable-embedding": true }),
       });
 

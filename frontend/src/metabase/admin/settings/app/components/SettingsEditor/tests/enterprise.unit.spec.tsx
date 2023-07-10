@@ -14,7 +14,7 @@ describe("SettingsEditor", () => {
   describe("full-app embedding", () => {
     it("should show info about full app embedding", async () => {
       setupEnterprise({
-        settings: [
+        definitions: [
           createMockSettingDefinition({ key: "enable-embedding" }),
           createMockSettingDefinition({ key: "embedding-app-origin" }),
         ],

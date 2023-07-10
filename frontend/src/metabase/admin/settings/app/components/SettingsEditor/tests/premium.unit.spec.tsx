@@ -22,7 +22,7 @@ describe("SettingsEditor", () => {
   describe("enable password login", () => {
     it("should allow toggling on and off password login", async () => {
       setupPremium({
-        settings: [
+        definitions: [
           createMockSettingDefinition({ key: "enable-password-login" }),
           createMockSettingDefinition({ key: "google-auth-enabled" }),
         ],
@@ -43,7 +43,7 @@ describe("SettingsEditor", () => {
   describe("full-app embedding", () => {
     it("should allow to configure the origin for full-app embedding", async () => {
       setupPremium({
-        settings: [
+        definitions: [
           createMockSettingDefinition({ key: "enable-embedding" }),
           createMockSettingDefinition({ key: "embedding-app-origin" }),
         ],
