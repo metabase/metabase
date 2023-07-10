@@ -8,11 +8,11 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
+import { DEFAULT_DATA_PICKER_FILTERS } from "./constants";
 import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
 import DataPickerView from "./DataPickerView";
 import type { DataPickerDataType, DataPickerProps } from "./types";
 import { useDataPickerConfig } from "./useDataPickerConfig";
-import { DEFAULT_DATA_PICKER_FILTERS } from "./utils";
 
 function DataPicker({
   value,

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { IconName } from "metabase/core/components/Icon";
-import type { DataPickerDataType, DataPickerFilters } from "./types";
+import type { DataPickerDataType } from "./types";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;
@@ -50,10 +50,3 @@ export function getDataTypes({
 
   return dataTypes;
 }
-
-export const DEFAULT_DATA_PICKER_FILTERS: DataPickerFilters = {
-  types: () => true,
-  databases: () => true,
-  schemas: () => true,
-  tables: () => true,
-};
