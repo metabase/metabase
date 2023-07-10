@@ -3,6 +3,7 @@ import { useMount } from "react-use";
 
 import type { DatabaseId } from "metabase-types/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { getHasDataAccess } from "metabase/selectors/data";
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -23,7 +24,6 @@ function DataPicker({
     databases: allDatabases,
     dataTypes: allDataTypes,
     error,
-    hasDataAccess,
     isLoading,
   } = useDataPickerConfig();
 
@@ -102,7 +102,7 @@ function DataPicker({
       value={value}
       dataTypes={dataTypes}
       searchQuery={search.query}
-      hasDataAccess={hasDataAccess}
+      hasDataAccess={getHasDataAccess(allDatabases)}
       onDataTypeChange={handleDataTypeChange}
       onBack={canGoBack ? handleReset : undefined}
     />

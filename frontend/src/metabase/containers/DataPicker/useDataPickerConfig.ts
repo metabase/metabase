@@ -5,7 +5,6 @@ import {
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 
 import { getDataTypes } from "./utils";
@@ -43,7 +42,6 @@ export const useDataPickerConfig = () => {
   return {
     databases,
     dataTypes,
-    hasDataAccess: getHasDataAccess(databases),
     error: errorDatabases || errorModals,
     isLoading: isLoadingDatabases || isLoadingModels,
   };
