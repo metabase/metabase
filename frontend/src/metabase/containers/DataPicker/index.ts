@@ -1,15 +1,11 @@
-export { DATA_BUCKET } from "./constants";
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./DataPickerContainer";
+export { default as DataPicker } from "./DataPicker";
 export { useDataPicker } from "./DataPickerContext";
-
-export { useDataPickerConfig } from "./useDataPickerConfig";
-export { useDataPickerValue } from "./useDataPickerValue";
-
+export { DATA_BUCKET } from "./constants";
 export type {
   DataPickerDataType,
-  DataPickerValue,
-  DataPickerProps,
   DataPickerFiltersProp,
+  DataPickerProps,
+  DataPickerValue,
 } from "./types";
+export { useDataPickerConfig } from "./useDataPickerConfig";
+export { useDataPickerValue } from "./useDataPickerValue";
