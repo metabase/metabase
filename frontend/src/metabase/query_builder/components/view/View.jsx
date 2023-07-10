@@ -11,6 +11,7 @@ import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 
+import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -27,7 +28,7 @@ import QueryModals from "../QueryModals";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
-import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
+import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
@@ -147,11 +148,9 @@ class View extends Component {
     const {
       question,
       timelines,
-      isResultDirty,
       isShowingSummarySidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
-      runQuestionQuery,
       updateQuestion,
       visibleTimelineEventIds,
       selectedTimelineEventIds,
@@ -169,13 +168,18 @@ class View extends Component {
     const isSaved = question.isSaved();
 
     if (isShowingSummarySidebar) {
+      const query = question._getMLv2Query();
+      const legacyQuery = question.query();
       return (
         <SummarizeSidebar
-          question={question}
+          query={query}
+          legacyQuery={legacyQuery}
+          onQueryChange={nextQuery => {
+            const datesetQuery = Lib.toLegacyQuery(nextQuery);
+            const nextQuestion = question.setDatasetQuery(datesetQuery);
+            updateQuestion(nextQuestion.setDefaultDisplay(), { run: true });
+          }}
           onClose={onCloseSummary}
-          isResultDirty={isResultDirty}
-          runQuestionQuery={runQuestionQuery}
-          updateQuestion={updateQuestion}
         />
       );
     }
