@@ -4,47 +4,45 @@ import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDe
 import { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import { testDataset } from "__support__/testDataset";
 
-const TestObjectDetailWrapper = (options?: Partial<ObjectDetailProps>) => (
-  <ObjectDetailWrapper
-    data={testDataset as any}
-    question={
-      {
-        displayName: () => "Product",
-        database: () => ({
-          getPlainObject: () => ({}),
-        }),
-      } as any
-    }
-    table={
-      {
-        objectName: () => "Product",
-      } as any
-    }
-    zoomedRow={testDataset.rows[0]}
-    zoomedRowID={0}
-    tableForeignKeys={[]}
-    tableForeignKeyReferences={[]}
-    settings={{
-      column: () => null,
-    }}
-    showHeader
-    canZoom={true}
-    canZoomPreviousRow={false}
-    canZoomNextRow={false}
-    followForeignKey={() => null}
-    onVisualizationClick={() => null}
-    visualizationIsClickable={() => false}
-    fetchTableFks={() => null}
-    loadObjectDetailFKReferences={() => null}
-    viewPreviousObjectDetail={() => null}
-    viewNextObjectDetail={() => null}
-    closeObjectDetail={() => null}
-    {...options}
-  />
-);
-
 function setup(options?: Partial<ObjectDetailProps>) {
-  render(<TestObjectDetailWrapper {...options} />);
+  render(
+    <ObjectDetailWrapper
+      data={testDataset as any}
+      question={
+        {
+          displayName: () => "Product",
+          database: () => ({
+            getPlainObject: () => ({}),
+          }),
+        } as any
+      }
+      table={
+        {
+          objectName: () => "Product",
+        } as any
+      }
+      zoomedRow={testDataset.rows[0]}
+      zoomedRowID={0}
+      tableForeignKeys={[]}
+      tableForeignKeyReferences={[]}
+      settings={{
+        column: () => null,
+      }}
+      showHeader
+      canZoom={true}
+      canZoomPreviousRow={false}
+      canZoomNextRow={false}
+      followForeignKey={() => null}
+      onVisualizationClick={() => null}
+      visualizationIsClickable={() => false}
+      fetchTableFks={() => null}
+      loadObjectDetailFKReferences={() => null}
+      viewPreviousObjectDetail={() => null}
+      viewNextObjectDetail={() => null}
+      closeObjectDetail={() => null}
+      {...options}
+    />,
+  );
 }
 
 describe("Object Detail Wrapper", () => {

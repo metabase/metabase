@@ -259,6 +259,34 @@ describe("scenarios > question > object details", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
+
+  it("should trap focus within the modal (metabase#30489)", () => {
+    const questionDetails = {
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        type: "query",
+      },
+    };
+    visitQuestionAdhoc(questionDetails);
+
+    cy.findAllByTestId("detail-shortcut").first().click();
+    cy.realPress("Tab");
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "object-detail-close-button",
+    );
+
+    // want to make sure that the focus is trapped within the modal -
+    // if we press tab from here, we should go to the 'View Next' button,
+    // which is the next available accessible element
+    cy.realPress("Tab");
+    cy.focused().should("have.attr", "data-testid", "view-next-object-detail");
+  });
 });
 
 function drillPK({ id }) {
