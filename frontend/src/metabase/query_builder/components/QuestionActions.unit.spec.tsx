@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import QuestionActions from "metabase/query_builder/components/QuestionActions";
@@ -46,7 +46,7 @@ function setup({ card }: { card: Card }) {
   );
 }
 
-describe("Question Actions | Icons", () => {
+describe("QuestionActions", () => {
   ["structured", "native"].forEach(queryType => {
     iconList.forEach(({ label, tooltipText }) => {
       it(`should display the "${label}" icon with the "${tooltipText}" tooltip for ${queryType} questions`, async () => {
@@ -63,5 +63,31 @@ describe("Question Actions | Icons", () => {
         expect(tooltip).toHaveTextContent(tooltipText);
       });
     });
+  });
+
+  it("should allow to edit the model only with write permissions", () => {
+    setup({
+      card: createMockCard({
+        can_write: true,
+        dataset: true,
+      }),
+    });
+
+    userEvent.click(getIcon("ellipsis"));
+    expect(screen.getByText("Edit query definition")).toBeInTheDocument();
+    expect(screen.getByText("Edit metadata")).toBeInTheDocument();
+  });
+
+  it("should not allow to edit the model without write permissions", () => {
+    setup({
+      card: createMockCard({
+        can_write: false,
+        dataset: true,
+      }),
+    });
+
+    userEvent.click(getIcon("ellipsis"));
+    expect(screen.queryByText("Edit query definition")).not.toBeInTheDocument();
+    expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
   });
 });

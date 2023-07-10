@@ -135,7 +135,7 @@ const QuestionActions = ({
     ),
   );
 
-  if (isDataset) {
+  if (canWrite && isDataset) {
     extraButtons.push(
       {
         title: t`Edit query definition`,
