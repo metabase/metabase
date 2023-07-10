@@ -2,8 +2,8 @@
 export { default } from "./DataPickerContainer";
 export { useDataPicker } from "./DataPickerContext";
 
-export { default as useDataPickerConfig } from "./useDataPickerConfig";
-export { default as useDataPickerValue } from "./useDataPickerValue";
+export { useDataPickerConfig } from "./useDataPickerConfig";
+export { useDataPickerValue } from "./useDataPickerValue";
 
 export type {
   DataPickerDataType,
