@@ -21,56 +21,54 @@ import { SsoButton } from "./components/SsoButton";
 import JwtAuthCard from "./containers/JwtAuthCard";
 import SamlAuthCard from "./containers/SamlAuthCard";
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => {
-  return updateIn(sections, ["authentication", "settings"], settings => {
-    return [
-      ...settings,
-      {
-        key: "saml-enabled",
-        description: null,
-        noHeader: true,
-        widget: SamlAuthCard,
-        getHidden: () => !hasPremiumFeature("sso"),
-      },
-      {
-        key: "jwt-enabled",
-        description: null,
-        noHeader: true,
-        widget: JwtAuthCard,
-        getHidden: () => !hasPremiumFeature("sso"),
-      },
-      {
-        key: "enable-password-login",
-        display_name: t`Enable Password Authentication`,
-        description: t`When enabled, users can additionally log in with email and password.`,
-        type: "boolean",
-        getHidden: (_, derivedSettings) =>
-          !hasPremiumFeature("disable_password_login") ||
-          (!derivedSettings["google-auth-enabled"] &&
-            !derivedSettings["ldap-enabled"] &&
-            !derivedSettings["saml-enabled"] &&
-            !derivedSettings["jwt-enabled"]),
-      },
-      {
-        key: "send-new-sso-user-admin-email?",
-        display_name: t`Notify admins of new SSO users`,
-        description: t`When enabled, administrators will receive an email the first time a user uses Single Sign-On.`,
-        type: "boolean",
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["google-auth-enabled"] &&
+PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
+  updateIn(sections, ["authentication", "settings"], settings => [
+    ...settings,
+    {
+      key: "saml-enabled",
+      description: null,
+      noHeader: true,
+      widget: SamlAuthCard,
+      getHidden: () => !hasPremiumFeature("sso"),
+    },
+    {
+      key: "jwt-enabled",
+      description: null,
+      noHeader: true,
+      widget: JwtAuthCard,
+      getHidden: () => !hasPremiumFeature("sso"),
+    },
+    {
+      key: "enable-password-login",
+      display_name: t`Enable Password Authentication`,
+      description: t`When enabled, users can additionally log in with email and password.`,
+      type: "boolean",
+      getHidden: (_, derivedSettings) =>
+        !hasPremiumFeature("disable_password_login") ||
+        (!derivedSettings["google-auth-enabled"] &&
           !derivedSettings["ldap-enabled"] &&
           !derivedSettings["saml-enabled"] &&
-          !derivedSettings["jwt-enabled"],
-      },
-      {
-        key: "session-timeout",
-        display_name: t`Session timeout`,
-        description: t`Time before inactive users are logged out.`,
-        widget: SessionTimeoutSetting,
-      },
-    ];
-  });
-});
+          !derivedSettings["jwt-enabled"]),
+    },
+    {
+      key: "send-new-sso-user-admin-email?",
+      display_name: t`Notify admins of new SSO users`,
+      description: t`When enabled, administrators will receive an email the first time a user uses Single Sign-On.`,
+      type: "boolean",
+      getHidden: (_, derivedSettings) =>
+        !derivedSettings["google-auth-enabled"] &&
+        !derivedSettings["ldap-enabled"] &&
+        !derivedSettings["saml-enabled"] &&
+        !derivedSettings["jwt-enabled"],
+    },
+    {
+      key: "session-timeout",
+      display_name: t`Session timeout`,
+      description: t`Time before inactive users are logged out.`,
+      widget: SessionTimeoutSetting,
+    },
+  ]),
+);
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
