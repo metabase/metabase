@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test.util :as tu]))
 
