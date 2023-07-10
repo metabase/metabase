@@ -2,6 +2,7 @@ import {
   getNotebookStep,
   openQuestionActions,
   restore,
+  popover,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -33,18 +34,15 @@ describe("issue 29951", () => {
     cy.wait("@dataset");
 
     openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit query definition").click();
+    popover().findByText("Edit query definition").click();
     removeExpression("CC2");
     cy.findByRole("button", { name: "Save changes" }).click();
-    cy.wait("@updateCard");
-    cy.wait("@dataset");
+    cy.wait(["@updateCard", "@dataset"]);
 
     dragColumn(0, 100);
     cy.findAllByRole("button", { name: "Get Answer" }).first().click();
     cy.wait("@dataset");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 200 rows").should("be.visible");
+    cy.findByTestId("view-footer").should("contain", "Showing 200 rows");
   });
 });
 

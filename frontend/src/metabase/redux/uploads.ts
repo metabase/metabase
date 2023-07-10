@@ -65,7 +65,7 @@ export const uploadFile = createThunkAction(
         dispatch(
           uploadError({
             id,
-            message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING}mb`,
+            message: t`You cannot upload files larger than ${MAX_UPLOAD_STRING} MB`,
           }),
         );
         clear();

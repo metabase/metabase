@@ -19,16 +19,16 @@ describe("scenarios > admin > localization", () => {
 
   it("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
     // programatically create and save a question based on Orders table
-    // filter: created before June 1st, 2016
+    // filter: created before June 1st, 2022
     // summarize: Count by CreatedAt: Week
 
     cy.createQuestion({
-      name: "Orders created before June 1st 2016",
+      name: "Orders created before June 1st 2022",
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2016-06-01"],
+        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
       },
       display: "line",
     });
@@ -36,12 +36,12 @@ describe("scenarios > admin > localization", () => {
     // find and open that question
     cy.visit("/collection/root");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders created before June 1st 2016").click();
+    cy.findByText("Orders created before June 1st 2022").click();
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    cy.get(".axis.x").contains("April 25, 2016");
+    cy.get(".axis.x").contains("April 25, 2022");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
@@ -56,8 +56,8 @@ describe("scenarios > admin > localization", () => {
         filter: [
           "between",
           ["field", ORDERS.CREATED_AT, null],
-          "2020-03-02", // Monday
-          "2020-03-03", // Tuesday
+          "2026-03-02", // Monday
+          "2026-03-03", // Tuesday
         ],
       },
       display: "bar",
@@ -83,7 +83,7 @@ describe("scenarios > admin > localization", () => {
   // HANDLE WITH CARE!
   // This test is extremely tricky and fragile because it needs to test for the "past X weeks" to check if week starts on Sunday or Monday.
   // As the time goes by we're risking that past X weeks don't yield any result when applied to the sample database.
-  // For that reason I've chosen the past 220 weeks (mid-October 2016). This should give us 3+ years to run this test without updates.
+  // For that reason I've chosen the past 220 weeks (mid-October 2022). This should give us 3+ years to run this test without updates.
 
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
@@ -210,7 +210,7 @@ describe("scenarios > admin > localization", () => {
     const dateString = `${date.getFullYear()}/${
       date.getMonth() + 1
     }/${date.getDate()}`;
-    cy.findByDisplayValue(dateString).clear().type("2018/5/15").blur();
+    cy.findByDisplayValue(dateString).clear().type("2024/5/15").blur();
 
     // add a time to the date
     const TIME_SELECTOR_DEFAULT_HOUR = 12;
@@ -228,7 +228,7 @@ describe("scenarios > admin > localization", () => {
 
     // verify that the correct row is displayed
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018/5/15, 19:56");
+    cy.findByText("2024/5/15, 19:56");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("127.52");
   });

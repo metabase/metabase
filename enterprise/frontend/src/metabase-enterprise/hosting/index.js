@@ -1,11 +1,11 @@
 import _ from "underscore";
 import { updateIn } from "icepick";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
-import { SettingsCloudStoreLink } from "../../components/SettingsCloudStoreLink";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { SettingsCloudStoreLink } from "./components/SettingsCloudStoreLink";
 
-if (MetabaseSettings.isHosted()) {
+if (hasPremiumFeature("hosting")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => _.omit(sections, ["updates"]));
 
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>

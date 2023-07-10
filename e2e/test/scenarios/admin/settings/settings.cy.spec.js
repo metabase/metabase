@@ -167,7 +167,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByTextEnsureVisible("Created At");
     cy.get(".cellData")
       .should("contain", "Created At")
-      .and("contain", "2019/2/11, 21:40");
+      .and("contain", "2025/2/11, 21:40");
 
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
@@ -180,7 +180,7 @@ describe("scenarios > admin > settings", () => {
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get(".cellData").and("contain", "2019/2/11, 9:40 PM");
+    cy.get(".cellData").and("contain", "2025/2/11, 9:40 PM");
   });
 
   it("should search for and select a new timezone", () => {
