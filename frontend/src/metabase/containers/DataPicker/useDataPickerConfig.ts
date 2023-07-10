@@ -17,7 +17,7 @@ export const useDataPickerConfig = () => {
   } = useDatabaseListQuery({ query: { saved: true } });
   const {
     data: models = [],
-    error: errorModals,
+    error: errorModels,
     isLoading: isLoadingModels,
   } = useSearchListQuery({ query: { models: "dataset", limit: 1 } });
 
@@ -42,7 +42,7 @@ export const useDataPickerConfig = () => {
   return {
     databases,
     dataTypes,
-    error: errorDatabases || errorModals,
+    error: errorDatabases || errorModels,
     isLoading: isLoadingDatabases || isLoadingModels,
   };
 };
