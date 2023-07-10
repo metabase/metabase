@@ -16,6 +16,17 @@ if (hasPremiumFeature("advanced_config")) {
           display_name: t`Approved domains for notifications`,
           type: "string",
         },
+        {
+          key: "user-visibility",
+          display_name: t`Suggest recipients on dashboard subscriptions and alerts`,
+          type: "select",
+          options: [
+            { value: "all", name: t`Suggest all users` },
+            { value: "group", name: t`Only suggest users in the same groups` },
+            { value: "none", name: t`Don't show suggestions` },
+          ],
+          defaultValue: "all",
+        },
         ..._.tail(settings, index + 1),
       ];
     }),

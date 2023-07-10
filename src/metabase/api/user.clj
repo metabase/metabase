@@ -33,7 +33,7 @@
    [toucan2.core :as t2]))
 
 (defsetting user-visibility
-  (deferred-tru "Determines what other users non-admin users are able to see. Possible values are :all , :group, or :none.")
+  (deferred-tru "Note: Sandboxed users will never see suggestions.")
   :visibility   :authenticated
   :type         :keyword
   :default      :all)
