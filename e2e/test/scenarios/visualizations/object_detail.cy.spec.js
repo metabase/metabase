@@ -259,6 +259,27 @@ describe("scenarios > question > object details", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
+
+  it("should trap focus within the modal (metabase#30489)", () => {
+    cy.viewport(660, 660);
+
+    const questionDetails = {
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+        type: "query",
+      },
+    };
+    visitQuestionAdhoc(questionDetails);
+
+    cy.findAllByTestId("detail-shortcut").first().click();
+    cy.get(".ModalContainer").within(() => {
+      cy.findByTestId("object-detail-close-button").focus();
+    });
+  });
 });
 
 function drillPK({ id }) {
