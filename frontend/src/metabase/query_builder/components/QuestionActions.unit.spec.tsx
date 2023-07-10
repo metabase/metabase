@@ -1,12 +1,18 @@
 import userEvent from "@testing-library/user-event";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Card, Database } from "metabase-types/api";
+import { createMockCard, createMockNativeCard } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
-import QuestionActions from "metabase/query_builder/components/QuestionActions";
-import { createMockCard, createMockNativeCard } from "metabase-types/api/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Card } from "metabase-types/api";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import Question from "metabase-lib/Question";
+import QuestionActions from "./QuestionActions";
 
 const ICON_CASES_CARDS = [
   createMockCard({ name: "GUI" }),
@@ -26,9 +32,15 @@ const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
   ICON_CASES_LABELS.map(labels => ({ ...labels, card })),
 );
 
-function setup({ card }: { card: Card }) {
+interface SetupOpts {
+  card: Card;
+  databases?: Database[];
+}
+
+function setup({ card, databases = [createSampleDatabase()] }: SetupOpts) {
   const state = createMockState({
     entities: createMockEntitiesState({
+      databases,
       questions: [card],
     }),
   });
@@ -68,8 +80,8 @@ describe("QuestionActions", () => {
   it("should allow to edit the model only with write permissions", () => {
     setup({
       card: createMockCard({
-        can_write: true,
         dataset: true,
+        can_write: true,
       }),
     });
 
@@ -81,13 +93,26 @@ describe("QuestionActions", () => {
   it("should not allow to edit the model without write permissions", () => {
     setup({
       card: createMockCard({
-        can_write: false,
         dataset: true,
+        can_write: false,
       }),
     });
 
     userEvent.click(getIcon("ellipsis"));
     expect(screen.queryByText("Edit query definition")).not.toBeInTheDocument();
     expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
+  });
+
+  it("should not render the menu when there are no menu items", () => {
+    setup({
+      card: createMockCard({
+        dataset: true,
+        can_write: false,
+      }),
+      databases: [],
+    });
+
+    expect(getIcon("info")).toBeInTheDocument();
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 });

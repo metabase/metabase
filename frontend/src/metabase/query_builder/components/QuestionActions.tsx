@@ -128,7 +128,7 @@ const QuestionActions = ({
   }
 
   extraButtons.push(
-    PLUGIN_MODERATION.getMenuItems(
+    ...PLUGIN_MODERATION.getMenuItems(
       question,
       isModerator,
       dispatchSoftReloadCard,
@@ -237,12 +237,14 @@ const QuestionActions = ({
           />
         </ViewHeaderIconButtonContainer>
       </Tooltip>
-      <EntityMenu
-        triggerAriaLabel={t`Move, archive, and more...`}
-        items={extraButtons}
-        triggerIcon="ellipsis"
-        tooltip={t`Move, archive, and more...`}
-      />
+      {extraButtons.length > 0 && (
+        <EntityMenu
+          triggerAriaLabel={t`Move, archive, and more...`}
+          items={extraButtons}
+          triggerIcon="ellipsis"
+          tooltip={t`Move, archive, and more...`}
+        />
+      )}
     </>
   );
 };
