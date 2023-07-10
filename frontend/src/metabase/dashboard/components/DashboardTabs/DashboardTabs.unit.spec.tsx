@@ -2,7 +2,7 @@ import { Link, Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
 
-import { renderWithProviders, screen, fireEvent } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { DashboardState, State } from "metabase-types/store";
 import { DashboardOrderedTab } from "metabase-types/api";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
@@ -79,7 +79,7 @@ function setup({
 
 function queryTab(numOrName: number | string) {
   const name = typeof numOrName === "string" ? numOrName : `Tab ${numOrName}`;
-  return screen.queryByRole("tab", { name });
+  return screen.queryByRole("tab", { name, hidden: true });
 }
 
 function selectTab(num: number) {
@@ -95,9 +95,10 @@ function createNewTab() {
 async function selectTabMenuItem(num: number, name: "Delete" | "Rename") {
   const dropdownIcons = screen.getAllByRole("img", {
     name: "chevrondown icon",
+    hidden: true,
   });
   userEvent.click(dropdownIcons[num - 1]);
-  (await screen.findByRole("option", { name })).click();
+  (await screen.findByRole("option", { name, hidden: true })).click();
 }
 
 async function deleteTab(num: number) {
@@ -107,9 +108,11 @@ async function deleteTab(num: number) {
 async function renameTab(num: number, name: string) {
   await selectTabMenuItem(num, "Rename");
 
-  const inputEl = screen.getByRole("textbox", { name: `Tab ${num}` });
-  userEvent.type(inputEl, name);
-  fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+  const inputEl = screen.getByRole("textbox", {
+    name: `Tab ${num}`,
+    hidden: true,
+  });
+  userEvent.type(inputEl, `${name}{enter}`);
 }
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
@@ -333,9 +336,11 @@ describe("DashboardTabs", () => {
         const inputWrapperEl = screen.getAllByTestId(INPUT_WRAPPER_TEST_ID)[0];
         userEvent.dblClick(inputWrapperEl);
 
-        const inputEl = screen.getByRole("textbox", { name: "Tab 1" });
-        userEvent.type(inputEl, name);
-        fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+        const inputEl = screen.getByRole("textbox", {
+          name: "Tab 1",
+          hidden: true,
+        });
+        userEvent.type(inputEl, `${name}{enter}`);
 
         expect(queryTab(name)).toBeInTheDocument();
         expect(await findSlug({ tabId: 1, name })).toBeInTheDocument();

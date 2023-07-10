@@ -6,43 +6,38 @@ export const DASHBOARD_SQL_DATE_FILTERS = {
   "Month and Year": {
     sqlFilter: "date/month-year",
     value: {
-      month: "October",
-      year: "2017",
+      month: "September",
+      year: "2022",
     },
-    representativeResult: "Hudson Borer",
+    representativeResult: "Rene Muller",
   },
   "Quarter and Year": {
     sqlFilter: "date/quarter-year",
     value: {
-      quarter: "Q1",
-      year: "2018",
+      quarter: "Q2",
+      year: "2022",
     },
-    representativeResult: "Lolita Schaefer",
+    representativeResult: "Khalid Pouros",
   },
   "Single Date": {
     sqlFilter: "date/single",
-    value: "15",
-    representativeResult: "No results!",
+    value: "05/24/2022",
+    representativeResult: "Delphia Price",
   },
   "Date Range": {
     sqlFilter: "date/range",
     value: {
-      startDate: "13",
-      endDate: "15",
+      startDate: "05/25/2022",
+      endDate: "06/01/2022",
     },
-    representativeResult: "No results!",
-  },
-  "Relative Date": {
-    sqlFilter: "date/relative",
-    value: "Past 7 days",
-    representativeResult: "No results!",
+    representativeResult: "Trisha Hoeger",
   },
   "All Options": {
     sqlFilter: "date/all-options",
     value: {
       timeBucket: "years",
     },
-    representativeResult: "Hudson Borer",
+    representativeResult: "Araceli Stiedemann",
   },
 };
 

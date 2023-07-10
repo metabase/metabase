@@ -173,7 +173,7 @@ describe("scenarios > dashboard > parameters in text cards", () => {
 
       cy.findByText("Single Date").click();
       popover().within(() => {
-        cy.findByRole("textbox").click().clear().type("07/19/2017").blur();
+        cy.findByRole("textbox").click().clear().type("07/19/2023").blur();
         cy.button("Update filter").click();
       });
 
@@ -182,10 +182,10 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.findByText("Small Marble Shoes").should("not.exist");
 
       // Parameter value in widget should use user localization (English)
-      cy.findByText("July 19, 2017").should("exist");
+      cy.findByText("July 19, 2023").should("exist");
 
       // Parameter value in dashboard should use site localization (French)
-      cy.findByText("Variable: juillet 19, 2017").should("exist");
+      cy.findByText("Variable: juillet 19, 2023").should("exist");
     });
   });
 });
