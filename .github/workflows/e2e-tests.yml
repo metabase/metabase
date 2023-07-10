@@ -16,6 +16,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  cpu-info:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Reveal runner's CPU information
+        run: lscpu
   test-run-id:
     runs-on: ubuntu-22.04
     outputs:
