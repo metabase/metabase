@@ -1,5 +1,7 @@
-import { useDataPickerConfig } from "metabase/containers/DataPicker";
-import { IconName } from "metabase/core/components/Icon";
+import {
+  DataTypeInfoItem,
+  useDataPickerConfig,
+} from "metabase/containers/DataPicker";
 
 import {
   DataBucketListItemContainer as ItemContainer,
@@ -13,13 +15,6 @@ import {
 
 type DataSelectorDataBucketPickerProps = {
   onChangeDataBucket: () => void;
-};
-
-type Bucket = {
-  id: string;
-  icon: IconName;
-  name: string;
-  description: string;
 };
 
 const DataSelectorDataBucketPicker = ({
@@ -43,7 +38,7 @@ const DataSelectorDataBucketPicker = ({
   );
 };
 
-type DataBucketListItemProps = Bucket & {
+type DataBucketListItemProps = DataTypeInfoItem & {
   onSelect: () => void;
 };
 

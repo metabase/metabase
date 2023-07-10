@@ -12,7 +12,7 @@ import { getDataTypes } from "./utils";
 
 export const useDataPickerConfig = () => {
   const {
-    data: allDatabases = [],
+    data: databases = [],
     error: errorDatabases,
     isLoading: isLoadingDatabases,
   } = useDatabaseListQuery({ query: { saved: true } });
@@ -22,15 +22,11 @@ export const useDataPickerConfig = () => {
     isLoading: isLoadingModels,
   } = useSearchListQuery({ query: { models: "dataset", limit: 1 } });
 
-  const databases = useMemo(
-    () => allDatabases.filter(database => !database.is_saved_questions),
-    [allDatabases],
-  );
-
   const hasModels = models ? models.length > 0 : false;
   const hasSavedQuestions = databases.some(
     database => database.is_saved_questions,
   );
+  const hasRawData = databases.some(database => !database.is_saved_questions);
   const hasNestedQueriesEnabled = useSelector(state =>
     getSetting(state, "enable-nested-queries"),
   );
@@ -38,15 +34,16 @@ export const useDataPickerConfig = () => {
   const dataTypes = useMemo(() => {
     return getDataTypes({
       hasModels,
-      hasSavedQuestions,
       hasNestedQueriesEnabled,
+      hasSavedQuestions,
+      hasRawData,
     });
-  }, [hasModels, hasSavedQuestions, hasNestedQueriesEnabled]);
+  }, [hasModels, hasNestedQueriesEnabled, hasRawData, hasSavedQuestions]);
 
   return {
     databases,
     dataTypes,
-    hasDataAccess: getHasDataAccess(allDatabases),
+    hasDataAccess: getHasDataAccess(databases),
     error: errorDatabases || errorModals,
     isLoading: isLoadingDatabases || isLoadingModels,
   };

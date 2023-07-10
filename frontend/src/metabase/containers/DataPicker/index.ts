@@ -6,6 +6,7 @@ export type {
   DataPickerFiltersProp,
   DataPickerProps,
   DataPickerValue,
+  DataTypeInfoItem,
 } from "./types";
 export { useDataPickerConfig } from "./useDataPickerConfig";
 export { useDataPickerValue } from "./useDataPickerValue";

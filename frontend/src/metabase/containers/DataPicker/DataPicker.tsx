@@ -20,7 +20,7 @@ function DataPicker({
   ...props
 }: DataPickerProps) {
   const {
-    databases,
+    databases: allDatabases,
     dataTypes: allDataTypes,
     error,
     hasDataAccess,
@@ -29,6 +29,11 @@ function DataPicker({
 
   const { onChange } = props;
   const { search } = useDataPicker();
+
+  const databases = useMemo(
+    () => allDatabases.filter(database => !database.is_saved_questions),
+    [allDatabases],
+  );
 
   const filters = useMemo(
     () => ({ ...DEFAULT_DATA_PICKER_FILTERS, ...customFilters }),
