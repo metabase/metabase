@@ -5,6 +5,7 @@ import {
   createMockCard,
   createMockDashboardOrderedCard,
   createMockActionDashboardCard,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -88,5 +89,37 @@ describe("DashCardParameterMapper", () => {
     });
     expect(getIcon("info")).toBeInTheDocument();
     expect(screen.getByLabelText(/in text cards/i)).toBeInTheDocument();
+  });
+
+  it("should show header content when card is more than 2 units high", () => {
+    const numberCard = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({}),
+      display: "scalar",
+    });
+    setup({
+      card: numberCard,
+      dashcard: createMockDashboardOrderedCard({
+        card: numberCard,
+        size_y: 3,
+      }),
+      mappingOptions: ["foo", "bar"],
+    });
+    expect(screen.getByText(/Column to filter on/i)).toBeInTheDocument();
+  });
+
+  it("should hide header content when card is less than 3 units high", () => {
+    const numberCard = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({}),
+      display: "scalar",
+    });
+    setup({
+      card: numberCard,
+      dashcard: createMockDashboardOrderedCard({
+        card: numberCard,
+        size_y: 2,
+      }),
+      mappingOptions: ["foo", "bar"],
+    });
+    expect(screen.queryByText(/Column to filter on/i)).not.toBeInTheDocument();
   });
 });

@@ -173,6 +173,9 @@ export function DashCardCardParameterMapper({
 
   const headerContent = useMemo(() => {
     if (!isVirtual && !(isNative && isDisabled)) {
+      if (dashcard.size_y <= 2) {
+        return null;
+      }
       return t`Column to filter on`;
     } else if (dashcard.size_y !== 1 || isMobile) {
       return t`Variable to map to`;
