@@ -281,3 +281,7 @@ export const PLUGIN_MODEL_PERSISTENCE = {
   ModelCacheControl: PluginPlaceholder as any,
   getMenuItems: (question?: any, onChange?: any) => ({}),
 };
+
+export const PLUGIN_EMBEDDING = {
+  isEnabled: () => false,
+};
