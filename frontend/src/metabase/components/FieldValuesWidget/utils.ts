@@ -4,6 +4,9 @@ import _ from "underscore";
 import { MetabaseApi } from "metabase/services";
 import { stripId } from "metabase/lib/formatting";
 
+import type { Dashboard, Parameter, FieldValue } from "metabase-types/api";
+import type Field from "metabase-lib/metadata/Field";
+
 import {
   isIdParameter,
   isNumberParameter,
@@ -16,19 +19,32 @@ import {
   canSearchParameterValues,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
+import Question from "metabase-lib/Question";
+
+import type { ValuesMode } from "./types";
 
 export async function searchFieldValues(
-  { fields, value, disablePKRemappingForSearch, maxResults },
-  cancelled,
+  {
+    fields,
+    value,
+    disablePKRemappingForSearch,
+    maxResults,
+  }: {
+    fields: Field[];
+    value: string;
+    disablePKRemappingForSearch?: boolean;
+    maxResults: number;
+  },
+  cancelled: Promise<unknown>,
 ) {
-  let options = dedupeValues(
+  let options: null | FieldValue[] = dedupeValues(
     await Promise.all(
-      fields.map(field =>
+      fields.map((field: Field) =>
         MetabaseApi.field_search(
           {
             value,
             fieldId: field.id,
-            searchFieldId: field.searchField(disablePKRemappingForSearch).id,
+            searchFieldId: field.searchField(disablePKRemappingForSearch)?.id,
             limit: maxResults,
           },
           { cancelled },
@@ -37,36 +53,44 @@ export async function searchFieldValues(
     ),
   );
 
-  options = options.map(result => [].concat(result));
+  options = options?.map(result => (Array.isArray(result) ? result : [result]));
   return options;
 }
 
-export function getNonVirtualFields(fields) {
+export function getNonVirtualFields(fields: Field[]) {
   return fields.filter(field => !field.isVirtual());
 }
 
-export function dedupeValues(valuesList) {
+export function dedupeValues(valuesList: FieldValue[][]): FieldValue[] {
   const uniqueValueMap = new Map(valuesList.flat().map(o => [o[0], o]));
   return Array.from(uniqueValueMap.values());
 }
 
-export function canUseParameterEndpoints(parameter) {
+export function canUseParameterEndpoints(parameter?: Parameter) {
   return parameter != null;
 }
 
-export function canUseCardEndpoints(question) {
+export function canUseCardEndpoints(question?: Question) {
   return question?.isSaved();
 }
 
-export function canUseDashboardEndpoints(dashboard) {
+export function canUseDashboardEndpoints(dashboard?: Dashboard) {
   return dashboard?.id;
 }
 
-export function showRemapping(fields) {
+export function showRemapping(fields: Field[]) {
   return fields.length === 1;
 }
 
-export function shouldList({ parameter, fields, disableSearch }) {
+export function shouldList({
+  parameter,
+  fields,
+  disableSearch,
+}: {
+  parameter?: Parameter;
+  fields: Field[];
+  disableSearch: boolean;
+}) {
   if (disableSearch) {
     return false;
   } else {
@@ -76,7 +100,10 @@ export function shouldList({ parameter, fields, disableSearch }) {
   }
 }
 
-function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
+function getNonSearchableTokenFieldPlaceholder(
+  firstField: Field,
+  parameter?: Parameter,
+) {
   if (parameter) {
     if (isIdParameter(parameter)) {
       return t`Enter an ID`;
@@ -105,21 +132,26 @@ function getNonSearchableTokenFieldPlaceholder(firstField, parameter) {
   return t`Enter some text`;
 }
 
-export function searchField(field, disablePKRemappingForSearch) {
+export function searchField(
+  field: Field,
+  disablePKRemappingForSearch: boolean,
+) {
   return field.searchField(disablePKRemappingForSearch);
 }
 
 function getSearchableTokenFieldPlaceholder(
-  parameter,
-  fields,
-  firstField,
-  disablePKRemappingForSearch,
+  parameter: Parameter | undefined,
+  fields: Field[],
+  firstField: Field,
+  disablePKRemappingForSearch?: boolean,
 ) {
   let placeholder;
 
   const names = new Set(
-    fields.map(field =>
-      stripId(field.searchField(disablePKRemappingForSearch).display_name),
+    fields.map((field: Field) =>
+      stripId(
+        field?.searchField?.(disablePKRemappingForSearch)?.display_name ?? "",
+      ),
     ),
   );
 
@@ -143,7 +175,17 @@ function getSearchableTokenFieldPlaceholder(
   return placeholder;
 }
 
-export function hasList({ parameter, fields, disableSearch, options }) {
+export function hasList({
+  parameter,
+  fields,
+  disableSearch,
+  options,
+}: {
+  parameter?: Parameter;
+  fields: Field[];
+  disableSearch: boolean;
+  options: FieldValue[];
+}) {
   return (
     shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)
   );
@@ -153,10 +195,10 @@ export function hasList({ parameter, fields, disableSearch, options }) {
 // wasn't truncated, then we don't need to do another search because TypeaheadListing
 // will filter the previous result client-side
 export function isExtensionOfPreviousSearch(
-  value,
-  lastValue,
-  options,
-  maxResults,
+  value: string,
+  lastValue: string,
+  options: FieldValue[],
+  maxResults: number,
 ) {
   return (
     lastValue &&
@@ -171,6 +213,12 @@ export function isSearchable({
   disableSearch,
   disablePKRemappingForSearch,
   valuesMode,
+}: {
+  parameter?: Parameter;
+  fields: Field[];
+  disableSearch: boolean;
+  disablePKRemappingForSearch?: boolean;
+  valuesMode?: ValuesMode;
 }) {
   if (disableSearch) {
     return false;
@@ -191,6 +239,14 @@ export function getTokenFieldPlaceholder({
   disablePKRemappingForSearch,
   options,
   valuesMode,
+}: {
+  fields: Field[];
+  parameter?: Parameter;
+  disableSearch: boolean;
+  placeholder?: string;
+  disablePKRemappingForSearch?: boolean;
+  options: FieldValue[];
+  valuesMode: ValuesMode;
 }) {
   if (placeholder) {
     return placeholder;
@@ -232,7 +288,12 @@ export function getValuesMode({
   fields,
   disableSearch,
   disablePKRemappingForSearch,
-}) {
+}: {
+  parameter?: Parameter;
+  fields: Field[];
+  disableSearch: boolean;
+  disablePKRemappingForSearch?: boolean;
+}): ValuesMode {
   if (
     isSearchable({
       parameter,
@@ -252,7 +313,7 @@ export function getValuesMode({
   return "none";
 }
 
-export function isNumeric(field, parameter) {
+export function isNumeric(field: Field, parameter?: Parameter) {
   if (parameter) {
     return isNumberParameter(parameter);
   }
