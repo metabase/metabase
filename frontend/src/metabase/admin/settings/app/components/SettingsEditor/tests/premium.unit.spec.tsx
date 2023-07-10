@@ -10,6 +10,10 @@ import { setup, SetupOpts } from "./setup";
 const setupPremium = (opts?: SetupOpts) => {
   setup({
     ...opts,
+    tokenFeatures: createMockTokenFeatures({
+      disable_password_login: true,
+      embedding: true,
+    }),
     hasEnterprisePlugins: true,
   });
 };
@@ -25,9 +29,6 @@ describe("SettingsEditor", () => {
         settingValues: createMockSettings({
           "enable-password-login": true,
           "google-auth-enabled": true,
-        }),
-        tokenFeatures: createMockTokenFeatures({
-          disable_password_login: true,
         }),
       });
 
@@ -49,7 +50,6 @@ describe("SettingsEditor", () => {
         settingValues: createMockSettings({
           "enable-embedding": true,
         }),
-        tokenFeatures: createMockTokenFeatures({ embedding: true }),
       });
 
       userEvent.click(await screen.findByText("Embedding"));
