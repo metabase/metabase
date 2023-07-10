@@ -45,7 +45,7 @@ When people upload a CSV to a collection, Metabase will:
 
 ### Add people to a group with unrestricted data access to that database
 
-In order to upload CSVs, a person must be in a group with unrestricted access to at least one table in the database that you've selected to store your uploaded data. That group could have unrestricted access to that whole database, or (via granular permissions) unrestricted access to one or more tables. Native query editing isn't required for uploading. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
+In order to upload CSVs, a person must be in a group with Unrestricted access to the schema you've selected to store your uploaded data. Native query editing isn't required for uploading. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
 
 ### Specify a prefix for Metabase to prepend to the uploaded tables
 
