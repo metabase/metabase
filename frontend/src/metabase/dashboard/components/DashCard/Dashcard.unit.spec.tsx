@@ -24,7 +24,7 @@ const tableDashcard = createMockDashboardOrderedCard({
   }),
 });
 
-const metadata = createMockMetadata({}, createMockSettings());
+const metadata = createMockMetadata({}, createMockSettings() as any);
 
 const store = createMockState({});
 
