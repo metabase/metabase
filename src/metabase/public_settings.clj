@@ -556,7 +556,7 @@
                       :content_management     (premium-features/enable-content-management?)
                       :hosting                (premium-features/is-hosted?)
                       :official_collections   (premium-features/enable-official-collections?)
-                      :snippet_foldres        (premium-features/enable-snippet-folders?)
+                      :snippet_folders        (premium-features/enable-snippet-folders?)
                       :disable_password_login (premium-features/can-disable-password-login?)})
   :doc        false)
 
