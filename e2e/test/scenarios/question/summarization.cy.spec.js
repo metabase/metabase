@@ -44,8 +44,13 @@ describe("scenarios > question > summarize sidebar", () => {
   it("selected dimensions becomes pinned to the top of the dimensions list", () => {
     getDimensionByName({ name: "Total" })
       .should("have.attr", "aria-selected", "false")
-      .click()
-      .should("have.attr", "aria-selected", "true");
+      .click();
+
+    getDimensionByName({ name: "Total" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
 
     cy.button("Done").click();
 
