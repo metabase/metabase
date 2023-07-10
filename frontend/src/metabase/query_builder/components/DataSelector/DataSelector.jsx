@@ -500,10 +500,6 @@ export class UnconnectedDataSelector extends Component {
     return this.getDatabases().some(database => database.is_saved_questions);
   };
 
-  hasUsableSavedQuestions = () => {
-    return this.hasSavedQuestions() && this.props.hasNestedQueriesEnabled;
-  };
-
   getDatabases = () => {
     const { databases } = this.state;
 
