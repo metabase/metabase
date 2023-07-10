@@ -13,13 +13,13 @@ import { getDataTypes } from "./utils";
 export const useDataPickerConfig = () => {
   const {
     data: allDatabases = [],
-    error: databasesError,
-    isLoading: areDatabasesLoading,
+    error: errorDatabases,
+    isLoading: isLoadingDatabases,
   } = useDatabaseListQuery({ query: { saved: true } });
   const {
     data: models,
-    error: hasModelsError,
-    isLoading: isHasModelsLoading,
+    error: errorModals,
+    isLoading: isLoadingModels,
   } = useSearchListQuery({ query: { models: "dataset", limit: 1 } });
 
   const databases = useMemo(
@@ -44,10 +44,10 @@ export const useDataPickerConfig = () => {
   }, [hasModels, hasSavedQuestions, hasNestedQueriesEnabled]);
 
   return {
-    databases: allDatabases,
+    databases,
     dataTypes,
     hasDataAccess: getHasDataAccess(allDatabases),
-    error: databasesError || hasModelsError,
-    isLoading: areDatabasesLoading || isHasModelsLoading,
+    error: errorDatabases || errorModals,
+    isLoading: isLoadingDatabases || isLoadingModels,
   };
 };
