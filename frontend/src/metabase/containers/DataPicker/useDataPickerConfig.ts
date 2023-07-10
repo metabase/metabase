@@ -17,12 +17,12 @@ export const useDataPickerConfig = () => {
     isLoading: isLoadingDatabases,
   } = useDatabaseListQuery({ query: { saved: true } });
   const {
-    data: models,
+    data: models = [],
     error: errorModals,
     isLoading: isLoadingModels,
   } = useSearchListQuery({ query: { models: "dataset", limit: 1 } });
 
-  const hasModels = models ? models.length > 0 : false;
+  const hasModels = models.length > 0;
   const hasSavedQuestions = databases.some(
     database => database.is_saved_questions,
   );
