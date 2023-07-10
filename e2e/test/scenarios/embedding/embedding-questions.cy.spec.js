@@ -70,7 +70,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.findByText("€39.72");
     // Question settings: Abbreviated date, day enabled, 24H clock with seconds
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mon, Feb 11, 2019, 21:40:27");
+    cy.findByText("Tue, Feb 11, 2025, 21:40:27");
     // Question settings: Show mini-bar
     cy.findAllByTestId("mini-bar");
 
@@ -96,7 +96,7 @@ describe("scenarios > embedding > questions ", () => {
 
     cy.get(".x.axis .tick")
       .should("have.length", 5)
-      .and("contain", "Apr, 2016");
+      .and("contain", "Apr, 2022");
 
     cy.get(".y.axis .tick").should("contain", "60");
 
@@ -104,7 +104,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.get(".dot").last().realHover();
 
     popover().within(() => {
-      testPairedTooltipValues("Created At", "Aug, 2016");
+      testPairedTooltipValues("Created At", "Aug, 2022");
       testPairedTooltipValues("Math", "2");
       testPairedTooltipValues("Count", "79");
     });
@@ -145,7 +145,7 @@ describe("scenarios > embedding > questions ", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("February 11, 2019, 9:40 PM");
+    cy.findByText("February 11, 2025, 9:40 PM");
 
     cy.findAllByTestId("mini-bar").should("not.exist");
 
@@ -179,7 +179,7 @@ describe("scenarios > embedding > questions ", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("€39.72");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Mon, Feb 11, 2019, 21:40:27");
+    cy.findByText("Tue, Feb 11, 2025, 21:40:27");
     cy.findAllByTestId("mini-bar");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
@@ -194,7 +194,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.contains("December 12, 1986");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("October 7, 2017, 1:34 AM");
+    cy.contains("October 7, 2023, 1:34 AM");
   });
 
   it("should display according to `locale` parameter metabase#22561", () => {
@@ -219,7 +219,7 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Februar 11, 2019, 9:40 PM");
+    cy.findByText("Februar 11, 2025, 9:40 PM");
   });
 });
 

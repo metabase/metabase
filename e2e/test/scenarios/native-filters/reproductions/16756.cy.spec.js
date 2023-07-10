@@ -33,7 +33,7 @@ describe("issue 16756", () => {
     cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/**/${id}/query`).as("cardQuery");
 
-      cy.visit(`/question/${id}?filter=2018-03-31~2019-03-31`);
+      cy.visit(`/question/${id}?filter=2024-03-31~2025-03-31`);
 
       cy.wait("@cardQuery");
     });
