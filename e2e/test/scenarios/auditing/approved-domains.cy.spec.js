@@ -50,7 +50,7 @@ describeEE(
 
     it("should validate approved email domains for a dashboard subscription in the audit app", () => {
       visitDashboard(1);
-      cy.icon("share").click();
+      cy.icon("subscription").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create a dashboard subscription").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
