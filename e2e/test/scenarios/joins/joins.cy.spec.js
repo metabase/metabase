@@ -286,7 +286,7 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
 
-    cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
+    cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2026");
 
     cy.findByTestId("question-table-badges").within(() => {
       cy.findByText("12928_Q1");

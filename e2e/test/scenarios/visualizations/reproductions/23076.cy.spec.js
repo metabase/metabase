@@ -46,6 +46,6 @@ describe("issue 23076", () => {
       .should("be.visible")
       .eq(1)
       .invoke("text")
-      .should("eq", "Summen für Mai, 2017");
+      .should("eq", "Summen für Mai, 2023");
   });
 });

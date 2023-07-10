@@ -1,18 +1,20 @@
 import {
-  restore,
-  openPeopleTable,
-  openOrdersTable,
-  openNativeEditor,
-  popover,
   enterCustomColumnDetails,
-  visualize,
+  isScrollableHorizontally,
+  openNativeEditor,
+  openOrdersTable,
+  openPeopleTable,
+  popover,
+  restore,
   summarize,
+  visualize,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("GET", "/api/field/*/search/*").as("findSuggestions");
   });
 
   function joinTable(table) {
@@ -268,6 +270,40 @@ describe("scenarios > visualizations > table", () => {
     // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
     cy.wait(100);
     popover().should("not.exist");
+  });
+
+  it("popover should not be scrollable horizontally (metabase#31339)", () => {
+    openPeopleTable();
+    headerCells().filter(":contains('Password')").click();
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByPlaceholderText("Search by Password").type("e").blur();
+      cy.wait("@findSuggestions");
+    });
+
+    popover().then($popover => {
+      expect(isScrollableHorizontally($popover[0])).to.be.false;
+    });
+  });
+
+  it("default picker container should not be scrollable horizontally", () => {
+    openPeopleTable();
+    headerCells().filter(":contains('Password')").click();
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+
+      const input = cy.findByPlaceholderText("Search by Password");
+      input.type("e").blur();
+      cy.wait("@findSuggestions");
+      input.type("f");
+      cy.wait("@findSuggestions");
+
+      cy.findByTestId("default-picker-container").then($container => {
+        expect(isScrollableHorizontally($container[0])).to.be.false;
+      });
+    });
   });
 });
 

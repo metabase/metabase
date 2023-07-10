@@ -983,7 +983,10 @@
 
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
-(defclause ^:sugar metric, metric-id helpers/IntGreaterThanZero)
+;;
+;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
+;; pass straight thru to the GA query processor.
+(defclause ^:sugar metric, metric-id (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;

@@ -80,10 +80,10 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
-      // Created At: Q2, 2018
+      // Created At: Q2, 2023
       filterWidget().contains("Created At").click();
       cy.findByTestId("select-button").click();
-      popover().contains("2018").click();
+      popover().last().contains("2023").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
 
@@ -105,7 +105,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // Let's try to remove one filter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2, 2018")
+      cy.findByText("Q2, 2023")
         .closest("fieldset")
         .within(() => {
           cy.icon("close").click();
@@ -119,7 +119,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByTestId("table-row").should("have.length", 1);
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("December 29, 2018, 4:54 AM");
+      cy.findByText("December 29, 2024, 4:54 AM");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CO");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -186,13 +186,13 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         visitEmbeddedPage(payload, {
-          setFilters: "created_at=Q2-2019&source=Organic&state=OR",
+          setFilters: "created_at=Q2-2025&source=Organic&state=OR",
         });
 
         filterWidget()
           .should("have.length", 4)
           .and("contain", "OR")
-          .and("contain", "Q2, 2019");
+          .and("contain", "Q2, 2025");
         // Why do we use input field in one filter widget but a simple `span` in the other one?
         cy.findByDisplayValue("Organic");
 
@@ -233,7 +233,7 @@ describe("scenarios > embedding > native questions", () => {
             id: [92, 96, 102, 104],
             product_id: [140],
             state: ["AK", "TX"],
-            created_at: "Q3-2018",
+            created_at: "Q3-2024",
             total: [10],
             source: ["Organic"],
           },

@@ -158,7 +158,7 @@ describe("LineAreaBarRenderer", () => {
 
     const hover = onHoverChange.mock.calls[0][0];
     const [formattedWeek] = getFormattedTooltips(hover, settings);
-    expect(formattedWeek).toEqual("January 5 – 11, 2020");
+    expect(formattedWeek).toEqual("January 5–11, 2020");
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
     expect(ticks).toEqual([

@@ -65,6 +65,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   onlyIcon?: boolean;
   fullWidth?: boolean;
   onlyText?: boolean;
+  light?: boolean;
 }
 
 const BaseButton = forwardRef(function BaseButton(

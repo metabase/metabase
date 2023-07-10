@@ -137,3 +137,23 @@
                       :selected          true}]
                     (map (partial lib/display-info query')
                          (lib/aggregations query'))))))))))
+
+(deftest ^:parallel metric-type-of-test
+  (let [query    (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                     (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} 100]))]
+    (is (= :type/Integer
+           (lib.metadata.calculation/type-of query [:metric {:lib/uuid (str (random-uuid))} 100])))))
+
+(deftest ^:parallel ga-metric-metadata-test
+  (testing "Make sure we can calculate metadata for FAKE Google Analytics metric clauses"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} "ga:totalEvents"]))]
+      (is (=? [{:base-type                :type/*
+                :display-name             "[Unknown Metric]"
+                :effective-type           :type/*
+                :name                     "metric"
+                :lib/desired-column-alias "metric"
+                :lib/source               :source/aggregations
+                :lib/source-column-alias  "metric"
+                :lib/type                 :metadata/column}]
+              (lib.metadata.calculation/returned-columns query -1 query))))))

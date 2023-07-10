@@ -343,10 +343,9 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At Today").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 0 rows").should("be.visible");
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At Today")
+        .should("be.visible");
     });
 
     it("can add a date shortcut filter from the popover", () => {
@@ -360,10 +359,9 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At Previous 3 Months").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 0 rows").should("be.visible");
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At Previous 3 Months")
+        .should("be.visible");
     });
 
     // if this gets flaky, disable, it's an issue with internal state in the datepicker component
@@ -379,20 +377,20 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Before").click();
 
       popover().within(() => {
-        cy.get("input").eq(0).clear().type("01/01/2017", { delay: 0 });
+        cy.get("input").eq(0).clear().type("01/01/2023", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
 
       modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
-          cy.findByText("is before January 1, 2017").should("be.visible");
+          cy.findByText("is before January 1, 2023").should("be.visible");
         });
       });
       applyFilters();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At is before January 1, 2017").should(
+      cy.findByText("Created At is before January 1, 2023").should(
         "be.visible",
       );
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
