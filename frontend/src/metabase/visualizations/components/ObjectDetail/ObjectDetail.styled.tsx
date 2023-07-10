@@ -90,12 +90,10 @@ export const FitImage = styled.img`
 export const RootModal = styled(Modal)`
   ${ObjectDetailContainer} {
     overflow: hidden;
-
     ${breakpointMinMedium} {
       width: ${({ wide }) => (wide ? "64rem" : "48rem")};
       max-width: 95vw;
     }
-
     max-height: 95vh;
     width: 95vw;
 
@@ -108,7 +106,6 @@ export const RootModal = styled(Modal)`
       display: flex;
       height: calc(80vh - 4rem);
     }
-
     height: calc(100vh - 8rem);
   }
 
