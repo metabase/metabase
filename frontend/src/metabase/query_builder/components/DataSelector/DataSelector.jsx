@@ -1,47 +1,46 @@
 /* eslint-disable react/prop-types */
-import { createRef, createElement, Component } from "react";
-import { connect } from "react-redux";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component, createElement, createRef } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import { Icon } from "metabase/core/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { Icon } from "metabase/core/components/Icon";
 import { DATA_BUCKET } from "metabase/containers/DataPicker";
-
-import MetabaseSettings from "metabase/lib/settings";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
-import Tables from "metabase/entities/tables";
 import Search from "metabase/entities/search";
+import Tables from "metabase/entities/tables";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { getHasDataAccess } from "metabase/selectors/data";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import { getSchemaName } from "metabase-lib/metadata/utils/schema";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 import {
-  SearchResults,
   convertSearchResultToTableLikeItem,
+  SearchResults,
 } from "./data-search";
-import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
-import DataBucketPicker from "./DataSelectorDataBucketPicker";
-import DatabasePicker from "./DataSelectorDatabasePicker";
-import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
-import SchemaPicker from "./DataSelectorSchemaPicker";
-import FieldPicker from "./DataSelectorFieldPicker";
-import TablePicker from "./DataSelectorTablePicker";
 import {
   EmptyStateContainer,
   TableSearchContainer,
 } from "./DataSelector.styled";
+import DatabasePicker from "./DataSelectorDatabasePicker";
+import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
+import DataBucketPicker from "./DataSelectorDataBucketPicker";
+import FieldPicker from "./DataSelectorFieldPicker";
+import SchemaPicker from "./DataSelectorSchemaPicker";
+import TablePicker from "./DataSelectorTablePicker";
+import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import "./DataSelector.css";
 
@@ -181,6 +180,8 @@ const DataSelector = _.compose(
         entityQuery: { include: "tables" },
       }),
       hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
+      hasNestedQueriesEnabled: state =>
+        getSetting(state, "enable-nested-queries"),
     }),
     {
       fetchDatabases: databaseQuery =>
@@ -492,7 +493,15 @@ export class UnconnectedDataSelector extends Component {
 
   hasUsableDatasets = () => {
     // As datasets are actually saved questions, nested queries must be enabled
-    return this.hasDatasets() && MetabaseSettings.get("enable-nested-queries");
+    return this.hasDatasets() && this.props.hasNestedQueriesEnabled;
+  };
+
+  hasSavedQuestions = () => {
+    return this.getDatabases().some(database => database.is_saved_questions);
+  };
+
+  hasUsableSavedQuestions = () => {
+    return this.hasSavedQuestions() && this.props.hasNestedQueriesEnabled;
   };
 
   getDatabases = () => {
@@ -502,7 +511,7 @@ export class UnconnectedDataSelector extends Component {
     // "Saved Questions" are presented in a different picker step
     // So it should be excluded from a regular databases list
     const shouldRemoveSavedQuestionDatabaseFromList =
-      !MetabaseSettings.get("enable-nested-queries") || this.hasDatasets();
+      !this.props.hasNestedQueriesEnabled || this.hasDatasets();
 
     return shouldRemoveSavedQuestionDatabaseFromList
       ? databases.filter(db => !db.is_saved_questions)
@@ -855,7 +864,7 @@ export class UnconnectedDataSelector extends Component {
   };
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps } = this.props;
+    const { combineDatabaseSchemaSteps, hasNestedQueriesEnabled } = this.props;
 
     const props = {
       ...this.state,
@@ -877,7 +886,14 @@ export class UnconnectedDataSelector extends Component {
 
     switch (this.state.activeStep) {
       case DATA_BUCKET_STEP:
-        return <DataBucketPicker {...props} />;
+        return (
+          <DataBucketPicker
+            hasModels={this.hasDatasets()}
+            hasNestedQueriesEnabled={hasNestedQueriesEnabled}
+            hasSavedQuestions={this.hasSavedQuestions()}
+            {...props}
+          />
+        );
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
@@ -968,7 +984,7 @@ export class UnconnectedDataSelector extends Component {
 
   getSearchModels = () => {
     const { selectedDataBucketId, isSavedQuestionPickerShown } = this.state;
-    if (!MetabaseSettings.get("enable-nested-queries")) {
+    if (!this.props.hasNestedQueriesEnabled) {
       return ["table"];
     }
     if (!this.hasUsableDatasets()) {

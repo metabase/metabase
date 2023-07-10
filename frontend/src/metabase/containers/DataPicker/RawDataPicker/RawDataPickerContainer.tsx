@@ -203,6 +203,6 @@ function RawDataPicker({
 export default Databases.loadList({
   loadingAndErrorWrapper: false,
   // We don't actually need the saved questions database here,
-  // but that'd let us reuse DataPicker's DB list loader result
+  // but that'd let us reuse DataPickerContainer's DB list loader result
   query: { saved: true },
 })(RawDataPicker);

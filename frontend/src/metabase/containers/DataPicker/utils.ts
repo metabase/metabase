@@ -27,12 +27,10 @@ const SAVED_QUESTIONS: DataTypeInfoItem = {
 export function getDataTypes({
   hasModels,
   hasNestedQueriesEnabled,
-  hasRawData,
   hasSavedQuestions,
 }: {
   hasModels: boolean;
   hasNestedQueriesEnabled: boolean;
-  hasRawData: boolean;
   hasSavedQuestions: boolean;
 }): DataTypeInfoItem[] {
   const dataTypes: DataTypeInfoItem[] = [];
@@ -41,9 +39,7 @@ export function getDataTypes({
     dataTypes.push(DATASETS);
   }
 
-  if (hasRawData) {
-    dataTypes.push(RAW_DATA);
-  }
+  dataTypes.push(RAW_DATA);
 
   if (hasNestedQueriesEnabled && hasSavedQuestions) {
     dataTypes.push(SAVED_QUESTIONS);
