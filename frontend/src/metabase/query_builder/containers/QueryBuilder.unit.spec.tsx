@@ -1,12 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
+import fetchMock from "fetch-mock";
 import { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockNativeDatasetQuery,
+  createMockNativeQuery,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -77,7 +79,24 @@ const TEST_MODEL_CARD = createMockCard({
 const TEST_NATIVE_CARD = createMockCard({
   dataset_query: createMockNativeDatasetQuery({
     database: SAMPLE_DB_ID,
+    native: createMockNativeQuery({
+      query: "SELECT 1",
+    }),
   }),
+});
+
+const TEST_NATIVE_CARD_DATASET = createMockDataset({
+  json_query: {
+    database: SAMPLE_DB_ID,
+    type: "native",
+    native: {
+      query: "SELECT 1",
+    },
+  },
+  database_id: SAMPLE_DB_ID,
+  status: "completed",
+  row_count: 1,
+  running_time: 35,
 });
 
 const TEST_UNSAVED_NATIVE_CARD = createMockUnsavedCard({
@@ -436,6 +455,65 @@ describe("QueryBuilder", () => {
           BEFORE_UNLOAD_UNSAVED_MESSAGE,
         );
       });
+    });
+  });
+
+  describe("downloading results", () => {
+    it("should allow downloading results for a native query", async () => {
+      const mockDownloadEndpoint = fetchMock.post(
+        `/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
+        {},
+      );
+      await setup({
+        card: TEST_NATIVE_CARD,
+        dataset: TEST_NATIVE_CARD_DATASET,
+      });
+
+      const inputArea = within(
+        screen.getByTestId("mock-native-query-editor"),
+      ).getByRole("textbox");
+
+      expect(inputArea).toHaveValue("SELECT 1");
+
+      userEvent.click(screen.getByTestId("download-button"));
+      userEvent.click(await screen.findByRole("button", { name: ".csv" }));
+
+      expect(mockDownloadEndpoint.called()).toBe(true);
+    });
+
+    it("should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)", async () => {
+      const mockDownloadEndpoint = fetchMock.post("/api/dataset/csv", {});
+      await setup({
+        card: TEST_NATIVE_CARD,
+        dataset: TEST_NATIVE_CARD_DATASET,
+      });
+
+      const inputArea = within(
+        screen.getByTestId("mock-native-query-editor"),
+      ).getByRole("textbox");
+
+      userEvent.click(inputArea);
+      userEvent.type(inputArea, " union SELECT 2");
+
+      userEvent.tab();
+
+      expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
+
+      userEvent.click(screen.getByTestId("download-button"));
+      userEvent.click(await screen.findByRole("button", { name: ".csv" }));
+
+      expect(
+        mockDownloadEndpoint.called((url, options) => {
+          const { body: urlSearchParams } = options;
+          const query =
+            urlSearchParams instanceof URLSearchParams
+              ? JSON.parse(urlSearchParams.get("query") ?? "{}")
+              : {};
+          return (
+            url === "/api/dataset/csv" && query?.native.query === "SELECT 1"
+          );
+        }),
+      ).toBe(true);
     });
   });
 });
