@@ -95,7 +95,7 @@ interface FetcherOptions {
   cardId?: CardId;
 }
 
-interface IFieldValuesWidgetProps {
+export interface IFieldValuesWidgetProps {
   color?: string;
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
@@ -525,29 +525,25 @@ const LoadingState = () => (
 );
 
 const NoMatchState = ({ fields }: { fields: (Field | null)[] }) => {
-  if (fields?.length !== 1 || !fields[0]) {
-    // if there is more than one field, don't name them
-    return <OptionsMessage message={t`No matching result`} />;
+  if (fields.length === 1 && !!fields[0]) {
+    const [{ display_name }] = fields;
+
+    return (
+      <OptionsMessage>
+        {jt`No matching ${(
+          <StyledEllipsified key={display_name}>
+            {display_name}
+          </StyledEllipsified>
+        )} found.`}
+      </OptionsMessage>
+    );
   }
 
-  const [{ display_name }] = fields;
-  return (
-    <OptionsMessage
-      message={jt`No matching ${(
-        <strong>&nbsp;{display_name}&nbsp;</strong>
-      )} found.`}
-    />
-  );
+  return <OptionsMessage>{t`No matching result`}</OptionsMessage>;
 };
 
 const EveryOptionState = () => (
-  <OptionsMessage
-    message={t`Including every option in your filter probably won’t do much…`}
-  />
-);
-
-const OptionsMessage = ({ message }: { message: string | string[] }) => (
-  <div className="flex layout-centered p4">{message}</div>
+  <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
 );
 
 // eslint-disable-next-line import/no-default-export
@@ -622,7 +618,7 @@ function renderOptions({
   }
 }
 
-export function renderValue({
+function renderValue({
   fields,
   formatOptions,
   value,

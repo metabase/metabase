@@ -8,7 +8,10 @@ import {
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 
 import { checkNotNull } from "metabase/core/utils/types";
-import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
+import {
+  FieldValuesWidget,
+  IFieldValuesWidgetProps,
+} from "metabase/components/FieldValuesWidget";
 
 import {
   ORDERS,
@@ -32,17 +35,22 @@ import {
 async function setup({
   fields,
   prefix,
+  searchValue,
+  ...props
 }: {
   fields: (Field | null | undefined)[];
+  searchValue?: string;
   prefix?: string;
-}) {
+} & Omit<Partial<IFieldValuesWidgetProps>, "fields">) {
   const fetchFieldValues = jest.fn(({ id }) => ({
     payload: fields.filter(checkNotNull).find(f => f?.id === id),
   }));
 
-  fields.forEach(field => {
-    setupFieldSearchValuesEndpoints(field.id, searchValue);
-  });
+  if (searchValue) {
+    fields.forEach(field => {
+      setupFieldSearchValuesEndpoints(field?.id as number, searchValue);
+    });
+  }
 
   renderWithProviders(
     <FieldValuesWidget
@@ -55,6 +63,7 @@ async function setup({
       fetchCardParameterValues={jest.fn()}
       addRemappings={jest.fn()}
       prefix={prefix}
+      {...props}
     />,
     {
       storeInitialState: state,
@@ -267,7 +276,7 @@ describe("FieldValuesWidget", () => {
   describe("NoMatchState", () => {
     it("should display field title when one field passed and there are no matching results", async () => {
       const field = metadataWithSearchValuesField.field(PEOPLE.PASSWORD);
-      const displayName = field.display_name; // "Password"
+      const displayName = field?.display_name; // "Password"
       const searchValue = "somerandomvalue";
 
       await setup({
