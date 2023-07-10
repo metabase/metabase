@@ -4,6 +4,15 @@ import { DataTypeInfoItem, getDataTypes } from "metabase/containers/DataPicker";
 
 import DataSelectorDataBucketPicker from "./DataSelectorDataBucketPicker";
 
+const setup = (dataTypes: DataTypeInfoItem[]) => {
+  return render(
+    <DataSelectorDataBucketPicker
+      dataTypes={dataTypes}
+      onChangeDataBucket={jest.fn()}
+    />,
+  );
+};
+
 describe("DataSelectorDataBucketPicker", () => {
   it("should display all buckets", () => {
     const dataTypes = getDataTypes({
@@ -11,13 +20,7 @@ describe("DataSelectorDataBucketPicker", () => {
       hasSavedQuestions: true,
       hasNestedQueriesEnabled: true,
     });
-
-    const { container } = render(
-      <DataSelectorDataBucketPicker
-        dataTypes={dataTypes}
-        onChangeDataBucket={jest.fn()}
-      />,
-    );
+    const { container } = setup(dataTypes);
 
     expect(screen.getByText("Models")).toBeInTheDocument();
     expect(screen.getByText("Raw Data")).toBeInTheDocument();
@@ -27,12 +30,7 @@ describe("DataSelectorDataBucketPicker", () => {
 
   it("should display no buckets", () => {
     const dataTypes: DataTypeInfoItem[] = [];
-    const { container } = render(
-      <DataSelectorDataBucketPicker
-        dataTypes={dataTypes}
-        onChangeDataBucket={jest.fn()}
-      />,
-    );
+    const { container } = setup(dataTypes);
 
     expect(screen.queryByText("Models")).not.toBeInTheDocument();
     expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
