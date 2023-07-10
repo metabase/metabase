@@ -48,14 +48,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     dateFilters.forEach(([subType, { value, representativeResult }], index) => {
       cy.log(`Make sure it works for ${subType.toUpperCase()}`);
 
-      // When we run iterations following the first, we need to open the editor
-      if (index !== 0) {
-        cy.findByTestId("native-query-editor-container").within(() => {
-          cy.findByText("Open Editor").click();
-          cy.icon("variable").click();
-        });
-      }
-
       FieldFilter.setWidgetType(subType);
 
       // When we run the first iteration, there will be no default filter value set
@@ -69,11 +61,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         isFilterRequired: true,
       });
 
-      index === 0
-        ? SQLFilter.saveNewQuestion()
-        : SQLFilter.saveExistingQuestion();
-
-      SQLFilter.reloadWithoutQueryParams();
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText(representativeResult);
