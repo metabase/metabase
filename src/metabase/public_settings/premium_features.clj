@@ -293,7 +293,7 @@
   :sso)
 
 (define-premium-feature can-disable-password-login?
-  "Should disable password login?"
+  "Can we password login?"
   :disable-password-login)
 
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
@@ -311,7 +311,7 @@
   :content-management)
 
 (define-premium-feature ^{:added "0.41.0"} enable-official-collections?
-  "Should we enable official Collections?"
+  "Should we enable Official Collections?"
   :official-collections)
 
 (define-premium-feature ^{:added "0.41.0"} enable-snippet-folders?
