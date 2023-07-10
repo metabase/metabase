@@ -170,16 +170,7 @@
       (throw (ex-info status
                       {:status-code 400, :error-details error-details})))
     ;; otherwise return the features this token supports
-    (set ["audit-app"
-          "advanced-permissions"
-          "embedding"
-          "whitelabel"
-          "no-upsell"
-          "advanced-config"
-          "content-management"
-          "sso"
-          "sandboxes"
-          "WHATUP"])))
+    (set features)))
 
 (def ^:private ^:const valid-token-recheck-interval-ms
   "Amount of time to cache the status of a valid embedding token before forcing a re-check"
