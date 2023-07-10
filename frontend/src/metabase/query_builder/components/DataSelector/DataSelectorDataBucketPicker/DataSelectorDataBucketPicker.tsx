@@ -12,7 +12,7 @@ import {
 
 type DataSelectorDataBucketPickerProps = {
   dataTypes: DataTypeInfoItem[];
-  onChangeDataBucket: () => void;
+  onChangeDataBucket: (id: DataTypeInfoItem["id"]) => void;
 };
 
 const DataSelectorDataBucketPicker = ({
@@ -27,7 +27,7 @@ const DataSelectorDataBucketPicker = ({
         icon={icon}
         key={id}
         name={name}
-        onSelect={onChangeDataBucket}
+        onSelect={() => onChangeDataBucket(id)}
       />
     ))}
   </List>
@@ -40,10 +40,11 @@ type DataBucketListItemProps = DataTypeInfoItem & {
 const DataBucketListItem = ({
   description,
   icon,
+  id,
   name,
   onSelect,
 }: DataBucketListItemProps) => (
-  <ItemContainer name={name} onSelect={onSelect}>
+  <ItemContainer id={id} name={name} onSelect={onSelect}>
     <TitleContainer>
       <ItemIcon name={icon} size={18} />
       <ItemTitle>{name}</ItemTitle>
