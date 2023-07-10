@@ -314,9 +314,9 @@
   "Should we enable Official Collections?"
   :official-collections)
 
-(define-premium-feature ^{:added "0.41.0"} enable-snippet-folders?
-  "Should we enable Snippet folders?"
-  :snippet-folders)
+(define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
+  "Should we enable Snippet collections"
+  :snippet-collections)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"
