@@ -491,6 +491,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE, SAVED_QUESTIONS_DATABASE]}
         hasNestedQueriesEnabled
+        hasTableSearch
         loaded
         search={[{}]}
         triggerElement={<div />}
@@ -505,7 +506,7 @@ describe("DataSelector", () => {
   it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", async () => {
     renderWithProviders(
       <DataSelector
-        steps={["BUCKET"]}
+        steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE]}
         hasNestedQueriesEnabled
