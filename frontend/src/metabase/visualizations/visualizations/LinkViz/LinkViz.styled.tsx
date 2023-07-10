@@ -4,16 +4,17 @@ import Link from "metabase/core/components/Link";
 import { Icon } from "metabase/core/components/Icon";
 import RecentsList from "metabase/nav/components/RecentsList";
 
-export const DisplayLinkCardWrapper = styled.div`
+export const DisplayLinkCardWrapper = styled.div<{ fade?: boolean }>`
   padding: 0 0.5rem;
   display: flex;
   width: 100%;
   height: 100%;
   pointer-events: all;
   align-items: center;
+  opacity: ${({ fade }) => (fade ? 0.25 : 1)};
 `;
 
-export const EditLinkCardWrapper = styled.div`
+export const EditLinkCardWrapper = styled.div<{ fade?: boolean }>`
   padding: 0 1rem;
   display: flex;
   flex-direction: column;
@@ -21,6 +22,7 @@ export const EditLinkCardWrapper = styled.div`
   width: 100%;
   height: 100%;
   pointer-events: all;
+  opacity: ${({ fade }) => (fade ? 0.25 : 1)};
 `;
 
 export const CardLink = styled(Link)`
