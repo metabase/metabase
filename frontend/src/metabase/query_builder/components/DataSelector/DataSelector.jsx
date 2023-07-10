@@ -496,7 +496,7 @@ export class UnconnectedDataSelector extends Component {
   };
 
   hasSavedQuestions = () => {
-    return this.getDatabases().some(database => database.is_saved_questions);
+    return this.state.databases.some(database => database.is_saved_questions);
   };
 
   getDatabases = () => {
