@@ -6,8 +6,8 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 if (hasPremiumFeature("advanced_config")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-    updateIn(sections, ["general", "settings"], settings => {
-      const index = settings.findIndex(({ key }) => key === "admin-email");
+    updateIn(sections, ["email", "settings"], settings => {
+      const index = settings.findIndex(({ key }) => key === "email-reply-to");
 
       return [
         ..._.head(settings, index + 1),
