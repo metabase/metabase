@@ -8,10 +8,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
-const TEST_STRUCTURED_CARD = createMockCard();
-const TEST_NATIVE_CARD = createMockNativeCard();
-
-const iconList = [
+const ICON_INFO = [
   { label: "bookmark icon", tooltipText: "Bookmark" },
   { label: "info icon", tooltipText: "More info" },
   {
@@ -19,6 +16,15 @@ const iconList = [
     tooltipText: "Move, archive, and more...",
   },
 ];
+
+const ICON_CARDS = [
+  createMockCard({ name: "GUI" }),
+  createMockNativeCard({ name: "SQL" }),
+];
+
+const ICON_CASES = ICON_CARDS.flatMap(card =>
+  ICON_INFO.map(details => ({ ...details, card })),
+);
 
 function setup({ card }: { card: Card }) {
   const state = createMockState({
@@ -47,23 +53,17 @@ function setup({ card }: { card: Card }) {
 }
 
 describe("QuestionActions", () => {
-  ["structured", "native"].forEach(queryType => {
-    iconList.forEach(({ label, tooltipText }) => {
-      it(`should display the "${label}" icon with the "${tooltipText}" tooltip for ${queryType} questions`, async () => {
-        setup({
-          card:
-            queryType === "structured"
-              ? TEST_STRUCTURED_CARD
-              : TEST_NATIVE_CARD,
-        });
+  it.each(ICON_CASES)(
+    `should display the "$label" icon with the "$tooltipText" tooltip for $card.name questions`,
+    async ({ label, tooltipText, card }) => {
+      setup({ card });
 
-        await userEvent.hover(screen.getByRole("button", { name: label }));
-        const tooltip = screen.getByRole("tooltip", { name: tooltipText });
-        expect(tooltip).toHaveAttribute("data-placement", "top");
-        expect(tooltip).toHaveTextContent(tooltipText);
-      });
-    });
-  });
+      await userEvent.hover(screen.getByRole("button", { name: label }));
+      const tooltip = screen.getByRole("tooltip", { name: tooltipText });
+      expect(tooltip).toHaveAttribute("data-placement", "top");
+      expect(tooltip).toHaveTextContent(tooltipText);
+    },
+  );
 
   it("should allow to edit the model only with write permissions", () => {
     setup({
