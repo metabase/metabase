@@ -44,10 +44,11 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: t`When enabled, users can additionally log in with email and password.`,
       type: "boolean",
       getHidden: settings =>
-        !settings["google-auth-enabled"] &&
-        !settings["ldap-enabled"] &&
-        !settings["saml-enabled"] &&
-        !settings["jwt-enabled"],
+        !hasPremiumFeature("disable-password-login") ||
+        (!settings["google-auth-enabled"] &&
+          !settings["ldap-enabled"] &&
+          !settings["saml-enabled"] &&
+          !settings["jwt-enabled"]),
     },
     {
       key: "send-new-sso-user-admin-email?",
