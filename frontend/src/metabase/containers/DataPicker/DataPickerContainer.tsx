@@ -1,71 +1,18 @@
 import { useCallback, useMemo } from "react";
 import { useMount } from "react-use";
 
-import { getHasDataAccess } from "metabase/selectors/data";
-import { getSetting } from "metabase/selectors/settings";
-
-import { useSelector } from "metabase/lib/redux";
-
 import type { DatabaseId } from "metabase-types/api";
-import {
-  useDatabaseListQuery,
-  useSearchListQuery,
-} from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-import type { DataPickerDataType, DataPickerProps } from "./types";
-
 import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
-import { DEFAULT_DATA_PICKER_FILTERS, getDataTypes } from "./utils";
-
 import DataPickerView from "./DataPickerView";
-
-const useDataPickerConfig = () => {
-  const {
-    data: allDatabases = [],
-    error: databasesError,
-    isLoading: areDatabasesLoading,
-  } = useDatabaseListQuery({ query: { saved: true } });
-  const {
-    data: models,
-    error: hasModelsError,
-    isLoading: isHasModelsLoading,
-  } = useSearchListQuery({ query: { models: "dataset", limit: 1 } });
-
-  const databases = useMemo(
-    () => allDatabases.filter(database => !database.is_saved_questions),
-    [allDatabases],
-  );
-
-  const hasModels = models ? models.length > 0 : false;
-  const hasSavedQuestions = databases.some(
-    database => database.is_saved_questions,
-  );
-  const hasNestedQueriesEnabled = useSelector(state =>
-    getSetting(state, "enable-nested-queries"),
-  );
-
-  const dataTypes = useMemo(() => {
-    return getDataTypes({
-      hasModels,
-      hasSavedQuestions,
-      hasNestedQueriesEnabled,
-    });
-  }, [hasModels, hasSavedQuestions, hasNestedQueriesEnabled]);
-
-  return {
-    databases: allDatabases,
-    dataTypes,
-    hasDataAccess: getHasDataAccess(allDatabases),
-    error: databasesError || hasModelsError,
-    isLoading: areDatabasesLoading || isHasModelsLoading,
-  };
-};
+import type { DataPickerDataType, DataPickerProps } from "./types";
+import { useDataPickerConfig } from "./useDataPickerConfig";
+import { DEFAULT_DATA_PICKER_FILTERS } from "./utils";
 
 function DataPicker({
   value,
