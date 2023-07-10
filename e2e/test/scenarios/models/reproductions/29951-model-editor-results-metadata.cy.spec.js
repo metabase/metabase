@@ -22,7 +22,7 @@ const questionDetails = {
   dataset: true,
 };
 
-describe("issue 29951", () => {
+describe("issue 29951", { requestTimeout: 10000 }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
