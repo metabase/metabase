@@ -1,4 +1,7 @@
 import {
+  assertDescendantNotOverflowsContainer,
+  assertIsEllipsified,
+  assertIsNotEllipsified,
   cypressWaitAll,
   openNavigationSidebar,
   popover,
@@ -508,41 +511,4 @@ const assertDescendantsNotOverflowDashcards = descendantsSelector => {
       );
     });
   });
-};
-
-const assertDescendantNotOverflowsContainer = (
-  descendant,
-  container,
-  message,
-) => {
-  const containerRect = container.getBoundingClientRect();
-  const descendantRect = descendant.getBoundingClientRect();
-
-  if (descendantRect.height === 0 || descendantRect.width === 0) {
-    return;
-  }
-
-  expect(descendantRect.bottom, `${message} bottom`).to.be.lte(
-    containerRect.bottom,
-  );
-  expect(descendantRect.top, `${message} top`).to.be.gte(containerRect.top);
-  expect(descendantRect.left, `${message} left`).to.be.gte(containerRect.left);
-  expect(descendantRect.right, `${message} right`).to.be.lte(
-    containerRect.right,
-  );
-};
-
-const assertIsEllipsified = element => {
-  expect(isEllipsified(element), "is ellipsified").to.equal(true);
-};
-
-const assertIsNotEllipsified = element => {
-  expect(isEllipsified(element), "is ellipsified").to.equal(false);
-};
-
-const isEllipsified = element => {
-  return (
-    element.scrollHeight > element.clientHeight ||
-    element.scrollWidth > element.clientWidth
-  );
 };

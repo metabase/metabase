@@ -45,16 +45,13 @@ import {
   canUseCardEndpoints,
   getTokenFieldPlaceholder,
 } from "./utils";
+import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 
 const MAX_SEARCH_RESULTS = 100;
 
 const fieldValuesWidgetPropTypes = {
   addRemappings: PropTypes.func,
   expand: PropTypes.bool,
-};
-
-const optionsMessagePropTypes = {
-  message: PropTypes.string.isRequired,
 };
 
 const mapDispatchToProps = {
@@ -442,31 +439,24 @@ const LoadingState = () => (
 );
 
 const NoMatchState = ({ fields }) => {
-  if (fields.length > 1) {
-    // if there is more than one field, don't name them
-    return <OptionsMessage message={t`No matching result`} />;
+  if (fields.length === 1) {
+    const [{ display_name }] = fields;
+
+    return (
+      <OptionsMessage>
+        {jt`No matching ${(
+          <StyledEllipsified>{display_name}</StyledEllipsified>
+        )} found.`}
+      </OptionsMessage>
+    );
   }
-  const [{ display_name }] = fields;
-  return (
-    <OptionsMessage
-      message={jt`No matching ${(
-        <strong>&nbsp;{display_name}&nbsp;</strong>
-      )} found.`}
-    />
-  );
+
+  return <OptionsMessage>{t`No matching result`}</OptionsMessage>;
 };
 
 const EveryOptionState = () => (
-  <OptionsMessage
-    message={t`Including every option in your filter probably won’t do much…`}
-  />
+  <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
 );
-
-const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4">{message}</div>
-);
-
-OptionsMessage.propTypes = optionsMessagePropTypes;
 
 export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);
 
@@ -523,7 +513,7 @@ function renderOptions({
   }
 }
 
-export function renderValue(fields, formatOptions, value, options) {
+function renderValue(fields, formatOptions, value, options) {
   return (
     <ValueComponent
       value={value}
