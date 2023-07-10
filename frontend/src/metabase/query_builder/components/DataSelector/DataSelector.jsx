@@ -180,8 +180,7 @@ const DataSelector = _.compose(
         entityQuery: { include: "tables" },
       }),
       hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
-      hasNestedQueriesEnabled: state =>
-        getSetting(state, "enable-nested-queries"),
+      hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
     }),
     {
       fetchDatabases: databaseQuery =>
