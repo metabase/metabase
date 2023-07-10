@@ -8,7 +8,7 @@ import { setup, SetupOpts } from "./setup";
 const setupPremium = (opts?: SetupOpts) => {
   setup({
     ...opts,
-    tokenFeatures: createMockTokenFeatures({ content_management: true }),
+    tokenFeatures: createMockTokenFeatures({ official_collections: true }),
     hasEnterprisePlugins: true,
   });
 };

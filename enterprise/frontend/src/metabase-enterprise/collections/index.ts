@@ -15,7 +15,7 @@ import {
 } from "./constants";
 import { isRegularCollection } from "./utils";
 
-if (hasPremiumFeature("content_management")) {
+if (hasPremiumFeature("official_collections")) {
   PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
 
   PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
