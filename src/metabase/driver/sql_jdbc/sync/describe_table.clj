@@ -414,27 +414,58 @@
                                         (false? (:json_unfolding existing-field))))]
         (remove should-not-unfold? json-fields)))))
 
+(defn- sample-json-row-honey-sql
+  "Return a hoenysql used to get row sample to describe json columns.
+
+  If the talbe has a PK, try to fetch both first and last rows (see ##25744).
+  Else fetch the first n rows only"
+  [driver table-identifier json-field-names pk-identifier]
+  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+    (let [pk-expr          (sql.qp/maybe-wrap-unaliased-expr pk-identifier)
+          table-expr       (sql.qp/maybe-wrap-unaliased-expr table-identifier)
+          json-field-names (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)]
+      (if pk-identifier
+        {:select json-field-names
+         :from   [table-expr]
+         ;; mysql doesn't support limit in where, so we're using inner join here
+         :join  [[{:union [{:nest {:select   [pk-expr]
+                                   :from     [table-expr]
+                                   :order-by [[pk-expr :asc]]
+                                   :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
+                           {:nest {:select   [pk-expr]
+                                   :from     [table-expr]
+                                   :order-by [[pk-expr :desc]]
+                                   :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
+                  :result]
+                 [:=
+                  (sql.qp/maybe-wrap-unaliased-expr (hx/identifier :field :result :id))
+                  (hx/identifier :field table-identifier :id)]]}
+        {:select json-field-names
+         :from   [table-expr]
+         :limit  metadata-queries/nested-field-sample-limit}))))
+
 (defn- describe-json-fields
-  [driver jdbc-spec table json-fields]
+  [driver jdbc-spec table json-fields pks]
   (sql.qp/with-driver-honey-sql-version driver
-    (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
-      (let [table-identifier-info [(:schema table) (:name table)]
-            json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
-            table-identifier (apply hx/identifier :table table-identifier-info)
-            sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
-                                                             :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
-                                                             :limit  metadata-queries/nested-field-sample-limit})
-            query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})
-            field-types      (transduce describe-json-xform describe-json-rf query)
-            fields           (field-types->fields field-types)]
-        (if (> (count fields) max-nested-field-columns)
-          (do
-            (log/warn
-              (format
-                "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-                max-nested-field-columns))
-            (set (take max-nested-field-columns fields)))
-          fields)))))
+    (let [table-identifier-info [(:schema table) (:name table)]
+          json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
+          table-identifier (apply hx/identifier :table table-identifier-info)
+          pk-identifier    (when-not (empty? pks)
+                             (apply hx/identifier :field (into table-identifier-info [(first pks)])))
+          sql-args         (sql.qp/format-honeysql
+                             driver
+                             (sample-json-row-honey-sql driver table-identifier json-field-names pk-identifier))
+          query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})
+          field-types      (transduce describe-json-xform describe-json-rf query)
+          fields           (field-types->fields field-types)]
+      (if (> (count fields) max-nested-field-columns)
+        (do
+          (log/warn
+            (format
+              "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+              max-nested-field-columns))
+          (set (take max-nested-field-columns fields)))
+        fields))))
 
 ;; The name's nested field columns but what the people wanted (issue #708)
 ;; was JSON so what they're getting is JSON.
@@ -446,7 +477,15 @@
       jdbc-spec
       nil
       (fn [^Connection conn]
-        (let [unfold-json-fields (table->unfold-json-fields driver conn table)]
+        (let [unfold-json-fields (table->unfold-json-fields driver conn table)
+              pks                (get-table-pks driver conn (:name database) table)]
           (if (empty? unfold-json-fields)
             #{}
-            (describe-json-fields driver jdbc-spec table unfold-json-fields)))))))
+            (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))
+
+(comment
+  (sql-jdbc.sync.interface/describe-nested-field-columns
+    :postgres
+    (t2/select-one :model/Database :name "json")
+    (t2/select-one :model/Table :name "json" :db_id
+                   (:id (t2/select-one :model/Database :name "json")))))

@@ -1,31 +1,32 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table-test
   (:require
-   [cheshire.core :as json]
-   [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
-   [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.driver.mysql-test :as mysql-test]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
-   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-   [metabase.models.table :refer [Table]]
-   [metabase.sync :as sync]
-   [metabase.test :as mt]
-   [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+    [cheshire.core :as json]
+    [clojure.java.jdbc :as jdbc]
+    [clojure.string :as str]
+    [clojure.test :refer :all]
+    [metabase.db.metadata-queries :as metadata-queries]
+    [metabase.driver :as driver]
+    [metabase.driver.mysql-test :as mysql-test]
+    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+    [metabase.driver.sql-jdbc.sync.describe-table
+     :as sql-jdbc.describe-table]
+    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+    [metabase.models.table :refer [Table]]
+    [metabase.sync :as sync]
+    [metabase.test :as mt]
+    [metabase.test.data.one-off-dbs :as one-off-dbs]
+    [metabase.util :as u]
+    [toucan2.core :as t2]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
   all of them.)"
   []
   (set
-   (filter
-    #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
-    (descendants driver/hierarchy :sql-jdbc))))
+    (filter
+      #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
+      (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest describe-table-test
   (is (= {:name "VENUES",
@@ -162,16 +163,16 @@
         (mt/dataset json
           (let [table (t2/select-one Table :id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
-             driver/*driver*
-             (mt/db)
-             nil
-             (fn [^java.sql.Connection conn]
-               (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
-                     json-field (first (filter #(= (:name %) "json_bit") fields))
-                     text-field (first (filter #(= (:name %) "bloop") fields))]
-                 (is (= :details-only
-                        (:visibility-type json-field)))
-                 (is (nil? (:visibility-type text-field))))))))))))
+              driver/*driver*
+              (mt/db)
+              nil
+              (fn [^java.sql.Connection conn]
+                (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
+                      json-field (first (filter #(= (:name %) "json_bit") fields))
+                      text-field (first (filter #(= (:name %) "bloop") fields))]
+                  (is (= :details-only
+                         (:visibility-type json-field)))
+                  (is (nil? (:visibility-type text-field))))))))))))
 
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
@@ -346,6 +347,66 @@
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "myint"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
-                  driver/*driver*
-                  (mt/db)
-                  (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+                   driver/*driver*
+                   (mt/db)
+                   (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+
+(mt/defdataset json-int-turn-string
+  "Used for testing mysql json value unwrapping"
+  [["json_without_pk"
+    [{:field-name "json_col" :base-type :type/JSON}]
+    [["{\"int_turn_string\":1}"]
+     ["{\"int_turn_string\":2}"]
+     ["{\"int_turn_string\":3}"]
+     ["{\"int_turn_string\":4}"]
+     ["{\"int_turn_string\":5}"]
+     ;; last row turn to a string
+     ["{\"int_turn_string\":\"6\"}"]]]
+   ["json_with_pk"
+    [{:field-name "json_col" :base-type :type/JSON}]
+    [["{\"int_turn_string\":1}"]
+     ["{\"int_turn_string\":2}"]
+     ["{\"int_turn_string\":3}"]
+     ["{\"int_turn_string\":4}"]
+     ["{\"int_turn_string\":5}"]
+     ;; last row turn to a string
+     ["{\"int_turn_string\":\"6\"}"]]]])
+
+(deftest json-fetch-last-on-table-with-ids-test
+  (mt/test-drivers #{:postgres}
+    (let [original-get-table-pks sql-jdbc.describe-table/get-table-pks]
+      ;; all table defined by `mt/defdataset` will have an pk column my default
+      ;; so we need a little trick to test case that a table doesn't have a pk
+      (with-redefs [sql-jdbc.describe-table/get-table-pks      (fn [driver conn db-name-or-nil table]
+                                                                 (if (= (:name table) "json_without_pk")
+                                                                   #{}
+                                                                  (original-get-table-pks driver conn db-name-or-nil table)))
+                    metadata-queries/nested-field-sample-limit 4]
+        (when-not (mysql-test/is-mariadb? driver/*driver* (mt/id))
+          (mt/dataset json-int-turn-string
+            (sync/sync-database! (mt/db))
+            (testing "if table has an pk, we fetch both first and last rows thus detect the change in type"
+             (is (= #{{:name              "json_col → int_turn_string"
+                       :database-type     "text"
+                       :base-type         :type/Text
+                       :database-position 0
+                       :json-unfolding    false
+                       :visibility-type   :normal
+                       :nfc-path          [:json_col "int_turn_string"]}}
+                    (sql-jdbc.sync/describe-nested-field-columns
+                      driver/*driver*
+                      (mt/db)
+                      (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
+
+            (testing "if table doesn't have pk, we fails to detect the change in type but it still syncable"
+             (is (= #{{:name              "json_col → int_turn_string"
+                       :database-type     "bigint"
+                       :base-type         :type/Integer
+                       :database-position 0
+                       :json-unfolding    false
+                       :visibility-type   :normal
+                       :nfc-path          [:json_col "int_turn_string"]}}
+                    (sql-jdbc.sync/describe-nested-field-columns
+                      driver/*driver*
+                      (mt/db)
+                      (t2/select-one Table :db_id (mt/id) :name "json_without_pk")))))))))))
