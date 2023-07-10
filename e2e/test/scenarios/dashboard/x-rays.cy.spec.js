@@ -6,6 +6,9 @@ import {
   visualize,
   startNewQuestion,
   main,
+  addOrUpdateDashboardCard,
+  visitDashboardAndCreateTab,
+  popover,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -225,5 +228,34 @@ describe("scenarios > x-rays", () => {
     cy.findByText("State is GA");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("463");
+  });
+
+  it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    return cy.createDashboard(name).then(({ body: { id: dashboard_id } }) => {
+      addOrUpdateDashboardCard({
+        card_id: 3,
+        dashboard_id,
+        card: {
+          row: 0,
+          col: 0,
+          size_x: 24,
+          size_y: 10,
+          visualization_settings: {},
+        },
+      });
+
+      visitDashboardAndCreateTab({ dashboardId: dashboard_id });
+      cy.findByRole("tab", { name: "Tab 1" }).click();
+
+      cy.get("circle").eq(0).click({ force: true });
+      popover().findByText("Automatic insights…").click();
+      popover().findByText("X-ray").click();
+      cy.wait("@dataset", { timeout: 30000 });
+
+      // Ensure charts actually got rendered
+      cy.get("text.x-axis-label").contains("Created At");
+    });
   });
 });
