@@ -366,8 +366,11 @@ describeEE("impersonated permission", () => {
 });
 
 function savePermissions() {
-  cy.get("main").findByText("Save changes").click();
+  cy.findByTestId("edit-bar").button("Save changes").click();
   cy.findByRole("dialog").findByText("Yes").click();
+  cy.findByTestId("edit-bar")
+    .findByText("You've made changes to permissions.")
+    .should("not.exist");
 }
 
 function selectImpersonatedAttribute(attribute) {
