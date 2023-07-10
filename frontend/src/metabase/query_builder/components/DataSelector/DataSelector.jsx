@@ -11,6 +11,7 @@ import ListSearchField from "metabase/components/ListSearchField";
 import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { DATA_BUCKET } from "metabase/containers/DataPicker";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -41,8 +42,6 @@ import {
   EmptyStateContainer,
   TableSearchContainer,
 } from "./DataSelector.styled";
-
-import { DATA_BUCKET } from "./constants";
 
 import "./DataSelector.css";
 

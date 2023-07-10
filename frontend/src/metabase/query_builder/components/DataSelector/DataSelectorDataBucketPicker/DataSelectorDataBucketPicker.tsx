@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { IconName } from "metabase/core/components/Icon";
-import { DATA_BUCKET } from "../constants";
+import { DATA_BUCKET } from "metabase/containers/DataPicker";
 
 import {
   DataBucketListItemContainer as ItemContainer,
