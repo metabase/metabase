@@ -190,6 +190,15 @@
          :host                          "127.0.0.1"
          :port                          1234}))))
 
+(deftest connects-with-default-tunnel-port-test
+  (with-redefs [ssh/default-ssh-tunnel-port ssh-mock-server-with-password-port]
+    (#'ssh/start-ssh-tunnel!
+     {:tunnel-user ssh-username
+      :tunnel-host "127.0.0.1"
+      :tunnel-pass ssh-password
+      :host        "127.0.0.1"
+      :port        1234})))
+
 (deftest ssh-tunnel-works
   (testing "ssh tunnel can properly tunnel"
     (with-open [server (doto (ServerSocket. 0) ; 0 -- let ServerSocket pick a random port
