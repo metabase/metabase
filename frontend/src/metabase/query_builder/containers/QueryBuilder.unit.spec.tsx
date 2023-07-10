@@ -214,46 +214,48 @@ const setup = async ({
 };
 
 describe("QueryBuilder", () => {
-  describe("renders structured queries", () => {
-    it("renders a structured question in the simple mode", async () => {
-      await setup();
+  describe("rendering", () => {
+    describe("renders structured queries", () => {
+      it("renders a structured question in the simple mode", async () => {
+        await setup();
 
-      expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
-    });
-
-    it("renders a structured question in the notebook mode", async () => {
-      await setup({
-        initialRoute: `/question/${TEST_CARD.id}/notebook`,
+        expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
       });
 
-      expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
-    });
-  });
-
-  describe("renders the row count regardless of visualization type", () => {
-    const dataset = TEST_MODEL_DATASET;
-    const cards = [
-      createMockCard({ ...TEST_CARD_VISUALIZATION, display: "table" }),
-      createMockCard({ ...TEST_CARD_VISUALIZATION, display: "line" }),
-    ];
-
-    it.each(cards)(
-      `renders the row count in "$display" visualization`,
-      async card => {
+      it("renders a structured question in the notebook mode", async () => {
         await setup({
-          card,
-          dataset,
+          initialRoute: `/question/${TEST_CARD.id}/notebook`,
         });
 
-        await waitFor(() => {
+        expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+      });
+    });
+
+    describe("renders the row count regardless of visualization type", () => {
+      const dataset = TEST_MODEL_DATASET;
+      const cards = [
+        createMockCard({ ...TEST_CARD_VISUALIZATION, display: "table" }),
+        createMockCard({ ...TEST_CARD_VISUALIZATION, display: "line" }),
+      ];
+
+      it.each(cards)(
+        `renders the row count in "$display" visualization`,
+        async card => {
+          await setup({
+            card,
+            dataset,
+          });
+
+          await waitFor(() => {
+            const element = screen.getByTestId("question-row-count");
+            expect(element).toBeInTheDocument();
+          });
+
           const element = screen.getByTestId("question-row-count");
-          expect(element).toBeInTheDocument();
-        });
-
-        const element = screen.getByTestId("question-row-count");
-        expect(element).toBeVisible();
-      },
-    );
+          expect(element).toBeVisible();
+        },
+      );
+    });
   });
 
   describe("beforeunload events", () => {
