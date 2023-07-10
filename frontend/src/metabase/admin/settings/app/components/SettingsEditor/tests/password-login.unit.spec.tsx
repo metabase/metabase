@@ -20,7 +20,7 @@ const setupEnterprise = (opts?: SetupOpts) => {
 describe("SettingsEditor", () => {
   it("should allow to toggle off password login", async () => {
     setupEnterprise({
-      definitions: [
+      settings: [
         createMockSettingDefinition({ key: "enable-password-login" }),
         createMockSettingDefinition({ key: "google-auth-enabled" }),
       ],

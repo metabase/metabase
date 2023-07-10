@@ -24,7 +24,7 @@ import SettingsEditor from "../SettingsEditor";
 export interface SetupOpts {
   initialRoute?: string;
   currentUser?: User;
-  definitions?: SettingDefinition[];
+  settings?: SettingDefinition[];
   settingValues?: Settings;
   tokenFeatures?: TokenFeatures;
   hasEnterprisePlugins?: boolean;
@@ -33,17 +33,17 @@ export interface SetupOpts {
 export const setup = ({
   initialRoute = "/admin/settings",
   currentUser = createMockUser({ is_superuser: true }),
-  definitions = [],
+  settings = [],
   settingValues = createMockSettings(),
   tokenFeatures = createMockTokenFeatures(),
   hasEnterprisePlugins = false,
 }: SetupOpts = {}) => {
-  const settings = createMockSettings({
+  const settingValuesWithToken = {
     ...settingValues,
     "token-features": tokenFeatures,
-  });
+  };
   const state = createMockState({
-    settings: mockSettings(settings),
+    settings: mockSettings(settingValuesWithToken),
     currentUser,
   });
 
@@ -51,8 +51,8 @@ export const setup = ({
     setupEnterprisePlugins();
   }
 
-  setupSettingsEndpoints(definitions);
-  setupPropertiesEndpoints(settings);
+  setupSettingsEndpoints(settings);
+  setupPropertiesEndpoints(settingValuesWithToken);
 
   renderWithProviders(
     <Route path="/admin/settings">

@@ -20,7 +20,7 @@ const setupEnterprise = (opts?: SetupOpts) => {
 describe("SettingsEditor", () => {
   it("should allow to configure the origin for full-app embedding", async () => {
     setupEnterprise({
-      definitions: [
+      settings: [
         createMockSettingDefinition({ key: "enable-embedding" }),
         createMockSettingDefinition({ key: "embedding-app-origin" }),
       ],

@@ -13,7 +13,7 @@ const setupEnterprise = (opts?: SetupOpts) => {
 describe("SettingsEditor", () => {
   it("should not allow to configure the origin for full-app embedding", async () => {
     setupEnterprise({
-      definitions: [
+      settings: [
         createMockSettingDefinition({ key: "enable-embedding" }),
         createMockSettingDefinition({ key: "embedding-app-origin" }),
       ],
@@ -28,7 +28,7 @@ describe("SettingsEditor", () => {
 
   it("should not allow to toggle off password login", async () => {
     setupEnterprise({
-      definitions: [
+      settings: [
         createMockSettingDefinition({ key: "enable-password-login" }),
         createMockSettingDefinition({ key: "google-auth-enabled" }),
       ],
