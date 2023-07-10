@@ -61,12 +61,49 @@ export const createMockActionDashboardCard = (
   ...opts,
 });
 
+export const createMockTextDashboardCard = (
+  opts?: Partial<DashboardOrderedCard> & { text?: string },
+): DashboardOrderedCard => ({
+  ...createMockDashboardCardWithVirtualCard({
+    visualization_settings: {
+      text: opts?.text ?? "Body Text",
+      virtual_card: {
+        archived: false,
+        dataset_query: {},
+        display: "text",
+        name: "",
+        visualization_settings: {},
+      } as VirtualCard,
+    },
+  }),
+  ...opts,
+});
+
+export const createMockHeadingDashboardCard = (
+  opts?: Partial<DashboardOrderedCard> & { text?: string },
+): DashboardOrderedCard => ({
+  ...createMockDashboardCardWithVirtualCard({
+    visualization_settings: {
+      text: opts?.text ?? "Heading Text",
+      virtual_card: {
+        archived: false,
+        dataset_query: {},
+        display: "heading",
+        name: "",
+        visualization_settings: {},
+      } as VirtualCard,
+    },
+  }),
+  ...opts,
+});
+
 export const createMockDashboardCardWithVirtualCard = (
   opts?: Partial<DashboardOrderedCard>,
 ): DashboardOrderedCard => ({
   ...createMockDashboardOrderedCard(),
   card: {
     query_average_duration: null,
+    display: opts?.visualization_settings?.virtual_card?.display ?? "text",
   } as Card,
   card_id: null,
   visualization_settings: {

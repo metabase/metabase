@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import * as React from "react";
 import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
 
@@ -51,7 +50,7 @@ function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
 }
 
-interface DashCardProps {
+export interface DashCardProps {
   dashboard: Dashboard;
   dashcard: DashboardOrderedCard & { justAdded?: boolean };
   gridItemWidth: number;
