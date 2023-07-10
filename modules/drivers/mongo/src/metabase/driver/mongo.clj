@@ -302,6 +302,10 @@
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
+(defmethod driver/database-supports? [:mongo :native-requires-specified-collection]
+  [_driver _feature _db]
+  true)
+
 (defmethod driver/mbql->native :mongo
   [_ query]
   (mongo.qp/mbql->native query))

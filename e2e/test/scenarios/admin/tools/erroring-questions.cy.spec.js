@@ -1,4 +1,4 @@
-import { restore, isEE } from "e2e/support/helpers";
+import { restore, isPremium } from "e2e/support/helpers";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
 
@@ -26,13 +26,13 @@ const brokenQuestionDetails = {
 // UDATE:
 // We need to skip this completely! CI on `master` is almost constantly red.
 // TODO:
-// Once the underlying problem with H2 is solved, replace `describe.skip` with `describeEE`.
+// Once the underlying problem with H2 is solved, replace `describe.skip` with `describePremium`.
 describe.skip(
   "admin > tools > erroring questions ",
   { tags: "@quarantine" },
   () => {
     beforeEach(() => {
-      cy.onlyOn(isEE);
+      cy.onlyOn(isPremium);
 
       restore();
       cy.signInAsAdmin();

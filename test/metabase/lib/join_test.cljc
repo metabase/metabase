@@ -495,6 +495,14 @@
                  {:short :<=}
                  {:short :!=}]
                 (lib/join-condition-operators lib.tu/venues-query lhs rhs)))
+        (is (=? [{:short-name "=", :display-name "=", :long-display-name "Is"}
+                 {:short-name ">", :display-name ">", :long-display-name "Greater than"}
+                 {:short-name "<", :display-name "<", :long-display-name "Less than"}
+                 {:short-name ">=", :display-name "≥", :long-display-name "Greater than or equal to"}
+                 {:short-name "<=", :display-name "≤", :long-display-name "Less than or equal to"}
+                 {:short-name "!=", :display-name "≠", :long-display-name "Is not"}]
+                (map (partial lib/display-info query)
+                     (lib/join-condition-operators lib.tu/venues-query lhs rhs))))
         (is (= (lib/join-condition-operators lib.tu/venues-query lhs rhs)
                (lib/join-condition-operators lib.tu/venues-query -1 lhs rhs))))
       (testing `lib/display-info

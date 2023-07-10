@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -16,10 +17,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util :as u]
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.filter])))
 
@@ -175,153 +174,6 @@
     stage-number :- [:maybe :int]]
    (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
-(defmethod lib.metadata.calculation/display-name-method :operator/filter
-  [_query _stage-number {:keys [display-name]} _display-name-style]
-  display-name)
-
-(defmethod lib.metadata.calculation/display-info-method :operator/filter
-  [_query _stage-number {:keys [display-name default] short-name :short}]
-  (cond-> {:short-name   (u/qualified-name short-name)
-           :display-name display-name}
-    default (assoc :default true)))
-
-(defn operator-def
-  "Get a filter operator definition for the MBQL filter with `tag`, e.g. `:=`. In some cases various tags have alternate
-  display names used for different situations e.g. for numbers vs temporal values; pass in the
-  `alternate-display-name-style` to choose a non-default display-name."
-  ([tag]
-   (operator-def tag nil))
-
-  ([tag alternate-display-name-style]
-   {:lib/type :operator/filter
-    :short    tag
-    :display-name
-    (clojure.core/case tag
-      :=                (clojure.core/case alternate-display-name-style
-                          :equal-to (i18n/tru "Equal to")
-                          (i18n/tru "Is"))
-      :!=               (clojure.core/case alternate-display-name-style
-                          :not-equal-to (i18n/tru "Not equal to")
-                          :excludes     (i18n/tru "Excludes")
-                          (i18n/tru "Is not"))
-      :>                (clojure.core/case alternate-display-name-style
-                          :after (i18n/tru "After")
-                          (i18n/tru "Greater than"))
-      :<                (clojure.core/case alternate-display-name-style
-                          :before (i18n/tru "Before")
-                          (i18n/tru "Less than"))
-      :between          (i18n/tru "Between")
-      :>=               (i18n/tru "Greater than or equal to")
-      :<=               (i18n/tru "Less than or equal to")
-      :is-null          (clojure.core/case alternate-display-name-style
-                          :is-empty (i18n/tru "Is empty")
-                          (i18n/tru "Is null"))
-      :not-null         (clojure.core/case alternate-display-name-style
-                          :not-empty (i18n/tru "Not empty")
-                          (i18n/tru "Not null"))
-      :is-empty         (i18n/tru "Is empty")
-      :not-empty        (i18n/tru "Not empty")
-      :contains         (i18n/tru "Contains")
-      :does-not-contain (i18n/tru "Does not contain")
-      :starts-with      (i18n/tru "Starts with")
-      :ends-with        (i18n/tru "Ends with")
-      :inside           (i18n/tru "Inside"))}))
-
-(defn- filter-operators
-  "The list of available filter operators.
-   The order of operators is relevant for the front end.
-   There are slight differences between names and ordering for the different base types."
-  [column]
-  ;; this is a function so we don't evaluate it unless we actually return it
-  (letfn [(key-operators []
-            [(operator-def :=)
-             (operator-def :!=)
-             (operator-def :>)
-             (operator-def :<)
-             (operator-def :between)
-             (operator-def :>=)
-             (operator-def :<=)
-             (operator-def :is-null :is-empty)
-             (operator-def :not-null :not-empty)])]
-    ;; The order of these clauses is important since we want to match the most relevant type
-    (condp lib.types.isa/field-type? column
-      :metabase.lib.types.constants/primary_key
-      (key-operators)
-
-      :metabase.lib.types.constants/foreign_key
-      (key-operators)
-
-      :metabase.lib.types.constants/location
-      [(operator-def :=)
-       (operator-def :!=)
-       (operator-def :is-empty)
-       (operator-def :not-empty)
-       (operator-def :contains)
-       (operator-def :does-not-contain)
-       (operator-def :starts-with)
-       (operator-def :ends-with)]
-
-      :metabase.lib.types.constants/temporal
-      [(operator-def :!= :excludes)
-       (operator-def :=)
-       (operator-def :< :before)
-       (operator-def :> :after)
-       (operator-def :between)
-       (operator-def :is-null :is-empty)
-       (operator-def :not-null :not-empty)]
-
-      :metabase.lib.types.constants/coordinate
-      [(operator-def :=)
-       (operator-def :!=)
-       (operator-def :inside nil)
-       (operator-def :>)
-       (operator-def :<)
-       (operator-def :between)
-       (operator-def :>=)
-       (operator-def :<=)]
-
-      :metabase.lib.types.constants/number
-      [(operator-def := :equal-to)
-       (operator-def :!= :not-equal-to)
-       (operator-def :>)
-       (operator-def :<)
-       (operator-def :between)
-       (operator-def :>=)
-       (operator-def :<=)
-       (operator-def :is-null :is-empty)
-       (operator-def :not-null :not-empty)]
-
-      :metabase.lib.types.constants/string
-      [(operator-def :=)
-       (operator-def :!=)
-       (operator-def :contains)
-       (operator-def :does-not-contain)
-       (operator-def :is-null)
-       (operator-def :not-null)
-       (operator-def :is-empty)
-       (operator-def :not-empty)
-       (operator-def :starts-with)
-       (operator-def :ends-with)]
-
-      :metabase.lib.types.constants/string_like
-      [(operator-def :=)
-       (operator-def :!=)
-       (operator-def :is-null)
-       (operator-def :not-null)
-       (operator-def :is-empty)
-       (operator-def :not-empty)]
-
-      :metabase.lib.types.constants/boolean
-      [(operator-def :=)
-       (operator-def :is-null :is-empty)
-       (operator-def :not-null :not-empty)]
-
-      ;; default
-      [(operator-def :=)
-       (operator-def :!=)
-       (operator-def :is-null)
-       (operator-def :not-null)])))
-
 (def ^:private ColumnWithOperators
   [:merge
    lib.metadata/ColumnMetadata
@@ -356,7 +208,7 @@
    (let [stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
          with-operators (fn [column]
-                          (when-let [operators (clojure.core/not-empty (filter-operators column))]
+                          (when-let [operators (clojure.core/not-empty (lib.filter.operator/filter-operators column))]
                             (assoc column :operators operators)))]
      (clojure.core/not-empty
        (into []
@@ -388,5 +240,5 @@
          ref->col (zipmap (map lib.ref/ref columns) columns)
          col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                    (filter-operators (ref->col col-ref)))
-                      (operator-def op)))))
+                                    (lib.filter.operator/filter-operators (ref->col col-ref)))
+                      (lib.filter.operator/operator-def op)))))

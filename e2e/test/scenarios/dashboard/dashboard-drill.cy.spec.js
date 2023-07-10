@@ -627,11 +627,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ).as("cardQuery");
 
         cy.get(".bar")
-          .eq(14) // August 2017 (Total of 12 reviews, 9 unique days)
+          .eq(14) // August 2023 (Total of 12 reviews, 9 unique days)
           .click({ force: true });
 
         cy.wait("@cardQuery");
-        cy.url().should("include", "2017-08");
+        cy.url().should("include", "2023-08");
         cy.get(".bar").should("have.length", 1);
         // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
         // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
@@ -789,7 +789,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.get(".Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1
-      .contains("1")
+      .contains("3")
       .click();
 
     cy.wait("@dataset").then(xhr => {
