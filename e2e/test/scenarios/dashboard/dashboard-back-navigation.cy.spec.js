@@ -294,7 +294,7 @@ describe(
 
       cy.get("@dashcardQuery.all").should("have.length", 1);
 
-      filterWidget().findByPlaceholderText("sleep").type("5{enter}");
+      filterWidget().findByPlaceholderText("sleep").type("{backspace}5{enter}");
 
       cy.get("@dashcardQuery.all").should("have.length", 2);
 
