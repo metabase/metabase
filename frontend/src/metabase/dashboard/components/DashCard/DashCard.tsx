@@ -50,7 +50,7 @@ function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
 }
 
-interface DashCardProps {
+export interface DashCardProps {
   dashboard: Dashboard;
   dashcard: DashboardOrderedCard & { justAdded?: boolean };
   gridItemWidth: number;

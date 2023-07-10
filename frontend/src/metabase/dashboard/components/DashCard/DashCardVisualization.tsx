@@ -139,6 +139,7 @@ function DashCardVisualization({
             link: t`Link`,
             action: t`Action Button`,
             text: t`Text Card`,
+            heading: t`Heading Card`,
           }[virtualDashcardType] ??
           t`This card does not support click mappings`;
 
