@@ -9,8 +9,8 @@ export const DisplayLinkCardWrapper = styled.div<{ fade?: boolean }>`
   display: flex;
   width: 100%;
   height: 100%;
-  pointer-events: all;
   align-items: center;
+  pointer-events: ${({ fade }) => (fade ? "none" : "all")};
   opacity: ${({ fade }) => (fade ? 0.25 : 1)};
 `;
 
@@ -21,7 +21,7 @@ export const EditLinkCardWrapper = styled.div<{ fade?: boolean }>`
   justify-content: center;
   width: 100%;
   height: 100%;
-  pointer-events: all;
+  pointer-events: ${({ fade }) => (fade ? "none" : "all")};
   opacity: ${({ fade }) => (fade ? 0.25 : 1)};
 `;
 

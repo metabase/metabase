@@ -101,7 +101,7 @@ function LinkViz({
   if (entity) {
     if (isRestrictedLinkEntity(entity)) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper fade={isEditingParameter}>
           <RestrictedEntityDisplay />
         </EditLinkCardWrapper>
       );
