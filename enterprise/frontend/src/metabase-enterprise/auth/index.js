@@ -58,11 +58,11 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => {
         display_name: t`Notify admins of new SSO users`,
         description: t`When enabled, administrators will receive an email the first time a user uses Single Sign-On.`,
         type: "boolean",
-        getHidden: settings =>
-          !settings["google-auth-enabled"] &&
-          !settings["ldap-enabled"] &&
-          !settings["saml-enabled"] &&
-          !settings["jwt-enabled"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["google-auth-enabled"] &&
+          !derivedSettings["ldap-enabled"] &&
+          !derivedSettings["saml-enabled"] &&
+          !derivedSettings["jwt-enabled"],
       },
       {
         key: "session-timeout",
@@ -177,7 +177,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         type: "string",
         required: true,
         autoFocus: true,
-        getHidden: settings => !settings["jwt-enabled"],
+        getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
       },
       {
         key: "jwt-shared-secret",
@@ -185,7 +185,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         type: "text",
         required: true,
         widget: SecretKeyWidget,
-        getHidden: settings => !settings["jwt-enabled"],
+        getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
       },
       {
         key: "jwt-attribute-email",
