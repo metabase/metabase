@@ -1,7 +1,5 @@
-import { t } from "ttag";
-
+import { useDataPickerConfig } from "metabase/containers/DataPicker";
 import { IconName } from "metabase/core/components/Icon";
-import { DATA_BUCKET } from "metabase/containers/DataPicker";
 
 import {
   DataBucketListItemContainer as ItemContainer,
@@ -14,7 +12,6 @@ import {
 } from "./DataSelectorDataBucketPicker.styled";
 
 type DataSelectorDataBucketPickerProps = {
-  buckets: (keyof typeof DATA_BUCKET)[];
   onChangeDataBucket: () => void;
 };
 
@@ -25,37 +22,14 @@ type Bucket = {
   description: string;
 };
 
-type ValueOf<T> = T[keyof T];
-
-const BUCKETS: Record<ValueOf<typeof DATA_BUCKET>, Bucket> = {
-  [DATA_BUCKET.DATASETS]: {
-    id: DATA_BUCKET.DATASETS,
-    icon: "model" as const,
-    name: t`Models`,
-    description: t`The best starting place for new questions.`,
-  },
-  [DATA_BUCKET.RAW_DATA]: {
-    id: DATA_BUCKET.RAW_DATA,
-    icon: "database" as const,
-    name: t`Raw Data`,
-    description: t`Unaltered tables in connected databases.`,
-  },
-  [DATA_BUCKET.SAVED_QUESTIONS]: {
-    id: DATA_BUCKET.SAVED_QUESTIONS,
-    name: t`Saved Questions`,
-    icon: "folder" as const,
-    description: t`Use any question’s results to start a new question.`,
-  },
-};
-
 const DataSelectorDataBucketPicker = ({
-  buckets,
   onChangeDataBucket,
-}: DataSelectorDataBucketPickerProps) => (
-  <List>
-    {buckets
-      .map(bucketId => BUCKETS[bucketId])
-      .map(({ id, icon, name, description }) => (
+}: DataSelectorDataBucketPickerProps) => {
+  const { dataTypes } = useDataPickerConfig();
+
+  return (
+    <List>
+      {dataTypes.map(({ id, icon, name, description }) => (
         <DataBucketListItem
           description={description}
           id={id}
@@ -65,8 +39,9 @@ const DataSelectorDataBucketPicker = ({
           onSelect={onChangeDataBucket}
         />
       ))}
-  </List>
-);
+    </List>
+  );
+};
 
 type DataBucketListItemProps = Bucket & {
   onSelect: () => void;
