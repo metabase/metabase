@@ -7,7 +7,11 @@ const questionDetails = {
   },
 };
 
-describe("issue 28834", () => {
+describe("metabase#28834", () => {
+  // I have a test for saved native questions in `QueryBuilder.unit.spec.tsx`.
+  // Initially, this test was planned as a unit test, but with some technical
+  // difficulties, I've decided to test with Cypress instead.
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

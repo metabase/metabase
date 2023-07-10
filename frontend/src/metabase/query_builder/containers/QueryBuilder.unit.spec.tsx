@@ -461,6 +461,12 @@ describe("QueryBuilder", () => {
   });
 
   describe("downloading results", () => {
+    // I initially planned to test unsaved native (ad-hoc) queries here as well.
+    // But native queries won't run the query on first load, we need to manually
+    // click the run button, but our mock `NativeQueryEditor` doesn't have a run
+    // button wired up, and it's quite hard to do so (I've tried).
+    // So I test that case in Cypress in `28834-modified-native-question.cy.spec.js` instead.
+
     it("should allow downloading results for a native query", async () => {
       const mockDownloadEndpoint = fetchMock.post(
         `/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
