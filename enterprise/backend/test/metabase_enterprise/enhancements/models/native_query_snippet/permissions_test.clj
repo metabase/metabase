@@ -36,7 +36,7 @@
             (test-perms* true)))))
 
     (testing "if EE perms are enabled: "
-      (premium-features-test/with-premium-features #{:enhancements}
+      (premium-features-test/with-premium-features #{:content-management}
         (with-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
           (testing "should be allowed if you have collection perms, native perms for at least one DB, and are not sandboxed"
             (grant-collection-perms!)

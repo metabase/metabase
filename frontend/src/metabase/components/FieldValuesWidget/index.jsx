@@ -1,2 +1,1 @@
-export { default } from "./FieldValuesWidget";
-export * from "./FieldValuesWidget";
+export { default, FieldValuesWidget } from "./FieldValuesWidget";

@@ -10,6 +10,7 @@ import "./shared";
 
 // PLUGINS:
 
+import "./hosting";
 import "./tools";
 import "./sandboxes";
 import "./auth";

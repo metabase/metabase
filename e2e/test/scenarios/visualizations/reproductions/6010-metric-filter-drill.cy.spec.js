@@ -21,7 +21,7 @@ describe("issue 6010", () => {
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At is January, 2018").should("be.visible");
+    cy.findByText("Created At is January, 2024").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total is greater than 150").should("be.visible");
   });

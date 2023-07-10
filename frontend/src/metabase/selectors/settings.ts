@@ -18,6 +18,14 @@ export const getSetting = <T extends SettingKey>(
   key: T,
 ): Settings[T] => getSettings(state)[key];
 
+export const getStoreUrl = (path = "") => {
+  return `https://store.metabase.com/${path}`;
+};
+
+export const getLearnUrl = (path = "") => {
+  return `https://www.metabase.com/learn/${path}`;
+};
+
 interface UpgradeUrlOpts {
   utm_media: string;
 }

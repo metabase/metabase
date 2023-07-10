@@ -16,7 +16,7 @@ import { NotFound } from "metabase/containers/ErrorPages";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import ErrorBoundary from "metabase/ErrorBoundary";
-import SettingsSetting from "../components/SettingsSetting";
+import SettingsSetting from "../../../components/SettingsSetting";
 
 import {
   getSettings,
@@ -26,8 +26,12 @@ import {
   getActiveSection,
   getActiveSectionName,
   getNewVersionAvailable,
-} from "../selectors";
-import { initializeSettings, updateSetting, reloadSettings } from "../settings";
+} from "../../../selectors";
+import {
+  initializeSettings,
+  updateSetting,
+  reloadSettings,
+} from "../../../settings";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -53,7 +57,7 @@ const mapDispatchToProps = dispatch => ({
   dispatch,
 });
 
-class SettingsEditorApp extends Component {
+class SettingsEditor extends Component {
   layout = null; // the reference to AdminLayout
 
   static propTypes = {
@@ -272,4 +276,4 @@ class SettingsEditorApp extends Component {
 export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ activeSection }) => activeSection && activeSection.name),
-)(SettingsEditorApp);
+)(SettingsEditor);
