@@ -7,11 +7,11 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest create-collection-authority-test
+(deftest create-official-collection-test
   (testing "POST /api/collection/:id"
-    (testing "when :content-management is enabled "
-      (premium-features-test/with-premium-features #{:content-management}
-        (testing "Admins add an official collection"
+    (testing "when :official-collections is enabled "
+      (premium-features-test/with-premium-features #{:official-collections}
+        (testing "Admins can add an official collection"
           (mt/with-model-cleanup [:model/Collection]
             (let [resp (mt/user-http-request :crowberto :post 200 "collection" {:name            "An official collection"
                                                                                 :color           "#000000"
@@ -33,20 +33,25 @@
         (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
                (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
                                                                         :color           "#000000"
+                                                                        :authority_level "official"})))))
+
+    (testing "fails to add an official collection if has :content-management feature"
+      (premium-features-test/with-premium-features #{:content-management}
+        (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+               (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
+                                                                        :color           "#000000"
                                                                         :authority_level "official"})))))))
 
 (deftest update-collection-authority-happy-path-test
   (testing "PUT /api/collection/:id"
-    (testing "update authority_level when has :content-management feature"
-      (premium-features-test/with-premium-features #{:content-management}
+    (testing "update authority_level when has :official-collections feature"
+      (premium-features-test/with-premium-features #{:official-collections}
         (testing "requires admin"
           (t2.with-temp/with-temp
             [:model/Collection {id :id} {:authority_level nil}]
             (is (= "official"
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
             (is (= :official (t2/select-one-fn :authority_level :model/Collection id))))
-
-
 
           (testing "but cannot update for personal collection"
             (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
@@ -75,8 +80,8 @@
           (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
                  (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))
 
-    (testing "fails to update if has some premium-features but not :content-management"
-      (premium-features-test/with-premium-features #{:sandboxes}
+    (testing "fails to update if has :content-management feature"
+      (premium-features-test/with-premium-features #{:content-management}
         (t2.with-temp/with-temp
           [:model/Collection {id :id} {:authority_level nil}]
           (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
@@ -85,7 +90,7 @@
 
 (deftest update-collection-authority-backward-compatible-test
   ;; edge cases we need to handle for backwards compatibility see metabase-private#77
-  (testing "backwards-compatible check when doesn't have :content-management feature\n"
+  (testing "backwards-compatible check when doesn't have :official-collections feature\n"
     (premium-features-test/with-premium-features #{}
       (testing "authority_level already set and update payload contains the key but does not change"
         (t2.with-temp/with-temp
@@ -98,3 +103,31 @@
           [:model/Collection {id :id} {}]
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level nil :name "New name"})
           (is (= "New name" (t2/select-one-fn :name :model/Collection id))))))))
+
+(deftest content-management-legacy-does-not-work-for-official-questions-test
+  (t2.with-temp/with-temp
+    [:model/Card {card-id :id} {:name "A question"}
+     :model/Card {model-id :id} {:name "A question" :dataset true}]
+    (testing "can't use verified questions/models if has :official-collections feature"
+      (premium-features-test/with-premium-features #{:official-collections}
+        (is (= "This API endpoint is only enabled if you have a premium token with the :content-management feature."
+               (mt/user-http-request :crowberto :post 402 "moderation-review"
+                                     {:moderated_item_id   card-id
+                                      :moderated_item_type :card
+                                      :status              :verified})))
+        (is (= "This API endpoint is only enabled if you have a premium token with the :content-management feature."
+               (mt/user-http-request :crowberto :post 402 "moderation-review"
+                                     {:moderated_item_id   model-id
+                                      :moderated_item_type :card
+                                      :status              :verified})))))
+
+    (testing "can use verified questions/models if has :content-management feature"
+      (premium-features-test/with-premium-features #{:content-management}
+        (is (pos-int? (:id (mt/user-http-request :crowberto :post 200 "moderation-review"
+                                                 {:moderated_item_id   card-id
+                                                  :moderated_item_type :card
+                                                  :status              :verified}))))
+        (is (pos-int? (:id (mt/user-http-request :crowberto :post 200 "moderation-review"
+                                                 {:moderated_item_id   model-id
+                                                  :moderated_item_type :card
+                                                  :status              :verified}))))))))
