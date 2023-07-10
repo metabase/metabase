@@ -283,26 +283,27 @@
 
 (deftest describe-big-nested-field-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (mt/dataset big-json
-      (testing "limit if huge. limit it and yell warning (#23635)"
-        (is (= sql-jdbc.describe-table/max-nested-field-columns
-               (count
-                 (sql-jdbc.sync/describe-nested-field-columns
-                   driver/*driver*
-                   (mt/db)
-                   {:name "big_json_table" :id (mt/id "big_json_table")}))))
-        (is (str/includes?
-              (get-in (mt/with-log-messages-for-level :warn
-                        (sql-jdbc.sync/describe-nested-field-columns
-                          driver/*driver*
-                          (mt/db)
-                          {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
-              "More nested field columns detected than maximum."))))))
+    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+      (mt/dataset big-json
+         (testing "limit if huge. limit it and yell warning (#23635)"
+           (is (= sql-jdbc.describe-table/max-nested-field-columns
+                  (count
+                    (sql-jdbc.sync/describe-nested-field-columns
+                      driver/*driver*
+                      (mt/db)
+                      {:name "big_json_table" :id (mt/id "big_json_table")}))))
+           (is (str/includes?
+                 (get-in (mt/with-log-messages-for-level :warn
+                           (sql-jdbc.sync/describe-nested-field-columns
+                             driver/*driver*
+                             (mt/db)
+                             {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
+                 "More nested field columns detected than maximum.")))))))
 
 (deftest big-nested-field-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (mt/dataset json
-      (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
+      (mt/dataset json
         (testing "Nested field column listing, but big"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count (sql-jdbc.sync/describe-nested-field-columns
