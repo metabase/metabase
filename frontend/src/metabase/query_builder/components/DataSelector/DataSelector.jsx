@@ -11,7 +11,7 @@ import ListSearchField from "metabase/components/ListSearchField";
 import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { DATA_BUCKET } from "metabase/containers/DataPicker";
+import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -888,9 +888,11 @@ export class UnconnectedDataSelector extends Component {
       case DATA_BUCKET_STEP:
         return (
           <DataBucketPicker
-            hasModels={this.hasDatasets()}
-            hasNestedQueriesEnabled={hasNestedQueriesEnabled}
-            hasSavedQuestions={this.hasSavedQuestions()}
+            dataTypes={getDataTypes({
+              hasModels: this.hasDatasets(),
+              hasNestedQueriesEnabled,
+              hasSavedQuestions: this.hasSavedQuestions(),
+            })}
             {...props}
           />
         );

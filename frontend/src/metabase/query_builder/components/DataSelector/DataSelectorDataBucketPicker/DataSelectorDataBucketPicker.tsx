@@ -1,4 +1,4 @@
-import { DataTypeInfoItem, getDataTypes } from "metabase/containers/DataPicker";
+import { DataTypeInfoItem } from "metabase/containers/DataPicker";
 
 import {
   DataBucketListItemContainer as ItemContainer,
@@ -11,39 +11,27 @@ import {
 } from "./DataSelectorDataBucketPicker.styled";
 
 type DataSelectorDataBucketPickerProps = {
-  hasModels: boolean;
-  hasNestedQueriesEnabled: boolean;
-  hasSavedQuestions: boolean;
+  dataTypes: DataTypeInfoItem[];
   onChangeDataBucket: () => void;
 };
 
 const DataSelectorDataBucketPicker = ({
-  hasModels,
-  hasNestedQueriesEnabled,
-  hasSavedQuestions,
+  dataTypes,
   onChangeDataBucket,
-}: DataSelectorDataBucketPickerProps) => {
-  const dataTypes = getDataTypes({
-    hasModels,
-    hasNestedQueriesEnabled,
-    hasSavedQuestions,
-  });
-
-  return (
-    <List>
-      {dataTypes.map(({ id, icon, name, description }) => (
-        <DataBucketListItem
-          description={description}
-          id={id}
-          icon={icon}
-          key={id}
-          name={name}
-          onSelect={onChangeDataBucket}
-        />
-      ))}
-    </List>
-  );
-};
+}: DataSelectorDataBucketPickerProps) => (
+  <List>
+    {dataTypes.map(({ id, icon, name, description }) => (
+      <DataBucketListItem
+        description={description}
+        id={id}
+        icon={icon}
+        key={id}
+        name={name}
+        onSelect={onChangeDataBucket}
+      />
+    ))}
+  </List>
+);
 
 type DataBucketListItemProps = DataTypeInfoItem & {
   onSelect: () => void;
