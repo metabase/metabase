@@ -8,7 +8,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Card } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
-const ICON_INFO = [
+const ICON_CASES_CARDS = [
+  createMockCard({ name: "GUI" }),
+  createMockNativeCard({ name: "SQL" }),
+];
+
+const ICON_CASES_LABELS = [
   { label: "bookmark icon", tooltipText: "Bookmark" },
   { label: "info icon", tooltipText: "More info" },
   {
@@ -17,13 +22,8 @@ const ICON_INFO = [
   },
 ];
 
-const ICON_CARDS = [
-  createMockCard({ name: "GUI" }),
-  createMockNativeCard({ name: "SQL" }),
-];
-
-const ICON_CASES = ICON_CARDS.flatMap(card =>
-  ICON_INFO.map(details => ({ ...details, card })),
+const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
+  ICON_CASES_LABELS.map(details => ({ ...details, card })),
 );
 
 function setup({ card }: { card: Card }) {
