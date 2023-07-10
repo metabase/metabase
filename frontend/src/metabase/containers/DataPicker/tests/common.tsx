@@ -23,7 +23,10 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import DataPicker, { useDataPicker } from "../../DataPicker";
+import DataPicker, {
+  useDataPicker,
+  useDataPickerValue,
+} from "../../DataPicker";
 import type { DataPickerFiltersProp, DataPickerValue } from "../types";
 
 export const SAMPLE_TABLE = createMockTable({
