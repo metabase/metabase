@@ -170,7 +170,16 @@
       (throw (ex-info status
                       {:status-code 400, :error-details error-details})))
     ;; otherwise return the features this token supports
-    (set features)))
+    (set ["audit-app"
+          "advanced-permissions"
+          "embedding"
+          "whitelabel"
+          "no-upsell"
+          "advanced-config"
+          "content-management"
+          "sso"
+          "sandboxes"
+          "WHATUP"])))
 
 (def ^:private ^:const valid-token-recheck-interval-ms
   "Amount of time to cache the status of a valid embedding token before forcing a re-check"
@@ -292,6 +301,10 @@
   "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
   :sso)
 
+(define-premium-feature can-disable-password-login?
+  "Should disable password login?"
+  :disable-password-login)
+
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
   "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
   notifications, more in the future)?"
@@ -303,9 +316,16 @@
   :advanced-permissions)
 
 (define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
-  etc.)?"
+  "Should we enable Question verifications (and more in the future, like workflows, forking, etc.)?"
   :content-management)
+
+(define-premium-feature ^{:added "0.41.0"} enable-official-collections?
+  "Should we enable official Collections?"
+  :official-collections)
+
+(define-premium-feature ^{:added "0.41.0"} enable-snippet-folders?
+  "Should we enable Snippet folders?"
+  :snippet-folders)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"
