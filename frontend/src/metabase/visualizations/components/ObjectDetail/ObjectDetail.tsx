@@ -56,7 +56,7 @@ import {
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
-  CloseButtonTest,
+  CloseButton,
   ErrorWrapper,
   ObjectDetailBodyWrapper,
   ObjectDetailContainer,
@@ -404,16 +404,15 @@ export function ObjectDetailHeader({
                 />
               </>
             )}
-            {/*>*/}
-            {/*  <Button*/}
-            <CloseButtonTest
-              data-testid="object-detail-close-button"
-              onlyIcon
-              borderless
-              onClick={closeObjectDetail}
-              icon="close"
-            />
-            {/*/>*/}
+            <CloseButton>
+              <Button
+                data-testid="object-detail-close-button"
+                onlyIcon
+                borderless
+                onClick={closeObjectDetail}
+                icon="close"
+              />
+            </CloseButton>
           </div>
         </div>
       )}
