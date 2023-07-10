@@ -211,196 +211,6 @@ describe("QueryBuilder", () => {
     });
   });
 
-  describe("editing models", () => {
-    describe("editing queries", () => {
-      afterEach(() => {
-        jest.resetAllMocks();
-      });
-
-      it("should trigger beforeunload event when leaving edited query", async () => {
-        const { mockEventListener } = await setup({
-          card: TEST_MODEL_CARD,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
-        });
-
-        const rowLimitInput = await within(
-          screen.getByTestId("step-limit-0-0"),
-        ).findByPlaceholderText("Enter a limit");
-
-        userEvent.click(rowLimitInput);
-        userEvent.type(rowLimitInput, "0");
-
-        await waitFor(() => {
-          expect(rowLimitInput).toHaveValue(10);
-        });
-
-        userEvent.tab();
-
-        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-      });
-
-      it("should not trigger beforeunload event when leaving unedited query", async () => {
-        const { mockEventListener } = await setup({
-          card: TEST_MODEL_CARD,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
-        });
-
-        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).toBe(undefined);
-      });
-    });
-
-    describe("editing metadata", () => {
-      afterEach(() => {
-        jest.resetAllMocks();
-      });
-
-      it("should trigger beforeunload event when leaving edited metadata", async () => {
-        const { mockEventListener } = await setup({
-          card: TEST_MODEL_CARD,
-          dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
-        });
-
-        const columnDisplayName = await screen.findByTitle("Display name");
-
-        userEvent.click(columnDisplayName);
-        userEvent.type(columnDisplayName, "X");
-
-        await waitFor(() => {
-          expect(columnDisplayName).toHaveValue(
-            `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-          );
-        });
-
-        userEvent.tab();
-
-        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).toBe(undefined);
-      });
-
-      it("should not trigger beforeunload event when model metadata is unedited", async () => {
-        const { mockEventListener } = await setup({
-          card: TEST_MODEL_CARD,
-          dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
-        });
-
-        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).toBe(undefined);
-      });
-    });
-  });
-
-  describe("beforeunload events in native queries", () => {
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
-
-    it("should trigger beforeunload event when leaving edited question", async () => {
-      const { mockEventListener } = await setup({
-        card: TEST_NATIVE_CARD,
-      });
-
-      const inputArea = within(
-        screen.getByTestId("mock-native-query-editor"),
-      ).getByRole("textbox");
-
-      userEvent.click(inputArea);
-      userEvent.type(inputArea, "0");
-
-      userEvent.tab();
-
-      // default native query is `SELECT 1`
-      expect(inputArea).toHaveValue("SELECT 10");
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
-
-    it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
-      const { mockEventListener } = await setup({
-        card: TEST_UNSAVED_NATIVE_CARD,
-      });
-
-      const inputArea = within(
-        screen.getByTestId("mock-native-query-editor"),
-      ).getByRole("textbox");
-
-      userEvent.click(inputArea);
-      userEvent.type(inputArea, "0");
-
-      userEvent.tab();
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
-
-    it("should not trigger beforeunload event when query is unedited", async () => {
-      const { mockEventListener } = await setup({
-        card: TEST_NATIVE_CARD,
-      });
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
-  });
-
-  describe("beforeunload events in structured queries", () => {
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
-
-    it("should not trigger beforeunload event when leaving edited question which will turn the question ad-hoc", async () => {
-      const { mockEventListener } = await setup({
-        card: TEST_STRUCTURED_CARD,
-      });
-
-      expect(screen.queryByText("Count")).not.toBeInTheDocument();
-      userEvent.click(await screen.findByText("Summarize"));
-      userEvent.click(await screen.findByText("Done"));
-      expect(await screen.findByText("Count")).toBeInTheDocument();
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
-
-    it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
-      const { mockEventListener } = await setup({
-        card: TEST_UNSAVED_STRUCTURED_CARD,
-      });
-
-      expect(screen.queryByText("Count")).not.toBeInTheDocument();
-      userEvent.click(await screen.findByText("Summarize"));
-      userEvent.click(await screen.findByText("Done"));
-      expect(await screen.findByText("Count")).toBeInTheDocument();
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
-
-    it("should not trigger beforeunload event when query is unedited", async () => {
-      const { mockEventListener } = await setup({
-        card: TEST_STRUCTURED_CARD,
-      });
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
-  });
-
   describe("renders the row count regardless of visualization type", () => {
     const dataset = TEST_MODEL_DATASET;
     const cards = [
@@ -425,5 +235,207 @@ describe("QueryBuilder", () => {
         expect(element).toBeVisible();
       },
     );
+  });
+
+  describe("beforeunload events", () => {
+    describe("editing models", () => {
+      describe("editing queries", () => {
+        afterEach(() => {
+          jest.resetAllMocks();
+        });
+
+        it("should trigger beforeunload event when leaving edited query", async () => {
+          const { mockEventListener } = await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+          });
+
+          const rowLimitInput = await within(
+            screen.getByTestId("step-limit-0-0"),
+          ).findByPlaceholderText("Enter a limit");
+
+          userEvent.click(rowLimitInput);
+          userEvent.type(rowLimitInput, "0");
+
+          await waitFor(() => {
+            expect(rowLimitInput).toHaveValue(10);
+          });
+
+          userEvent.tab();
+
+          const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+
+          expect(mockEvent.preventDefault).toHaveBeenCalled();
+          expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+        });
+
+        it("should not trigger beforeunload event when leaving unedited query", async () => {
+          const { mockEventListener } = await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+          });
+
+          const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+          expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+          expect(mockEvent.returnValue).toBe(undefined);
+        });
+      });
+
+      describe("editing metadata", () => {
+        afterEach(() => {
+          jest.resetAllMocks();
+        });
+
+        it("should trigger beforeunload event when leaving edited metadata", async () => {
+          const { mockEventListener } = await setup({
+            card: TEST_MODEL_CARD,
+            dataset: TEST_MODEL_DATASET,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          });
+
+          const columnDisplayName = await screen.findByTitle("Display name");
+
+          userEvent.click(columnDisplayName);
+          userEvent.type(columnDisplayName, "X");
+
+          await waitFor(() => {
+            expect(columnDisplayName).toHaveValue(
+              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
+            );
+          });
+
+          userEvent.tab();
+
+          const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+          expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+          expect(mockEvent.returnValue).toBe(undefined);
+        });
+
+        it("should not trigger beforeunload event when model metadata is unedited", async () => {
+          const { mockEventListener } = await setup({
+            card: TEST_MODEL_CARD,
+            dataset: TEST_MODEL_DATASET,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          });
+
+          const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+          expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+          expect(mockEvent.returnValue).toBe(undefined);
+        });
+      });
+    });
+
+    describe("native queries", () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it("should trigger beforeunload event when leaving edited question", async () => {
+        const { mockEventListener } = await setup({
+          card: TEST_NATIVE_CARD,
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+
+        userEvent.tab();
+
+        // default native query is `SELECT 1`
+        expect(inputArea).toHaveValue("SELECT 10");
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      });
+
+      it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
+        const { mockEventListener } = await setup({
+          card: TEST_UNSAVED_NATIVE_CARD,
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+
+        userEvent.tab();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.returnValue).not.toEqual(
+          BEFORE_UNLOAD_UNSAVED_MESSAGE,
+        );
+      });
+
+      it("should not trigger beforeunload event when query is unedited", async () => {
+        const { mockEventListener } = await setup({
+          card: TEST_NATIVE_CARD,
+        });
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.returnValue).not.toEqual(
+          BEFORE_UNLOAD_UNSAVED_MESSAGE,
+        );
+      });
+    });
+
+    describe("structured queries", () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it("should not trigger beforeunload event when leaving edited question which will turn the question ad-hoc", async () => {
+        const { mockEventListener } = await setup({
+          card: TEST_STRUCTURED_CARD,
+        });
+
+        expect(screen.queryByText("Count")).not.toBeInTheDocument();
+        userEvent.click(await screen.findByText("Summarize"));
+        userEvent.click(await screen.findByText("Done"));
+        expect(await screen.findByText("Count")).toBeInTheDocument();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.returnValue).not.toEqual(
+          BEFORE_UNLOAD_UNSAVED_MESSAGE,
+        );
+      });
+
+      it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
+        const { mockEventListener } = await setup({
+          card: TEST_UNSAVED_STRUCTURED_CARD,
+        });
+
+        expect(screen.queryByText("Count")).not.toBeInTheDocument();
+        userEvent.click(await screen.findByText("Summarize"));
+        userEvent.click(await screen.findByText("Done"));
+        expect(await screen.findByText("Count")).toBeInTheDocument();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.returnValue).not.toEqual(
+          BEFORE_UNLOAD_UNSAVED_MESSAGE,
+        );
+      });
+
+      it("should not trigger beforeunload event when query is unedited", async () => {
+        const { mockEventListener } = await setup({
+          card: TEST_STRUCTURED_CARD,
+        });
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.returnValue).not.toEqual(
+          BEFORE_UNLOAD_UNSAVED_MESSAGE,
+        );
+      });
+    });
   });
 });
