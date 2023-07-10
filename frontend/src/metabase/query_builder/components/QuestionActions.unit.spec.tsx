@@ -23,7 +23,7 @@ const ICON_CASES_LABELS = [
 ];
 
 const ICON_CASES = ICON_CASES_CARDS.flatMap(card =>
-  ICON_CASES_LABELS.map(details => ({ ...details, card })),
+  ICON_CASES_LABELS.map(labels => ({ ...labels, card })),
 );
 
 function setup({ card }: { card: Card }) {
