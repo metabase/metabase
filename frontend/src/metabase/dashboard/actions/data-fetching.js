@@ -44,6 +44,7 @@ import {
   getDashboardType,
   fetchDataOrError,
   getDatasetQueryParams,
+  getCurrentTabDashboardCards,
 } from "../utils";
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
@@ -424,23 +425,14 @@ export const fetchDashboardCardData = createThunkAction(
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
     const dashcardIds = [];
-
-    const promises = getAllDashboardCards(dashboard)
+    const promises = getCurrentTabDashboardCards(dashboard, selectedTabId)
+      .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
       .map(({ card, dashcard }) => {
-        if (
-          isVirtualDashCard(dashcard) ||
-          (selectedTabId !== undefined &&
-            dashcard.dashboard_tab_id !== selectedTabId)
-        ) {
-          return;
-        }
-
         dashcardIds.push(dashcard.id);
         return dispatch(fetchCardData(card, dashcard, options)).then(() => {
           return dispatch(updateLoadingTitle());
         });
-      })
-      .filter(p => !!p);
+      });
 
     dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
 

@@ -22,9 +22,24 @@ describeEE("audit > auditing > questions", () => {
 
       const QUERY_RUNS_ASC_ORDER = [...QUERY_RUNS_DESC_ORDER].reverse();
 
-      _.times(1, () => visitQuestion(ORDERS_QUESTION_ID));
-      _.times(2, () => visitQuestion(ORDERS_COUNT_QUESTION_ID));
-      _.times(3, () => visitQuestion(ORDERS_BY_YEAR_QUESTION_ID));
+      _.times(1, () =>
+        visitQuestionAndVerifyTitle(
+          ORDERS_QUESTION_ID,
+          QUERY_RUNS_DESC_ORDER[2],
+        ),
+      );
+      _.times(2, () =>
+        visitQuestionAndVerifyTitle(
+          ORDERS_COUNT_QUESTION_ID,
+          QUERY_RUNS_DESC_ORDER[1],
+        ),
+      );
+      _.times(3, () =>
+        visitQuestionAndVerifyTitle(
+          ORDERS_BY_YEAR_QUESTION_ID,
+          QUERY_RUNS_DESC_ORDER[0],
+        ),
+      );
 
       cy.visit("/admin/audit/questions/all");
 
@@ -51,7 +66,7 @@ describeEE("audit > auditing > questions", () => {
     });
 
     it("should support filtering by collection name", () => {
-      const FIRST_COLLECTION_ID = 9;
+      const FIRST_COLLECTION_ID = 10;
 
       cy.createNativeQuestion({
         name: "My question",
@@ -89,4 +104,9 @@ const assertRowsOrder = names => {
     const nameColumn = el.find("td").eq(0);
     cy.wrap(nameColumn).should("have.text", names[index]);
   });
+};
+
+const visitQuestionAndVerifyTitle = (id, title) => {
+  visitQuestion(id);
+  cy.findByTestId("saved-question-header-title").should("have.value", title);
 };

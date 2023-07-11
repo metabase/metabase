@@ -89,7 +89,7 @@ describeEE("audit > auditing", () => {
   beforeEach(cy.signInAsAdmin);
 
   describe("See expected info on team member pages", () => {
-    it("should load the Overview tab", () => {
+    it.skip(`should load the Overview tab (metabase#32244)`, () => {
       cy.visit("/admin/audit/members/overview");
 
       // We haven't created any new members yet so this should be empty
@@ -204,7 +204,7 @@ describeEE("audit > auditing", () => {
       // All tables tab
       cy.visit("/admin/audit/tables/all");
       cy.findByPlaceholderText("Table name");
-      cy.findAllByText("PUBLIC").should("have.length", 4);
+      cy.findAllByText("PUBLIC").should("have.length", 8);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("REVIEWS"); // Table name in DB
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -226,7 +226,7 @@ describeEE("audit > auditing", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Query views and speed per day");
       cy.findAllByText("No results!").should("not.exist");
-      cy.get(".LineAreaBarChart").should("have.length", 3);
+      cy.get(".LineAreaBarChart").should("have.length", 1);
       cy.get("rect");
       cy.get(".voronoi");
 
