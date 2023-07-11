@@ -4,6 +4,7 @@ import {
   typeAndBlurUsingLabel,
   popover,
   modal,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import {
@@ -15,6 +16,7 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");

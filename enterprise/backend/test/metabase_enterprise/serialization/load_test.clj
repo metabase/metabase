@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.serialization.cmd :refer [v1-dump v1-load]]
+   [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models
     :refer [Card
@@ -408,3 +409,8 @@
             fingerprint))))
     (finally
       (delete-directory! dump-dir))))
+
+(deftest resolve-dashboard-parameters-test
+  (let [parameters [{:values_source_config {:card_id "foo"}}]]
+    (with-redefs [load/fully-qualified-name->card-id {"foo" 1}]
+      (is (= [1] (mapv (comp :card_id :values_source_config) (#'load/resolve-dashboard-parameters parameters)))))))

@@ -198,8 +198,10 @@ class QuestionInner {
       }
     }
 
+    const isVirtualDashcard = !this._card.id;
     // `dataset_query` is null for questions on a dashboard the user don't have access to
-    console.warn("Unknown query type: " + datasetQuery?.type);
+    !isVirtualDashcard &&
+      console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
   isNative(): boolean {

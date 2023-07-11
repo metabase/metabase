@@ -21,7 +21,11 @@ import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
 import { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
 import DimensionList from "../../DimensionList";
-import { Button } from "./FilterPopover.styled";
+import {
+  Button,
+  EmptyFilterPickerPlaceholder,
+  FilterPopoverSeparator,
+} from "./FilterPopover.styled";
 import FilterPopoverFooter from "./FilterPopoverFooter";
 import FilterPopoverPicker from "./FilterPopoverPicker";
 import FilterPopoverHeader from "./FilterPopoverHeader";
@@ -238,6 +242,9 @@ export default function FilterPopover({
   const shouldShowDatePicker = field?.isDate() && !field?.isTime();
   const supportsExpressions = query.database()?.supportsExpressions();
 
+  const filterOperator = filter.operator();
+  const hasPicker = filterOperator && filterOperator.fields.length > 0;
+
   return (
     <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
       {shouldShowDatePicker ? (
@@ -286,15 +293,22 @@ export default function FilterPopover({
                 showFieldPicker={showFieldPicker}
                 forceShowOperatorSelector={showOperatorSelector}
               />
-              <FilterPopoverPicker
-                className="px1 pt1 pb1"
-                filter={filter}
-                onFilterChange={handleFilterChange}
-                onCommit={handleCommit}
-                maxWidth={MAX_WIDTH}
-                primaryColor={primaryColor}
-                checkedColor={checkedColor}
-              />
+              {hasPicker ? (
+                <>
+                  <FilterPopoverSeparator data-testid="filter-popover-separator" />
+                  <FilterPopoverPicker
+                    className="px1 pt1 pb1"
+                    filter={filter}
+                    onFilterChange={handleFilterChange}
+                    onCommit={handleCommit}
+                    maxWidth={MAX_WIDTH}
+                    primaryColor={primaryColor}
+                    checkedColor={checkedColor}
+                  />
+                </>
+              ) : (
+                <EmptyFilterPickerPlaceholder data-testid="empty-picker-placeholder" />
+              )}
             </>
           )}
           <FilterPopoverFooter

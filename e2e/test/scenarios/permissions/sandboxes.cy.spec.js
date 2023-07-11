@@ -15,6 +15,7 @@ import {
   visitDashboard,
   startNewQuestion,
   sendEmailAndAssert,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -39,6 +40,7 @@ describeEE("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
       cy.visit("/admin/people");
     });
 
@@ -81,6 +83,7 @@ describeEE("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       // Add user attribute to existing ("normal" / id:2) user
       cy.request("PUT", "/api/user/2", {
@@ -189,6 +192,7 @@ describeEE("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {

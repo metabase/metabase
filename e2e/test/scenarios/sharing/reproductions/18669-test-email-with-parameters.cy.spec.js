@@ -6,6 +6,7 @@ import {
   sidebar,
   visitDashboard,
   clickSend,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -18,6 +19,7 @@ describeEE("issue 18669", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     setupSMTP();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
