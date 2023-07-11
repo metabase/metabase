@@ -8,6 +8,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -80,6 +82,13 @@
   :type       :string
   :default    "setting-default"
   :enabled?   (fn [] *enabled?*))
+
+(defsetting test-feature-setting
+  "Setting to test the `:feature` property of settings. This only shows up in dev."
+  :visibility :internal
+  :type       :string
+  :default    "setting-default"
+  :feature    :test-feature)
 
 ;; ## HELPER FUNCTIONS
 
@@ -904,6 +913,19 @@
       (test-enabled-setting-no-default! "custom")
       (is (= "custom" (test-enabled-setting-default)))
       (is (= "custom" (test-enabled-setting-no-default))))))
+
+(deftest feature-test
+  (testing "Settings can be assigned an Enterprise feature flag, required for them to be enabled"
+    (premium-features-test/with-premium-features #{:test-feature}
+      (test-feature-setting! "custom")
+      (is (= "custom" (test-feature-setting))))
+
+    (premium-features-test/with-premium-features #{}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting test-feature-setting is not enabled because feature :test-feature is not available"
+           (test-feature-setting! "custom 2")))
+      (is (= "setting-default" (test-feature-setting))))))
 
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
