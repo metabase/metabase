@@ -60,9 +60,10 @@ describeEE("audit > ad-hoc", () => {
 
       // Sign in as admin to be able to access audit logs in tests
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
-    it("should appear in audit log #29456", () => {
+    it("should appear in audit log (metabase#29456)", () => {
       cy.visit("/admin/audit/members/log");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
