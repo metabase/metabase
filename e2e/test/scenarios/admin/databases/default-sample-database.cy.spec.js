@@ -1,4 +1,10 @@
-import { restore, popover, modal, describeEE } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  modal,
+  describeEE,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -292,6 +298,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
   describeEE("custom caching", () => {
     it("should set custom cache ttl", () => {
+      setTokenFeatures("all");
       cy.request("PUT", "api/setting/enable-query-caching", { value: true });
 
       visitDatabase(SAMPLE_DB_ID).then(({ response: { body } }) => {

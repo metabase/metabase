@@ -77,7 +77,10 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
       QA_DB_ENABLED: true
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
+      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
@@ -293,7 +296,6 @@ jobs:
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
     services:
       maildev:
         image: maildev/maildev:2.0.5
