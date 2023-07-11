@@ -1,4 +1,4 @@
-import { restore, isPremium } from "e2e/support/helpers";
+import { restore, isEE, setTokenFeatures } from "e2e/support/helpers";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
 
@@ -32,10 +32,11 @@ describe.skip(
   { tags: "@quarantine" },
   () => {
     beforeEach(() => {
-      cy.onlyOn(isPremium);
+      cy.onlyOn(isEE);
 
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       cy.intercept("POST", "/api/dataset").as("dataset");
     });

@@ -185,7 +185,8 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      return body?.tables?.find(table => table.name === name)?.id;
+      const table = body?.tables?.find(table => table.name === name);
+      return table ? table.id : null;
     });
 }
 
@@ -219,7 +220,7 @@ export function waitForSyncToFinish({
 }) {
   // 100 x 100ms should be plenty of time for the sync to finish.
   if (iteration === 100) {
-    return;
+    throw new Error("The sync is taking too long. Something is wrong.");
   }
 
   cy.wait(100);

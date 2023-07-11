@@ -1,4 +1,9 @@
-import { describeEE, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  describeEE,
+  restore,
+  visitDashboard,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -10,6 +15,7 @@ describeEE("issue 29076", () => {
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
 
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
       attribute_remappings: {
