@@ -84,7 +84,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     summarize({ mode: "notebook" });
     popover().findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "Count{enter}" });
-    popover().findByLabelText("Name").focus();
+    popover().findByPlaceholderText("Something nice and descriptive").focus();
     cy.findByTestId("expression-suggestions-list").should("not.exist");
   });
 });
