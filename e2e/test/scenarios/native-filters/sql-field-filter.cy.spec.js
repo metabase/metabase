@@ -43,8 +43,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       FieldFilter.openEntryForm({ isFilterRequired: true });
       FieldFilter.addDefaultStringFilter("2");
 
-      SQLFilter.saveNewQuestion();
-      SQLFilter.reloadWithoutQueryParams();
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("Small Marble Shoes");
@@ -53,11 +52,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       FieldFilter.openEntryForm();
       FieldFilter.addToWidgetStringFilter("1");
 
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.icon("play").click();
-      });
-      cy.wait("@cardQuery");
+      SQLFilter.runQuery();
 
       cy.get(".Visualization").within(() => {
         cy.findByText("Rustic Paper Wallet");
