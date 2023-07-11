@@ -398,7 +398,7 @@
                       (mt/db)
                       (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
 
-            (testing "if table doesn't have pk, we fails to detect the change in type but it still syncable"
+            (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
              (is (= #{{:name              "json_col → int_turn_string"
                        :database-type     "bigint"
                        :base-type         :type/Integer

@@ -415,9 +415,9 @@
         (remove should-not-unfold? json-fields)))))
 
 (defn- sample-json-row-honey-sql
-  "Return a hoenysql used to get row sample to describe json columns.
+  "Return a honeysql query used to get row sample to describe json columns.
 
-  If the talbe has a PK, try to fetch both first and last rows (see ##25744).
+  If the table has a PK, try to fetch both first and last rows (see #25744).
   Else fetch the first n rows only"
   [driver table-identifier json-field-names pk-identifier]
   (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
@@ -438,7 +438,7 @@
                                    :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
                   :result]
                  [:=
-                  (sql.qp/maybe-wrap-unaliased-expr (hx/identifier :field :result :id))
+                  (sql.qp/maybe-wrap-unaliased-expr (hx/identifier :field :result pk-identifier))
                   (hx/identifier :field table-identifier :id)]]}
         {:select json-field-names
          :from   [table-expr]
