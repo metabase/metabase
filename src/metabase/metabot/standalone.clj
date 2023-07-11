@@ -6,16 +6,6 @@
             [metabase.models :refer [Card] :as models]
             [toucan2.core :as t2]))
 
-(defn dot [u v]
-  (reduce + (map * u v)))
-
-(defn mag [u]
-  (math/sqrt (dot u u)))
-
-(defn unitize [u]
-  (let [m (mag u)]
-    (mapv #(/ % m) u)))
-
 (defn model->context [{model-name :name model-id :id :keys [result_metadata]}]
   {:table_name model-name
    :table_id   model-id
@@ -76,15 +66,18 @@
 
 (defn closest
   "Return the ranked datasets"
-  [prompt dataset->embeddings]
-  (let [prompt-embedding (embeddings prompt)]
-    (->> dataset->embeddings
-         (map (fn [[k e]] [k (dot prompt-embedding e)]))
-         (sort-by (comp - second)))))
+  ([prompt dataset->embeddings]
+   (letfn [(dot [u v] (reduce + (map * u v)))]
+     (let [prompt-embedding (embeddings prompt)]
+       (->> dataset->embeddings
+            (map (fn [[k e]] [k (dot prompt-embedding e)]))
+            (sort-by (comp - second))))))
+  ([prompt dataset->embeddings top-n]
+   (take top-n (closest prompt dataset->embeddings))))
 
 (comment
   (token-count "This is a test")
-  (mag (embeddings "This is a test"))
+  (embeddings "This is a test")
 
   (let [samples ["This is a test of EBS"
                  "This is a test of the EBS (Emergency Broadcasting System)"
@@ -97,7 +90,9 @@
                  "Do you like green eggs and ham"]]
     (closest
       "This is a test of the emergency broadcasting system"
-      (zipmap samples (map embeddings samples))))
+      (zipmap samples (map embeddings samples))
+      ;3
+      ))
 
   (let [context (->> (t2/select Card :database_id 1 :dataset true)
                      (map model->context))]
