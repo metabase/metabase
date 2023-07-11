@@ -292,6 +292,10 @@
   "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
   :sso)
 
+(define-premium-feature can-disable-password-login?
+  "Can we password login?"
+  :disable-password-login)
+
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
   "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
   notifications, more in the future)?"
@@ -303,9 +307,16 @@
   :advanced-permissions)
 
 (define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
-  etc.)?"
+  "Should we enable Question verifications (and more in the future, like workflows, forking, etc.)?"
   :content-management)
+
+(define-premium-feature ^{:added "0.41.0"} enable-official-collections?
+  "Should we enable Official Collections?"
+  :official-collections)
+
+(define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
+  "Should we enable Snippet collections"
+  :snippet-collections)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"
