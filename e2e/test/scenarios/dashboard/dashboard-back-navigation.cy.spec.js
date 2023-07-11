@@ -279,31 +279,36 @@ describe(
 
       queryBuilderHeader().within(() => {
         cy.findByLabelText("Back to Sleep dashboard").click();
-        cy.get("@dashboard.all").should("have.length", 1);
-        cy.get("@dashcardQuery.all").should("have.length", 2);
       });
 
       getDashboardCard().within(() => {
         cy.findByText("Sleep card").should("be.visible");
       });
+
+      // dashboard is taken from the cache, no re-fetch
+      cy.get("@dashboard.all").should("have.length", 1);
+      // the query is triggered second time as first one never loaded - no value in the cache
+      cy.get("@dashcardQuery.all").should("have.length", 2);
     });
 
     it("should preserve filter value when navigating between the dashboard and the question", () => {
+      // could be a regular dashboard with card and filters
       createDashboardWithSlowCard();
       cy.get("@dashboardId").then(visitDashboard);
 
-      cy.get("@dashcardQuery.all").should("have.length", 1);
-
-      filterWidget().findByPlaceholderText("sleep").type("5{enter}");
-
+      // initial loading of the dashboard with card
       cy.get("@dashcardQuery.all").should("have.length", 2);
+
+      filterWidget().findByPlaceholderText("sleep").type("1{enter}");
+
+      // we applied filter, so the data is requested again
+      cy.get("@dashcardQuery.all").should("have.length", 3);
 
       getDashboardCard().within(() => {
         cy.findByText("Sleep card").click();
-        cy.wait("@card");
       });
 
-      filterWidget().findByPlaceholderText("sleep").should("have.value", "5");
+      filterWidget().findByPlaceholderText("sleep").should("have.value", "1");
 
       queryBuilderHeader().findByLabelText("Back to Sleep dashboard").click();
 
@@ -311,9 +316,10 @@ describe(
         cy.findByText("Sleep card").should("be.visible");
       });
 
-      cy.log("Dashcard data is re-requested");
+      filterWidget().findByPlaceholderText("sleep").should("have.value", "1");
+
+      // cached data is used, no re-fetching
       cy.get("@dashcardQuery.all").should("have.length", 3);
-      filterWidget().findByPlaceholderText("sleep").should("have.value", "5");
     });
   },
 );
