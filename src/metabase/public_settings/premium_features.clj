@@ -236,32 +236,13 @@
   []
   (boolean (seq (token-features))))
 
-(def ^:dynamic *premium-feature-overrides*
-  "Dynamic var holding a set of tokens which are temporarily considered to be enabled, even if the user's token does
-  not have that feature.
-
-  This allows eg. `:audit-app` functionality to use `:serialization` internally, even if the token only has
-  `:audit-app`.
-
-  Don't touch this directly - prefer to use [[with-premium-feature-overrides]]."
-  #{})
-
-(defmacro with-premium-feature-overrides
-  "Helper to dynamically override [[*premium-feature-overrides*]] and properly merge any existing value.
-
-  Used like `(with-premium-feature-overrides [:serialization] (something-using-serdes ...))`."
-  [features & body]
-  `(binding [*premium-feature-overrides* (into *premium-feature-overrides* ~features)]
-     ~@body))
-
 (defn has-feature?
   "Does this instance's premium token have `feature`?
 
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (or (contains? (token-features) (name feature))
-      (*premium-feature-overrides* feature)))
+  (contains? (token-features) (name feature)))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
