@@ -1,30 +1,54 @@
-import { render, screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import { testDataset } from "__support__/testDataset";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { createMockCard } from "metabase-types/api/mocks";
+import { getMetadata } from "metabase/selectors/metadata";
+import { createProductsTable } from "metabase-types/api/mocks/presets";
+import { renderWithProviders } from "__support__/ui";
+import { checkNotNull } from "metabase/core/utils/types";
 
-function setup(options?: Partial<ObjectDetailProps>) {
-  render(
+const DATABASE_ID = 1;
+
+const MOCK_TABLE = createProductsTable();
+
+const MOCK_CARD = createMockCard({
+  dataset_query: {
+    type: "query",
+    database: DATABASE_ID,
+    query: {
+      "source-table": MOCK_TABLE.id,
+    },
+  },
+});
+
+async function setup(options?: Partial<ObjectDetailProps>) {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      questions: [MOCK_CARD],
+      tables: [MOCK_TABLE],
+    }),
+    qb: createMockQueryBuilderState({ card: MOCK_CARD }),
+  });
+  const metadata = getMetadata(state);
+
+  const question = checkNotNull(metadata.question(MOCK_CARD.id));
+  const table = checkNotNull(metadata.table(MOCK_TABLE.id));
+
+  renderWithProviders(
     <ObjectDetailWrapper
-      data={testDataset as any}
-      question={
-        {
-          displayName: () => "Product",
-          database: () => ({
-            getPlainObject: () => ({}),
-          }),
-        } as any
-      }
-      table={
-        {
-          objectName: () => "Product",
-        } as any
-      }
+      data={testDataset}
+      question={question}
+      table={table}
       zoomedRow={testDataset.rows[0]}
       zoomedRowID={0}
-      tableForeignKeys={[]}
-      tableForeignKeyReferences={[]}
+      tableForeignKeys={table.fks}
       settings={{
         column: () => null,
       }}
@@ -42,18 +66,23 @@ function setup(options?: Partial<ObjectDetailProps>) {
       closeObjectDetail={() => null}
       {...options}
     />,
+    { storeInitialState: state },
+  );
+
+  await waitFor(() =>
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
   );
 }
 
 describe("Object Detail Wrapper", () => {
-  it("renders an object detail with a paginator", () => {
-    setup();
+  it("renders an object detail with a paginator", async () => {
+    await setup();
 
     expect(screen.getByText(/Item 1 of 10/i)).toBeInTheDocument();
   });
 
-  it("shows object detail header", () => {
-    setup({
+  it("shows object detail header", async () => {
+    await setup({
       settings: {
         "detail.showHeader": true,
       },
@@ -63,8 +92,8 @@ describe("Object Detail Wrapper", () => {
     expect(screen.getByText(/Product/i)).toBeInTheDocument();
   });
 
-  it("hides object detail header", () => {
-    setup({
+  it("hides object detail header", async () => {
+    await setup({
       settings: {
         "detail.showHeader": false,
       },
@@ -75,7 +104,7 @@ describe("Object Detail Wrapper", () => {
   });
 
   it("traps focus in the object detail modal when opened", async () => {
-    setup({
+    await setup({
       isObjectDetail: true,
     });
 
