@@ -21,6 +21,8 @@ describe("issue 11480", () => {
     SQLFilter.toggleRequired();
     SQLFilter.setDefaultValue("some text");
 
+    cy.location("search").should("eq", "?category=some%20text");
+
     // Run the query and see an error.
     SQLFilter.runQuery();
 
@@ -30,6 +32,8 @@ describe("issue 11480", () => {
     // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Number");
+
+    cy.location("search").should("eq", "?category=");
 
     // When we run it again, the default has been cleared out so we get the right error.
     SQLFilter.runQuery();

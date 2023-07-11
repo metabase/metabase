@@ -56,7 +56,7 @@ export class TagEditorParam extends Component {
   }
 
   setType(type) {
-    const { tag, setTemplateTag } = this.props;
+    const { tag, setTemplateTag, setParameterValue } = this.props;
 
     if (tag.type !== type) {
       setTemplateTag({
@@ -66,6 +66,8 @@ export class TagEditorParam extends Component {
         dimension: undefined,
         "widget-type": type === "dimension" ? "none" : undefined,
       });
+
+      setParameterValue(tag.id, null);
     }
   }
 
