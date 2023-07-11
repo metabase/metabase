@@ -285,7 +285,11 @@
         orders            2
         orders-id         11
         created-at        14
-        query             (lib/query metadata-provider (metabase.lib.metadata/table metadata-provider orders))]
+        people            5
+        state             34
+        query             (-> (lib/query metadata-provider (metabase.lib.metadata/table metadata-provider people))
+                              (lib/aggregate (lib/count))
+                              (lib/breakout  (lib/ref (metabase.lib.metadata/field metadata-provider state))))]
     (lib/available-drill-thrus query -1 {:column (metabase.lib.metadata/field metadata-provider created-at)
                                          :value nil
                                          #_#_:value  "2018-05-15T08:04:04.58Z"}))
