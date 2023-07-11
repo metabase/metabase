@@ -398,7 +398,9 @@ class ExpressionEditorTextfield extends React.Component<
     });
 
     this.setState({ helpText: helpText || null });
-    this.updateSuggestions(suggestions);
+    if (this.state.isFocused) {
+      this.updateSuggestions(suggestions);
+    }
   }
 
   errorAsMarkers(errorMessage: ErrorWithMessage | null = null): IMarker[] {
