@@ -55,6 +55,123 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
   },
 };
 
+const DATE_RANGE_MONTH_PLACEHOLDER = "<MONTH>";
+
+type SameMatchUnit = moment.unitOfTime.StartOf | null;
+type DateRangeMatch =
+  | [SameMatchUnit, string]
+  | [SameMatchUnit, string, string]
+  | [SameMatchUnit, string, string, string];
+
+type DateRangeMatchByUnit = { [unit in DatetimeUnit]: DateRangeMatch[] };
+
+// TODO: create a type for this
+const DATE_RANGE_FORMATS: DateRangeMatchByUnit = (() => {
+  // dates
+  const Y = "YYYY";
+  const Q = "[Q]Q";
+  const QY = "[Q]Q YYYY";
+  const M = DATE_RANGE_MONTH_PLACEHOLDER;
+  const MY = `${M} YYYY`;
+  const MDY = `${M} D, YYYY`;
+  const MD = `${M} D`;
+  const DY = "D, YYYY";
+
+  // times
+  const T = "h:mm";
+  const TA = "h:mm A";
+  const MA = "mm A";
+  const MDYT = `${MDY}, ${T}`;
+  const MDYTA = `${MDY}, ${TA}`;
+  const MDTA = `${MD}, ${TA}`;
+
+  // accumulations
+  // S = singular, P = plural
+  const DDDoS = "DDDo [day of the year]";
+  const DDDoP = "DDDo [days of the year]";
+  const DoS = "Do [day of the month]";
+  const DoP = "Do [days of the month]";
+  const woS = "wo [week of the year]";
+  const woP = "wo [weeks of the year]";
+  const mmS = "[minute] :mm";
+  const mmP = "[minutes] :mm";
+
+  return {
+    default: [],
+    // Use Wikipedia’s date range formatting guidelines for some of these:
+    // https://en.wikipedia.org/wiki/Wikipedia:Manual_of_Style/Dates_and_numbers#Ranges
+    year: [
+      ["year", Y], // 2018
+      [null, Y, Y], // 2018–2019
+    ],
+    quarter: [
+      ["quarter", QY], //     Q2 2018
+      ["year", Q, QY], //     Q2–Q4 2019
+      [null, QY, QY, " "], // Q2 2018 – Q3 2019
+    ],
+    "quarter-of-year": [
+      ["quarter", Q], // Q2
+      [null, Q, Q], //   Q2–Q4
+    ],
+    month: [
+      ["month", MY], //       September 2018
+      ["year", M, MY], //     September–December 2018
+      [null, MY, MY, " "], // September 2018 – January 2019
+    ],
+    "month-of-year": [
+      ["month", M], //      September
+      [null, M, M, " "], // September–December
+    ],
+    week: [
+      ["month", MD, DY], //      January 1–21, 2017
+      ["year", MD, MDY, " "], // January 1 – May 20, 2017
+      [null, MDY, MDY, " "], //  January 1, 2017 – February 10, 2018
+    ],
+    "week-of-year": [
+      ["week", woS], //     20th week of the year
+      [null, "wo", woP], // 34th-40th weeks of the year
+    ],
+    day: [
+      ["day", MDY], //           January 1, 2018
+      ["month", MD, DY], //      January 1–2, 2018
+      ["year", MD, MDY, " "], // January 1 – February 2, 2018
+      [null, MDY, MDY, " "], //  January 1, 2018 – January 2, 2019
+    ],
+    "day-of-year": [
+      ["day", DDDoS], //        123rd day of the year
+      [null, "DDDo", DDDoP], // 100th–123rd days of the year
+    ],
+    "day-of-month": [
+      ["day", DoS], //      20th day of the month
+      [null, "Do", DoP], // 10th–12th days of the month
+    ],
+    "day-of-week": [
+      ["day", "dddd"], //             Monday
+      [null, "dddd", "dddd", " "], // Monday – Thursday
+    ],
+    hour: [
+      ["hour", MDYT, MA], //         January 1, 2018, 11:00–59 AM
+      ["day", MDYTA, TA, " "], //    January 1, 2018, 11:00 AM – 2:59 PM
+      ["year", MDTA, MDYTA, " "], // January 1, 11:00 AM – February 2, 2018, 2:59 PM
+      [null, MDYTA, MDYTA, " "], //  January 1, 2018, 11:00 AM – January 2, 2019, 2:59 PM
+    ],
+    "hour-of-day": [
+      ["hour", T, MA], //     11:00–59 AM
+      [null, TA, TA, " "], // 11:00 AM – 4:59 PM
+    ],
+    minute: [
+      ["minute", MDYTA], //          January 1, 2018, 11:20 AM
+      ["day", MDYTA, TA, " "], //    January 1, 2018, 11:20 AM – 2:35 PM
+      ["year", MDTA, MDYTA, " "], // January 1, 11:20 AM – February 2, 2018, 2:35 PM
+      [null, MDYTA, MDYTA, " "], //  January 1, 2018, 11:20 AM – January 2, 2019, 2:35 PM
+    ],
+    "minute-of-hour": [
+      ["minute", mmS], //   minute :05
+      [null, mmP, "mm"], // minutes :05–30
+    ],
+  };
+})();
+
 const getDayFormat = (options: OptionsType) =>
   options.compact || options.date_abbreviate ? "ddd" : "dddd";
 
@@ -125,10 +242,9 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
   }
 }
 
-type DateVal = string | number;
+type DateVal = string | number | Moment;
 
-/** This formats a time with unit as a date range */
-export function formatDateTimeRangeWithUnit(
+export function normalizeDateTimeRangeWithUnit(
   value: DateVal | [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
@@ -138,78 +254,74 @@ export function formatDateTimeRangeWithUnit(
     parseTimestamp(d, unit, options.local),
   );
   if (!a.isValid() || !b.isValid()) {
-    return String(a);
+    return [a, b];
   }
+
+  // week-of-year → week, minute-of-hour → minute, etc
+  const momentUnit = unit.split("-")[0];
 
   // The client's unit boundaries might not line up with the data returned from the server.
   // We shift the range so that the start lines up with the value.
-  const start = a.clone().startOf(unit);
-  const end = b.clone().endOf(unit);
+  const start = a.clone().startOf(momentUnit);
+  const end = b.clone().endOf(momentUnit);
   const shift = a.diff(start, "days");
   [start, end].forEach(d => d.add(shift, "days"));
+  return [start, end, shift];
+}
 
-  if (!start.isValid() || !end.isValid()) {
+/** This formats a time with unit as a date range */
+export function formatDateTimeRangeWithUnit(
+  value: DateVal | [DateVal] | [DateVal, DateVal],
+  unit: DatetimeUnit,
+  options: OptionsType = {},
+) {
+  const [start, end, shift] = normalizeDateTimeRangeWithUnit(
+    value,
+    unit,
+    options,
+  );
+  if (shift === undefined) {
+    return String(start);
+  } else if (!start.isValid() || !end.isValid()) {
     // TODO: when is this used?
-    return formatWeek(a, options);
+    return formatWeek(start, options);
   }
 
-  // Tooltips should show full month name, but condense "MMMM D, YYYY - MMMM D, YYYY" to "MMMM D - D, YYYY" etc
+  // Tooltips should show full month name, but condense "MMMM D, YYYY - MMMM D, YYYY" to "MMMM D-D, YYYY" etc
   const monthFormat =
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  const sameYear = start.year() === end.year();
-  const sameQuarter = start.quarter() === end.quarter();
-  const sameMonth = start.month() === end.month();
-  const sameDayOfMonth = start.date() === end.date();
+  // month format is configurable, so we need to insert it after lookup
+  const formatDate = (date: Moment, formatStr: string) =>
+    date.format(formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat));
 
-  const Y = "YYYY";
-  const Q = "[Q]Q";
-  const QY = "[Q]Q YYYY";
-  const M = monthFormat;
-  const MY = `${monthFormat} YYYY`;
-  const MDY = `${monthFormat} D, YYYY`;
-  const MD = `${monthFormat} D`;
-  const DY = `D, YYYY`;
+  const formats = DATE_RANGE_FORMATS[unit];
+  const largestFormat = formats.find(([matchUnit]) => matchUnit == null);
+  const smallestFormat =
+    formats.find(([matchUnit]) => start.isSame(end, matchUnit)) ??
+    largestFormat;
+  if (!smallestFormat || !largestFormat) {
+    return String(start);
+  }
 
-  // Drop down to day resolution if shift causes misalignment with desired resolution boundaries
-  const date_resolution =
-    (shift === 0 ? options.date_resolution : null) ?? "day";
+  // Even if we don’t have want to condense, we should avoid empty date ranges like Jan 1 - Jan 1.
+  // This is indicated when the smallest matched format has no end format.
+  let [_, startFormat, endFormat, pad] = smallestFormat;
+  if (!endFormat) {
+    return formatDate(start, startFormat);
+  }
 
-  // Use Wikipedia’s date range formatting guidelines
-  // https://en.wikipedia.org/wiki/Wikipedia:Manual_of_Style/Dates_and_numbers#Ranges
-  const [startFormat, endFormat, pad = ""] = {
-    year:
-      !sameYear || !condensed
-        ? [Y, Y] // 2018–2019
-        : [Y], // 2018
-    quarter:
-      !sameYear || !condensed
-        ? [QY, QY, " "] // Q2 2018 – Q3 2019
-        : !sameQuarter
-        ? [Q, QY] // Q2–Q4 2019
-        : [QY], // Q2 2018
-    month:
-      !sameYear || !condensed
-        ? [MY, MY, " "] // September 2018 – January 2019
-        : !sameMonth
-        ? [M, MY] // September–December 2018
-        : [MY], // September 2018
-    day:
-      !sameYear || !condensed
-        ? [MDY, MDY, " "] // January 1, 2018 – January 2, 2019
-        : !sameMonth
-        ? [MD, MDY, " "] // January 1 – February 2, 2018
-        : !sameDayOfMonth
-        ? [MD, DY] // January 1–2, 2018
-        : [MDY], // January 1, 2018
-  }[date_resolution];
-
-  const startStr = start.format(startFormat);
-  const endStr = end.format(endFormat ?? startFormat);
-  return startStr === endStr
-    ? startStr
-    : startStr + pad + EN_DASH + pad + endStr;
+  [_, startFormat, endFormat, pad = ""] = condensed
+    ? smallestFormat
+    : largestFormat;
+  return !endFormat
+    ? formatDate(start, startFormat)
+    : formatDate(start, startFormat) +
+        pad +
+        EN_DASH +
+        pad +
+        formatDate(end, endFormat);
 }
 
 export function formatRange(
