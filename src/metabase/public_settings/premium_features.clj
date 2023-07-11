@@ -236,13 +236,32 @@
   []
   (boolean (seq (token-features))))
 
+(def ^:dynamic *premium-feature-overrides*
+  "Dynamic var holding a set of tokens which are temporarily considered to be enabled, even if the user's token does
+  not have that feature.
+
+  This allows eg. `:audit-app` functionality to use `:serialization` internally, even if the token only has
+  `:audit-app`.
+
+  Don't touch this directly - prefer to use [[with-premium-feature-overrides]]."
+  #{})
+
+(defmacro with-premium-feature-overrides
+  "Helper to dynamically override [[*premium-feature-overrides*]] and properly merge any existing value.
+
+  Used like `(with-premium-feature-overrides [:serialization] (something-using-serdes ...))`."
+  [features & body]
+  `(binding [*premium-feature-overrides* (into *premium-feature-overrides* ~features)]
+     ~@body))
+
 (defn has-feature?
   "Does this instance's premium token have `feature`?
 
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (contains? (token-features) (name feature)))
+  (or (contains? (token-features) (name feature))
+      (*premium-feature-overrides* feature)))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -292,6 +311,10 @@
   "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
   :sso)
 
+(define-premium-feature can-disable-password-login?
+  "Can we password login?"
+  :disable-password-login)
+
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
   "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
   notifications, more in the future)?"
@@ -303,9 +326,16 @@
   :advanced-permissions)
 
 (define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
-  etc.)?"
+  "Should we enable Question verifications (and more in the future, like workflows, forking, etc.)?"
   :content-management)
+
+(define-premium-feature ^{:added "0.41.0"} enable-official-collections?
+  "Should we enable Official Collections?"
+  :official-collections)
+
+(define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
+  "Should we enable Snippet collections"
+  :snippet-collections)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"

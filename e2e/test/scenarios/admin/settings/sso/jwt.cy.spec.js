@@ -4,6 +4,7 @@ import {
   typeAndBlurUsingLabel,
   modal,
   popover,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import {
@@ -15,6 +16,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });

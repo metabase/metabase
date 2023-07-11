@@ -61,7 +61,7 @@ export const TextInput = styled.input`
   width: 100%;
 `;
 
-export const HeadingContainer = styled.div`
+export const HeadingContainer = styled.div<{ fade?: boolean }>`
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -73,6 +73,7 @@ export const HeadingContainer = styled.div`
 
 interface HeadingContentProps {
   isEditing?: boolean;
+  fade?: boolean;
 }
 
 export const HeadingContent = styled.h2<HeadingContentProps>`
@@ -84,6 +85,7 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
   padding: 0;
   margin: 0.25rem 0;
   pointer-events: all;
+  opacity: ${({ fade }) => (fade ? 0.25 : 1)};
   ${({ isEditing }) =>
     isEditing &&
     css`
