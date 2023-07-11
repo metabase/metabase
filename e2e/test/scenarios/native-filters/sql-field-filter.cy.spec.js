@@ -49,8 +49,9 @@ describe("scenarios > filters > sql filters > field filter", () => {
         cy.findByText("Small Marble Shoes");
       });
 
+      FieldFilter.clearWidgetValue();
       FieldFilter.openEntryForm();
-      FieldFilter.addToWidgetStringFilter("1");
+      FieldFilter.addWidgetStringFilter("1");
 
       SQLFilter.runQuery();
 
