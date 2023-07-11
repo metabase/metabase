@@ -289,7 +289,9 @@ describe("scenarios > visualizations > table", () => {
 
   it("default picker container should not be scrollable horizontally", () => {
     openPeopleTable();
-    headerCells().filter(":contains('Password')").click();
+    cy.findByTestId("query-builder-main").within(() => {
+      headerCells().filter(":contains('Password')").click();
+    });
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
