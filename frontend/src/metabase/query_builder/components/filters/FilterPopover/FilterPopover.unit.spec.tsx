@@ -1,6 +1,6 @@
 import "__support__/ui-mocks";
 
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -14,6 +14,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 import Filter from "metabase-lib/queries/structured/Filter";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import FilterPopover from "./FilterPopover";
 
 const metadata = createMockMetadata({
@@ -36,67 +37,59 @@ const QUERY = Question.create({
     ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
     "asdf",
   ]);
-
-const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER] =
+const [RELATIVE_DAY_FILTER, NUMERIC_FILTER, STRING_CONTAINS_FILTER]: Filter[] =
   QUERY.filters();
 
 const dummyFunction = jest.fn();
+
+const setup = ({
+  filter,
+  onChange = dummyFunction,
+  onChangeFilter = dummyFunction,
+  showFieldPicker = true,
+}: {
+  filter: Filter;
+  query?: StructuredQuery;
+  onChange?: (filter: Filter) => void;
+  onChangeFilter?: (filter: Filter) => void;
+  showFieldPicker?: boolean;
+}) => {
+  renderWithProviders(
+    <FilterPopover
+      query={QUERY}
+      filter={filter}
+      onChange={onChange}
+      onChangeFilter={onChangeFilter}
+      showFieldPicker={showFieldPicker}
+    />,
+  );
+};
 
 describe("FilterPopover", () => {
   describe("existing filter", () => {
     describe("DatePicker", () => {
       it("should render a date picker for a date filter", () => {
-        const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
-
-        render(
-          <FilterPopover
-            query={QUERY}
-            filter={filter}
-            onChangeFilter={dummyFunction}
-          />,
-        );
+        setup({ filter: RELATIVE_DAY_FILTER });
 
         expect(screen.getByTestId("date-picker")).toBeInTheDocument();
       });
     });
     describe("filter operator selection", () => {
       it("should have an operator selector", () => {
-        const filter = new Filter(NUMERIC_FILTER, null, QUERY);
-        renderWithProviders(
-          <FilterPopover
-            query={QUERY}
-            filter={filter}
-            onChangeFilter={dummyFunction}
-          />,
-        );
+        setup({ filter: NUMERIC_FILTER });
         expect(screen.getByText("Equal to")).toBeInTheDocument();
         expect(screen.getByText("1,234")).toBeInTheDocument();
       });
     });
     describe("filter options", () => {
       it("should not show a control to the user if the filter has no options", () => {
-        const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
-        renderWithProviders(
-          <FilterPopover
-            query={QUERY}
-            filter={filter}
-            onChange={dummyFunction}
-            onChangeFilter={dummyFunction}
-          />,
-        );
+        setup({ filter: RELATIVE_DAY_FILTER });
         expect(screen.queryByText("Include")).not.toBeInTheDocument();
         expect(screen.queryByText("today")).not.toBeInTheDocument();
       });
 
       it('should show "case-sensitive" option to the user for "contains" filters', () => {
-        const filter = new Filter(STRING_CONTAINS_FILTER, null, QUERY);
-        renderWithProviders(
-          <FilterPopover
-            query={QUERY}
-            filter={filter}
-            onChangeFilter={dummyFunction}
-          />,
-        );
+        setup({ filter: STRING_CONTAINS_FILTER });
         expect(screen.getByText("Case sensitive")).toBeInTheDocument();
       });
 
@@ -104,14 +97,7 @@ describe("FilterPopover", () => {
       // Tried to click on checkbox, label, their parent - nothing seems to be working, while it works fine in UI
       // eslint-disable-next-line jest/no-disabled-tests, jest/expect-expect
       it.skip("should let the user toggle an option", async () => {
-        const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
-        renderWithProviders(
-          <FilterPopover
-            query={QUERY}
-            filter={filter}
-            onChangeFilter={dummyFunction}
-          />,
-        );
+        setup({ filter: RELATIVE_DAY_FILTER });
         const ellipsis = screen.getByLabelText("ellipsis icon");
         userEvent.click(ellipsis);
         const includeToday = await screen.findByText("Include today");
@@ -120,14 +106,7 @@ describe("FilterPopover", () => {
 
       // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should let the user toggle a date filter type", async () => {
-        const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
-        renderWithProviders(
-          <FilterPopover
-            query={QUERY}
-            filter={filter}
-            onChangeFilter={dummyFunction}
-          />,
-        );
+        setup({ filter: RELATIVE_DAY_FILTER });
         const back = screen.getByLabelText("chevronleft icon");
         userEvent.click(back);
         expect(
@@ -137,14 +116,7 @@ describe("FilterPopover", () => {
 
       // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should let the user toggle a text filter type", async () => {
-        const filter = new Filter(STRING_CONTAINS_FILTER, null, QUERY);
-        renderWithProviders(
-          <FilterPopover
-            query={QUERY}
-            filter={filter}
-            onChangeFilter={dummyFunction}
-          />,
-        );
+        setup({ filter: STRING_CONTAINS_FILTER });
         userEvent.click(await screen.findByText("Contains"));
         userEvent.click(await screen.findByText("Is"));
 
@@ -152,6 +124,47 @@ describe("FilterPopover", () => {
           await screen.findByTestId("date-picker-shortcuts"),
         ).toBeInTheDocument();
       });
+    });
+  });
+  describe("filter rendering", () => {
+    describe("no-value filters", () => {
+      it.each(["is-null", "not-null", "is-empty", "not-empty"])(
+        "should not render picker or separator when selecting '%s' filter from the column dropdown",
+        async operator => {
+          setup({
+            filter: new Filter(
+              [operator, ["field", PRODUCTS.TITLE, null], null],
+              null,
+              QUERY,
+            ),
+            showFieldPicker: false,
+          });
+
+          expect(
+            screen.getByTestId("empty-picker-placeholder"),
+          ).toBeInTheDocument();
+        },
+      );
+    });
+
+    describe("non datetime filters", () => {
+      it.each([
+        { filter: STRING_CONTAINS_FILTER, label: "contains" },
+        { filter: NUMERIC_FILTER, label: "equals" },
+      ])(
+        "should render the default filter picker and separator if the $label filter has arguments",
+        async ({ filter }) => {
+          setup({ filter });
+
+          expect(
+            screen.getByTestId("filter-popover-separator"),
+          ).toBeInTheDocument();
+
+          expect(
+            screen.queryByTestId("default-filter-picker"),
+          ).not.toBeInTheDocument();
+        },
+      );
     });
   });
 });
