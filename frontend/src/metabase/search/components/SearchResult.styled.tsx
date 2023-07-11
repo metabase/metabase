@@ -137,6 +137,7 @@ const resultStyles = ({ compact, active, isSelected }: ResultStylesProps) => `
 export const ResultLinkContent = styled.div`
   display: flex;
   align-items: start;
+  overflow-wrap: anywhere;
 `;
 
 export const Description = styled(Text)`

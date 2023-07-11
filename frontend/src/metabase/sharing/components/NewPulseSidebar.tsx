@@ -1,6 +1,3 @@
-/* eslint "react/prop-types": "error" */
-
-import PropTypes from "prop-types";
 import cx from "classnames";
 import { t, jt } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
@@ -9,13 +6,21 @@ import Link from "metabase/core/components/Link";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import { ChannelCard } from "metabase/sharing/components/NewPulseSidebar.styled";
 
-function NewPulseSidebar({
+interface NewPulseSidebarProps {
+  emailConfigured: boolean;
+  slackConfigured: boolean;
+  onNewEmailPulse: () => void;
+  onNewSlackPulse: () => void;
+  onCancel: () => void;
+}
+
+export function NewPulseSidebar({
   onCancel,
   emailConfigured,
   slackConfigured,
   onNewEmailPulse,
   onNewSlackPulse,
-}) {
+}: NewPulseSidebarProps) {
   return (
     <Sidebar onCancel={onCancel}>
       <div className="mt2 pt2 px4">
@@ -47,7 +52,6 @@ function NewPulseSidebar({
               >{t`Email it`}</h3>
             </div>
             <Text
-              lineHeight={1.5}
               className={cx("text-medium", {
                 "hover-child hover--inherit": emailConfigured,
               })}
@@ -86,7 +90,6 @@ function NewPulseSidebar({
               >{t`Send it to Slack`}</h3>
             </div>
             <Text
-              lineHeight={1.5}
               className={cx("text-medium", {
                 "hover-child hover--inherit": slackConfigured,
               })}
@@ -106,13 +109,3 @@ function NewPulseSidebar({
     </Sidebar>
   );
 }
-
-NewPulseSidebar.propTypes = {
-  onCancel: PropTypes.func.isRequired,
-  emailConfigured: PropTypes.bool.isRequired,
-  slackConfigured: PropTypes.bool.isRequired,
-  onNewEmailPulse: PropTypes.func.isRequired,
-  onNewSlackPulse: PropTypes.func.isRequired,
-};
-
-export default NewPulseSidebar;
