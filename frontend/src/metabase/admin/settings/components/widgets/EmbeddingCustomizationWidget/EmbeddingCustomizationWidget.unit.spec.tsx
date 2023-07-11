@@ -1,11 +1,11 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import EmbeddingCustomizationInfo from "./EmbeddingCustomizationInfo";
+import { EmbeddingCustomizationWidget } from "./EmbeddingCustomizationWidget";
 
 const setup = () => {
-  renderWithProviders(<EmbeddingCustomizationInfo />);
+  renderWithProviders(<EmbeddingCustomizationWidget />);
 };
 
-describe("EmbeddingCustomizationInfo", () => {
+describe("EmbeddingCustomizationWidget", () => {
   it("should add utm_media to the upgrade link", () => {
     setup();
 
