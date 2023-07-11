@@ -193,7 +193,7 @@ describe("DataSelector", () => {
     await delay(1);
     expect(fetchDatabases).toHaveBeenCalled();
     rerender(<DataSelector {...props} loading />);
-    expect(screen.getByText("Loading...")).toBeInTheDocu7ment();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
 
     // select a db
     let nextMetadata = createMockMetadata({ databases });
