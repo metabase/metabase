@@ -640,14 +640,15 @@
     {:column-name (.-name (col-fn cell))
      :value       (.-value cell)}))
 
-(def ^:private row-cell       (js-cells-by #(.-col %)))
-(def ^:private dimension-cell (js-cells-by #(.-column %)))
+(def ^:private row-cell       (js-cells-by #(.-col ^js %)))
+(def ^:private dimension-cell (js-cells-by #(.-column ^js %)))
 
 (defn ^:export available-drill-thrus
   "Return an array (possibly empty) of drill-thrus given:
   - Required column
   - Nullable value
-  - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)"
+  - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)
+  - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)"
   [a-query stage-number column value row dimensions]
   (->> (merge {:column (js.metadata/parse-column column)
                :value  (cond

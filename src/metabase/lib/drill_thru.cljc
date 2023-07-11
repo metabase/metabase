@@ -570,7 +570,7 @@
          sort-drill
          summarize-column-drill
          summarize-column-by-time-drill
-         #_underlying-records-drill]))
+         underlying-records-drill]))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`
