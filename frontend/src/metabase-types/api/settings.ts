@@ -265,6 +265,7 @@ export interface Settings {
   "uploads-database-id": number | null;
   "uploads-schema-name": string | null;
   "uploads-table-prefix": string | null;
+  "user-visibility": string | null;
 }
 
 export type SettingKey = keyof Settings;
