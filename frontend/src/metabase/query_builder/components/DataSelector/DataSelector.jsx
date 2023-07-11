@@ -665,6 +665,12 @@ export class UnconnectedDataSelector extends Component {
   async loadStepData(stepName) {
     const loadersForSteps = {
       // NOTE: make sure to return the action's resulting promise
+      [DATA_BUCKET_STEP]: () => {
+        return Promise.all([
+          this.props.fetchDatabases(this.props.databaseQuery),
+          this.props.fetchDatabases({ saved: true }),
+        ]);
+      },
       [DATABASE_STEP]: () => {
         return Promise.all([
           this.props.fetchDatabases(this.props.databaseQuery),
