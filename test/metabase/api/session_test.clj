@@ -383,7 +383,6 @@
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
                    :test-session-api-setting)))))))
 
-
 (deftest properties-i18n-test
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
