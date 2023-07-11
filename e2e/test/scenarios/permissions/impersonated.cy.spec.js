@@ -9,6 +9,7 @@ import {
   popover,
   restore,
   runNativeQuery,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
@@ -24,6 +25,7 @@ describeEE("impersonated permission", () => {
       restore("postgres-12");
       createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("can set impersonated permissions", () => {
@@ -319,6 +321,7 @@ describeEE("impersonated permission", () => {
       restore("postgres-12");
       createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       setImpersonatedPermission();
 

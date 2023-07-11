@@ -2,9 +2,9 @@ import {
   restore,
   visitQuestion,
   isEE,
-  isPremium,
   isOSS,
   visitDashboard,
+  setTokenFeatures,
   visitIframe,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -108,12 +108,12 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.findByText("Full-app embedding").click();
         cy.findByText(/Embedding the entire Metabase app/i);
         cy.contains(
-          "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. Learn more.",
+          "With some of our paid plans, you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
         );
         cy.contains(
           "Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the exact specifications for what can be entered.",
-        );
-        cy.findByPlaceholderText("https://*.example.com").should("be.empty");
+        ).should("not.exist");
+        cy.findByPlaceholderText("https://*.example.com").should("not.exist");
       }
     });
 
@@ -144,10 +144,11 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
           "currentlyEmbeddedObject",
         );
+        isEE && setTokenFeatures("all");
 
         visitAndEnableSharing(object);
 
-        if (isPremium) {
+        if (isEE) {
           cy.findByText("Font");
         }
 
@@ -177,7 +178,7 @@ describe("scenarios > embedding > smoke tests", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
 
-        if (isPremium) {
+        if (isEE) {
           cy.contains("Powered by Metabase").should("not.exist");
         } else {
           cy.contains("Powered by Metabase")

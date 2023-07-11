@@ -12,6 +12,7 @@ import {
   resyncDatabase,
   createModelFromTableName,
   queryWritableDB,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import {
@@ -484,260 +485,258 @@ describe(
       });
     });
 
-    describe("hidden fields", () => {
-      it("should allow query action execution from the model details page", () => {
-        verifyScoreValue(0, dialect);
+    it("should allow query action execution from the model details page", () => {
+      verifyScoreValue(0, dialect);
 
-        cy.get("@writableModelId").then(modelId => {
-          createAction({
-            ...SAMPLE_WRITABLE_QUERY_ACTION,
-            model_id: modelId,
-          });
-          cy.visit(`/model/${modelId}/detail/actions`);
-          cy.wait("@getModel");
+      cy.get("@writableModelId").then(modelId => {
+        createAction({
+          ...SAMPLE_WRITABLE_QUERY_ACTION,
+          model_id: modelId,
         });
-
-        openActionEditorFor(SAMPLE_QUERY_ACTION.name);
-
-        fillActionQuery(" [[and status = {{ current_status}}]]");
-        cy.findAllByTestId("form-field-container")
-          .filter(":contains('Current Status')")
-          .within(() => {
-            cy.findByLabelText("Show field").click();
-            cy.icon("gear").click();
-          });
-
-        popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
-        });
-
-        cy.findByRole("button", { name: "Update" }).click();
-
-        runActionFor(SAMPLE_QUERY_ACTION.name);
-
-        modal().within(() => {
-          cy.findByLabelText(TEST_PARAMETER.name).type("1");
-          cy.findByLabelText("Current Status").should("not.exist");
-
-          cy.button(SAMPLE_QUERY_ACTION.name).click();
-        });
-
-        cy.findByTestId("toast-undo")
-          .findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`)
-          .should("be.visible");
-
-        verifyScoreValue(22, dialect);
-
-        openActionEditorFor(SAMPLE_QUERY_ACTION.name);
-
-        cy.findAllByTestId("form-field-container")
-          .filter(":contains('Current Status')")
-          .within(() => {
-            cy.icon("gear").click();
-          });
-
-        popover().within(() => {
-          cy.findByLabelText("Required").check();
-        });
-        cy.findByRole("button", { name: "Update" }).click();
-
-        runActionFor(SAMPLE_QUERY_ACTION.name);
-
-        modal().within(() => {
-          cy.findByLabelText(TEST_PARAMETER.name).type("1");
-          cy.findByLabelText("Current Status").should("not.exist");
-
-          cy.button(SAMPLE_QUERY_ACTION.name).should("be.disabled");
-
-          cy.findByRole("button", { name: "Cancel" }).click();
-        });
-
-        openActionEditorFor(SAMPLE_QUERY_ACTION.name);
-
-        // reset score value to 0
-        resetAndVerifyScoreValue(dialect);
-
-        cy.findByRole("dialog").within(() => {
-          cy.findAllByTestId("form-field-container")
-            .filter(":contains('Current Status')")
-            .within(() => {
-              cy.findByLabelText("Show field").click();
-              cy.findByLabelText("Show field").should("be.checked");
-            });
-          cy.findByRole("button", { name: "Update" }).click();
-        });
-
-        runActionFor(SAMPLE_QUERY_ACTION.name);
-
-        modal().within(() => {
-          cy.findByLabelText(TEST_PARAMETER.name).type("1");
-          cy.button(SAMPLE_QUERY_ACTION.name).should("be.disabled");
-
-          cy.findByLabelText("Current Status").type("active");
-
-          cy.button(SAMPLE_QUERY_ACTION.name).click();
-        });
-
-        verifyScoreValue(22, dialect);
+        cy.visit(`/model/${modelId}/detail/actions`);
+        cy.wait("@getModel");
       });
 
-      it("should allow implicit action execution from the model details page", () => {
-        cy.get("@writableModelId").then(id => {
-          cy.visit(`/model/${id}/detail`);
-          cy.wait("@getModel");
+      openActionEditorFor(SAMPLE_QUERY_ACTION.name);
+
+      fillActionQuery(" [[and status = {{ current_status}}]]");
+      cy.findAllByTestId("form-field-container")
+        .filter(":contains('Current Status')")
+        .within(() => {
+          cy.findByLabelText("Show field").click();
+          cy.icon("gear").click();
         });
 
-        cy.findByRole("tablist").within(() => {
-          cy.findByText("Actions").click();
+      popover().within(() => {
+        cy.findByLabelText("Required").uncheck();
+      });
+
+      cy.findByRole("button", { name: "Update" }).click();
+
+      runActionFor(SAMPLE_QUERY_ACTION.name);
+
+      modal().within(() => {
+        cy.findByLabelText(TEST_PARAMETER.name).type("1");
+        cy.findByLabelText("Current Status").should("not.exist");
+
+        cy.button(SAMPLE_QUERY_ACTION.name).click();
+      });
+
+      cy.findByTestId("toast-undo")
+        .findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`)
+        .should("be.visible");
+
+      verifyScoreValue(22, dialect);
+
+      openActionEditorFor(SAMPLE_QUERY_ACTION.name);
+
+      cy.findAllByTestId("form-field-container")
+        .filter(":contains('Current Status')")
+        .within(() => {
+          cy.icon("gear").click();
         });
 
-        cy.findByRole("button", { name: /Create basic actions/i }).click();
+      popover().within(() => {
+        cy.findByLabelText("Required").check();
+      });
+      cy.findByRole("button", { name: "Update" }).click();
 
-        openActionEditorFor("Create");
+      runActionFor(SAMPLE_QUERY_ACTION.name);
 
+      modal().within(() => {
+        cy.findByLabelText(TEST_PARAMETER.name).type("1");
+        cy.findByLabelText("Current Status").should("not.exist");
+
+        cy.button(SAMPLE_QUERY_ACTION.name).should("be.disabled");
+
+        cy.findByRole("button", { name: "Cancel" }).click();
+      });
+
+      openActionEditorFor(SAMPLE_QUERY_ACTION.name);
+
+      // reset score value to 0
+      resetAndVerifyScoreValue(dialect);
+
+      cy.findByRole("dialog").within(() => {
         cy.findAllByTestId("form-field-container")
-          .filter(":contains('Created At')")
+          .filter(":contains('Current Status')")
           .within(() => {
             cy.findByLabelText("Show field").click();
-            cy.findByLabelText("Show field").should("not.be.checked");
+            cy.findByLabelText("Show field").should("be.checked");
           });
-
         cy.findByRole("button", { name: "Update" }).click();
+      });
 
-        runActionFor("Create");
+      runActionFor(SAMPLE_QUERY_ACTION.name);
 
-        modal().within(() => {
-          cy.findByLabelText("Created At").should("not.exist");
-          cy.findByLabelText("Team Name").type("Zebras");
-          cy.findByLabelText("Score").type("1");
+      modal().within(() => {
+        cy.findByLabelText(TEST_PARAMETER.name).type("1");
+        cy.button(SAMPLE_QUERY_ACTION.name).should("be.disabled");
 
-          cy.findByRole("button", { name: "Save" }).click();
+        cy.findByLabelText("Current Status").type("active");
+
+        cy.button(SAMPLE_QUERY_ACTION.name).click();
+      });
+
+      verifyScoreValue(22, dialect);
+    });
+
+    it("should allow implicit action execution from the model details page", () => {
+      cy.get("@writableModelId").then(id => {
+        cy.visit(`/model/${id}/detail`);
+        cy.wait("@getModel");
+      });
+
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
+
+      cy.findByRole("button", { name: /Create basic actions/i }).click();
+
+      openActionEditorFor("Create");
+
+      cy.findAllByTestId("form-field-container")
+        .filter(":contains('Created At')")
+        .within(() => {
+          cy.findByLabelText("Show field").click();
+          cy.findByLabelText("Show field").should("not.be.checked");
         });
 
-        cy.findByTestId("toast-undo")
-          .findByText(`Successfully saved`)
-          .should("be.visible");
+      cy.findByRole("button", { name: "Update" }).click();
 
-        // show toast
+      runActionFor("Create");
+
+      modal().within(() => {
+        cy.findByLabelText("Created At").should("not.exist");
+        cy.findByLabelText("Team Name").type("Zebras");
+        cy.findByLabelText("Score").type("1");
+
+        cy.findByRole("button", { name: "Save" }).click();
+      });
+
+      cy.findByTestId("toast-undo")
+        .findByText(`Successfully saved`)
+        .should("be.visible");
+
+      // show toast
+      queryWritableDB(
+        `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE team_name = 'Zebras'`,
+        dialect,
+      ).then(result => {
+        expect(result.rows.length).to.equal(1);
+
+        const row = result.rows[0];
+
+        expect(row.score).to.equal(1);
+      });
+    });
+
+    it("should allow public sharing of query action and execution", () => {
+      cy.get("@writableModelId").then(modelId => {
+        createAction({
+          ...SAMPLE_WRITABLE_QUERY_ACTION,
+          model_id: modelId,
+        });
+
+        cy.visit(`/model/${modelId}/detail/actions`);
+        cy.wait("@getModel");
+      });
+
+      enableSharingFor(SAMPLE_WRITABLE_QUERY_ACTION.name, {
+        publicUrlAlias: "queryActionPublicUrl",
+      });
+
+      openActionEditorFor(SAMPLE_WRITABLE_QUERY_ACTION.name);
+
+      fillActionQuery(" [[ AND status = {{new_status}} ]]");
+
+      cy.findAllByTestId("form-field-container")
+        .filter(":contains('New Status')")
+        .within(() => {
+          cy.findByLabelText("Show field").click();
+          cy.findByLabelText("Show field").should("not.be.checked");
+
+          cy.icon("gear").click();
+        });
+
+      popover().within(() => {
+        cy.findByLabelText("Required").uncheck();
+      });
+
+      cy.findByRole("button", { name: "Update" }).click();
+
+      cy.signOut();
+
+      cy.get("@queryActionPublicUrl").then(url => {
+        cy.visit(url);
+        cy.findByLabelText(TEST_PARAMETER.name).type("1");
+        cy.findByLabelText("New Status").should("not.exist");
+
+        cy.button(SAMPLE_QUERY_ACTION.name).click();
+
+        cy.findByText(
+          `${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`,
+        ).should("be.visible");
+
         queryWritableDB(
-          `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE team_name = 'Zebras'`,
+          `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
           dialect,
         ).then(result => {
-          expect(result.rows.length).to.equal(1);
-
           const row = result.rows[0];
 
-          expect(row.score).to.equal(1);
+          expect(row.score).to.equal(22);
         });
       });
+    });
 
-      it("should allow public sharing of query action and execution", () => {
-        cy.get("@writableModelId").then(modelId => {
-          createAction({
-            ...SAMPLE_WRITABLE_QUERY_ACTION,
-            model_id: modelId,
-          });
-
-          cy.visit(`/model/${modelId}/detail/actions`);
-          cy.wait("@getModel");
-        });
-
-        enableSharingFor(SAMPLE_WRITABLE_QUERY_ACTION.name, {
-          publicUrlAlias: "queryActionPublicUrl",
-        });
-
-        openActionEditorFor(SAMPLE_WRITABLE_QUERY_ACTION.name);
-
-        fillActionQuery(" [[ AND status = {{new_status}} ]]");
-
-        cy.findAllByTestId("form-field-container")
-          .filter(":contains('New Status')")
-          .within(() => {
-            cy.findByLabelText("Show field").click();
-            cy.findByLabelText("Show field").should("not.be.checked");
-
-            cy.icon("gear").click();
-          });
-
-        popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
-        });
-
-        cy.findByRole("button", { name: "Update" }).click();
-
-        cy.signOut();
-
-        cy.get("@queryActionPublicUrl").then(url => {
-          cy.visit(url);
-          cy.findByLabelText(TEST_PARAMETER.name).type("1");
-          cy.findByLabelText("New Status").should("not.exist");
-
-          cy.button(SAMPLE_QUERY_ACTION.name).click();
-
-          cy.findByText(
-            `${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`,
-          ).should("be.visible");
-
-          queryWritableDB(
-            `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
-            dialect,
-          ).then(result => {
-            const row = result.rows[0];
-
-            expect(row.score).to.equal(22);
-          });
-        });
+    it("should allow public sharing of implicit action and execution", () => {
+      cy.get("@writableModelId").then(id => {
+        cy.visit(`/model/${id}/detail`);
+        cy.wait("@getModel");
       });
 
-      it("should allow public sharing of implicit action and execution", () => {
-        cy.get("@writableModelId").then(id => {
-          cy.visit(`/model/${id}/detail`);
-          cy.wait("@getModel");
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
+
+      cy.findByRole("button", { name: /Create basic actions/i }).click();
+
+      enableSharingFor("Update", { publicUrlAlias: "updatePublicURL" });
+
+      openActionEditorFor("Update");
+
+      cy.findAllByTestId("form-field-container")
+        .filter(":contains('Created At')")
+        .within(() => {
+          cy.findByLabelText("Show field").click();
+          cy.findByLabelText("Show field").should("not.be.checked");
         });
 
-        cy.findByRole("tablist").within(() => {
-          cy.findByText("Actions").click();
-        });
+      cy.findByRole("button", { name: "Update" }).click();
 
-        cy.findByRole("button", { name: /Create basic actions/i }).click();
+      cy.signOut();
 
-        enableSharingFor("Update", { publicUrlAlias: "updatePublicURL" });
+      cy.get("@updatePublicURL").then(url => {
+        cy.visit(url);
 
-        openActionEditorFor("Update");
+        // team 2 has 10 points, let's give them more
+        cy.findByLabelText("ID").type("2");
+        cy.findByLabelText("Score").type("16");
+        cy.findByLabelText("Team Name").type("Bouncy Bears");
+        cy.findByLabelText("Create At").should("not.exist");
 
-        cy.findAllByTestId("form-field-container")
-          .filter(":contains('Created At')")
-          .within(() => {
-            cy.findByLabelText("Show field").click();
-            cy.findByLabelText("Show field").should("not.be.checked");
-          });
+        cy.button("Update").click();
 
-        cy.findByRole("button", { name: "Update" }).click();
+        cy.findByText("Update ran successfully").should("be.visible");
 
-        cy.signOut();
+        queryWritableDB(
+          `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 2`,
+          dialect,
+        ).then(result => {
+          const row = result.rows[0];
 
-        cy.get("@updatePublicURL").then(url => {
-          cy.visit(url);
-
-          // team 2 has 10 points, let's give them more
-          cy.findByLabelText("ID").type("2");
-          cy.findByLabelText("Score").type("16");
-          cy.findByLabelText("Team Name").type("Bouncy Bears");
-          cy.findByLabelText("Create At").should("not.exist");
-
-          cy.button("Update").click();
-
-          cy.findByText("Update ran successfully").should("be.visible");
-
-          queryWritableDB(
-            `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 2`,
-            dialect,
-          ).then(result => {
-            const row = result.rows[0];
-
-            expect(row.score).to.equal(16);
-            expect(row.team_name).to.equal("Bouncy Bears");
-          });
+          expect(row.score).to.equal(16);
+          expect(row.team_name).to.equal("Bouncy Bears");
         });
       });
     });
@@ -749,6 +748,7 @@ describe(
         role,
         `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
       );
+      setTokenFeatures("all");
       queryWritableDB(sql);
 
       const impersonatedUserId = 9;

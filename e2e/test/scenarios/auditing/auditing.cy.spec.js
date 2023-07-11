@@ -3,6 +3,7 @@ import {
   describeEE,
   visitQuestion,
   getDashboardCard,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -86,7 +87,10 @@ describeEE("audit > auditing", () => {
     cy.findByText(/ID/i);
   });
 
-  beforeEach(cy.signInAsAdmin);
+  beforeEach(() => {
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
 
   describe("See expected info on team member pages", () => {
     it.skip(`should load the Overview tab (metabase#32244)`, () => {
