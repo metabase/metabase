@@ -119,7 +119,7 @@ describe("csv uploads", () => {
         type: UPLOAD_FILE_TO_COLLECTION_ERROR,
         payload: {
           id: now,
-          message: `You cannot upload files larger than ${MAX_UPLOAD_STRING}mb`,
+          message: `You cannot upload files larger than ${MAX_UPLOAD_STRING} MB`,
         },
       });
     });

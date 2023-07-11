@@ -27,7 +27,7 @@ import EditUserModal from "metabase/admin/people/containers/EditUserModal";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
 // Settings
-import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp";
+import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
 import PremiumEmbeddingLicensePage from "metabase/admin/settings/containers/PremiumEmbeddingLicensePage";
 
 //  DB Add / list
@@ -54,7 +54,7 @@ import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
 import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
 import Logs from "metabase/admin/tasks/containers/Logs";
-import Help from "metabase/admin/tasks/containers/Help";
+import { Help } from "metabase/admin/tasks/components/Help";
 
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
@@ -174,7 +174,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             path="premium-embedding-license"
             component={PremiumEmbeddingLicensePage}
           />
-          <Route path="*" component={SettingsEditorApp} />
+          <Route path="*" component={SettingsEditor} />
         </Route>
       </Route>
 

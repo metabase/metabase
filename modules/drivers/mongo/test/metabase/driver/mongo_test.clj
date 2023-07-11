@@ -11,6 +11,8 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
@@ -93,7 +95,8 @@
       (testing (str "supports with " dbms_version)
         (is (= expected
                (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
-                 (driver/database-supports? :mongo :expressions db))))))))
+                 (driver/database-supports? :mongo :expressions db))))))
+    (is (= #{:collection} (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
 
 
 (def ^:private native-query

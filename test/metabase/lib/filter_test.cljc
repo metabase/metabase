@@ -256,13 +256,21 @@
                                                         (fn [col]
                                                           (->> col
                                                                lib/filterable-column-operators
-                                                               (map (comp (juxt :short-name :display-name) #(lib/display-info query %)))
+                                                               (map (comp (juxt :short-name identity)
+                                                                          #(lib/display-info query %)))
                                                                (into {})))))
                                              (into {}))]
-        (is (=? {"ID" {"=" "Is" "is-null" "Is empty" ">" "Greater than"}
-                 "NAME" {"=" "Is" "is-null" "Is null" "is-empty" "Is empty"}
-                 "LAST_LOGIN" {"!=" "Excludes" ">" "After"}
-                 "Venues__PRICE" {"=" "Equal to" "is-null" "Is empty"}}
+        (is (=? {"ID"            {"="       {:display-name "=", :long-display-name "Is"}
+                                  "is-null" {:display-name "Is empty", :long-display-name "Is empty"}
+                                  ">"       {:display-name ">", :long-display-name "Greater than"}
+                                  ">="      {:display-name "≥", :long-display-name "Greater than or equal to"},}
+                 "NAME"          {"="        {:display-name "=", :long-display-name "Is"}
+                                  "is-null" {:display-name "Is null", :long-display-name "Is null"}
+                                  "is-empty" {:display-name "Is empty", :long-display-name "Is empty"}}
+                 "LAST_LOGIN"    {"!=" {:display-name "≠", :long-display-name "Excludes"}
+                                  ">"  {:display-name ">", :long-display-name "After"}}
+                 "Venues__PRICE" {"="       {:display-name "=", :long-display-name "Equal to"}
+                                  "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
 
 (deftest ^:parallel filter-clause-test

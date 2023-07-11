@@ -60,6 +60,8 @@ describe("scenarios > public > dashboard", () => {
 
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
+    cy.intercept("/api/dashboard/*/public_link").as("publicLink");
+
     cy.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
@@ -99,6 +101,8 @@ describe("scenarios > public > dashboard", () => {
       .parent()
       .findByRole("switch")
       .check();
+
+    cy.wait("@publicLink");
 
     cy.findByRole("heading", { name: "Public link" })
       .parent()
