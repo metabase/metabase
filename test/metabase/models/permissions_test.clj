@@ -713,6 +713,15 @@
                                :query :segmented}}
              (test-data-graph group))))))
 
+(deftest audit-db-update-test
+  (testing "Throws exception when we attempt to change the audit db permission manually."
+    (mt/with-temp* [PermissionsGroup [group]
+                    Database         [database]
+                    Table            [table    {:db_id (u/the-id database)}]]
+      (with-redefs [perms/default-audit-db-id (constantly (u/the-id database))]
+        (is (thrown? Exception
+                     (perms/update-data-perms-graph! [(u/the-id group) (u/the-id database) :data :schemas] {"" {(u/the-id table) :all}})))))))
+
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
     (t2.with-temp/with-temp [Database {db-id :id}]

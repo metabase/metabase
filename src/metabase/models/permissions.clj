@@ -1085,12 +1085,12 @@
 (defenterprise default-audit-collection-entity-ids
   "OSS implementation of `audit-db/default-audit-collection-entity-ids`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db [] ::noop)
+  metabase-enterprise.audit-db [] [])
 
 (defenterprise default-audit-collection-report-entity-ids
   "OSS implementation of `audit-db/default-audit-collection-report-entity-ids`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db [] ::noop)
+  metabase-enterprise.audit-db [] [])
 
 (defn check-audit-collection-permissions
   "Check that the changes coming in does not attempt to change audit collection permissions. Admins should
@@ -1116,7 +1116,7 @@
                          vals
                          (map keys)
                          (apply concat))]
-    (when (contains? changes-ids (default-audit-db-id))
+    (when (some #{(default-audit-db-id)} changes-ids)
       (throw (ex-info (tru
                        (str "Unable to update audit database, that requires updating through monitoring permissions."))
                       {:status-code 400})))))
