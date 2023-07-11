@@ -39,16 +39,16 @@
     {
       "files": ["lib/redux/hooks.ts"],
       "rules": {
-        // "no-restricted-imports": [
-        //   "error",
-        //   {
-        //     "patterns": [
-        //       "metabase-enterprise",
-        //       "metabase-enterprise/*",
-        //       "cljs/metabase.lib*"
-        //     ]
-        //   }
-        // ]
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              "metabase-enterprise",
+              "metabase-enterprise/*",
+              "cljs/metabase.lib*"
+            ]
+          }
+        ]
       }
     }
   ]
