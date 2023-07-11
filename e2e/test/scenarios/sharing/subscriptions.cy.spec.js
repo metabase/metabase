@@ -11,6 +11,7 @@ import {
   addOrUpdateDashboardCard,
   addTextBox,
   setTokenFeatures,
+  main,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -317,6 +318,24 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.visit(`/dashboard/1`);
     });
 
+    it("should only show current user in recipients dropdown if `user-visiblity` setting is `none`", () => {
+      openRecipientsWithUserVisibilitySetting("none");
+
+      popover().find("span").should("have.length", 1);
+    });
+
+    it("should only show users in same group in recipients dropdown if `user-visiblity` setting is `group`", () => {
+      openRecipientsWithUserVisibilitySetting("group");
+
+      popover().find("span").should("have.length", 5); // TODO ask BE to fix bug where same user shows up twice
+    });
+
+    it("should show all users in recipients dropdown if `user-visiblity` setting is `all`", () => {
+      openRecipientsWithUserVisibilitySetting("all");
+
+      popover().find("span").should("have.length", 9);
+    });
+
     describe("with no parameters", () => {
       it("should have no parameters section", () => {
         openDashboardSubscriptions();
@@ -393,6 +412,20 @@ function clickButton(button_name) {
 function createEmailSubscription() {
   assignRecipient();
   clickButton("Done");
+}
+
+function openRecipientsWithUserVisibilitySetting(setting) {
+  cy.request("PUT", "/api/setting/user-visibility", {
+    // TODO write a helper for this
+    value: setting,
+  });
+  cy.signInAsNormalUser(); // TODO remove this after confirming behavior should be same for admins
+  openDashboardSubscriptions();
+
+  main().within(() => {
+    cy.findByText("Email it").click();
+    cy.findByPlaceholderText("Enter user names or email addresses").click();
+  });
 }
 
 function addParametersToDashboard() {
