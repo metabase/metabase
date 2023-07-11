@@ -62,8 +62,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     });
   });
 
-  // TODO: rewrite this so that the filter actually isn't present????
-  it.skip("should respect default filter precedence (dashboard filter, then SQL field filters)", () => {
+  it("should respect default filter precedence (dashboard filter, then SQL field filters)", () => {
     // Default dashboard filter
     cy.location("search").should("eq", "?category=Widget");
 
@@ -75,11 +74,8 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
     cy.location("search").should("eq", "?category=");
 
-    // SQL question defaults
-    cy.get("@dashboardCard").within(() => {
-      cy.findAllByText("Gizmo");
-      cy.findAllByText("Gadget");
-    });
+    // The default shouldn't apply, so we should get an error
+    cy.get(".Card").contains("There was a problem displaying this chart.");
 
     // The empty filter widget
     filterWidget().contains("Category");
@@ -88,11 +84,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?category=");
-
-    cy.get("@dashboardCard").within(() => {
-      cy.findAllByText("Gizmo");
-      cy.findAllByText("Gadget");
-    });
+    cy.get(".Card").contains("There was a problem displaying this chart.");
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");
