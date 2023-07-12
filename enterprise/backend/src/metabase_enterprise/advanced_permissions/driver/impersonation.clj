@@ -45,7 +45,7 @@
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
   conflicting connection impersonation policies are found."
   [database-or-id]
-  (when-not api/*is-superuser?*
+  (when (and database-or-id (not api/*is-superuser?*))
     (let [group-ids           (t2/select-fn-set :group_id PermissionsGroupMembership :user_id api/*current-user-id*)
           conn-impersonations (enforced-impersonations
                                (when (seq group-ids)
@@ -81,8 +81,8 @@
   [driver ^Connection conn database]
   (when (driver/database-supports? driver :connection-impersonation database)
     (try
-      (let [default-role       (driver.sql/default-database-role driver database)
-            impersonation-role (connection-impersonation-role database)]
+      (let [default-role              (driver.sql/default-database-role driver database)
+            impersonation-role        (connection-impersonation-role database)]
         (driver/set-role! driver conn (or impersonation-role default-role)))
       (catch Throwable e
         (log/debug e (tru "Error setting role on connection"))
