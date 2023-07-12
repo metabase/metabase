@@ -102,14 +102,16 @@ describe("scenarios > public > dashboard", () => {
       .findByRole("switch")
       .check();
 
-    cy.wait("@publicLink");
+    cy.wait("@publicLink").then(({ response }) => {
+      expect(response.body.uuid).not.to.be.null;
 
-    cy.findByRole("heading", { name: "Public link" })
-      .parent()
-      .findByDisplayValue(/^http/)
-      .then($input => {
-        expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
-      });
+      cy.findByRole("heading", { name: "Public link" })
+        .parent()
+        .findByDisplayValue(/^http/)
+        .then($input => {
+          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
+        });
+    });
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>
