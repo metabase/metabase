@@ -17,7 +17,7 @@ import type {
  * Something you can join against -- either a raw Table, or a Card, which can be either a plain Saved Question or a
  * Model
  */
-type Joinable = TableMetadata | CardMetadata;
+export type Joinable = TableMetadata | CardMetadata;
 
 type JoinOrJoinable = Join | Joinable;
 
