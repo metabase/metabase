@@ -141,6 +141,17 @@
               :when     (some? component)]
           (u/qualified-name component)))])
 
+(mu/defn identifier->name :- keyword?
+  "Given an identifer return its component.
+  (identifier->name (identifier :field :metabase :user :email))
+  => \"email\")
+  "
+  [identifier :- [:fn identifier?]]
+  (-> identifier
+      last
+      last
+      keyword))
+
 ;;; Single-quoted string literal
 
 (defn- escape-and-quote-literal [s]

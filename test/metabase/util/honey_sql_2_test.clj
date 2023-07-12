@@ -270,3 +270,24 @@
                      "int"
                      nil)
                    (h2x/type-info->db-type (h2x/type-info expr))))))))))
+
+(deftest ^:parallel identifier->name-test
+  (is (= :field
+       (h2x/identifier->name
+         (h2x/identifier :field :public :db :table :field))))
+
+ (is (= :count
+        (h2x/identifier->name
+          (h2x/identifier :field-alias :count))))
+
+ (is (= :count
+        (h2x/identifier->name
+          (h2x/identifier :field-alias :count))))
+
+ (is (= :table
+      (h2x/identifier->name
+        (h2x/identifier :table :public :db :table))))
+
+ (is (= :db
+      (h2x/identifier->name
+        (h2x/identifier :database :public :db)))))

@@ -417,30 +417,34 @@
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
 
-  If the table has a PK, try to fetch both first and last rows (see #25744).
-  Else fetch the first n rows only"
-  [driver table-identifier json-field-names pk-identifier]
+  If the table has PKs, try to fetch both first and last rows (see #25744).
+  Else fetch the first n rows only."
+  [driver table-identifier json-field-identifiers pk-identifiers]
   (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
-    (let [pk-expr          (sql.qp/maybe-wrap-unaliased-expr pk-identifier)
+    (let [pks-expr         (mapv sql.qp/maybe-wrap-unaliased-expr pk-identifiers)
           table-expr       (sql.qp/maybe-wrap-unaliased-expr table-identifier)
-          json-field-names (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)]
-      (if pk-identifier
-        {:select json-field-names
+          json-field-exprs (mapv sql.qp/maybe-wrap-unaliased-expr json-field-identifiers)]
+      (if (seq pk-identifiers)
+        {:select json-field-exprs
          :from   [table-expr]
          ;; mysql doesn't support limit in where, so we're using inner join here
-         :join  [[{:union [{:nest {:select   [pk-expr]
+         :join  [[{:union [{:nest {:select   pks-expr
                                    :from     [table-expr]
-                                   :order-by [[pk-expr :asc]]
+                                   :order-by (mapv #(vector % :asc) pk-identifiers)
                                    :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
-                           {:nest {:select   [pk-expr]
+                           {:nest {:select   pks-expr
                                    :from     [table-expr]
-                                   :order-by [[pk-expr :desc]]
+                                   :order-by (mapv #(vector % :desc) pk-identifiers)
                                    :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
                   :result]
-                 [:=
-                  (sql.qp/maybe-wrap-unaliased-expr (hx/identifier :field :result pk-identifier))
-                  (hx/identifier :field table-identifier :id)]]}
-        {:select json-field-names
+                 (into [:and]
+                       (for [pk-identifier pk-identifiers
+                             :let [pk-name (hx/identifier->name pk-identifier)]]
+                         [:=
+                          (hx/identifier :field :result (hx/identifier->name pk-identifier))
+                          (hx/identifier :field table-identifier pk-name)]))]}
+
+        {:select json-field-exprs
          :from   [table-expr]
          :limit  metadata-queries/nested-field-sample-limit}))))
 
@@ -448,13 +452,13 @@
   [driver jdbc-spec table json-fields pks]
   (sql.qp/with-driver-honey-sql-version driver
     (let [table-identifier-info [(:schema table) (:name table)]
-          json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
+          json-field-identifiers (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
           table-identifier (apply hx/identifier :table table-identifier-info)
-          pk-identifier    (when-not (empty? pks)
-                             (apply hx/identifier :field (into table-identifier-info [(first pks)])))
+          pk-identifiers   (when (seq pks)
+                             (mapv #(apply hx/identifier :field (into table-identifier-info [%])) pks))
           sql-args         (sql.qp/format-honeysql
-                             driver
-                             (sample-json-row-honey-sql driver table-identifier json-field-names pk-identifier))
+                            driver
+                            (sample-json-row-honey-sql driver table-identifier json-field-identifiers pk-identifiers))
           query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})
           field-types      (transduce describe-json-xform describe-json-rf query)
           fields           (field-types->fields field-types)]
@@ -482,10 +486,3 @@
           (if (empty? unfold-json-fields)
             #{}
             (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))
-
-(comment
-  (sql-jdbc.sync.interface/describe-nested-field-columns
-    :postgres
-    (t2/select-one :model/Database :name "json")
-    (t2/select-one :model/Table :name "json" :db_id
-                   (:id (t2/select-one :model/Database :name "json")))))
