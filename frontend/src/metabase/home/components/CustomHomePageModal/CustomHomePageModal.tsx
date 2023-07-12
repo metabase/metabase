@@ -51,7 +51,9 @@ export const CustomHomePageModal = ({
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
             <br />
-            {t`You can change this in Admin > Settings > General.`}
+            <Text
+              span
+            >{t`You can change this in Admin > Settings > General.`}</Text>
           </Box>
         ),
         icon: "info",

@@ -226,10 +226,10 @@ describe("scenarios > home > custom homepage", () => {
       cy.location("pathname").should("equal", "/dashboard/1");
 
       cy.findByRole("status").within(() => {
-        cy.contains("This dashboard has been set as your homepage.").should(
+        cy.findByText("This dashboard has been set as your homepage.").should(
           "exist",
         );
-        cy.contains(
+        cy.findByText(
           "You can change this in Admin > Settings > General.",
         ).should("exist");
       });
