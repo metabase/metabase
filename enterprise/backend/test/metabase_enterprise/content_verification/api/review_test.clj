@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-management.api.review-test
+(ns metabase-enterprise.content-verification.api.review-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.card :refer [Card]]
@@ -14,16 +14,16 @@
 ;;todo: check it can review dashboards, and that it cannot review other models
 (deftest create-test
   (testing "POST /api/moderation-review"
-    (testing "Should require a token with `:content-management`"
+    (testing "Should require a token with `:content-verification`"
       (premium-features-test/with-premium-features #{}
-        (is (= "This API endpoint is only enabled if you have a premium token with the :content-management feature."
+        (is (= "This API endpoint is only enabled if you have a premium token with the :content-verification feature."
                (mt/user-http-request :rasta :post 402 "moderation-review"
                                      {:text                "review"
                                       :status              "verified"
                                       :moderated_item_id   1
                                       :moderated_item_type "card"})))))
 
-    (premium-features-test/with-premium-features #{:content-management}
+    (premium-features-test/with-premium-features #{:content-verification}
       (mt/with-temp* [Card [{card-id :id} {:name "Test Card"}]]
         (mt/with-model-cleanup [ModerationReview]
           (letfn [(moderate! [status text]

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.content-management.api.review
+(ns metabase-enterprise.content-verification.api.review
   (:require
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
