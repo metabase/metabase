@@ -85,47 +85,26 @@ export function JoinStep({
   const join = typeof itemIndex === "number" ? joins[itemIndex] : undefined;
   const previousJoin = usePrevious(join);
 
-  const [strategy, _setStrategy] = useState<Lib.JoinStrategy>(
+  const [strategy, setStrategy] = useState<Lib.JoinStrategy>(
     join ? Lib.joinStrategy(join) : getDefaultJoinStrategy(query, stageIndex),
   );
-  const [table, _setTable] = useState(
+  const [table, setTable] = useState(
     join ? Lib.joinedThing(query, join) : undefined,
   );
-  const [conditions, _setConditions] = useState<Lib.JoinConditionClause[]>(
+  const [conditions, setConditions] = useState<Lib.JoinConditionClause[]>(
     join ? Lib.joinConditions(join) : [],
   );
 
   useEffect(() => {
     if (join && previousJoin !== join) {
-      _setStrategy(Lib.joinStrategy(join));
-      _setTable(Lib.joinedThing(query, join));
-      _setConditions(Lib.joinConditions(join));
+      setStrategy(Lib.joinStrategy(join));
+      setTable(Lib.joinedThing(query, join));
+      setConditions(Lib.joinConditions(join));
     }
   }, [query, join, previousJoin]);
 
-  const submitJoinIfValid = ({
-    nextTable = table,
-    nextStrategy = strategy,
-    nextConditions = conditions,
-  }: {
-    nextTable?: Lib.Joinable;
-    nextStrategy?: Lib.JoinStrategy;
-    nextConditions?: Lib.JoinConditionClause[];
-  }) => {
-    const hasConditions = nextConditions.length > 0;
-    if (nextTable && nextStrategy && hasConditions) {
-      let nextJoin = Lib.joinClause(nextTable, nextConditions);
-      nextJoin = Lib.withJoinFields(nextJoin, "all");
-      nextJoin = Lib.withJoinStrategy(nextJoin, nextStrategy);
-      const nextQuery = join
-        ? Lib.replaceClause(query, stageIndex, join, nextJoin)
-        : Lib.join(query, stageIndex, nextJoin);
-      updateQuery(nextQuery);
-    }
-  };
-
-  const setStrategy = (nextStrategy: Lib.JoinStrategy) => {
-    _setStrategy(nextStrategy);
+  const handleStrategyChange = (nextStrategy: Lib.JoinStrategy) => {
+    setStrategy(nextStrategy);
     if (join) {
       const nextJoin = Lib.withJoinStrategy(join, nextStrategy);
       const nextQuery = Lib.replaceClause(query, stageIndex, join, nextJoin);
@@ -133,16 +112,18 @@ export function JoinStep({
     }
   };
 
-  const setTable = (nextTable: Lib.Joinable) => {
-    _setTable(nextTable);
-  };
-
   const handleAddCondition = (condition: Lib.JoinConditionClause) => {
     const nextConditions = [...conditions, condition];
-    _setConditions([...nextConditions, condition]);
-    submitJoinIfValid({
-      nextConditions: [...nextConditions, condition],
-    });
+    setConditions([...nextConditions, condition]);
+
+    if (table) {
+      let nextJoin = Lib.joinClause(table, nextConditions);
+      nextJoin = Lib.withJoinFields(nextJoin, "all");
+      nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
+
+      const nextQuery = Lib.join(query, stageIndex, nextJoin);
+      updateQuery(nextQuery);
+    }
   };
 
   const handleUpdateCondition = (
@@ -150,6 +131,10 @@ export function JoinStep({
     nextCondition: Lib.JoinConditionClause,
   ) => {
     const currentCondition = conditions[conditionIndex];
+    const nextConditions = [...conditions];
+    nextConditions[conditionIndex] = nextCondition;
+    setConditions(nextConditions);
+
     const nextQuery = Lib.replaceClause(
       query,
       stageIndex,
@@ -157,9 +142,6 @@ export function JoinStep({
       nextCondition,
     );
     updateQuery(nextQuery);
-    const nextConditions = [...conditions];
-    nextConditions[conditionIndex] = nextCondition;
-    _setConditions(nextConditions);
   };
 
   // [undefined] is a special case to render a single empty condition for new joins
@@ -176,7 +158,7 @@ export function JoinStep({
             query={query}
             stageIndex={stageIndex}
             strategy={strategy}
-            onChange={setStrategy}
+            onChange={handleStrategyChange}
           />
           <JoinTablePicker
             query={query}
@@ -244,53 +226,57 @@ function JoinCondition({
   const rhsColumns = Lib.joinConditionRHSColumns(query, stageIndex, table);
 
   const externalOp = condition ? Lib.externalOp(condition) : undefined;
+  const [initialLHSColumn, initialRHSColumn] = externalOp?.args || [];
 
-  const [lhsColumn, _setLHSColumn] = useState<Lib.ColumnMetadata | undefined>(
-    externalOp?.args[0],
+  const [lhsColumn, setLHSColumn] = useState<Lib.ColumnMetadata | undefined>(
+    initialLHSColumn,
   );
-  const [rhsColumn, _setRHSColumn] = useState<Lib.ColumnMetadata | undefined>(
-    externalOp?.args[1],
+  const [rhsColumn, setRHSColumn] = useState<Lib.ColumnMetadata | undefined>(
+    initialRHSColumn,
   );
-  const [operator, _setOperator] = useState<Lib.FilterOperator | undefined>(
+  const [operator, setOperator] = useState<Lib.FilterOperator | undefined>(
     getInitialConditionOperator(query, stageIndex, condition),
   );
 
   const submitConditionIfValid = ({
+    nextOperator = operator,
     nextLHSColumn = lhsColumn,
     nextRHSColumn = rhsColumn,
-    nextOperator = operator,
   }: {
+    nextOperator?: Lib.FilterOperator;
     nextLHSColumn?: Lib.ColumnMetadata;
     nextRHSColumn?: Lib.ColumnMetadata;
-    nextOperator?: Lib.FilterOperator;
   } = {}) => {
-    if (nextLHSColumn && nextRHSColumn && nextOperator) {
-      onChange(
-        Lib.joinConditionClause(nextOperator, nextLHSColumn, nextRHSColumn),
+    if (nextOperator && nextLHSColumn && nextRHSColumn) {
+      const condition = Lib.joinConditionClause(
+        nextOperator,
+        nextLHSColumn,
+        nextRHSColumn,
       );
+      onChange(condition);
     }
   };
 
-  const setLHSColumn = (lhsColumn?: Lib.ColumnMetadata) => {
-    _setLHSColumn(lhsColumn);
+  const handleLHSColumnChange = (lhsColumn?: Lib.ColumnMetadata) => {
+    setLHSColumn(lhsColumn);
     submitConditionIfValid({ nextLHSColumn: lhsColumn });
   };
 
-  const setRHSColumn = (rhsColumn?: Lib.ColumnMetadata) => {
-    _setRHSColumn(rhsColumn);
+  const handleRHSColumnChange = (rhsColumn?: Lib.ColumnMetadata) => {
+    setRHSColumn(rhsColumn);
     submitConditionIfValid({ nextRHSColumn: rhsColumn });
   };
 
-  const setOperator = (operator?: Lib.FilterOperator) => {
-    _setOperator(operator);
+  const handleOperatorChange = (operator?: Lib.FilterOperator) => {
+    setOperator(operator);
     submitConditionIfValid({ nextOperator: operator });
   };
 
+  const handleLHSColumnRemove = () => handleLHSColumnChange(undefined);
+  const handleRHSColumnRemove = () => handleRHSColumnChange(undefined);
+
   const lhsColumnGroup = Lib.groupColumns(lhsColumns);
   const rhsColumnGroup = Lib.groupColumns(rhsColumns);
-
-  const handleRemoveLHSColumn = () => setLHSColumn(undefined);
-  const handleRemoveRHSColumn = () => setRHSColumn(undefined);
 
   return (
     <Flex gap="6px" align="center">
@@ -303,15 +289,15 @@ function JoinCondition({
         label={t`Left column`}
         readOnly={readOnly}
         color={color}
-        onSelect={setLHSColumn}
-        onRemove={handleRemoveLHSColumn}
+        onSelect={handleLHSColumnChange}
+        onRemove={handleLHSColumnRemove}
       />
       <JoinConditionOperatorPicker
         query={query}
         stageIndex={stageIndex}
         operator={operator}
         operators={operators}
-        onChange={setOperator}
+        onChange={handleOperatorChange}
       />
       <JoinConditionColumnPicker
         query={query}
@@ -322,8 +308,8 @@ function JoinCondition({
         label={t`Right column`}
         readOnly={readOnly}
         color={color}
-        onSelect={setRHSColumn}
-        onRemove={handleRemoveRHSColumn}
+        onSelect={handleRHSColumnChange}
+        onRemove={handleRHSColumnRemove}
       />
     </Flex>
   );
