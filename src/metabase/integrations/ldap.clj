@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-ldap.client :as ldap]
+   [metabase.config :as config]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -18,7 +19,8 @@
 
 ;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
 ;; Otherwise, this would only happen the first time `find-user` or `fetch-or-create-user!` is called.
-(classloader/require ['metabase-enterprise.enhancements.integrations.ldap])
+(when config/ee-available?
+ (classloader/require 'metabase-enterprise.enhancements.integrations.ldap))
 
 (defsetting ldap-host
   (deferred-tru "Server hostname."))
