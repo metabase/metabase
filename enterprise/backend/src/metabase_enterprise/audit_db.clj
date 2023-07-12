@@ -4,7 +4,7 @@
             [metabase.config :as config]
             [metabase.db.env :as mdb.env]
             [metabase.models.database :refer [Database]]
-            [metabase.public-settings.premium-features :refer [defenterprise] :as premium-features]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
             [metabase.util.log :as log]
@@ -77,9 +77,7 @@
     ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
     (when analytics-root-dir-resource
       (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
-      ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-      (let [report (premium-features/with-premium-feature-overrides [:serialization]
-                     (log/with-no-logs (serialization.cmd/v2-load analytics-root-dir-resource {})))]
+      (let [report (log/with-no-logs (serialization.cmd/v2-load analytics-root-dir-resource {}))]
         (if (not-empty (:errors report))
           (log/info (str "Error Loading Analytics Content: " (pr-str report)))
           (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))

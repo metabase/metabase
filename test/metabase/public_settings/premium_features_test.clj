@@ -125,26 +125,6 @@
           (is (:valid result))
           (is (contains? (set (:features result)) "test")))))))
 
-(deftest feature-overrides-test
-  (let [token (random-token)]
-    (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
-      (is (and (not (premium-features/has-feature? :serialization))
-               (not (premium-features/has-feature? :audit-app)))
-          "serialization and auditing are not enabled")
-      (testing "with-premium-feature-overrides works"
-        (premium-features/with-premium-feature-overrides [:serialization]
-          (is (premium-features/has-feature? :serialization))
-          (is (not (premium-features/has-feature? :audit-app)))
-
-          (testing "when nested"
-            (premium-features/with-premium-feature-overrides [:audit-app]
-              (is (premium-features/has-feature? :serialization))
-              (is (premium-features/has-feature? :audit-app))))))
-
-      (testing "and doesn't persist outside its scope"
-        (is (not (premium-features/has-feature? :serialization)))
-        (is (not (premium-features/has-feature? :audit-app)))))))
-
 (deftest not-found-test
   (mt/with-log-level :fatal
     ;; `partial=` here in case the Cloud API starts including extra keys... this is a "dangerous" test since changes
