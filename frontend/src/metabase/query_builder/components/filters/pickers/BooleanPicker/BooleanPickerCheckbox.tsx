@@ -35,19 +35,14 @@ export function BooleanPickerCheckbox({
   return (
     <CheckboxContainer className={className}>
       {OPTIONS.map(({ name, value: optionValue }) => (
-        <div key={name}>
-          <CheckBox
-            key={name}
-            label={name}
-            indeterminate={["is-null", "not-null"].includes(value)}
-            checked={optionValue === getValue(filter)}
-            onChange={() => updateFilter(optionValue)}
-            checkedColor="brand"
-          />
-          <div>1 {JSON.stringify(filter)}</div>
-          <div>2 {optionValue}</div>
-          <div>3 {value}</div>
-        </div>
+        <CheckBox
+          key={name}
+          label={name}
+          indeterminate={["is-null", "not-null"].includes(value)}
+          checked={optionValue === getValue(filter)}
+          onChange={() => updateFilter(optionValue)}
+          checkedColor="brand"
+        />
       ))}
     </CheckboxContainer>
   );
