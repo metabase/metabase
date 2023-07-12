@@ -1,3 +1,4 @@
+import { Flex } from "@mantine/core";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -445,9 +446,10 @@ export function ObjectDetailHeader({
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
+
       {showControls && (
-        <div className="flex align-center p2">
-          {!!canZoom && (
+        <Flex align="center" p="1rem">
+          {canZoom && (
             <>
               <Button
                 data-testid="view-previous-object-detail"
@@ -468,6 +470,7 @@ export function ObjectDetailHeader({
               />
             </>
           )}
+
           <CloseButton>
             <Button
               data-testid="object-detail-close-button"
@@ -477,7 +480,7 @@ export function ObjectDetailHeader({
               icon="close"
             />
           </CloseButton>
-        </div>
+        </Flex>
       )}
     </ObjectDetailHeaderWrapper>
   );
