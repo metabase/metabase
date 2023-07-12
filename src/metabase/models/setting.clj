@@ -302,7 +302,7 @@
 
    ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
    ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
-   :enabled?    clojure.lang.IFn})
+   :enabled?    (s/maybe clojure.lang.IFn)})
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -855,7 +855,7 @@
                  :database-local :never
                  :user-local     :never
                  :deprecated     nil
-                 :enabled?       (constantly true)}
+                 :enabled?       nil}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
@@ -877,6 +877,10 @@
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
       (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
         (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                             setting-name)
+                        {:setting setting})))
+      (when (and (:enabled? setting) (:feature setting))
+        (throw (ex-info (tru "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))

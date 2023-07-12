@@ -925,7 +925,19 @@
            clojure.lang.ExceptionInfo
            #"Setting test-feature-setting is not enabled because feature :test-feature is not available"
            (test-feature-setting! "custom 2")))
-      (is (= "setting-default" (test-feature-setting))))))
+      (is (= "setting-default" (test-feature-setting)))))
+
+  (testing "A setting cannot have both the :enabled? and :feature options at once"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Setting :test-enabled-and-feature uses both :enabled\? and :feature options, which are mutually exclusive"
+         (defsetting test-enabled-and-feature
+           "Setting with both :enabled? and :feature options"
+           :visibility :internal
+           :type       :string
+           :default    "setting-default"
+           :enabled?   (fn [] false)
+           :feature    :test-feature)))))
 
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
