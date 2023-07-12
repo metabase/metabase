@@ -922,7 +922,7 @@
 
         ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
         ;; with the advanced-config feature enabled.
-        (when (premium-features/enable-advanced-config?)
+        (when (premium-features/enable-cache-granular-controls?)
           (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]

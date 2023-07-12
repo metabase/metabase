@@ -287,7 +287,7 @@
                                         :details {:db "my_db"}}))))))
 
     (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
-      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (mt/user-http-request :crowberto :post 402 "database"
                               {:name      (mt/random-name)
                                :engine    (u/qualified-name ::test-driver)
@@ -295,7 +295,7 @@
                                :cache_ttl 13})))
 
     (testing "should allow setting `cache_ttl` on EE"
-      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
 
