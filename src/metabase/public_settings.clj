@@ -560,7 +560,7 @@
                       :disable_password_login  (premium-features/can-disable-password-login?)
                       :hosting                 (premium-features/is-hosted?)
                       :official_collections    (premium-features/enable-official-collections?)
-                      :snippet_collections         (premium-features/enable-snippet-collections?)})
+                      :snippet_collections     (premium-features/enable-snippet-collections?)})
   :doc        false)
 
 (defsetting redirect-all-requests-to-https

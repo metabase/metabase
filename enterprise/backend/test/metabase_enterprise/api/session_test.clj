@@ -35,7 +35,7 @@
             :hosting                 true
             :official_collections    true
             :sandboxes               true
-            :snippet_collections         true
+            :snippet_collections     true
             :sso                     true
             :whitelabel              true}
           (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
