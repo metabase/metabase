@@ -261,6 +261,51 @@ describe(
       );
     });
 
+    it("should preserve filter value when navigating between the dashboard and the question without re-fetch", () => {
+      // could be a regular dashboard with card and filters
+      createDashboardWithSlowCard();
+
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.visit(`/dashboard/${dashboardId}`);
+        cy.wait("@dashboard");
+        cy.wait("@dashcardQuery");
+      });
+
+      // initial loading of the dashboard with card
+      cy.get("@dashcardQuery.all").should("have.length", 1);
+
+      filterWidget().findByPlaceholderText("sleep").type("1{enter}");
+
+      cy.wait("@dashcardQuery");
+
+      // we applied filter, so the data is requested again
+      cy.get("@dashcardQuery.all").should("have.length", 2);
+
+      cy.log("drill down to the question");
+      getDashboardCard().within(() => {
+        cy.findByText("Sleep card").click();
+      });
+
+      filterWidget().findByPlaceholderText("sleep").should("have.value", "1");
+      // if we do not wait for this query, it's canceled and re-trigered on dashboard
+      cy.wait("@card");
+
+      cy.log("navigate back to the dashboard");
+      queryBuilderHeader().findByLabelText("Back to Sleep dashboard").click();
+
+      getDashboardCard().within(() => {
+        cy.findByText("Sleep card").should("be.visible");
+      });
+
+      filterWidget().findByPlaceholderText("sleep").should("have.value", "1");
+
+      // cached data is used, no re-fetching should happen
+      cy.get("@dashcardQuery.all").should("have.length", 2);
+    });
+
+    // be careful writing a test after this one. tests order matters.
+    // cypress will not cancel the request with slow response after the test is finished
+    // so it will affect interception of @dashcardQuery and mess up the number of requests
     it("should restore a dashboard with loading cards and re-fetch query data", () => {
       createDashboardWithSlowCard();
       cy.get("@dashboardId").then(dashboardId => {
@@ -289,38 +334,6 @@ describe(
       cy.get("@dashboard.all").should("have.length", 1);
       // the query is triggered second time as first one never loaded - no value in the cache
       cy.get("@dashcardQuery.all").should("have.length", 2);
-    });
-
-    it("should preserve filter value when navigating between the dashboard and the question", () => {
-      // could be a regular dashboard with card and filters
-      createDashboardWithSlowCard();
-      cy.get("@dashboardId").then(visitDashboard);
-      cy.wait("@dashcardQuery");
-
-      // initial loading of the dashboard with card
-      cy.get("@dashcardQuery.all").should("have.length", 2);
-
-      filterWidget().findByPlaceholderText("sleep").type("1{enter}");
-
-      // we applied filter, so the data is requested again
-      cy.get("@dashcardQuery.all").should("have.length", 3);
-
-      getDashboardCard().within(() => {
-        cy.findByText("Sleep card").click();
-      });
-
-      filterWidget().findByPlaceholderText("sleep").should("have.value", "1");
-
-      queryBuilderHeader().findByLabelText("Back to Sleep dashboard").click();
-
-      getDashboardCard().within(() => {
-        cy.findByText("Sleep card").should("be.visible");
-      });
-
-      filterWidget().findByPlaceholderText("sleep").should("have.value", "1");
-
-      // cached data is used, no re-fetching
-      cy.get("@dashcardQuery.all").should("have.length", 3);
     });
   },
 );
