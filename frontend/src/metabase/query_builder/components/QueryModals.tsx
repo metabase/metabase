@@ -232,7 +232,7 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.FILTERS:
         return (
-          <Modal fit onClose={onCloseModal}>
+          <Modal fit onClose={onCloseModal} trapFocus={false}>
             <BulkFilterModal
               question={question}
               onQueryChange={this.onQueryChange}
