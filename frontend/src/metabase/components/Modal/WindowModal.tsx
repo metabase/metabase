@@ -59,21 +59,6 @@ export class WindowModal extends Component<WindowModalProps> {
       this.props.onClose();
     }
   };
-
-  _modalContent({ className }: { className?: string }) {
-    return (
-      <div className={cx(className, "relative bg-white rounded")} role="dialog">
-        {getModalContent({
-          ...this.props,
-          fullPageModal: false,
-          // if there is a form then its a form modal, or if there's a form
-          // modal prop use that
-          formModal: !!this.props.form || this.props.formModal,
-        })}
-      </div>
-    );
-  }
-
   _modalComponent() {
     const className = cx(
       this.props.className,
@@ -88,7 +73,18 @@ export class WindowModal extends Component<WindowModalProps> {
         closeOnClickOutside={this.props.closeOnClickOutside}
       >
         <FocusTrap active={this.props.trapFocus}>
-          {this._modalContent({ className })}
+          <div
+            className={cx(className, "relative bg-white rounded")}
+            role="dialog"
+          >
+            {getModalContent({
+              ...this.props,
+              fullPageModal: false,
+              // if there is a form then its a form modal, or if there's a form
+              // modal prop use that
+              formModal: !!this.props.form || this.props.formModal,
+            })}
+          </div>
         </FocusTrap>
       </MaybeOnClickOutsideWrapper>
     );
