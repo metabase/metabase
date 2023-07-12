@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 
 import { NotebookCellItem } from "../../NotebookCell";
+import { PickerButton } from "./JoinTablePicker.styled";
 
 interface JoinTablePickerProps {
   query: Lib.Query;
@@ -46,8 +47,7 @@ export function JoinTablePicker({
         selectedDatabaseId={pickerInfo?.databaseId}
         selectedTableId={pickerInfo?.tableId || pickerInfo?.cardId}
         setSourceTableFn={handleTableChange}
-        // TODO Use another tag
-        triggerElement={<div role="button">{label}</div>}
+        triggerElement={<PickerButton>{label}</PickerButton>}
       />
     </NotebookCellItem>
   );
