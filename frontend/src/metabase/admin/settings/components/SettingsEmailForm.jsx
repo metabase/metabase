@@ -15,6 +15,7 @@ import {
   updateEmailSettings,
   clearEmailSettings,
 } from "../settings";
+import { SettingsSection } from "../app/components/SettingsEditor/SettingsSection";
 import SettingsBatchForm from "./SettingsBatchForm";
 import { EmailFormRoot } from "./SettingsEmailForm.styled";
 
@@ -35,6 +36,11 @@ class SettingsEmailForm extends Component {
     sendTestEmail: PropTypes.func.isRequired,
     updateEmailSettings: PropTypes.func.isRequired,
     clearEmailSettings: PropTypes.func.isRequired,
+    settingValues: PropTypes.object,
+    derivedSettingValues: PropTypes.object,
+    updateSetting: PropTypes.func,
+    onChangeSetting: PropTypes.func,
+    reloadSettings: PropTypes.func,
   };
 
   constructor(props, context) {
@@ -84,41 +90,63 @@ class SettingsEmailForm extends Component {
   render() {
     const { sendingEmail } = this.state;
     const { elements, isPaidPlan } = this.props;
-    const visibleElements = elements.filter(setting => !setting.getHidden?.());
+
+    const smtpIndex = elements.findIndex(
+      ({ key }) => key === "email-smtp-password",
+    );
+    const smtpElements = elements
+      .slice(0, smtpIndex + 1)
+      .filter(setting => !setting.getHidden?.());
+    const otherElements = elements
+      .slice(smtpIndex + 1)
+      .filter(setting => !setting.getHidden?.());
+
     return (
-      <EmailFormRoot>
-        <SettingsBatchForm
-          ref={this.formRef}
-          {...this.props}
-          elements={visibleElements}
-          updateSettings={this.props.updateEmailSettings}
-          disable={sendingEmail !== "default"}
-          renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
-            <Fragment>
-              {valid && pristine && submitting === "default" ? (
+      <>
+        <EmailFormRoot>
+          <SettingsBatchForm
+            ref={this.formRef}
+            {...this.props}
+            elements={smtpElements}
+            updateSettings={this.props.updateEmailSettings}
+            disable={sendingEmail !== "default"}
+            renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
+              <Fragment>
+                {valid && pristine && submitting === "default" ? (
+                  <Button
+                    className="mr1"
+                    success={sendingEmail === "success"}
+                    disabled={disabled}
+                    onClick={this.sendTestEmail}
+                  >
+                    {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                  </Button>
+                ) : null}
                 <Button
                   className="mr1"
-                  success={sendingEmail === "success"}
                   disabled={disabled}
-                  onClick={this.sendTestEmail}
+                  onClick={() => this.clearEmailSettings()}
                 >
-                  {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                  {t`Clear`}
                 </Button>
-              ) : null}
-              <Button
-                className="mr1"
-                disabled={disabled}
-                onClick={() => this.clearEmailSettings()}
-              >
-                {t`Clear`}
-              </Button>
-            </Fragment>
+              </Fragment>
+            )}
+          />
+          {!MetabaseSettings.isHosted() && !isPaidPlan && (
+            <MarginHostingCTA
+              tagline={t`Have your email configured for you.`}
+            />
           )}
+        </EmailFormRoot>
+        <SettingsSection
+          settingElements={otherElements}
+          settingValues={this.props.settingValues}
+          derivedSettingValues={this.props.derivedSettingValues}
+          updateSetting={this.props.updateSetting}
+          onChangeSetting={this.props.updateSetting}
+          reloadSettings={this.props.reloadSettings}
         />
-        {!MetabaseSettings.isHosted() && !isPaidPlan && (
-          <MarginHostingCTA tagline={t`Have your email configured for you.`} />
-        )}
-      </EmailFormRoot>
+      </>
     );
   }
 }

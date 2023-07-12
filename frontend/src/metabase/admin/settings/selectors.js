@@ -240,6 +240,9 @@ const SECTIONS = {
         getHidden: () => MetabaseSettings.isHosted(),
       },
       {
+        widget: SectionDivider,
+      },
+      {
         key: "email-from-name",
         display_name: t`From Name`,
         placeholder: "Metabase",
