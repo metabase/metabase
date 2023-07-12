@@ -37,12 +37,7 @@ export const STEP_UI: Record<string, StepUIItem> = {
     icon: "join_left_outer",
     priority: 1,
     getColor: () => color("brand"),
-
-    // JoinStep's props actually satisfy the NotebookStepUiComponentProps type,
-    // but there are differences like PropTypes.string and NotebookStepType,
-    // that make it 'technically' incompatible.
-    // Should be removed once the JoinStep is converted to TypeScript.
-    component: JoinStep as React.ComponentType<NotebookStepUiComponentProps>,
+    component: JoinStep,
   },
   expression: {
     title: t`Custom column`,
