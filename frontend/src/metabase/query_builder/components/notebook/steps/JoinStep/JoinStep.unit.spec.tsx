@@ -53,7 +53,11 @@ function getJoinedQuery() {
     throw new Error("No default operator found");
   }
 
-  const condition = Lib.filterClause(operator, ordersProductId, productsId);
+  const condition = Lib.joinConditionClause(
+    operator,
+    ordersProductId,
+    productsId,
+  );
   const join = Lib.withJoinFields(Lib.joinClause(table, [condition]), "all");
 
   return Lib.join(query, 0, join);
@@ -103,8 +107,8 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
     const query = getNextQuery();
     const [join] = Lib.joins(query, 0);
     const strategy = Lib.displayInfo(query, 0, Lib.joinStrategy(join));
-    const conditions = Lib.joinConditions(join).map(
-      condition => Lib.externalOp(condition) as Lib.JoinExternalOp,
+    const conditions = Lib.joinConditions(join).map(condition =>
+      Lib.externalOp(condition),
     );
     return {
       query,

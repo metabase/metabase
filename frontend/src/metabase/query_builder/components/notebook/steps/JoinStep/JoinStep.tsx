@@ -28,10 +28,10 @@ function getDefaultJoinStrategy(query: Lib.Query, stageIndex: number) {
 function getConditionOperator(
   query: Lib.Query,
   stageIndex: number,
-  condition: Lib.FilterClause,
+  condition: Lib.JoinConditionClause,
 ) {
   const operators = Lib.joinConditionOperators(query, stageIndex);
-  const { operator } = Lib.externalOp(condition) as Lib.JoinExternalOp;
+  const { operator } = Lib.externalOp(condition);
   return operators.find(
     op => Lib.displayInfo(query, stageIndex, op).shortName === operator,
   );
@@ -58,10 +58,10 @@ function getDefaultJoinOperator(
 function getInitialConditionOperator(
   query: Lib.Query,
   stageIndex: number,
-  condition?: Lib.FilterClause | null,
+  condition?: Lib.JoinConditionClause,
 ) {
   if (condition) {
-    const externalOp = Lib.externalOp(condition) as Lib.JoinExternalOp;
+    const externalOp = Lib.externalOp(condition);
     const [lhsColumn, rhsColumn] = externalOp.args;
     return (
       getConditionOperator(query, stageIndex, condition) ||
@@ -91,7 +91,7 @@ export function JoinStep({
   const [table, _setTable] = useState(
     join ? Lib.joinedThing(query, join) : undefined,
   );
-  const [conditions, _setConditions] = useState<Lib.FilterClause[]>(
+  const [conditions, _setConditions] = useState<Lib.JoinConditionClause[]>(
     join ? Lib.joinConditions(join) : [],
   );
 
@@ -110,7 +110,7 @@ export function JoinStep({
   }: {
     nextTable?: Lib.Joinable;
     nextStrategy?: Lib.JoinStrategy;
-    nextConditions?: Lib.FilterClause[];
+    nextConditions?: Lib.JoinConditionClause[];
   }) => {
     const hasConditions = nextConditions.length > 0;
     if (nextTable && nextStrategy && hasConditions) {
@@ -137,8 +137,8 @@ export function JoinStep({
     _setTable(nextTable);
   };
 
-  const handleAddCondition = (condition: Lib.FilterClause) => {
-    const nextConditions = [...conditions.filter(Boolean), condition];
+  const handleAddCondition = (condition: Lib.JoinConditionClause) => {
+    const nextConditions = [...conditions, condition];
     _setConditions([...nextConditions, condition]);
     submitJoinIfValid({
       nextConditions: [...nextConditions, condition],
@@ -147,13 +147,13 @@ export function JoinStep({
 
   const handleUpdateCondition = (
     conditionIndex: number,
-    nextCondition: Lib.FilterClause,
+    nextCondition: Lib.JoinConditionClause,
   ) => {
     const currentCondition = conditions[conditionIndex];
     const nextQuery = Lib.replaceClause(
       query,
       stageIndex,
-      currentCondition as Lib.FilterClause,
+      currentCondition,
       nextCondition,
     );
     updateQuery(nextQuery);
@@ -223,11 +223,11 @@ export function JoinStep({
 interface JoinConditionProps {
   query: Lib.Query;
   stageIndex: number;
-  condition?: Lib.FilterClause;
+  condition?: Lib.JoinConditionClause;
   table: Lib.Joinable;
   readOnly?: boolean;
   color: string;
-  onChange: (condition: Lib.FilterClause) => void;
+  onChange: (condition: Lib.JoinConditionClause) => void;
 }
 
 function JoinCondition({
@@ -243,9 +243,7 @@ function JoinCondition({
   const lhsColumns = Lib.joinConditionLHSColumns(query, stageIndex);
   const rhsColumns = Lib.joinConditionRHSColumns(query, stageIndex, table);
 
-  const externalOp = condition
-    ? (Lib.externalOp(condition) as Lib.JoinExternalOp)
-    : undefined;
+  const externalOp = condition ? Lib.externalOp(condition) : undefined;
 
   const [lhsColumn, _setLHSColumn] = useState<Lib.ColumnMetadata | undefined>(
     externalOp?.args[0],
@@ -267,7 +265,9 @@ function JoinCondition({
     nextOperator?: Lib.FilterOperator;
   } = {}) => {
     if (nextLHSColumn && nextRHSColumn && nextOperator) {
-      onChange(Lib.filterClause(nextOperator, nextLHSColumn, nextRHSColumn));
+      onChange(
+        Lib.joinConditionClause(nextOperator, nextLHSColumn, nextRHSColumn),
+      );
     }
   };
 
