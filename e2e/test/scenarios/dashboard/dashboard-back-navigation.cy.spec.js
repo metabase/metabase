@@ -295,6 +295,7 @@ describe(
       // could be a regular dashboard with card and filters
       createDashboardWithSlowCard();
       cy.get("@dashboardId").then(visitDashboard);
+      cy.wait("@dashcardQuery");
 
       // initial loading of the dashboard with card
       cy.get("@dashcardQuery.all").should("have.length", 2);
