@@ -214,12 +214,13 @@
     (let [user_group_ids (map :id (:user_group_memberships
                                    (-> (fetch-user :id api/*current-user-id*)
                                        (t2/hydrate :user_group_memberships))))
-          data           (t2/select
-                          (vec (cons User (user-visible-columns)))
-                          (cond-> (user-clauses nil nil (remove #{1} user_group_ids) nil)
-                            true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                            (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
-                            (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))]
+          data           (into #{}
+                          (t2/select
+                           (vec (cons User (user-visible-columns)))
+                           (cond-> (user-clauses nil nil (remove #{1} user_group_ids) nil)
+                             true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                             (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
+                             (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*))))]
       {:data   data
        :total  (count data)
        :limit  mw.offset-paging/*limit*
