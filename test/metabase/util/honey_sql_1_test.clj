@@ -231,6 +231,7 @@
                      nil)
                    (h1x/type-info->db-type (h1x/type-info expr))))))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel identifier->name-test
   (is (= :field
        (h1x/identifier->name
