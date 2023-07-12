@@ -427,7 +427,7 @@
       (if (seq pk-identifiers)
         {:select json-field-exprs
          :from   [table-expr]
-         ;; mysql doesn't support limit in where, so we're using inner join here
+         ;; mysql doesn't support limit in subquery, so we're using inner join here
          :join  [[{:union [{:nest {:select   pks-expr
                                    :from     [table-expr]
                                    :order-by (mapv #(vector % :asc) pk-identifiers)
