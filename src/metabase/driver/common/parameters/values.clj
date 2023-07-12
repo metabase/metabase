@@ -224,11 +224,9 @@
                               (nil? (:value matching-param)))]
     ;; if both the tag and the Dashboard parameter specify a default value, prefer the default value from the tag.
     (or (:value matching-param)
-        (when (and nil-value?
-                   (:required tag))
+        (when (and nil-value? (:required tag))
           (throw (missing-required-param-exception (:display-name tag))))
-        (when (and nil-value?
-                   (not (:required tag)))
+        (when (and nil-value? (not (:required tag)))
           params/no-value)
         (:default tag)
         (:default matching-param)
