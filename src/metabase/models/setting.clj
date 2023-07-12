@@ -415,8 +415,8 @@
   [feature]
   (u/ignore-exceptions
    (classloader/require 'metabase.public-settings.premium-features))
-  (if-let [has-feature? (resolve 'metabase.public-settings.premium-features/has-feature?)]
-    (has-feature? feature)
+  (if-let [has-feature?' (resolve 'metabase.public-settings.premium-features/has-feature?)]
+    (has-feature?' feature)
     false))
 
 (defn has-advanced-setting-access?
