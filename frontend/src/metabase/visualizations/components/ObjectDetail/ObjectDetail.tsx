@@ -130,7 +130,7 @@ export function ObjectDetailView({
   canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
-  showActions = true,
+  showControls = true,
   showRelations = true,
   showHeader,
   onVisualizationClick,
@@ -326,7 +326,7 @@ export function ObjectDetailView({
               objectId={displayId}
               canZoomPreviousRow={!!canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
-              showActions={showActions}
+              showControls={showControls}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
               viewNextObjectDetail={viewNextObjectDetail}
               closeObjectDetail={closeObjectDetail}
@@ -394,7 +394,7 @@ export function ObjectDetailWrapper({
         data={data}
         question={question}
         showHeader={props.settings["detail.showHeader"]}
-        showActions={false}
+        showControls={false}
         showRelations={false}
         closeObjectDetail={closeObjectDetail}
         isDataApp={isDataApp}
@@ -420,7 +420,7 @@ export interface ObjectDetailHeaderProps {
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
-  showActions?: boolean;
+  showControls?: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
@@ -432,7 +432,7 @@ export function ObjectDetailHeader({
   objectId,
   canZoomPreviousRow,
   canZoomNextRow,
-  showActions = true,
+  showControls = true,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
@@ -445,40 +445,38 @@ export function ObjectDetailHeader({
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
-      {showActions && (
-        <div className="flex align-center">
-          <div className="flex p2">
-            {!!canZoom && (
-              <>
-                <Button
-                  data-testid="view-previous-object-detail"
-                  onlyIcon
-                  borderless
-                  className="mr1"
-                  disabled={!canZoomPreviousRow}
-                  onClick={viewPreviousObjectDetail}
-                  icon="chevronup"
-                />
-                <Button
-                  data-testid="view-next-object-detail"
-                  onlyIcon
-                  borderless
-                  disabled={!canZoomNextRow}
-                  onClick={viewNextObjectDetail}
-                  icon="chevrondown"
-                />
-              </>
-            )}
-            <CloseButton>
+      {showControls && (
+        <div className="flex align-center p2">
+          {!!canZoom && (
+            <>
               <Button
-                data-testid="object-detail-close-button"
+                data-testid="view-previous-object-detail"
                 onlyIcon
                 borderless
-                onClick={closeObjectDetail}
-                icon="close"
+                className="mr1"
+                disabled={!canZoomPreviousRow}
+                onClick={viewPreviousObjectDetail}
+                icon="chevronup"
               />
-            </CloseButton>
-          </div>
+              <Button
+                data-testid="view-next-object-detail"
+                onlyIcon
+                borderless
+                disabled={!canZoomNextRow}
+                onClick={viewNextObjectDetail}
+                icon="chevrondown"
+              />
+            </>
+          )}
+          <CloseButton>
+            <Button
+              data-testid="object-detail-close-button"
+              onlyIcon
+              borderless
+              onClick={closeObjectDetail}
+              icon="close"
+            />
+          </CloseButton>
         </div>
       )}
     </ObjectDetailHeaderWrapper>
