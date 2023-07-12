@@ -814,7 +814,6 @@
   [setting-definition-or-name new-value]
   (let [{:keys [setter cache? enabled? feature], :as setting} (resolve-setting setting-definition-or-name)
         name                                                  (setting-name setting)]
-    (def enabled? enabled?)
     (when (and feature (not (has-feature? feature)))
       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
     (when (and enabled? (not (enabled?)))
