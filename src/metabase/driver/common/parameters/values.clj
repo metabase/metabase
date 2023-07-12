@@ -231,7 +231,6 @@
                    (not (:required tag)))
           params/no-value)
         (:default tag)
-        ;; TODO: is it even necessary to check the default on the matching param?
         (:default matching-param)
         (if (:required tag)
           (throw (missing-required-param-exception (:display-name tag)))
