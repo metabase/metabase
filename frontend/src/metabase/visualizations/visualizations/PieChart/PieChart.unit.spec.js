@@ -84,7 +84,7 @@ describe("PieChart", () => {
     expect(screen.getByTestId("pie-chart")).toBeInTheDocument();
   });
 
-  it("should not have negative dimensions", () => {
+  it("should not have negative dimensions (metabase#28677)", () => {
     setup();
 
     const pieChart = screen.getByTestId("pie-chart");
