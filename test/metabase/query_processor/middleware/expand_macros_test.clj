@@ -48,6 +48,32 @@
                          [:> [:field 4 nil] 1]]]
              :breakout [[:field 17 nil]]}))))))
 
+(deftest nested-segments-test
+  (t2.with-temp/with-temp
+    [:model/Database {database-id  :id} {}
+     :model/Table    {table-id     :id} {:db_id database-id}
+     :model/Segment  {segment-1-id :id} {:table_id   table-id
+                                         :definition {:filter [:= [:field 5 nil] "abc"]}}
+     :model/Segment  {segment-2-id :id} {:table_id   table-id
+                                         :definition {:filter [:and
+                                                               [:segment segment-1-id]
+                                                               [:is-null [:field 7 nil]]]}}
+     :model/Segment _ {:table_id table-id
+                       :id 10002
+                       :definition {:filter [:and [:segment 112]
+                                             [:= [:field 5 nil] "abc"]]}}
+     :model/Segment _ {:table_id table-id
+                       :id 20001
+                       :definition {:filter [:and [:segment 911]
+                                             [:is-null [:field 7 nil]]]}}]
+    (testing "Nested segments are correctly expanded (#30866)"
+      (is (= (mbql-query {:filter [:and [:= [:field 5 nil] "abc"] [:is-null [:field 7 nil]]]})
+             (#'expand-macros/expand-metrics-and-segments
+              (mbql-query {:filter [:segment segment-2-id]})))))
+    (testing "Expanding mutually recursive segments causes an exception"
+      (is (thrown? Exception (#'expand-macros/expand-metrics-and-segments
+                              (mbql-query {:filter [:segment 20001]})))))))
+
 (deftest metric-test
   (testing "just a metric (w/out nested segments)"
     (mt/with-temp* [Database [{database-id :id}]
