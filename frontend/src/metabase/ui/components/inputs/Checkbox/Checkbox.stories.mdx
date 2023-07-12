@@ -1,7 +1,8 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Checkbox } from "./";
 
-<Meta title="Inputs/Checkbox & Checkbox Group" component={Checkbox} />
+
+<Meta title="Inputs/Checkbox & Checkbox Group" component={Checkbox}  />
 
 # Checkbox & Checkbox.Group
 
@@ -34,6 +35,7 @@ Checkbox buttons allow users to select a single option from a list of mutually e
     <Checkbox.Group defaultValue="yes">
       <Checkbox label="Yes" value="yes" />
       <Checkbox label="No" value="no" />
+      <Checkbox label="I'm not sure" indeterminate />
     </Checkbox.Group>
   </Story>
 </Canvas>
@@ -42,9 +44,10 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 
 <Canvas>
   <Story name="Disabled">
-    <Checkbox.Group value="yes">
+    <Checkbox.Group value={["yes"]}>
       <Checkbox label="Yes" value="yes" disabled />
       <Checkbox label="No" value="no" disabled />
+      <Checkbox label="I'm not sure" indeterminate disabled />
     </Checkbox.Group>
   </Story>
 </Canvas>
@@ -55,7 +58,7 @@ If needed you can add a description value to a Checkbox button to give more cont
 
 <Canvas>
   <Story name="Descriptions">
-    <Checkbox.Group defaultValue="chocolate">
+    <Checkbox.Group defaultValue={["chocolate"]}>
       <Checkbox
         label="Chocolate"
         value="chocolate"
@@ -65,6 +68,10 @@ If needed you can add a description value to a Checkbox button to give more cont
         label="Vanilla"
         value="vanilla"
         description="A classic for all seasons"
+      />
+      <Checkbox
+        label="Strawberry, no description needed!"
+        value="strawberry"
       />
       <Checkbox
         label="Swirl"

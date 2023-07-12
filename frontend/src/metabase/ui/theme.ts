@@ -87,8 +87,9 @@ export const theme: MantineThemeOverride = {
     CheckboxGroup: {
       styles(theme) {
         /* Note: we need the ':has' selector to target the space just
-         * above the first checkbox since we don't seem to have a selector
-         * for a 'label + description' wrapper */
+         * above the first checkbox since we don't seem to have selector
+         * or a way to use params to detect whether group label/description
+         * exists. This is a bit of a hack, but it works. */
 
         return {
           label: {
