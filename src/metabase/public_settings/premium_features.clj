@@ -284,6 +284,14 @@
   "Should we enable the Audit Logs interface in the Admin UI?"
   :audit-app)
 
+(define-premium-feature ^{:added "0.41.0"} enable-cache-granular-controls?
+  "Should we enable granular controls for cache TTL at the database, dashboard, and card level?"
+  :cache-granular-controls)
+
+(define-premium-feature ^{:added "0.41.0"} enable-config-text-file?
+  "Should we enable initialization on launch from a config file?"
+  :config-text-file)
+
 (define-premium-feature enable-sandboxes?
   "Should we enable data sandboxes (row-level permissions)?"
   :sandboxes)
@@ -297,7 +305,7 @@
   :disable-password-login)
 
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
-  "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
+  "Should we enable knobs and levers for more complex orgs (allow-lists email domains for
   notifications, more in the future)?"
   :advanced-config)
 
@@ -306,8 +314,12 @@
   permissions, etc.)?"
   :advanced-permissions)
 
+(define-premium-feature ^{:added "0.41.0"} enable-content-verification?
+  "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
+  :content-verification)
+
 (define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable Question verifications (and more in the future, like workflows, forking, etc.)?"
+  "Should we enable official collections (and more in the future, like workflows, forking, etc.)?"
   :content-management)
 
 (define-premium-feature ^{:added "0.41.0"} enable-official-collections?
@@ -315,7 +327,7 @@
   :official-collections)
 
 (define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
-  "Should we enable Snippet collections"
+  "Should we enable SQL snippet folders?"
   :snippet-collections)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?

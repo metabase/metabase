@@ -546,18 +546,21 @@
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
-  :getter     (fn [] {:embedding              (premium-features/hide-embed-branding?)
-                      :whitelabel             (premium-features/enable-whitelabeling?)
-                      :audit_app              (premium-features/enable-audit-app?)
-                      :sandboxes              (premium-features/enable-sandboxes?)
-                      :sso                    (premium-features/enable-sso?)
-                      :advanced_config        (premium-features/enable-advanced-config?)
-                      :advanced_permissions   (premium-features/enable-advanced-permissions?)
-                      :content_management     (premium-features/enable-content-management?)
-                      :hosting                (premium-features/is-hosted?)
-                      :official_collections   (premium-features/enable-official-collections?)
-                      :snippet_collections    (premium-features/enable-snippet-collections?)
-                      :disable_password_login (premium-features/can-disable-password-login?)})
+  :getter     (fn [] {:embedding               (premium-features/hide-embed-branding?)
+                      :whitelabel              (premium-features/enable-whitelabeling?)
+                      :audit_app               (premium-features/enable-audit-app?)
+                      :sandboxes               (premium-features/enable-sandboxes?)
+                      :sso                     (premium-features/enable-sso?)
+                      :advanced_config         (premium-features/enable-advanced-config?)
+                      :advanced_permissions    (premium-features/enable-advanced-permissions?)
+                      :cache_granular_controls (premium-features/enable-cache-granular-controls?)
+                      :config_text_file        (premium-features/enable-config-text-file?)
+                      :content_management      (premium-features/enable-content-management?)
+                      :content_verification    (premium-features/enable-content-verification?)
+                      :disable_password_login  (premium-features/can-disable-password-login?)
+                      :hosting                 (premium-features/is-hosted?)
+                      :official_collections    (premium-features/enable-official-collections?)
+                      :snippet_collections         (premium-features/enable-snippet-collections?)})
   :doc        false)
 
 (defsetting redirect-all-requests-to-https

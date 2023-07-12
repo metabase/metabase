@@ -10,7 +10,7 @@
    [metabase.util :as u]))
 
 (deftest query-cache-ttl-hierarchy-test
-  (premium-features-test/with-premium-features #{:advanced-config}
+  (premium-features-test/with-premium-features #{:cache-granular-controls}
     (mt/discard-setting-changes [enable-query-caching]
       (public-settings/enable-query-caching! true)
       ;; corresponding OSS tests in metabase.query-processor.card-test
