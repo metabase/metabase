@@ -21,8 +21,8 @@ const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
-const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs_release";
-const CLJS_SRC_PATH_DEV = __dirname + "/frontend/src/cljs";
+const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
+const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
