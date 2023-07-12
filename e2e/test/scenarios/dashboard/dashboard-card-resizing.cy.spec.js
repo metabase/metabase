@@ -215,7 +215,7 @@ describe("scenarios > dashboard card resizing", () => {
         cy.findByLabelText("Add questions").click();
       });
 
-      cy.intercept("POST", /\/api\/card\/(pivot\/)?.*\/query/).as("card-query");
+      cy.intercept("POST", "/api/card/**/query").as("card-query");
 
       TEST_QUESTIONS.forEach(question => {
         cy.findByLabelText(question.name).click();
