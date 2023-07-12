@@ -142,7 +142,6 @@ export interface TokenFeatures {
   advanced_permissions: boolean;
   audit_app: boolean;
   cache_granular_controls: boolean;
-  content_management: boolean;
   content_verification: boolean;
   embedding: boolean;
   hosting: boolean;
