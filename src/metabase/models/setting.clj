@@ -415,9 +415,8 @@
   [feature]
   (u/ignore-exceptions
    (classloader/require 'metabase.public-settings.premium-features))
-  (if-let [has-feature?' (resolve 'metabase.public-settings.premium-features/has-feature?)]
-    (has-feature?' feature)
-    false))
+  (let [has-feature?' (resolve 'metabase.public-settings.premium-features/has-feature?)]
+    (has-feature?' feature)))
 
 (defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
