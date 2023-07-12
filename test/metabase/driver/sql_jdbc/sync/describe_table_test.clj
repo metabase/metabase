@@ -25,8 +25,8 @@
   []
   (set
    (filter
-     #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
-     (descendants driver/hierarchy :sql-jdbc))))
+    #(identical? (get-method driver/describe-table :sql-jdbc) (get-method driver/describe-table %))
+    (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest describe-table-test
   (is (= {:name "VENUES",

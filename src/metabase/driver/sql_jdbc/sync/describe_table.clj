@@ -441,7 +441,7 @@
                        (for [pk-identifier pk-identifiers
                              :let [pk-name (hx/identifier->name pk-identifier)]]
                          [:=
-                          (hx/identifier :field :result (hx/identifier->name pk-identifier))
+                          (hx/identifier :field :result pk-name)
                           (hx/identifier :field table-identifier pk-name)]))]}
 
         {:select json-field-exprs
