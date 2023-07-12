@@ -546,15 +546,18 @@
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
-  :getter     (fn [] {:embedding            (premium-features/hide-embed-branding?)
-                      :whitelabel           (premium-features/enable-whitelabeling?)
-                      :audit_app            (premium-features/enable-audit-app?)
-                      :sandboxes            (premium-features/enable-sandboxes?)
-                      :sso                  (premium-features/enable-sso?)
-                      :advanced_config      (premium-features/enable-advanced-config?)
-                      :advanced_permissions (premium-features/enable-advanced-permissions?)
-                      :content_management   (premium-features/enable-content-management?)
-                      :hosting              (premium-features/is-hosted?)})
+  :getter     (fn [] {:embedding              (premium-features/hide-embed-branding?)
+                      :whitelabel             (premium-features/enable-whitelabeling?)
+                      :audit_app              (premium-features/enable-audit-app?)
+                      :sandboxes              (premium-features/enable-sandboxes?)
+                      :sso                    (premium-features/enable-sso?)
+                      :advanced_config        (premium-features/enable-advanced-config?)
+                      :advanced_permissions   (premium-features/enable-advanced-permissions?)
+                      :content_management     (premium-features/enable-content-management?)
+                      :hosting                (premium-features/is-hosted?)
+                      :official_collections   (premium-features/enable-official-collections?)
+                      :snippet_collections    (premium-features/enable-snippet-collections?)
+                      :disable_password_login (premium-features/can-disable-password-login?)})
   :doc        false)
 
 (defsetting redirect-all-requests-to-https

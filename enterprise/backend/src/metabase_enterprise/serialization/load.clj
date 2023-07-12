@@ -431,6 +431,13 @@
       (pull-unresolved-names-up entity [:visualization_settings] resolved-vs))
     entity))
 
+(defn- resolve-dashboard-parameters
+  [parameters]
+  (for [p parameters]
+    ;; Note: not using the full ::unresolved-names functionality here because this is a fix
+    ;; for a deprecated feature
+    (m/update-existing-in p [:values_source_config :card_id] fully-qualified-name->card-id)))
+
 (defn load-dashboards
   "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
   {:added "0.40.0"}
@@ -438,6 +445,7 @@
   (let [dashboard-ids   (maybe-upsert-many! context Dashboard
                                             (for [dashboard dashboards]
                                               (-> dashboard
+                                                  (update :parameters resolve-dashboard-parameters)
                                                   (dissoc :dashboard_cards)
                                                   (assoc :collection_id (:collection context)
                                                          :creator_id    (default-user-id)))))

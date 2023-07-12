@@ -17,6 +17,7 @@ interface Settings {
 interface Options {
   dashcard?: BaseDashboardOrderedCard;
   isEditing?: boolean;
+  isEditingParameter?: boolean;
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
   settings?: VisualizationSettings;
 }
@@ -24,6 +25,7 @@ interface Options {
 const defaultProps = {
   dashcard: createMockDashboardCardWithVirtualCard(),
   isEditing: false,
+  isEditingParameter: false,
   onUpdateVisualizationSettings: () => {
     return;
   },
@@ -118,6 +120,20 @@ describe("Text", () => {
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
         expect(screen.getByDisplayValue("Example Heading")).toBeInTheDocument();
+      });
+
+      it("should render the read-only heading content (at reduced opacity) in parameter editing mode", () => {
+        setup({
+          settings: getSettingsWithText("Example Heading"),
+          isEditing: true,
+          isEditingParameter: true,
+        });
+
+        expect(screen.getByText("Example Heading")).toBeVisible();
+        expect(screen.getByText("Example Heading")).toHaveStyle(
+          "opacity: 0.25",
+        );
+        expect(screen.queryByRole("input")).not.toBeInTheDocument();
       });
     });
   });
