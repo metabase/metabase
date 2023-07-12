@@ -100,7 +100,10 @@ describe("scenarios > public > dashboard", () => {
     cy.findByRole("heading", { name: "Enable sharing" })
       .parent()
       .findByRole("switch")
-      .check();
+      .check()
+      .as("toggle");
+
+    cy.get("@toggle").should("be.checked");
 
     cy.wait("@publicLink").then(({ response }) => {
       expect(response.body.uuid).not.to.be.null;
