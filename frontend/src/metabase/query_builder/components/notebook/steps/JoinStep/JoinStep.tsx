@@ -89,8 +89,8 @@ export function JoinStep({
   const [table, _setTable] = useState(
     join ? Lib.joinedThing(query, join) : undefined,
   );
-  const [conditions, _setConditions] = useState<(Lib.FilterClause | null)[]>(
-    join ? Lib.joinConditions(join) : [null], // TODO Remove null hack
+  const [conditions, _setConditions] = useState<Lib.FilterClause[]>(
+    join ? Lib.joinConditions(join) : [],
   );
 
   useEffect(() => {
@@ -107,14 +107,11 @@ export function JoinStep({
   }: {
     nextTable?: Lib.Joinable;
     nextStrategy?: Lib.JoinStrategy;
-    nextConditions?: (Lib.FilterClause | null)[];
+    nextConditions?: Lib.FilterClause[];
   }) => {
-    const hasConditions = nextConditions.filter(Boolean).length > 0;
+    const hasConditions = nextConditions.length > 0;
     if (nextTable && nextStrategy && hasConditions) {
-      let nextJoin = Lib.joinClause(
-        nextTable,
-        nextConditions as Lib.FilterClause[],
-      );
+      let nextJoin = Lib.joinClause(nextTable, nextConditions);
       nextJoin = Lib.withJoinFields(nextJoin, "all");
       nextJoin = Lib.withJoinStrategy(nextJoin, nextStrategy);
       const nextQuery = join
@@ -162,6 +159,9 @@ export function JoinStep({
     _setConditions(nextConditions);
   };
 
+  // [undefined] is a special case to render a single empty condition for new joins
+  const displayConditions = conditions.length > 0 ? conditions : [undefined];
+
   return (
     <Flex align="center" miw="100%" gap="1rem">
       <NotebookCell className="flex-full" color={color}>
@@ -196,7 +196,7 @@ export function JoinStep({
             color={color}
             style={{ padding: "8px" }}
           >
-            {conditions.map((condition, index) => (
+            {displayConditions.map((condition, index) => (
               <JoinCondition
                 key={`join-condition-${index}`}
                 query={query}
@@ -224,7 +224,7 @@ export function JoinStep({
 interface JoinConditionProps {
   query: Lib.Query;
   stageIndex: number;
-  condition: Lib.FilterClause | null;
+  condition?: Lib.FilterClause;
   table: Lib.Joinable;
   readOnly?: boolean;
   color: string;
