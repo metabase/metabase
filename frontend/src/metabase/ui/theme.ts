@@ -45,6 +45,67 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
+    Checkbox: {
+      styles(theme, params) {
+        return {
+          root: {
+            marginBottom: theme.spacing.xs,
+          },
+          label: {
+            fontWeight: 700,
+            color: theme.colors.text[2],
+            [`padding-${params.labelPosition === "left" ? "right" : "left"}`]:
+              theme.spacing.xs,
+          },
+          input: {
+            "&:focus": {
+              outline: `2px solid ${theme.colors.brand[1]}`,
+            },
+            "&:disabled": {
+              background: theme.colors.border[0],
+              border: 0,
+              "& + svg > *": {
+                fill: theme.colors.text[0],
+              },
+            },
+            cursor: "pointer",
+            ...(params.indeterminate && {
+              background: theme.colors.brand[1],
+              border: `1px solid ${theme.colors.brand[1]}`,
+            }),
+          },
+          ...(params.indeterminate && {
+            icon: {
+              "& > *": {
+                fill: color("white"),
+              },
+            },
+          }),
+        };
+      },
+    },
+    CheckboxGroup: {
+      styles(theme) {
+        /* Note: we need the ':has' selector to target the space just
+         * above the first checkbox since we don't seem to have a selector
+         * for a 'label + description' wrapper */
+
+        return {
+          label: {
+            fontWeight: 700,
+            color: theme.colors.text[2],
+            "&:has(+ .mantine-Checkbox-root)": {
+              marginBottom: theme.spacing.sm,
+            },
+          },
+          description: {
+            "&:has(+ .mantine-Checkbox-root)": {
+              marginBottom: theme.spacing.sm,
+            },
+          },
+        };
+      },
+    },
     Accordion: {
       styles(theme) {
         return {
