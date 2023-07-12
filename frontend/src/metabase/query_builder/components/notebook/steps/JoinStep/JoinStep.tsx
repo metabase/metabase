@@ -95,6 +95,7 @@ export function JoinStep({
 
   useEffect(() => {
     if (join && previousJoin !== join) {
+      _setStrategy(Lib.joinStrategy(join));
       _setTable(Lib.joinedThing(query, join));
       _setConditions(Lib.joinConditions(join));
     }
