@@ -5,7 +5,7 @@ import { setup, hasAdvancedFilterOptions } from "./setup";
 
 describe("SharingSidebar Premium Features", () => {
   const tokenFeatures = {
-    advanced_config: true,
+    dashboard_subscription_filters: true,
   };
 
   describe("Email Subscription sidebar", () => {

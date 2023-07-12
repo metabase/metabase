@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import fetchMock from "fetch-mock";
 import { renderWithProviders } from "__support__/ui";
 import type { Screen } from "__support__/ui";
@@ -13,8 +14,9 @@ import {
   createMockCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-
+import type { TokenFeatures } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
+
 import SharingSidebar from "../SharingSidebar";
 
 export const dashcard = createMockDashboardOrderedCard();
@@ -51,7 +53,7 @@ export function setup(
   }: {
     email?: boolean;
     slack?: boolean;
-    tokenFeatures?: Record<string, boolean>;
+    tokenFeatures?: Partial<TokenFeatures>;
     hasEnterprisePlugins?: boolean;
   } = {
     email: true,

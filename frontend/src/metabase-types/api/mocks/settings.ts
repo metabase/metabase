@@ -106,7 +106,6 @@ export const createMockTokenFeatures = (
   opts?: Partial<TokenFeatures>,
 ): TokenFeatures => ({
   advanced_config: false,
-  advanced_config_legacy: false,
   advanced_permissions: false,
   audit_app: false,
   content_management: false,
@@ -115,6 +114,7 @@ export const createMockTokenFeatures = (
   sandboxes: false,
   sso: false,
   whitelabel: false,
+  dashboard_subscription_filters: false,
   ...opts,
 });
 

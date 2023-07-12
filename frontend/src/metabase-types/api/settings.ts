@@ -139,7 +139,6 @@ export type DayOfWeekId =
 
 export interface TokenFeatures {
   advanced_config: boolean;
-  advanced_config_legacy: boolean;
   advanced_permissions: boolean;
   audit_app: boolean;
   content_management: boolean;
@@ -148,6 +147,7 @@ export interface TokenFeatures {
   sandboxes: boolean;
   sso: boolean;
   whitelabel: boolean;
+  dashboard_subscription_filters: boolean;
 }
 
 export type PasswordComplexity = {
