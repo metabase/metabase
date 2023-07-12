@@ -5,10 +5,12 @@
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
    [metabase.metabot.feedback :as metabot-feedback]
+   [metabase.metabot.standalone :as mbs]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -126,5 +128,36 @@
         message
         {:status-code 500
          :message     message})))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; Direct generation of MBQL using our standalone pretrained LLMs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/model/mbql/:model-id"
+  "Ask Metabot to generate an MBQL query given a prompt about a given model."
+  [model-id :as {{:keys [question]} :body}]
+  ;{model-id ms/PositiveInt
+  ; question string?}
+  (log/infof
+    "Metabot '/api/metabot/model/mbql/%s' being called with prompt: '%s'"
+    model-id
+    question)
+  (let [model   (api/check-404 (t2/select-one Card :id model-id :dataset true))
+        context (mbs/model->context model)]
+    (mbs/infer {:prompt question :context context})))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/database/mbql/:database-id"
+  "Ask Metabot to generate an MBQL query given a prompt about a given database."
+  [database-id :as {{:keys [question top_n]} :body}]
+  {database-id su/IntGreaterThanZero
+   question    su/NonBlankString
+   top_n       (s/maybe su/IntGreaterThanZero)}
+  (log/infof
+    "Metabot '/api/metabot/database/mbql/%s' being called with prompt: '%s'"
+    database-id
+    question)
+  (let [prompt question
+        models (t2/select Card :database_id database-id :dataset true)]
+    (mbs/infer-il models prompt (or top_n 1))))
 
 (api/define-routes)

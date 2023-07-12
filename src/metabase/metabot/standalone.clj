@@ -71,6 +71,17 @@
     (when (= 200 status)
       (:embeddings body))))
 
+(defn bulk-embeddings
+  "Convert the input map of {obj-str encoding} to a map of {obj-str embedding (a vector of floats)}."
+  [obj-strs->encodings]
+  (let [request {:method       :post
+                 :url          (format "%s/bulkEmbed" base-url)
+                 :body         (json/write-str {:input obj-strs->encodings})
+                 :content-type :json}
+        {:keys [body status]} (http/request request)]
+    (when (= 200 status)
+      (get (json/read-str body) "embeddings"))))
+
 (defn infer
   "Infer LLM output from a provided prompt and context.
 
@@ -167,6 +178,8 @@
   (token-count "This is a test")
   ;; What is the embedding vector for this string?
   (embeddings "This is a test")
+  ;; What is the embedding vector for this string?
+  (bulk-embeddings {"This is a test" "The encoded version of this is a test"})
 
   ;; This will create a context of ALL models in db 1. For any nontrivial
   ;; database this will produce context that is far too large.
@@ -224,8 +237,8 @@
     (infer inference-input))
 
   ;; Bring it all together.
-  (let [prompt          "Show me orders where tax is greater than 0"
-        top-n           1
-        models          (t2/select Card :database_id 1 :dataset true)]
+  (let [prompt "Show me orders where tax is greater than 0"
+        top-n  1
+        models (t2/select Card :database_id 1 :dataset true)]
     (infer-il models prompt top-n))
   )
