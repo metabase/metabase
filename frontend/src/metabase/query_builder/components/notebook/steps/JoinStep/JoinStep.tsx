@@ -15,6 +15,8 @@ import { JoinConditionOperatorPicker } from "./JoinConditionOperatorPicker";
 import { JoinStrategyPicker } from "./JoinStrategyPicker";
 import { JoinTablePicker } from "./JoinTablePicker";
 
+import { ConditionNotebookCell } from "./JoinStep.styled";
+
 function getDefaultJoinStrategy(query: Lib.Query, stageIndex: number) {
   const strategies = Lib.availableJoinStrategies(query, stageIndex);
   const defaultStrategy = strategies.find(
@@ -192,11 +194,7 @@ export function JoinStep({
           <Box>
             <Text color="brand" weight="bold">{t`on`}</Text>
           </Box>
-          <NotebookCell
-            className="flex-full"
-            color={color}
-            style={{ padding: "8px" }}
-          >
+          <ConditionNotebookCell color={color}>
             {displayConditions.map((condition, index) => (
               <JoinCondition
                 key={`join-condition-${index}`}
@@ -215,7 +213,7 @@ export function JoinStep({
                 }}
               />
             ))}
-          </NotebookCell>
+          </ConditionNotebookCell>
         </>
       )}
     </Flex>
