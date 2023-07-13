@@ -36,12 +36,12 @@
                          :recipients (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))})))]
             (testing "allowed email -- should pass"
               (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
-                (premium-features-test/with-premium-features #{:advanced-config}
+                (premium-features-test/with-premium-features #{:email-allow-list}
                   (let [{:keys [response recipients]} (send! 200)]
                     (is (= {:ok true}
                            response))
                     (is (contains? recipients "test@metabase.com"))))
-                (testing "No :advanced-config token"
+                (testing "No :email-allow-list token"
                   (premium-features-test/with-premium-features #{}
                     (let [{:keys [response recipients]} (send! 200)]
                       (is (= {:ok true}
@@ -49,13 +49,13 @@
                       (is (contains? recipients "test@metabase.com")))))))
             (testing "disallowed email"
               (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
-                (testing "should fail when :advanced-config is enabled"
-                  (premium-features-test/with-premium-features #{:advanced-config}
+                (testing "should fail when :email-allow-list is enabled"
+                  (premium-features-test/with-premium-features #{:email-allow-list}
                     (let [{:keys [response recipients]} (send! 403)]
                       (is (= "You cannot create new subscriptions for the domain \"metabase.com\". Allowed domains are: example.com"
                              (:message response)))
                       (is (not (contains? recipients "test@metabase.com"))))))
-                (testing "No :advanced-config token -- should still pass"
+                (testing "No :email-allow-list token -- should still pass"
                   (premium-features-test/with-premium-features #{}
                     (let [{:keys [response recipients]} (send! 200)]
                       (is (= {:ok true}
