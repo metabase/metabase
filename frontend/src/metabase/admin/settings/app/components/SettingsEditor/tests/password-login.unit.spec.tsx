@@ -7,7 +7,7 @@ import {
 import { screen } from "__support__/ui";
 import { setup, SetupOpts } from "./setup";
 
-const setupEnterprise = (opts?: SetupOpts) => {
+const setupPasswordLogin = (opts?: SetupOpts) => {
   setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({
@@ -19,7 +19,7 @@ const setupEnterprise = (opts?: SetupOpts) => {
 
 describe("SettingsEditor", () => {
   it("should allow to toggle off password login", async () => {
-    setupEnterprise({
+    setupPasswordLogin({
       settings: [
         createMockSettingDefinition({ key: "enable-password-login" }),
         createMockSettingDefinition({ key: "google-auth-enabled" }),

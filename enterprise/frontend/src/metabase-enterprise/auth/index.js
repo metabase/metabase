@@ -43,7 +43,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       display_name: t`Enable Password Authentication`,
       description: t`When enabled, users can additionally log in with email and password.`,
       type: "boolean",
-      getHidden: (_, derivedSettings) =>
+      getHidden: (_settings, derivedSettings) =>
         !hasPremiumFeature("disable_password_login") ||
         (!derivedSettings["google-auth-enabled"] &&
           !derivedSettings["ldap-enabled"] &&
