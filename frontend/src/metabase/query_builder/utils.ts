@@ -1,12 +1,19 @@
 import querystring from "querystring";
 import * as Urls from "metabase/lib/urls";
 import { serializeCardForUrl } from "metabase/lib/card";
+import type { Card } from "metabase-types/api";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
+interface GetPathNameFromQueryBuilderModeOptions {
+  pathname: string;
+  queryBuilderMode: QueryBuilderMode;
+  datasetEditorTab?: DatasetEditorTab;
+}
 export function getPathNameFromQueryBuilderMode({
   pathname,
   queryBuilderMode,
   datasetEditorTab = "query",
-}) {
+}: GetPathNameFromQueryBuilderModeOptions) {
   if (queryBuilderMode === "view") {
     return pathname;
   }
@@ -24,8 +31,19 @@ export function getCurrentQueryParams() {
   return querystring.parse(search);
 }
 
-export function getURLForCardState({ card }, dirty, query = {}, objectId) {
-  const options = {
+type QueryParams = ReturnType<typeof getCurrentQueryParams>;
+export function getURLForCardState(
+  { card }: { card: Card },
+  dirty: boolean,
+  query: QueryParams = {},
+  objectId: string,
+) {
+  interface Options {
+    hash: string;
+    query: QueryParams;
+    objectId?: string;
+  }
+  const options: Options = {
     hash: card && dirty ? serializeCardForUrl(card) : "",
     query,
   };
