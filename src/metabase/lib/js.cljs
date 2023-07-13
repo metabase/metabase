@@ -14,6 +14,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
@@ -110,7 +111,7 @@
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
   add an order by, pass the result to [[order-by]]."
   [a-query stage-number]
-  (to-array (lib.core/orderable-columns a-query stage-number)))
+  (to-array (lib.order-by/orderable-columns a-query stage-number)))
 
 (defn ^:export display-info
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.

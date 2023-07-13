@@ -7,7 +7,8 @@ describe("availableDrillThrus", () => {
     const query = createQuery();
     const stageIndex = -1;
     const columns = orderableColumns(query, stageIndex);
-    console.log(window.$CLJS.cljs.core.pr_str(query), columns);
+    //console.log(window.$CLJS.cljs.core.pr_str(query), columns);
+    console.log(window.$CLJS.cljs.core.pr_str(window.$CLJS.metabase.lib.metadata.calculation.visible_columns(query)));
     const column = columnFinder(query, columns)("ORDERS", "SUBTOTAL");
 
     expect(availableDrillThrus(query, stageIndex, column, /* row */ null, /* dimensions */ null)).toEqual([]);

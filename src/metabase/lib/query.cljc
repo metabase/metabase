@@ -30,6 +30,7 @@
 
 (defmethod lib.metadata.calculation/returned-columns-method :mbql/query
   [query stage-number a-query options]
+  (println "query RCM")
   (lib.metadata.calculation/returned-columns query stage-number (lib.util/query-stage a-query stage-number) options))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/query

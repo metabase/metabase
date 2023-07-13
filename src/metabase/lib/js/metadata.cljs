@@ -102,7 +102,7 @@
      ;; convert keys to kebab-case keywords
      (map (fn [[k v]]
             [(cond-> (keyword (u/->kebab-case-en k))
-               rename-key #(or (rename-key %) %))
+               rename-key (#(or (rename-key %) %)))
              v]))
      ;; remove [[excluded-keys]]
      (if (empty? excluded-keys-set)
