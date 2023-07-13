@@ -6,8 +6,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
-  #?(:cljs (:require-macros [metabase.lib.schema.expression])))
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.types/keep-me)
 

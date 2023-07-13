@@ -311,6 +311,7 @@
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
+  (println "stage VCM")
   (let [query            (ensure-previous-stages-have-metadata query stage-number)
         existing-columns (existing-visible-columns query stage-number options)]
     (->> (concat
@@ -325,6 +326,7 @@
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
 (defmethod lib.metadata.calculation/returned-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn], :as options}]
+  (println "stage RCM")
   (or
    (existing-stage-metadata query stage-number)
    (let [query        (ensure-previous-stages-have-metadata query stage-number)

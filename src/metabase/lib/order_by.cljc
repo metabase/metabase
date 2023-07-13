@@ -170,3 +170,15 @@
      (mbql.u.match/replace query
        [direction (_ :guard #(= (:lib/uuid %) lib-uuid)) _]
        (assoc &match 0 (opposite-direction direction))))))
+
+
+(comment
+  (orderable-columns
+    (metabase.lib.query/query
+      metabase.lib.test-metadata/metadata-provider
+      {:lib/type :mbql/query
+       :database (metabase.lib.test-metadata/id)
+       :stages [{:lib/type     :mbql.stage/mbql
+                 :source-table (metabase.lib.test-metadata/id :orders)}]})
+    -1)
+  )
