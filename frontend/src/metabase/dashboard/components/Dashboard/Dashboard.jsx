@@ -186,6 +186,7 @@ class Dashboard extends Component {
     try {
       await fetchDashboard(dashboardId, location.query, {
         clearCache: !isNavigatingBackToDashboard,
+        preserveParameters: isNavigatingBackToDashboard,
       });
       if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
@@ -339,7 +340,7 @@ class Dashboard extends Component {
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     data-testid="dashboard-parameters-widget-container"
-                    ref={element => (this.parametersWidgetRef = element)}
+                    ref={this.parametersWidgetRef}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
                     topNav={embedOptions?.top_nav}

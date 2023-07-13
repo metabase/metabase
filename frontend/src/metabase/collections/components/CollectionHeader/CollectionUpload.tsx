@@ -93,7 +93,7 @@ const UploadTooltip = ({
         <TooltipTitle>{t`Upload data to ${collection.name}`}</TooltipTitle>
         <TooltipSubtitle>{t`${UPLOAD_FILE_TYPES.join(
           ",",
-        )} (${MAX_UPLOAD_STRING} max)`}</TooltipSubtitle>
+        )} (${MAX_UPLOAD_STRING} MB max)`}</TooltipSubtitle>
       </TooltipContainer>
     }
     placement="bottom"

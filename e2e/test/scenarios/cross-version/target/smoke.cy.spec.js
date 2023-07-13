@@ -31,10 +31,10 @@ describe(`smoke test the migration to the version ${version}`, () => {
     cy.get(".x-axis-label").invoke("text").should("eq", "Created At");
     cy.get(".y-axis-label").invoke("text").should("eq", "Revenue");
     cy.get(".x.axis .tick")
-      .should("contain", "Q1 - 2017")
-      .and("contain", "Q1 - 2018")
-      .and("contain", "Q1 - 2019")
-      .and("contain", "Q1 - 2020");
+      .should("contain", "Q1 - 2023")
+      .and("contain", "Q1 - 2024")
+      .and("contain", "Q1 - 2025")
+      .and("contain", "Q1 - 2026");
 
     cy.get(".y.axis .tick")
       .should("contain", "20,000")

@@ -32,10 +32,10 @@ describe.skip("issue 25156", () => {
 
     cy.get(".bar").should("have.length.at.least", 20);
     cy.get(".x.axis .tick")
-      .should("contain", "2016")
-      .and("contain", "2017")
-      .and("contain", "2018")
-      .and("contain", "2019")
-      .and("contain", "2020");
+      .should("contain", "2022")
+      .and("contain", "2023")
+      .and("contain", "2023")
+      .and("contain", "2024")
+      .and("contain", "2025");
   });
 });

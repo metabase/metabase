@@ -116,9 +116,9 @@
                     {::temporal-unit unit})
                   (cond
                     (integer? id-or-name) (resolve-field-id query stage-number id-or-name)
-                    join-alias            {:lib/type :metadata/field, :name id-or-name}
+                    join-alias            {:lib/type :metadata/column, :name id-or-name}
                     :else                 (or (resolve-column-name query stage-number id-or-name)
-                                              {:lib/type :metadata/field
+                                              {:lib/type :metadata/column
                                                :name     id-or-name})))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
@@ -143,7 +143,7 @@
     :type/Integer
     ((some-fn :effective-type :base-type) column-metadata)))
 
-(defmethod lib.metadata.calculation/type-of-method :metadata/field
+(defmethod lib.metadata.calculation/type-of-method :metadata/column
   [_query _stage-number column-metadata]
   (column-metadata-effective-type column-metadata))
 
@@ -153,7 +153,7 @@
                    temporal-unit (assoc ::temporal-unit temporal-unit))]
     (lib.metadata.calculation/type-of query stage-number metadata)))
 
-(defmethod lib.metadata.calculation/metadata-method :metadata/field
+(defmethod lib.metadata.calculation/metadata-method :metadata/column
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))
 
@@ -164,7 +164,7 @@
    [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
-                        {:lib/type        :metadata/field
+                        {:lib/type        :metadata/column
                          :lib/source-uuid source-uuid}
                         field-metadata
                         {:display-name (or (:display-name opts)
@@ -196,7 +196,7 @@
 
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
-(defmethod lib.metadata.calculation/display-name-method :metadata/field
+(defmethod lib.metadata.calculation/display-name-method :metadata/column
   [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
@@ -252,7 +252,7 @@
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 
-(defmethod lib.metadata.calculation/column-name-method :metadata/field
+(defmethod lib.metadata.calculation/column-name-method :metadata/column
   [_query _stage-number {field-name :name}]
   field-name)
 
@@ -263,7 +263,7 @@
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     "unknown_field"))
 
-(defmethod lib.metadata.calculation/display-info-method :metadata/field
+(defmethod lib.metadata.calculation/display-info-method :metadata/column
   [query stage-number field-metadata]
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number field-metadata)
@@ -284,7 +284,7 @@
   [[_tag opts _id-or-name]]
   (:temporal-unit opts))
 
-(defmethod lib.temporal-bucket/temporal-bucket-method :metadata/field
+(defmethod lib.temporal-bucket/temporal-bucket-method :metadata/column
   [metadata]
   (::temporal-unit metadata))
 
@@ -315,7 +315,7 @@
           options (dissoc options :temporal-unit)]
       [:field options id-or-name])))
 
-(defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/field
+(defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
   (if unit
     (assoc metadata ::temporal-unit unit)
@@ -344,7 +344,7 @@
             (cond-> (dissoc option option-key)
               (= (:unit option) unit) (assoc option-key true))))))
 
-(defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
+(defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
   (if (not= (:lib/source field-metadata) :source/expressions)
     (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
@@ -368,7 +368,7 @@
                  :metadata-fn (fn [query stage-number]
                                 (resolve-field-metadata query stage-number field-clause)))))
 
-(defmethod lib.binning/binning-method :metadata/field
+(defmethod lib.binning/binning-method :metadata/column
   [metadata]
   (some-> metadata
           ::binning
@@ -379,7 +379,7 @@
   [field-clause binning]
   (lib.options/update-options field-clause u/assoc-dissoc :binning binning))
 
-(defmethod lib.binning/with-binning-method :metadata/field
+(defmethod lib.binning/with-binning-method :metadata/column
   [metadata binning]
   (u/assoc-dissoc metadata ::binning binning))
 
@@ -387,7 +387,7 @@
   [query stage-number field-ref]
   (lib.binning/available-binning-strategies query stage-number (resolve-field-metadata query stage-number field-ref)))
 
-(defmethod lib.binning/available-binning-strategies-method :metadata/field
+(defmethod lib.binning/available-binning-strategies-method :metadata/column
   [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
   (if (not= (:lib/source field-metadata) :source/expressions)
     (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
@@ -411,7 +411,7 @@
   [field-clause]
   field-clause)
 
-(defmethod lib.ref/ref-method :metadata/field
+(defmethod lib.ref/ref-method :metadata/column
   [{source :lib/source, :as metadata}]
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)

@@ -86,7 +86,7 @@ describe("binning related reproductions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Year");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2018");
+    cy.findByText("2024");
   });
 
   it("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {
@@ -262,7 +262,7 @@ describe("binning related reproductions", () => {
       // ALl of these are implicit assertions and will fail if there's more than one string
       cy.findByText("Count");
       cy.findByText("Created At: Month");
-      cy.findByText("June, 2016");
+      cy.findByText("June, 2022");
     });
   });
 

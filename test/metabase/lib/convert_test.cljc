@@ -4,6 +4,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -207,9 +208,16 @@
     (is (= original
            (lib.convert/->legacy-MBQL (lib.convert/->pMBQL original))))))
 
+(defn- test-round-trip [query]
+  (testing (str "original =\n" (u/pprint-to-str query))
+    (let [converted (lib.convert/->pMBQL query)]
+      (testing (str "\npMBQL =\n" (u/pprint-to-str converted))
+        (is (= query
+               (lib.convert/->legacy-MBQL converted)))))))
+
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
-  (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
+  (are [query] (test-round-trip query)
     ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
     {:database 194
      :query {:aggregation [[:aggregation-options
@@ -243,6 +251,8 @@
      :type :query}
 
     [:value nil {:base_type :type/Number}]
+
+    [:value "TX" nil]
 
     [:expression "expr" {:display-name "Iambic Diameter"}]
 
@@ -338,7 +348,42 @@
     ;; card__<id> source table syntax.
     {:database 1
      :type     :query
-     :query    {:source-table "card__1"}}))
+     :query    {:source-table "card__1"}}
+
+    ;; #32055
+    {:type :query
+     :database 5
+     :query {:source-table 5822,
+     :expressions {"Additional Information Capture" [:coalesce
+                                                     [:field 519195 nil]
+                                                     [:field 519196 nil]
+                                                     [:field 519194 nil]
+                                                     [:field 519193 nil]
+                                                     "None"],
+                   "Additional Info Present" [:case
+                                              [[[:= [:expression "Additional Information Capture"] "None"]
+                                                "No"]]
+                                              {:default "Yes"}]},
+      :filter [:= [:field 518086 nil] "active"],
+      :aggregation [[:aggregation-options
+                     [:share [:= [:expression "Additional Info Present"] "Yes"]]
+                     {:name "Additional Information", :display-name "Additional Information"}]]}}))
+
+(deftest ^:parallel round-trip-aggregation-with-case-test
+  (test-round-trip
+   {:database 2762
+    :type     :query
+    :query    {:aggregation  [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+               :breakout     [[:field 139658 nil]]
+               :limit        4
+               :source-table 33674}}))
+
+(deftest ^:parallel round-trip-aggregation-with-metric-test
+  (test-round-trip
+   {:database 1
+    :query    {:aggregation  [[:+ [:metric 82] 1]]
+               :source-table 1}
+    :type     :query}))
 
 (deftest ^:parallel round-trip-options-test
   (testing "Round-tripping (p)MBQL caluses with options (#30280)"
@@ -456,7 +501,10 @@
                 pMBQL)))
       (testing "Round trip: make sure we convert back to `snake_case` when converting back."
         (is (= original
-               (lib.convert/->legacy-MBQL pMBQL)))))))
+               (lib.convert/->legacy-MBQL pMBQL))))))
+  (testing "Type is filled in properly when missing"
+    (is (=? [:value {:effective-type :type/Text} "TX"]
+            (lib.convert/->pMBQL [:value "TX" nil])))))
 
 (deftest ^:parallel clean-test
   (testing "irrecoverable queries"

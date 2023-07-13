@@ -6,6 +6,7 @@ import {
   setupSMTP,
   describeEE,
   getFullName,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -464,6 +465,7 @@ describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
