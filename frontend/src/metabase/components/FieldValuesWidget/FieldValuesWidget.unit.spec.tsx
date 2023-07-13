@@ -1,5 +1,3 @@
-import "mutationobserver-shim";
-
 import userEvent from "@testing-library/user-event";
 import {
   getBrokenUpTextMatcher,
@@ -10,7 +8,10 @@ import {
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 
 import { checkNotNull } from "metabase/core/utils/types";
-import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
+import {
+  FieldValuesWidget,
+  IFieldValuesWidgetProps,
+} from "metabase/components/FieldValuesWidget";
 
 import {
   ORDERS,
@@ -19,6 +20,7 @@ import {
   PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
 } from "metabase-types/api/mocks/presets";
+import Field from "metabase-lib/metadata/Field";
 
 import {
   state,
@@ -30,22 +32,37 @@ import {
   metadataWithSearchValuesField,
 } from "./testMocks";
 
-async function setup({ fields, values, searchValue, ...props }) {
+async function setup({
+  fields,
+  prefix,
+  searchValue,
+  ...props
+}: {
+  fields: (Field | null | undefined)[];
+  searchValue?: string;
+  prefix?: string;
+} & Omit<Partial<IFieldValuesWidgetProps>, "fields">) {
   const fetchFieldValues = jest.fn(({ id }) => ({
-    payload: fields.find(f => f.id === id),
+    payload: fields.filter(checkNotNull).find(f => f?.id === id),
   }));
 
-  fields.forEach(field => {
-    setupFieldSearchValuesEndpoints(field.id, searchValue);
-  });
+  if (searchValue) {
+    fields.forEach(field => {
+      setupFieldSearchValuesEndpoints(field?.id as number, searchValue);
+    });
+  }
 
   renderWithProviders(
     <FieldValuesWidget
       value={[]}
-      fields={fields}
+      fields={fields.filter(checkNotNull)}
       onChange={jest.fn()}
-      fetchFieldValues={fetchFieldValues}
+      fetchFieldValues={fetchFieldValues as any}
+      fetchParameterValues={jest.fn()}
+      fetchDashboardParameterValues={jest.fn()}
+      fetchCardParameterValues={jest.fn()}
       addRemappings={jest.fn()}
+      prefix={prefix}
       {...props}
     />,
     {
@@ -150,9 +167,12 @@ describe("FieldValuesWidget", () => {
 
     describe("has_field_values = search", () => {
       it("should have 'Search by Category or enter an ID' as the placeholder text", async () => {
-        const field = metadata.field(SEARCHABLE_FK_FIELD_ID).clone();
+        const field = metadata.field(SEARCHABLE_FK_FIELD_ID)?.clone();
         const remappedField = metadata.field(PRODUCTS.CATEGORY);
-        field.remappedField = () => remappedField;
+
+        if (field) {
+          field.remappedField = () => remappedField;
+        }
 
         await setup({ fields: [field] });
 
@@ -174,11 +194,13 @@ describe("FieldValuesWidget", () => {
 
   describe("multiple fields", () => {
     it("list multiple fields together", async () => {
-      const categoryField = metadata.field(PRODUCTS.CATEGORY).clone();
-      categoryField.values = PRODUCT_CATEGORY_VALUES.values;
+      const categoryField = metadata.field(PRODUCTS.CATEGORY)?.clone();
+      const sourceField = metadata.field(PEOPLE.SOURCE)?.clone();
 
-      const sourceField = metadata.field(PEOPLE.SOURCE).clone();
-      sourceField.values = PEOPLE_SOURCE_VALUES.values;
+      if (categoryField && sourceField) {
+        categoryField.values = PRODUCT_CATEGORY_VALUES.values;
+        sourceField.values = PEOPLE_SOURCE_VALUES.values;
+      }
 
       await setup({ fields: [categoryField, sourceField] });
 
@@ -232,7 +254,9 @@ describe("FieldValuesWidget", () => {
 
   describe("custom expressions", () => {
     const valuesField = checkNotNull(metadata.field(LISTABLE_PK_FIELD_ID));
-    const expressionField = checkNotNull(metadata.field(EXPRESSION_FIELD_ID));
+    const expressionField = checkNotNull(
+      metadata.field(EXPRESSION_FIELD_ID as any),
+    );
 
     it("should not call fetchFieldValues", async () => {
       const { fetchFieldValues } = await setup({
@@ -252,7 +276,7 @@ describe("FieldValuesWidget", () => {
   describe("NoMatchState", () => {
     it("should display field title when one field passed and there are no matching results", async () => {
       const field = metadataWithSearchValuesField.field(PEOPLE.PASSWORD);
-      const displayName = field.display_name; // "Password"
+      const displayName = field?.display_name; // "Password"
       const searchValue = "somerandomvalue";
 
       await setup({
