@@ -53,7 +53,7 @@
                   (and (re-matches #"Database .+ not found .+" (.getMessage e))
                        ::exception-thrown)))))))
 
-(deftest only-connect-when-non-malicious-properties
+(deftest ^:parallel only-connect-when-non-malicious-properties
   (testing "Reject connection strings with malicious properties"
     (let [conn-str (str "jdbc:h2:file:"
                         (System/getProperty "user.dir")

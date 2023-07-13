@@ -66,11 +66,14 @@
    (map u/one-or-many)
    (apply concat)))
 
-(defn malicious-property-value
+(defn- malicious-property-value
   "Checks an h2 connection string for connection properties that could be malicious. Markers of this include semi-colons
   which allow for sql injection in org.h2.engine.Engine/openSession. The others are markers for languages like
   javascript and ruby that we want to suppress."
   [s]
+  ;; list of strings it looks for to compile scripts:
+  ;; https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/util/SourceCompiler.java#L178-L187 we
+  ;; can't use the static methods themselves since they expect to check the beginning of the string
   (let [bad-markers [";"
                      "//javascript"
                      "#ruby"
@@ -92,6 +95,8 @@
                                 properties)]
       (when (seq bad-props)
         (throw (ex-info "Malicious keys detected" {:keys (keys bad-props)})))
+      ;; keys are uppercased by h2 when parsed:
+      ;; https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/engine/ConnectionInfo.java#L298
       (when (contains? properties "INIT")
         (throw (ex-info "INIT not allowed" {:keys ["INIT"]})))))
   (sql-jdbc.conn/can-connect? driver details))
