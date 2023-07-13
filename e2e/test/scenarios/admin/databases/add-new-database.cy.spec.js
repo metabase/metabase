@@ -198,9 +198,10 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("We're taking a look at your database!");
-      cy.findByLabelText("close icon").click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
@@ -235,9 +236,10 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("We're taking a look at your database!");
-      cy.findByLabelText("close icon").click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
@@ -278,9 +280,10 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("We're taking a look at your database!");
-      cy.findByLabelText("close icon").click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA MySQL8");
