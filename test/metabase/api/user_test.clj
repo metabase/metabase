@@ -314,7 +314,7 @@
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :last_login :has_question_and_dashboard))))))
+                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
       (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
                       Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
