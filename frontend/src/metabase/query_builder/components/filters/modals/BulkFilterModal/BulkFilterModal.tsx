@@ -107,7 +107,7 @@ const BulkFilterModal = ({
 
         <FieldSearch value={searchQuery} onChange={setSearchQuery} />
 
-        <ModalCloseButton onClick={onClose}>
+        <ModalCloseButton onClick={onClose} data-autofocus tabIndex={0}>
           <Icon name="close" />
         </ModalCloseButton>
       </ModalHeader>

@@ -19,6 +19,7 @@ export const FieldSearch = ({
 
   useEffect(() => {
     const searchToggleListener = (e: KeyboardEvent) => {
+      e.preventDefault();
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         setShowSearch(true);
       }
