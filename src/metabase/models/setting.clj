@@ -411,12 +411,8 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
-(defn- has-feature?
-  [feature]
-  (u/ignore-exceptions
-   (classloader/require 'metabase.public-settings.premium-features))
-  (let [has-feature?' (resolve 'metabase.public-settings.premium-features/has-feature?)]
-    (has-feature?' feature)))
+;; Need to access `has-feature?` by resolving it at runtime to avoid circular dependency
+(def ^:private has-feature? (resolve 'metabase.public-settings.premium-features/has-feature?))
 
 (defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
