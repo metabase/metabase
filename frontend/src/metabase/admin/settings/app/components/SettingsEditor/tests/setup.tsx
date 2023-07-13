@@ -1,9 +1,15 @@
 /* istanbul ignore file */
 import { IndexRedirect, Route } from "react-router";
-import { SettingDefinition, Settings, TokenFeatures } from "metabase-types/api";
+import {
+  SettingDefinition,
+  Settings,
+  TokenFeatures,
+  User,
+} from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -17,6 +23,7 @@ import SettingsEditor from "../SettingsEditor";
 
 export interface SetupOpts {
   initialRoute?: string;
+  currentUser?: User;
   settings?: SettingDefinition[];
   settingValues?: Settings;
   tokenFeatures?: TokenFeatures;
@@ -25,16 +32,19 @@ export interface SetupOpts {
 
 export const setup = ({
   initialRoute = "/admin/settings",
+  currentUser = createMockUser({ is_superuser: true }),
   settings = [],
   settingValues = createMockSettings(),
   tokenFeatures = createMockTokenFeatures(),
   hasEnterprisePlugins = false,
 }: SetupOpts = {}) => {
+  const settingValuesWithToken = {
+    ...settingValues,
+    "token-features": tokenFeatures,
+  };
   const state = createMockState({
-    settings: mockSettings({
-      ...settingValues,
-      "token-features": tokenFeatures,
-    }),
+    settings: mockSettings(settingValuesWithToken),
+    currentUser,
   });
 
   if (hasEnterprisePlugins) {
@@ -42,7 +52,7 @@ export const setup = ({
   }
 
   setupSettingsEndpoints(settings);
-  setupPropertiesEndpoints(settingValues);
+  setupPropertiesEndpoints(settingValuesWithToken);
 
   renderWithProviders(
     <Route path="/admin/settings">

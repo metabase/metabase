@@ -141,6 +141,7 @@ export interface TokenFeatures {
   advanced_config: boolean;
   advanced_permissions: boolean;
   audit_app: boolean;
+  disable_password_login: boolean;
   content_management: boolean;
   embedding: boolean;
   hosting: boolean;
