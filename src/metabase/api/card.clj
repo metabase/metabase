@@ -34,6 +34,7 @@
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
+   [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
@@ -41,6 +42,7 @@
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -1162,20 +1164,24 @@ saved later when it is ready."
   [collection-id filename ^File csv-file]
   {collection-id ms/PositiveInt}
   (when (not (public-settings/uploads-enabled))
-    (throw (Exception. "Uploads are not enabled.")))
+    (throw (Exception. (tru "Uploads are not enabled."))))
+  (when (premium-features/sandboxed-user?)
+    (throw (Exception. (tru "Uploads are not permitted for sandboxed users."))))
   (collection/check-write-perms-for-collection collection-id)
   (try
     (let [start-time        (System/currentTimeMillis)
           db-id             (public-settings/uploads-database-id)
           database          (or (t2/select-one Database :id db-id)
                                 (throw (Exception. (tru "The uploads database does not exist."))))
-          _check_perms      (api/check-403 (mi/can-read? database))
           driver            (driver.u/database->driver database)
           schema-name       (public-settings/uploads-schema-name)
           _check-schema     (when (and (str/blank? schema-name)
                                        (driver/database-supports? driver :schemas database))
                               (throw (ex-info (tru "A schema has not been set.")
                                               {:status-code 422})))
+          _check_perms      (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                                                            (perms/data-perms-path db-id schema-name)))
+
           _check-schema     (when-not (or (nil? schema-name)
                                           (driver.s/include-schema? database schema-name))
                               (throw (ex-info (tru "The schema {0} is not syncable." schema-name)
