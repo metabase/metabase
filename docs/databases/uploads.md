@@ -43,7 +43,7 @@ When people upload a CSV to a collection, Metabase will:
 - Create a table to store that data in the database and schema that the Admin selected to store uploads.
 - Create a [model](../data-modeling/models.md) that wraps the uploaded table, and save that model to the collection the person uploaded the CSV data to.
 
-### Add people to a group with unrestricted data access to that database
+### Add people to a group with unrestricted data access to the upload schema
 
 In order to upload CSVs, a person must be in a group with Unrestricted access to the schema you've selected to store your uploaded data. Native query editing isn't required for uploading. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
 
