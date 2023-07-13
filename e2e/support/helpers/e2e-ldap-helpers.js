@@ -10,7 +10,10 @@ export const setupLdap = () => {
     "ldap-host": "localhost",
     "ldap-port": "389",
     "ldap-bind-dn": "cn=admin,dc=example,dc=org",
-    "ldap-password": "admin",
-    "ldap-user-base": "dc=example,dc=org",
+    "ldap-password": "adminpass",
+    "ldap-user-base": "ou=users,dc=example,dc=org",
+    "ldap-attribute-email": "uid",
+    "ldap-attribute-firstname": "sn",
+    "ldap-attribute-lastname": "sn",
   });
 };
