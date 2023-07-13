@@ -215,11 +215,8 @@ describe("scenarios > dashboard card resizing", () => {
         cy.findByLabelText("Add questions").click();
       });
 
-      cy.intercept("POST", "/api/card/**/query").as("card-query");
-
       TEST_QUESTIONS.forEach(question => {
         cy.findByLabelText(question.name).click();
-        cy.wait("@card-query");
       });
 
       saveDashboard();
