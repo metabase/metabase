@@ -92,19 +92,19 @@
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
     ;; add the newly created user to the magic perms groups.
-    (letfn [(create-group-membership! [perms-group]
-              ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
-              ;; for [[metabase.models.permissions-group-membership]]... we don't want it recursively trying to update
-              ;; the user
-              (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
-                          :user_id  user-id
-                          :group_id (u/the-id perms-group)))]
+    (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
+    (when superuser?
+      (log/info (trs "Adding User {0} to All Users permissions group..." user-id)))
+    (let [groups (filter some? [(perms-group/all-users)
+                                (when superuser? (perms-group/admin))])]
       (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
-        (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
-        (create-group-membership! (perms-group/all-users)))
-      (when superuser?
-        (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
-        (create-group-membership! (perms-group/admin))))))
+        ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
+        ;; for [[metabase.models.permissions-group-membership]]... we don't want it recursively trying to update
+        ;; the user
+        (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
+                    (for [group groups]
+                      {:user_id  user-id
+                       :group_id (u/the-id group)}))))))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
