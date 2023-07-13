@@ -40,6 +40,7 @@
          lib.column-group/keep-me
          lib.common/keep-me
          lib.database/keep-me
+         lib.drill-thru/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
