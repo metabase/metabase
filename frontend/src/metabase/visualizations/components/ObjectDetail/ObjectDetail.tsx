@@ -43,7 +43,6 @@ import { MetabaseApi } from "metabase/services";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
 import ForeignKey from "metabase-lib/metadata/ForeignKey";
-import Question from "metabase-lib/Question";
 import type {
   ObjectId,
   OnVisualizationClickType,
@@ -285,6 +284,19 @@ export function ObjectDetailView({
     [zoomedRowID, followForeignKey],
   );
 
+  const areImplicitActionsEnabled =
+    question &&
+    question.canWrite() &&
+    question.isDataset() &&
+    question.supportsImplicitActions();
+
+  const { data: modelActions = [] } = useActionListQuery({
+    enabled: areImplicitActionsEnabled,
+    query: { "model-id": question?.id() },
+  });
+
+  const actions = areImplicitActionsEnabled ? getActions(modelActions) : [];
+
   if (!data) {
     return null;
   }
@@ -324,6 +336,7 @@ export function ObjectDetailView({
         >
           {showHeader && (
             <ObjectDetailHeader
+              actions={actions}
               canZoom={Boolean(
                 canZoom && (canZoomNextRow || canZoomPreviousRow),
               )}
@@ -331,7 +344,6 @@ export function ObjectDetailView({
               objectId={displayId}
               canZoomPreviousRow={!!canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
-              question={question}
               showControls={showControls}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
               viewNextObjectDetail={viewNextObjectDetail}
@@ -421,12 +433,16 @@ export function ObjectDetailWrapper({
 }
 
 export interface ObjectDetailHeaderProps {
+  actions: {
+    title: string;
+    icon: string;
+    action: () => void;
+  }[];
   canZoom: boolean;
   objectName: string;
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
-  question: Question;
   showControls?: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
@@ -470,28 +486,17 @@ const getActions = (modelActions: WritebackAction[]) => {
 };
 
 export function ObjectDetailHeader({
+  actions,
   canZoom,
   objectName,
   objectId,
   canZoomPreviousRow,
   canZoomNextRow,
-  question,
   showControls = true,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
-  const areImplicitActionsEnabled =
-    question.canWrite() &&
-    question.isDataset() &&
-    question.supportsImplicitActions();
-
-  const { data: modelActions = [] } = useActionListQuery({
-    enabled: areImplicitActionsEnabled,
-    query: { "model-id": question.id() },
-  });
-
-  const actions = areImplicitActionsEnabled ? getActions(modelActions) : [];
   const showButtonsContainer = showControls || actions.length > 0;
 
   return (
