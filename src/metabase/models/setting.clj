@@ -616,12 +616,9 @@
   if any."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default]} (resolve-setting setting-definition-or-name)
-        disable-cache?                           (not cache?)]
+        disable-cache?                           (or *disable-cache* (not cache?))]
     (if (or (nil? enabled?) (enabled?))
-      ;; optimization: only bind if the value will change. Saves FRACTIONS OF A SECOND
-      (if (and disable-cache? (not *disable-cache*))
-        (binding [*disable-cache* disable-cache?]
-          (getter))
+      (binding [*disable-cache* disable-cache?]
         (getter))
       default)))
 
