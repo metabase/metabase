@@ -57,6 +57,7 @@ describe("Object Detail", () => {
   it("renders an object detail header", () => {
     render(
       <ObjectDetailHeader
+        actions={[]}
         canZoom={false}
         objectName="Large Sandstone Socks"
         objectId={778}
@@ -74,6 +75,7 @@ describe("Object Detail", () => {
   it("renders an object detail header with enabled next object button and disabled previous object button", () => {
     render(
       <ObjectDetailHeader
+        actions={[]}
         canZoom={true}
         objectName="Large Sandstone Socks"
         objectId={778}
