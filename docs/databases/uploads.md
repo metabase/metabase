@@ -12,7 +12,7 @@ There are a few things admins need to do to support CSV uploads:
 
 - [Connect to a database using a database user account with write access](#connect-to-a-database-using-a-database-user-account-with-write-access). This way Metabase will be able to store the uploaded data somewhere.
 - [Select the database and schema you want to store the uploaded data in](#select-the-database-and-schema-that-you-want-to-store-the-data-in).
-- [Add people to a group with unrestricted data access to that database](#add-people-to-a-group-with-unrestricted-data-access-to-that-database).
+- [Add people to a group with unrestricted data access to the upload schema database](#add-people-to-a-group-with-unrestricted-data-access-to-the-upload-schema).
 - (Optional) [specify a prefix for Metabase to prepend to the uploaded tables](#specify-a-prefix-for-metabase-to-prepend-to-the-uploaded-tables).
 
 ### Databases that support uploads
