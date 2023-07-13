@@ -71,16 +71,28 @@ const setup = () => {
   renderWithProviders(<Container />);
 };
 
-describe("table settings", () => {
+describe("PieChart", () => {
   beforeAll(() => {
     //Append mocked style for .hide class
     const mockedStyle = document.createElement("style");
     mockedStyle.innerHTML = `.hide {display: none;}`;
     document.body.append(mockedStyle);
   });
+
   it("should render", () => {
     setup();
     expect(screen.getByTestId("pie-chart")).toBeInTheDocument();
+  });
+
+  it("should not have negative dimensions (metabase#28677)", () => {
+    setup();
+
+    const pieChart = screen.getByTestId("pie-chart");
+    const width = pieChart.getAttribute("width");
+    const height = pieChart.getAttribute("height");
+
+    expect(parseFloat(width)).toBeGreaterThanOrEqual(0);
+    expect(parseFloat(height)).toBeGreaterThanOrEqual(0);
   });
 
   it("should allow you to show and hide the grand total", async () => {
