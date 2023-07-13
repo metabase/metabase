@@ -27,7 +27,7 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import FormAuthorityLevelFieldContainer from "./FormAuthorityLevelFieldContainer";
+import FormAuthorityLevelFieldContainer from "../../containers/FormAuthorityLevelFieldContainer";
 
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
