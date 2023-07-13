@@ -1,3 +1,4 @@
+import { Route } from "react-router";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Settings } from "metabase-types/api";
@@ -48,9 +49,14 @@ export const setup = async ({
   const question = checkNotNull(metadata.question(card.id));
   const onSave = jest.fn();
 
-  renderWithProviders(
-    <QuestionInfoSidebar question={question} onSave={onSave} />,
+  const TestQuestionInfoSidebar = () => (
+    <QuestionInfoSidebar question={question} onSave={onSave} />
   );
+
+  renderWithProviders(<Route path="*" component={TestQuestionInfoSidebar} />, {
+    withRouter: true,
+    storeInitialState: state,
+  });
 
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
 
