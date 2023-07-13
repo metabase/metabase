@@ -44,7 +44,12 @@ const DataBucketListItem = ({
   name,
   onSelect,
 }: DataBucketListItemProps) => (
-  <ItemContainer id={id} name={name} onSelect={onSelect}>
+  <ItemContainer
+    data-testid="data-bucket-list-item"
+    id={id}
+    name={name}
+    onSelect={onSelect}
+  >
     <TitleContainer>
       <ItemIcon name={icon} size={18} />
       <ItemTitle>{name}</ItemTitle>

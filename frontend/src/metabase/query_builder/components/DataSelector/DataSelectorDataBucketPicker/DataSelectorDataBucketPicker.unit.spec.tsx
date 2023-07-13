@@ -20,21 +20,25 @@ describe("DataSelectorDataBucketPicker", () => {
       hasSavedQuestions: true,
       hasNestedQueriesEnabled: true,
     });
-    const { container } = setup(dataTypes);
+    setup(dataTypes);
 
     expect(screen.getByText("Models")).toBeInTheDocument();
     expect(screen.getByText("Raw Data")).toBeInTheDocument();
     expect(screen.getByText("Saved Questions")).toBeInTheDocument();
-    expect(container.childNodes[0].childNodes.length).toBe(dataTypes.length);
+    expect(screen.queryAllByTestId("data-bucket-list-item").length).toBe(
+      dataTypes.length,
+    );
   });
 
   it("should display no buckets", () => {
     const dataTypes: DataTypeInfoItem[] = [];
-    const { container } = setup(dataTypes);
+    setup(dataTypes);
 
     expect(screen.queryByText("Models")).not.toBeInTheDocument();
     expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
     expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
-    expect(container.childNodes[0].childNodes.length).toBe(dataTypes.length);
+    expect(screen.queryAllByTestId("data-bucket-list-item").length).toBe(
+      dataTypes.length,
+    );
   });
 });
