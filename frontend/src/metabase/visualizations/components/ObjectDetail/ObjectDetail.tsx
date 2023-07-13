@@ -12,6 +12,7 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
+import { useActionListQuery } from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -432,17 +433,41 @@ export interface ObjectDetailHeaderProps {
   closeObjectDetail: () => void;
 }
 
-const updateAction = {
-  title: t`Update`,
-  icon: "pencil",
-  action: () => "TODO: metabase#32322",
+const getActions = (modelActions: WritebackAction[]) => {
+  const actions = [];
+
+  const hasUpdateAction = modelActions.some(
+    action =>
+      action.type === "implicit" &&
+      action.kind === "row/update" &&
+      !action.archived,
+  );
+
+  const hasDeleteAction = modelActions.some(
+    action =>
+      action.type === "implicit" &&
+      action.kind === "row/delete" &&
+      !action.archived,
+  );
+
+  if (hasUpdateAction) {
+    actions.push({
+      title: t`Update`,
+      icon: "pencil",
+      action: () => "TODO: metabase#32322",
+    });
+  }
+
+  if (hasDeleteAction) {
+    actions.push({
+      title: t`Delete`,
+      icon: "trash",
+      action: () => "TODO: metabase#32323",
+    });
+  }
+
+  return actions;
 };
-const deleteAction = {
-  title: t`Delete`,
-  icon: "trash",
-  action: () => "TODO: metabase#32323",
-};
-const modelActions: WritebackAction[] = [];
 
 export function ObjectDetailHeader({
   canZoom,
@@ -456,19 +481,18 @@ export function ObjectDetailHeader({
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
-  const implicitActions = useMemo(
-    () => modelActions.filter(action => action.type === "implicit"),
-    [],
-  );
-  implicitActions;
-
   const areImplicitActionsEnabled =
     question.canWrite() &&
     question.isDataset() &&
     question.supportsImplicitActions();
 
-  const actions = areImplicitActionsEnabled ? [updateAction, deleteAction] : [];
-  const showButtons = showControls || actions.length > 0;
+  const { data: modelActions = [] } = useActionListQuery({
+    enabled: areImplicitActionsEnabled,
+    query: { "model-id": question.id() },
+  });
+
+  const actions = areImplicitActionsEnabled ? getActions(modelActions) : [];
+  const showButtonsContainer = showControls || actions.length > 0;
 
   return (
     <ObjectDetailHeaderWrapper className="Grid">
@@ -479,7 +503,7 @@ export function ObjectDetailHeader({
         </h2>
       </div>
 
-      {showButtons && (
+      {showButtonsContainer && (
         <Flex align="center" gap="0.5rem" p="1rem">
           {canZoom && showControls && (
             <>
