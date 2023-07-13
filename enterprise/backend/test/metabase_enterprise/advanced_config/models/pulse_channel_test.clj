@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
    [metabase.models :refer [Pulse PulseChannel]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -13,7 +13,6 @@
 (deftest validate-email-domains-test
   (t2.with-temp/with-temp [Pulse {pulse-id :id}]
     (doseq [operation                [:create :update]
-            enable-email-allow-list? [true false]
             allowed-domains          [nil
                                       #{"metabase.com"}
                                       #{"metabase.com" "toucan.farm"}]
@@ -21,14 +20,11 @@
                                       ["cam@metabase.com"]
                                       ["cam@metabase.com" "cam@toucan.farm"]
                                       ["cam@metabase.com" "cam@disallowed-domain.com"]]
-            :let                     [fail? (and enable-email-allow-list?
-                                                 allowed-domains
+            :let                     [fail? (and allowed-domains
                                                  (not (every? (fn [email]
                                                                 (contains? allowed-domains (u/email->domain email)))
                                                               emails)))]]
-      (premium-features-test/with-premium-features (if enable-email-allow-list?
-                                                     #{:email-allow-list}
-                                                     #{})
+      (premium-features-test/with-premium-features #{:email-allow-list}
         (mt/with-temporary-setting-values [subscription-allowed-domains (str/join "," allowed-domains)]
           ;; `with-premium-features` and `with-temporary-setting-values` will add `testing` context for the other
           ;; stuff.
@@ -59,6 +55,6 @@
              (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))
   (testing "Should be unable to set the subscription-allowed-domains setting without the email-allow-list feature"
     (is (thrown-with-msg?
-         IllegalArgumentException
-         #"Updating subscription-allowed-domains is not allowed" ;; TODO: replace
+         clojure.lang.ExceptionInfo
+         #"Setting subscription-allowed-domains is not enabled because feature :email-allow-list is not available"
          (advanced-config.models.pulse-channel/subscription-allowed-domains! "metabase.com")))))

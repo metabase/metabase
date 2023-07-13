@@ -35,8 +35,8 @@
                                        :skip_if_empty false})
                          :recipients (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))})))]
             (testing "allowed email -- should pass"
-              (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
-                (premium-features-test/with-premium-features #{:email-allow-list}
+              (premium-features-test/with-premium-features #{:email-allow-list}
+                (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]
                   (let [{:keys [response recipients]} (send! 200)]
                     (is (= {:ok true}
                            response))
