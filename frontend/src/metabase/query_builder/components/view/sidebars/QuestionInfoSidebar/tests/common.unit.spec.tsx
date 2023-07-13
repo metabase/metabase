@@ -3,9 +3,11 @@ import { screen } from "__support__/ui";
 import { setup } from "./setup";
 
 describe("QuestionInfoSidebar", () => {
-  it("should display description of a question", async () => {
-    const description = "abc";
-    await setup({ card: createMockCard({ description }) });
-    expect(screen.getByText(description)).toBeInTheDocument();
+  it.each([
+    createMockCard({ name: "Question", dataset: false }),
+    createMockCard({ name: "Model", dataset: true }),
+  ])("should display description of a $card.name", async card => {
+    await setup({ card });
+    expect(screen.getByText(card.description ?? "")).toBeInTheDocument();
   });
 });
