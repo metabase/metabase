@@ -1,5 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockModerationReview,
+} from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
 import { setup } from "./setup";
 
@@ -51,6 +54,18 @@ describe("QuestionInfoSidebar", () => {
       const card = createMockCard({ name: "abc", dataset: false });
       await setup({ card });
       expect(screen.queryByText("Model details")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("moderation reviews", () => {
+    it("should not show the verification badge", async () => {
+      const card = createMockCard({
+        moderation_reviews: [
+          createMockModerationReview({ status: "verified" }),
+        ],
+      });
+      await setup({ card });
+      expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
     });
   });
 });
