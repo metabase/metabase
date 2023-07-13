@@ -6,7 +6,7 @@ import {
 import { screen } from "__support__/ui";
 import { setup, SetupOpts } from "./setup";
 
-const setupGranularCachingControls = (opts: SetupOpts) => {
+const setupGranularCacheControls = (opts: SetupOpts) => {
   return setup({
     ...opts,
     settings: createMockSettings({
@@ -27,7 +27,7 @@ describe("QuestionInfoSidebar", () => {
     const settings = createMockSettings({
       "enable-query-caching": true,
     });
-    await setupGranularCachingControls({ card, settings });
+    await setupGranularCacheControls({ card, settings });
     expect(screen.getByText("Cache Configuration")).toBeInTheDocument();
   });
 
@@ -38,7 +38,7 @@ describe("QuestionInfoSidebar", () => {
     const settings = createMockSettings({
       "enable-query-caching": false,
     });
-    await setupGranularCachingControls({ card, settings });
+    await setupGranularCacheControls({ card, settings });
     expect(screen.queryByText("Cache Configuration")).not.toBeInTheDocument();
   });
 });
