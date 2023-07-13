@@ -31,16 +31,6 @@ const SUBSCRIPTION = {
   RESUBSCRIBE: "resubscribe",
 };
 
-interface UnsubscribeQueryString {
-  hash: string;
-  email: string;
-  "pulse-id": string;
-}
-
-interface UnsubscribeProps {
-  location: Location<UnsubscribeQueryString>;
-}
-
 export const UnsubscribePage = ({
   location,
 }: UnsubscribeProps): JSX.Element => {
@@ -98,32 +88,19 @@ export const UnsubscribePage = ({
   );
 };
 
-interface SubscriptionDetailProps {
-  email: string;
-  alertTitle: string | undefined;
-  action: () => void;
-}
-
 function SuccessfulUnsubscribe({
   email,
   alertTitle,
   action,
 }: SubscriptionDetailProps) {
   return (
-    <Stack align="center">
-      <CheckmarkIcon name="check" size={30} />
-      <Text
-        fw={700}
-        c={color("text-medium")}
-        mb="0.75rem"
-        ta="center"
-      >{jt`You've unsubscribed ${(
+    <SuccessfulRequestWrapper
+      text={jt`You've unsubscribed ${(
         <ExternalLink href={`mailto:${email}`}>{email}</ExternalLink>
-      )} from the "${alertTitle}" alert.`}</Text>
-      <Button primary onClick={action}>
-        Undo
-      </Button>
-    </Stack>
+      )} from the "${alertTitle}" alert.`}
+      buttonText={t`Undo`}
+      action={action}
+    />
   );
 }
 
@@ -133,34 +110,32 @@ function SuccessfulResubscribe({
   action,
 }: SubscriptionDetailProps) {
   return (
-    <Stack align="center">
-      <CheckmarkIcon name="check" size={30} />
-      <Text
-        fw={700}
-        c={color("text-medium")}
-        mb="0.75rem"
-        ta="center"
-      >{jt`Okay, ${(
+    <SuccessfulRequestWrapper
+      text={jt`Okay, ${(
         <ExternalLink href={`mailto:${email}`}>{email}</ExternalLink>
-      )} is subscribed to the "${alertTitle}" alert again.`}</Text>
-      <Button primary onClick={action}>
-        Unsubscribe
-      </Button>
-    </Stack>
+      )} is subscribed to the "${alertTitle}" alert again.`}
+      buttonText={t`Unsubscribe`}
+      action={action}
+    />
   );
 }
 
-interface UseUnsubscribeProps {
-  hash: string | undefined;
-  email: string | undefined;
-  pulseId: string | undefined;
-  subscriptionChange: string;
-}
-
-interface UseUnsubscribeResult {
-  isLoading: boolean;
-  error?: Error | undefined;
-  data?: { title: string };
+function SuccessfulRequestWrapper({
+  text,
+  buttonText,
+  action,
+}: SubscriptionWrapperPropers) {
+  return (
+    <Stack align="center">
+      <CheckmarkIcon name="check" size={30} />
+      <Text fw={700} c={color("text-medium")} mb="0.75rem" ta="center">
+        {text}
+      </Text>
+      <Button primary onClick={action}>
+        {buttonText}
+      </Button>
+    </Stack>
+  );
 }
 
 function useUnsubscribeRequest({
@@ -232,4 +207,39 @@ function ErrorDisplay() {
       >{t`Please give it a minute and try again`}</Text>
     </>
   );
+}
+
+interface UnsubscribeQueryString {
+  hash: string;
+  email: string;
+  "pulse-id": string;
+}
+
+interface UnsubscribeProps {
+  location: Location<UnsubscribeQueryString>;
+}
+
+interface SubscriptionDetailProps {
+  email: string;
+  alertTitle: string | undefined;
+  action: () => void;
+}
+
+interface SubscriptionWrapperPropers {
+  text: string | string[];
+  buttonText: string;
+  action: () => void;
+}
+
+interface UseUnsubscribeProps {
+  hash: string | undefined;
+  email: string | undefined;
+  pulseId: string | undefined;
+  subscriptionChange: string;
+}
+
+interface UseUnsubscribeResult {
+  isLoading: boolean;
+  error?: Error | undefined;
+  data?: { title: string };
 }
