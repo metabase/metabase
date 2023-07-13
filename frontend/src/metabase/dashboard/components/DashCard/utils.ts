@@ -1,4 +1,5 @@
 import type { DashboardOrderedCard } from "metabase-types/api";
+import { getVirtualCardType } from "metabase/dashboard/utils";
 
 export function shouldShowParameterMapper({
   dashcard,
@@ -7,5 +8,8 @@ export function shouldShowParameterMapper({
   dashcard: DashboardOrderedCard;
   isEditingParameter?: boolean;
 }) {
-  return isEditingParameter && dashcard?.card?.display !== "heading";
+  return (
+    isEditingParameter &&
+    !["heading", "link"].includes(getVirtualCardType(dashcard) ?? "")
+  );
 }

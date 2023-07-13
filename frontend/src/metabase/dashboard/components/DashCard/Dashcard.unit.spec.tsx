@@ -9,6 +9,7 @@ import {
   createMockTextDashboardCard,
   createMockHeadingDashboardCard,
   createMockParameter,
+  createMockLinkDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
 
@@ -135,6 +136,44 @@ describe("DashCard", () => {
     });
     expect(screen.getByText("What a cool section")).toBeVisible();
     expect(screen.getByText("What a cool section")).toHaveStyle({
+      opacity: 0.25,
+    });
+  });
+
+  it("shows a link visualization", () => {
+    const linkCard = createMockLinkDashboardCard({
+      url: "https://xkcd.com/327",
+    });
+    const board = {
+      ...dashboard,
+      ordered_cards: [linkCard],
+    };
+    setup({
+      dashboard: board,
+      dashcard: linkCard,
+      dashcardData: {},
+    });
+    expect(screen.getByText("https://xkcd.com/327")).toBeVisible();
+  });
+
+  it("in parameter editing mode, shows faded link dashcard", () => {
+    const linkCard = createMockLinkDashboardCard({
+      url: "https://xkcd.com/327",
+    });
+    const board = {
+      ...dashboard,
+      ordered_cards: [linkCard],
+    };
+    setup({
+      dashboard: board,
+      dashcard: linkCard,
+      dashcardData: {},
+      isEditing: true,
+      isEditingParameter: true,
+    });
+
+    expect(screen.getByText("https://xkcd.com/327")).toBeVisible();
+    expect(screen.getByTestId("custom-view-text-link")).toHaveStyle({
       opacity: 0.25,
     });
   });
