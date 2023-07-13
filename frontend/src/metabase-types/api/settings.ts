@@ -143,6 +143,7 @@ export interface TokenFeatures {
   audit_app: boolean;
   disable_password_login: boolean;
   content_management: boolean;
+  email_allow_list: boolean;
   embedding: boolean;
   hosting: boolean;
   official_collections: boolean;

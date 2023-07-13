@@ -110,6 +110,7 @@ export const createMockTokenFeatures = (
   audit_app: false,
   disable_password_login: false,
   content_management: false,
+  email_allow_list: false,
   embedding: false,
   hosting: false,
   official_collections: false,

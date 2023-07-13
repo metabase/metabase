@@ -4,7 +4,7 @@ import { updateIn } from "icepick";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-if (hasPremiumFeature("advanced_config")) {
+if (hasPremiumFeature("email_allow_list")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     updateIn(sections, ["general", "settings"], settings => {
       const index = settings.findIndex(({ key }) => key === "admin-email");
