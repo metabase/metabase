@@ -1,4 +1,3 @@
-import { Flex } from "@mantine/core";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -15,6 +14,7 @@ import type {
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { Flex } from "metabase/ui/components";
 
 import Tables from "metabase/entities/tables";
 import {
