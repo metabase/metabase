@@ -13,6 +13,7 @@ import type {
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
+import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { Flex } from "metabase/ui/components";
 
@@ -438,6 +439,18 @@ export function ObjectDetailHeader({
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
+  const updateAction = {
+    title: t`Update`,
+    icon: "pencil",
+    action: () => "TODO: metabase#32322",
+  };
+  const deleteAction = {
+    title: t`Delete`,
+    icon: "trash",
+    action: () => "TODO: metabase#32323",
+  };
+  const actions = [updateAction, deleteAction];
+
   return (
     <ObjectDetailHeaderWrapper className="Grid">
       <div className="Grid-cell">
@@ -448,14 +461,13 @@ export function ObjectDetailHeader({
       </div>
 
       {showControls && (
-        <Flex align="center" p="1rem">
+        <Flex align="center" gap="0.5rem" p="1rem">
           {canZoom && (
             <>
               <Button
                 data-testid="view-previous-object-detail"
                 onlyIcon
                 borderless
-                className="mr1"
                 disabled={!canZoomPreviousRow}
                 onClick={viewPreviousObjectDetail}
                 icon="chevronup"
@@ -470,6 +482,12 @@ export function ObjectDetailHeader({
               />
             </>
           )}
+
+          <EntityMenu
+            horizontalAttachments={["right", "left"]}
+            items={actions}
+            triggerIcon="ellipsis"
+          />
 
           <CloseButton>
             <Button
