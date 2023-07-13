@@ -32,8 +32,30 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/operations-guide/installing-metabase.html).
 
 ## Contributing
+### Quick Setup: Dev environment
 
-To get started with a development installation of the Metabase, check out our [Developers Guide](https://www.metabase.com/docs/latest/developers-guide/start).
+In order to spin up a development environment, you need to start the front end and the backend as follows:
+The following command will install the javascript dependencies: 
+```
+$ yarn install
+```
+
+To build and run without watching changes:
+```
+$ yarn build
+```
+To build and run with hot-reload:
+```
+$ yarn build-hot 
+```
+### Backend:
+
+In order to run the backend, you'll need to build the drivers first, and then start the backend:
+```
+$ ./bin/build-drivers.sh
+$ clojure -M:run
+```
+For a detailed development installation of the Metabase, check out our [Developers Guide](https://www.metabase.com/docs/latest/developers-guide/start).
 
 ## Internationalization
 
