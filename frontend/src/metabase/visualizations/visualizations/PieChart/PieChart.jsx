@@ -408,7 +408,11 @@ export default class PieChart extends Component {
       slices.push(otherSlice);
     }
 
-    const side = Math.min(Math.min(width, height) - SIDE_PADDING, MAX_PIE_SIZE);
+    const side = Math.max(
+      Math.min(Math.min(width, height) - SIDE_PADDING, MAX_PIE_SIZE),
+      0,
+    );
+
     const outerRadius = side / 2;
     const labelFontSize = Math.max(
       MAX_LABEL_FONT_SIZE * (side / MAX_PIE_SIZE),
