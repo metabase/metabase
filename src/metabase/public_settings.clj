@@ -278,7 +278,7 @@
   (deferred-tru "Allow persisting models into the source database.")
   :type       :boolean
   :default    false
-  :visibility :authenticated)
+  :visibility :public)
 
 (defsetting persisted-model-refresh-cron-schedule
   (deferred-tru "cron syntax string to schedule refreshing persisted models.")
