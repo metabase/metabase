@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
-
 import { useMount, usePrevious } from "react-use";
+
 import { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
   DatasetData,
   VisualizationSettings,
+  WritebackAction,
 } from "metabase-types/api";
 
 import Button from "metabase/core/components/Button";
@@ -41,6 +42,7 @@ import { MetabaseApi } from "metabase/services";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
 import ForeignKey from "metabase-lib/metadata/ForeignKey";
+import Question from "metabase-lib/Question";
 import type {
   ObjectId,
   OnVisualizationClickType,
@@ -328,6 +330,7 @@ export function ObjectDetailView({
               objectId={displayId}
               canZoomPreviousRow={!!canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
+              question={question}
               showControls={showControls}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
               viewNextObjectDetail={viewNextObjectDetail}
@@ -422,11 +425,24 @@ export interface ObjectDetailHeaderProps {
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
+  question: Question;
   showControls?: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
 }
+
+const updateAction = {
+  title: t`Update`,
+  icon: "pencil",
+  action: () => "TODO: metabase#32322",
+};
+const deleteAction = {
+  title: t`Delete`,
+  icon: "trash",
+  action: () => "TODO: metabase#32323",
+};
+const modelActions: WritebackAction[] = [];
 
 export function ObjectDetailHeader({
   canZoom,
@@ -434,22 +450,25 @@ export function ObjectDetailHeader({
   objectId,
   canZoomPreviousRow,
   canZoomNextRow,
+  question,
   showControls = true,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
-  const updateAction = {
-    title: t`Update`,
-    icon: "pencil",
-    action: () => "TODO: metabase#32322",
-  };
-  const deleteAction = {
-    title: t`Delete`,
-    icon: "trash",
-    action: () => "TODO: metabase#32323",
-  };
-  const actions = [updateAction, deleteAction];
+  const implicitActions = useMemo(
+    () => modelActions.filter(action => action.type === "implicit"),
+    [],
+  );
+  implicitActions;
+
+  const areImplicitActionsEnabled =
+    question.canWrite() &&
+    question.isDataset() &&
+    question.supportsImplicitActions();
+
+  const actions = areImplicitActionsEnabled ? [updateAction, deleteAction] : [];
+  const showButtons = showControls || actions.length > 0;
 
   return (
     <ObjectDetailHeaderWrapper className="Grid">
@@ -460,9 +479,9 @@ export function ObjectDetailHeader({
         </h2>
       </div>
 
-      {showControls && (
+      {showButtons && (
         <Flex align="center" gap="0.5rem" p="1rem">
-          {canZoom && (
+          {canZoom && showControls && (
             <>
               <Button
                 data-testid="view-previous-object-detail"
@@ -483,21 +502,25 @@ export function ObjectDetailHeader({
             </>
           )}
 
-          <EntityMenu
-            horizontalAttachments={["right", "left"]}
-            items={actions}
-            triggerIcon="ellipsis"
-          />
-
-          <CloseButton>
-            <Button
-              data-testid="object-detail-close-button"
-              onlyIcon
-              borderless
-              onClick={closeObjectDetail}
-              icon="close"
+          {actions.length > 0 && (
+            <EntityMenu
+              horizontalAttachments={["right", "left"]}
+              items={actions}
+              triggerIcon="ellipsis"
             />
-          </CloseButton>
+          )}
+
+          {showControls && (
+            <CloseButton>
+              <Button
+                data-testid="object-detail-close-button"
+                onlyIcon
+                borderless
+                onClick={closeObjectDetail}
+                icon="close"
+              />
+            </CloseButton>
+          )}
         </Flex>
       )}
     </ObjectDetailHeaderWrapper>
