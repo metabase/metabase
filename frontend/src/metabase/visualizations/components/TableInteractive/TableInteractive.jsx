@@ -32,6 +32,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import Dimension from "metabase-lib/Dimension";
@@ -49,6 +50,7 @@ const TRUNCATE_WIDTH = 780;
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
+const LINE_HEIGHT = 15;
 const SIDEBAR_WIDTH = 38;
 
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
@@ -965,6 +967,7 @@ class TableInteractive extends Component {
       data: { cols, rows },
       className,
       scrollToColumn,
+      settings,
     } = this.props;
 
     if (!width || !height) {
@@ -973,6 +976,24 @@ class TableInteractive extends Component {
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
     const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
+
+    const multiLineIdx = cols
+      .map(
+        c =>
+          settings.column_settings?.[getColumnKey(c)]?.view_as === "multiline",
+      )
+      .map((v, i) => (v ? i : null))
+      .filter(Number);
+    const rowHeightWithMultiline =
+      multiLineIdx.length === 0
+        ? ROW_HEIGHT
+        : ({ index }) => {
+            const heights = multiLineIdx.map(
+              idx => rows[index][idx].split("\n").length,
+            );
+            const max = Math.max(...heights) * LINE_HEIGHT + 2; // add some padding
+            return Math.max(ROW_HEIGHT, max);
+          };
 
     return (
       <ScrollSync>
@@ -1081,7 +1102,7 @@ class TableInteractive extends Component {
                 columnCount={cols.length + gutterColumn}
                 columnWidth={this.getDisplayColumnWidth}
                 rowCount={rows.length}
-                rowHeight={ROW_HEIGHT}
+                rowHeight={rowHeightWithMultiline}
                 cellRenderer={props =>
                   gutterColumn && props.columnIndex === 0
                     ? () => null // we need a phantom cell to properly offset columns
