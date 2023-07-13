@@ -22,7 +22,6 @@
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
 (set! *warn-on-reflection* true)
@@ -203,8 +202,8 @@
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
-    (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
-                                                 (db/exists? 'Dashboard (perms-query user))))))
+    (assoc user :has_question_and_dashboard (and (t2/exists? 'Card perms-query)
+                                                 (t2/exists? 'Dashboard perms-query)))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
