@@ -7,8 +7,7 @@ import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
-import { getIsPaidPlan } from "metabase/selectors/settings";
+import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 
 import {
   sendTestEmail,
@@ -18,6 +17,7 @@ import {
 import { SettingsSection } from "../app/components/SettingsEditor/SettingsSection";
 import SettingsBatchForm from "./SettingsBatchForm";
 import { EmailFormRoot } from "./SettingsEmailForm.styled";
+import SectionDivider from "./widgets/SectionDivider";
 
 const SEND_TEST_BUTTON_STATES = {
   default: t`Send test email`,
@@ -33,6 +33,7 @@ class SettingsEmailForm extends Component {
   static propTypes = {
     elements: PropTypes.array.isRequired,
     isPaidPlan: PropTypes.bool,
+    isHosted: PropTypes.bool,
     sendTestEmail: PropTypes.func.isRequired,
     updateEmailSettings: PropTypes.func.isRequired,
     clearEmailSettings: PropTypes.func.isRequired,
@@ -89,7 +90,7 @@ class SettingsEmailForm extends Component {
 
   render() {
     const { sendingEmail } = this.state;
-    const { elements, isPaidPlan } = this.props;
+    const { elements, isHosted, isPaidPlan } = this.props;
 
     const smtpIndex = elements.findIndex(
       ({ key }) => key === "email-smtp-password",
@@ -103,41 +104,51 @@ class SettingsEmailForm extends Component {
 
     return (
       <>
-        <EmailFormRoot>
-          <SettingsBatchForm
-            ref={this.formRef}
-            {...this.props}
-            elements={smtpElements}
-            updateSettings={this.props.updateEmailSettings}
-            disable={sendingEmail !== "default"}
-            renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
-              <Fragment>
-                {valid && pristine && submitting === "default" ? (
-                  <Button
-                    className="mr1"
-                    success={sendingEmail === "success"}
-                    disabled={disabled}
-                    onClick={this.sendTestEmail}
-                  >
-                    {SEND_TEST_BUTTON_STATES[sendingEmail]}
-                  </Button>
-                ) : null}
-                <Button
-                  className="mr1"
-                  disabled={disabled}
-                  onClick={() => this.clearEmailSettings()}
-                >
-                  {t`Clear`}
-                </Button>
-              </Fragment>
-            )}
-          />
-          {!MetabaseSettings.isHosted() && !isPaidPlan && (
-            <MarginHostingCTA
-              tagline={t`Have your email configured for you.`}
-            />
-          )}
-        </EmailFormRoot>
+        {!isHosted && (
+          <>
+            <EmailFormRoot>
+              <SettingsBatchForm
+                ref={this.formRef}
+                {...this.props}
+                elements={smtpElements}
+                updateSettings={this.props.updateEmailSettings}
+                disable={sendingEmail !== "default"}
+                renderExtraButtons={({
+                  disabled,
+                  valid,
+                  pristine,
+                  submitting,
+                }) => (
+                  <Fragment>
+                    {valid && pristine && submitting === "default" ? (
+                      <Button
+                        className="mr1"
+                        success={sendingEmail === "success"}
+                        disabled={disabled}
+                        onClick={this.sendTestEmail}
+                      >
+                        {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                      </Button>
+                    ) : null}
+                    <Button
+                      className="mr1"
+                      disabled={disabled}
+                      onClick={() => this.clearEmailSettings()}
+                    >
+                      {t`Clear`}
+                    </Button>
+                  </Fragment>
+                )}
+              />
+              {!isPaidPlan && (
+                <MarginHostingCTA
+                  tagline={t`Have your email configured for you.`}
+                />
+              )}
+            </EmailFormRoot>
+            <SectionDivider />
+          </>
+        )}
         <SettingsSection
           settingElements={otherElements}
           settingValues={this.props.settingValues}
@@ -153,6 +164,7 @@ class SettingsEmailForm extends Component {
 
 const mapStateToProps = state => ({
   isPaidPlan: getIsPaidPlan(state),
+  isHosted: getSetting(state, "is-hosted"),
 });
 
 const mapDispatchToProps = {

@@ -203,7 +203,6 @@ const SECTIONS = {
         type: "string",
         required: true,
         autoFocus: true,
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-port",
@@ -212,7 +211,6 @@ const SECTIONS = {
         type: "number",
         required: true,
         validations: [["integer", t`That's not a valid port number`]],
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-security",
@@ -221,7 +219,6 @@ const SECTIONS = {
         type: "radio",
         options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
         defaultValue: "none",
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-username",
@@ -229,7 +226,6 @@ const SECTIONS = {
         description: null,
         placeholder: "nicetoseeyou",
         type: "string",
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-password",
@@ -238,9 +234,6 @@ const SECTIONS = {
         placeholder: "Shhh...",
         type: "password",
         getHidden: () => MetabaseSettings.isHosted(),
-      },
-      {
-        widget: SectionDivider,
       },
       {
         key: "email-from-name",
