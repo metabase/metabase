@@ -18,6 +18,7 @@ class EntityMenu extends Component {
   state = {
     open: false,
     freezeMenu: false,
+    horizontalAttachments: ["left", "right"],
     menuItemContent: null,
   };
 
@@ -54,6 +55,7 @@ class EntityMenu extends Component {
       className,
       openClassNames,
       closedClassNames,
+      horizontalAttachments,
       minWidth,
       tooltip,
       trigger,
@@ -89,7 +91,7 @@ class EntityMenu extends Component {
           onClose={this.toggleMenu}
           hasArrow={false}
           hasBackground={false}
-          horizontalAttachments={["left", "right"]}
+          horizontalAttachments={horizontalAttachments}
           targetOffsetY={targetOffsetY || 0}
           ignoreTrigger
         >
