@@ -42,6 +42,7 @@
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -1163,7 +1164,9 @@ saved later when it is ready."
   [collection-id filename ^File csv-file]
   {collection-id ms/PositiveInt}
   (when (not (public-settings/uploads-enabled))
-    (throw (Exception. "Uploads are not enabled.")))
+    (throw (Exception. (tru "Uploads are not enabled."))))
+  (when (premium-features/sandboxed-user?)
+    (throw (Exception. (tru "Uploads are not permitted for sandboxed users."))))
   (collection/check-write-perms-for-collection collection-id)
   (try
     (let [start-time        (System/currentTimeMillis)
