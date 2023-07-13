@@ -1,13 +1,24 @@
 import styled from "@emotion/styled";
 import { color, hueRotate, alpha } from "metabase/lib/colors";
-import { space, breakpointMinSmall } from "metabase/styled-components/theme";
+import { breakpointMinSmall } from "metabase/styled-components/theme";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { Icon } from "metabase/core/components/Icon";
+import MetabotLogo from "metabase/core/components/MetabotLogo";
 
-export const Loading = styled(LoadingSpinner)`
-  margin: ${space(1)} 0;
-  color: ${color("brand")};
+export const StyledMetabotLogo = styled(MetabotLogo)`
+  height: 4rem;
+`;
+
+export const LayoutRoot = styled.div`
+  position: relative;
+  display: flex;
+  min-height: 100%;
+  background-color: ${color("bg-light")};
+`;
+
+export const LayoutBody = styled.div`
+  position: relative;
+  flex: 1;
 `;
 
 export const LayoutIllustration = styled.div`
@@ -30,6 +41,12 @@ export const LayoutCard = styled.div`
   background-color: ${color("white")};
   box-shadow: 0 1px 15px ${color("shadow")};
   border-radius: 6px;
+  min-height: 20rem;
+  min-width: 35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 
   ${breakpointMinSmall} {
     width: 30.875rem;
