@@ -257,7 +257,7 @@
       ;; might have to use the `:settings` section to set the token, skip the check for Settings. But check it for the
       ;; other sections.
       (when-not (= section-name :settings)
-        (when-not (premium-features/has-feature? :config-text-file)
+        (when-not (premium-features/enable-config-text-file?)
           (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
                           {}))))
       (log/info (u/colorize :magenta (trs "Initializing {0} from config file..." section-name)) (u/emoji "🗄️"))

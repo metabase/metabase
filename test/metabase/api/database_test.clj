@@ -347,7 +347,7 @@
                  (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
 
     (testing "should not be able to modify `cache_ttl` in OSS"
-      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates {:cache_ttl 13}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
@@ -355,7 +355,7 @@
                  (t2/select-one-fn :cache_ttl Database, :id db-id))))))
 
     (testing "should be able to set and unset `cache_ttl` in EE"
-      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates1 {:cache_ttl 1337}
                 updates2 {:cache_ttl nil}
