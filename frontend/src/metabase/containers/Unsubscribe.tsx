@@ -194,18 +194,15 @@ function UnsubscribeRoot({ children }: { children: JSX.Element }) {
 
 function ErrorDisplay() {
   return (
-    <>
+    <Stack align="center" spacing="xs" aria-label="error message">
       <StyledMetabotLogo variant="sad" />
       <Text
         fw={700}
         fz="md"
         mt={"1.5rem"}
       >{t`Whoops, something went wrong.`}</Text>
-      <Text
-        fz="md"
-        mt={"0.25rem"}
-      >{t`Please give it a minute and try again`}</Text>
-    </>
+      <Text fz="md">{t`Please give it a minute and try again`}</Text>
+    </Stack>
   );
 }
 

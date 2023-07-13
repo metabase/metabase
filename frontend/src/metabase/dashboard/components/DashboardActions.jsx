@@ -55,7 +55,7 @@ export const getDashboardActions = (
             icon="subscription"
             disabled={!canManageSubscriptions}
             onClick={onSharingClick}
-            data-metabase-event="Dashboard;Subscriptions"
+            aria-label="subscriptions"
           />
         </Tooltip>,
       );
