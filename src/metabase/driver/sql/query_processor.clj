@@ -1063,31 +1063,27 @@
 (defn- like-clause
   "Generate a SQL `LIKE` clause. `value` is assumed to be a `Value` object (a record type with a key `:value` as well as
   some sort of type info) or similar as opposed to a raw value literal."
-  [driver field value options]
+  [driver field arg options]
   ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
   ;; LIKE clauses? That's what we're doing with Druid...
   ;;
   ;; TODO - Postgres supports `ILIKE`. Does that make a big enough difference performance-wise that we should do a
   ;; custom implementation?
   (if (get options :case-sensitive true)
-    [:like field                    (->honeysql driver value)]
-    [:like (hx/call :lower field) (->honeysql driver (update value 1 u/lower-case-en))]))
-
-(s/defn ^:private update-string-value :- mbql.s/value
-  [value :- (s/constrained mbql.s/value #(string? (second %)) "string value"), f]
-  (update value 1 f))
+    [:like field                  arg]
+    [:like (hx/call :lower field) (hx/call :lower arg)]))
 
 (defmethod ->honeysql [:sql :starts-with]
-  [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update-string-value value #(str % \%)) options))
+  [driver [_ field arg options]]
+  (like-clause driver (->honeysql driver field) (hx/call :concat (->honeysql driver arg) "%") options))
 
 (defmethod ->honeysql [:sql :contains]
-  [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update-string-value value #(str \% % \%)) options))
+  [driver [_ field arg options]]
+  (like-clause driver (->honeysql driver field) (hx/call :concat "%" (->honeysql driver arg) "%") options))
 
 (defmethod ->honeysql [:sql :ends-with]
-  [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update-string-value value #(str \% %)) options))
+  [driver [_ field arg options]]
+  (like-clause driver (->honeysql driver field) (hx/call :concat "%" (->honeysql driver arg)) options))
 
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]
