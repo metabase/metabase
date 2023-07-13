@@ -90,17 +90,18 @@
 
 (defmethod driver/can-connect? :h2
   [driver {:keys [db] :as details}]
-  (let [connection-str  (cond-> db
-                          (not (str/includes? db "h2:")) (str/replace-first #"^" "h2:")
-                          (not (str/includes? db "jdbc:")) (str/replace-first #"^" "jdbc:"))
-        connection-info (org.h2.engine.ConnectionInfo. connection-str nil nil nil)
-        properties      (get-field connection-info "prop")
-        bad-props       (into {} (keep (fn [[k v]] (when (malicious-property-value v) [k v])))
-                              properties)]
-    (when (seq bad-props)
-      (throw (ex-info "Malicious keys detected" {:keys (keys bad-props)})))
-    (when (contains? properties "INIT")
-      (throw (ex-info "INIT not allowed" {:keys ["INIT"]}))))
+  (when (string? db)
+    (let [connection-str  (cond-> db
+                            (not (str/includes? db "h2:")) (str/replace-first #"^" "h2:")
+                            (not (str/includes? db "jdbc:")) (str/replace-first #"^" "jdbc:"))
+          connection-info (org.h2.engine.ConnectionInfo. connection-str nil nil nil)
+          properties      (get-field connection-info "prop")
+          bad-props       (into {} (keep (fn [[k v]] (when (malicious-property-value v) [k v])))
+                                properties)]
+      (when (seq bad-props)
+        (throw (ex-info "Malicious keys detected" {:keys (keys bad-props)})))
+      (when (contains? properties "INIT")
+        (throw (ex-info "INIT not allowed" {:keys ["INIT"]})))))
   (sql-jdbc.conn/can-connect? driver details))
 
 (defmethod driver/db-start-of-week :h2
