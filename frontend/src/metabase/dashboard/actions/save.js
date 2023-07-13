@@ -91,14 +91,6 @@ export const saveDashboardAndCards = createThunkAction(
           .map(async dc => CardApi.update(dc.card)),
       );
 
-      // update the dashboard itself
-      if (dashboard.isDirty) {
-        const { id, name, description, parameters } = dashboard;
-        await dispatch(
-          Dashboards.actions.update({ id }, { name, description, parameters }),
-        );
-      }
-
       // update the dashboard cards and tabs
       const dashcardsToUpdate = dashboard.ordered_cards.filter(
         dc => !dc.isRemoved,
