@@ -1,6 +1,7 @@
 import type { MantineThemeOverride } from "@mantine/core";
 
 import { color } from "metabase/lib/colors";
+import { CheckboxIcon } from "metabase/ui/components/inputs/Checkbox/CheckboxIcon";
 
 export const theme: MantineThemeOverride = {
   colors: {
@@ -46,6 +47,9 @@ export const theme: MantineThemeOverride = {
       },
     },
     Checkbox: {
+      defaultProps: {
+        icon: CheckboxIcon,
+      },
       styles(theme, params) {
         return {
           root: {
@@ -54,7 +58,7 @@ export const theme: MantineThemeOverride = {
           label: {
             fontWeight: 700,
             color: theme.colors.text[2],
-            [`padding-${params.labelPosition === "left" ? "right" : "left"}`]:
+            [`padding${params.labelPosition === "left" ? "Right" : "Left"}`]:
               theme.spacing.xs,
           },
           input: {
