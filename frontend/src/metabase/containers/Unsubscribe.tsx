@@ -124,7 +124,7 @@ function SuccessfulRequestWrapper({
   text,
   buttonText,
   action,
-}: SubscriptionWrapperPropers) {
+}: SubscriptionWrapperProps) {
   return (
     <Stack align="center">
       <CheckmarkIcon name="check" size={30} />
@@ -176,7 +176,7 @@ function useUnsubscribeRequest({
   return { data, isLoading, error };
 }
 
-function UnsubscribeRoot({ children }: { children: JSX.Element }): JSX.Element {
+function UnsubscribeRoot({ children }: { children: JSX.Element }) {
   return (
     <LayoutRoot>
       <LayoutIllustration />
@@ -225,7 +225,7 @@ interface SubscriptionDetailProps {
   action: () => void;
 }
 
-interface SubscriptionWrapperPropers {
+interface SubscriptionWrapperProps {
   text: string | string[];
   buttonText: string;
   action: () => void;
