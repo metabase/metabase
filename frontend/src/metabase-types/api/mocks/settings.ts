@@ -111,6 +111,7 @@ export const createMockTokenFeatures = (
   content_management: false,
   embedding: false,
   hosting: false,
+  official_collections: false,
   sandboxes: false,
   sso: false,
   whitelabel: false,

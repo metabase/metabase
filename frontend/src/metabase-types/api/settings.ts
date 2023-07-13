@@ -144,6 +144,7 @@ export interface TokenFeatures {
   content_management: boolean;
   embedding: boolean;
   hosting: boolean;
+  official_collections: boolean;
   sandboxes: boolean;
   sso: boolean;
   whitelabel: boolean;
