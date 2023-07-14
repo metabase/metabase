@@ -7,9 +7,9 @@
   will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
   these things if that happens and Metabase lib is meant to consume it."
   (:require
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
-   [metabase.util.malli :as mu]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.util.malli :as mu]))
 
 (defonce ^:private ^{:doc "Generate a random prefix to add to all of the [[id]]s below, so that they change between
   test runs to catch places where people are hardcoding IDs rather than using [[id]]."}
