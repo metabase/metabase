@@ -1,0 +1,105 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Checkbox } from "./";
+
+
+<Meta title="Inputs/Checkbox & Checkbox Group" component={Checkbox}  />
+
+# Checkbox & Checkbox.Group
+
+Our themed wrapper around [Mantine Checkbox](https://mantine.dev/core/checkbox/).
+
+## When to use Checkbox
+
+Checkbox buttons allow users to select a single option from a list of mutually exclusive options. All possible options are exposed up front for users to compare.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/sF1qSHk6yVqO1rFgmH0nzT/Input-%2F-Checkbox?type=design&node-id=1-96&t=4851xqAoQVenSrTX-11)
+- [Mantine Checkbox Docs](https://mantine.dev/core/checkbox/)
+
+## Caveats
+
+- As of right now, don't use the size prop.
+- Please don't use the `error` prop on Checkbox components (We'll standardize on this as other inputs get converted).
+
+## Usage guidelines
+
+- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Checkbox or Select.
+- For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+- In almost all circumstances you'll want to use `<Checkbox.Group>` to provide a set of options and help with defaultValues and state management between them.
+
+## General
+
+<Canvas>
+  <Story name="Default">
+    <Checkbox.Group defaultValue="yes">
+      <Checkbox label="Yes" value="yes" />
+      <Checkbox label="No" value="no" />
+      <Checkbox label="I'm not sure" indeterminate />
+    </Checkbox.Group>
+  </Story>
+</Canvas>
+
+## Disabled
+
+<Canvas>
+  <Story name="Disabled">
+    <Checkbox.Group value={["yes"]}>
+      <Checkbox label="Yes" value="yes" disabled />
+      <Checkbox label="No" value="no" disabled />
+      <Checkbox label="I'm not sure" indeterminate disabled />
+    </Checkbox.Group>
+  </Story>
+</Canvas>
+
+## Description
+
+If needed you can add a description value to a Checkbox button to give more context about the choice.
+
+<Canvas>
+  <Story name="Descriptions">
+    <Checkbox.Group defaultValue={["chocolate"]}>
+      <Checkbox
+        label="Chocolate"
+        value="chocolate"
+        description="One of our most popular flavors"
+      />
+      <Checkbox
+        label="Vanilla"
+        value="vanilla"
+        description="A classic for all seasons"
+      />
+      <Checkbox
+        label="Strawberry, no description needed!"
+        value="strawberry"
+      />
+      <Checkbox
+        label="Swirl"
+        value="swirl"
+        description="Why not have it both ways?"
+      />
+    </Checkbox.Group>
+  </Story>
+</Canvas>
+
+## Using the Checkbox group props
+
+You can use `label` and `description` on the Checkbox.Group component to provide a label and description for the set of choices.
+
+<Canvas>
+  <Story name="Checkbox Group props">
+    <Checkbox.Group
+      label="A set of options"
+      description="You could so something like this if there was a deprecated setting that a user needs to update."
+      defaultValue={["one"]}
+    >
+      <Checkbox label="Old bad setting" value="one" disabled />
+      <Checkbox label="A better newer setting" value="two" />
+    </Checkbox.Group>
+  </Story>
+</Canvas>
+
+## Related components
+
+- Select
+- Checkbox
