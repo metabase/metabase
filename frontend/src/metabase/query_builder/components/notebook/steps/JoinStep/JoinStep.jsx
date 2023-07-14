@@ -6,7 +6,7 @@ import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
-import { DATA_BUCKET } from "metabase/query_builder/components/DataSelector/constants";
+import { DATA_BUCKET } from "metabase/containers/DataPicker";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Select from "metabase/core/components/Select";
 import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
