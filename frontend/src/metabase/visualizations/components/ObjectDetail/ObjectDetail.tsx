@@ -12,7 +12,10 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import { useActionListQuery } from "metabase/common/hooks";
+import {
+  useActionListQuery,
+  useDatabaseListQuery,
+} from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -40,6 +43,8 @@ import {
 import { getUser } from "metabase/selectors/user";
 
 import { MetabaseApi } from "metabase/services";
+import { canRunAction } from "metabase-lib/actions/utils";
+import Database from "metabase-lib/metadata/Database";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
 import ForeignKey from "metabase-lib/metadata/ForeignKey";
@@ -295,7 +300,18 @@ export function ObjectDetailView({
     query: { "model-id": question?.id() },
   });
 
-  const actions = areImplicitActionsEnabled ? getActions(modelActions) : [];
+  const { data: databases = [] } = useDatabaseListQuery({
+    enabled: areImplicitActionsEnabled,
+  });
+
+  const actions = areImplicitActionsEnabled
+    ? getActions({
+        modelActions,
+        databases,
+        onUpdate: () => "TODO: metabase#32322",
+        onDelete: () => "TODO: metabase#32323",
+      })
+    : [];
 
   if (!data) {
     return null;
@@ -449,36 +465,46 @@ export interface ObjectDetailHeaderProps {
   closeObjectDetail: () => void;
 }
 
-const getActions = (modelActions: WritebackAction[]) => {
+const getActions = ({
+  databases,
+  modelActions,
+  onDelete,
+  onUpdate,
+}: {
+  databases: Database[];
+  modelActions: WritebackAction[];
+  onDelete: (action: WritebackAction) => void;
+  onUpdate: (action: WritebackAction) => void;
+}) => {
   const actions = [];
 
-  const hasUpdateAction = modelActions.some(
+  const updateAction = modelActions.find(
     action =>
       action.type === "implicit" &&
       action.kind === "row/update" &&
       !action.archived,
   );
 
-  const hasDeleteAction = modelActions.some(
+  const deleteAction = modelActions.find(
     action =>
       action.type === "implicit" &&
       action.kind === "row/delete" &&
       !action.archived,
   );
 
-  if (hasUpdateAction) {
+  if (updateAction && canRunAction(updateAction, databases)) {
     actions.push({
       title: t`Update`,
       icon: "pencil",
-      action: () => "TODO: metabase#32322",
+      action: () => onUpdate(updateAction),
     });
   }
 
-  if (hasDeleteAction) {
+  if (deleteAction && canRunAction(deleteAction, databases)) {
     actions.push({
       title: t`Delete`,
       icon: "trash",
-      action: () => "TODO: metabase#32323",
+      action: () => onDelete(deleteAction),
     });
   }
 
