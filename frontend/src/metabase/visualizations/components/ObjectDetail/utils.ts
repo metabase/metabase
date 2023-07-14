@@ -143,20 +143,8 @@ export const getActionItems = ({
   onUpdate: (action: WritebackAction) => void;
 }) => {
   const actionItems = [];
-
-  const updateAction = actions.find(
-    action =>
-      action.type === "implicit" &&
-      action.kind === "row/update" &&
-      !action.archived,
-  );
-
-  const deleteAction = actions.find(
-    action =>
-      action.type === "implicit" &&
-      action.kind === "row/delete" &&
-      !action.archived,
-  );
+  const deleteAction = actions.find(isValidImplicitDeleteAction);
+  const updateAction = actions.find(isValidImplicitUpdateAction);
 
   if (updateAction && canRunAction(updateAction, databases)) {
     actionItems.push({
@@ -176,3 +164,13 @@ export const getActionItems = ({
 
   return actionItems;
 };
+
+const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" &&
+  action.kind === "row/delete" &&
+  !action.archived;
+
+const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" &&
+  action.kind === "row/update" &&
+  !action.archived;
