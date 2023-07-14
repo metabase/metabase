@@ -475,8 +475,6 @@ export function ObjectDetailHeader({
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
-  const showButtonsContainer = showControls || actionItems.length > 0;
-
   return (
     <ObjectDetailHeaderWrapper className="Grid">
       <div className="Grid-cell">
@@ -486,9 +484,9 @@ export function ObjectDetailHeader({
         </h2>
       </div>
 
-      {showButtonsContainer && (
+      {showControls && (
         <Flex align="center" gap="xs" p="md">
-          {canZoom && showControls && (
+          {canZoom && (
             <>
               <Button
                 data-testid="view-previous-object-detail"
@@ -517,17 +515,15 @@ export function ObjectDetailHeader({
             />
           )}
 
-          {showControls && (
-            <CloseButton>
-              <Button
-                data-testid="object-detail-close-button"
-                onlyIcon
-                borderless
-                onClick={closeObjectDetail}
-                icon="close"
-              />
-            </CloseButton>
-          )}
+          <CloseButton>
+            <Button
+              data-testid="object-detail-close-button"
+              onlyIcon
+              borderless
+              onClick={closeObjectDetail}
+              icon="close"
+            />
+          </CloseButton>
         </Flex>
       )}
     </ObjectDetailHeaderWrapper>
