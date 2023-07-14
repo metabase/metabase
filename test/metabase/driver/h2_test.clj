@@ -15,8 +15,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [metabase.public-settings.premium-features-test :as premium-features-test]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; TODO: remove hx from this test
 #_{:clj-kondo/ignore [:discouraged-namespace]}
