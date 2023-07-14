@@ -14,6 +14,17 @@ const TIMESERIES_UNITS = new Set([
   "month",
   "quarter",
   "year", // https://github.com/metabase/metabase/issues/1992
+
+  // FIXME: I added these accumulated units to prevent brush-zooming from crashing the UI,
+  //    but fixing this might break something else.
+  "minute-of-hour",
+  "hour-of-day",
+  "day-of-week",
+  "day-of-month",
+  "day-of-year",
+  "week-of-year",
+  "month-of-year",
+  "quarter-of-year",
 ]);
 
 // investigate the response from a dataset query and determine if the dimension is a timeseries
