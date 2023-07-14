@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]))
 
@@ -12,6 +13,16 @@
                                      jwt-identity-provider-uri "example.com"
                                      jwt-shared-secret         "0123456789012345678901234567890123456789012345678901234567890123"
                                      enable-password-login     true]
-    (public-settings/enable-password-login! false)
-    (is (= false
-           (public-settings/enable-password-login)))))
+
+    (testing "can't change enable-password-login setting if disabled-password-login feature is disabled"
+      (premium-features-test/with-premium-features #{}
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"Setting enable-password-login is not enabled because feature :disable-password-login is not available"
+             (public-settings/enable-password-login! false)))))
+
+   (testing "can change enable-password-login setting if jwt enabled and have disabled-password-login feature"
+     (premium-features-test/with-premium-features #{:disable-password-login}
+       (public-settings/enable-password-login! false)
+       (is (= false
+              (public-settings/enable-password-login)))))))

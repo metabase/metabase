@@ -54,7 +54,7 @@
     nil
     nil))
 
-(deftest ^:parallel ip-address-test
+(deftest ip-address-test
   (let [request (ring.mock/request :get "api/session")]
     (testing "request with no forwarding"
       (is (= "127.0.0.1"
