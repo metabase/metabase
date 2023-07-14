@@ -7,6 +7,7 @@ import type {
   DatasetData,
   TableId,
   VisualizationSettings,
+  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -14,8 +15,10 @@ import {
   isEntityName,
   isPK,
 } from "metabase-lib/types/utils/isa";
-import Question from "metabase-lib/Question";
+import { canRunAction } from "metabase-lib/actions/utils";
+import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
+import Question from "metabase-lib/Question";
 
 import { ObjectId } from "./types";
 
@@ -126,4 +129,50 @@ export const getSinglePKIndex = (cols: DatasetColumn[]) => {
   const index = cols?.findIndex(isPK);
 
   return index === -1 ? undefined : index;
+};
+
+export const getActionItems = ({
+  databases,
+  modelActions,
+  onDelete,
+  onUpdate,
+}: {
+  databases: Database[];
+  modelActions: WritebackAction[];
+  onDelete: (action: WritebackAction) => void;
+  onUpdate: (action: WritebackAction) => void;
+}) => {
+  const actionItems = [];
+
+  const updateAction = modelActions.find(
+    action =>
+      action.type === "implicit" &&
+      action.kind === "row/update" &&
+      !action.archived,
+  );
+
+  const deleteAction = modelActions.find(
+    action =>
+      action.type === "implicit" &&
+      action.kind === "row/delete" &&
+      !action.archived,
+  );
+
+  if (updateAction && canRunAction(updateAction, databases)) {
+    actionItems.push({
+      title: t`Update`,
+      icon: "pencil",
+      action: () => onUpdate(updateAction),
+    });
+  }
+
+  if (deleteAction && canRunAction(deleteAction, databases)) {
+    actionItems.push({
+      title: t`Delete`,
+      icon: "trash",
+      action: () => onDelete(deleteAction),
+    });
+  }
+
+  return actionItems;
 };

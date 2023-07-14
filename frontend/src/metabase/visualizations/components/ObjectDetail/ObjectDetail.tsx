@@ -9,7 +9,6 @@ import type {
   ConcreteTableId,
   DatasetData,
   VisualizationSettings,
-  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -43,8 +42,6 @@ import {
 import { getUser } from "metabase/selectors/user";
 
 import { MetabaseApi } from "metabase/services";
-import { canRunAction } from "metabase-lib/actions/utils";
-import Database from "metabase-lib/metadata/Database";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
 import ForeignKey from "metabase-lib/metadata/ForeignKey";
@@ -55,6 +52,7 @@ import type {
 } from "./types";
 
 import {
+  getActionItems,
   getObjectName,
   getDisplayId,
   getIdValue,
@@ -464,52 +462,6 @@ export interface ObjectDetailHeaderProps {
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
 }
-
-const getActionItems = ({
-  databases,
-  modelActions,
-  onDelete,
-  onUpdate,
-}: {
-  databases: Database[];
-  modelActions: WritebackAction[];
-  onDelete: (action: WritebackAction) => void;
-  onUpdate: (action: WritebackAction) => void;
-}) => {
-  const actionItems = [];
-
-  const updateAction = modelActions.find(
-    action =>
-      action.type === "implicit" &&
-      action.kind === "row/update" &&
-      !action.archived,
-  );
-
-  const deleteAction = modelActions.find(
-    action =>
-      action.type === "implicit" &&
-      action.kind === "row/delete" &&
-      !action.archived,
-  );
-
-  if (updateAction && canRunAction(updateAction, databases)) {
-    actionItems.push({
-      title: t`Update`,
-      icon: "pencil",
-      action: () => onUpdate(updateAction),
-    });
-  }
-
-  if (deleteAction && canRunAction(deleteAction, databases)) {
-    actionItems.push({
-      title: t`Delete`,
-      icon: "trash",
-      action: () => onDelete(deleteAction),
-    });
-  }
-
-  return actionItems;
-};
 
 export function ObjectDetailHeader({
   actionItems,
