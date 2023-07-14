@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 
 import { testDataset } from "__support__/testDataset";
 import { setupCardDataset } from "__support__/server-mocks";
+import { renderWithProviders } from "__support__/ui";
 import { createMockCard } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
@@ -13,17 +14,17 @@ import {
 } from "./ObjectDetail";
 import type { ObjectDetailProps } from "./types";
 
+const mockQuestion = new Question(
+  createMockCard({
+    name: "Product",
+  }),
+);
+
 function setup(options?: Partial<ObjectDetailProps>) {
-  render(
+  renderWithProviders(
     <ObjectDetailView
       data={testDataset as any}
-      question={
-        new Question(
-          createMockCard({
-            name: "Product",
-          }),
-        )
-      }
+      question={mockQuestion}
       table={
         {
           objectName: () => "Product",
@@ -136,17 +137,10 @@ describe("Object Detail", () => {
   });
 
   it("renders an object detail with a paginator", () => {
-    render(
+    renderWithProviders(
       <ObjectDetailWrapper
         data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
+        question={mockQuestion}
         table={
           {
             objectName: () => "Product",
@@ -178,17 +172,10 @@ describe("Object Detail", () => {
   });
 
   it("shows object detail header", () => {
-    render(
+    renderWithProviders(
       <ObjectDetailWrapper
         data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
+        question={mockQuestion}
         table={
           {
             objectName: () => "Product",
@@ -220,17 +207,10 @@ describe("Object Detail", () => {
   });
 
   it("hides object detail header", () => {
-    render(
+    renderWithProviders(
       <ObjectDetailWrapper
         data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
+        question={mockQuestion}
         table={
           {
             objectName: () => "Product",
