@@ -4,7 +4,7 @@ import {
   createMockColumn,
   createMockDatasetData,
   createMockImplicitQueryAction,
-  createMockQueryAction,
+  createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -31,8 +31,6 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
   questions: [card],
 });
-
-const action = createMockQueryAction();
 
 const implicitCreateAction = createMockImplicitQueryAction({
   name: "Create",
@@ -257,12 +255,18 @@ describe("ObjectDetail utils", () => {
     });
 
     it("should ignore non-implicit actions", () => {
-      expect(isValidImplicitDeleteAction(action)).toBe(false);
+      expect(
+        isValidImplicitDeleteAction({
+          ...implicitDeleteAction,
+          type: "query",
+          dataset_query: createMockNativeDatasetQuery(),
+        }),
+      ).toBe(false);
     });
   });
 
   describe("isValidImplicitUpdateAction", () => {
-    it("should detect implicit delete actions", () => {
+    it("should detect implicit update actions", () => {
       expect(isValidImplicitUpdateAction(implicitCreateAction)).toBe(false);
       expect(isValidImplicitUpdateAction(implicitDeleteAction)).toBe(false);
       expect(isValidImplicitUpdateAction(implicitUpdateAction)).toBe(true);
@@ -278,7 +282,13 @@ describe("ObjectDetail utils", () => {
     });
 
     it("should ignore non-implicit actions", () => {
-      expect(isValidImplicitUpdateAction(action)).toBe(false);
+      expect(
+        isValidImplicitUpdateAction({
+          ...implicitUpdateAction,
+          type: "query",
+          dataset_query: createMockNativeDatasetQuery(),
+        }),
+      ).toBe(false);
     });
   });
 });
