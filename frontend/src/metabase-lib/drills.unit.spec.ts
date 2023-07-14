@@ -20,28 +20,20 @@ describe("availableDrillThrus", () => {
         /* dimensions */ null,
       ).map(drill => displayInfo(query, stageIndex, drill)),
     ).toEqual([
-      {
-        type: "drill-thru/distribution",
-        table: {},
-      },
+      { type: "drill-thru/distribution" },
       {
         type: "drill-thru/column-filter",
-        table: {},
+        initialOp: expect.objectContaining({ short: "=" }),
       },
       {
         type: "drill-thru/sort",
-        table: {},
         directions: ["asc", "desc"],
       },
       {
         type: "drill-thru/summarize-column",
-        table: {},
         aggregations: ["distinct", "sum", "avg"],
       },
-      {
-        type: "drill-thru/summarize-column-by-time",
-        table: {},
-      },
+      { type: "drill-thru/summarize-column-by-time" },
     ]);
   });
 });
