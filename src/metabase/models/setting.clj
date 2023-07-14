@@ -811,7 +811,7 @@
 
     (mandrill-api-key \"xyz123\")"
   [setting-definition-or-name new-value]
-  (let [{:keys [setter cache? enabled? feature], :as setting} (resolve-setting setting-definition-or-name)
+  (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
         name                                                  (setting-name setting)]
     (when (and feature (not (has-feature? feature)))
       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
@@ -1054,7 +1054,15 @@
 
   Do you want to update something else when this setting changes? Takes a function which takes 2 arguments, `old`, and
   `new` and calls it with the old and new settings values. By default, the :on-change will be missing, and nothing
-  will happen, in [[call-on-change]] below."
+  will happen, in [[call-on-change]] below.
+
+  ###### `:feature`
+  If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
+  the setting will behave the same as if `enabled?` returns `false` (see below).
+
+  ###### `enabled?`
+  Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
+  exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled."
   {:style/indent 1}
   [setting-symbol description & {:as options}]
   {:pre [(symbol? setting-symbol)

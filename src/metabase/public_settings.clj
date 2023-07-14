@@ -420,6 +420,7 @@
   :visibility :public
   :type       :boolean
   :default    true
+  :feature    :disable-password-login
   :getter     (fn []
                 ;; if `:enable-password-login` has an *explict* (non-default) value, and SSO is configured, use that;
                 ;; otherwise this always returns true.
