@@ -29,6 +29,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -37,7 +39,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.time ZoneId ZonedDateTime)))
+   (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -844,7 +846,19 @@
                           :name      "My Snippet"
                           :entity_id (:entity_id snippet)
                           :model     "snippet"}]
-                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))))))
+                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))
+
+       (testing "Snippets in nested collections should be returned as a flat list on OSS"
+        (premium-features-test/with-premium-features #{}
+          (mt/with-temp* [Collection         [sub-collection {:namespace "snippets"
+                                                              :name      "Nested Snippet Collection"
+                                                              :location  (collection/location-path collection)}]
+                          NativeQuerySnippet [sub-snippet {:collection_id (:id sub-collection)
+                                                           :name          "Nested Snippet"}]]
+            (is (partial=
+                 [{:id (:id snippet), :name "My Snippet"}
+                  {:id (:id sub-snippet), :name "Nested Snippet"}]
+                 (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
