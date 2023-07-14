@@ -32,6 +32,7 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 - [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
 - [Download permissions](../permissions/data.md#download-results)
+- [Connection impersonation](../permissions/data.md#impersonation-access)
 - [Database management permissions](../permissions/data.md#manage-database)
 - [Data model management permissions](../permissions/data.md#manage-data-model)
 
