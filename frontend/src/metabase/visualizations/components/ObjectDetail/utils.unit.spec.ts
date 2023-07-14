@@ -2,6 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 
 import {
   createMockColumn,
+  createMockDatabase,
   createMockDatasetData,
   createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
@@ -14,7 +15,9 @@ import {
 } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 
+import Database from "metabase-lib/metadata/Database";
 import {
+  getActionItems,
   getDisplayId,
   getIdValue,
   getObjectName,
@@ -27,8 +30,24 @@ const card = createSavedStructuredCard({
   name: "Special Order",
 });
 
+const database = createSampleDatabase();
+
+const databaseWithEnabledActions = new Database({
+  ...createMockDatabase({
+    settings: { "database-enable-actions": true },
+  }),
+  tables: [],
+});
+
+const databaseWithDisabledActions = new Database({
+  ...createMockDatabase({
+    settings: { "database-enable-actions": false },
+  }),
+  tables: [],
+});
+
 const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
+  databases: [database],
   questions: [card],
 });
 
@@ -235,6 +254,63 @@ describe("ObjectDetail utils", () => {
 
     it("should return undefined if there are no PKs", () => {
       expect(getSinglePKIndex([qtyCol, nameCol])).toBe(undefined);
+    });
+  });
+
+  describe("getActionItems", () => {
+    const onDelete = jest.fn();
+    const onUpdate = jest.fn();
+    const actions = [
+      implicitDeleteAction,
+      implicitUpdateAction,
+      implicitCreateAction,
+    ];
+
+    it("should return implicit delete and implicit update actions", () => {
+      expect(
+        getActionItems({
+          actions,
+          databases: [databaseWithEnabledActions],
+          onDelete,
+          onUpdate,
+        }),
+      ).toMatchObject([
+        { title: "Update", icon: "pencil" },
+        { title: "Delete", icon: "trash" },
+      ]);
+    });
+
+    it("should not return any items when database actions are disabled", () => {
+      expect(
+        getActionItems({
+          actions,
+          databases: [databaseWithDisabledActions],
+          onDelete,
+          onUpdate,
+        }),
+      ).toEqual([]);
+    });
+
+    it("should not return any items when there are no databases", () => {
+      expect(
+        getActionItems({
+          actions,
+          databases: [],
+          onDelete,
+          onUpdate,
+        }),
+      ).toEqual([]);
+    });
+
+    it("should not return any items when there are no actions", () => {
+      expect(
+        getActionItems({
+          actions: [],
+          databases: [databaseWithDisabledActions, databaseWithEnabledActions],
+          onDelete,
+          onUpdate,
+        }),
+      ).toEqual([]);
     });
   });
 
