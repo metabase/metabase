@@ -122,7 +122,7 @@
       (lib.stage/ensure-previous-stages-have-metadata stage-number)
       (lib.core/display-info stage-number x)
       (update-keys u/->camelCaseEn)
-      (update :table update-keys u/->camelCaseEn)
+      (m/update-existing :table update-keys u/->camelCaseEn)
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export order-by-clause
