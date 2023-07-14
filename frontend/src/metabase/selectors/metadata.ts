@@ -216,13 +216,39 @@ function createTable(table: NormalizedTable, metadata: Metadata): Table {
   return instance;
 }
 
+const testHackFieldRef = (fieldRef: any) => {
+  if (!Array.isArray(fieldRef)) {
+    return fieldRef;
+  }
+
+  const clone = [...fieldRef];
+
+  if (clone[2] != null && typeof clone[2] === "object") {
+    delete clone[2]["join-alias"];
+
+    if (Object.keys(clone[2]).length === 0) {
+      clone[2] = null;
+    }
+  }
+
+  return clone;
+};
+
 function createField(field: NormalizedField, metadata: Metadata): Field {
+  const isVirtualField = isVirtualCardId(field.table_id);
+  const testingField = {
+    ...field,
+    field_ref: !isVirtualField
+      ? field.field_ref
+      : testHackFieldRef(field.field_ref),
+  };
+
   // We need a way to distinguish field objects that come from the server
   // vs. those that are created client-side to handle lossy transformations between
   // Field instances and FieldDimension instances.
   // There are scenarios where we are failing to convert FieldDimensions back into Fields,
   // and as a safeguard we instantiate a new Field that is missing most of its properties.
-  const instance = new Field({ ...field, _comesFromEndpoint: true });
+  const instance = new Field({ ...testingField, _comesFromEndpoint: true });
   instance.metadata = metadata;
   return instance;
 }
