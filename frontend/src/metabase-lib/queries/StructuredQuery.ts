@@ -1254,7 +1254,12 @@ class StructuredQueryInner extends AtomicQuery {
     const table = this.table();
 
     if (table) {
-      const filteredNonFKDimensions = this.dimensions().filter(dimensionFilter);
+      const isNestedCardTable = table.isVirtualCard();
+      const filteredNonFKDimensions = this.dimensions()
+        .map(dimension =>
+          isNestedCardTable ? dimension.withoutJoinAlias() : dimension,
+        )
+        .filter(dimensionFilter);
 
       for (const dimension of filteredNonFKDimensions) {
         dimensionOptions.count++;
@@ -1272,7 +1277,6 @@ class StructuredQueryInner extends AtomicQuery {
 
         const queryHasExplicitJoin =
           field && explicitJoins.has(this._keyForFK(field, field.target));
-        const isNestedCardTable = table?.isVirtualCard();
         const tableHasExplicitJoin =
           isNestedCardTable &&
           table.fields.find(
