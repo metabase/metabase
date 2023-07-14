@@ -492,18 +492,19 @@
         db-is-set-up? (or (requiring-resolve 'metabase.db/db-is-set-up?)
                           ;; this should never be hit. it is just overly cautious against a NPE here. But no way this
                           ;; cannot resolve
-                          (constantly false))]
+                          (constantly false))
+        db-value      #(t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))]
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (let [v (if *disable-cache*
-                (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))
+                (db-value)
                 (do
                   (setting.cache/restore-cache-if-needed!)
                   (let [cache (setting.cache/cache)]
                     (if (nil? cache)
                       ;; If another thread is populating the cache for the first time, we will have a nil value for
                       ;; the cache and must hit the db while the cache populates
-                      (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))
+                      (db-value)
                       (clojure.core/get cache (setting-name setting-definition-or-name))))))]
         (not-empty v)))))
 
