@@ -287,11 +287,11 @@ function uploadFile(testFile, valid = true) {
   }
 }
 
-function enableUploads(dialect, schema) {
+function enableUploads(dialect) {
   const settings = {
     "uploads-enabled": true,
     "uploads-database-id": WRITABLE_DB_ID,
-    "uploads-schema-name": schema || dialect === "postgres" ? "public" : null,
+    "uploads-schema-name": dialect === "postgres" ? "public" : null,
     "uploads-table-prefix": dialect === "mysql" ? "upload_" : null,
   };
 
