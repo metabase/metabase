@@ -239,13 +239,13 @@ describe("ObjectDetail utils", () => {
   });
 
   describe("isValidImplicitDeleteAction", () => {
-    it("should detect implicit delete actions", () => {
+    it("should detect implicit delete action", () => {
       expect(isValidImplicitDeleteAction(implicitCreateAction)).toBe(false);
       expect(isValidImplicitDeleteAction(implicitDeleteAction)).toBe(true);
       expect(isValidImplicitDeleteAction(implicitUpdateAction)).toBe(false);
     });
 
-    it("should ignore archived actions", () => {
+    it("should ignore archived action", () => {
       expect(
         isValidImplicitDeleteAction({
           ...implicitDeleteAction,
@@ -254,7 +254,7 @@ describe("ObjectDetail utils", () => {
       ).toBe(false);
     });
 
-    it("should ignore non-implicit actions", () => {
+    it("should ignore non-implicit action", () => {
       expect(
         isValidImplicitDeleteAction({
           ...implicitDeleteAction,
@@ -266,13 +266,13 @@ describe("ObjectDetail utils", () => {
   });
 
   describe("isValidImplicitUpdateAction", () => {
-    it("should detect implicit update actions", () => {
+    it("should detect implicit update action", () => {
       expect(isValidImplicitUpdateAction(implicitCreateAction)).toBe(false);
       expect(isValidImplicitUpdateAction(implicitDeleteAction)).toBe(false);
       expect(isValidImplicitUpdateAction(implicitUpdateAction)).toBe(true);
     });
 
-    it("should ignore archived actions", () => {
+    it("should ignore archived action", () => {
       expect(
         isValidImplicitUpdateAction({
           ...implicitUpdateAction,
@@ -281,7 +281,7 @@ describe("ObjectDetail utils", () => {
       ).toBe(false);
     });
 
-    it("should ignore non-implicit actions", () => {
+    it("should ignore non-implicit action", () => {
       expect(
         isValidImplicitUpdateAction({
           ...implicitUpdateAction,
