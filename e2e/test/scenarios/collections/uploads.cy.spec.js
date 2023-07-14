@@ -7,6 +7,8 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   enableTracking,
+  describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
@@ -161,6 +163,83 @@ describeWithSnowplow(
   },
 );
 
+describeEE("permissions", () => {
+  it("should not snow you upload buttons if you are a sandboxed user", () => {
+    restore("postgres-writable");
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+    enableUploads("postgres");
+
+    const now = Date.now();
+
+    // We need up upload a file to the writable DB so that we can give
+    // out sandboxed user access to *something* on the upload DB
+    cy.readFile(`e2e/support/assets/${validTestFiles[0].fileName}`).then(
+      fixture => {
+        const blob = Cypress.Blob.binaryStringToBlob(
+          fixture,
+          "application/text",
+        );
+        const formData = new FormData();
+        formData.append(
+          "file",
+          blob,
+          `${validTestFiles[0].fileName} Permission Test ${now}`,
+        );
+        formData.append("collection_id", "root");
+
+        cy.request({
+          url: "/api/card/from-csv",
+          method: "POST",
+          headers: {
+            "content-type": "multipart/form-data",
+          },
+          body: formData,
+        });
+      },
+    );
+
+    cy.request("GET", `/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+      ({ body: schemas }) => {
+        const uploadedTable = schemas.find(schema =>
+          schema.display_name.includes(`Permission Test ${now}`),
+        );
+        cy.request("GET", `/api/database/${WRITABLE_DB_ID}/fields`).then(
+          ({ body: fieldData }) => {
+            // Sandbox access to the newly uploaded table
+            cy.sandboxTable({
+              table_id: uploadedTable.id,
+              attribute_remappings: {
+                attr_uid: ["dimension", ["field", fieldData[0].id, null]],
+              },
+            });
+
+            //Block "all users" group from having access to the whole schema
+            cy.updatePermissionsGraph({
+              1: {
+                [uploadedTable.db_id]: {
+                  data: {
+                    schemas: "block",
+                  },
+                },
+              },
+            });
+          },
+        );
+      },
+    );
+
+    cy.signInAsSandboxedUser();
+    cy.visit("/collection/root");
+
+    // No upload icon should appear for the sandboxed user
+    cy.findByTestId("collection-menu").within(() => {
+      cy.get(".Icon-calendar").should("exist");
+      cy.get(".Icon-upload").should("not.exist");
+    });
+  });
+});
+
 function uploadFile(testFile, valid = true) {
   cy.get("@collectionId").then(collectionId =>
     cy.visit(`/collection/${collectionId}`),
@@ -208,11 +287,11 @@ function uploadFile(testFile, valid = true) {
   }
 }
 
-function enableUploads(dialect) {
+function enableUploads(dialect, schema) {
   const settings = {
     "uploads-enabled": true,
     "uploads-database-id": WRITABLE_DB_ID,
-    "uploads-schema-name": dialect === "postgres" ? "public" : null,
+    "uploads-schema-name": schema || dialect === "postgres" ? "public" : null,
     "uploads-table-prefix": dialect === "mysql" ? "upload_" : null,
   };
 
