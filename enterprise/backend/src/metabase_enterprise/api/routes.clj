@@ -11,8 +11,8 @@
     :as advanced-permissions]
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.audit-app.api.routes :as audit-app]
-   [metabase-enterprise.content-management.api.routes
-    :as content-management]
+   [metabase-enterprise.content-verification.api.routes
+    :as content-verification]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
    [metabase-enterprise.serialization.api.routes :as serialization]))
 
@@ -21,7 +21,7 @@
   ;; `/ee/<feature>/`).
   ;;
   ;; TODO -- Please fix them! See #22687
-  content-management/routes
+  content-verification/routes
   sandbox/routes
   ;; The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new routes here
   ;; and follow the convention.

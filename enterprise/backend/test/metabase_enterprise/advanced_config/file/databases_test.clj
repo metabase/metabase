@@ -11,7 +11,7 @@
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-                        (premium-features-test/with-premium-features #{:advanced-config}
+                        (premium-features-test/with-premium-features #{:config-text-file}
                           (thunk)))))
 
 (def ^:private test-db-name (u/qualified-name ::test-db))
