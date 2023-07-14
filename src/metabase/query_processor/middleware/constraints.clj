@@ -3,9 +3,11 @@
   `:add-default-userland-constraints?` `:middleware` option."
   (:require
    [metabase.models.setting :as setting]
+   [metabase.config :as config]
+   [metabase.util.log :as log]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(def ^:private ^:const default-max-results-bare-rows 2000)
+(def ^:private default-max-results-bare-rows (config/config-int :mb-default-max-results-bare-rows))
 
 ;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to [[default-max-results-bare-rows]])
 ;; to a setting in 0.43 the setting, which allows for DB local value, can still be nil, so any places below that used
@@ -18,7 +20,7 @@
 
 (def ^:private max-results
   "General maximum number of rows to return from an API query."
-  10000)
+  (config/config-int :mb-max-results))
 
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."

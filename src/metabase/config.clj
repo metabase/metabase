@@ -53,7 +53,9 @@
    :max-session-age        "20160"                                        ; session length in minutes (14 days)
    :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
    :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
-   :mb-qp-cache-backend    "db"})
+   :mb-qp-cache-backend    "db"
+   :mb-max-results         "10000"
+   :mb-default-max-results-bare-rows "2000"})
 
 ;; separate map for EE stuff so merge conflicts aren't annoying.
 (def ^:private ee-app-defaults
