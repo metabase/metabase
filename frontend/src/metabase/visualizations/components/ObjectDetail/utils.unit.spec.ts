@@ -266,7 +266,7 @@ describe("ObjectDetail utils", () => {
       implicitCreateAction,
     ];
 
-    it("should return implicit delete and implicit update actions", () => {
+    it("should return delete and update action items", () => {
       expect(
         getActionItems({
           actions,
