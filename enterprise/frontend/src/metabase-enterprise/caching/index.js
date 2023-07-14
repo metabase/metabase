@@ -30,7 +30,7 @@ function getDatabaseCacheTTLFieldDescription() {
   );
 }
 
-if (hasPremiumFeature("cache_granular_controls")) {
+if (hasPremiumFeature("advanced_config")) {
   PLUGIN_CACHING.cacheTTLFormField = {
     name: "cache_ttl",
     validate: validateCacheTTL,
