@@ -147,19 +147,13 @@ export const getActionItems = ({
   const updateAction = actions.find(isValidImplicitUpdateAction);
 
   if (updateAction && canRunAction(updateAction, databases)) {
-    actionItems.push({
-      title: t`Update`,
-      icon: "pencil",
-      action: () => onUpdate(updateAction),
-    });
+    const action = () => onUpdate(updateAction);
+    actionItems.push({ title: t`Update`, icon: "pencil", action });
   }
 
   if (deleteAction && canRunAction(deleteAction, databases)) {
-    actionItems.push({
-      title: t`Delete`,
-      icon: "trash",
-      action: () => onDelete(deleteAction),
-    });
+    const action = () => onDelete(deleteAction);
+    actionItems.push({ title: t`Delete`, icon: "trash", action });
   }
 
   return actionItems;
