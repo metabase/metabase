@@ -93,7 +93,7 @@
              :base-type     :type/Integer
              :semantic-type :type/FK}
             (lib.metadata.calculation/metadata
-             (lib.tu/native-query)
+             lib.tu/native-query
              -1
              [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"])))))
 
