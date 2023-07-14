@@ -21,7 +21,7 @@ class EntityMenu extends Component {
     menuItemContent: null,
   };
 
-  defaultProps = {
+  static defaultProps = {
     horizontalAttachments: ["left", "right"],
   };
 
