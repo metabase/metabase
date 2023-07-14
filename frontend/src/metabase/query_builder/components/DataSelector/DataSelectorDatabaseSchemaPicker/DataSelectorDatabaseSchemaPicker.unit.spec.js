@@ -99,7 +99,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       ],
     });
     setup({ database });
-    // There should only be one loading-spinner next to the database name
+    // There should only be one loading-spinner next to the database name, and not the schema names
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     expect(screen.getByText("Schema 1")).toBeInTheDocument();
     expect(screen.getByText("Schema 2")).toBeInTheDocument();
