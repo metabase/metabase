@@ -559,6 +559,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    context      :- ::lib.schema.drill-thru/context]
+  (prn context)
   (keep #(% query stage-number context)
         ;; TODO: Missing drills: automatic insights, format.
         [distribution-drill
