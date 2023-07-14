@@ -173,13 +173,22 @@
            (substitute {:date (params/->FieldFilter {:name "date"} params/no-value)} ["[{$match: " (param :date) "}]"]))))
   (testing "operators"
     (testing "string"
-      (doseq [[operator form input] [[:string/starts-with {"$regex" "^foo"} ["foo"]]
-                                     [:string/ends-with {"$regex" "foo$"} ["foo"]]
-                                     [:string/contains {"$regex" "foo"} ["foo"]]
-                                     [:string/does-not-contain {"$not" {"$regex" "foo"}} ["foo"]]
-                                     [:string/= "foo" ["foo"]]]]
+      (doseq [[operator form input] [[:string/starts-with
+                                      {"$expr" {"$regexMatch" {"input" "$description" "regex" "^foo" "options" ""}}}
+                                      ["foo"]]
+                                     [:string/ends-with
+                                      {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" ""}}}
+                                      ["foo"]]
+                                     [:string/contains
+                                      {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}
+                                      ["foo"]]
+                                     [:string/does-not-contain
+                                      {"$expr"
+                                       {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}}
+                                      ["foo"]]
+                                     [:string/= {"description" "foo"} ["foo"]]]]
         (testing operator
-          (is (= (strip (to-bson [{:$match {"description" form}}]))
+          (is (= (strip (to-bson [{:$match form}]))
                  (strip
                   (substitute {:desc (field-filter "description" :type/Text operator input)}
                               ["[{$match: " (param :desc) "}]"])))))))

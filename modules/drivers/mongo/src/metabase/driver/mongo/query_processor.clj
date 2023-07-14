@@ -27,7 +27,7 @@
    [metabase.util.schema :as su]
    [monger.operators :refer [$add $addToSet $and $avg $concat $cond
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute 
+                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute
                              $mod $month $multiply $ne $not $or $project $regexMatch $second $size $skip $sort
                              $strcasecmp $subtract $sum $toLower $unwind $year]]
    [schema.core :as s])

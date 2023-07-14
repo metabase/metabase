@@ -469,10 +469,10 @@
         {"price" {"$lte" 100}}
         [:<= $price 100]
 
-        {"name" {"$regex" "hello"}}
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "hello" "options" ""}}}
         [:contains $name "hello"]
 
-        {"name" {"$regex" "^hello"}}
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "^hello" "options" ""}}}
         [:starts-with $name "hello"]
 
         {"$and" [{"$expr" {"$eq" ["$price" {"$add" ["$price" 1]}]}} {"name" "hello"}]}
