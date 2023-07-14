@@ -304,12 +304,12 @@ export function ObjectDetailView({
     enabled: areImplicitActionsEnabled,
   });
 
-  const actions = areImplicitActionsEnabled
-    ? getActions({
-        modelActions,
+  const actionItems = areImplicitActionsEnabled
+    ? getActionItems({
         databases,
-        onUpdate: () => "TODO: metabase#32322",
+        modelActions,
         onDelete: () => "TODO: metabase#32323",
+        onUpdate: () => "TODO: metabase#32322",
       })
     : [];
 
@@ -352,7 +352,7 @@ export function ObjectDetailView({
         >
           {showHeader && (
             <ObjectDetailHeader
-              actions={actions}
+              actionItems={actionItems}
               canZoom={Boolean(
                 canZoom && (canZoomNextRow || canZoomPreviousRow),
               )}
@@ -449,7 +449,7 @@ export function ObjectDetailWrapper({
 }
 
 export interface ObjectDetailHeaderProps {
-  actions: {
+  actionItems: {
     title: string;
     icon: string;
     action: () => void;
@@ -465,7 +465,7 @@ export interface ObjectDetailHeaderProps {
   closeObjectDetail: () => void;
 }
 
-const getActions = ({
+const getActionItems = ({
   databases,
   modelActions,
   onDelete,
@@ -476,7 +476,7 @@ const getActions = ({
   onDelete: (action: WritebackAction) => void;
   onUpdate: (action: WritebackAction) => void;
 }) => {
-  const actions = [];
+  const actionItems = [];
 
   const updateAction = modelActions.find(
     action =>
@@ -493,7 +493,7 @@ const getActions = ({
   );
 
   if (updateAction && canRunAction(updateAction, databases)) {
-    actions.push({
+    actionItems.push({
       title: t`Update`,
       icon: "pencil",
       action: () => onUpdate(updateAction),
@@ -501,18 +501,18 @@ const getActions = ({
   }
 
   if (deleteAction && canRunAction(deleteAction, databases)) {
-    actions.push({
+    actionItems.push({
       title: t`Delete`,
       icon: "trash",
       action: () => onDelete(deleteAction),
     });
   }
 
-  return actions;
+  return actionItems;
 };
 
 export function ObjectDetailHeader({
-  actions,
+  actionItems,
   canZoom,
   objectName,
   objectId,
@@ -523,7 +523,7 @@ export function ObjectDetailHeader({
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
-  const showButtonsContainer = showControls || actions.length > 0;
+  const showButtonsContainer = showControls || actionItems.length > 0;
 
   return (
     <ObjectDetailHeaderWrapper className="Grid">
@@ -557,10 +557,10 @@ export function ObjectDetailHeader({
             </>
           )}
 
-          {actions.length > 0 && (
+          {actionItems.length > 0 && (
             <EntityMenu
               horizontalAttachments={["right", "left"]}
-              items={actions}
+              items={actionItems}
               triggerIcon="ellipsis"
             />
           )}
