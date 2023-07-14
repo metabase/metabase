@@ -48,16 +48,16 @@
                              response))
                       (is (contains? recipients "test@metabase.com")))))))
             (testing "disallowed email"
-              (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
-                (testing "should fail when :email-allow-list is enabled"
-                  (premium-features-test/with-premium-features #{:email-allow-list}
+              (premium-features-test/with-premium-features #{:email-allow-list}
+                (mt/with-temporary-setting-values [subscription-allowed-domains "example.com"]
+                  (testing "should fail when :email-allow-list is enabled"
                     (let [{:keys [response recipients]} (send! 403)]
                       (is (= "You cannot create new subscriptions for the domain \"metabase.com\". Allowed domains are: example.com"
                              (:message response)))
-                      (is (not (contains? recipients "test@metabase.com"))))))
-                (testing "No :email-allow-list token -- should still pass"
-                  (premium-features-test/with-premium-features #{}
-                    (let [{:keys [response recipients]} (send! 200)]
-                      (is (= {:ok true}
-                             response))
-                      (is (contains? recipients "test@metabase.com")))))))))))))
+                      (is (not (contains? recipients "test@metabase.com")))))
+                  (testing "No :email-allow-list token -- should still pass"
+                    (premium-features-test/with-premium-features #{}
+                      (let [{:keys [response recipients]} (send! 200)]
+                        (is (= {:ok true}
+                               response))
+                        (is (contains? recipients "test@metabase.com"))))))))))))))
