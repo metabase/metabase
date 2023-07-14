@@ -113,6 +113,18 @@
   [a-query stage-number]
   (to-array (lib.order-by/orderable-columns a-query stage-number)))
 
+(defn- display-info-js
+  "Converts the [[metabase.lib.metadata.calculation/display-info]] maps into a JS-friendly form - `camelCase` keys,
+  namespaced keyword values as `\"foo/bar\"` strings, etc.
+  Recurses into nested sequences and maps."
+  [x]
+  (cond
+    (map? x)     (-> x
+                     (update-keys u/->camelCaseEn)
+                     (update-vals display-info-js))
+    (seqable? x) (map display-info-js x)
+    :else        x))
+
 (defn ^:export display-info
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
   See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain. Note that the JS versions of
@@ -121,8 +133,7 @@
   (-> a-query
       (lib.stage/ensure-previous-stages-have-metadata stage-number)
       (lib.core/display-info stage-number x)
-      (update-keys u/->camelCaseEn)
-      (m/update-existing :table update-keys u/->camelCaseEn)
+      display-info-js
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export field-id
