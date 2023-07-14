@@ -12,18 +12,18 @@
 
 (deftest validate-email-domains-test
   (t2.with-temp/with-temp [Pulse {pulse-id :id}]
-    (doseq [operation                [:create :update]
-            allowed-domains          [nil
-                                      #{"metabase.com"}
-                                      #{"metabase.com" "toucan.farm"}]
-            emails                   [nil
-                                      ["cam@metabase.com"]
-                                      ["cam@metabase.com" "cam@toucan.farm"]
-                                      ["cam@metabase.com" "cam@disallowed-domain.com"]]
-            :let                     [fail? (and allowed-domains
-                                                 (not (every? (fn [email]
-                                                                (contains? allowed-domains (u/email->domain email)))
-                                                              emails)))]]
+    (doseq [operation       [:create :update]
+            allowed-domains [nil
+                             #{"metabase.com"}
+                             #{"metabase.com" "toucan.farm"}]
+            emails          [nil
+                             ["cam@metabase.com"]
+                             ["cam@metabase.com" "cam@toucan.farm"]
+                             ["cam@metabase.com" "cam@disallowed-domain.com"]]
+            :let            [fail? (and allowed-domains
+                               (not (every? (fn [email]
+                                              (contains? allowed-domains (u/email->domain email)))
+                                            emails)))]]
       (premium-features-test/with-premium-features #{:email-allow-list}
         (mt/with-temporary-setting-values [subscription-allowed-domains (str/join "," allowed-domains)]
           ;; `with-premium-features` and `with-temporary-setting-values` will add `testing` context for the other
