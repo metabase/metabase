@@ -84,7 +84,7 @@ class CreateAlertModalContentInner extends Component {
       this.setState({
         alert: {
           ...this.state.alert,
-          card: { id: newProps.question.id() },
+          card: { ...this.state.alert.card, id: newProps.question.id() },
         },
       });
     }
@@ -550,7 +550,7 @@ export const AlertSettingToggle = ({
 
 export class AlertEditSchedule extends Component {
   render() {
-    const { alertType, schedule } = this.props;
+    const { alertType, schedule, onScheduleChange } = this.props;
 
     return (
       <div>
@@ -564,7 +564,7 @@ export class AlertEditSchedule extends Component {
             <SchedulePicker
               schedule={schedule}
               scheduleOptions={["hourly", "daily", "weekly"]}
-              onScheduleChange={this.props.onScheduleChange}
+              onScheduleChange={onScheduleChange}
               textBeforeInterval="Check"
             />
           </div>
