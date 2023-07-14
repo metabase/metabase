@@ -484,7 +484,6 @@
 ;;; default impl is just the impl for [[returned-columns-method]]
 (defmethod visible-columns-method :default
   [query stage-number x options]
-  (println "default VCM")
   (returned-columns-method query stage-number x options))
 
 (mu/defn visible-columns :- ColumnsWithUniqueAliases
