@@ -159,12 +159,12 @@ export const getActionItems = ({
   return actionItems;
 };
 
-const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
+export const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
   action.type === "implicit" &&
   action.kind === "row/delete" &&
   !action.archived;
 
-const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
+export const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
   action.type === "implicit" &&
   action.kind === "row/update" &&
   !action.archived;

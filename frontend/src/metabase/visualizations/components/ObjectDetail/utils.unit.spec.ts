@@ -3,6 +3,8 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockImplicitQueryAction,
+  createMockQueryAction,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -13,10 +15,12 @@ import {
 import Question from "metabase-lib/Question";
 
 import {
-  getObjectName,
   getDisplayId,
   getIdValue,
+  getObjectName,
   getSinglePKIndex,
+  isValidImplicitDeleteAction,
+  isValidImplicitUpdateAction,
 } from "./utils";
 
 const card = createSavedStructuredCard({
@@ -26,6 +30,23 @@ const card = createSavedStructuredCard({
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
   questions: [card],
+});
+
+const action = createMockQueryAction();
+
+const implicitCreateAction = createMockImplicitQueryAction({
+  name: "Create",
+  kind: "row/create",
+});
+
+const implicitDeleteAction = createMockImplicitQueryAction({
+  name: "Delete",
+  kind: "row/delete",
+});
+
+const implicitUpdateAction = createMockImplicitQueryAction({
+  name: "Update",
+  kind: "row/update",
 });
 
 describe("ObjectDetail utils", () => {
@@ -216,6 +237,48 @@ describe("ObjectDetail utils", () => {
 
     it("should return undefined if there are no PKs", () => {
       expect(getSinglePKIndex([qtyCol, nameCol])).toBe(undefined);
+    });
+  });
+
+  describe("isValidImplicitDeleteAction", () => {
+    it("should detect implicit delete actions", () => {
+      expect(isValidImplicitDeleteAction(implicitCreateAction)).toBe(false);
+      expect(isValidImplicitDeleteAction(implicitDeleteAction)).toBe(true);
+      expect(isValidImplicitDeleteAction(implicitUpdateAction)).toBe(false);
+    });
+
+    it("should ignore archived actions", () => {
+      expect(
+        isValidImplicitDeleteAction({
+          ...implicitDeleteAction,
+          archived: true,
+        }),
+      ).toBe(false);
+    });
+
+    it("should ignore non-implicit actions", () => {
+      expect(isValidImplicitDeleteAction(action)).toBe(false);
+    });
+  });
+
+  describe("isValidImplicitUpdateAction", () => {
+    it("should detect implicit delete actions", () => {
+      expect(isValidImplicitUpdateAction(implicitCreateAction)).toBe(false);
+      expect(isValidImplicitUpdateAction(implicitDeleteAction)).toBe(false);
+      expect(isValidImplicitUpdateAction(implicitUpdateAction)).toBe(true);
+    });
+
+    it("should ignore archived actions", () => {
+      expect(
+        isValidImplicitUpdateAction({
+          ...implicitUpdateAction,
+          archived: true,
+        }),
+      ).toBe(false);
+    });
+
+    it("should ignore non-implicit actions", () => {
+      expect(isValidImplicitUpdateAction(action)).toBe(false);
     });
   });
 });
