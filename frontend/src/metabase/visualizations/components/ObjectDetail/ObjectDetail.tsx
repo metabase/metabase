@@ -293,7 +293,7 @@ export function ObjectDetailView({
     question.isDataset() &&
     question.supportsImplicitActions();
 
-  const { data: modelActions = [] } = useActionListQuery({
+  const { data: actions = [] } = useActionListQuery({
     enabled: areImplicitActionsEnabled,
     query: { "model-id": question?.id() },
   });
@@ -304,8 +304,8 @@ export function ObjectDetailView({
 
   const actionItems = areImplicitActionsEnabled
     ? getActionItems({
+        actions,
         databases,
-        modelActions,
         onDelete: () => "TODO: metabase#32323",
         onUpdate: () => "TODO: metabase#32322",
       })

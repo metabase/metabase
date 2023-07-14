@@ -132,26 +132,26 @@ export const getSinglePKIndex = (cols: DatasetColumn[]) => {
 };
 
 export const getActionItems = ({
+  actions,
   databases,
-  modelActions,
   onDelete,
   onUpdate,
 }: {
+  actions: WritebackAction[];
   databases: Database[];
-  modelActions: WritebackAction[];
   onDelete: (action: WritebackAction) => void;
   onUpdate: (action: WritebackAction) => void;
 }) => {
   const actionItems = [];
 
-  const updateAction = modelActions.find(
+  const updateAction = actions.find(
     action =>
       action.type === "implicit" &&
       action.kind === "row/update" &&
       !action.archived,
   );
 
-  const deleteAction = modelActions.find(
+  const deleteAction = actions.find(
     action =>
       action.type === "implicit" &&
       action.kind === "row/delete" &&
