@@ -263,7 +263,7 @@
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
   collections are an EE feature."
-  metabase-enterprise.content-management.api.native-query-snippet
+  metabase-enterprise.snippet-collections.api.native-query-snippet
   [_ {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
@@ -439,8 +439,8 @@
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
-  content-management feature flag. EE implementation returns `nil`, so as to not filter out snippet collections."
-  metabase-enterprise.content-management.api.native-query-snippet
+  snippet-collections. EE implementation returns `nil`, so as to not filter out snippet collections."
+  metabase-enterprise.snippet-collections.api.native-query-snippet
   []
   [:or
    [:= :namespace nil]

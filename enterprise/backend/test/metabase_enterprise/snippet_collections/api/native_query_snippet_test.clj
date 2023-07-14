@@ -1,11 +1,12 @@
-(ns metabase-enterprise.enhancements.api.native-query-snippet-test
+(ns metabase-enterprise.snippet-collections.api.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -136,3 +137,20 @@
                             (finally
                               (doseq [c [source-collection dest-collection]]
                                 (perms/revoke-collection-permissions! (perms-group/all-users) c)))))))))))))))))
+
+(deftest snippet-collection-items-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Snippet collections should be returned on EE with the snippet-collections feature flag, rather than
+             returning all nested snippets as a flat list"
+      (premium-features-test/with-premium-features #{:snippet-collections}
+        (mt/with-temp* [Collection         [collection {:namespace "snippets", :name "My Snippet Collection"}]
+                        Collection         [sub-collection {:namespace "snippets"
+                                                            :name      "Nested Snippet Collection"
+                                                            :location  (collection/location-path collection)}]
+                        NativeQuerySnippet [snippet {:collection_id (:id collection), :name "My Snippet"}]
+                        NativeQuerySnippet [_ {:collection_id (:id sub-collection)
+                                               :name          "Nested Snippet"}]]
+          (is (partial=
+               [{:id (:id snippet), :name "My Snippet"}
+                {:id (:id sub-collection), :name "Nested Snippet Collection"}]
+               (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))
