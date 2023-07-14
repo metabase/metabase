@@ -7,7 +7,7 @@ import { t } from "ttag";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
-} from "metabase/dashboard/components/grid/utils";
+} from "metabase/visualizations/shared/utils/sizes";
 
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";

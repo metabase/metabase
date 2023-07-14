@@ -16,17 +16,6 @@ export function sortCardsForMobile(a, b) {
   // for items on the same row, sort by x position
   return a.x - b.x;
 }
-
-export const MOBILE_HEIGHT_BY_DISPLAY_TYPE = {
-  action: 1,
-  link: 1,
-  text: 2,
-  heading: 2,
-  scalar: 4,
-};
-
-export const MOBILE_DEFAULT_CARD_HEIGHT = 6;
-
 export function generateMobileLayout({
   desktopLayout,
   defaultCardHeight,
