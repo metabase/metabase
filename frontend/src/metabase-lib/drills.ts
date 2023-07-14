@@ -1,6 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DataRow, Dimension, Query } from "./types";
 
+// NOTE: value might be null or undefined, and they mean different things!
+// null means a value of SQL NULL; undefined means no value, ie. a column header was clicked.
 export function availableDrillThrus(
   // TODO: What is the right type for a JS column? (Not types.ts ColumnMetadata; that's the opaque CLJS type.)
   query: Query,
@@ -10,7 +12,14 @@ export function availableDrillThrus(
   row: DataRow | null,
   dimensions: Dimension[] | null,
 ): DrillThru[] {
-  return ML.available_drill_thrus(query, stageIndex, column, value, row, dimensions);
+  return ML.available_drill_thrus(
+    query,
+    stageIndex,
+    column,
+    value,
+    row,
+    dimensions,
+  );
 }
 
 // TODO: Precise types for each of the various extra args?
