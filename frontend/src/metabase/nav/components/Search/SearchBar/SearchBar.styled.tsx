@@ -12,6 +12,7 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
+import Button from "metabase/core/components/Button";
 
 const activeInputCSS = css`
   border-radius: 6px;
@@ -179,4 +180,8 @@ export const SearchResultsContainer = styled.div`
     border-radius: 6px;
     box-shadow: 0 7px 20px ${color("shadow")};
   }
+`;
+
+export const SearchFunnelIcon = styled(Button)`
+  transform: rotate(90deg);
 `;

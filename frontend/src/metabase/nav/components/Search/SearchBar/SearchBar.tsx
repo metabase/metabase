@@ -15,8 +15,9 @@ import MetabaseSettings from "metabase/lib/settings";
 import { useDispatch } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
-import SearchResults from "./SearchResults";
-import RecentsList from "./RecentsList";
+import SearchResults from "metabase/nav/components/Search/SearchResults/SearchResults";
+import RecentsList from "metabase/nav/components/Search/RecentsList/RecentsList";
+import { SearchFilterModal } from "../SearchFilterModal/SearchFilterModal";
 import {
   SearchInputContainer,
   SearchIcon,
@@ -25,6 +26,7 @@ import {
   SearchResultsFloatingContainer,
   SearchResultsContainer,
   SearchBarRoot,
+  SearchFunnelIcon,
 } from "./SearchBar.styled";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
@@ -164,6 +166,11 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     [setInactive],
   );
 
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const openSearchFilterModal = () => {
+    setIsFilterModalOpen(!isFilterModalOpen);
+  };
+
   return (
     <SearchBarRoot ref={container}>
       <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
@@ -177,6 +184,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
           onKeyPress={handleInputKeyPress}
           ref={searchInput}
         />
+        <SearchFunnelIcon icon="funnel" onClick={openSearchFilterModal} />
         {isSmallScreen() && isActive && (
           <CloseSearchButton onClick={handleClickOnClose}>
             <Icon name="close" />
@@ -196,6 +204,12 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
             <RecentsList />
           )}
         </SearchResultsFloatingContainer>
+      )}
+      {isFilterModalOpen && (
+        <SearchFilterModal
+          isOpen={isFilterModalOpen}
+          setIsOpen={isOpen => setIsFilterModalOpen(isOpen)}
+        />
       )}
     </SearchBarRoot>
   );
