@@ -4,7 +4,6 @@
   (:require
    [metabase.models.setting :as setting]
    [metabase.config :as config]
-   [metabase.util.log :as log]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (def ^:private default-max-results-bare-rows (config/config-int :mb-default-max-results-bare-rows))
