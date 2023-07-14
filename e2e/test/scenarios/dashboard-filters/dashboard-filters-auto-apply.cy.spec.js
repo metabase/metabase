@@ -60,7 +60,14 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+    cy.intercept("PUT", "/api/dashboard/*", req => {
+      // metabase#31721: Shouldn't call update dashboard twice. This is the API that was unnecessary
+      expect(Object.keys(req.body).sort()).to.not.deep.equal([
+        "description",
+        "name",
+        "parameters",
+      ]);
+    }).as("updateDashboard");
   });
 
   it("should handle toggling auto applying filters on and off", () => {
