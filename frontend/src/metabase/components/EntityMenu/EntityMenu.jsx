@@ -18,8 +18,11 @@ class EntityMenu extends Component {
   state = {
     open: false,
     freezeMenu: false,
-    horizontalAttachments: ["left", "right"],
     menuItemContent: null,
+  };
+
+  defaultProps = {
+    horizontalAttachments: ["left", "right"],
   };
 
   constructor(props, context) {
