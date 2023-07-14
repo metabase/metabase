@@ -378,10 +378,10 @@
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
-                        (#'setting/resolve-setting setting-k)
-                        (catch Exception e
-                          (when-not raw-setting?
-                            (throw e))))]
+                       (#'setting/resolve-setting setting-k)
+                       (catch Exception e
+                         (when-not raw-setting?
+                           (throw e))))]
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
