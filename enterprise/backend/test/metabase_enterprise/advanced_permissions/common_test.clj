@@ -2,9 +2,12 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.database :as api.database]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues Permissions Table]]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
@@ -685,16 +688,25 @@
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
 
 (deftest upload-csv-test
-  (let [db-id (u/the-id (mt/db))]
-    (testing "Should be blocked without data access"
-      (perms/grant-application-permissions! (perms-group/all-users) :setting)
-      (mt/with-temporary-setting-values [uploads-enabled      true
-                                         uploads-database-id  db-id
-                                         uploads-schema-name  nil
-                                         uploads-table-prefix "uploaded_magic_"]
-        (with-all-users-data-perms {db-id {:data {:native :none, :schemas :none}}}
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"You don't have permissions to do that\."
-               (api.card-test/upload-example-csv! nil false)))))
-      (perms/revoke-application-permissions! (perms-group/all-users) :setting))))
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (testing "Should be blocked without data access"
+          (perms/grant-application-permissions! (perms-group/all-users) :setting)
+          ;; Create not_public schema
+          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                           ["CREATE SCHEMA \"not_public\";"])
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "not_public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (with-all-users-data-perms {db-id {:data {:native :none, :schemas :none}}}
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You don't have permissions to do that\."
+                     (api.card-test/upload-example-csv! nil false))))
+              (with-all-users-data-perms {db-id {:data {:native :none, :schemas ["not_public"]}}}
+                (is
+                 (api.card-test/upload-example-csv! nil false)))))
+          (perms/revoke-application-permissions! (perms-group/all-users) :setting))))))

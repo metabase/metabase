@@ -97,6 +97,27 @@ export const createMockHeadingDashboardCard = (
   ...opts,
 });
 
+export const createMockLinkDashboardCard = (
+  opts?: Partial<DashboardOrderedCard> & { url?: string },
+): DashboardOrderedCard => ({
+  ...createMockDashboardCardWithVirtualCard({
+    id: 1,
+    visualization_settings: {
+      link: {
+        url: opts?.url ?? "Link url",
+      },
+      virtual_card: {
+        archived: false,
+        dataset_query: {},
+        display: "link",
+        name: "",
+        visualization_settings: {},
+      } as VirtualCard,
+    },
+  }),
+  ...opts,
+});
+
 export const createMockDashboardCardWithVirtualCard = (
   opts?: Partial<DashboardOrderedCard>,
 ): DashboardOrderedCard => ({

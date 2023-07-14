@@ -224,6 +224,15 @@ describe("scenarios > home > custom homepage", () => {
       popover().findByText("Orders in a dashboard").click();
       modal().findByRole("button", { name: "Save" }).click();
       cy.location("pathname").should("equal", "/dashboard/1");
+
+      cy.findByRole("status").within(() => {
+        cy.findByText("This dashboard has been set as your homepage.").should(
+          "exist",
+        );
+        cy.findByText(
+          "You can change this in Admin > Settings > General.",
+        ).should("exist");
+      });
     });
   });
 

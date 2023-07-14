@@ -13,7 +13,7 @@
            (search-util/tokenize " \t\n\t ")))
     (is (= []
            (search-util/tokenize "")))
-    (is (thrown-with-msg? Exception #"does not match schema"
+    (is (thrown-with-msg? Exception #"should be a string"
                           (search-util/tokenize nil)))))
 
 (deftest ^:parallel test-largest-common-subseq-length
