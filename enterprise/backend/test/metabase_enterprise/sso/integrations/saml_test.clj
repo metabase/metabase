@@ -45,7 +45,7 @@
   "Stubs the `premium-features/enable-sso?` function to simulate a valid token. This needs to be included to test any of the
   SSO features"
   [& body]
-  `(premium-features-test/with-premium-features #{:sso}
+  `(premium-features-test/with-premium-features #{:sso-saml}
      ~@body))
 
 (defn client

@@ -318,6 +318,22 @@
   "Should we enable data sandboxes (row-level permissions)?"
   :sandboxes)
 
+(define-premium-feature enable-sso-jwt?
+  "Should we enable JWT-based authentication?"
+  :sso-jwt)
+
+(define-premium-feature enable-sso-saml?
+  "Should we enable SAML-based authentication?"
+  :sso-ldap)
+
+(define-premium-feature enable-sso-ldap?
+  "Should we enable LDAP for authentication?"
+  :sso-ldap)
+
+(define-premium-feature enable-session-timeout-config?
+  "Should we enable session timeouts?"
+  :session-timeout-config)
+
 (define-premium-feature enable-sso?
   "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
   :sso)

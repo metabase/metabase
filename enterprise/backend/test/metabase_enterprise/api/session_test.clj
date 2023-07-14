@@ -14,15 +14,19 @@
                                                  :config-text-file
                                                  :content-management
                                                  :content-verification
+                                                 :disable-password-login
                                                  :embedding
                                                  :whitelabel
                                                  :advanced-config
-                                                 :sso
                                                  :hosting
+                                                 :official-collections
                                                  :sandboxes
+                                                 :session-timeout-config
                                                  :snippet-collections
-                                                 :disable-password-login
-                                                 :official-collections}
+                                                 :sso
+                                                 :sso-jwt
+                                                 :sso-ldap
+                                                 :sso-saml}
     (is (= {:advanced_config         true
             :advanced_permissions    true
             :audit_app               true
@@ -35,7 +39,11 @@
             :hosting                 true
             :official_collections    true
             :sandboxes               true
+            :session_timeout_config  true
             :snippet_collections     true
             :sso                     true
+            :sso-jwt                 true
+            :sso-ldap                true
+            :sso-saml                true
             :whitelabel              true}
           (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
