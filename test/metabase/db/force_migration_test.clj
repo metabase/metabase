@@ -29,7 +29,7 @@
               {:name "Egypt"
                :period "3100BC"}))
 
-;; This tests test 4 things:
+;; This test tests 4 things:
 ;; - It forces release the locks if there is one
 ;; - When running migrations, when a migration fails, ignores it and move on to the next migration
 ;; - All custom migrations are executed in a transaction, if it fails, nothing should be commited
