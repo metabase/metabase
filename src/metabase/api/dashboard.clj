@@ -44,9 +44,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -723,7 +721,7 @@
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
-             (u/prog1 (str (UUID/randomUUID))
+             (u/prog1 (str (random-uuid))
                (t2/update! :model/Dashboard dashboard-id
                            {:public_uuid       <>
                             :made_public_by_id api/*current-user-id*})))})

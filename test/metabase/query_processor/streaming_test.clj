@@ -20,8 +20,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
-   (jakarta.servlet.http HttpServletResponse)
-   (java.util UUID)))
+   (jakarta.servlet.http HttpServletResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -237,7 +236,7 @@
   (testing message
     (let [query-json        (json/generate-string query)
           viz-settings-json (json/generate-string viz-settings)
-          public-uuid       (str (UUID/randomUUID))
+          public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true

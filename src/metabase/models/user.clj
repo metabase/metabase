@@ -24,9 +24,7 @@
    [methodical.core :as methodical]
    [schema.core :as schema]
    [toucan2.core :as t2]
-   [toucan2.tools.default-fields :as t2.default-fields])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
 
@@ -317,7 +315,7 @@
 (schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (UUID/randomUUID)))))))
+  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -372,7 +370,7 @@
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (u/prog1 (str user-id \_ (UUID/randomUUID))
+  (u/prog1 (str user-id \_ (random-uuid))
     (t2/update! User user-id
                 {:reset_token     <>
                  :reset_triggered (System/currentTimeMillis)})))
