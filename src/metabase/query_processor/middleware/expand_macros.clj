@@ -12,6 +12,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.segment :refer [Segment]]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -45,7 +46,8 @@
         ;; segment definitions or other unforseen circumstances. Number 41 is arbitrary.
         (if (or (= expanded-query outer-query) (= depth 41))
           (throw (ex-info (tru "Segment expansion failed. Check mutually recursive segment definitions.")
-                          {:original-query query
+                          {:type qp.error-type/invalid-query
+                           :original-query query
                            :expanded-query expanded-query
                            :segment-id->definition segment-id->definition
                            :depth depth}))
