@@ -296,7 +296,7 @@
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
       (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
-                                       :device_id (str (java.util.UUID/randomUUID))
+                                       :device_id (str (random-uuid))
                                        :timestamp #t "2021-03-18T19:52:41.808482Z"}]
                       Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge

@@ -8,9 +8,7 @@
    [metabase.server.request.util :as request.u]
    [metabase.util.schema :as su]
    [ring.util.response :as response]
-   [schema.core :as s])
-  (:import
-   (java.util UUID)))
+   [schema.core :as s]))
 
 (set! *warn-on-reflection* true)
 
@@ -40,7 +38,7 @@
   (fn [request respond raise]
     (if-let [browser-id (get-in request [:cookies browser-id-cookie-name :value])]
       (handler (assoc request :browser-id browser-id) respond raise)
-      (let [browser-id (str (UUID/randomUUID))]
+      (let [browser-id (str (random-uuid))]
         (handler
          (assoc request :browser-id browser-id)
          (fn [response]

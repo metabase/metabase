@@ -19,9 +19,7 @@
     :refer [available-locales-with-names deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -112,7 +110,7 @@
 (defmethod setting/get-value-of-type ::uuid-nonce
   [_ setting]
   (or (setting/get-value-of-type :string setting)
-      (let [value (str (UUID/randomUUID))]
+      (let [value (str (random-uuid))]
         (setting/set-value-of-type! :string setting value)
         value)))
 

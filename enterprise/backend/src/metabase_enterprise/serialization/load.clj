@@ -36,9 +36,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -687,7 +685,7 @@
   "A function called on each User instance before it is inserted (via upsert)."
   [user]
   (log/infof "User with email %s is new to target DB; setting a random password" (:email user))
-  (assoc user :password (str (UUID/randomUUID))))
+  (assoc user :password (str (random-uuid))))
 
 ;; leaving comment out for now (deliberately), because this will send a password reset email to newly inserted users
 ;; when enabled in a future release; see `defmethod load "users"` below
