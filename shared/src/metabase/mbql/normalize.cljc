@@ -303,7 +303,7 @@
     values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (m/map-keys maybe-normalize-token source-query)]
+  (let [{native? :native, :as source-query} (update-keys source-query maybe-normalize-token)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
@@ -337,7 +337,7 @@
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
   [native-query]
-  (let [native-query (m/map-keys maybe-normalize-token native-query)]
+  (let [native-query (update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
@@ -639,7 +639,7 @@
    (fn [x]
      (cond
        (map? x)
-       (m/map-vals canonicalize-mbql-clauses x)
+       (update-vals x canonicalize-mbql-clauses)
 
        (not (mbql-clause? x))
        x

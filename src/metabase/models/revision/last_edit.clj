@@ -10,7 +10,6 @@
   (:require
    [clj-time.core :as time]
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.util.schema :as su]
    [schema.core :as s]))
@@ -87,9 +86,8 @@
                                                         :from     [:revision]
                                                         :where    where-clause
                                                         :group-by [:model :model_id]}]})]
-      (->> latest-changes
-           (group-by :model)
-           (m/map-vals (fn [model-changes]
-                         (into {} (map (juxt :model_id #(dissoc % :model :model_id)))  model-changes)))
-           ;; keys are "Card" and "Dashboard" (model in revision table) back to keywords
-           (m/map-keys (set/map-invert model->db-model))))))
+      (-> (group-by :model latest-changes)
+          (update-vals (fn [model-changes]
+                         (into {} (map (juxt :model_id #(dissoc % :model :model_id))) model-changes)))
+          ;; keys are "Card" and "Dashboard" (model in revision table) back to keywords
+          (update-keys (set/map-invert model->db-model))))))

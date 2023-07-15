@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [environ.core :as env]
-   [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
@@ -974,38 +973,38 @@
             :new-setting
             {:name :test-setting-with-question-mark????
              :munged-name "test-setting-with-question-mark"}}
-           (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting test-setting-with-question-mark????
-                              "Test setting - this only shows up in dev (6)"
-                              :visibility :internal)
-                            (catch Exception e (ex-data e)))))))
+           (update-vals (try (defsetting test-setting-with-question-mark????
+                               "Test setting - this only shows up in dev (6)"
+                               :visibility :internal)
+                             (catch Exception e (ex-data e)))
+                        #(select-keys % [:name :munged-name])))))
   (testing "Munge collision on first definition"
     (defsetting test-setting-normal
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
             :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
-           (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting test-setting-normal??
-                              "Test setting - this only shows up in dev (6)"
-                              :visibility :internal)
-                            (catch Exception e (ex-data e)))))))
+           (update-vals (try (defsetting test-setting-normal??
+                               "Test setting - this only shows up in dev (6)"
+                               :visibility :internal)
+                             (catch Exception e (ex-data e)))
+                        #(select-keys % [:name :munged-name])))))
   (testing "Munge collision on second definition"
     (defsetting test-setting-normal-1??
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
-             :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
-           (m/map-vals #(select-keys % [:name :munged-name])
-                       (try (defsetting test-setting-normal-1
-                              "Test setting - this only shows up in dev (6)"
-                              :visibility :internal)
-                            (catch Exception e (ex-data e)))))))
+            :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
+           (update-vals (try (defsetting test-setting-normal-1
+                               "Test setting - this only shows up in dev (6)"
+                               :visibility :internal)
+                             (catch Exception e (ex-data e)))
+                        #(select-keys % [:name :munged-name])))))
   (testing "Removes characters not-compliant with shells"
     (is (= "aa1aa-b2b_cc3c"
            (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))
 
-(deftest validate-default-value-for-type-test
+(deftest ^:parallel validate-default-value-for-type-test
   (letfn [(validate [tag default]
             (@#'setting/validate-default-value-for-type
              {:tag tag, :default default, :name :a-setting, :type :fake-type}))]

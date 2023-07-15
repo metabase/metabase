@@ -101,7 +101,7 @@
    (pull-unresolved-names-up m ks (get-in m ks)))
   ([m ks v]
    (if-let [unresolved-names (::unresolved-names v)]
-     (-> (update m ::unresolved-names (fn [nms] (merge nms (m/map-vals #(vec (concat ks %)) unresolved-names))))
+     (-> (update m ::unresolved-names (fn [nms] (merge nms (update-vals unresolved-names #(vec (concat ks %))))))
          (assoc-in ks (dissoc v ::unresolved-names)))
      (assoc-in m ks v))))
 
@@ -470,7 +470,7 @@
                               ;; prepend the dashboard card index and :visualization_settings to each unresolved
                               ;; name path for better debugging
                               (let [add-keys         [:dashboard_cards card-idx :visualization_settings]
-                                    fixed-names      (m/map-vals #(concat add-keys %) unresolved)
+                                    fixed-names      (update-vals unresolved #(concat add-keys %))
                                     with-fixed-names (assoc with-viz ::unresolved-names fixed-names)]
                                 (-> acc
                                     (update ::revisit (fn [revisit-map]

@@ -100,15 +100,15 @@
 (defn- regex-email-bodies*
   [regexes emails]
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
-    (->> emails
-         (m/map-vals (fn [emails-for-recipient]
+    (-> emails
+        (update-vals (fn [emails-for-recipient]
                        (for [{:keys [body] :as email} emails-for-recipient
                              :let [matches (-> body first email-body->regex-boolean)]
                              :when (some true? (vals matches))]
                          (-> email
                              (update :to set)
                              (assoc :body matches)))))
-         (m/filter-vals seq))))
+        (->> (m/filter-vals seq)))))
 
 (defn regex-email-bodies
   "Return messages in the fake inbox whose body matches the regex(es). The body will be replaced by a map with the
@@ -135,7 +135,7 @@
 (deftest regex-email-bodies-test
   (letfn [(email [body] {:to #{"mail"}
                          :body [{:content body}]})
-          (clean [emails] (m/map-vals #(map :body %) emails))]
+          (clean [emails] (update-vals emails #(map :body %)))]
     (testing "marks emails with regex match"
       (let [emails {"bob@metabase.com" [(email "foo bar baz")
                                         (email "other keyword")]
@@ -178,17 +178,17 @@
   summarize the contents for comparison in expects"
   [& regexes]
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
-    (m/map-vals (fn [emails-for-recipient]
-                  (for [email emails-for-recipient]
-                    (-> email
-                        (update :to set)
-                        (update :body (fn [email-body-seq]
-                                        (doall
-                                         (for [{email-type :type :as email-part} email-body-seq]
-                                           (if (string? email-type)
-                                             (email-body->regex-boolean email-part)
-                                             (summarize-attachment email-part)))))))))
-                @inbox)))
+    (update-vals @inbox
+                 (fn [emails-for-recipient]
+                   (for [email emails-for-recipient]
+                     (-> email
+                         (update :to set)
+                         (update :body (fn [email-body-seq]
+                                         (doall
+                                          (for [{email-type :type :as email-part} email-body-seq]
+                                            (if (string? email-type)
+                                              (email-body->regex-boolean email-part)
+                                              (summarize-attachment email-part))))))))))))
 
 (defn email-to
   "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"

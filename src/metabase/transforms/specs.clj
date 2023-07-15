@@ -67,7 +67,7 @@
   (mbql.u/match (mbql.normalize/normalize mbql) [:dimension dimension & _] dimension))
 
 (def ^:private ^{:arglists '([m])} stringify-keys
-  (partial m/map-keys name))
+  #(update-keys % name))
 
 (defn- add-metadata-to-steps
   [spec]

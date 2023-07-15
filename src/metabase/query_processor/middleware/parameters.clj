@@ -3,7 +3,6 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -86,12 +85,11 @@
 
 (defn- assoc-db-in-snippet-tag
   [db template-tags]
-  (->> template-tags
-       (m/map-vals
-        (fn [v]
-          (cond-> v
-            (= (:type v) :snippet) (assoc :database db))))
-       (into {})))
+  (update-vals
+   template-tags
+   (fn [v]
+     (cond-> v
+       (= (:type v) :snippet) (assoc :database db)))))
 
 (defn- hoist-database-for-snippet-tags
   "Assocs the `:database` ID from `query` in all snippet template tags."

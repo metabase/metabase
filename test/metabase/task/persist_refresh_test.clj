@@ -3,20 +3,21 @@
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time :as t]
-   [medley.core :as m]
    [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
    [potemkin.types :as p]
-   [toucan2.core :as t2])
-  (:import [org.quartz CronScheduleBuilder CronTrigger]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (org.quartz CronScheduleBuilder CronTrigger)))
 
 (set! *warn-on-reflection* true)
 
-(p/defprotocol+ GetSchedule
-  (schedule-string [_]))
+(p/defprotocol+ ^:private GetSchedule
+  (^:private schedule-string [_]))
 
 (extend-protocol GetSchedule
   CronScheduleBuilder
@@ -76,15 +77,15 @@
 
 (defn- job-info
   [& dbs]
-  (let [ids  (into #{} (map u/the-id dbs))]
-    (m/map-vals
-     #(select-keys % [:data :schedule :key])
-     (select-keys (task.persist-refresh/job-info-by-db-id) ids))))
+  (let [ids (into #{} (map u/the-id dbs))]
+    (update-vals
+     (select-keys (task.persist-refresh/job-info-by-db-id) ids)
+     #(select-keys % [:data :schedule :key]))))
 
 (deftest reschedule-refresh-test
   (mt/with-temp-scheduler
-    (mt/with-temp* [Database [db-1 {:options {:persist-models-enabled true}}]
-                    Database [db-2 {:options {:persist-models-enabled true}}]]
+    (t2.with-temp/with-temp [Database db-1 {:options {:persist-models-enabled true}}
+                             Database db-2 {:options {:persist-models-enabled true}}]
       (#'task.persist-refresh/job-init!)
       (mt/with-temporary-setting-values [persisted-model-refresh-cron-schedule "0 0 0/4 * * ? *"]
         (task.persist-refresh/reschedule-refresh!)
@@ -117,15 +118,15 @@
 
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [TaskHistory]
-    (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]
-                    Card     [model1 {:dataset true :database_id (u/the-id db)}]
-                    Card     [model2 {:dataset true :database_id (u/the-id db)}]
-                    Card     [archived {:archived true :dataset true :database_id (u/the-id db)}]
-                    Card     [unmodeled {:dataset false :database_id (u/the-id db)}]
-                    PersistedInfo [_p1 {:card_id (u/the-id model1) :database_id (u/the-id db)}]
-                    PersistedInfo [_p2 {:card_id (u/the-id model2) :database_id (u/the-id db)}]
-                    PersistedInfo [_parchived {:card_id (u/the-id archived) :database_id (u/the-id db)}]
-                    PersistedInfo [_punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]]
+    (t2.with-temp/with-temp [Database      db          {:options {:persist-models-enabled true}}
+                             Card          model1      {:dataset true :database_id (u/the-id db)}
+                             Card          model2      {:dataset true :database_id (u/the-id db)}
+                             Card          archived    {:archived true :dataset true :database_id (u/the-id db)}
+                             Card          unmodeled   {:dataset false :database_id (u/the-id db)}
+                             PersistedInfo _p1         {:card_id (u/the-id model1) :database_id (u/the-id db)}
+                             PersistedInfo _p2         {:card_id (u/the-id model2) :database_id (u/the-id db)}
+                             PersistedInfo _parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}
+                             PersistedInfo _punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
       (testing "Calls refresh on each persisted-info row"
         (let [card-ids (atom #{})
               test-refresher (reify task.persist-refresh/Refresher
@@ -161,16 +162,16 @@
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]}))))))
     (testing "Deletes any in a deletable state"
-      (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]
-                      Card     [model3 {:dataset true :database_id (u/the-id db)}]
-                      Card     [archived {:archived true :dataset true :database_id (u/the-id db)}]
-                      Card     [unmodeled {:dataset false :database_id (u/the-id db)}]
-                      PersistedInfo [parchived {:card_id (u/the-id archived) :database_id (u/the-id db)}]
-                      PersistedInfo [punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
-                      PersistedInfo [deletable {:card_id (u/the-id model3) :database_id (u/the-id db)
-                                                :state "deletable"
-                                                ;; need an "old enough" state change
-                                                :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]]
+      (t2.with-temp/with-temp [Database      db         {:options {:persist-models-enabled true}}
+                               Card          model3     {:dataset true :database_id (u/the-id db)}
+                               Card          archived   {:archived true :dataset true :database_id (u/the-id db)}
+                               Card          unmodeled  {:dataset false :database_id (u/the-id db)}
+                               PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}
+                               PersistedInfo punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}
+                               PersistedInfo deletable  {:card_id (u/the-id model3) :database_id (u/the-id db)
+                                                         :state "deletable"
+                                                         ;; need an "old enough" state change
+                                                         :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
         (let [called-on (atom #{})
               test-refresher (reify task.persist-refresh/Refresher
                                (refresh! [_ _ _ _]

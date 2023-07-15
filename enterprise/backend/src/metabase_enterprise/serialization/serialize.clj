@@ -90,12 +90,12 @@
       (m/update-existing entity :breakout (fn [breakout]
                                             (map mbql-id->fully-qualified-name breakout)))
       (m/update-existing entity :aggregation (fn [aggregation]
-                                               (m/map-vals mbql-id->fully-qualified-name aggregation)))
+                                               (update-vals aggregation mbql-id->fully-qualified-name)))
       (m/update-existing entity :filter (fn [filter]
-                                          (m/map-vals mbql-id->fully-qualified-name filter)))
+                                          (update-vals filter mbql-id->fully-qualified-name)))
       (m/update-existing entity ::mb.viz/param-mapping-source (partial fully-qualified-name Field))
       (m/update-existing entity :snippet-id (partial fully-qualified-name NativeQuerySnippet))
-      (m/map-vals ids->fully-qualified-names entity))))
+      (update-vals entity ids->fully-qualified-names))))
 
 (defn- strip-crud
   "Removes unneeded fields that can either be reconstructed from context or are meaningless

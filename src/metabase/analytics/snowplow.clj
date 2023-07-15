@@ -168,7 +168,7 @@
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
        {"id"                           (analytics-uuid)
         "version"                      {"tag" (:tag (public-settings/version))}
-        "token_features"               (m/map-keys name (public-settings/token-features))
+        "token_features"               (update-keys (public-settings/token-features) name)
         "created_at"                   (instance-creation)
         "application_database"         (app-db-type)
         "application_database_version" (app-db-version)}))

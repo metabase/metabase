@@ -123,22 +123,22 @@
            (mt/user-http-request :rasta :get 200 (format "table/%d" (mt/id :venues)))))
 
     (testing " should return a 403 for a user that doesn't have read permissions for the table"
-      (mt/with-temp* [Database [{database-id :id}]
-                      Table    [{table-id :id}    {:db_id database-id}]]
+      (t2.with-temp/with-temp [Database {database-id :id} {}
+                               Table    {table-id :id}    {:db_id database-id}]
         (perms/revoke-data-perms! (perms-group/all-users) database-id)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "table/" table-id))))))))
 
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options
-    (m/map-vals #(-> %
-                     (update :name str)
-                     (update :type
-                             (fn [t]
-                               (apply str
-                                      ((juxt namespace (constantly "/") name) t)))))
-                options)
-    (m/map-keys #(Long/parseLong %) options)
+    (update-vals options
+                 #(-> %
+                      (update :name str)
+                      (update :type
+                              (fn [t]
+                                (apply str
+                                       ((juxt namespace (constantly "/") name) t))))))
+    (update-keys options #(Long/parseLong %))
     ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
     (mbql.u/replace options :field (mt/obj->json->obj &match))))
 

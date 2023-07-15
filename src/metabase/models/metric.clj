@@ -4,7 +4,6 @@
   clauses."
   (:require
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -106,15 +105,15 @@
   [model metric1 metric2]
   (if-not metric1
     ;; model is the first version of the metric
-    (m/map-vals (fn [v] {:after v}) (select-keys metric2 [:name :description :definition]))
+    (update-vals (select-keys metric2 [:name :description :definition]) (fn [v] {:after v}))
     ;; do our diff logic
     (let [base-diff ((get-method revision/diff-map :default)
                      model
                      (select-keys metric1 [:name :description :definition])
                      (select-keys metric2 [:name :description :definition]))]
       (cond-> (merge-with merge
-                          (m/map-vals (fn [v] {:after v}) (:after base-diff))
-                          (m/map-vals (fn [v] {:before v}) (:before base-diff)))
+                          (update-vals (:after base-diff) (fn [v] {:after v}) )
+                          (update-vals (:before base-diff) (fn [v] {:before v}) ))
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
                                                                           :after  (get-in metric2 [:definition])})))))

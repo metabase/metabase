@@ -1,7 +1,6 @@
 (ns metabase.domain-entities.core
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
@@ -91,7 +90,7 @@
   (let [dimensions (into {} (for [field (:fields table)]
                               [(-> field field-type clojure.core/name) field]))
         bindings   {name {:entity     table
-                          :dimensions (m/map-vals mbql-reference dimensions)}}]
+                          :dimensions (update-vals dimensions mbql-reference)}}]
     {:metrics             (instantiate-dimensions bindings name metrics)
      :segments            (instantiate-dimensions bindings name segments)
      :breakout_dimensions (instantiate-dimensions bindings name breakout_dimensions)

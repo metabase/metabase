@@ -849,8 +849,8 @@
        (select-keys [:title :description :transient_title :groups])
        (cond->
          (:comparison? root)
-         (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
-                                               (assoc group :title (or comparison_title title))))))
+         (update :groups update-vals (fn [{:keys [title comparison_title] :as group}]
+                                       (assoc group :title (or comparison_title title)))))
        (instantiate-metadata context {}))))
 
 (s/defn ^:private apply-rule
@@ -895,7 +895,7 @@
       :entity
       related/related
       (update :fields (partial remove key-col?))
-      (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
+      (update-vals (comp (partial map ->related-entity) u/one-or-many))))
 
 (s/defn ^:private indepth
   [root, rule :- (s/maybe rules/Rule)]
@@ -1068,12 +1068,12 @@
         show (or show max-cards)]
     (log/debug (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
     (log/debug (trs "Dimensions bindings:\n{0}"
-                    (->> context
-                         :dimensions
-                         (m/map-vals #(update % :matches (partial map :name)))
-                         u/pprint-to-str)))
+                    (-> context
+                        :dimensions
+                        (update-vals #(update % :matches (partial map :name)))
+                        u/pprint-to-str)))
     (log/debug (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
-                    (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
+                    (-> context :metrics (update-vals :metric) u/pprint-to-str)
                     (-> context :filters u/pprint-to-str)))
     (-> dashboard
         (populate/create-dashboard show)

@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.common :as api]
@@ -2275,7 +2274,7 @@
         (testing "Test that superusers can fetch a list of publicly-accessible dashboards"
           (is (= [{:name true, :id true, :public_uuid true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/public")]
-                   (m/map-vals boolean (select-keys dash [:name :id :public_uuid]))))))))))
+                   (update-vals (select-keys dash [:name :id :public_uuid]) boolean)))))))))
 
 (deftest fetch-embeddable-dashboards-test
   (testing "GET /api/dashboard/embeddable"
@@ -2284,7 +2283,7 @@
         (t2.with-temp/with-temp [Dashboard _ {:enable_embedding true}]
           (is (= [{:name true, :id true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
-                   (m/map-vals boolean (select-keys dash [:name :id]))))))))))
+                   (update-vals (select-keys dash [:name :id]) boolean)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [hiccup.core :refer [h]]
-   [medley.core :as m]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.render.color :as color]
    [metabase.pulse.render.common :as common]
@@ -273,7 +272,8 @@
 
 (defn- update-col-for-js
   [col-settings col]
-  (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
+  (-> col-settings
+      (update-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)))
       (backfill-currency)
       (u/update-if-exists :date_style update-date-style (:unit col) col-settings)))
 

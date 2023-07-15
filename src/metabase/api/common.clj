@@ -5,7 +5,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [compojure.core :as compojure]
-   [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-regexes
             add-route-param-schema
@@ -242,7 +241,7 @@
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
           docstr                                              (route-dox method route docstr args
-                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                         (update-vals arg->schema #_{:clj-kondo/ignore [:discouraged-var]} eval)
                                                                          body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
@@ -261,7 +260,7 @@
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
           docstr                                              (malli-route-dox method route docstr args
-                                                                               (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                               (update-vals arg->schema #_{:clj-kondo/ignore [:discouraged-var]} eval)
                                                                                body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr

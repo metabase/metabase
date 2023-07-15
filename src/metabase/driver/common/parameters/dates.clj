@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [java-time :as t]
-   [medley.core :as m]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.params :as params]
@@ -346,7 +345,8 @@
 
 (s/defn ^:private adjust-inclusive-range-if-needed :- (s/maybe TemporalRange)
   "Make an inclusive date range exclusive as needed."
-  [{:keys [inclusive-start? inclusive-end?]}, {:keys [start end]} :- (s/maybe TemporalRange)]
+  [{:keys [start end]} :- (s/maybe TemporalRange)
+   {:keys [inclusive-start? inclusive-end?], :as _options}]
   (merge
    (when start
      {:start (if inclusive-start?
@@ -393,14 +393,14 @@
          now (t/local-date-time)]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
      ;; days depending on the user timezone
-     (or (->> (execute-decoders relative-date-string-decoders :range now date-string)
-              (adjust-inclusive-range-if-needed options)
-              (m/map-vals u.date/format))
+     (or (-> (execute-decoders relative-date-string-decoders :range now date-string)
+             (adjust-inclusive-range-if-needed options)
+             (update-vals u.date/format))
          ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
          ;; against the db field value that is casted granularity level of a day in the db time zone
-         (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
-              (adjust-inclusive-range-if-needed options)
-              (m/map-vals u.date/format))
+         (-> (execute-decoders absolute-date-string-decoders :range nil date-string)
+             (adjust-inclusive-range-if-needed options)
+             (update-vals u.date/format))
          ;; if both of the decoders above fail, then the date string is invalid
          (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
                          {:param date-string
