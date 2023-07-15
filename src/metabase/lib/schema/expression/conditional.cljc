@@ -72,10 +72,11 @@
    pred-expr-pairs))
 
 ;;; TODO -- add constraint that these types have to be compatible
-(mbql-clause/define-tuple-mbql-clause :coalesce
-  #_expr       [:ref :metabase.lib.schema.expression/expression]
-  #_null-value [:ref :metabase.lib.schema.expression/expression])
+(mbql-clause/define-catn-mbql-clause :coalesce
+  [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
 
 (defmethod expression/type-of-method :coalesce
-  [[_tag _opts expr null-value]]
-  (best-return-type (expression/type-of expr) (expression/type-of null-value)))
+  [[_tag _opts & exprs]]
+  #_{:clj-kondo/ignore [:reduce-without-init]}
+  (reduce best-return-type
+          (map expression/type-of exprs)))

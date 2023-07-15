@@ -198,8 +198,10 @@ class QuestionInner {
       }
     }
 
+    const isVirtualDashcard = !this._card.id;
     // `dataset_query` is null for questions on a dashboard the user don't have access to
-    console.warn("Unknown query type: " + datasetQuery?.type);
+    !isVirtualDashcard &&
+      console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
   isNative(): boolean {
@@ -311,16 +313,24 @@ class QuestionInner {
     return this._card && this._card.displayIsLocked;
   }
 
-  // If we're locked to a display that is no longer "sensible", unlock it
-  // unless it was locked in unsensible
-  maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays): Question {
+  maybeResetDisplay(sensibleDisplays, previousSensibleDisplays): Question {
     const wasSensible =
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());
     const isSensible = sensibleDisplays.includes(this.display());
     const shouldUnlock = wasSensible && !isSensible;
-    const locked = this.displayIsLocked() && !shouldUnlock;
-    return this.setDisplayIsLocked(locked);
+    const defaultDisplay = this.setDefaultDisplay().display();
+
+    if (isSensible && defaultDisplay === "table") {
+      // any sensible display is better than the default table display
+      return this;
+    }
+
+    if (shouldUnlock && this.displayIsLocked()) {
+      return this.setDisplayIsLocked(false).setDefaultDisplay();
+    }
+
+    return this.setDefaultDisplay();
   }
 
   // Switches display based on data shape. For 1x1 data, we show a scalar. If

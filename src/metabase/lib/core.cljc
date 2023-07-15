@@ -201,6 +201,10 @@
    with-native-query
    template-tags
    with-template-tags
+   required-native-extras
+   native-extras
+   with-native-extras
+   with-different-database
    extract-template-tags]
   [lib.order-by
    change-direction

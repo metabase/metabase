@@ -23,3 +23,6 @@ export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
       textMetrics.actualBoundingBoxDescent,
   };
 };
+
+export const measureTextWidth = (text: string, style: FontStyle) =>
+  measureText(text, style).width;

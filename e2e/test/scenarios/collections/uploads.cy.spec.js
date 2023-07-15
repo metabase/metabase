@@ -1,7 +1,6 @@
 import {
   restore,
   queryWritableDB,
-  resyncDatabase,
   popover,
   describeWithSnowplow,
   expectGoodSnowplowEvent,
@@ -61,7 +60,6 @@ describeWithSnowplow(
       }).then(({ body: { id: collectionId } }) => {
         cy.wrap(collectionId).as("collectionId");
       });
-      resyncDatabase({ dbId: WRITABLE_DB_ID });
       cy.visit("/admin/settings/uploads");
 
       cy.findByLabelText("Upload Settings Form")
@@ -111,7 +109,6 @@ describeWithSnowplow(
           }).then(({ body: { id: collectionId } }) => {
             cy.wrap(collectionId).as("collectionId");
           });
-          resyncDatabase({ dbId: WRITABLE_DB_ID });
           enableUploads(dialect);
         });
 

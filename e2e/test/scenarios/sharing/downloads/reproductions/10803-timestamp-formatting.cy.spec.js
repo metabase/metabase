@@ -18,7 +18,7 @@ describe("issue 10803", () => {
         name: "10803",
         native: {
           query:
-            "SELECT cast(parsedatetime('2020-06-03', 'yyyy-MM-dd') AS timestamp) AS \"birth_date\", cast(parsedatetime('2020-06-03 23:41:23', 'yyyy-MM-dd HH:mm:ss') AS timestamp) AS \"created_at\"",
+            "SELECT cast(parsedatetime('2026-06-03', 'yyyy-MM-dd') AS timestamp) AS \"birth_date\", cast(parsedatetime('2026-06-03 23:41:23', 'yyyy-MM-dd HH:mm:ss') AS timestamp) AS \"created_at\"",
         },
       },
       { visitQuestion: true, wrapId: true },
@@ -51,14 +51,14 @@ describe("issue 10803", () => {
 
       // Excel and CSV will have different formats
       if (fileType === "csv") {
-        expect(sheet["A2"].v).to.eq("2020-06-03");
-        expect(sheet["B2"].v).to.eq("2020-06-03T23:41:23");
+        expect(sheet["A2"].v).to.eq("2026-06-03");
+        expect(sheet["B2"].v).to.eq("2026-06-03T23:41:23");
       } else if (fileType === "xlsx") {
         // We tell the xlsx library to read raw and not parse dates
         // So for the _date_ format we expect an integer
         // And for timestamp, we expect a float
-        expect(sheet["A2"].v).to.eq(43985);
-        expect(sheet["B2"].v).to.eq(43985.98707175926);
+        expect(sheet["A2"].v).to.eq(46176);
+        expect(sheet["B2"].v).to.eq(46176.98707175926);
       }
     }
   });

@@ -26,6 +26,7 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
@@ -142,6 +143,12 @@
         (when (mi/can-read? instance)
           (link-card->text-part (assoc link-card :entity instance)))))))
 
+(defn- escape-heading-markdown
+  [dashcard]
+  (if (= "heading" (get-in dashcard [:visualization_settings :virtual_card :display]))
+    (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars % shared.params/escaped-chars-regex)))
+    dashcard))
+
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
 
@@ -167,6 +174,7 @@
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]
       (-> dashcard
           (params/process-virtual-dashcard parameters)
+          escape-heading-markdown
           :visualization_settings
           (assoc :type :text)))))
 

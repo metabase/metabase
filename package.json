@@ -133,7 +133,7 @@
     "@percy/cli": "^1.23.0",
     "@percy/cypress": "^3.1.2",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
-    "@replayio/cypress": "^1.0.1",
+    "@replayio/cypress": "^1.0.5",
     "@sinonjs/fake-timers": "^9.1.2",
     "@storybook/addon-a11y": "^6.5.16",
     "@storybook/addon-actions": "6.5.15",
@@ -284,6 +284,7 @@
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "unset-value": "2.0.1",
     "nth-check": "2.0.1",
+    "jsdom": "^22.1.0",
     "json5": "2.2.2"
   },
   "scripts": {

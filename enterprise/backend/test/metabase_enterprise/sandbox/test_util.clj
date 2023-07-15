@@ -70,7 +70,7 @@
               (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]
                 ;; set user login_attributes
                 (with-user-attributes test-user-name-or-user-id attributes
-                  (premium-features-test/with-premium-features #{:sandboxes}
+                  (premium-features-test/with-additional-premium-features #{:sandboxes}
                     ;; create Cards/GTAPs from defs
                     (do-with-gtap-defs group gtaps
                       (fn []

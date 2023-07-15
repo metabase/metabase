@@ -43,5 +43,5 @@ export function useWebNotification() {
     );
   }, []);
 
-  return [requestPermission, showNotification];
+  return { requestPermission, showNotification };
 }

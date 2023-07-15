@@ -297,11 +297,11 @@ describe("ModelDetailPage", () => {
       expect(screen.getByLabelText("Description")).toHaveTextContent("Foo Bar");
     });
 
-    it("displays model contact", async () => {
+    it("displays model creator", async () => {
       const creator = createMockUser();
       await setup({ model: getModel({ creator }) });
 
-      expect(screen.getByLabelText("Contact")).toHaveTextContent(
+      expect(screen.getByLabelText("Created by")).toHaveTextContent(
         creator.common_name,
       );
     });

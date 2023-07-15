@@ -1,10 +1,13 @@
 import { useState, useCallback } from "react";
 import { t } from "ttag";
 
+import { Box, Text } from "metabase/ui";
+
 import { useDispatch } from "metabase/lib/redux";
 import { updateSettings } from "metabase/admin/settings/settings";
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
@@ -35,6 +38,30 @@ export const CustomHomePageModal = ({
         [CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY]: dashboardId,
         [CUSTOM_HOMEPAGE_SETTING_KEY]: true,
         [CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY]: true,
+      }),
+    );
+
+    const id = Date.now();
+    await dispatch(
+      addUndo({
+        message: () => (
+          <Box ml="0.5rem" mr="2.5rem">
+            <Text
+              span
+              fw={700}
+            >{t`This dashboard has been set as your homepage.`}</Text>
+            <br />
+            <Text
+              span
+            >{t`You can change this in Admin > Settings > General.`}</Text>
+          </Box>
+        ),
+        icon: "info",
+        timeout: 10000,
+        id,
+        actions: [dismissUndo(id)],
+        actionLabel: "Got it",
+        canDismiss: false,
       }),
     );
     await dispatch(refreshCurrentUser());

@@ -1,11 +1,13 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
+import { connect } from "react-redux";
 import { Link } from "react-router";
 import { t } from "ttag";
 import { SetupApi } from "metabase/services";
 import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import { getIsPaidPlan } from "metabase/selectors/settings";
 
 import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -86,7 +88,7 @@ const TaskLink = ({ className, link, children }) =>
     </ExternalLink>
   );
 
-export default class SetupCheckList extends Component {
+class SetupCheckList extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
@@ -105,6 +107,8 @@ export default class SetupCheckList extends Component {
   }
 
   render() {
+    const { isPaidPlan } = this.props;
+
     let tasks, nextTask;
     if (this.state.tasks) {
       tasks = this.state.tasks.map(section => ({
@@ -143,10 +147,16 @@ export default class SetupCheckList extends Component {
           </LoadingAndErrorWrapper>
         </div>
 
-        {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
+        {!MetabaseSettings.isHosted() && !isPaidPlan && (
           <MarginHostingCTA tagline={t`Have your server maintained for you.`} />
         )}
       </SetupListRoot>
     );
   }
 }
+
+const mapStateToProps = state => ({
+  isPaidPlan: getIsPaidPlan(state),
+});
+
+export default connect(mapStateToProps)(SetupCheckList);

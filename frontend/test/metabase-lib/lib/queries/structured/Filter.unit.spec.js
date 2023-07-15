@@ -32,6 +32,63 @@ describe("Filter", () => {
     it("should return the correct string for a segment filter", () => {
       expect(filter(["segment", 1]).displayName()).toEqual("Expensive Things");
     });
+    describe("betterDateLabel", () => {
+      function createdAtFilter(op, unit, ...args) {
+        return filter([
+          op,
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": unit,
+            },
+          ],
+          ...args,
+        ]);
+      }
+
+      it("should display is-week filter as a day range", () => {
+        expect(
+          createdAtFilter("=", "week", "2026-10-04").displayName(),
+        ).toEqual("Created At is October 4–10, 2026");
+      });
+      it("should display between-weeks filter as day range", () => {
+        expect(
+          createdAtFilter(
+            "between",
+            "week",
+            "2026-10-04",
+            "2026-10-11",
+          ).displayName(),
+        ).toEqual("Created At is October 4–17, 2026");
+      });
+      it("should display slice filters with enough context for understanding them", () => {
+        expect(
+          createdAtFilter(
+            "=",
+            "minute-of-hour",
+            "2023-07-03T18:31:00-05:00",
+          ).displayName(),
+        ).toEqual("Created At is minute 31");
+        expect(
+          createdAtFilter(
+            "=",
+            "hour-of-day",
+            "2023-07-03T10:00:00-05:00",
+          ).displayName(),
+        ).toMatch(/^Created At is hour \d+$/); // GitHub CI is in different time zone
+        expect(
+          createdAtFilter("=", "day-of-month", "2016-01-17").displayName(),
+        ).toEqual("Created At is 17th day of month");
+        expect(
+          createdAtFilter("=", "day-of-year", "2016-07-19").displayName(),
+        ).toEqual("Created At is 201st day of year");
+        expect(
+          createdAtFilter("=", "week-of-year", "2023-07-02").displayName(),
+        ).toEqual("Created At is 27th week of year");
+      });
+    });
   });
   describe("isValid", () => {
     describe("with a field filter", () => {
