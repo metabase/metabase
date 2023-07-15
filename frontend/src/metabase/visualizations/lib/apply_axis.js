@@ -141,7 +141,10 @@ export function applyChartTimeseriesXAxis(
             compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
           });
     };
-    if (dataInterval.interval === "week") {
+    if (
+      dataInterval.interval === "week" &&
+      dimensionColumn.unit !== "week-of-year"
+    ) {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
       const newTickInterval = computeTimeseriesTicksInterval(
         xDomain,
