@@ -250,7 +250,7 @@
                 (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
-            (when (< token-age reset-token-ttl-ms)
+            (when (< token-age (reset-token-ttl-ms))
               user)))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
