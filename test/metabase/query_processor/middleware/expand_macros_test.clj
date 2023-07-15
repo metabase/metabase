@@ -9,6 +9,7 @@
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- mbql-query [inner-query]
@@ -50,29 +51,19 @@
 
 (deftest nested-segments-test
   (t2.with-temp/with-temp
-    [:model/Database {database-id  :id} {}
-     :model/Table    {table-id     :id} {:db_id database-id}
-     :model/Segment  {segment-1-id :id} {:table_id   table-id
-                                         :definition {:filter [:= [:field 5 nil] "abc"]}}
-     :model/Segment  {segment-2-id :id} {:table_id   table-id
-                                         :definition {:filter [:and
-                                                               [:segment segment-1-id]
-                                                               [:is-null [:field 7 nil]]]}}
-     :model/Segment _ {:table_id table-id
-                       :id 10002
-                       :definition {:filter [:and [:segment 112]
-                                             [:= [:field 5 nil] "abc"]]}}
-     :model/Segment _ {:table_id table-id
-                       :id 20001
-                       :definition {:filter [:and [:segment 911]
-                                             [:is-null [:field 7 nil]]]}}]
+    [:model/Segment {s1-id :id} {:table_id   (mt/id :venues)
+                                 :definition {:filter [:< (mt/id :venues :price) 3]}}
+     :model/Segment {s2-id :id} {:table_id   (mt/id :venues)
+                                 :definition {:filter [:and [:segment s1-id] [:> (mt/id :venues :price) 1]]}}]
     (testing "Nested segments are correctly expanded (#30866)"
-      (is (= (mbql-query {:filter [:and [:= [:field 5 nil] "abc"] [:is-null [:field 7 nil]]]})
+      (is (= (mt/mbql-query venues {:filter [:and [:< $price 3] [:> $price 1]]})
              (#'expand-macros/expand-metrics-and-segments
-              (mbql-query {:filter [:segment segment-2-id]})))))
-    (testing "Expanding mutually recursive segments causes an exception"
+              (mt/mbql-query venues {:filter [:segment s2-id]})))))
+    ;; Next line makes temporary segment definitions mutually recursive.
+    (t2/update! :model/Segment :id s1-id {:definition {:filter [:and [:< (mt/id :venues :price) 3] [:segment s2-id]]}})
+    (testing "Expansion of mutually recursive segments causes an exception"
       (is (thrown? Exception (#'expand-macros/expand-metrics-and-segments
-                              (mbql-query {:filter [:segment 20001]})))))))
+                              (mt/mbql-query venues {:filter [:segment s2-id]})))))))
 
 (deftest metric-test
   (testing "just a metric (w/out nested segments)"
