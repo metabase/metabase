@@ -20,19 +20,30 @@ describeEE("scenarios > embedding > full app", () => {
   });
 
   describe("home page navigation", () => {
+    it("should show the top and side nav by default", () => {
+      visitUrl({ url: "/" });
+      cy.wait("@getXrayDashboard");
+
+      appBar()
+        .should("be.visible")
+        .within(() => {
+          cy.findByTestId("main-logo").should("be.visible");
+          cy.button(/New/).should("not.exist");
+          cy.findByPlaceholderText("Search").should("not.exist");
+        });
+
+      sideNav().should("be.visible");
+    });
+
     it("should hide the top nav when nothing is shown", () => {
       visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+      cy.wait("@getXrayDashboard");
       appBar().should("not.exist");
     });
 
-    it("should show the top nav by default", () => {
-      visitUrl({ url: "/" });
-      appBar().should("be.visible");
-      cy.findByTestId("main-logo").should("be.visible");
-    });
-
-    it("should hide the top nav by a param", () => {
+    it("should hide the top nav by an explicit param", () => {
       visitUrl({ url: "/", qs: { top_nav: false } });
+      cy.wait("@getXrayDashboard");
       appBar().should("not.exist");
     });
 
@@ -41,8 +52,10 @@ describeEE("scenarios > embedding > full app", () => {
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { breadcrumbs: false },
       });
-      cy.findByTestId("main-logo").should("be.visible");
+      cy.wait("@getCardQuery");
+
       appBar().within(() => {
+        cy.findByTestId("main-logo").should("be.visible");
         cy.findByText("Our analytics").should("not.exist");
       });
     });
@@ -57,28 +70,24 @@ describeEE("scenarios > embedding > full app", () => {
           new_button: false,
         },
       });
+      cy.wait("@getXrayDashboard");
 
-      appBar().should("be.visible");
-      cy.button("Toggle sidebar").should("be.visible");
-    });
-
-    it("should show the top nav by a param", () => {
-      visitUrl({ url: "/" });
-      appBar().should("be.visible");
-      cy.findByTestId("main-logo").should("be.visible");
-      appBar().within(() => {
-        cy.button(/New/).should("not.exist");
-        cy.findByPlaceholderText("Search").should("not.exist");
-      });
+      sideNav().should("be.visible");
+      appBar()
+        .should("be.visible")
+        .within(() => {
+          cy.button("Toggle sidebar").should("be.visible").click();
+        });
+      sideNav().should("not.be.visible");
     });
 
     it("should hide the side nav by a param", () => {
       visitUrl({ url: "/", qs: { side_nav: false } });
       appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
+        cy.button("Toggle sidebar").should("not.exist");
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").should("not.exist");
+      sideNav().should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
@@ -102,10 +111,11 @@ describeEE("scenarios > embedding > full app", () => {
         cy.findByPlaceholderText("Search…").should("be.visible");
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("be.visible");
+      sideNav().findByText("Our analytics").click();
+
+      cy.findAllByRole("rowgroup")
+        .should("contain", "Orders in a dashboard")
+        .and("be.visible");
 
       appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
@@ -367,4 +377,8 @@ const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
       })),
     });
   });
+};
+
+const sideNav = () => {
+  return cy.findByTestId("main-navbar-root");
 };
