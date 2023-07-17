@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 
-import { ActionsApi, PublicApi } from "metabase/services";
-
 import ActionForm from "metabase/actions/components/ActionForm";
-import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
   ActionDashboardCard,
@@ -24,6 +20,7 @@ export interface ActionParametersInputFormProps {
   dashcard?: ActionDashboardCard;
   mappedParameters?: WritebackParameter[];
   initialValues?: ParametersForActionExecution;
+  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
@@ -38,6 +35,7 @@ function ActionParametersInputForm({
   initialValues = {},
   dashboard,
   dashcard,
+  fetchInitialValues,
   onCancel,
   onSubmit,
   onSubmitSuccess,
@@ -68,22 +66,18 @@ function ActionParametersInputForm({
       .concat(hiddenFieldIds);
   }, [mappedParameters, action.visualization_settings?.fields]);
 
-  const fetchInitialValues = useCallback(async () => {
-    const prefetchEndpoint =
-      getDashboardType(dashboard?.id) === "public"
-        ? PublicApi.prefetchValues
-        : ActionsApi.prefetchValues;
-
-    const fetchedValues = await prefetchEndpoint({
-      dashboardId: dashboard?.id,
-      dashcardId: dashcard?.id,
-      parameters: JSON.stringify(initialValues),
-    }).catch(_.noop);
-
-    if (fetchedValues) {
-      setPrefetchedValues(fetchedValues);
+  const refetchValues = useCallback(async () => {
+    if (!fetchInitialValues) {
+      return;
     }
-  }, [dashboard?.id, dashcard?.id, initialValues]);
+
+    try {
+      const fetchedValues = await fetchInitialValues();
+      setPrefetchedValues(fetchedValues);
+    } catch (error) {
+      // ignore silently
+    }
+  }, [fetchInitialValues]);
 
   useEffect(() => {
     const hasValueFromDashboard = Object.keys(initialValues).length > 0;
@@ -91,7 +85,10 @@ function ActionParametersInputForm({
 
     if (shouldPrefetch && !hasPrefetchedValues) {
       setPrefetchedValues({});
-      canPrefetch && fetchInitialValues();
+
+      if (canPrefetch) {
+        refetchValues();
+      }
     }
   }, [
     shouldPrefetch,
@@ -99,7 +96,7 @@ function ActionParametersInputForm({
     dashboard,
     dashcard,
     initialValues,
-    fetchInitialValues,
+    refetchValues,
   ]);
 
   const handleSubmit = useCallback(
@@ -109,12 +106,17 @@ function ActionParametersInputForm({
       if (success) {
         actions.setErrors({});
         onSubmitSuccess?.();
-        shouldPrefetch ? fetchInitialValues() : actions.resetForm();
+
+        if (shouldPrefetch) {
+          refetchValues();
+        } else {
+          actions.resetForm();
+        }
       } else {
         throw new Error(error);
       }
     },
-    [shouldPrefetch, onSubmit, onSubmitSuccess, fetchInitialValues],
+    [shouldPrefetch, onSubmit, onSubmitSuccess, refetchValues],
   );
 
   if (shouldPrefetch && !hasPrefetchedValues) {

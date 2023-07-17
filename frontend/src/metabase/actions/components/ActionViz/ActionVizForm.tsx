@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { getFormTitle } from "metabase/actions/utils";
 
@@ -16,11 +16,13 @@ import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreat
 import Modal from "metabase/components/Modal";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
-} from "../../containers/ActionParametersInputForm";
-import ActionButtonView from "./ActionButtonView";
-import { shouldShowConfirmation } from "./utils";
+} from "metabase/actions/containers/ActionParametersInputForm";
+import { getDashboardType } from "metabase/dashboard/utils";
+import { ActionsApi, PublicApi } from "metabase/services";
 
-import { FormWrapper, FormTitle } from "./ActionForm.styled";
+import ActionButtonView from "./ActionButtonView";
+import { FormTitle, FormWrapper } from "./ActionForm.styled";
+import { shouldShowConfirmation } from "./utils";
 
 interface ActionFormProps {
   action: WritebackAction;
@@ -83,6 +85,19 @@ function ActionVizForm({
     setShowEditModal(false);
   };
 
+  const fetchInitialValues = useCallback(async () => {
+    const prefetchEndpoint =
+      getDashboardType(dashboard.id) === "public"
+        ? PublicApi.prefetchValues
+        : ActionsApi.prefetchValues;
+
+    return prefetchEndpoint({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+      parameters: JSON.stringify(initialValues),
+    });
+  }, [dashboard.id, dashcard.id, initialValues]);
+
   if (shouldDisplayButton) {
     return (
       <>
@@ -99,6 +114,7 @@ function ActionVizForm({
             dashcard={dashcard}
             mappedParameters={mappedParameters}
             initialValues={initialValues}
+            fetchInitialValues={fetchInitialValues}
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
@@ -138,6 +154,7 @@ function ActionVizForm({
         dashcard={dashcard}
         mappedParameters={mappedParameters}
         initialValues={initialValues}
+        fetchInitialValues={fetchInitialValues}
         onSubmit={onSubmit}
       />
     </FormWrapper>

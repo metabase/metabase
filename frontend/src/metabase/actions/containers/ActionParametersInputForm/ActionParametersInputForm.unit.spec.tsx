@@ -13,6 +13,7 @@ import {
   createMockImplicitQueryAction,
   createMockDashboard,
 } from "metabase-types/api/mocks";
+import { ActionsApi } from "metabase/services";
 
 import ActionParametersInputForm, {
   ActionParametersInputFormProps,
@@ -49,11 +50,21 @@ const mockAction = createMockQueryAction({
   },
 });
 
+const dashboard = createMockDashboard({ id: 123 });
+
+const dashcard = createMockActionDashboardCard({ id: 456, action: mockAction });
+
 const defaultProps: ActionParametersInputFormProps = {
   action: mockAction,
   mappedParameters: [],
-  dashboard: createMockDashboard({ id: 123 }),
-  dashcard: createMockActionDashboardCard({ id: 456, action: mockAction }),
+  dashboard,
+  dashcard,
+  fetchInitialValues: () =>
+    ActionsApi.prefetchValues({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+      parameters: JSON.stringify({}),
+    }),
   initialValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
