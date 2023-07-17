@@ -1,7 +1,9 @@
 import {
+  describeEE,
   modal,
   popover,
   restore,
+  setTokenFeatures,
   setupLdap,
   typeAndBlurUsingLabel,
 } from "e2e/support/helpers";
@@ -106,18 +108,6 @@ describe(
       cy.findByText('For input string: "123 "').should("exist");
     });
 
-    it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
-      setupLdap();
-      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
-      cy.signOut();
-      cy.visit("/auth/login");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Username or email address").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Password").should("be.visible");
-    });
-
     describe("Group Mappings Widget", () => {
       beforeEach(() => {
         cy.intercept("GET", "/api/setting").as("getSettings");
@@ -137,6 +127,30 @@ describe(
       it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
         checkGroupConsistencyAfterDeletingMappings("ldap");
       });
+    });
+  },
+);
+
+describeEE(
+  "scenarios > admin > settings > SSO > LDAP",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+    });
+
+    it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
+      setupLdap();
+      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
+      cy.signOut();
+      cy.visit("/auth/login");
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Username or email address").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Password").should("be.visible");
     });
   },
 );
