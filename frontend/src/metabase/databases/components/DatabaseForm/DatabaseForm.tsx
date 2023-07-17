@@ -26,9 +26,7 @@ import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 interface DatabaseFormProps {
   initialValues?: DatabaseData;
   autofocusFieldName?: string;
-  isHosted?: boolean;
   isAdvanced?: boolean;
-  isCachingEnabled?: boolean;
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
