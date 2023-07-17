@@ -32,6 +32,17 @@ describe("DatabaseForm", () => {
       });
     });
   });
+
+  it("should not allow to configure cache ttl", () => {
+    setup({ isCachingEnabled: true });
+    userEvent.click(screen.getByText("Show advanced options"));
+    expect(
+      screen.getByText("Choose when syncs and scans happen"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Default result cache duration"),
+    ).not.toBeInTheDocument();
+  });
 });
 
 const EXPECTED_DEFAULT_SCHEMA = {

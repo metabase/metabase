@@ -1,5 +1,6 @@
 import { Engine, Settings } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { DatabaseForm } from "../DatabaseForm";
@@ -81,17 +82,28 @@ const TEST_ENGINES: Record<string, Engine> = {
   },
 };
 
-interface SetupOpts {
+export interface SetupOpts {
   settings?: Settings;
+  isCachingEnabled?: boolean;
+  hasEnterprisePlugins?: boolean;
 }
 
-export const setup = ({ settings }: SetupOpts = {}) => {
+export const setup = ({
+  settings,
+  isCachingEnabled,
+  hasEnterprisePlugins,
+}: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({
       ...settings,
       engines: TEST_ENGINES,
+      "enable-query-caching": isCachingEnabled,
     }),
   });
+
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
 
   const onSubmit = jest.fn();
   renderWithProviders(<DatabaseForm isAdvanced onSubmit={onSubmit} />, {
