@@ -62,5 +62,4 @@
                       (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
                           (let [exists? (db/exists? User)]
                             (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
-                            exists?))))))
-  :doc        false)
+                            exists?)))))))
