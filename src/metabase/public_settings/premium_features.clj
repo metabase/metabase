@@ -327,16 +327,16 @@
   :sso-ldap)
 
 (define-premium-feature enable-sso-ldap?
-  "Should we enable LDAP for authentication?"
+  "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
+
+(define-premium-feature enable-sso-google?
+  "Should we enable advanced configuration for Google Sign-In authentication?"
+  :sso-google)
 
 (define-premium-feature enable-session-timeout-config?
   "Should we enable session timeouts?"
   :session-timeout-config)
-
-(define-premium-feature enable-sso?
-  "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
-  :sso)
 
 (define-premium-feature can-disable-password-login?
   "Can we password login?"

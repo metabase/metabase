@@ -23,7 +23,7 @@
                                                  :sandboxes
                                                  :session-timeout-config
                                                  :snippet-collections
-                                                 :sso
+                                                 :sso-google
                                                  :sso-jwt
                                                  :sso-ldap
                                                  :sso-saml}
@@ -41,9 +41,9 @@
             :sandboxes               true
             :session_timeout_config  true
             :snippet_collections     true
-            :sso                     true
-            :sso-jwt                 true
-            :sso-ldap                true
-            :sso-saml                true
+            :sso_google              true
+            :sso_jwt                 true
+            :sso_ldap                true
+            :sso_saml                true
             :whitelabel              true}
           (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

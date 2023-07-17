@@ -41,9 +41,9 @@
 
 (use-fixtures :each disable-other-sso-types)
 
-(defmacro with-valid-premium-features-token
-  "Stubs the `premium-features/enable-sso?` function to simulate a valid token. This needs to be included to test any of the
-  SSO features"
+(defmacro with-sso-saml-token
+  "Stubs the `premium-features/token-features` function to simulate a premium token with the `:sso-saml` feature.
+   This needs to be included to test any of the SAML features."
   [& body]
   `(premium-features-test/with-premium-features #{:sso-saml}
      ~@body))
@@ -105,27 +105,27 @@
 
 (deftest require-saml-enabled-test
   (testing "SSO requests fail if SAML hasn't been configured or enabled"
-    (with-valid-premium-features-token
+    (with-sso-saml-token
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         nil
                                          saml-identity-provider-certificate nil]
         (is (some? (client :get 400 "/auth/sso"))))))
 
   (testing "SSO requests fail if SAML has been configured but not enabled"
-    (with-valid-premium-features-token
+    (with-sso-saml-token
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate default-idp-cert]
         (is (some? (client :get 400 "/auth/sso"))))))
 
   (testing "SSO requests fail if SAML is enabled but hasn't been configured"
-    (with-valid-premium-features-token
+    (with-sso-saml-token
       (mt/with-temporary-setting-values [saml-enabled               true
                                          saml-identity-provider-uri nil]
         (is (some? (client :get 400 "/auth/sso"))))))
 
   (testing "The IDP provider certificate must also be included for SSO to be configured"
-    (with-valid-premium-features-token
+    (with-sso-saml-token
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate nil]
@@ -151,7 +151,7 @@
                                (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil}))))))
 
 (defmacro with-saml-default-setup [& body]
-  `(with-valid-premium-features-token
+  `(with-sso-saml-token
      (call-with-login-attributes-cleared!
       (fn []
         (call-with-default-saml-config

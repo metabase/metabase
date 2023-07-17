@@ -185,7 +185,7 @@
                      (select-keys ["crowberto@metabase.com" (:email user)])))))
 
         (testing "...or if setting is disabled"
-          (premium-features-test/with-premium-features #{:sso}
+          (premium-features-test/with-premium-features #{:sso-ldap}
             (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
               (t2.with-temp/with-temp [User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
                 (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],

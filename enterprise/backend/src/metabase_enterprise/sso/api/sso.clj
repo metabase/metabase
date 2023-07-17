@@ -22,7 +22,8 @@
          metabase-enterprise.sso.integrations.saml/keep-me)
 
 (defn- throw-if-no-premium-features-token []
-  (when-not (premium-features/enable-sso?)
+  (when-not (or (premium-features/enable-sso-jwt?)
+                (premium-features/enable-sso-saml?))
     (throw (ex-info (str (tru "SSO requires a valid token"))
              {:status-code 403}))))
 

@@ -242,7 +242,10 @@
 (defn- maybe-add-sso-source
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
   [{:keys [id] :as user}]
-  (if (premium-features/enable-sso?)
+  (if (or (premium-features/enable-sso-jwt?)
+          (premium-features/enable-sso-saml?)
+          (premium-features/enable-sso-ldap?)
+          (premium-features/enable-sso-google?))
     (assoc user :sso_source (t2/select-one-fn :sso_source User :id id))
     user))
 
