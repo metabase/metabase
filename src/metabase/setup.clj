@@ -7,8 +7,7 @@
    [metabase.models.user :refer [User]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan.db :as db])
-  (:import
-   (java.util UUID)))
+  (:import java.util.UUID))
 
 (defsetting setup-token
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
