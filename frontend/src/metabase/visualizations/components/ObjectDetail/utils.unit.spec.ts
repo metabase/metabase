@@ -2,7 +2,6 @@ import { createMockMetadata } from "__support__/metadata";
 
 import {
   createMockColumn,
-  createMockDatabase,
   createMockDatasetData,
   createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
@@ -15,7 +14,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 
-import Database from "metabase-lib/metadata/Database";
 import {
   getActionItems,
   getDisplayId,
@@ -26,42 +24,51 @@ import {
   isValidImplicitUpdateAction,
 } from "./utils";
 
+const ACTIONS_ENABLED_DB_ID = 10;
+
+const ACTIONS_DISABLED_DB_ID = 11;
+
 const card = createSavedStructuredCard({
   name: "Special Order",
 });
 
 const database = createSampleDatabase();
 
-const databaseWithEnabledActions = new Database({
-  ...createMockDatabase({
-    settings: { "database-enable-actions": true },
-  }),
-  tables: [],
-});
-
-const databaseWithDisabledActions = new Database({
-  ...createMockDatabase({
-    settings: { "database-enable-actions": false },
-  }),
-  tables: [],
-});
-
 const metadata = createMockMetadata({
-  databases: [database],
+  databases: [
+    database,
+    createSampleDatabase({
+      id: ACTIONS_ENABLED_DB_ID,
+      settings: { "database-enable-actions": true },
+    }),
+    createSampleDatabase({
+      id: ACTIONS_DISABLED_DB_ID,
+      settings: { "database-enable-actions": false },
+    }),
+  ],
   questions: [card],
 });
 
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const databaseWithEnabledActions = metadata.database(ACTIONS_ENABLED_DB_ID)!;
+
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const databaseWithDisabledActions = metadata.database(ACTIONS_DISABLED_DB_ID)!;
+
 const implicitCreateAction = createMockImplicitQueryAction({
+  database_id: ACTIONS_ENABLED_DB_ID,
   name: "Create",
   kind: "row/create",
 });
 
 const implicitDeleteAction = createMockImplicitQueryAction({
+  database_id: ACTIONS_ENABLED_DB_ID,
   name: "Delete",
   kind: "row/delete",
 });
 
 const implicitUpdateAction = createMockImplicitQueryAction({
+  database_id: ACTIONS_ENABLED_DB_ID,
   name: "Update",
   kind: "row/update",
 });
