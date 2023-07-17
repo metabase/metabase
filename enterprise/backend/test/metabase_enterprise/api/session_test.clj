@@ -45,6 +45,7 @@
                   :email_allow_list               true
                   :email_restrict_recipients      true
                   :embedding                      true
+                  :question_error_logs true
                   :hosting                        true
                   :official_collections           true
                   :sandboxes                      true
