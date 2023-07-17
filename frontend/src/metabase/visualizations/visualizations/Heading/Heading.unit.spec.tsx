@@ -2,9 +2,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { color } from "metabase/lib/colors";
 
-import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboard,
+  createMockDashboardCardWithVirtualCard,
+} from "metabase-types/api/mocks";
 import type {
-  BaseDashboardOrderedCard,
+  DashboardOrderedCard,
+  Dashboard,
+  ParameterValueOrArray,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -15,21 +20,25 @@ interface Settings {
 }
 
 interface Options {
-  dashcard?: BaseDashboardOrderedCard;
+  dashcard?: DashboardOrderedCard;
   isEditing?: boolean;
   isEditingParameter?: boolean;
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
   settings?: VisualizationSettings;
+  dashboard?: Dashboard;
+  parameterValues?: { [id: string]: ParameterValueOrArray };
 }
 
 const defaultProps = {
   dashcard: createMockDashboardCardWithVirtualCard(),
+  dashboard: createMockDashboard(),
   isEditing: false,
   isEditingParameter: false,
   onUpdateVisualizationSettings: () => {
     return;
   },
   settings: { text: "" },
+  parameterValues: {},
 };
 
 const setup = (options: Options) => {
