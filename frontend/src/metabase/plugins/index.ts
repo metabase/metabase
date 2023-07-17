@@ -24,6 +24,7 @@ import type {
   UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
+import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type Question from "metabase-lib/Question";
 
 import type Database from "metabase-lib/metadata/Database";
@@ -54,7 +55,9 @@ export const PLUGIN_ADMIN_TOOLS = {
 };
 
 // functions that update the sections
-export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
+export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
+  sections: typeof ADMIN_SETTINGS_SECTIONS,
+) => void)[] = [];
 
 // admin permissions
 export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];

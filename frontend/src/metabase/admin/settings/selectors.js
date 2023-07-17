@@ -70,7 +70,7 @@ function updateSectionsWithPlugins(sections) {
   }
 }
 
-const SECTIONS = {
+export const ADMIN_SETTINGS_SECTIONS = {
   setup: {
     name: t`Setup`,
     order: 10,
@@ -702,7 +702,7 @@ const SECTIONS = {
 };
 
 const getSectionsWithPlugins = _.once(() =>
-  updateSectionsWithPlugins(SECTIONS),
+  updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 
 export const getSettings = createSelector(
