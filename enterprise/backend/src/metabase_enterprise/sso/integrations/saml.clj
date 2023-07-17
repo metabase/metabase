@@ -133,7 +133,7 @@
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             saml-request (saml/request
-                           {:request-id (str "id-" (UUID/randomUUID))
+                           {:request-id (str "id-" (random-uuid))
                             :sp-name    (sso-settings/saml-application-name)
                             :issuer     (sso-settings/saml-application-name)
                             :acs-url    (acs-url)

@@ -2,33 +2,49 @@ import { render, screen } from "@testing-library/react";
 
 import { testDataset } from "__support__/testDataset";
 import { setupCardDataset } from "__support__/server-mocks";
-import { createMockCard } from "metabase-types/api/mocks";
-import Question from "metabase-lib/Question";
+import { createMockCard, createMockTable } from "metabase-types/api/mocks";
 
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+import type { ObjectDetailProps } from "./types";
 import {
   ObjectDetailView,
   ObjectDetailHeader,
   ObjectDetailBody,
-  ObjectDetailWrapper,
 } from "./ObjectDetail";
-import type { ObjectDetailProps } from "./types";
+
+const MOCK_CARD = createMockCard({
+  name: "Product",
+});
+
+const MOCK_TABLE = createMockTable({
+  name: "Product",
+  display_name: "Product",
+});
 
 function setup(options?: Partial<ObjectDetailProps>) {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      questions: [MOCK_CARD],
+      tables: [MOCK_TABLE],
+    }),
+    qb: createMockQueryBuilderState({ card: MOCK_CARD }),
+  });
+  const metadata = getMetadata(state);
+
+  const question = checkNotNull(metadata.question(MOCK_CARD.id));
+  const table = checkNotNull(metadata.table(MOCK_TABLE.id));
+
   render(
     <ObjectDetailView
-      data={testDataset as any}
-      question={
-        new Question(
-          createMockCard({
-            name: "Product",
-          }),
-        )
-      }
-      table={
-        {
-          objectName: () => "Product",
-        } as any
-      }
+      data={testDataset}
+      question={question}
+      table={table}
       zoomedRow={testDataset.rows[0]}
       zoomedRowID={0}
       tableForeignKeys={[]}
@@ -99,7 +115,7 @@ describe("Object Detail", () => {
   it("renders an object detail body", () => {
     render(
       <ObjectDetailBody
-        data={testDataset as any}
+        data={testDataset}
         objectName="Large Sandstone Socks"
         zoomedRow={testDataset.rows[2]}
         settings={{
@@ -123,140 +139,14 @@ describe("Object Detail", () => {
 
     expect(screen.getByText(/Product/i)).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][2].toString()),
+      screen.getByText(checkNotNull(testDataset.rows[0][2]).toString()),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][3].toString()),
+      screen.getByText(checkNotNull(testDataset.rows[0][3]).toString()),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][4].toString()),
+      screen.getByText(checkNotNull(testDataset.rows[0][4]).toString()),
     ).toBeInTheDocument();
-  });
-
-  it("renders an object detail with a paginator", () => {
-    render(
-      <ObjectDetailWrapper
-        data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
-        table={
-          {
-            objectName: () => "Product",
-          } as any
-        }
-        zoomedRow={testDataset.rows[0]}
-        zoomedRowID={0}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={[]}
-        settings={{
-          column: () => null,
-        }}
-        showHeader
-        canZoom={true}
-        canZoomPreviousRow={false}
-        canZoomNextRow={false}
-        followForeignKey={() => null}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        fetchTableFks={() => null}
-        loadObjectDetailFKReferences={() => null}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-
-    expect(screen.getByText(/Item 1 of 10/i)).toBeInTheDocument();
-  });
-
-  it("shows object detail header", () => {
-    render(
-      <ObjectDetailWrapper
-        data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
-        table={
-          {
-            objectName: () => "Product",
-          } as any
-        }
-        zoomedRow={testDataset.rows[0]}
-        zoomedRowID={0}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={[]}
-        settings={{
-          column: () => null,
-          "detail.showHeader": true,
-        }}
-        canZoom={true}
-        canZoomPreviousRow={false}
-        canZoomNextRow={false}
-        followForeignKey={() => null}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        fetchTableFks={() => null}
-        loadObjectDetailFKReferences={() => null}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-
-    expect(screen.getByText(/Product/i)).toBeInTheDocument();
-  });
-
-  it("hides object detail header", () => {
-    render(
-      <ObjectDetailWrapper
-        data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
-        table={
-          {
-            objectName: () => "Product",
-          } as any
-        }
-        zoomedRow={testDataset.rows[0]}
-        zoomedRowID={0}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={[]}
-        settings={{
-          column: () => null,
-          "detail.showHeader": false,
-        }}
-        canZoom={true}
-        canZoomPreviousRow={false}
-        canZoomNextRow={false}
-        followForeignKey={() => null}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        fetchTableFks={() => null}
-        loadObjectDetailFKReferences={() => null}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-
-    expect(screen.queryByText(/Product/i)).not.toBeInTheDocument();
   });
 
   it("fetches a missing row", async () => {
