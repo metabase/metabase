@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import * as Urls from "metabase/lib/urls";
 import {
   createMockCard,
   createMockModerationReview,
@@ -57,10 +58,7 @@ describe("QuestionInfoSidebar", () => {
       const link = screen.getByText("Model details");
 
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute(
-        "href",
-        `/model/${card.id}-${card.name}/detail`,
-      );
+      expect(link).toHaveAttribute("href", Urls.modelDetail(card));
     });
 
     it("isn't shown for questions", async () => {

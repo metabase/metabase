@@ -66,6 +66,4 @@ export const setup = async ({
   });
 
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
-
-  return { onSave };
 };
