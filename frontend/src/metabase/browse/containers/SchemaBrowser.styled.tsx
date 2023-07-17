@@ -1,9 +1,11 @@
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
+import Link from "metabase/core/components/Link";
+import { GridItem } from "metabase/components/Grid";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import { GridItem } from "metabase/components/Grid";
 
 export const SchemaGridItem = styled(GridItem)`
   width: 100%;
@@ -15,4 +17,10 @@ export const SchemaGridItem = styled(GridItem)`
   ${breakpointMinMedium} {
     width: 33.33%;
   }
+`;
+
+export const SchemaLink = styled(Link)`
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+  color: ${color("accent2")};
 `;
