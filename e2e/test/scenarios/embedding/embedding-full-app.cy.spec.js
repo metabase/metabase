@@ -3,13 +3,16 @@ import {
   popover,
   appBar,
   restore,
+  setTokenFeatures,
+  describeEE,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-describe("scenarios > embedding > full app", () => {
+describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.intercept("POST", `/api/card/*/query`).as("getCardQuery");
     cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
     cy.intercept("GET", `/api/dashboard/*`).as("getDashboard");
