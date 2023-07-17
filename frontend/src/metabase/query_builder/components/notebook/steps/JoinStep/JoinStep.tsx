@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,59 +9,13 @@ import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 
 import { useJoin } from "./use-join";
+import { useJoinCondition } from "./use-join-condition";
 import { JoinConditionColumnPicker } from "./JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "./JoinConditionOperatorPicker";
 import { JoinStrategyPicker } from "./JoinStrategyPicker";
 import { JoinTablePicker } from "./JoinTablePicker";
 
 import { ConditionNotebookCell } from "./JoinStep.styled";
-
-function getConditionOperator(
-  query: Lib.Query,
-  stageIndex: number,
-  condition: Lib.JoinConditionClause,
-) {
-  const operators = Lib.joinConditionOperators(query, stageIndex);
-  const { operator } = Lib.externalOp(condition);
-  return operators.find(
-    op => Lib.displayInfo(query, stageIndex, op).shortName === operator,
-  );
-}
-
-function getDefaultJoinOperator(
-  query: Lib.Query,
-  stageIndex: number,
-  lhsColumn: Lib.ColumnMetadata | undefined,
-  rhsColumn: Lib.ColumnMetadata | undefined,
-) {
-  const operators = Lib.joinConditionOperators(
-    query,
-    stageIndex,
-    lhsColumn,
-    rhsColumn,
-  );
-  const defaultOperator = operators.find(
-    operator => Lib.displayInfo(query, stageIndex, operator).default,
-  );
-  return defaultOperator || operators[0];
-}
-
-function getInitialConditionOperator(
-  query: Lib.Query,
-  stageIndex: number,
-  condition?: Lib.JoinConditionClause,
-) {
-  if (condition) {
-    const externalOp = Lib.externalOp(condition);
-    const [lhsColumn, rhsColumn] = externalOp.args;
-    return (
-      getConditionOperator(query, stageIndex, condition) ||
-      getDefaultJoinOperator(query, stageIndex, lhsColumn, rhsColumn)
-    );
-  } else {
-    return getDefaultJoinOperator(query, stageIndex, undefined, undefined);
-  }
-}
 
 export function JoinStep({
   topLevelQuery: query,
@@ -189,62 +142,45 @@ function JoinCondition({
   color,
   onChange,
 }: JoinConditionProps) {
-  const operators = Lib.joinConditionOperators(query, stageIndex);
-  const lhsColumns = Lib.joinConditionLHSColumns(query, stageIndex);
-  const rhsColumns = Lib.joinConditionRHSColumns(query, stageIndex, table);
+  const {
+    lhsColumn,
+    rhsColumn,
+    operator,
+    operators,
+    lhsColumns,
+    rhsColumns,
+    setOperator,
+    setLHSColumn,
+    setRHSColumn,
+  } = useJoinCondition(query, stageIndex, table, condition);
 
-  const externalOp = condition ? Lib.externalOp(condition) : undefined;
-  const [initialLHSColumn, initialRHSColumn] = externalOp?.args || [];
+  const lhsColumnGroup = Lib.groupColumns(lhsColumns);
+  const rhsColumnGroup = Lib.groupColumns(rhsColumns);
 
-  const [lhsColumn, setLHSColumn] = useState<Lib.ColumnMetadata | undefined>(
-    initialLHSColumn,
-  );
-  const [rhsColumn, setRHSColumn] = useState<Lib.ColumnMetadata | undefined>(
-    initialRHSColumn,
-  );
-  const [operator, setOperator] = useState<Lib.FilterOperator | undefined>(
-    getInitialConditionOperator(query, stageIndex, condition),
-  );
-
-  const submitConditionIfValid = ({
-    nextOperator = operator,
-    nextLHSColumn = lhsColumn,
-    nextRHSColumn = rhsColumn,
-  }: {
-    nextOperator?: Lib.FilterOperator;
-    nextLHSColumn?: Lib.ColumnMetadata;
-    nextRHSColumn?: Lib.ColumnMetadata;
-  } = {}) => {
-    if (nextOperator && nextLHSColumn && nextRHSColumn) {
-      const condition = Lib.joinConditionClause(
-        nextOperator,
-        nextLHSColumn,
-        nextRHSColumn,
-      );
-      onChange(condition);
+  const handleOperatorChange = (operator: Lib.FilterOperator) => {
+    const nextCondition = setOperator(operator);
+    if (nextCondition) {
+      onChange(nextCondition);
     }
   };
 
   const handleLHSColumnChange = (lhsColumn?: Lib.ColumnMetadata) => {
-    setLHSColumn(lhsColumn);
-    submitConditionIfValid({ nextLHSColumn: lhsColumn });
-  };
-
-  const handleRHSColumnChange = (rhsColumn?: Lib.ColumnMetadata) => {
-    setRHSColumn(rhsColumn);
-    submitConditionIfValid({ nextRHSColumn: rhsColumn });
-  };
-
-  const handleOperatorChange = (operator?: Lib.FilterOperator) => {
-    setOperator(operator);
-    submitConditionIfValid({ nextOperator: operator });
+    const nextCondition = setLHSColumn(lhsColumn);
+    if (nextCondition) {
+      onChange(nextCondition);
+    }
   };
 
   const handleLHSColumnRemove = () => handleLHSColumnChange(undefined);
-  const handleRHSColumnRemove = () => handleRHSColumnChange(undefined);
 
-  const lhsColumnGroup = Lib.groupColumns(lhsColumns);
-  const rhsColumnGroup = Lib.groupColumns(rhsColumns);
+  const handleRHSColumnChange = (rhsColumn?: Lib.ColumnMetadata) => {
+    const nextCondition = setRHSColumn(rhsColumn);
+    if (nextCondition) {
+      onChange(nextCondition);
+    }
+  };
+
+  const handleRHSColumnRemove = () => handleRHSColumnChange(undefined);
 
   return (
     <Flex gap="6px" align="center">
