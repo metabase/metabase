@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { usePrevious } from "react-use";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,20 +9,13 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 
+import { useJoin } from "./use-join";
 import { JoinConditionColumnPicker } from "./JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "./JoinConditionOperatorPicker";
 import { JoinStrategyPicker } from "./JoinStrategyPicker";
 import { JoinTablePicker } from "./JoinTablePicker";
 
 import { ConditionNotebookCell } from "./JoinStep.styled";
-
-function getDefaultJoinStrategy(query: Lib.Query, stageIndex: number) {
-  const strategies = Lib.availableJoinStrategies(query, stageIndex);
-  const defaultStrategy = strategies.find(
-    strategy => Lib.displayInfo(query, stageIndex, strategy).default,
-  );
-  return defaultStrategy || strategies[0];
-}
 
 function getConditionOperator(
   query: Lib.Query,
@@ -83,25 +75,16 @@ export function JoinStep({
 
   const joins = Lib.joins(query, stageIndex);
   const join = typeof itemIndex === "number" ? joins[itemIndex] : undefined;
-  const previousJoin = usePrevious(join);
 
-  const [strategy, setStrategy] = useState<Lib.JoinStrategy>(
-    join ? Lib.joinStrategy(join) : getDefaultJoinStrategy(query, stageIndex),
-  );
-  const [table, setTable] = useState(
-    join ? Lib.joinedThing(query, join) : undefined,
-  );
-  const [conditions, setConditions] = useState<Lib.JoinConditionClause[]>(
-    join ? Lib.joinConditions(join) : [],
-  );
-
-  useEffect(() => {
-    if (join && previousJoin !== join) {
-      setStrategy(Lib.joinStrategy(join));
-      setTable(Lib.joinedThing(query, join));
-      setConditions(Lib.joinConditions(join));
-    }
-  }, [query, join, previousJoin]);
+  const {
+    strategy,
+    table,
+    conditions,
+    setStrategy,
+    setTable,
+    addCondition,
+    updateCondition,
+  } = useJoin(query, stageIndex, join);
 
   const handleStrategyChange = (nextStrategy: Lib.JoinStrategy) => {
     setStrategy(nextStrategy);
@@ -113,15 +96,8 @@ export function JoinStep({
   };
 
   const handleAddCondition = (condition: Lib.JoinConditionClause) => {
-    const nextConditions = [...conditions, condition];
-    setConditions([...nextConditions, condition]);
-
-    if (table) {
-      let nextJoin = Lib.joinClause(table, nextConditions);
-      nextJoin = Lib.withJoinFields(nextJoin, "all");
-      nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
-
-      const nextQuery = Lib.join(query, stageIndex, nextJoin);
+    const nextQuery = addCondition(condition);
+    if (nextQuery) {
       updateQuery(nextQuery);
     }
   };
@@ -130,18 +106,10 @@ export function JoinStep({
     conditionIndex: number,
     nextCondition: Lib.JoinConditionClause,
   ) => {
-    const currentCondition = conditions[conditionIndex];
-    const nextConditions = [...conditions];
-    nextConditions[conditionIndex] = nextCondition;
-    setConditions(nextConditions);
-
-    const nextQuery = Lib.replaceClause(
-      query,
-      stageIndex,
-      currentCondition,
-      nextCondition,
-    );
-    updateQuery(nextQuery);
+    const nextQuery = updateCondition(conditionIndex, nextCondition);
+    if (nextQuery) {
+      updateQuery(nextQuery);
+    }
   };
 
   // [undefined] is a special case to render a single empty condition for new joins
