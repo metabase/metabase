@@ -34,15 +34,14 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.io ByteArrayInputStream)
-   (java.util UUID)))
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn- shared-obj []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 (defn- native-query-with-template-tag []
@@ -133,7 +132,7 @@
       ;; endpoints in [[metabase.server.middleware.exceptions/genericize-exceptions]]
       (testing "should return 400 if Card doesn't exist"
         (is (= "Not found."
-               (client/client :get 404 (str "public/card/" (UUID/randomUUID))))))
+               (client/client :get 404 (str "public/card/" (random-uuid))))))
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
@@ -186,7 +185,7 @@
 (deftest check-that-we-get-a-404-if-the-publiccard-doesn-t-exist-query
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (is (= "Not found."
-           (client/client :get 404 (str "public/card/" (UUID/randomUUID) "/query"))))))
+           (client/client :get 404 (str "public/card/" (random-uuid) "/query"))))))
 
 (deftest check-that-we--cannot--execute-a-publiccard-if-the-card-has-been-archived
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -379,7 +378,7 @@
     (testing "Should get a 400 if the Dashboard doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (is (= "Not found."
-               (client/client :get 404 (str "public/dashboard/" (UUID/randomUUID)))))))))
+               (client/client :get 404 (str "public/dashboard/" (random-uuid)))))))))
 
 (defn- fetch-public-dashboard [{uuid :public_uuid}]
   (-> (client/client :get 200 (str "public/dashboard/" uuid))
@@ -418,7 +417,7 @@
                                                                                             :hidden false}
                                                                                    "price" {:id     "price"
                                                                                             :hidden true}}}}]
-            (let [dashboard-uuid (str (UUID/randomUUID))]
+            (let [dashboard-uuid (str (random-uuid))]
               (mt/with-temp* [Dashboard [{dashboard-id :id} {:public_uuid dashboard-uuid}]
                               DashboardCard [dashcard {:dashboard_id dashboard-id
                                                        :action_id    action-id
@@ -481,7 +480,7 @@
         (with-temp-public-dashboard-and-card [dash card dashcard]
           (testing "if the Dashboard doesn't exist"
             (is (= "Not found."
-                   (client/client :get 404 (dashcard-url {:public_uuid (UUID/randomUUID)} card dashcard)))))
+                   (client/client :get 404 (dashcard-url {:public_uuid (random-uuid)} card dashcard)))))
 
           (testing "if the Card doesn't exist"
             (is (= "Not found."
@@ -918,7 +917,7 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (testing "should return 404 if Action doesn't exist"
           (is (= "Not found."
-                 (client/client :get 404 (str "public/action/" (UUID/randomUUID))))))
+                 (client/client :get 404 (str "public/action/" (random-uuid))))))
         (let [action-opts (assoc-in (shared-obj) [:visualization_settings :fields] {"id" {:id "id"
                                                                                           :hidden true}
                                                                                     "name" {:id "name"
@@ -1215,7 +1214,7 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (testing "with dashboard"
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-        (let [uuid (str (UUID/randomUUID))]
+        (let [uuid (str (random-uuid))]
           (is (= 1
                  (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
           (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
@@ -1316,7 +1315,7 @@
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (testing "with dashboard"
           (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-            (let [uuid (str (UUID/randomUUID))]
+            (let [uuid (str (random-uuid))]
               (is (= 1
                      (t2/update! Dashboard (u/the-id dashboard) {:public_uuid uuid})))
               (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
@@ -1332,7 +1331,7 @@
 
         (testing "with card"
           (api.card-test/with-card-param-values-fixtures [{:keys [card param-keys]}]
-            (let [uuid (str (UUID/randomUUID))]
+            (let [uuid (str (random-uuid))]
              (is (= 1
                     (t2/update! Card (u/the-id card) {:public_uuid uuid})))
              (testing "GET /api/public/card/:uuid/params/:param-key/values"
@@ -1522,14 +1521,14 @@
               (is (= "Not found."
                      (client/client
                       :post 404
-                      (format "public/action/%s/execute" (str (UUID/randomUUID)))
+                      (format "public/action/%s/execute" (str (random-uuid)))
                       {:parameters {:id 1 :name "European"}})))))
           (mt/with-actions [{} action-opts]
             (testing "Check that we get a 400 if the action doesn't exist"
               (is (= "Not found."
                      (client/client
                       :post 404
-                      (format "public/action/%s/execute" (str (UUID/randomUUID)))
+                      (format "public/action/%s/execute" (str (random-uuid)))
                       {:parameters {:id 1 :name "European"}}))))
             (testing "Check that we get a 400 if sharing is disabled."
               (mt/with-temporary-setting-values [enable-public-sharing false]

@@ -1,67 +1,11 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { Engine, Settings } from "metabase-types/api";
+import { createMockState } from "metabase-types/store/mocks";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
+import { DatabaseForm } from "../DatabaseForm";
 
-import type { Engine } from "metabase-types/api";
-
-import DatabaseForm from "./DatabaseForm";
-
-interface SetupResult {
-  onSubmit: () => void;
-}
-
-function setup(): SetupResult {
-  const onSubmit = jest.fn();
-  render(<DatabaseForm engines={ENGINES} isAdvanced onSubmit={onSubmit} />);
-
-  return { onSubmit };
-}
-
-describe("DatabaseForm", () => {
-  it("should submit default values", async () => {
-    const { onSubmit } = setup();
-
-    const expectedDatabaseName = "My H2 Database";
-    const expectedConnectionString = "file:/somewhere";
-    userEvent.type(screen.getByLabelText("Display name"), expectedDatabaseName);
-    userEvent.type(
-      screen.getByLabelText("Connection String"),
-      expectedConnectionString,
-    );
-
-    const saveButton = screen.getByRole("button", { name: "Save" });
-    await waitFor(() => {
-      expect(saveButton).toBeEnabled();
-    });
-    userEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({
-        ...EXPECTED_DEFAULT_SCHEMA,
-        engine: "h2",
-        name: expectedDatabaseName,
-        details: {
-          "advanced-options": false,
-          db: expectedConnectionString,
-        },
-      });
-    });
-  });
-});
-
-const EXPECTED_DEFAULT_SCHEMA = {
-  schedules: {
-    metadata_sync: undefined,
-    cache_field_values: undefined,
-  },
-  auto_run_queries: true,
-  refingerprint: false,
-  cache_ttl: null,
-  is_sample: false,
-  is_full_sync: true,
-  is_on_demand: false,
-};
-
-const ENGINES: Record<string, Engine> = {
+const TEST_ENGINES: Record<string, Engine> = {
   h2: {
     source: {
       type: "official",
@@ -136,4 +80,35 @@ const ENGINES: Record<string, Engine> = {
     "driver-name": "H2",
     "superseded-by": null,
   },
+};
+
+export interface SetupOpts {
+  settings?: Settings;
+  isCachingEnabled?: boolean;
+  hasEnterprisePlugins?: boolean;
+}
+
+export const setup = ({
+  settings,
+  isCachingEnabled,
+  hasEnterprisePlugins,
+}: SetupOpts = {}) => {
+  const state = createMockState({
+    settings: mockSettings({
+      ...settings,
+      engines: TEST_ENGINES,
+      "enable-query-caching": isCachingEnabled,
+    }),
+  });
+
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
+
+  const onSubmit = jest.fn();
+  renderWithProviders(<DatabaseForm isAdvanced onSubmit={onSubmit} />, {
+    storeInitialState: state,
+  });
+
+  return { onSubmit };
 };

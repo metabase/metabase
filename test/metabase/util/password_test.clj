@@ -97,7 +97,7 @@
 (deftest ^:parallel hash-bcrypt-tests
   ;; these functions were copied from cemerick/friend and just call out to org.mindrot.jbcrypt.BCrypt so these tests
   ;; are a bit perfunctory
-  (let [salt (str (java.util.UUID/randomUUID))
+  (let [salt (str (random-uuid))
         password (str salt "some-secure-password")
         hashed   (u.password/hash-bcrypt password)]
     (is (not= password hashed))
