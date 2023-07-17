@@ -248,15 +248,15 @@
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."
   [feature-name]
-  (ex-info (tru "{0} is an Enterprise feature. Please upgrade to a paid plan to use this feature." (str/capitalize feature-name))
+  (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                (str/capitalize feature-name))
            {:status-code 402}))
 
 (mu/defn assert-has-feature
-  "Check if an token with `feature` is present. If not, throw an error.
+  "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`, which must be a localized string.
 
   (assert-has-feature :sandboxes (tru \"Sandboxing\"))
-
-  => throw an error with message \"Sandboxing is an enterprise feature. Please upgrade to a paid plan to use this feature.\""
+  => throws an error with a message using \"Sandboxing\" as the feature name."
   [feature-flag :- keyword?
    feature-name :- mu/localized-string-schema]
   (when-not (has-feature? feature-flag)
