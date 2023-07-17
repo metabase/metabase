@@ -203,7 +203,6 @@ export const PLUGIN_MODERATION = {
 
 export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
-  databaseCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (question?: any) => null,
   QuestionCacheSection: PluginPlaceholder,

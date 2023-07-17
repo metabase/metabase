@@ -11,7 +11,7 @@ import { QuestionActivityTimeline } from "metabase/query_builder/components/Ques
 
 import Question from "metabase-lib/Question";
 
-import ModelCacheManagementSection from "./ModelCacheManagementSection";
+import ModelCacheManagementSection from "../ModelCacheManagementSection";
 import {
   Root,
   ContentSection,
