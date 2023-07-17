@@ -8,7 +8,7 @@ import { QueryColumnPickerProps } from "metabase/common/components/QueryColumnPi
 
 import * as Lib from "metabase-lib";
 
-import { NotebookCellItem } from "../../NotebookCell";
+import { NotebookCellItem } from "../../../NotebookCell";
 import {
   StyledQueryColumnPicker,
   RemoveIcon,

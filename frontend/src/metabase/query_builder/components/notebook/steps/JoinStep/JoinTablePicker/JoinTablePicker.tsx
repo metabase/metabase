@@ -4,7 +4,7 @@ import * as Lib from "metabase-lib";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 
-import { NotebookCellItem } from "../../NotebookCell";
+import { NotebookCellItem } from "../../../NotebookCell";
 import { PickerButton } from "./JoinTablePicker.styled";
 
 interface JoinTablePickerProps {
