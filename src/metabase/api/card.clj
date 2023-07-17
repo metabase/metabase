@@ -66,8 +66,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
-   (java.io File)
-   (java.util UUID)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -987,7 +986,7 @@ saved later when it is ready."
   (api/check-not-archived (api/read-check Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [Card :public_uuid] :id card-id)]
     {:uuid (or existing-public-uuid
-               (u/prog1 (str (UUID/randomUUID))
+               (u/prog1 (str (random-uuid))
                  (t2/update! Card card-id
                              {:public_uuid       <>
                               :made_public_by_id api/*current-user-id*})))}))

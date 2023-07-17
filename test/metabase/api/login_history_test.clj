@@ -27,7 +27,7 @@
 
 (deftest login-history-test
   (testing "GET /api/login-history/current"
-    (let [session-id (str (java.util.UUID/randomUUID))
+    (let [session-id (str (random-uuid))
           device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"]
       (t2.with-temp/with-temp [User         user {}
                                Session      _    {:id session-id, :user_id (u/the-id user)}

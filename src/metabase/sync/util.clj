@@ -74,7 +74,7 @@
 
 (defn- with-sync-events
   "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a
-  DATABASE-ID. F is executed between the logging of the two events."
+  `database-id`. `f` is executed between the logging of the two events."
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
   ([event-name-prefix database-or-id f]
    (with-sync-events
@@ -85,7 +85,7 @@
   ([begin-event-name end-event-name database-or-id f]
    (fn []
      (let [start-time    (System/nanoTime)
-           tracking-hash (str (java.util.UUID/randomUUID))]
+           tracking-hash (str (random-uuid))]
        (events/publish-event! begin-event-name {:database_id (u/the-id database-or-id), :custom_id tracking-hash})
        (let [return        (f)
              total-time-ms (int (/ (- (System/nanoTime) start-time)

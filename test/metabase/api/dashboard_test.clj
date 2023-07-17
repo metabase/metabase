@@ -52,9 +52,7 @@
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -2212,7 +2210,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- shared-dashboard []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 ;;; -------------------------------------- POST /api/dashboard/:id/public_link ---------------------------------------

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
@@ -17,53 +17,52 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Tables from "metabase/entities/tables";
 import {
-  loadObjectDetailFKReferences,
-  followForeignKey,
-  viewPreviousObjectDetail,
-  viewNextObjectDetail,
   closeObjectDetail,
+  followForeignKey,
+  loadObjectDetailFKReferences,
+  viewNextObjectDetail,
+  viewPreviousObjectDetail,
 } from "metabase/query_builder/actions";
 import {
-  getQuestion,
-  getTableMetadata,
-  getTableForeignKeys,
-  getTableForeignKeyReferences,
-  getZoomRow,
-  getZoomedObjectId,
-  getCanZoomPreviousRow,
   getCanZoomNextRow,
+  getCanZoomPreviousRow,
+  getQuestion,
+  getTableForeignKeyReferences,
+  getTableForeignKeys,
+  getTableMetadata,
+  getZoomedObjectId,
+  getZoomRow,
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 
 import { MetabaseApi } from "metabase/services";
+import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
 import ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type {
+  ObjectDetailProps,
   ObjectId,
   OnVisualizationClickType,
-  ObjectDetailProps,
 } from "./types";
 
 import {
-  getObjectName,
   getDisplayId,
   getIdValue,
-  getSingleResultsRow,
+  getObjectName,
   getSinglePKIndex,
+  getSingleResultsRow,
 } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
-  RootModal,
-  ObjectDetailContainer,
-  ObjectDetailHeaderWrapper,
-  ObjectDetailBodyWrapper,
-  ObjectIdLabel,
   CloseButton,
   ErrorWrapper,
-  PaginationFooter,
+  ObjectDetailBodyWrapper,
+  ObjectDetailContainer,
+  ObjectDetailHeaderWrapper,
   ObjectDetailWrapperDiv,
+  ObjectIdLabel,
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
@@ -347,70 +346,6 @@ export function ObjectDetailView({
         </ObjectDetailWrapperDiv>
       )}
     </ObjectDetailContainer>
-  );
-}
-
-export function ObjectDetailWrapper({
-  question,
-  isDataApp,
-  data,
-  closeObjectDetail,
-  card,
-  dashcard,
-  isObjectDetail,
-  ...props
-}: ObjectDetailProps) {
-  const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
-
-  // only show modal if this object detail was triggered via an object detail zoom action
-  const shouldShowModal = isObjectDetail;
-
-  if (shouldShowModal) {
-    return (
-      <RootModal
-        isOpen
-        full={false}
-        onClose={closeObjectDetail}
-        className={""} // need an empty className to override the Modal default width
-      >
-        <ObjectDetailView
-          {...props}
-          showHeader
-          data={data}
-          question={question}
-          closeObjectDetail={closeObjectDetail}
-        />
-      </RootModal>
-    );
-  }
-
-  const hasPagination = data?.rows?.length > 1;
-
-  return (
-    <>
-      <ObjectDetailView
-        {...props}
-        zoomedRow={data.rows[currentObjectIndex]}
-        data={data}
-        question={question}
-        showHeader={props.settings["detail.showHeader"]}
-        showActions={false}
-        showRelations={false}
-        closeObjectDetail={closeObjectDetail}
-        isDataApp={isDataApp}
-      />
-      {hasPagination && (
-        <PaginationFooter
-          data-testid="pagination-footer"
-          start={currentObjectIndex}
-          end={currentObjectIndex}
-          total={data.rows.length}
-          onNextPage={() => setCurrentObjectIndex(prev => prev + 1)}
-          onPreviousPage={() => setCurrentObjectIndex(prev => prev - 1)}
-          singleItem
-        />
-      )}
-    </>
   );
 }
 
