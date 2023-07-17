@@ -1,5 +1,5 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet
-  (:require 
+  (:require
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util.honey-sql-2 :as h2x]))
 
