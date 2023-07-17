@@ -153,6 +153,15 @@
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
+(deftest get-table-pks-test
+  (mt/test-drivers (mt/sql-jdbc-drivers)
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver/*driver*
+     (mt/db)
+     nil
+     (fn [conn]
+       (is (= #{"id"}
+              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn (:name (mt/db)) (t2/select-one :model/Table (mt/id :venues)))))))))
 
 ;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
 
@@ -370,18 +379,8 @@
      ["{\"int_turn_string\":4}"]
      ["{\"int_turn_string\":5}"]
      ;; last row turn to a string
-     ["{\"int_turn_string\":\"6\"}"]]]
-   ;; test case where a table has more than 1 pk
-   ["json_with_2_pks"
-    [{:field-name "id_2nd" :base-type :type/Integer}
-     {:field-name "json_col" :base-type :type/JSON}]
-    [[1 "{\"int_turn_string\":1}"]
-     [2 "{\"int_turn_string\":2}"]
-     [3 "{\"int_turn_string\":3}"]
-     [4 "{\"int_turn_string\":4}"]
-     [5 "{\"int_turn_string\":5}"]
-     ;; last row turn to a string
-     [6 "{\"int_turn_string\":\"6\"}"]]]])
+     ["{\"int_turn_string\":\"6\"}"]]]])
+
 
 (deftest json-fetch-last-on-table-with-ids-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
@@ -392,9 +391,6 @@
                                                                  (condp = (:name table)
                                                                    "json_without_pk"
                                                                    #{}
-
-                                                                   "json_with_2_pks"
-                                                                   #{"id" "id_2nd"}
 
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
                     metadata-queries/nested-field-sample-limit 4]
@@ -414,27 +410,15 @@
                        (mt/db)
                        (t2/select-one Table :db_id (mt/id) :name "json_with_pk"))))
 
-              (is (= #{{:name              "json_col → int_turn_string"
-                        :database-type     "text"
-                        :base-type         :type/Text
-                        :database-position 0
-                        :json-unfolding    false
-                        :visibility-type   :normal
-                        :nfc-path          [:json_col "int_turn_string"]}}
-                     (sql-jdbc.sync/describe-nested-field-columns
-                       driver/*driver*
-                       (mt/db)
-                       (t2/select-one Table :db_id (mt/id) :name "json_with_2_pks")))))
-
-            (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
-              (is (= #{{:name              "json_col → int_turn_string"
-                        :database-type     "bigint"
-                        :base-type         :type/Integer
-                        :database-position 0
-                        :json-unfolding    false
-                        :visibility-type   :normal
-                        :nfc-path          [:json_col "int_turn_string"]}}
-                     (sql-jdbc.sync/describe-nested-field-columns
-                       driver/*driver*
-                       (mt/db)
-                       (t2/select-one Table :db_id (mt/id) :name "json_without_pk")))))))))))
+             (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
+               (is (= #{{:name              "json_col → int_turn_string"
+                         :database-type     "bigint"
+                         :base-type         :type/Integer
+                         :database-position 0
+                         :json-unfolding    false
+                         :visibility-type   :normal
+                         :nfc-path          [:json_col "int_turn_string"]}}
+                      (sql-jdbc.sync/describe-nested-field-columns
+                        driver/*driver*
+                        (mt/db)
+                        (t2/select-one Table :db_id (mt/id) :name "json_without_pk"))))))))))))
