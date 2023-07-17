@@ -147,6 +147,7 @@ export interface TokenFeatures {
   sandboxes: boolean;
   sso: boolean;
   whitelabel: boolean;
+  dashboard_subscription_filters: boolean;
 }
 
 export type PasswordComplexity = {
