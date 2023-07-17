@@ -171,6 +171,7 @@
    join-condition-rhs-columns
    join-conditions
    join-fields
+   join-lhs-display-name
    join-strategy
    joinable-columns
    joins
