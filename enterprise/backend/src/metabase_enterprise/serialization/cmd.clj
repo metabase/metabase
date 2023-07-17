@@ -49,7 +49,7 @@
 
 (defn- check-premium-token! []
   (when-not (premium-features/has-feature? :serialization)
-    (throw (Exception. (trs "Serialization requires a premium token with the serialization feature.")))))
+    (throw (Exception. (trs "The serialization feature is not enabled on your Metabase plan.")))))
 
 (s/defn v1-load
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."
@@ -96,14 +96,6 @@
   (log/info (trs "Loading serialized Metabase files from {0}" path))
   (serdes/with-cache
     (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts)))
-
-(mu/defn v2-load-no-token-check
-  "SerDes v2 load entry point.
-
-   opts are passed to load-metabase"
-  [path
-   opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
-  (v2-load-internal path opts false))
 
 (mu/defn v2-load
   "SerDes v2 load entry point.
