@@ -366,7 +366,7 @@
                                                                                            ::add/source-alias  "MaxPrice"
                                                                                            ::add/desired-alias "CategoriesStats__MaxPrice"
                                                                                            ::add/position      8}]
-                                                                       [:field "AvgPrice" {:base-type          :type/Float
+                                                                       [:field "AvgPrice" {:base-type          :type/Integer
                                                                                            :join-alias         "CategoriesStats"
                                                                                            ::add/source-table  "CategoriesStats"
                                                                                            ::add/source-alias  "AvgPrice"
@@ -426,7 +426,7 @@
                                                                            ::add/source-alias  "MaxPrice"
                                                                            ::add/desired-alias "CategoriesStats__MaxPrice"
                                                                            ::add/position      8}]
-                                                       [:field "AvgPrice" {:base-type          :type/Float
+                                                       [:field "AvgPrice" {:base-type          :type/Integer
                                                                            :join-alias         "CategoriesStats"
                                                                            ::add/source-table  "CategoriesStats"
                                                                            ::add/source-alias  "AvgPrice"
