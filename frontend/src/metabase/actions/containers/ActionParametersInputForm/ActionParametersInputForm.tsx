@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,12 +10,12 @@ import ActionForm from "metabase/actions/components/ActionForm";
 import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
-  WritebackParameter,
-  OnSubmitActionForm,
-  Dashboard,
   ActionDashboardCard,
+  Dashboard,
+  OnSubmitActionForm,
   ParametersForActionExecution,
   WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 export interface ActionParametersInputFormProps {
