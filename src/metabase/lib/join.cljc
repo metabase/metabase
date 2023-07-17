@@ -243,11 +243,12 @@
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([joinable]
-   ;; FIXME -- we should add `:fields :all` by default, but blocked by #32026
    (join-clause-method joinable))
 
   ([joinable conditions]
-   (with-join-conditions (join-clause joinable) conditions)))
+   (-> (join-clause joinable)
+       (u/assoc-default :fields :all)
+       (with-join-conditions conditions))))
 
 (mu/defn with-join-fields :- PartialJoin
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of

@@ -44,7 +44,8 @@
                                                       [:field
                                                        {:lib/uuid string?
                                                         :join-alias "Categories"}
-                                                       (meta/id :categories :id)]]]}]}]}
+                                                       (meta/id :categories :id)]]]
+                                       :fields      :all}]}]}
           (let [q (lib/query meta/metadata-provider (meta/table-metadata :venues))
                 j (lib/query meta/metadata-provider (meta/table-metadata :categories))]
             (lib/join q (lib/join-clause j [{:lib/type :lib/external-op
