@@ -4,7 +4,7 @@
             [metabase.config :as config]
             [metabase.db.env :as mdb.env]
             [metabase.models.database :refer [Database]]
-            [metabase.public-settings.premium-features :refer [defenterprise] :as premium-features]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
             [metabase.util.log :as log]

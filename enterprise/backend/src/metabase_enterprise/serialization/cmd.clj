@@ -78,10 +78,10 @@
         (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
         (throw e)))))
 
-(mu/defn ^:private v2-load-internal
-  "SerDes v2 load entry point.
+(mu/defn v2-load-internal
+  "SerDes v2 load entry point for internal users.
 
-  opts are passed to load-metabase"
+  `opts` are passed to [[v2.load/load-metabase]]."
   [path
    opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
