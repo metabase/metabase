@@ -15,9 +15,7 @@ describe("DatabaseForm", () => {
     );
 
     const saveButton = screen.getByRole("button", { name: "Save" });
-    await waitFor(() => {
-      expect(saveButton).toBeEnabled();
-    });
+    await waitFor(() => expect(saveButton).toBeEnabled());
 
     userEvent.click(saveButton);
     await waitFor(() => {
