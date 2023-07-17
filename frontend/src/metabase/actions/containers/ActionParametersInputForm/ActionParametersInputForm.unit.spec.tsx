@@ -54,7 +54,7 @@ const defaultProps: ActionParametersInputFormProps = {
   mappedParameters: [],
   dashboard: createMockDashboard({ id: 123 }),
   dashcard: createMockActionDashboardCard({ id: 456, action: mockAction }),
-  dashcardParamValues: {},
+  initialValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
   onSubmit: jest.fn().mockResolvedValue({ success: true }),
@@ -174,7 +174,7 @@ describe("Actions > ActionParametersInputForm", () => {
         parameters: [idParameter, parameter1, parameter2],
       }),
       mappedParameters: [idParameter],
-      dashcardParamValues: {
+      initialValues: {
         id: 888,
       },
     });
@@ -194,7 +194,7 @@ describe("Actions > ActionParametersInputForm", () => {
         type: "implicit",
         kind: "row/update",
       }),
-      dashcardParamValues: {},
+      initialValues: {},
     });
 
     expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
@@ -220,7 +220,7 @@ describe("Actions > ActionParametersInputForm", () => {
         type: "implicit",
         kind: "row/update",
       }),
-      dashcardParamValues: {
+      initialValues: {
         id: 888,
       },
     });

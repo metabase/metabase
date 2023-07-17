@@ -28,7 +28,7 @@ interface ActionFormProps {
   dashboard: Dashboard;
   missingParameters?: WritebackParameter[];
   mappedParameters?: WritebackParameter[];
-  dashcardParamValues: ParametersForActionExecution;
+  initialValues: ParametersForActionExecution;
   settings: VisualizationSettings;
   isSettings: boolean;
   shouldDisplayButton: boolean;
@@ -46,7 +46,7 @@ function ActionVizForm({
   settings,
   missingParameters = [],
   mappedParameters = [],
-  dashcardParamValues,
+  initialValues,
   isSettings,
   shouldDisplayButton,
   isEditingDashcard,
@@ -98,7 +98,7 @@ function ActionVizForm({
             dashboard={dashboard}
             dashcard={dashcard}
             mappedParameters={mappedParameters}
-            dashcardParamValues={dashcardParamValues}
+            initialValues={initialValues}
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
@@ -137,7 +137,7 @@ function ActionVizForm({
         dashboard={dashboard}
         dashcard={dashcard}
         mappedParameters={mappedParameters}
-        dashcardParamValues={dashcardParamValues}
+        initialValues={initialValues}
         onSubmit={onSubmit}
       />
     </FormWrapper>

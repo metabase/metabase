@@ -23,7 +23,7 @@ export interface ActionParametersInputFormProps {
   dashboard?: Dashboard;
   dashcard?: ActionDashboardCard;
   mappedParameters?: WritebackParameter[];
-  dashcardParamValues?: ParametersForActionExecution;
+  initialValues?: ParametersForActionExecution;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
@@ -35,7 +35,7 @@ const shouldPrefetchValues = (action: WritebackAction) =>
 function ActionParametersInputForm({
   action,
   mappedParameters = [],
-  dashcardParamValues = {},
+  initialValues = {},
   dashboard,
   dashcard,
   onCancel,
@@ -52,11 +52,8 @@ function ActionParametersInputForm({
   );
 
   const values = useMemo(
-    () => ({
-      ...prefetchedValues,
-      ...dashcardParamValues,
-    }),
-    [prefetchedValues, dashcardParamValues],
+    () => ({ ...prefetchedValues, ...initialValues }),
+    [prefetchedValues, initialValues],
   );
 
   const hiddenFields = useMemo(() => {
@@ -80,16 +77,16 @@ function ActionParametersInputForm({
     const fetchedValues = await prefetchEndpoint({
       dashboardId: dashboard?.id,
       dashcardId: dashcard?.id,
-      parameters: JSON.stringify(dashcardParamValues),
+      parameters: JSON.stringify(initialValues),
     }).catch(_.noop);
 
     if (fetchedValues) {
       setPrefetchedValues(fetchedValues);
     }
-  }, [dashboard?.id, dashcard?.id, dashcardParamValues]);
+  }, [dashboard?.id, dashcard?.id, initialValues]);
 
   useEffect(() => {
-    const hasValueFromDashboard = Object.keys(dashcardParamValues).length > 0;
+    const hasValueFromDashboard = Object.keys(initialValues).length > 0;
     const canPrefetch = hasValueFromDashboard && dashboard && dashcard;
 
     if (shouldPrefetch && !hasPrefetchedValues) {
@@ -101,7 +98,7 @@ function ActionParametersInputForm({
     hasPrefetchedValues,
     dashboard,
     dashcard,
-    dashcardParamValues,
+    initialValues,
     fetchInitialValues,
   ]);
 
@@ -127,7 +124,7 @@ function ActionParametersInputForm({
   return (
     <ActionForm
       action={action}
-      values={values}
+      initialValues={values}
       hiddenFields={hiddenFields}
       onSubmit={handleSubmit}
       onClose={onCancel}
