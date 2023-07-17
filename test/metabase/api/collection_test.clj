@@ -850,7 +850,7 @@
 
        (testing "Snippets in nested collections should be returned as a flat list on OSS"
         (premium-features-test/with-premium-features #{}
-          (mt/with-temp* [Collection         [sub-collection {:namespace "snippets"
+          (t2.with-temp/with-temp [:model/Collection         [sub-collection {:namespace "snippets"
                                                               :name      "Nested Snippet Collection"
                                                               :location  (collection/location-path collection)}]
                           NativeQuerySnippet [sub-snippet {:collection_id (:id sub-collection)
