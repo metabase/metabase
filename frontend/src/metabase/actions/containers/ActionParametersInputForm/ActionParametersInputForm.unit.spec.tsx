@@ -64,7 +64,7 @@ const defaultProps: ActionParametersInputFormProps = {
       dashboardId: dashboard.id,
       dashcardId: dashcard.id,
       parameters: JSON.stringify({}),
-    }),
+    }).catch(_.noop),
   initialValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
