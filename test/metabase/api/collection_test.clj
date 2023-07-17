@@ -855,7 +855,7 @@
                                                               :location  (collection/location-path collection)}]
                           NativeQuerySnippet [sub-snippet {:collection_id (:id sub-collection)
                                                            :name          "Nested Snippet"}]]
-            (is (partial=
+            (is (=?
                  [{:id (:id snippet), :name "My Snippet"}
                   {:id (:id sub-snippet), :name "Nested Snippet"}]
                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
