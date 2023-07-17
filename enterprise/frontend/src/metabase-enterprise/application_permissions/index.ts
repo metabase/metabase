@@ -20,7 +20,7 @@ if (hasPremiumFeature("advanced_permissions")) {
 
   PLUGIN_APPLICATION_PERMISSIONS.getRoutes = getRoutes;
   PLUGIN_APPLICATION_PERMISSIONS.tabs = [
-    { name: t`Application`, value: `application` },
+    { name: t`Application`, value: "application" },
   ];
 
   PLUGIN_APPLICATION_PERMISSIONS.selectors = {

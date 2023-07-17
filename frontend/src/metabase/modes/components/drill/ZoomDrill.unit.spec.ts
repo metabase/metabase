@@ -109,7 +109,7 @@ describe("ZoomDrill", () => {
       expect(actions).toHaveLength(1);
 
       const action = actions[0];
-      expect(action.title).toBe(`Zoom in`);
+      expect(action.title).toBe("Zoom in");
     });
   });
 });

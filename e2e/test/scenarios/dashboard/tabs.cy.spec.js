@@ -92,12 +92,12 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.intercept(
       "POST",
-      `/api/dashboard/1/dashcard/1/card/1/query`,
+      "/api/dashboard/1/dashcard/1/card/1/query",
       cy.spy().as("firstTabQuery"),
     );
     cy.intercept(
       "POST",
-      `/api/dashboard/1/dashcard/2/card/2/query`,
+      "/api/dashboard/1/dashcard/2/card/2/query",
       cy.spy().as("secondTabQuery"),
     );
 
@@ -118,7 +118,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Go to public dashboard
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("POST", `/api/dashboard/1/public_link`).then(
+    cy.request("POST", "/api/dashboard/1/public_link").then(
       ({ body: { uuid } }) => {
         cy.intercept(
           "GET",

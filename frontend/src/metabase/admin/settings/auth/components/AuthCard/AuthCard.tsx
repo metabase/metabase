@@ -137,7 +137,7 @@ const AuthCardMenu = ({
           action: () => onChange(!isEnabled),
         },
         onDeactivate && {
-          title: `Deactivate`,
+          title: "Deactivate",
           icon: "close",
           action: onDeactivate,
         },

@@ -66,7 +66,7 @@ function setup({ card, databases = [createSampleDatabase()] }: SetupOpts) {
 
 describe("QuestionActions", () => {
   it.each(ICON_CASES)(
-    `should display the "$label" icon with the "$tooltipText" tooltip for $card.name questions`,
+    'should display the "$label" icon with the "$tooltipText" tooltip for $card.name questions',
     async ({ label, tooltipText, card }) => {
       setup({ card });
 

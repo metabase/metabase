@@ -48,7 +48,7 @@ const USERS = {
 
 describe("scenarios > public > question", () => {
   beforeEach(() => {
-    cy.intercept("GET", `/api/public/card/*/query?*`).as("publicQuery");
+    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
     restore();
     cy.signInAsAdmin();
@@ -98,7 +98,7 @@ describe("scenarios > public > question", () => {
 
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
-      it(`should be able to view public questions`, () => {
+      it("should be able to view public questions", () => {
         cy.get("@questionId").then(id => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {

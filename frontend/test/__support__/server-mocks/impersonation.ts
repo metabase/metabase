@@ -6,7 +6,7 @@ export const setupExistingImpersonationEndpoint = (
 ) => {
   fetchMock.get(
     {
-      url: `path:/api/ee/advanced-permissions/impersonation`,
+      url: "path:/api/ee/advanced-permissions/impersonation",
       query: {
         db_id: impersonation.db_id,
         group_id: impersonation.group_id,
@@ -22,7 +22,7 @@ export const setupMissingImpersonationEndpoint = (
 ) => {
   fetchMock.get(
     {
-      url: `path:/api/ee/advanced-permissions/impersonation`,
+      url: "path:/api/ee/advanced-permissions/impersonation",
       query: {
         db_id: databaseId,
         group_id: groupId,

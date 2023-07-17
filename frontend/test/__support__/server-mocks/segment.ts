@@ -6,6 +6,6 @@ export function setupSegmentEndpoint(segment: Segment) {
 }
 
 export function setupSegmentsEndpoints(segments: Segment[]) {
-  fetchMock.get(`path:/api/segment`, segments);
+  fetchMock.get("path:/api/segment", segments);
   segments.forEach(segment => setupSegmentEndpoint(segment));
 }

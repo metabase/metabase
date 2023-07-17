@@ -22,7 +22,8 @@ const Container = styled.div`
 
 export const PlainText = Template.bind({});
 PlainText.args = {
-  children: `Our first email blast to the mailing list not directly linked to the release of a new version. We wanted to see if this would effect visits to landing pages for the features in 0.41.`,
+  children:
+    "Our first email blast to the mailing list not directly linked to the release of a new version. We wanted to see if this would effect visits to landing pages for the features in 0.41.",
 };
 
 export const Markdown = Template.bind({});

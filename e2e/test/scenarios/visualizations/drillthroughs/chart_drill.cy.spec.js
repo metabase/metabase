@@ -664,24 +664,24 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     cy.get(".LineAreaBarChart").get(".dot").first().click({ force: true });
     popover().within(() => {
-      cy.findByText(`See these Orders`).should("be.visible");
+      cy.findByText("See these Orders").should("be.visible");
 
-      cy.findByText(`See this month by week`).should("be.visible");
+      cy.findByText("See this month by week").should("be.visible");
 
-      cy.findByText(`Break out by…`).should("be.visible");
-      cy.findByText(`Automatic insights…`).should("be.visible");
+      cy.findByText("Break out by…").should("be.visible");
+      cy.findByText("Automatic insights…").should("be.visible");
 
-      cy.findByText(`>`).should("be.visible");
-      cy.findByText(`<`).should("be.visible");
-      cy.findByText(`=`).should("be.visible");
-      cy.findByText(`≠`).should("be.visible");
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
     });
 
     cy.findByTestId("timeseries-mode-bar").within(() => {
-      cy.findByText(`View`).should("be.visible");
-      cy.findByText(`All Time`).should("be.visible");
-      cy.findByText(`by`).should("be.visible");
-      cy.findByText(`Month`).should("be.visible");
+      cy.findByText("View").should("be.visible");
+      cy.findByText("All Time").should("be.visible");
+      cy.findByText("by").should("be.visible");
+      cy.findByText("Month").should("be.visible");
     });
   });
 
@@ -709,30 +709,30 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.get(".LineAreaBarChart").findAllByTestId("legend-item").first().click();
 
     popover().within(() => {
-      cy.findByText(`See these Orders`).should("be.visible");
-      cy.findByText(`Automatic insights…`).should("be.visible");
+      cy.findByText("See these Orders").should("be.visible");
+      cy.findByText("Automatic insights…").should("be.visible");
     });
 
     cy.get(".LineAreaBarChart").get(".bar").first().click({ force: true });
     popover().within(() => {
-      cy.findByText(`See these Orders`).should("be.visible");
+      cy.findByText("See these Orders").should("be.visible");
 
-      cy.findByText(`See this month by week`).should("be.visible");
+      cy.findByText("See this month by week").should("be.visible");
 
-      cy.findByText(`Break out by…`).should("be.visible");
-      cy.findByText(`Automatic insights…`).should("be.visible");
+      cy.findByText("Break out by…").should("be.visible");
+      cy.findByText("Automatic insights…").should("be.visible");
 
-      cy.findByText(`>`).should("be.visible");
-      cy.findByText(`<`).should("be.visible");
-      cy.findByText(`=`).should("be.visible");
-      cy.findByText(`≠`).should("be.visible");
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
     });
 
     cy.findByTestId("timeseries-mode-bar").within(() => {
-      cy.findByText(`View`).should("be.visible");
-      cy.findByText(`All Time`).should("be.visible");
-      cy.findByText(`by`).should("be.visible");
-      cy.findByText(`Month`).should("be.visible");
+      cy.findByText("View").should("be.visible");
+      cy.findByText("All Time").should("be.visible");
+      cy.findByText("by").should("be.visible");
+      cy.findByText("Month").should("be.visible");
     });
   });
 
@@ -753,16 +753,16 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.get(".CardVisualization").get("path.cursor-pointer").first().click();
 
     popover().within(() => {
-      cy.findByText(`See these People`).should("be.visible");
-      cy.findByText(`Zoom in`).should("be.visible");
+      cy.findByText("See these People").should("be.visible");
+      cy.findByText("Zoom in").should("be.visible");
 
-      cy.findByText(`Break out by…`).should("be.visible");
-      cy.findByText(`Automatic insights…`).should("be.visible");
+      cy.findByText("Break out by…").should("be.visible");
+      cy.findByText("Automatic insights…").should("be.visible");
 
-      cy.findByText(`>`).should("be.visible");
-      cy.findByText(`<`).should("be.visible");
-      cy.findByText(`=`).should("be.visible");
-      cy.findByText(`≠`).should("be.visible");
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
     });
   });
 });

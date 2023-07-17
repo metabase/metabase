@@ -12,7 +12,7 @@ describe("issue 22473", () => {
   });
 
   it("nocollection user should be able to view and unsubscribe themselves from a subscription", () => {
-    cy.visit(`/dashboard/1`);
+    cy.visit("/dashboard/1");
     cy.icon("subscription").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();

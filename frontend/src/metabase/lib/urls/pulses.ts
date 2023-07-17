@@ -1,4 +1,4 @@
-export const newPulse = () => `/pulse/create`;
+export const newPulse = () => "/pulse/create";
 
 export function pulse(pulseId: number) {
   return `/pulse/${pulseId}`;

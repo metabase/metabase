@@ -36,10 +36,10 @@ export function humanize(str: string, lowFirstLetter?: boolean) {
 
 export function conjunct(list: string[], conjunction: string) {
   return (
-    list.slice(0, -1).join(`, `) +
-    (list.length > 2 ? `,` : ``) +
-    (list.length > 1 ? ` ${conjunction} ` : ``) +
-    (list[list.length - 1] || ``)
+    list.slice(0, -1).join(", ") +
+    (list.length > 2 ? "," : "") +
+    (list.length > 1 ? ` ${conjunction} ` : "") +
+    (list[list.length - 1] || "")
   );
 }
 

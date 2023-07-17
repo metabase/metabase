@@ -289,7 +289,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
       cy.onlyOn(isOSS);
-      cy.visit(`/dashboard/1`);
+      cy.visit("/dashboard/1");
       setupSMTP();
     });
 
@@ -314,7 +314,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     beforeEach(() => {
       setTokenFeatures("all");
       setupSMTP();
-      cy.visit(`/dashboard/1`);
+      cy.visit("/dashboard/1");
     });
 
     describe("with no parameters", () => {

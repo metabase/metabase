@@ -54,10 +54,10 @@ describe("parameters/utils/mapping-options", () => {
         // create a virtual table for the card
         // that contains fields with custom, model-specific metadata
         virtualCardTable = ordersTable.clone();
-        virtualCardTable.id = `card__123`;
+        virtualCardTable.id = "card__123";
         virtualCardTable.fields = [
           metadata.field(ORDERS.CREATED_AT).clone({
-            table_id: `card__123`,
+            table_id: "card__123",
             uniqueId: `card__123:${ORDERS.CREATED_AT.id}`,
             display_name: "~*~Created At~*~",
           }),

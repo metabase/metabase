@@ -223,7 +223,7 @@ describe("timeseriesScale", () => {
   }
 
   // weeks are split out because their boundaries don't align with other units
-  it(`should produce results with weeks`, () => {
+  it("should produce results with weeks", () => {
     const ticks = timeseriesScale({
       interval: "week",
       count: 1,
@@ -238,7 +238,7 @@ describe("timeseriesScale", () => {
     );
   });
 
-  it(`should shift week ticks by shiftDays`, () => {
+  it("should shift week ticks by shiftDays", () => {
     const ticks = timeseriesScale({
       interval: "week",
       count: 1,

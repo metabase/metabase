@@ -81,7 +81,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 "/dashboard/2-orders-in-a-dashboard-duplicate",
               );
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText(`Orders in a dashboard - Duplicate`);
+              cy.findByText("Orders in a dashboard - Duplicate");
             });
 
             it("should be able to move/undo move a dashboard (metabase#13059)", () => {

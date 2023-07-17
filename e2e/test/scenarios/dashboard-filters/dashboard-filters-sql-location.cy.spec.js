@@ -31,7 +31,7 @@ describe("scenarios > dashboard > filters > location", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(([filter]) => {
       setFilter("Location", filter);
 
@@ -55,7 +55,7 @@ describe("scenarios > dashboard > filters > location", () => {
     );
   });
 
-  it(`should work when set as the default filter`, () => {
+  it("should work when set as the default filter", () => {
     setFilter("Location", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

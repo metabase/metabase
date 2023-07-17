@@ -34,12 +34,12 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.signInAsAdmin();
     setActionsEnabledForDB(SAMPLE_DB_ID);
 
-    cy.intercept("POST", `/api/dataset`).as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/card/*").as("card");
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
-    cy.intercept("PUT", `/api/card/*`).as("updateCard");
-    cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
-    cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("GET", "/api/dashboard/*").as("dashboard");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
   });
@@ -256,7 +256,7 @@ describe(
       cy.signInAsAdmin();
       cy.intercept("GET", "/api/dashboard/*").as("dashboard");
       cy.intercept("GET", "/api/card/*").as("card");
-      cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
         "dashcardQuery",
       );
     });

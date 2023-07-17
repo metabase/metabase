@@ -81,7 +81,7 @@ export default class PieChart extends Component {
     }
     if (!settings["pie.dimension"] || !settings["pie.metric"]) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
-        section: `Data`,
+        section: "Data",
       });
     }
   }

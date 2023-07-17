@@ -13,7 +13,7 @@ import {
 
 import type { OptionsType } from "./types";
 
-const EN_DASH = `–`;
+const EN_DASH = "–";
 
 type DEFAULT_DATE_FORMATS_TYPE = { [key: string]: string };
 const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
@@ -170,7 +170,7 @@ export function formatDateTimeRangeWithUnit(
   const MY = `${monthFormat} YYYY`;
   const MDY = `${monthFormat} D, YYYY`;
   const MD = `${monthFormat} D`;
-  const DY = `D, YYYY`;
+  const DY = "D, YYYY";
 
   // Drop down to day resolution if shift causes misalignment with desired resolution boundaries
   const date_resolution =

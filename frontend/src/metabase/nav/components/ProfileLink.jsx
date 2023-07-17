@@ -52,13 +52,13 @@ function ProfileLink({ user, adminItems, onLogout }) {
         title: t`Account settings`,
         icon: null,
         link: Urls.accountSettings(),
-        event: `Navbar;Profile Dropdown;Edit Profile`,
+        event: "Navbar;Profile Dropdown;Edit Profile",
       },
       showAdminSettingsItem && {
         title: t`Admin settings`,
         icon: null,
         link: "/admin",
-        event: `Navbar;Profile Dropdown;Enter Admin`,
+        event: "Navbar;Profile Dropdown;Enter Admin",
       },
       {
         title: t`Help`,
@@ -81,7 +81,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
         title: t`Sign out`,
         icon: null,
         action: () => onLogout(),
-        event: `Navbar;Profile Dropdown;Logout`,
+        event: "Navbar;Profile Dropdown;Logout",
       },
     ].filter(Boolean);
   };

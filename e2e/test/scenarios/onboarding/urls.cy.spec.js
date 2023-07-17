@@ -21,7 +21,7 @@ describe("URLs", () => {
   });
 
   describe("browse databases", () => {
-    it(`should slugify database name when opening it from /browse"`, () => {
+    it('should slugify database name when opening it from /browse"', () => {
       cy.visit("/browse");
       cy.findByTextEnsureVisible("Sample Database").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

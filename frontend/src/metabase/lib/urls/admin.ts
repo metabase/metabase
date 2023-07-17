@@ -7,7 +7,7 @@ import {
 } from "metabase-types/api";
 
 export function newUser() {
-  return `/admin/people/new`;
+  return "/admin/people/new";
 }
 
 export function editUser(userId: UserId) {
@@ -31,7 +31,7 @@ export function reactivateUser(userId: UserId) {
 }
 
 export function newDatabase() {
-  return `/admin/databases/create`;
+  return "/admin/databases/create";
 }
 
 export function editDatabase(databaseId: DatabaseId) {

@@ -92,7 +92,7 @@ const DashCardMenu = ({
   const menuItems = useMemo(
     () => [
       canEditQuestion(question) && {
-        title: `Edit question`,
+        title: "Edit question",
         icon: "pencil",
         action: () => onEditQuestion(question),
       },

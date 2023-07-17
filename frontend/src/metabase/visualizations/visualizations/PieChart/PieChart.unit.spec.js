@@ -75,7 +75,7 @@ describe("PieChart", () => {
   beforeAll(() => {
     //Append mocked style for .hide class
     const mockedStyle = document.createElement("style");
-    mockedStyle.innerHTML = `.hide {display: none;}`;
+    mockedStyle.innerHTML = ".hide {display: none;}";
     document.body.append(mockedStyle);
   });
 

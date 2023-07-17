@@ -21,7 +21,7 @@ const ADMIN_ITEMS = [...REGULAR_ITEMS, "Admin settings"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
 
 const adminNavItem = {
-  name: `People`,
+  name: "People",
   path: "/admin/people",
   key: "people",
 };

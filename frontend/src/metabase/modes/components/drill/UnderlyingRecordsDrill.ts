@@ -19,7 +19,7 @@ export const UnderlyingRecordsDrill: Drill = ({ question, clicked }) => {
   const tableTitle =
     tableName && isShortTableName(tableName)
       ? inflect(tableName, rowCount)
-      : ngettext(msgid`record`, `records`, rowCount);
+      : ngettext(msgid`record`, "records", rowCount);
 
   const actionTitle = ngettext(
     msgid`See this ${tableTitle}`,

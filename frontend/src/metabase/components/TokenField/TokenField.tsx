@@ -635,7 +635,7 @@ class TokenField extends Component<TokenFieldProps, TokenFieldState> {
               <div
                 className={cx(
                   `py1 pl1 pr2 block rounded text-bold text-${color}-hover inline-block full cursor-pointer`,
-                  `bg-light-hover`,
+                  "bg-light-hover",
                   {
                     [`text-${color} bg-light`]:
                       !this.state.listIsHovered &&

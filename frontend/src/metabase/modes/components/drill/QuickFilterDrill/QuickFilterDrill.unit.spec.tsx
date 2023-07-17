@@ -410,10 +410,10 @@ describe("QuickFilterDrill", () => {
 
       expect(actions).toMatchObject([
         {
-          title: `Is this`,
+          title: "Is this",
         },
         {
-          title: `Is not this`,
+          title: "Is not this",
         },
       ]);
     });

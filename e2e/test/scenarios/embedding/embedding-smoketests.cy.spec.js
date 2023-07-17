@@ -16,8 +16,8 @@ const learnEmbeddingUrl =
   "https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html";
 
 const licenseExplanations = [
-  `When you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.`,
-  `Your should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`,
+  'When you embed charts or dashboards from Metabase in your own application, that application isn\'t subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.',
+  "Your should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.",
 ];
 
 describe("scenarios > embedding > smoke tests", () => {

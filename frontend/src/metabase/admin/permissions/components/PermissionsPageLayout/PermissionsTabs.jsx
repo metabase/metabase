@@ -15,8 +15,8 @@ export const PermissionsTabs = ({ tab, onChangeTab }) => (
       colorScheme="accent7"
       value={tab}
       options={[
-        { name: t`Data`, value: `data` },
-        { name: t`Collections`, value: `collections` },
+        { name: t`Data`, value: "data" },
+        { name: t`Collections`, value: "collections" },
         ...PLUGIN_APPLICATION_PERMISSIONS.tabs,
       ]}
       onOptionClick={onChangeTab}

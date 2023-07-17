@@ -389,7 +389,7 @@ function changeSorting(columnName, direction) {
   );
 });
 
-describe(`Object Detail > public`, () => {
+describe("Object Detail > public", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

@@ -518,7 +518,7 @@ describe("scenarios > question > custom column", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
-      formula: `isnull([Discount])`,
+      formula: "isnull([Discount])",
       name: "No discount",
     });
     cy.button("Done").click();
@@ -568,7 +568,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Custom column").click();
 
     enterCustomColumnDetails({
-      formula: `case([Discount] > 0, [Created At], [Product → Created At])`,
+      formula: "case([Discount] > 0, [Created At], [Product → Created At])",
       name: "MiscDate",
     });
 

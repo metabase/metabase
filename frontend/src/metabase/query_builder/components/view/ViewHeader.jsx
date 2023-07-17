@@ -491,8 +491,8 @@ function ViewTitleHeaderRightSide(props) {
             setQueryBuilderMode={setQueryBuilderMode}
             data-metabase-event={
               isShowingNotebook
-                ? `Notebook Mode;Go to View Mode`
-                : `View Mode; Go to Notebook Mode`
+                ? "Notebook Mode;Go to View Mode"
+                : "View Mode; Go to Notebook Mode"
             }
           />
         </ViewHeaderIconButtonContainer>
@@ -543,8 +543,8 @@ function ViewTitleHeaderRightSide(props) {
           }}
           data-metabase-event={
             isShowingNotebook
-              ? `Notebook Mode; Click Save`
-              : `View Mode; Click Save`
+              ? "Notebook Mode; Click Save"
+              : "View Mode; Click Save"
           }
           onClick={() => onOpenModal("save")}
         >

@@ -56,7 +56,7 @@ describe("Notebook Editor > Expression Step", () => {
 
     const expressionItem = screen.getByText("expr name");
     const closeIcon = within(expressionItem).getByRole("img", {
-      name: `close icon`,
+      name: "close icon",
     });
 
     userEvent.click(closeIcon);

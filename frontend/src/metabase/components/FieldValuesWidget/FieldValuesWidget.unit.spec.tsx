@@ -310,7 +310,7 @@ describe("FieldValuesWidget", () => {
 
       userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
 
-      expect(await screen.findByText(`No matching result`)).toBeInTheDocument();
+      expect(await screen.findByText("No matching result")).toBeInTheDocument();
     });
   });
 });

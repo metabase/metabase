@@ -39,7 +39,7 @@ function setup({
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
   if (mockCreateDashboardResponse) {
-    fetchMock.post(`path:/api/dashboard`, (url, options) => options.body);
+    fetchMock.post("path:/api/dashboard", (url, options) => options.body);
   }
   const collections = Object.values(COLLECTION);
   setupCollectionsEndpoints({

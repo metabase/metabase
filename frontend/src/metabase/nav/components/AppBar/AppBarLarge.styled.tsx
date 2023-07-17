@@ -52,7 +52,7 @@ export const AppBarInfoContainer = styled.div<AppBarInfoContainerProps>`
   opacity: ${props => (props.isVisible ? 1 : 0)};
   visibility: ${props => (props.isVisible ? "visible" : "hidden")};
   transition: ${props =>
-    props.isVisible ? `opacity 0.5s` : `opacity 0.5s, visibility 0s`};
+    props.isVisible ? "opacity 0.5s" : "opacity 0.5s, visibility 0s"};
 `;
 
 export const AppBarProfileLinkContainer = styled.div`

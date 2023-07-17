@@ -254,7 +254,7 @@ describe("scenarios > setup", () => {
   // Values in this test are set through MB_USER_DEFAULTS environment variable!
   // Please see https://github.com/metabase/metabase/pull/18763 for details
   it("should allow pre-filling user details", () => {
-    cy.visit(`/setup#123456`);
+    cy.visit("/setup#123456");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Welcome to Metabase");
@@ -289,7 +289,7 @@ describeWithSnowplow("scenarios > setup", () => {
   it("should send snowplow events", () => {
     // 1 - new_instance_created
     // 2 - pageview
-    cy.visit(`/setup`);
+    cy.visit("/setup");
 
     // 3 - setup/step_seen
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -305,7 +305,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
   it("should ignore snowplow failures and work as normal", () => {
     blockSnowplow();
-    cy.visit(`/setup`);
+    cy.visit("/setup");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Welcome to Metabase");

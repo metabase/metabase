@@ -25,7 +25,7 @@ class UpdateSegmentFormInner extends Component {
   onSubmit = async segment => {
     await this.props.updateSegment(segment);
     MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
-    this.props.onChangeLocation(`/admin/datamodel/segments`);
+    this.props.onChangeLocation("/admin/datamodel/segments");
   };
 
   render() {
@@ -51,7 +51,7 @@ class CreateSegmentForm extends Component {
       table_id: segment.definition["source-table"],
     });
     MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
-    this.props.onChangeLocation(`/admin/datamodel/segments`);
+    this.props.onChangeLocation("/admin/datamodel/segments");
   };
 
   render() {

@@ -239,7 +239,7 @@ describe("QueryBuilder", () => {
       ];
 
       it.each(cards)(
-        `renders the row count in "$display" visualization`,
+        'renders the row count in "$display" visualization',
         async card => {
           await setup({
             card,

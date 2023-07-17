@@ -67,8 +67,8 @@ describe("issue 18061", () => {
           },
         );
 
-        cy.wrap(`/question/${card_id}`).as(`questionUrl`);
-        cy.wrap(`/dashboard/${dashboard_id}`).as(`dashboardUrl`);
+        cy.wrap(`/question/${card_id}`).as("questionUrl");
+        cy.wrap(`/dashboard/${dashboard_id}`).as("dashboardUrl");
 
         cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
         cy.intercept(

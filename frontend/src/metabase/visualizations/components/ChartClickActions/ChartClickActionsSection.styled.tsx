@@ -37,10 +37,10 @@ export const SectionWithTitle = styled.div<{
   align-items: stretch;
 
   gap: ${({ childrenDirection }) =>
-    childrenDirection === "row" ? `0.75rem` : `1rem`};
+    childrenDirection === "row" ? "0.75rem" : "1rem"};
 
   margin: ${({ childrenDirection }) =>
-    childrenDirection === "row" ? `0.5rem 0` : `0.5rem 0 0`};
+    childrenDirection === "row" ? "0.5rem 0" : "0.5rem 0 0"};
 `;
 
 export const SectionTitle = styled.p`

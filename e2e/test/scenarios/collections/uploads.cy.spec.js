@@ -54,7 +54,7 @@ describeWithSnowplow(
       queryWritableDB("CREATE SCHEMA IF NOT EXISTS empty_uploads;", "postgres");
 
       cy.request("POST", "/api/collection", {
-        name: `Uploads Collection`,
+        name: "Uploads Collection",
         color: "#000000", // shockingly, this unused field is required
         parent_id: null,
       }).then(({ body: { id: collectionId } }) => {
@@ -103,7 +103,7 @@ describeWithSnowplow(
           enableTracking();
 
           cy.request("POST", "/api/collection", {
-            name: `Uploads Collection`,
+            name: "Uploads Collection",
             color: "#000000", // shockingly, this unused field is required
             parent_id: null,
           }).then(({ body: { id: collectionId } }) => {
@@ -199,7 +199,7 @@ function uploadFile(testFile, valid = true) {
       cy.findByText("Start exploring").click();
     });
 
-    cy.url().should("include", `/model/4`);
+    cy.url().should("include", "/model/4");
     cy.findByTestId("TableInteractive-root");
   } else {
     cy.findByRole("status").within(() => {
@@ -216,5 +216,5 @@ function enableUploads(dialect) {
     "uploads-table-prefix": dialect === "mysql" ? "upload_" : null,
   };
 
-  cy.request("PUT", `/api/setting`, settings);
+  cy.request("PUT", "/api/setting", settings);
 }

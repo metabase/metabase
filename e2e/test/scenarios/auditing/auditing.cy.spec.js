@@ -93,7 +93,7 @@ describeEE("audit > auditing", () => {
   });
 
   describe("See expected info on team member pages", () => {
-    it.skip(`should load the Overview tab (metabase#32244)`, () => {
+    it.skip("should load the Overview tab (metabase#32244)", () => {
       cy.visit("/admin/audit/members/overview");
 
       // We haven't created any new members yet so this should be empty

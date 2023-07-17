@@ -65,5 +65,5 @@ export function optionsToHashParams(options = {}) {
     }
   }
   const query = querystring.stringify(options);
-  return query ? `#${query}` : ``;
+  return query ? `#${query}` : "";
 }

@@ -133,7 +133,7 @@ export function publicQuestion(
 
 export function embedCard(token: string, type: string | null = null) {
   const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
+  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : "");
 }
 
 export function tableRowsQuery(

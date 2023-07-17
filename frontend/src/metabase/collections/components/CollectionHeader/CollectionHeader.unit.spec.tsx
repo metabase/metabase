@@ -423,7 +423,7 @@ const getProps = (
   onUpload: jest.fn(),
   onDeleteBookmark: jest.fn(),
   location: {
-    pathname: `/collection/1`,
+    pathname: "/collection/1",
     search: "",
     query: {},
     hash: "",

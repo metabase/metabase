@@ -296,7 +296,7 @@ class DashboardHeader extends Component {
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
           <DashboardHeaderButton
             onClick={() => this.onAddLinkCard()}
-            data-metabase-event={`Dashboard;Add Link Card`}
+            data-metabase-event={"Dashboard;Add Link Card"}
           >
             <Icon name="link" size={18} />
           </DashboardHeaderButton>
@@ -347,7 +347,7 @@ class DashboardHeader extends Component {
               <DashboardHeaderButton
                 onClick={() => this.onAddAction()}
                 aria-label={t`Add action`}
-                data-metabase-event={`Dashboard;Add Action Button`}
+                data-metabase-event={"Dashboard;Add Action Button"}
               >
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>

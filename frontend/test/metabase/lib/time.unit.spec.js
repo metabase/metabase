@@ -74,7 +74,7 @@ describe("time", () => {
     ];
 
     test.each(PARSE_TIME_TESTS)(
-      `parseTime(%p) to be %p`,
+      "parseTime(%p) to be %p",
       (value, resultStr) => {
         const result = parseTime(value);
         expect(moment.isMoment(result)).toBe(true);
@@ -154,15 +154,15 @@ describe("time", () => {
   });
 
   describe("isValidTimeInterval", () => {
-    it(`is not valid for 0 time span`, () => {
+    it("is not valid for 0 time span", () => {
       expect(isValidTimeInterval(0, "days")).toBeFalsy();
     });
 
-    it(`is valid for small time spans`, () => {
+    it("is valid for small time spans", () => {
       expect(isValidTimeInterval(10, "days")).toBeTruthy();
     });
 
-    it(`is not valid for large time spans`, () => {
+    it("is not valid for large time spans", () => {
       expect(isValidTimeInterval(1000000000, "years")).toBeFalsy();
     });
   });

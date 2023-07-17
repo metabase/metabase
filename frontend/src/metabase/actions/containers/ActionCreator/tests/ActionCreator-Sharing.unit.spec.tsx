@@ -21,7 +21,7 @@ describe("ActionCreator > Sharing", () => {
   describe.each([
     ["query", createMockQueryAction],
     ["implicit", createMockImplicitQueryAction],
-  ])(`%s actions`, (_, getAction) => {
+  ])("%s actions", (_, getAction) => {
     describe("admin users and has public sharing enabled", () => {
       const mockUuid = "mock-uuid";
       const privateAction = getAction();

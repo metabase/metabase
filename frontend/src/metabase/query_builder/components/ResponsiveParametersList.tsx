@@ -55,7 +55,7 @@ export const ResponsiveParametersList = ({
                 `${activeFilters} active filters`,
                 activeFilters,
               )
-            : `Filters`}
+            : "Filters"}
         </FilterButton>
       )}
       <ParametersListContainer

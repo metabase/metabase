@@ -48,7 +48,7 @@ describe("AutomaticInsightsDrill", () => {
       expect(screen.getByText("X-ray")).toBeInTheDocument();
     });
 
-    it(`should return "url" prop with a relative link on action item click`, () => {
+    it('should return "url" prop with a relative link on action item click', () => {
       const stringStartingWithWordChar = /^\w+/;
       const {
         props: { onClick },

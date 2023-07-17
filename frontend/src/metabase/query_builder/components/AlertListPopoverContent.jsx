@@ -175,7 +175,7 @@ class AlertListItemInner extends Component {
             <div
               className="ml-auto text-bold text-small"
               style={{
-                transform: `translateY(4px)`,
+                transform: "translateY(4px)",
               }}
             >
               {(isAdmin || isCurrentUser) && (

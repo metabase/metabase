@@ -8,7 +8,7 @@ export function setupModelIndexEndpoints(
 ) {
   fetchMock.get(
     {
-      url: `path:/api/model-index`,
+      url: "path:/api/model-index",
       query: { model_id: modelId },
       overwriteRoutes: false,
     },
@@ -19,7 +19,7 @@ export function setupModelIndexEndpoints(
     fetchMock.delete(`path:/api/model-index/${index.id}`, 200);
   });
 
-  fetchMock.post(`path:/api/model-index`, async url => {
+  fetchMock.post("path:/api/model-index", async url => {
     const lastCall = fetchMock.lastCall(url);
     return createMockModelIndex(await lastCall?.request?.json());
   });

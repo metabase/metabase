@@ -25,7 +25,7 @@ describe("ActionCreator > Common", () => {
   describe.each([
     ["query", createMockQueryAction],
     ["implicit", createMockImplicitQueryAction],
-  ])(`%s actions`, (_, getAction) => {
+  ])("%s actions", (_, getAction) => {
     describe("with write permissions", () => {
       afterEach(() => {
         jest.resetAllMocks();
@@ -46,7 +46,7 @@ describe("ActionCreator > Common", () => {
 
         userEvent.type(
           screen.getByRole("textbox", { name: "Success message" }),
-          `Thanks!`,
+          "Thanks!",
         );
         expect(
           screen.getByRole("textbox", { name: "Success message" }),
@@ -68,7 +68,7 @@ describe("ActionCreator > Common", () => {
 
         userEvent.type(
           screen.getByRole("textbox", { name: "Success message" }),
-          `Thanks!`,
+          "Thanks!",
         );
 
         userEvent.tab();

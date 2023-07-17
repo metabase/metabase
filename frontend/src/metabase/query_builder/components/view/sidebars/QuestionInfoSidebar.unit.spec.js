@@ -68,7 +68,7 @@ async function setup({ card, cachingEnabled = true } = {}) {
   fetchMock
     .get(`path:/api/card/${card.id}`, card)
     .get(
-      { url: `path:/api/revision`, query: { entity: "card", id: card.id } },
+      { url: "path:/api/revision", query: { entity: "card", id: card.id } },
       [],
     )
     .get("path:/api/user", [user])

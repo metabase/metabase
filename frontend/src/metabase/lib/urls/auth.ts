@@ -7,5 +7,5 @@ export const login = (redirectUrl?: string) => {
 export const password = (redirectUrl?: string) => {
   return redirectUrl
     ? `/auth/login/password?redirect=${encodeURIComponent(redirectUrl)}`
-    : `/auth/login/password`;
+    : "/auth/login/password";
 };

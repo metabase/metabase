@@ -33,7 +33,7 @@ describe("search > recently viewed", () => {
 
     cy.visit("/");
 
-    cy.intercept(`/api/activity/recent_views`).as("recent");
+    cy.intercept("/api/activity/recent_views").as("recent");
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
 

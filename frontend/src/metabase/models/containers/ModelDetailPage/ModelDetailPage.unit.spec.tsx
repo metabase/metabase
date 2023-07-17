@@ -287,7 +287,7 @@ describe("ModelDetailPage", () => {
   describe.each([
     { type: "structured", getModel: createStructuredModelCard },
     { type: "native", getModel: createNativeModelCard },
-  ])(`$type model`, ({ getModel }) => {
+  ])("$type model", ({ getModel }) => {
     it("renders and shows general info", async () => {
       await setup({
         model: getModel({ name: "My Model", description: "Foo Bar" }),

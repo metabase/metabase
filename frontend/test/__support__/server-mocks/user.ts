@@ -10,5 +10,5 @@ export function setupCurrentUserEndpoint(user: User) {
 }
 
 export function setupUserAttributesEndpoint(attributes: UserAttribute[]) {
-  fetchMock.get(`path:/api/mt/user/attributes`, attributes);
+  fetchMock.get("path:/api/mt/user/attributes", attributes);
 }

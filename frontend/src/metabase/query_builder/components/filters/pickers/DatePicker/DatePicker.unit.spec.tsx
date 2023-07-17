@@ -251,7 +251,7 @@ describe("DatePicker", () => {
           );
           userEvent.click(screen.getByText(/specific dates/i));
           userEvent.click(screen.getByText("On"));
-          await screen.findByTestId(`specific-date-picker`);
+          await screen.findByTestId("specific-date-picker");
           userEvent.click(screen.getByText(new RegExp(description, "i")));
           const dateField = screen.getByText("21");
           userEvent.click(dateField);

@@ -615,7 +615,7 @@ describe(
       });
 
       cy.findByTestId("toast-undo")
-        .findByText(`Successfully saved`)
+        .findByText("Successfully saved")
         .should("be.visible");
 
       // show toast

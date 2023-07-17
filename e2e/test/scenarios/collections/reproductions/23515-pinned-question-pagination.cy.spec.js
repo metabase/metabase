@@ -10,7 +10,7 @@ describe("issue 23515", () => {
   });
 
   it("should allow switching between different pages for a pinned question (metabase#23515)", () => {
-    cy.request("PUT", `/api/card/1`, { collection_position: 1 });
+    cy.request("PUT", "/api/card/1", { collection_position: 1 });
 
     cy.visit("/collection/root");
     cy.wait("@getPinnedItems");

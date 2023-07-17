@@ -52,7 +52,7 @@ class ExpandingContent extends Component {
   render() {
     const { children, duration, animateHeight, animateOpacity } = this.props;
     const transition = isReducedMotionPreferred()
-      ? `none`
+      ? "none"
       : `all ${duration}ms ease`;
     const { isOpen, isTransitioning } = this.state;
     // get the actual content height (after the first render)

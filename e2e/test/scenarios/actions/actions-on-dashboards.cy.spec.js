@@ -462,7 +462,7 @@ const MODEL_NAME = "Test Action Model";
         });
       });
 
-      describe(`Actions Data Types`, () => {
+      describe("Actions Data Types", () => {
         beforeEach(() => {
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
@@ -923,7 +923,7 @@ const MODEL_NAME = "Test Action Model";
                 .join("")
                 .concat("{backspace}{backspace}"),
             );
-            cy.get(".ace_text-input").type(`{{ score }}`, {
+            cy.get(".ace_text-input").type("{{ score }}", {
               force: true,
               parseSpecialCharSequences: false,
             });
@@ -938,8 +938,8 @@ const MODEL_NAME = "Test Action Model";
           });
 
           getActionParametersInputModal().within(() => {
-            cy.findByLabelText("Total").type(`123`);
-            cy.findByLabelText("Score").type(`345`);
+            cy.findByLabelText("Total").type("123");
+            cy.findByLabelText("Score").type("345");
 
             cy.button(SAMPLE_QUERY_ACTION.name).click();
           });
@@ -953,7 +953,7 @@ const MODEL_NAME = "Test Action Model";
           });
 
           cy.findByTestId("toast-undo").within(() => {
-            cy.findByText(`Success! The action returned: {"rows-affected":0}`);
+            cy.findByText('Success! The action returned: {"rows-affected":0}');
           });
         });
       });

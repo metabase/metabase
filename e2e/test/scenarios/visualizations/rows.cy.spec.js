@@ -44,7 +44,7 @@ describe("scenarios > visualizations > rows", () => {
     );
   });
 
-  it(`should display a row chart`, () => {
+  it("should display a row chart", () => {
     cy.createNativeQuestion(
       {
         name: "14285",

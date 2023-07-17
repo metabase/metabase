@@ -5,7 +5,7 @@ export class MinColumnsError extends Error {
     super(
       t`Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least ${actualColumns} ${ngettext(
         msgid`column`,
-        `columns`,
+        "columns",
         actualColumns,
       )} of data.`,
     );
@@ -17,7 +17,7 @@ export class MinRowsError extends Error {
     super(
       t`No dice. We have ${actualRows} data ${ngettext(
         msgid`point`,
-        `points`,
+        "points",
         actualRows,
       )} to show and that's not enough for this visualization.`,
     );

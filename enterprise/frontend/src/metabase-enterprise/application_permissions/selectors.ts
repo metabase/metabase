@@ -125,7 +125,7 @@ export const getApplicationPermissionEditor = createSelector(
         { name: t`Group name` },
         { name: t`Settings access` },
         {
-          name: `Monitoring access`,
+          name: "Monitoring access",
           hint: t`This grants access to Tools, Audit, and Troubleshooting`,
         },
         { name: t`Subscriptions and Alerts` },

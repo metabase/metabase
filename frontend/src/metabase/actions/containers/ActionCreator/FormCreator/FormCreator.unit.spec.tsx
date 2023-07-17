@@ -305,7 +305,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       { required: true, hidden: false, hasDefaultValue: true },
       { required: true, hidden: true, hasDefaultValue: true },
     ])(
-      `when required: $required, hidden: $hidden, hasDefaultValue: $hasDefaultValue`,
+      "when required: $required, hidden: $hidden, hasDefaultValue: $hasDefaultValue",
       ({ required, hidden, hasDefaultValue }) => {
         it("does not show a warning banner for query action", () => {
           const defaultValue = "foo bar";
@@ -341,7 +341,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       { required: false, hidden: false },
       { required: false, hidden: true },
       { required: true, hidden: false },
-    ])(`when required: $required, hidden: $hidden`, ({ required, hidden }) => {
+    ])("when required: $required, hidden: $hidden", ({ required, hidden }) => {
       it("doesn't show a banner for implicit action", () => {
         const parameter = makeParameter({ required });
         const fieldSettings = createMockImplicitActionFieldSettings({

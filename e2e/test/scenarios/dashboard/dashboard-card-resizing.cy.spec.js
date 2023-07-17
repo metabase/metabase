@@ -231,7 +231,7 @@ describe("scenarios > dashboard card resizing", () => {
     });
   });
 
-  it(`should not allow cards to be resized smaller than min height`, () => {
+  it("should not allow cards to be resized smaller than min height", () => {
     const cardIds = [];
     TEST_QUESTIONS.forEach(question => {
       cy.createQuestion(question).then(({ body: { id } }) => {
