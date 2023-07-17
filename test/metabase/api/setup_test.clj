@@ -366,9 +366,9 @@
     (testing "Should validate token"
       (mt/with-temporary-setting-values [has-user-setup false]
         (is (= {:errors {:token "Token does not match the setup token."}}
-               (client/client :post 400 "setup/validate" {})))
+               (http/client :post 400 "setup/validate" {})))
         (is (= {:errors {:token "Token does not match the setup token."}}
-               (client/client :post 400 "setup/validate" {:token "foobar"}))))
+               (http/client :post 400 "setup/validate" {:token "foobar"}))))
       ;; make sure we have a valid setup token
       (setup/create-token!)
       (is (= {:errors {:engine "value must be a valid database engine."}}
@@ -378,15 +378,15 @@
       (testing "should validate that database connection works"
         (is (= {:errors {:db "check your connection string"},
                 :message "Database cannot be found."}
-               (client/client :post 400 "setup/validate" {:token   (setup/setup-token)
-                                                          :details {:engine  "h2"
-                                                                    :details {:db "file:///tmp/fake.db"}}}))))
+               (http/client :post 400 "setup/validate" {:token   (setup/setup-token)}
+                                                    :details {:engine  "h2"
+                                                              :details {:db "file:///tmp/fake.db"}}))))
 
       (testing "should return 204 no content if everything is valid"
         (is (= nil
-               (client/client :post 204 "setup/validate" {:token   (setup/setup-token)
-                                                          :details {:engine  "h2"
-                                                                    :details (:details (mt/db))}})))))))
+               (http/client :post 204 "setup/validate" {:token   (setup/setup-token)}
+                                                    :details {:engine  "h2"
+                                                              :details (:details (mt/db))})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
