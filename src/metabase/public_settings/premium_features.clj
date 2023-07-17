@@ -253,12 +253,13 @@
            {:status-code 402}))
 
 (mu/defn assert-has-feature
-  "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`, which must be a localized string.
+  "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.
+   `feature-name` should be a localized string unless used in a CLI context.
 
   (assert-has-feature :sandboxes (tru \"Sandboxing\"))
   => throws an error with a message using \"Sandboxing\" as the feature name."
   [feature-flag :- keyword?
-   feature-name :- mu/localized-string-schema]
+   feature-name :- [:or string? mu/localized-string-schema]]
   (when-not (has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
 
