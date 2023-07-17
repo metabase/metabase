@@ -324,7 +324,7 @@
 
 (define-premium-feature enable-sso-saml?
   "Should we enable SAML-based authentication?"
-  :sso-ldap)
+  :sso-saml)
 
 (define-premium-feature enable-sso-ldap?
   "Should we enable advanced configuration for LDAP authentication?"
