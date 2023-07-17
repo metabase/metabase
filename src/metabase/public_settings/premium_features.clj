@@ -335,23 +335,7 @@
   :sso-google)
 
 (define-premium-feature enable-session-timeout-config?
-  "Should we enable session timeouts?"
-  :session-timeout-config)
-
-(define-premium-feature enable-sso-saml?
-  "Should we enable sso using SAML?"
-  :sso-saml)
-
-(define-premium-feature enable-sso-jwt?
-  "Should we enable sso using JWT?"
-  :sso-jwt)
-
-(define-premium-feature enable-sso-ldap?
-  "Should we enable sso using LDAP?"
-  :sso-ldap)
-
-(define-premium-feature enable-session-timeout-config?
-  "Should we enable define session timeout config?"
+  "Should we enable configuring session timeouts?"
   :session-timeout-config)
 
 (define-premium-feature can-disable-password-login?

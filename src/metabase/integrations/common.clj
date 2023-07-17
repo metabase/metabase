@@ -60,7 +60,12 @@
 
 (define-multi-setting send-new-sso-user-admin-email?
   (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")
-  (fn [] (if (premium-features/enable-sso?) :ee :oss)))
+  (fn [] (if (or (premium-features/enable-sso-google?)
+                 (premium-features/enable-sso-ldap?)
+                 (premium-features/enable-sso-saml?)
+                 (premium-features/enable-sso-jwt?))
+           :ee
+           :oss)))
 
 (define-multi-setting-impl send-new-sso-user-admin-email? :oss
   :getter (fn [] (constantly true))
