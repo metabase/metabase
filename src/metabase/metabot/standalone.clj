@@ -46,9 +46,9 @@
    often some variant of what GPT uses. This function can be used to precompute
    prompt, context, or other strings used in inference to ensure token budgets
   are not exceeded."
-  [input-string]
+  [endpoint input-string]
   (let [request {:method       :post
-                 :url          (format "%s/tokenCount" base-url)
+                 :url          (format "%s/tokenCount" endpoint)
                  :body         (json/write-str {:input input-string})
                  :as           :json
                  :content-type :json}
@@ -61,9 +61,9 @@
 
   Embeddings can be precomputed for all dataset (e.g. model, table) candidates
   to be searched for downselection for final inferencing."
-  [input-string]
+  [endpoint input-string]
   (let [request {:method       :post
-                 :url          (format "%s/embed" base-url)
+                 :url          (format "%s/embed" endpoint)
                  :body         (json/write-str {:input input-string})
                  :as           :json
                  :content-type :json}
@@ -73,9 +73,9 @@
 
 (defn bulk-embeddings
   "Convert the input map of {obj-str encoding} to a map of {obj-str embedding (a vector of floats)}."
-  [obj-strs->encodings]
+  [endpoint obj-strs->encodings]
   (let [request {:method       :post
-                 :url          (format "%s/bulkEmbed" base-url)
+                 :url          (format "%s/bulkEmbed" endpoint)
                  :body         (json/write-str {:input obj-strs->encodings})
                  :content-type :json}
         {:keys [body status]} (http/request request)]
@@ -92,10 +92,10 @@
   to select the best single dataset if it doesn't know how to do joins or that
   it will select and join as desired from the provided datasets to provide the
   final answer."
-  [{:keys [prompt context]}]
+  [endpoint {:keys [prompt context]}]
   {:pre [prompt context]}
   (let [request {:method       :post
-                 :url          (format "%s/infer" base-url)
+                 :url          (format "%s/infer" endpoint)
                  :body         (json/write-str {:prompt prompt :context context})
                  :as           :json
                  :content-type :json}
@@ -177,9 +177,10 @@
   ;; How many tokens in this string?
   (token-count "This is a test")
   ;; What is the embedding vector for this string?
-  (embeddings "This is a test")
+  (embeddings base-url "This is a test")
   ;; What is the embedding vector for this string?
-  (bulk-embeddings {"This is a test" "The encoded version of this is a test"})
+  (bulk-embeddings base-url
+                   {"This is a test" "The encoded version of this is a test"})
 
   ;; This will create a context of ALL models in db 1. For any nontrivial
   ;; database this will produce context that is far too large.
