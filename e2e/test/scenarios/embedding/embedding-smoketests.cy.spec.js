@@ -2,8 +2,10 @@ import {
   restore,
   visitQuestion,
   visitDashboard,
+  modal,
   visitIframe,
 } from "e2e/support/helpers";
+import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
@@ -285,6 +287,61 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         mainPage()
           .findAllByText(/No (questions|dashboards) have been embedded yet./)
           .should("have.length", 2);
+      });
+    });
+
+    it("should regenerate embedding token and invalidate previous embed url", () => {
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+        enable_embedding: true,
+      });
+      visitAndEnableSharing("question");
+
+      cy.document().then(doc => {
+        const iframe = doc.querySelector("iframe");
+
+        cy.signOut();
+        cy.visit(iframe.src);
+
+        cy.findByTestId("embed-frame").contains("37.65");
+
+        cy.signInAsAdmin();
+        cy.visit(standalonePath);
+
+        cy.findByLabelText("Embedding secret key").should(
+          "have.value",
+          METABASE_SECRET_KEY,
+        );
+
+        cy.button("Regenerate key").click();
+
+        modal().within(() => {
+          cy.intercept("GET", "/api/util/random_token").as("regenerateKey");
+          cy.findByRole("heading", { name: "Regenerate embedding key?" });
+          cy.findByText(
+            "This will cause existing embeds to stop working until they are updated with the new key.",
+          );
+          cy.findByText("Are you sure you want to do this?");
+          cy.button("Yes").click();
+        });
+
+        cy.wait("@regenerateKey").then(
+          ({
+            response: {
+              body: { token },
+            },
+          }) => {
+            expect(token).to.have.length(64);
+            expect(token).to.not.eq(METABASE_SECRET_KEY);
+
+            cy.findByDisplayValue(token);
+          },
+        );
+
+        cy.log("Visit the embedding url generated with the old token");
+        cy.visit(iframe.src);
+        cy.findByTestId("embed-frame").findByText(
+          "Message seems corrupt or manipulated.",
+        );
       });
     });
   });
