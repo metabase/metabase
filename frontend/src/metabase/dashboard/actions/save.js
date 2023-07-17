@@ -17,6 +17,8 @@ import { saveCardsAndTabs } from "./tabs";
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
 
+export const SAVE_DASHBOARD = "metabase/dashboard/SAVE_DASHBOARD";
+
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
   function (preserveParameters = false) {
@@ -123,6 +125,40 @@ export const saveDashboardAndCards = createThunkAction(
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(fetchDashboard(dashboard.id, null, { preserveParameters })); // disable using query parameters when saving
+    };
+  },
+);
+
+export const saveDashboard = createThunkAction(
+  SAVE_DASHBOARD,
+  function ({ attributeNames = [] }) {
+    return async function (dispatch, getState) {
+      const state = getState();
+      const { dashboards, dashboardId } = state.dashboard;
+      const dashboard = dashboards[dashboardId];
+
+      if (attributeNames.length === 0) {
+        await dispatch(Dashboards.actions.update(dashboard));
+      } else {
+        const attributes = attributeNames.reduce(
+          (attributes, attributeName) => {
+            return {
+              ...attributes,
+              [attributeName]: dashboard[attributeName],
+            };
+          },
+          {},
+        );
+
+        await dispatch(
+          Dashboards.actions.update({ id: dashboardId }, attributes),
+        );
+      }
+
+      // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
+      dispatch(
+        fetchDashboard(dashboard.id, null, { preserveParameters: true }),
+      ); // disable using query parameters when saving
     };
   },
 );

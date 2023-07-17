@@ -71,6 +71,10 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   });
 
   it("should handle toggling auto applying filters on and off", () => {
+    // metabase#31721
+    cy.intercept("PUT", "/api/dashboard/*/cards", req => {
+      throw Error("This API should not be called");
+    });
     createDashboard();
     openDashboard();
     cy.wait("@cardQuery");
@@ -179,6 +183,10 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   });
 
   it("should preserve draft parameter values when editing of the dashboard was cancelled", () => {
+    // metabase#31721
+    cy.intercept("PUT", "/api/dashboard/*/cards", req => {
+      throw Error("This API should not be called");
+    });
     createDashboard({ dashboardDetails: { auto_apply_filters: false } });
     openDashboard();
 
