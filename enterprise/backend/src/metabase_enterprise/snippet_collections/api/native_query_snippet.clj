@@ -1,6 +1,7 @@
 (ns metabase-enterprise.snippet-collections.api.native-query-snippet
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]
-            [metabase.util.honey-sql-2 :as h2x]))
+  (:require 
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
