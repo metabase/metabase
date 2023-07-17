@@ -51,7 +51,7 @@ function ActionParametersInputForm({
     [action, dashboard, dashcard],
   );
 
-  const initialValues = useMemo(
+  const values = useMemo(
     () => ({
       ...prefetchedValues,
       ...dashcardParamValues,
@@ -127,7 +127,7 @@ function ActionParametersInputForm({
   return (
     <ActionForm
       action={action}
-      initialValues={initialValues}
+      values={values}
       hiddenFields={hiddenFields}
       onSubmit={handleSubmit}
       onClose={onCancel}
