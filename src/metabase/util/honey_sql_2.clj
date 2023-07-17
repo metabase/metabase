@@ -142,7 +142,7 @@
           (u/qualified-name component)))])
 
 (mu/defn identifier->name :- keyword?
-  "Given an identifer return its component.
+  "Given an identifer return its last component.
   (identifier->name (identifier :field :metabase :user :email))
   => \"email\")
   "

@@ -372,7 +372,7 @@
      ;; last row turn to a string
      ["{\"int_turn_string\":\"6\"}"]]]
    ;; test case where a table has more than 1 pk
-   ["json_with_2pks"
+   ["json_with_2_pks"
     [{:field-name "id_2nd" :base-type :type/Integer}
      {:field-name "json_col" :base-type :type/JSON}]
     [[1 "{\"int_turn_string\":1}"]
@@ -393,7 +393,7 @@
                                                                    "json_without_pk"
                                                                    #{}
 
-                                                                   "json_with-2pks"
+                                                                   "json_with_2_pks"
                                                                    #{"id" "id_2nd"}
 
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
@@ -424,7 +424,7 @@
                      (sql-jdbc.sync/describe-nested-field-columns
                        driver/*driver*
                        (mt/db)
-                       (t2/select-one Table :db_id (mt/id) :name "json_with_2pks")))))
+                       (t2/select-one Table :db_id (mt/id) :name "json_with_2_pks")))))
 
             (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
               (is (= #{{:name              "json_col → int_turn_string"

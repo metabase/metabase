@@ -273,21 +273,21 @@
 
 (deftest ^:parallel identifier->name-test
   (is (= :field
-       (h2x/identifier->name
-         (h2x/identifier :field :public :db :table :field))))
+         (h2x/identifier->name
+          (h2x/identifier :field :public :db :table :field))))
 
- (is (= :count
-        (h2x/identifier->name
+  (is (= :count
+         (h2x/identifier->name
           (h2x/identifier :field-alias :count))))
 
- (is (= :count
-        (h2x/identifier->name
+  (is (= :count
+         (h2x/identifier->name
           (h2x/identifier :field-alias :count))))
 
- (is (= :table
-      (h2x/identifier->name
-        (h2x/identifier :table :public :db :table))))
+  (is (= :table
+         (h2x/identifier->name
+          (h2x/identifier :table :public :db :table))))
 
- (is (= :db
-      (h2x/identifier->name
-        (h2x/identifier :database :public :db)))))
+  (is (= :db
+         (h2x/identifier->name
+          (h2x/identifier :database :public :db)))))

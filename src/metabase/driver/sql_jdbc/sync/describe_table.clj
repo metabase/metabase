@@ -438,11 +438,10 @@
                                    :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
                   :result]
                  (into [:and]
-                       (for [pk-identifier pk-identifiers
-                             :let [pk-name (hx/identifier->name pk-identifier)]]
+                       (for [pk-identifier pk-identifiers]
                          [:=
-                          (hx/identifier :field :result pk-name)
-                          (hx/identifier :field table-identifier pk-name)]))]}
+                          (hx/identifier :field :result (hx/identifier->name pk-identifier))
+                          pk-identifier]))]}
 
         {:select json-field-exprs
          :from   [table-expr]

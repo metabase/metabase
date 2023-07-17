@@ -234,21 +234,21 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel identifier->name-test
   (is (= :field
-       (h1x/identifier->name
-         (h1x/identifier :field :public :db :table :field))))
+         (h1x/identifier->name
+          (h1x/identifier :field :public :db :table :field))))
 
- (is (= :count
-        (h1x/identifier->name
+  (is (= :count
+         (h1x/identifier->name
           (h1x/identifier :field-alias :count))))
 
- (is (= :count
-        (h1x/identifier->name
+  (is (= :count
+         (h1x/identifier->name
           (h1x/identifier :field-alias :count))))
 
- (is (= :table
-      (h1x/identifier->name
-        (h1x/identifier :table :public :db :table))))
+  (is (= :table
+         (h1x/identifier->name
+          (h1x/identifier :table :public :db :table))))
 
- (is (= :db
-      (h1x/identifier->name
-        (h1x/identifier :database :public :db)))))
+  (is (= :db
+         (h1x/identifier->name
+          (h1x/identifier :database :public :db)))))
