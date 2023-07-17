@@ -47,7 +47,7 @@
     (tu/with-temporary-setting-values [enable-embedding     false
                                        embedding-app-origin "https: http:"]
       (is (= "frame-ancestors 'none'"
-           (csp-directive "frame-ancestors"))))))
+             (csp-directive "frame-ancestors"))))))
 
 (deftest xframeoptions-header-tests
   (testing "`DENY` when embedding is disabled"
