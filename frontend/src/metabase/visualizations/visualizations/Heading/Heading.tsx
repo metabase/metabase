@@ -48,12 +48,16 @@ export function Heading({
   const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
     e.stopPropagation();
 
-  const content = fillParametersInText({
-    dashcard,
-    dashboard,
-    parameterValues,
-    text: settings.text,
-  });
+  const content = useMemo(
+    () =>
+      fillParametersInText({
+        dashcard,
+        dashboard,
+        parameterValues,
+        text: settings.text,
+      }),
+    [dashcard, dashboard, parameterValues, settings],
+  );
 
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`Heading`;

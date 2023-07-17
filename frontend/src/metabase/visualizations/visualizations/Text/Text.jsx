@@ -52,12 +52,16 @@ export function Text({
 
   const isSingleRow = gridSize?.height === 1;
 
-  const content = fillParametersInText({
-    dashcard,
-    dashboard,
-    parameterValues,
-    text: settings.text,
-  });
+  const content = useMemo(
+    () =>
+      fillParametersInText({
+        dashcard,
+        dashboard,
+        parameterValues,
+        text: settings.text,
+      }),
+    [dashcard, dashboard, parameterValues, settings],
+  );
 
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
