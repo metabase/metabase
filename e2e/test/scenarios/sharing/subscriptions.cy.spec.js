@@ -327,7 +327,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should only show users in same group in recipients dropdown if `user-visiblity` setting is `group`", () => {
       openRecipientsWithUserVisibilitySetting("group");
 
-      popover().find("span").should("have.length", 5); // TODO ask BE to fix bug where same user shows up twice
+      popover().find("span").should("have.length", 5);
     });
 
     it("should show all users in recipients dropdown if `user-visiblity` setting is `all`", () => {
@@ -416,10 +416,9 @@ function createEmailSubscription() {
 
 function openRecipientsWithUserVisibilitySetting(setting) {
   cy.request("PUT", "/api/setting/user-visibility", {
-    // TODO write a helper for this
     value: setting,
   });
-  cy.signInAsNormalUser(); // TODO remove this after confirming behavior should be same for admins
+  cy.signInAsNormalUser();
   openDashboardSubscriptions();
 
   main().within(() => {
