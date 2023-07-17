@@ -93,7 +93,7 @@
     (let [connection-str  (cond-> db
                             (not (str/includes? db "h2:")) (str/replace-first #"^" "h2:")
                             (not (str/includes? db "jdbc:")) (str/replace-first #"^" "jdbc:"))
-          connection-info (org.h2.engine.ConnectionInfo. connection-str)
+          connection-info (org.h2.engine.ConnectionInfo. connection-str (java.util.Properties.))
           properties      (get-field connection-info "prop")
           bad-props       (into {} (keep (fn [[k v]] (when (malicious-property-value v) [k v])))
                                 properties)]
