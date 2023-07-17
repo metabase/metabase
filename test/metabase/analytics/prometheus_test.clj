@@ -6,10 +6,11 @@
    [clojure.test :refer :all]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.troubleshooting :as troubleshooting])
+   [metabase.test.fixtures :as fixtures])
   (:import
-   (io.prometheus.client Collector GaugeMetricFamily)
+   (iapetos.registry IapetosRegistry)
+   (io.prometheus.client Collector Collector$MetricFamilySamples CollectorRegistry GaugeMetricFamily)
+   (metabase.analytics.prometheus PrometheusSystem)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -104,8 +105,9 @@
          (#'prometheus/make-prometheus-system 0 (name (gensym "test-registry")))
          server#  ^Server (.web-server ~system)
          ~port   (.. server# getURI getPort)]
-     (try ~@body
-          (finally (prometheus/stop-web-server ~system)))))
+     (with-redefs [prometheus/system ~system]
+       (try ~@body
+            (finally (prometheus/stop-web-server ~system))))))
 
 (deftest web-server-test
   (testing "Can get metrics from the web-server"
@@ -128,7 +130,7 @@
                                                    :namespace "metabase_database"}
                                          nil)]
         (is c3p0-collector "c3p0 stats not found"))))
-  (testing "Registry has an entry for each database in [[troubleshooting/connection-pool-info]]"
+  (testing "Registry has an entry for each database in [[prometheus/connection-pool-info]]"
     (with-prometheus-system [_ system]
       (let [registry       (.registry system)
             c3p0-collector (registry/get registry {:name      "c3p0_stats"
@@ -138,12 +140,12 @@
             measurements   (.collect ^Collector c3p0-collector)
             _              (is (pos? (count measurements))
                                "No measurements taken")]
-        (is (= (count (:connection-pools (troubleshooting/connection-pool-info)))
+        (is (= (count (prometheus/connection-pool-info))
                (count (.samples ^GaugeMetricFamily (first measurements))))
             "Expected one entry per database for each measurement"))))
   (testing "Registry includes c3p0 stats"
     (with-prometheus-system [port _]
-      (let [[db-name values] (first (:connection-pools (troubleshooting/connection-pool-info)))
+      (let [[db-name values] (first (prometheus/connection-pool-info))
             tag-name         (comp :label #'prometheus/label-translation)
             expected-lines   (set (for [[tag value] values]
                                     (format "%s{database=\"%s\",} %s"
@@ -152,3 +154,27 @@
                                    (metric-lines port))]
         (is (seq (set/intersection expected-lines actual-lines))
             "Registry does not have c3p0 metrics in it")))))
+
+(deftest email-collector-test
+  (testing "Registry has email metrics registered"
+    (with-prometheus-system [_ system]
+      (let [sample-names (set (for [metric-family-samples (enumeration-seq (.metricFamilySamples ^CollectorRegistry (.raw ^IapetosRegistry (.-registry system))))
+                                    sample-name           (.getNames ^Collector$MetricFamilySamples metric-family-samples)]
+                                sample-name))]
+        (is (contains? sample-names "metabase_email_messages") "messages sample not found")
+        (is (contains? sample-names "metabase_email_message_errors") "message_errors sample not found")))))
+
+(defn- get-sample-value
+  [^PrometheusSystem system ^String metric]
+  (.getSampleValue ^CollectorRegistry (registry/raw (.-registry system)) metric))
+
+(deftest inc-server-test
+  (testing "inc has no effect if system is not setup"
+    (prometheus/inc :metabase-email/messages)) ; << Does not throw.
+  (testing "inc has no effect when called with unknown metric"
+    (with-prometheus-system [_ _system]
+      (prometheus/inc :metabase-email/unknown-metric))) ; << Does not throw.
+  (testing "inc is recorded for known metrics"
+    (with-prometheus-system [_ system]
+      (prometheus/inc :metabase-email/messages)
+      (is (< 0 (get-sample-value system "metabase_email_messages_total"))))))

@@ -87,7 +87,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-test
-  (let [query   (lib.tu/query-with-card-source-table)
+  (let [query   lib.tu/query-with-card-source-table
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -106,7 +106,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel joins-test
-  (let [query   (lib.tu/query-with-join)
+  (let [query   lib.tu/query-with-join
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -137,7 +137,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel expressions-test
-  (let [query   (lib.tu/query-with-expression)
+  (let [query   lib.tu/query-with-expression
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -170,7 +170,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-with-expressions-test
-  (let [query   (-> (lib.tu/query-with-card-source-table)
+  (let [query   (-> lib.tu/query-with-card-source-table
                     (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -191,7 +191,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel native-query-test
-  (let [query  (lib.tu/native-query)
+  (let [query  lib.tu/native-query
         groups (lib/group-columns (lib/orderable-columns query))]
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "another Field", :lib/source :source/native}
@@ -205,7 +205,7 @@
                 (lib/display-info query group)))))))
 
 (deftest ^:parallel native-source-query-test
-  (let [query  (-> (lib.tu/native-query)
+  (let [query  (-> lib.tu/native-query
                    lib/append-stage)
         groups (lib/group-columns (lib/orderable-columns query))]
     (is (=? [{::lib.column-group/group-type :group-type/main

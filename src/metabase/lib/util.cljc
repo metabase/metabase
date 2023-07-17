@@ -415,7 +415,7 @@
   [query]
   (-> query :stages first :source-table))
 
-(mu/defn source-card :- [:maybe ::lib.schema.id/card]
+(mu/defn source-card-id :- [:maybe ::lib.schema.id/card]
   "If this query has a `:source-card` ID, return it."
   [query]
   (-> query :stages first :source-card))
