@@ -198,6 +198,11 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
+
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
       });
@@ -230,6 +235,11 @@ describe("admin > database > add", () => {
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
@@ -270,6 +280,11 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
+
       cy.findByRole("table").within(() => {
         cy.findByText("QA MySQL8");
       });
@@ -291,6 +306,21 @@ describe("admin > database > add", () => {
       typeAndBlurUsingLabel("Display name", "BQ");
       selectFieldOption("Datasets", "Only these...");
       cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
+
+      mockUploadServiceAccountJSON(serviceAccountJSON);
+      mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
+        expect(body.details["service-account-json"]).to.equal(
+          serviceAccountJSON,
+        );
+      });
+    });
+
+    it("should work for Google Analytics", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("Google Analytics");
+      typeAndBlurUsingLabel("Display name", "GA");
+      typeAndBlurUsingLabel("Google Analytics Account ID", " 9  ");
 
       mockUploadServiceAccountJSON(serviceAccountJSON);
       mockSuccessfulDatabaseSave().then(({ request: { body } }) => {

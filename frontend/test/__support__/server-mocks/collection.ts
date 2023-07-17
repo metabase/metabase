@@ -15,13 +15,15 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 import { PERMISSION_ERROR } from "./constants";
 
+export interface CollectionEndpoints {
+  collections: Collection[];
+  rootCollection?: Collection;
+}
+
 export function setupCollectionsEndpoints({
   collections,
   rootCollection = createMockCollection(ROOT_COLLECTION),
-}: {
-  collections: Collection[];
-  rootCollection?: Collection;
-}) {
+}: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection);
   fetchMock.get(
     {

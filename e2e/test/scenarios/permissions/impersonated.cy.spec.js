@@ -4,11 +4,13 @@ import {
   describeEE,
   getPermissionRowPermissions,
   isPermissionDisabled,
+  modal,
   modifyPermission,
   openNativeEditor,
   popover,
   restore,
   runNativeQuery,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
@@ -24,6 +26,7 @@ describeEE("impersonated permission", () => {
       restore("postgres-12");
       createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("can set impersonated permissions", () => {
@@ -272,8 +275,7 @@ describeEE("impersonated permission", () => {
       cy.findByRole("dialog").findByText("Edit settings").click();
 
       // Page leave confirmation should be on top
-      cy.findAllByRole("dialog")
-        .eq(0)
+      modal()
         .as("leaveConfirmation")
         .findByText("Discard your unsaved changes?")
         .should("be.visible");
@@ -319,6 +321,7 @@ describeEE("impersonated permission", () => {
       restore("postgres-12");
       createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       setImpersonatedPermission();
 
@@ -366,8 +369,9 @@ describeEE("impersonated permission", () => {
 });
 
 function savePermissions() {
-  cy.get("main").findByText("Save changes").click();
+  cy.findByTestId("edit-bar").button("Save changes").click();
   cy.findByRole("dialog").findByText("Yes").click();
+  cy.findByTestId("edit-bar").should("not.exist");
 }
 
 function selectImpersonatedAttribute(attribute) {

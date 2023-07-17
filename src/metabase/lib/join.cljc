@@ -8,6 +8,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -559,14 +560,6 @@
    (sort-join-condition-columns
     (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false}))))
 
-(defn- join-condition-operator-definitions []
-  [(assoc (lib.filter/operator-def := :equal-to) :default true)
-   (lib.filter/operator-def :>)
-   (lib.filter/operator-def :<)
-   (lib.filter/operator-def :>=)
-   (lib.filter/operator-def :<=)
-   (lib.filter/operator-def :!= :not-equal-to)])
-
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
   UI, this can be chosen at any point before or after choosing the LHS and RHS. Invalid options are not currently
@@ -580,7 +573,7 @@
     _lhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]
     _rhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
-   (join-condition-operator-definitions)))
+   lib.filter.operator/join-operators))
 
 (mu/defn ^:private pk-column :- [:maybe lib.metadata/ColumnMetadata]
   "Given something `x` (e.g. a Table metadata) find the PK column."
@@ -614,7 +607,7 @@
     joinable]
    (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
-       (lib.filter/filter-clause (lib.filter/operator-def := :equal-to) fk-col pk-col)))))
+       (lib.filter/filter-clause (lib.filter.operator/operator-def :=) fk-col pk-col)))))
 
 (def ^:private Joinable
   [:or lib.metadata/TableMetadata lib.metadata/CardMetadata])

@@ -192,6 +192,7 @@
                                              :db_id
                                              (t2/select-one Database :id)
                                              :engine)
+                                    :googleanalytics :entity/GoogleAnalyticsTable
                                     :druid           :entity/EventTable
                                     nil)
                                   :entity/GenericTable))))

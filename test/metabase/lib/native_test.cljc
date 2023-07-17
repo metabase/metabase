@@ -3,11 +3,11 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]
               [metabase.test.util.js :as test.js]))
    [clojure.test :refer [are deftest is testing]]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.util.humanization :as u.humanization]))
 
 (deftest ^:parallel variable-tag-test
@@ -58,7 +58,7 @@
     (let [old-tag {:type         :text
                    :name         "foo"
                    :display-name "Foo"
-                   :id           (str (m/random-uuid))}]
+                   :id           (str (random-uuid))}]
       (testing "changes display-name if the original is not customized"
         (is (=? {"bar" {:type         :text
                         :name         "bar"
@@ -78,7 +78,7 @@
         (let [other {:type         :text
                      :name         "other"
                      :display-name "Some Var"
-                     :id           (str (m/random-uuid))}]
+                     :id           (str (random-uuid))}]
           (is (=? {"other" other
                    "bar"   {:type         :text
                             :name         "bar"
@@ -169,10 +169,10 @@
            :stages   [{:lib/type    :mbql.stage/native
                        :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
-          (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;"))))
+          (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" meta/qp-results-metadata nil))))
 
 (deftest ^:parallel native-query-suggested-name-test
-  (let [query (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;")]
+  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" meta/qp-results-metadata nil)]
     (is (= "Native query"
            (lib.metadata.calculation/describe-query query)))
     (is (nil? (lib.metadata.calculation/suggested-name query)))))
@@ -199,7 +199,12 @@
       (is (empty?
             (-> query
                 (lib/with-native-query "select * from venues")
-                lib/template-tags))))))
+                lib/template-tags))))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Must be a native query"
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+              (lib/with-native-query "foobar"))))))
 
 (deftest ^:parallel with-template-tags-test
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")
@@ -218,4 +223,63 @@
       (is (= original-tags
              (-> query
                  (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :display-name "Foobar")})
-                 lib/template-tags))))))
+                 lib/template-tags))))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Must be a native query"
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
+
+(defn ^:private metadata-provider-requiring-collection []
+  (meta.graph-provider/->SimpleGraphMetadataProvider (-> meta/metadata
+                                                         (update :features conj :native-requires-specified-collection))))
+
+(deftest ^:parallel native-query+collection-test
+  (testing "building when collection is not required"
+    (is (=? {:stages [(complement :collection)]}
+            (lib/native-query meta/metadata-provider "myquery")))
+    (is (=? {:stages [(complement :collection)]}
+            (lib/native-query meta/metadata-provider "myquery" nil {:collection "mycollection"}))))
+  (testing "building when requires collection"
+    (is (=? {:stages [{:collection "mycollection"}]}
+            (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Missing extra, required keys for native query: .*:collection.*"
+          (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
+
+(deftest ^:parallel with-different-database-test
+  (let [query (lib/native-query meta/metadata-provider "myquery")]
+    (testing "database id should change"
+      (is (=? {:database 9999}
+              (-> query
+                  (lib/with-different-database
+                    (meta.graph-provider/->SimpleGraphMetadataProvider
+                      (assoc meta/metadata :id 9999)))))))
+    (testing "Checks collection requirement"
+      (is (=? {:stages [(complement :collection)]}
+              (-> query
+                  (lib/with-different-database meta/metadata-provider {:collection "mycollection"}))))
+      (is (thrown-with-msg?
+            #?(:clj Throwable :cljs :default)
+            #"Missing extra, required keys for native query: .*:collection.*"
+            (-> query
+                (lib/with-different-database (metadata-provider-requiring-collection))))))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Must be a native query"
+          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+              (lib/with-different-database meta/metadata-provider))))))
+
+(deftest ^:parallel with-native-collection-test
+  (is (=? {:stages [{:collection "mynewcollection"}]}
+          (-> (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})
+              (lib/with-native-extras {:collection "mynewcollection"}))))
+  (is (=? {:stages [(complement :collection)]}
+        (-> (lib/native-query meta/metadata-provider "myquery")
+            (lib/with-native-extras {:collection "mycollection"}))))
+  (is (thrown-with-msg?
+        #?(:clj Throwable :cljs :default)
+        #"Must be a native query"
+        (-> (lib/query (metadata-provider-requiring-collection) (meta/table-metadata :venues))
+            (lib/with-native-extras {:collection "mycollection"})))))

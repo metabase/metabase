@@ -36,9 +36,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -431,6 +429,13 @@
       (pull-unresolved-names-up entity [:visualization_settings] resolved-vs))
     entity))
 
+(defn- resolve-dashboard-parameters
+  [parameters]
+  (for [p parameters]
+    ;; Note: not using the full ::unresolved-names functionality here because this is a fix
+    ;; for a deprecated feature
+    (m/update-existing-in p [:values_source_config :card_id] fully-qualified-name->card-id)))
+
 (defn load-dashboards
   "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
   {:added "0.40.0"}
@@ -438,6 +443,7 @@
   (let [dashboard-ids   (maybe-upsert-many! context Dashboard
                                             (for [dashboard dashboards]
                                               (-> dashboard
+                                                  (update :parameters resolve-dashboard-parameters)
                                                   (dissoc :dashboard_cards)
                                                   (assoc :collection_id (:collection context)
                                                          :creator_id    (default-user-id)))))
@@ -679,7 +685,7 @@
   "A function called on each User instance before it is inserted (via upsert)."
   [user]
   (log/infof "User with email %s is new to target DB; setting a random password" (:email user))
-  (assoc user :password (str (UUID/randomUUID))))
+  (assoc user :password (str (random-uuid))))
 
 ;; leaving comment out for now (deliberately), because this will send a password reset email to newly inserted users
 ;; when enabled in a future release; see `defmethod load "users"` below

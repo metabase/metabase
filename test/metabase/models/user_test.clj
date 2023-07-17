@@ -416,7 +416,7 @@
     (testing "should clear out all existing Sessions"
       (t2.with-temp/with-temp [User {user-id :id} {}]
         (dotimes [_ 2]
-          (t2/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
+          (t2/insert! Session {:id (str (random-uuid)), :user_id user-id}))
         (letfn [(session-count [] (t2/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))

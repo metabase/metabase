@@ -188,15 +188,12 @@ export const queryCompleted = (question, queryResults) => {
           queryResults[0],
         );
       }
-      // Only update the display if the question is new or has been changed.
-      // Otherwise, trust that the question was saved with the correct display.
+
       question = question
-        // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
-        .maybeUnlockDisplay(
+        .maybeResetDisplay(
           getSensibleDisplays(data),
           prevData && getSensibleDisplays(prevData),
         )
-        .setDefaultDisplay()
         .switchTableScalar(data);
     }
 

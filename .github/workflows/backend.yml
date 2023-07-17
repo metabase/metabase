@@ -89,6 +89,8 @@ jobs:
         ./modules/drivers/bigquery-cloud-sdk/test
         ./modules/drivers/druid/src
         ./modules/drivers/druid/test
+        ./modules/drivers/googleanalytics/src
+        ./modules/drivers/googleanalytics/test
         ./modules/drivers/mongo/src
         ./modules/drivers/mongo/test
         ./modules/drivers/oracle/src
