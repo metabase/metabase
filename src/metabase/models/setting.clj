@@ -628,7 +628,7 @@
   if any."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
-        disable-cache?                           (or *disable-cache* (not cache?))]
+        disable-cache?                                   (or *disable-cache* (not cache?))]
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?))))
       default
