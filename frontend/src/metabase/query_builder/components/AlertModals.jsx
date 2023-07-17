@@ -84,7 +84,7 @@ class CreateAlertModalContentInner extends Component {
       this.setState({
         alert: {
           ...this.state.alert,
-          card: { id: newProps.question.id() },
+          card: { ...this.state.alert.card, id: newProps.question.id() },
         },
       });
     }
@@ -548,30 +548,26 @@ export const AlertSettingToggle = ({
   </div>
 );
 
-export class AlertEditSchedule extends Component {
-  render() {
-    const { alertType, schedule } = this.props;
+export function AlertEditSchedule({ alertType, schedule, onScheduleChange }) {
+  return (
+    <div>
+      <h3 className="mt4 mb3 text-dark">
+        How often should we check for results?
+      </h3>
 
-    return (
-      <div>
-        <h3 className="mt4 mb3 text-dark">
-          How often should we check for results?
-        </h3>
-
-        <div className="bordered rounded mb2">
-          {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-          <div className="p3 bg-light">
-            <SchedulePicker
-              schedule={schedule}
-              scheduleOptions={["hourly", "daily", "weekly"]}
-              onScheduleChange={this.props.onScheduleChange}
-              textBeforeInterval="Check"
-            />
-          </div>
+      <div className="bordered rounded mb2">
+        {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
+        <div className="p3 bg-light">
+          <SchedulePicker
+            schedule={schedule}
+            scheduleOptions={["hourly", "daily", "weekly"]}
+            onScheduleChange={onScheduleChange}
+            textBeforeInterval="Check"
+          />
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 }
 
 class AlertEditChannelsInner extends Component {
@@ -632,33 +628,26 @@ export const AlertEditChannels = _.compose(
   ),
 )(AlertEditChannelsInner);
 
-// TODO: Not sure how to translate text with formatting properly
-class RawDataAlertTipInner extends Component {
-  render() {
-    const display = this.props.question.display();
-    const vizSettings = this.props.visualizationSettings;
-    const goalEnabled = vizSettings["graph.show_goal"];
-    const isLineAreaBar =
-      display === "line" || display === "area" || display === "bar";
-    const isMultiSeries =
-      isLineAreaBar &&
-      vizSettings["graph.metrics"] &&
-      vizSettings["graph.metrics"].length > 1;
-    const showMultiSeriesGoalAlert = goalEnabled && isMultiSeries;
+function RawDataAlertTipInner(props) {
+  const display = props.question.display();
+  const vizSettings = props.visualizationSettings;
+  const goalEnabled = vizSettings["graph.show_goal"];
+  const isLineAreaBar =
+    display === "line" || display === "area" || display === "bar";
+  const isMultiSeries =
+    isLineAreaBar &&
+    vizSettings["graph.metrics"] &&
+    vizSettings["graph.metrics"].length > 1;
+  const showMultiSeriesGoalAlert = goalEnabled && isMultiSeries;
 
-    return (
-      <div className="border-row-divider p3 flex align-center">
-        <div className="circle flex align-center justify-center bg-light p2 mr2 text-medium">
-          <Icon name="lightbulb" size="20" />
-        </div>
-        {showMultiSeriesGoalAlert ? (
-          <MultiSeriesAlertTip />
-        ) : (
-          <NormalAlertTip />
-        )}
+  return (
+    <div className="border-row-divider p3 flex align-center">
+      <div className="circle flex align-center justify-center bg-light p2 mr2 text-medium">
+        <Icon name="lightbulb" size="20" />
       </div>
-    );
-  }
+      {showMultiSeriesGoalAlert ? <MultiSeriesAlertTip /> : <NormalAlertTip />}
+    </div>
+  );
 }
 
 export const RawDataAlertTip = connect(state => ({
@@ -675,8 +664,8 @@ export const MultiSeriesAlertTip = () => (
 );
 export const NormalAlertTip = () => (
   <div>{jt`${(
-    <strong>{t`Tip`}:</strong>
+    <strong key="alert-tip">{t`Tip`}:</strong>
   )} This kind of alert is most useful when your saved question doesn’t ${(
-    <em>{t`usually`}</em>
+    <em key="alert-tip-em">{t`usually`}</em>
   )} return any results, but you want to know when it does.`}</div>
 );
