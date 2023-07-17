@@ -110,14 +110,14 @@
    to the embedding representing this dataset. Note that values need not be a
    direct embedding of the keys. The keys can be anything and should be the
    desired output type to be used when doing rank selection on the dataset."
-  ([prompt dataset->embeddings]
+  ([endpoint prompt dataset->embeddings]
    (letfn [(dot [u v] (reduce + (map * u v)))]
-     (let [prompt-embedding (embeddings prompt)]
+     (let [prompt-embedding (embeddings endpoint prompt)]
        (->> dataset->embeddings
             (map (fn [[k e]] {:object k :cosine-similarity (dot prompt-embedding e)}))
             (sort-by (comp - :cosine-similarity))))))
-  ([prompt dataset->embeddings top-n]
-   (take top-n (rank-data-by-prompt prompt dataset->embeddings))))
+  ([endpoint prompt dataset->embeddings top-n]
+   (take top-n (rank-data-by-prompt endpoint prompt dataset->embeddings))))
 
 (defn model->precomputes
   "From a model, compute the items we will use when doing inferencing.
@@ -214,8 +214,12 @@
                  "System of a Down is on the radio"
                  "I like turtles"
                  "Do you like green eggs and ham"]]
-    (rank-data-by-prompt prompt (zipmap samples (map embeddings samples)))
-    (rank-data-by-prompt prompt (zipmap samples (map embeddings samples)) 3))
+    (rank-data-by-prompt endpoint prompt
+                         (zipmap samples
+                                 (map (partial embeddings endpoint) samples)))
+    (rank-data-by-prompt endpoint prompt
+                         (zipmap samples
+                                 (map (partial embeddings endpoint) samples)) 3))
 
   ;; IRL you'd want to create a map of thing to choose (a model, potentially
   ;; with precomputed values) to embeddings for those things to choose.
