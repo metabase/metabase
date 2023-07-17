@@ -243,11 +243,12 @@
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([joinable]
-   ;; FIXME -- we should add `:fields :all` by default, but blocked by #32026
    (join-clause-method joinable))
 
   ([joinable conditions]
-   (with-join-conditions (join-clause joinable) conditions)))
+   (-> (join-clause joinable)
+       (u/assoc-default :fields :all)
+       (with-join-conditions conditions))))
 
 (mu/defn with-join-fields :- PartialJoin
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
@@ -655,14 +656,22 @@
                      (dissoc ::ref)))
               cols)))))
 
+(def ^:private JoinOrJoinable
+  [:or
+   [:ref ::lib.schema.join/join]
+   Joinable])
+
+(defn- join? [x]
+  (= (lib.dispatch/dispatch-value x) :mbql/join))
+
 (mu/defn joinable-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
   something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
   selected columns (those in the join's `:fields`) will include `:selected true` information."
   [query            :- ::lib.schema/query
    stage-number     :- :int
-   join-or-joinable :- [:or ::lib.schema.join/join Joinable]]
-  (let [a-join   (when (= (lib.dispatch/dispatch-value join-or-joinable) :mbql/join)
+   join-or-joinable :- JoinOrJoinable]
+  (let [a-join   (when (join? join-or-joinable)
                    join-or-joinable)
         source (if a-join
                  (joined-thing query join-or-joinable)
@@ -671,3 +680,54 @@
     (cond-> cols
       a-join (add-join-alias-to-joinable-columns a-join)
       a-join (mark-selected-joinable-columns a-join))))
+
+(defn- first-join?
+  "Whether a `join-or-joinable` is (or will be) the first join in a stage of a query.
+
+  If a join is passed, we need to check whether it's the first join in the first stage of a source-table query or
+  not.
+
+  New joins get appended after any existing ones, so it would be safe to assume that if there are any other joins in
+  the current stage, this **will not** be the first join in the stage."
+  [query stage-number join-or-joinable]
+  (let [existing-joins (joins query stage-number)]
+    (or
+     ;; if there are no existing joins, then this will be the first join regardless of what is passed in.
+     (empty? existing-joins)
+     ;; otherwise there ARE existing joins, so this is only the first join if it is the same thing as the first join
+     ;; in `existing-joins`.
+     (when (join? join-or-joinable)
+       (= (lib.options/uuid join-or-joinable)
+          (lib.options/uuid (first existing-joins)))))))
+
+(mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string
+  "Get the display name for whatever we are joining. See #32015 for screenshot examples.
+
+  The rules, copied from MLv1, are as follows:
+
+  1. If this is the first join in the first stage of a query, and the query uses a `:source-table`, then use the
+     display name for the source Table.
+
+  2. Otherwise use `Previous results`.
+
+  These rules do seem a little goofy -- why don't we use the name of a Saved Question or Model? But we can worry about
+  that in the future. For now, let's just replicate MLv1 behavior.
+
+  This function needs to be usable while we are in the process of constructing a join in the context of a given stage,
+  but also needs to work for rendering existing joins. Pass a join in for existing joins, or something [[Joinable]]
+  for ones we are currently building."
+  ([query join-or-joinable]
+   (join-lhs-display-name query -1 join-or-joinable))
+
+  ([query             :- ::lib.schema/query
+    stage-number      :- :int
+    join-or-joinable  :- JoinOrJoinable]
+   (if (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
+            (first-join? query stage-number join-or-joinable)           ; first join?
+            (lib.util/source-table-id query))                           ; query ultimately uses source Table?
+     (let [table-id (lib.util/source-table-id query)
+           table    (lib.metadata/table query table-id)]
+       ;; I think `:default` is okay here, there shouldn't be a difference between `:default` and `:long` for a
+       ;; Table anyway
+       (lib.metadata.calculation/display-name query stage-number table))
+     (i18n/tru "Previous results"))))
