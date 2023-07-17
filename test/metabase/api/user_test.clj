@@ -106,13 +106,13 @@
             (is (= [crowberto lucky rasta]
                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                         (filter mt/test-user?)
-                        (map :email)))))
-         (testing "Returns all users when admin"
-           (mt/with-temporary-setting-values [user-visibility "none"]
-             (is (= [crowberto lucky rasta]
-                    (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
-                         (filter mt/test-user?)
-                         (map :email)))))))
+                        (map :email))))))
+        (testing "Returns all users when admin"
+          (mt/with-temporary-setting-values [user-visibility "none"]
+            (is (= [crowberto lucky rasta]
+                   (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
+                        (filter mt/test-user?)
+                        (map :email))))))
         (testing "Returns users in the group when user-visibility is same group"
           (mt/with-temporary-setting-values [user-visibility :group]
             (mt/with-temp* [PermissionsGroup           [{group-id :id} {:name "Test delete group"}]
@@ -120,13 +120,24 @@
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :crowberto) :group_id group-id}]]
               (is (= [crowberto rasta]
                      (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                          (map :email))))))
-         (testing "Returns only self when user-visibility is none"
-           (mt/with-temporary-setting-values [user-visibility :none]
-             (is (= [rasta]
-                    (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                         (filter mt/test-user?)
-                         (map :email)))))))))))
+                          (map :email)))))))
+        (testing "Doesn't return multiple of the same user when they share the same group"
+          (mt/with-temporary-setting-values [user-visibility :group]
+            (mt/with-temp* [PermissionsGroup           [{group-id1 :id} {:name "Test delete group1"}]
+                            PermissionsGroup           [{group-id2 :id} {:name "Test delete group2"}]
+                            PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta) :group_id group-id1}]
+                            PermissionsGroupMembership [_ {:user_id (mt/user->id :crowberto) :group_id group-id1}]
+                            PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta) :group_id group-id2}]
+                            PermissionsGroupMembership [_ {:user_id (mt/user->id :crowberto) :group_id group-id2}]]
+              (is (= [crowberto rasta]
+                     (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                          (map :email)))))))
+        (testing "Returns only self when user-visibility is none"
+          (mt/with-temporary-setting-values [user-visibility :none]
+            (is (= [rasta]
+                   (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                        (filter mt/test-user?)
+                        (map :email))))))))))
 
 (deftest admin-user-list-test
   (testing "GET /api/user"
@@ -285,7 +296,7 @@
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
       (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
-                                       :device_id (str (java.util.UUID/randomUUID))
+                                       :device_id (str (random-uuid))
                                        :timestamp #t "2021-03-18T19:52:41.808482Z"}]
                       Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
@@ -303,7 +314,7 @@
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :last_login :has_question_and_dashboard))))))
+                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
       (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
                       Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]

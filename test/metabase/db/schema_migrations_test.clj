@@ -43,8 +43,7 @@
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
-   (java.sql Connection)
-   (java.util UUID)))
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,7 +96,7 @@
                                          :email        email
                                          :first_name   (tu.random/random-name)
                                          :last_name    (tu.random/random-name)
-                                         :password     (str (UUID/randomUUID))
+                                         :password     (str (random-uuid))
                                          :date_joined  :%now
                                          :is_active    true
                                          :is_superuser false)))

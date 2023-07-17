@@ -302,7 +302,7 @@
   "Should we enable the Audit Logs interface in the Admin UI?"
   :audit-app)
 
-(define-premium-feature enable-email-allow-list?
+(define-premium-feature ^{:added "0.41.0"} enable-email-allow-list?
   "Should we enable allow-lists for email domains?"
   :email-allow-list)
 
@@ -338,15 +338,34 @@
   "Should we enable session timeouts?"
   :session-timeout-config)
 
+(define-premium-feature enable-sso-saml?
+  "Should we enable sso using SAML?"
+  :sso-saml)
+
+(define-premium-feature enable-sso-jwt?
+  "Should we enable sso using JWT?"
+  :sso-jwt)
+
+(define-premium-feature enable-sso-ldap?
+  "Should we enable sso using LDAP?"
+  :sso-ldap)
+
+(define-premium-feature enable-session-timeout-config?
+  "Should we enable define session timeout config?"
+  :session-timeout-config)
+
 (define-premium-feature can-disable-password-login?
   "Can we password login?"
   :disable-password-login)
 
 ;; TODO: remove this once all its uses have been switched to new granular features
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
-  "Should we enable knobs and levers for more complex orgs (allow-lists email domains for
-  notifications, more in the future)?"
+  "Should we enable knobs and levers for more complex orgs?"
   :advanced-config)
+
+(define-premium-feature ^{:added "0.41.0"} enable-dashboard-subscription-filters?
+  "Should we enable filters for dashboard subscriptions?"
+  :dashboard-subscription-filters)
 
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-permissions?
   "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level
@@ -361,6 +380,10 @@
   "Should we enable official collections (and more in the future, like workflows, forking, etc.)?"
   :content-management)
 
+(define-premium-feature ^{:added "0.41.0"} enable-question-error-logs?
+  "Should we enable viewing question error logs?"
+  :question-error-logs)
+
 (define-premium-feature ^{:added "0.41.0"} enable-official-collections?
   "Should we enable Official Collections?"
   :official-collections)
@@ -371,6 +394,10 @@
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"
+  :serialization)
+
+(define-premium-feature ^{:added "0.47.0"} enable-email-restrict-recipients?
+  "Enable restrict email recipients?"
   :serialization)
 
 (defsetting is-hosted?

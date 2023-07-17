@@ -11,9 +11,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,7 +73,7 @@
                                     :template          {:method "GET"
                                                         :url "https://example.com/{{x}}"}
                                     :parameters        [{:id "x" :type "text"}]
-                                    :public_uuid       (str (UUID/randomUUID))
+                                    :public_uuid       (str (random-uuid))
                                     :made_public_by_id (mt/user->id :crowberto)
                                     :response_handle   ".body"
                                     :error_handle      ".status >= 400"}
@@ -396,7 +394,7 @@
    :made_public_by_id nil})
 
 (defn- shared-action-opts []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 (deftest fetch-public-actions-test

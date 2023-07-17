@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import DatabaseForm from "metabase/databases/containers/DatabaseForm";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { DatabaseData } from "metabase-types/api";
 import { InviteInfo } from "metabase-types/store";
 import {

@@ -7,8 +7,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log])
   (:import
-   (clojure.lang Keyword)
-   (java.util UUID)))
+   (clojure.lang Keyword)))
 
 (set! *warn-on-reflection* true)
 
@@ -128,7 +127,7 @@
                 this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
                 will have its own ID, making this different from the `site-uuid` Setting."}
   local-process-uuid
-  (str (UUID/randomUUID)))
+  (str (random-uuid)))
 
 (defonce
   ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
