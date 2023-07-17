@@ -86,17 +86,20 @@ function ActionVizForm({
   };
 
   const fetchInitialValues = useCallback(async () => {
-    const prefetchEndpoint =
+    const prefetchValues =
       getDashboardType(dashboard.id) === "public"
         ? PublicApi.prefetchValues
         : ActionsApi.prefetchValues;
 
-    return prefetchEndpoint({
+    return prefetchValues({
       dashboardId: dashboard.id,
       dashcardId: dashcard.id,
       parameters: JSON.stringify(initialValues),
     });
   }, [dashboard.id, dashcard.id, initialValues]);
+
+  const shouldPrefetch =
+    action.type === "implicit" && action.kind === "row/update";
 
   if (shouldDisplayButton) {
     return (
@@ -110,8 +113,6 @@ function ActionVizForm({
         {showFormModal && (
           <ActionParametersInputModal
             action={action}
-            dashboard={dashboard}
-            dashcard={dashcard}
             mappedParameters={mappedParameters}
             initialValues={initialValues}
             fetchInitialValues={fetchInitialValues}
@@ -151,14 +152,10 @@ function ActionVizForm({
       <FormTitle>{title}</FormTitle>
       <ActionParametersInputForm
         action={action}
-        dashboard={dashboard}
-        dashcard={dashcard}
         mappedParameters={mappedParameters}
         initialValues={initialValues}
         fetchInitialValues={fetchInitialValues}
-        shouldPrefetch={
-          action.type === "implicit" && action.kind === "row/update"
-        }
+        shouldPrefetch={shouldPrefetch}
         onSubmit={onSubmit}
       />
     </FormWrapper>

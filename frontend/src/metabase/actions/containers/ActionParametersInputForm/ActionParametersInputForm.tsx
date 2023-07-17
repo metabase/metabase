@@ -6,8 +6,6 @@ import EmptyState from "metabase/components/EmptyState";
 import ActionForm from "metabase/actions/components/ActionForm";
 
 import type {
-  ActionDashboardCard,
-  Dashboard,
   OnSubmitActionForm,
   ParametersForActionExecution,
   WritebackAction,
@@ -16,8 +14,6 @@ import type {
 
 export interface ActionParametersInputFormProps {
   action: WritebackAction;
-  dashboard?: Dashboard;
-  dashcard?: ActionDashboardCard;
   mappedParameters?: WritebackParameter[];
   initialValues?: ParametersForActionExecution;
   fetchInitialValues?: () => Promise<ParametersForActionExecution>;
@@ -31,8 +27,6 @@ function ActionParametersInputForm({
   action,
   mappedParameters = [],
   initialValues = {},
-  dashboard,
-  dashcard,
   fetchInitialValues,
   shouldPrefetch,
   onCancel,
@@ -75,8 +69,7 @@ function ActionParametersInputForm({
   }, [fetchInitialValues]);
 
   useEffect(() => {
-    const hasValueFromDashboard = Object.keys(initialValues).length > 0;
-    const canPrefetch = hasValueFromDashboard && dashboard && dashcard;
+    const canPrefetch = Object.keys(initialValues).length > 0;
 
     if (shouldPrefetch && !hasPrefetchedValues) {
       setPrefetchedValues({});
@@ -85,14 +78,7 @@ function ActionParametersInputForm({
         prefetchValues();
       }
     }
-  }, [
-    shouldPrefetch,
-    hasPrefetchedValues,
-    dashboard,
-    dashcard,
-    initialValues,
-    prefetchValues,
-  ]);
+  }, [initialValues, shouldPrefetch, hasPrefetchedValues, prefetchValues]);
 
   const handleSubmit = useCallback(
     async (parameters, actions) => {

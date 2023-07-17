@@ -57,8 +57,6 @@ const dashcard = createMockActionDashboardCard({ id: 456, action: mockAction });
 const defaultProps: ActionParametersInputFormProps = {
   action: mockAction,
   mappedParameters: [],
-  dashboard,
-  dashcard,
   fetchInitialValues: undefined,
   shouldPrefetch: false,
   initialValues: {},
