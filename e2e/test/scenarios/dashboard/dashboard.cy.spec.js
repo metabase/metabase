@@ -75,7 +75,19 @@ describe("scenarios > dashboard", () => {
 
   it("should update the name and description", () => {
     cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
+    cy.intercept("PUT", "/api/dashboard/1", req => {
+      // metabase#31721: Shouldn't call update dashboard twice. This is the API that was unnecessary
+      expect(Object.keys(req.body).sort()).to.not.deep.equal([
+        "description",
+        "name",
+        "parameters",
+      ]);
+    }).as("updateDashboard");
+    // metabase#31721
+    cy.intercept("PUT", "/api/dashboard/*/cards", req => {
+      throw Error("This API should not be called");
+    });
+
     visitDashboard(1);
     cy.wait("@getDashboard");
 

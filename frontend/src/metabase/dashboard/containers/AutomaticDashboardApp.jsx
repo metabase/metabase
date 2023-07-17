@@ -53,7 +53,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  saveDashboard: Dashboards.actions.save,
+  saveNewDashboard: Dashboards.actions.save,
   invalidateCollections: Collections.actions.invalidateLists,
 };
 
@@ -70,10 +70,10 @@ class AutomaticDashboardAppInner extends Component {
   }
 
   save = async () => {
-    const { dashboard, triggerToast, saveDashboard, invalidateCollections } =
+    const { dashboard, triggerToast, saveNewDashboard, invalidateCollections } =
       this.props;
     // remove the transient id before trying to save
-    const { payload: newDashboard } = await saveDashboard(
+    const { payload: newDashboard } = await saveNewDashboard(
       dissoc(dashboard, "id"),
     );
     invalidateCollections();

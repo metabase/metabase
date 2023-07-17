@@ -37,7 +37,7 @@ import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
 
-import DashboardHeaderView from "../components/DashboardHeaderView";
+import { DashboardHeaderComponent } from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
@@ -178,8 +178,8 @@ class DashboardHeader extends Component {
     );
   }
 
-  async onSave(preserveParameters) {
-    await this.props.saveDashboardAndCards(preserveParameters);
+  async onSave() {
+    await this.props.saveDashboardAndCards();
     this.onDoneEditing();
   }
 
@@ -482,7 +482,7 @@ class DashboardHeader extends Component {
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <DashboardHeaderView
+      <DashboardHeaderComponent
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
@@ -503,7 +503,6 @@ class DashboardHeader extends Component {
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-        onSave={() => this.onSave(true)}
       />
     );
   }
