@@ -15,15 +15,33 @@ const upgradeUrl = "https://www.metabase.com/upgrade";
 const learnEmbeddingUrl =
   "https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html";
 
+const embeddingDescription =
+  "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.";
 const licenseExplanations = [
   `When you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.`,
   `Your should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`,
 ];
 
+// These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("should not offer to share or embed models (metabase#20815)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+
+    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
+    cy.wait("@dataset");
+
+    cy.findByTestId("view-footer").within(() => {
+      cy.icon("download").should("exist");
+      cy.icon("bell").should("exist");
+      cy.icon("share").should("not.exist");
+    });
   });
 
   context("embedding disabled", () => {
@@ -36,89 +54,140 @@ describe("scenarios > embedding > smoke tests", () => {
     it("should display the embedding page correctly", { tags: "@OSS" }, () => {
       cy.visit("/admin/settings/setup");
       sidebar().within(() => {
-        cy.findByText("Embedding").click();
+        cy.findByRole("link", { name: "Embedding" }).click();
       });
 
       cy.location("pathname").should("eq", embeddingPage);
+      cy.findByRole("heading", { name: "Embedding" });
 
-      // Some info we provide to users before they enable embedding
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More details");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("By enabling embedding you're agreeing to");
+      cy.findByTestId("enable-embedding-setting").within(() => {
+        // Some info we provide to users before they enable embedding
+        cy.findByText(embeddingDescription);
+        cy.contains("By enabling embedding you're agreeing to");
+        assertLinkMatchesUrl("our embedding license.", licenseUrl);
 
-      assertLinkMatchesUrl("our embedding license.", licenseUrl);
+        cy.findByRole("tab")
+          .should("have.attr", "aria-expanded", "false")
+          .findByText("More details")
+          .click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("More details").click();
-      licenseExplanations.forEach(licenseExplanation => {
-        cy.findByText(licenseExplanation);
+        cy.findByRole("tab")
+          .should("have.attr", "aria-expanded", "true")
+          .within(() => {
+            licenseExplanations.forEach(licenseExplanation => {
+              cy.findByText(licenseExplanation);
+            });
+          });
+
+        cy.button("Enable").click();
       });
 
-      cy.button("Enable").click();
-
-      // Let's examine the contents of the enabled embedding page (the url stays the same)
+      // The URL should stay the same
       cy.location("pathname").should("eq", embeddingPage);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(
-        "Allow questions, dashboards, and more to be embedded. Learn more.",
-      );
-      assertLinkMatchesUrl("Learn more.", learnEmbeddingUrl);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Enabled");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Standalone embeds").click();
-      if (isOSS) {
+      cy.findByTestId("enable-embedding-setting").within(() => {
         cy.contains(
-          "In order to remove the Metabase logo from embeds, you can always upgrade to one of our paid plans.",
+          "Allow questions, dashboards, and more to be embedded. Learn more.",
         );
+        assertLinkMatchesUrl("Learn more.", learnEmbeddingUrl);
 
-        assertLinkMatchesUrl("one of our paid plans.", upgradeUrl);
-      }
+        cy.findByRole("switch")
+          .should("be.checked")
+          .siblings()
+          .should("have.text", "Enabled");
+      });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Embedding secret key/i);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.",
+      cy.log(
+        "With the embedding enabled, we should now see two new sections on the main page",
       );
+      cy.log("The first section: 'Standalone embeds'");
+      cy.findByTestId("-standalone-embeds-setting").within(() => {
+        const standalonePath =
+          "/admin/settings/embedding-in-other-applications/standalone";
 
-      getTokenValue().should("have.length", 64);
+        cy.findByRole("link")
+          .should("have.attr", "href")
+          .and("eq", standalonePath);
+        cy.findByText("Standalone embeds");
+        cy.findByText(
+          "Securely embed individual questions and dashboards within other applications.",
+        );
+        cy.findByText("More details").click();
+        cy.location("pathname").should("eq", standalonePath);
+      });
 
-      cy.button("Regenerate key");
-
-      // List of all embedded dashboards and questions
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Embedded dashboards/i);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No dashboards have been embedded yet.");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Embedded questions/i);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No questions have been embedded yet.");
-
-      // Full app embedding section (available only for EE version and in PRO hosted plans)
-      if (isEE) {
-        sidebar().within(() => {
-          cy.findByText("Embedding").click();
+      cy.log("Standalone embeds page");
+      mainPage().within(() => {
+        cy.findByTestId("embedding-secret-key-setting").within(() => {
+          cy.findByText(/Embedding secret key/i);
+          cy.findByText(
+            "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.",
+          );
+          getTokenValue().should("have.length", 64);
+          cy.button("Regenerate key");
         });
-        cy.findByText("Full-app embedding").click();
+
+        cy.findByTestId("-embedded-dashboards-setting").within(() => {
+          cy.findByText(/Embedded dashboards/i);
+          cy.findByText("No dashboards have been embedded yet.");
+        });
+
+        cy.findByTestId("-embedded-questions-setting")
+          .within(() => {
+            cy.findByText(/Embedded questions/i);
+            cy.findByText("No questions have been embedded yet.");
+          })
+          .next()
+          .within(() => {
+            // FE unit tests are making sure this section doesn't exist when a valid token is provided,
+            // so we don't have to do it here usign a conditional logic
+            cy.contains(
+              "In order to remove the Metabase logo from embeds, you can always upgrade to one of our paid plans.",
+            );
+
+            assertLinkMatchesUrl("one of our paid plans.", upgradeUrl);
+          });
+      });
+
+      cy.go("back");
+      cy.location("pathname").should("eq", embeddingPage);
+
+      cy.log("The second section: 'Full-app embedding'");
+      cy.findByTestId("-full-app-embedding-setting").within(() => {
+        const fullAppEmbeddingPath =
+          "/admin/settings/embedding-in-other-applications/full-app";
+
+        cy.findByRole("link")
+          .should("have.attr", "href")
+          .and("eq", fullAppEmbeddingPath);
+
+        cy.findByText(/Paid/i);
+        cy.findByText("Full-app embedding");
+        cy.findByText(
+          "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder.",
+        );
+        cy.findByText("More details").click();
+        cy.location("pathname").should("eq", fullAppEmbeddingPath);
+      });
+
+      cy.log("Full-app embedding page");
+      mainPage().within(() => {
         cy.findByText(/Embedding the entire Metabase app/i);
+        // Full app embedding is only available for specific premium tokens
         cy.contains(
           "With some of our paid plans, you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
         );
+
+        cy.findByTestId("embedding-app-origin-setting").should("not.exist");
         cy.contains(
           "Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the exact specifications for what can be entered.",
         ).should("not.exist");
         cy.findByPlaceholderText("https://*.example.com").should("not.exist");
-      }
+      });
     });
 
     it("should not let you embed the question", () => {
-      visitQuestion("1");
+      visitQuestion(ORDERS_QUESTION_ID);
       cy.icon("share").click();
 
       ensureEmbeddingIsDisabled();
@@ -126,7 +195,6 @@ describe("scenarios > embedding > smoke tests", () => {
 
     it("should not let you embed the dashboard", () => {
       visitDashboard(1);
-
       cy.icon("share").click();
 
       ensureEmbeddingIsDisabled();
@@ -231,17 +299,6 @@ describe("scenarios > embedding > smoke tests", () => {
       });
     });
   });
-
-  it("should not offer to share or embed models (metabase#20815)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-
-    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-    cy.wait("@dataset");
-
-    cy.icon("share").should("not.exist");
-  });
 });
 
 function resetEmbedding() {
@@ -277,7 +334,7 @@ function ensureEmbeddingIsDisabled() {
 
 function visitAndEnableSharing(object) {
   if (object === "question") {
-    visitQuestion("1");
+    visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("share").click();
     cy.findByText(/Embed in your application/).click();
   }
@@ -292,4 +349,8 @@ function visitAndEnableSharing(object) {
 
 function sidebar() {
   return cy.get(".AdminList");
+}
+
+function mainPage() {
+  return sidebar().next();
 }
