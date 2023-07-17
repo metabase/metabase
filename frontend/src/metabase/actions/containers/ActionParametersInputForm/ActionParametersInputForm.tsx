@@ -66,7 +66,7 @@ function ActionParametersInputForm({
       .concat(hiddenFieldIds);
   }, [mappedParameters, action.visualization_settings?.fields]);
 
-  const refetchValues = useCallback(async () => {
+  const prefetchValues = useCallback(async () => {
     if (!fetchInitialValues) {
       return;
     }
@@ -87,7 +87,7 @@ function ActionParametersInputForm({
       setPrefetchedValues({});
 
       if (canPrefetch) {
-        refetchValues();
+        prefetchValues();
       }
     }
   }, [
@@ -96,7 +96,7 @@ function ActionParametersInputForm({
     dashboard,
     dashcard,
     initialValues,
-    refetchValues,
+    prefetchValues,
   ]);
 
   const handleSubmit = useCallback(
@@ -108,7 +108,7 @@ function ActionParametersInputForm({
         onSubmitSuccess?.();
 
         if (shouldPrefetch) {
-          refetchValues();
+          prefetchValues();
         } else {
           actions.resetForm();
         }
@@ -116,7 +116,7 @@ function ActionParametersInputForm({
         throw new Error(error);
       }
     },
-    [shouldPrefetch, onSubmit, onSubmitSuccess, refetchValues],
+    [shouldPrefetch, onSubmit, onSubmitSuccess, prefetchValues],
   );
 
   if (shouldPrefetch && !hasPrefetchedValues) {
