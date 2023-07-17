@@ -43,6 +43,7 @@ export const getDocsUrl = createSelector(
   (version, page, anchor) => getDocsUrlForVersion(version, page, anchor),
 );
 
+// should be private, but exported until there are usages of deprecated MetabaseSettings.docsUrl
 export const getDocsUrlForVersion = (
   version: Version | undefined,
   page = "",
