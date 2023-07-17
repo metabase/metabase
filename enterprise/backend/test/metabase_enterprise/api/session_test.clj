@@ -29,7 +29,6 @@
                                                  :session-timeout-config
                                                  :sandboxes
                                                  :email-restrict-recipients
-                                                 :sso-ldap
                                                  :sso-google
                                                  :sso-jwt
                                                  :sso-ldap
