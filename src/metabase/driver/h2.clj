@@ -30,10 +30,6 @@
 
 (driver/register! :h2, :parent :sql-jdbc)
 
-(defmethod sql.qp/honey-sql-version :h2
-  [_driver]
-  2)
-
 (defn- get-field
   "Returns value of private field. This function is used to bypass field protection to instantiate
    a low-level H2 Parser object in order to detect DDL statements in queries."
@@ -97,7 +93,7 @@
     (let [connection-str  (cond-> db
                             (not (str/includes? db "h2:")) (str/replace-first #"^" "h2:")
                             (not (str/includes? db "jdbc:")) (str/replace-first #"^" "jdbc:"))
-          connection-info (org.h2.engine.ConnectionInfo. connection-str nil nil nil)
+          connection-info (org.h2.engine.ConnectionInfo. connection-str)
           properties      (get-field connection-info "prop")
           bad-props       (into {} (keep (fn [[k v]] (when (malicious-property-value v) [k v])))
                                 properties)]
