@@ -254,7 +254,7 @@
 (mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error.
 
-  (assert-has-feature :sandboxes \"Sandboxing\")
+  (assert-has-feature :sandboxes (tru \"Sandboxing\"))
 
   => throw an error with message \"Sandboxing is an enterprise feature. Please upgrade to a paid plan to use this feature.\""
   [feature-flag :- keyword?
