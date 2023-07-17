@@ -48,8 +48,7 @@
     (deferred-trs "invalid context seed value")))
 
 (defn- check-premium-token! []
-  (when-not (premium-features/has-feature? :serialization)
-    (throw (Exception. (trs "The serialization feature is not enabled on your Metabase plan.")))))
+  (premium-features/assert-has-feature :serialization (trs "Serialization")))
 
 (s/defn v1-load
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."

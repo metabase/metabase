@@ -726,13 +726,13 @@
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
-                (is (thrown-with-msg? Exception #"requires a premium token"
+                (is (thrown-with-msg? Exception #"Please upgrade"
                                       (cmd/v2-dump dump-dir {}))
                     "throws"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
-                    (is (thrown-with-msg? Exception #"requires a premium token"
+                    (is (thrown-with-msg? Exception #"Please upgrade"
                                           (cmd/v2-load dump-dir {}))
                         "throws")))))))))))
