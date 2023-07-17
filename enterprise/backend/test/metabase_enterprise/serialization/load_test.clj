@@ -332,7 +332,8 @@
                                                                 card-id-temporal-unit
                                                                 card-id-with-native-snippet
                                                                 card-id-temporal-unit
-                                                                card-join-card-id])
+                                                                card-join-card-id
+                                                                card-id-pivot-table])
                            :collections   (gather-collections [card-id
                                                                card-arch-id
                                                                card-id-root
@@ -346,7 +347,8 @@
                                                                card-id-temporal-unit
                                                                card-id-with-native-snippet
                                                                card-id-temporal-unit
-                                                               card-join-card-id])
+                                                               card-join-card-id
+                                                               card-id-pivot-table])
                            :entities      [[Database           (t2/select-one Database :id db-id)]
                                            [Table              (t2/select-one Table :id table-id)]
                                            [Table              (t2/select-one Table :id table-id-categories)]
@@ -392,7 +394,8 @@
                                            [Collection         (t2/select-one Collection :id snippet-nested-collection-id)]
                                            [NativeQuerySnippet (t2/select-one NativeQuerySnippet :id nested-snippet-id)]
                                            [Card               (t2/select-one Card :id card-id-with-native-snippet)]
-                                           [Card               (t2/select-one Card :id card-join-card-id)]]})]
+                                           [Card               (t2/select-one Card :id card-join-card-id)]
+                                           [Card               (t2/select-one Card :id card-id-pivot-table)]]})]
         (with-world-cleanup
           (v1-load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (t2/select-one Database :name ts/temp-db-name)

@@ -397,6 +397,16 @@
       (pull-unresolved-names-up vs-norm [::mb.viz/column-settings] resolved-cs))
     vs-norm))
 
+(defn- resolve-pivot-table-settings
+  "Resolve the entries in a :pivot_table.column_split map (which is under a :visualization_settings map). These map entries
+  may contain fully qualified field names, or even other cards. In case of an unresolved name (i.e. a card that hasn't
+  yet been loaded), we will track it under ::unresolved-names and revisit on the next pass."
+  [vs-norm]
+  (if-let [col-settings (::mb.viz/table vs-norm)]
+    (let [resolved-cs (reduce-kv accumulate-converted-column-settings {} col-settings)]
+      (pull-unresolved-names-up vs-norm [:rows :colmuns] resolved-cs))
+    vs-norm))
+
 (defn- resolve-table-columns
   "Resolve the :table.columns key from a :visualization_settings map, which may contain fully qualified field names.
   Such fully qualified names will be converted to the numeric field ID before being filled into the loaded card. Only
@@ -422,11 +432,14 @@
   Any unresolved entities from this resolution process will be tracked via ::unresolved-named so that the card or
   dashboard card holding these visualization settings can be revisited in a future pass."
   [entity]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println "Running: " entity)
   (if-let [viz-settings (:visualization_settings entity)]
     (let [resolved-vs (-> (mb.viz/db->norm viz-settings)
                           resolve-top-level-click-behavior
                           resolve-column-settings
                           resolve-table-columns
+                          resolve-pivot-table-settings
                           mb.viz/norm->db)]
       (pull-unresolved-names-up entity [:visualization_settings] resolved-vs))
     entity))
