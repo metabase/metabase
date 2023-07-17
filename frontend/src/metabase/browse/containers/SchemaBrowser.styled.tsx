@@ -22,5 +22,8 @@ export const SchemaGridItem = styled(GridItem)`
 export const SchemaLink = styled(Link)`
   margin-bottom: 0.5rem;
   overflow: hidden;
-  color: ${color("accent2")};
+
+  &:hover {
+    color: ${color("accent2")};
+  }
 `;
