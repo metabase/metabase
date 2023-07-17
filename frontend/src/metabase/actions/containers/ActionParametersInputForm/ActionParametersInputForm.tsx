@@ -21,13 +21,11 @@ export interface ActionParametersInputFormProps {
   mappedParameters?: WritebackParameter[];
   initialValues?: ParametersForActionExecution;
   fetchInitialValues?: () => Promise<ParametersForActionExecution>;
+  shouldPrefetch?: boolean;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
 }
-
-const shouldPrefetchValues = (action: WritebackAction) =>
-  action.type === "implicit" && action.kind === "row/update";
 
 function ActionParametersInputForm({
   action,
@@ -36,6 +34,7 @@ function ActionParametersInputForm({
   dashboard,
   dashcard,
   fetchInitialValues,
+  shouldPrefetch,
   onCancel,
   onSubmit,
   onSubmitSuccess,
@@ -44,10 +43,6 @@ function ActionParametersInputForm({
     useState<ParametersForActionExecution>({});
 
   const hasPrefetchedValues = Object.keys(prefetchedValues).length > 0;
-  const shouldPrefetch = useMemo(
-    () => shouldPrefetchValues(action) && dashboard && dashcard,
-    [action, dashboard, dashcard],
-  );
 
   const values = useMemo(
     () => ({ ...prefetchedValues, ...initialValues }),

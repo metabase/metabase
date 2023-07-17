@@ -115,6 +115,7 @@ function ActionVizForm({
             mappedParameters={mappedParameters}
             initialValues={initialValues}
             fetchInitialValues={fetchInitialValues}
+            shouldPrefetch={shouldPrefetch}
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
@@ -155,6 +156,9 @@ function ActionVizForm({
         mappedParameters={mappedParameters}
         initialValues={initialValues}
         fetchInitialValues={fetchInitialValues}
+        shouldPrefetch={
+          action.type === "implicit" && action.kind === "row/update"
+        }
         onSubmit={onSubmit}
       />
     </FormWrapper>

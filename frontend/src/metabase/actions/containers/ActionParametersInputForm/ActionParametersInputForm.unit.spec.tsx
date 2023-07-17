@@ -1,17 +1,17 @@
-import _ from "underscore";
-import fetchMock from "fetch-mock";
-import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import _ from "underscore";
 
 import { getIcon, render, screen } from "__support__/ui";
 
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
-  createMockFieldSettings,
-  createMockQueryAction,
-  createMockImplicitQueryAction,
   createMockDashboard,
+  createMockFieldSettings,
+  createMockImplicitQueryAction,
+  createMockQueryAction,
 } from "metabase-types/api/mocks";
 import { ActionsApi } from "metabase/services";
 
@@ -59,17 +59,20 @@ const defaultProps: ActionParametersInputFormProps = {
   mappedParameters: [],
   dashboard,
   dashcard,
-  fetchInitialValues: () =>
-    ActionsApi.prefetchValues({
-      dashboardId: dashboard.id,
-      dashcardId: dashcard.id,
-      parameters: JSON.stringify({}),
-    }).catch(_.noop),
+  fetchInitialValues: undefined,
+  shouldPrefetch: false,
   initialValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
   onSubmit: jest.fn().mockResolvedValue({ success: true }),
 };
+
+const fetchInitialValues = () =>
+  ActionsApi.prefetchValues({
+    dashboardId: dashboard.id,
+    dashcardId: dashcard.id,
+    parameters: JSON.stringify({}),
+  }).catch(_.noop);
 
 function setup(options?: Partial<ActionParametersInputModalProps>) {
   render(<ActionParametersInputForm {...defaultProps} {...options} />);
@@ -188,6 +191,8 @@ describe("Actions > ActionParametersInputForm", () => {
       initialValues: {
         id: 888,
       },
+      fetchInitialValues,
+      shouldPrefetch: true,
     });
 
     await waitFor(async () => {
@@ -206,6 +211,7 @@ describe("Actions > ActionParametersInputForm", () => {
         kind: "row/update",
       }),
       initialValues: {},
+      shouldPrefetch: true,
     });
 
     expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
@@ -234,6 +240,8 @@ describe("Actions > ActionParametersInputForm", () => {
       initialValues: {
         id: 888,
       },
+      fetchInitialValues,
+      shouldPrefetch: true,
     });
 
     expect(
