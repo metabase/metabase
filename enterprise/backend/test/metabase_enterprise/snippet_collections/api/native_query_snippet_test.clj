@@ -150,7 +150,7 @@
                         NativeQuerySnippet [snippet {:collection_id (:id collection), :name "My Snippet"}]
                         NativeQuerySnippet [_ {:collection_id (:id sub-collection)
                                                :name          "Nested Snippet"}]]
-          (is (partial=
+          (is (=?
                [{:id (:id snippet), :name "My Snippet"}
                 {:id (:id sub-collection), :name "Nested Snippet Collection"}]
                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))
