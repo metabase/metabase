@@ -2,7 +2,6 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { createRef, Component } from "react";
-import { Global } from "@emotion/react";
 import cx from "classnames";
 import "ace/ace";
 import "ace/ext-language_tools";
@@ -54,10 +53,7 @@ import {
 } from "./NativeQueryEditor/utils";
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
-import {
-  autocompleteStyles,
-  NativeQueryEditorRoot,
-} from "./NativeQueryEditor.styled";
+import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
@@ -584,7 +580,6 @@ export class NativeQueryEditor extends Component {
         className="NativeQueryEditor bg-light full"
         data-testid="native-query-editor-container"
       >
-        <Global styles={autocompleteStyles} />
         {hasTopBar && (
           <div className="flex align-center" data-testid="native-query-top-bar">
             {canChangeDatabase && (

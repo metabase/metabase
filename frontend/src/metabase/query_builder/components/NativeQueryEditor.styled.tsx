@@ -92,7 +92,7 @@ export const NativeQueryEditorRoot = styled.div`
   }
 `;
 
-export const autocompleteStyles = css`
+export const aceEditorStyles = css`
   .ace_editor.ace_autocomplete {
     border: none;
     box-shadow: 0 2px 3px 2px rgba(0, 0, 0, 0.08);

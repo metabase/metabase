@@ -1,5 +1,6 @@
 import { css, Global } from "@emotion/react";
 import { FontFile } from "metabase-types/api";
+import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 export interface GlobalStylesProps {
@@ -25,6 +26,7 @@ const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
       `,
     )}
 
+    ${aceEditorStyles}
     ${saveDomImageStyles}
   `;
 
