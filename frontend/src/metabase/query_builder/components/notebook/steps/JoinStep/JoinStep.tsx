@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -39,6 +40,8 @@ export function JoinStep({
     updateCondition,
   } = useJoin(query, stageIndex, join);
 
+  const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
+
   const handleStrategyChange = (nextStrategy: Lib.JoinStrategy) => {
     setStrategy(nextStrategy);
     if (join) {
@@ -48,10 +51,16 @@ export function JoinStep({
     }
   };
 
+  const handleTableChange = (nextTable: Lib.Joinable) => {
+    setTable(nextTable);
+    setIsAddingNewCondition(true);
+  };
+
   const handleAddCondition = (condition: Lib.JoinConditionClause) => {
     const nextQuery = addCondition(condition);
     if (nextQuery) {
       updateQuery(nextQuery);
+      setIsAddingNewCondition(false);
     }
   };
 
@@ -65,8 +74,36 @@ export function JoinStep({
     }
   };
 
-  // [undefined] is a special case to render a single empty condition for new joins
-  const displayConditions = conditions.length > 0 ? conditions : [undefined];
+  const renderJoinCondition = (
+    condition?: Lib.JoinConditionClause,
+    index?: number,
+  ) => {
+    if (!table) {
+      return null;
+    }
+
+    const isEditing = condition && typeof index === "number";
+    const key = isEditing ? `join-condition-${index}` : "new-join-condition";
+
+    return (
+      <JoinCondition
+        key={key}
+        query={query}
+        stageIndex={stageIndex}
+        condition={condition}
+        table={table}
+        color={color}
+        readOnly={readOnly}
+        onChange={nextCondition => {
+          if (isEditing) {
+            handleUpdateCondition(index, nextCondition);
+          } else {
+            handleAddCondition(nextCondition);
+          }
+        }}
+      />
+    );
+  };
 
   return (
     <Flex align="center" miw="100%" gap="1rem">
@@ -87,7 +124,7 @@ export function JoinStep({
             table={table}
             color={color}
             readOnly={readOnly}
-            onChangeTable={setTable}
+            onChangeTable={handleTableChange}
             onChangeFields={_.noop}
           />
         </Flex>
@@ -98,24 +135,8 @@ export function JoinStep({
             <Text color="brand" weight="bold">{t`on`}</Text>
           </Box>
           <ConditionNotebookCell color={color}>
-            {displayConditions.map((condition, index) => (
-              <JoinCondition
-                key={`join-condition-${index}`}
-                query={query}
-                stageIndex={stageIndex}
-                condition={condition}
-                table={table}
-                color={color}
-                readOnly={readOnly}
-                onChange={nextCondition => {
-                  if (condition) {
-                    handleUpdateCondition(index, nextCondition);
-                  } else {
-                    handleAddCondition(nextCondition);
-                  }
-                }}
-              />
-            ))}
+            {conditions.map(renderJoinCondition)}
+            {isAddingNewCondition && renderJoinCondition()}
           </ConditionNotebookCell>
         </>
       )}
