@@ -1,15 +1,14 @@
 import {
   restore,
   visitQuestion,
-  isEE,
-  isOSS,
   visitDashboard,
-  setTokenFeatures,
   visitIframe,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
+const standalonePath =
+  "/admin/settings/embedding-in-other-applications/standalone";
 const licenseUrl = "https://metabase.com/license/embedding";
 const upgradeUrl = "https://www.metabase.com/upgrade";
 const learnEmbeddingUrl =
@@ -23,7 +22,7 @@ const licenseExplanations = [
 ];
 
 // These tests will run on both OSS and EE instances. Both without a token!
-describe("scenarios > embedding > smoke tests", () => {
+describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -51,7 +50,7 @@ describe("scenarios > embedding > smoke tests", () => {
       resetEmbedding();
     });
 
-    it("should display the embedding page correctly", { tags: "@OSS" }, () => {
+    it("should display the embedding page correctly", () => {
       cy.visit("/admin/settings/setup");
       sidebar().within(() => {
         cy.findByRole("link", { name: "Embedding" }).click();
@@ -102,9 +101,6 @@ describe("scenarios > embedding > smoke tests", () => {
       );
       cy.log("The first section: 'Standalone embeds'");
       cy.findByTestId("-standalone-embeds-setting").within(() => {
-        const standalonePath =
-          "/admin/settings/embedding-in-other-applications/standalone";
-
         cy.findByRole("link")
           .should("have.attr", "href")
           .and("eq", standalonePath);
@@ -201,7 +197,7 @@ describe("scenarios > embedding > smoke tests", () => {
     });
   });
 
-  context("embedding enabled", { tags: "@OSS" }, () => {
+  context("embedding enabled", () => {
     ["question", "dashboard"].forEach(object => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
         const embeddableObject = object === "question" ? "card" : "dashboard";
@@ -212,90 +208,83 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.intercept("GET", `/api/${embeddableObject}/embeddable`).as(
           "currentlyEmbeddedObject",
         );
-        isEE && setTokenFeatures("all");
 
         visitAndEnableSharing(object);
 
-        if (isEE) {
-          cy.findByText("Font");
-        }
+        cy.findByTestId("embedding-settings").within(() => {
+          cy.findByRole("heading", { name: "Style" });
+          cy.findByRole("heading", { name: "Appearance" });
+          cy.findByRole("heading", { name: "Font" }).should("not.exist");
+          cy.findByRole("heading", { name: "Download data" }).should(
+            "not.exist",
+          );
 
-        if (isOSS) {
-          cy.findByText("Font").should("not.exist");
-        }
+          cy.findByText("Parameters");
+          cy.findByText(
+            /This (question|dashboard) doesn't have any parameters to configure yet./,
+          );
+          cy.findByText("Parameters");
+        });
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Parameters");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(
-          /This (question|dashboard) doesn't have any parameters to configure yet./,
-        );
+        cy.findByTestId("embedding-preview").within(() => {
+          cy.findByText(
+            /You will need to publish this (question|dashboard) before you can embed it in another application./,
+          );
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(
-          /You will need to publish this (question|dashboard) before you can embed it in another application./,
-        );
-
-        cy.button("Publish").click();
-        cy.wait("@embedObject");
+          cy.button("Publish").click();
+          cy.wait("@embedObject");
+        });
 
         visitIframe();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(objectName);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("37.65");
+        cy.findByTestId("embed-frame").within(() => {
+          cy.findByRole("heading", { name: objectName });
+          cy.get(".cellData").contains("37.65");
+        });
 
-        if (isEE) {
-          cy.contains("Powered by Metabase").should("not.exist");
-        } else {
-          cy.contains("Powered by Metabase")
-            .closest("a")
-            .should("have.attr", "href")
+        cy.findByRole("contentinfo").within(() => {
+          cy.findByRole("link")
+            .should("have.text", "Powered by Metabase")
+            .and("have.attr", "href")
             .and("eq", "https://metabase.com/");
-        }
+        });
 
+        cy.log(
+          `Make sure the ${object} shows up in the standalone embeds page`,
+        );
         cy.signInAsAdmin();
-
-        cy.visit(embeddingPage);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Standalone embeds").click();
+        cy.visit(standalonePath);
         cy.wait("@currentlyEmbeddedObject");
 
-        const sectionName = new RegExp(`Embedded ${object}s`, "i");
+        const sectionTestId = new RegExp(`-embedded-${object}s-setting`);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(sectionName)
-          .closest("li")
+        cy.findByTestId(sectionTestId)
           .find("tbody tr")
           .should("have.length", 1)
           .and("contain", objectName);
 
+        cy.log(`Unpublish ${object}`);
         visitAndEnableSharing(object);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Danger zone");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(
-          /This will disable embedding for this (question|dashboard)./,
-        );
-
-        cy.button("Unpublish").click();
-        cy.wait("@embedObject");
+        cy.findByTestId("embedding-settings").within(() => {
+          cy.findByRole("heading", { name: "Danger zone" });
+          cy.findByText(`This will disable embedding for this ${object}.`);
+          cy.button("Unpublish").click();
+          cy.wait("@embedObject");
+        });
 
         visitIframe();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Embedding is not enabled for this object.");
+        cy.findByTestId("embed-frame").findByText(
+          "Embedding is not enabled for this object.",
+        );
 
         cy.signInAsAdmin();
-
-        cy.visit(embeddingPage);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Standalone embeds").click();
+        cy.visit(standalonePath);
         cy.wait("@currentlyEmbeddedObject");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains(/No (questions|dashboards) have been embedded yet./);
+        mainPage()
+          .findAllByText(/No (questions|dashboards) have been embedded yet./)
+          .should("have.length", 2);
       });
     });
   });
