@@ -2,7 +2,6 @@ import {
   restore,
   modal,
   describeEE,
-  isOSS,
   openNewCollectionItemFlowFor,
   appBar,
   navigationSidebar,
@@ -25,108 +24,126 @@ const TEST_QUESTION_QUERY = {
   breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
 };
 
-describeEE("collections types", () => {
+describeEE("official collections", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    setTokenFeatures("all");
   });
 
-  it("should be able to manage collection authority level", () => {
-    cy.visit("/collection/root");
+  context("without a token", () => {
+    it("should not be able to manage collection's authority level", () => {
+      // Gate the API
+      cy.request({
+        method: "POST",
+        url: "/api/collection",
+        failOnStatusCode: false,
+        body: {
+          name: "Wannabe Official Collection",
+          color: "#000000",
+          authority_level: "official",
+        },
+      }).then(({ body, status, statusText }) => {
+        expect(body).to.eq(
+          "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature.",
+        );
+        expect(status).to.eq(402);
+        expect(statusText).to.eq("Payment Required");
+      });
 
-    createAndOpenOfficialCollection({ name: COLLECTION_NAME });
-    cy.findByTestId("official-collection-marker");
-    assertSidebarIcon(COLLECTION_NAME, "badge");
+      // Gate the UI
+      cy.visit("/collection/root");
 
-    changeCollectionTypeTo("regular");
-    cy.findByTestId("official-collection-marker").should("not.exist");
-    assertSidebarIcon(COLLECTION_NAME, "folder");
+      openNewCollectionItemFlowFor("collection");
+      modal().within(() => {
+        assertNoCollectionTypeInput();
+        cy.icon("close").click();
+      });
 
-    changeCollectionTypeTo("official");
-    cy.findByTestId("official-collection-marker");
-    assertSidebarIcon(COLLECTION_NAME, "badge");
-  });
-
-  it("displays official badge throughout the application", () => {
-    testOfficialBadgePresence();
-  });
-
-  it("should display a badge next to official questions in regular dashboards", () => {
-    testOfficialQuestionBadgeInRegularDashboard();
-  });
-
-  it("should not see collection type field if not admin", () => {
-    cy.signIn("normal");
-    cy.visit("/collection/root");
-
-    openCollection("First collection");
-
-    openNewCollectionItemFlowFor("collection");
-    modal().within(() => {
-      assertNoCollectionTypeInput();
-      cy.icon("close").click();
-    });
-
-    openCollectionMenu();
-    popover().within(() => {
+      openCollection("First collection");
+      openCollectionMenu();
       assertNoCollectionTypeOption();
     });
   });
 
-  it("should not be able to manage collection authority level for personal collections and their children", () => {
-    cy.visit("/collection/root");
+  context("premium token with paid features", () => {
+    beforeEach(() => setTokenFeatures("all"));
 
-    openCollection("Your personal collection");
-    getCollectionActions().within(() => {
-      cy.icon("ellipsis").should("not.exist");
+    it("should be able to manage collection authority level", () => {
+      cy.visit("/collection/root");
+
+      createAndOpenOfficialCollection({ name: COLLECTION_NAME });
+      cy.findByTestId("official-collection-marker");
+      assertSidebarIcon(COLLECTION_NAME, "badge");
+
+      changeCollectionTypeTo("regular");
+      cy.findByTestId("official-collection-marker").should("not.exist");
+      assertSidebarIcon(COLLECTION_NAME, "folder");
+
+      changeCollectionTypeTo("official");
+      cy.findByTestId("official-collection-marker");
+      assertSidebarIcon(COLLECTION_NAME, "badge");
     });
 
-    openNewCollectionItemFlowFor("collection");
-    modal().within(() => {
-      assertNoCollectionTypeInput();
-      cy.findByLabelText("Name").type("Personal collection child");
-      cy.button("Create").click();
+    it("displays official badge throughout the application", () => {
+      testOfficialBadgePresence();
     });
 
-    openCollection("Personal collection child");
-
-    openNewCollectionItemFlowFor("collection");
-    modal().within(() => {
-      assertNoCollectionTypeInput();
-      cy.icon("close").click();
-    });
-  });
-});
-
-describe("collection types", { tags: "@OSS" }, () => {
-  beforeEach(() => {
-    cy.onlyOn(isOSS);
-
-    restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not be able to manage collection's authority level", () => {
-    cy.visit("/collection/root");
-
-    openNewCollectionItemFlowFor("collection");
-    modal().within(() => {
-      assertNoCollectionTypeInput();
-      cy.icon("close").click();
+    it("should display a badge next to official questions in regular dashboards", () => {
+      testOfficialQuestionBadgeInRegularDashboard();
     });
 
-    openCollection("First collection");
-    openCollectionMenu();
-    assertNoCollectionTypeOption();
+    it("should not see collection type field if not admin", () => {
+      cy.signInAsNormalUser();
+      cy.visit("/collection/root");
+
+      openCollection("First collection");
+
+      openNewCollectionItemFlowFor("collection");
+      modal().within(() => {
+        assertNoCollectionTypeInput();
+        cy.icon("close").click();
+      });
+
+      openCollectionMenu();
+      popover().within(() => {
+        assertNoCollectionTypeOption();
+      });
+    });
+
+    it("should not be able to manage collection authority level for personal collections and their children", () => {
+      cy.visit("/collection/root");
+
+      openCollection("Your personal collection");
+      getCollectionActions().within(() => {
+        cy.icon("ellipsis").should("not.exist");
+      });
+
+      openNewCollectionItemFlowFor("collection");
+      modal().within(() => {
+        assertNoCollectionTypeInput();
+        cy.findByLabelText("Name").type("Personal collection child");
+        cy.button("Create").click();
+      });
+
+      openCollection("Personal collection child");
+
+      openNewCollectionItemFlowFor("collection");
+      modal().within(() => {
+        assertNoCollectionTypeInput();
+        cy.icon("close").click();
+      });
+    });
   });
 
-  it("should not display official collection icon", () => {
-    testOfficialBadgePresence(false);
-  });
+  context("token expired or removed", () => {
+    beforeEach(() => setTokenFeatures("all"));
+    it("should not display official collection icon anymore", () => {
+      testOfficialBadgePresence(false);
+    });
 
-  it("should display official questions as regular in regular dashboards", () => {
-    testOfficialQuestionBadgeInRegularDashboard(false);
+    it("should display questions belonging to previously official collections as regular in regular dashboards", () => {
+      testOfficialQuestionBadgeInRegularDashboard(false);
+    });
   });
 });
 
@@ -145,6 +162,8 @@ function testOfficialBadgePresence(expectBadge = true) {
       name: "Official Dashboard",
       collection_id: collectionId,
     });
+
+    !expectBadge && setTokenFeatures("none");
     cy.visit(`/collection/${collectionId}`);
   });
 
@@ -203,6 +222,8 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
       dashboardDetails: { name: "Regular Dashboard" },
     });
   });
+
+  !expectBadge && setTokenFeatures("none");
 
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();
