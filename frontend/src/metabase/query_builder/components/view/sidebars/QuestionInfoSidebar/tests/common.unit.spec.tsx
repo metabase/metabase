@@ -6,14 +6,24 @@ import {
 import { screen } from "__support__/ui";
 import { setup } from "./setup";
 
+const DESCRIPTION = "abc";
+
 describe("QuestionInfoSidebar", () => {
   describe("description", () => {
     it.each([
-      createMockCard({ name: "Question", description: "abc", dataset: false }),
-      createMockCard({ name: "Model", description: "abc", dataset: true }),
-    ])("should display description of a $card.name", async card => {
+      createMockCard({
+        name: "Question",
+        description: DESCRIPTION,
+        dataset: false,
+      }),
+      createMockCard({
+        name: "Model",
+        description: DESCRIPTION,
+        dataset: true,
+      }),
+    ])("should display description of a $name", async card => {
       await setup({ card });
-      expect(screen.getByText(card.description ?? "")).toBeInTheDocument();
+      expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
     });
 
     it("should not allow to add the description without write permissions", async () => {
@@ -24,7 +34,10 @@ describe("QuestionInfoSidebar", () => {
     });
 
     it("should not allow to edit the description without write permissions", async () => {
-      const card = createMockCard({ description: "abc", can_write: false });
+      const card = createMockCard({
+        description: DESCRIPTION,
+        can_write: false,
+      });
       await setup({ card });
 
       // show input
@@ -51,8 +64,13 @@ describe("QuestionInfoSidebar", () => {
     });
 
     it("isn't shown for questions", async () => {
-      const card = createMockCard({ name: "abc", dataset: false });
+      const card = createMockCard({
+        name: "abc",
+        description: DESCRIPTION,
+        dataset: false,
+      });
       await setup({ card });
+      expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
       expect(screen.queryByText("Model details")).not.toBeInTheDocument();
     });
   });
@@ -61,10 +79,10 @@ describe("QuestionInfoSidebar", () => {
     it("should not allow to configure caching", async () => {
       const card = createMockCard({
         cache_ttl: 10,
-        description: "abc",
+        description: DESCRIPTION,
       });
       await setup({ card });
-      expect(screen.getByText(card.description ?? "")).toBeInTheDocument();
+      expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
       expect(screen.queryByText("Cache Configuration")).not.toBeInTheDocument();
     });
   });
