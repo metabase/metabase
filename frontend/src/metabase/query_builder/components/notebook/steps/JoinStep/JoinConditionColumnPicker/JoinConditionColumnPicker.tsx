@@ -8,8 +8,8 @@ import { QueryColumnPickerProps } from "metabase/common/components/QueryColumnPi
 
 import * as Lib from "metabase-lib";
 
-import { NotebookCellItem } from "../../../NotebookCell";
 import {
+  JoinConditionCellItem,
   StyledQueryColumnPicker,
   RemoveIcon,
 } from "./JoinConditionColumnPicker.styled";
@@ -86,7 +86,7 @@ const ColumnNotebookCellItem = forwardRef<
   };
 
   return (
-    <NotebookCellItem {...props} ref={ref}>
+    <JoinConditionCellItem {...props} ref={ref}>
       <Flex align="center">
         <Flex direction="column" gap="2px">
           {!!tableName && (
@@ -109,6 +109,6 @@ const ColumnNotebookCellItem = forwardRef<
           </Flex>
         )}
       </Flex>
-    </NotebookCellItem>
+    </JoinConditionCellItem>
   );
 });
