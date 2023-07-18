@@ -321,7 +321,7 @@
     (mt/with-model-cleanup [Activity]
       (events.activity-feed/process-activity-event! {:topic :user-login
                                                      :item  {:user_id     (mt/user->id :rasta)
-                                                             :session_id  (str (java.util.UUID/randomUUID))
+                                                             :session_id  (str (random-uuid))
                                                              :first_login true}})
       (is (= {:topic       :user-joined
               :user_id     (mt/user->id :rasta)

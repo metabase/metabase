@@ -133,10 +133,23 @@ export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
   return ML.picker_info(query, metadata);
 }
 
+type JoinOrJoinable = Join | Joinable;
+
 export function joinableColumns(
   query: Query,
   stageIndex: number,
-  joinOrJoinable: Join | Joinable,
+  joinOrJoinable: JoinOrJoinable,
 ): ColumnMetadata[] {
   return ML.joinable_columns(query, stageIndex, joinOrJoinable);
+}
+
+// Get the display name to use when rendering a join for whatever we are joining against (e.g. a Table or Card of some
+// sort). See #32015 for screenshot examples. For an existing join, pass in the join clause. When constructing a join,
+// pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata.
+export function joinLHSDisplayName(
+  query: Query,
+  stageIndex: number,
+  joinOrJoinable: JoinOrJoinable,
+): string {
+  return ML.join_lhs_display_name(query, stageIndex, joinOrJoinable);
 }

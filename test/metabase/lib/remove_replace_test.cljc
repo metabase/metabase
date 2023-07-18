@@ -767,7 +767,7 @@
                     (lib/remove-clause query' 0 (second (lib/joins query' 0)))))))))))
 
 (deftest ^:parallel replace-join-test
-  (let [query             (lib.tu/query-with-join)
+  (let [query             lib.tu/query-with-join
         expected-original {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all}]}]}
         [original-join]   (lib/joins query)
         new-join          (lib/with-join-fields original-join :none)]

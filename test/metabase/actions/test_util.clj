@@ -147,7 +147,7 @@
                                            :required false
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
-                             :public_uuid (str (java.util.UUID/randomUUID))
+                             :public_uuid (str (random-uuid))
                              :made_public_by_id (test.users/user->id :crowberto)
                              :database_id (data/id)
                              :creator_id (test.users/user->id :crowberto)
@@ -171,7 +171,7 @@
                                      {:type :implicit
                                       :name "Update Example"
                                       :kind "row/update"
-                                      :public_uuid (str (java.util.UUID/randomUUID))
+                                      :public_uuid (str (random-uuid))
                                       :made_public_by_id (test.users/user->id :crowberto)
                                       :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
@@ -194,7 +194,7 @@
                                                     :target [:template-tag "fail"]}]
                                       :response_handle ".body"
                                       :model_id model-id
-                                      :public_uuid (str (java.util.UUID/randomUUID))
+                                      :public_uuid (str (random-uuid))
                                       :made_public_by_id (test.users/user->id :crowberto)
                                       :creator_id (test.users/user->id :crowberto)}
                                      options-map))]

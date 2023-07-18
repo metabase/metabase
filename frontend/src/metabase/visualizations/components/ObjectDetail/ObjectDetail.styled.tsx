@@ -54,9 +54,6 @@ export const CloseButton = styled.div`
   margin-left: 1rem;
   padding-left: 1rem;
   border-left: 1px solid ${color("border")};
-  ${breakpointMinMedium} {
-    display: none;
-  }
 `;
 
 export const ErrorWrapper = styled.div`

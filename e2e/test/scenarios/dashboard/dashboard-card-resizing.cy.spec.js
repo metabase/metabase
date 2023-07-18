@@ -80,7 +80,7 @@ const VISUALIZATION_SIZES = {
     default: { width: 12, height: 9 },
   },
   scalar: {
-    min: { width: 1, height: 1 },
+    min: { width: 2, height: 2 },
     default: { width: 4, height: 3 },
   },
   smartscalar: {

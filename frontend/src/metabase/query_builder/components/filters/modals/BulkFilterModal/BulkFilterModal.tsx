@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, KeyboardEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
@@ -47,6 +47,7 @@ const BulkFilterModal = ({
 }: BulkFilterModalProps): JSX.Element | null => {
   const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -98,14 +99,31 @@ const BulkFilterModal = ({
     setIsChanged(true);
   };
 
+  const toggleExpandedSearchBar = (e: KeyboardEvent<HTMLDivElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      e.preventDefault();
+      setIsSearchExpanded(true);
+    }
+  };
+
   const hasSideNav = sections.length > 1;
 
   return (
-    <ModalRoot hasSideNav={hasSideNav}>
+    <ModalRoot
+      hasSideNav={hasSideNav}
+      data-autofocus
+      tabIndex={0}
+      onKeyDown={e => toggleExpandedSearchBar(e)}
+    >
       <ModalHeader>
         <ModalTitle>{getTitle(query, sections.length === 1)}</ModalTitle>
 
-        <FieldSearch value={searchQuery} onChange={setSearchQuery} />
+        <FieldSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          isExpanded={isSearchExpanded}
+          setIsExpanded={setIsSearchExpanded}
+        />
 
         <ModalCloseButton onClick={onClose}>
           <Icon name="close" />
