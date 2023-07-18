@@ -10,6 +10,7 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   enableTracking,
+  main,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -292,6 +293,29 @@ describe("scenarios > home > custom homepage", () => {
         cy.contains(
           /Your admin has set this dashboard as your homepage/,
         ).should("have.length", 1);
+      });
+    });
+
+    it("should show the default homepage if the dashboard was archived (#31599)", () => {
+      // Archive dashboard
+      visitDashboard(1);
+      dashboardHeader().within(() => {
+        cy.findByLabelText("dashboard-menu-button").click();
+      });
+      popover().within(() => {
+        cy.findByText("Archive").click();
+      });
+      modal().within(() => {
+        cy.findByText("Archive").click();
+      });
+
+      // Navigate to home
+      navigationSidebar().within(() => {
+        cy.findByText("Home").click();
+      });
+      main().within(() => {
+        cy.findByText("We're a little lost...").should("not.exist");
+        cy.findByText("Customize").should("be.visible");
       });
     });
   });
