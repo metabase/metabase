@@ -249,7 +249,7 @@
   "Returns an error that can be used to throw when an enterprise feature check fails."
   [feature-name]
   (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                (str/capitalize feature-name))
+                feature-name)
            {:status-code 402}))
 
 (mu/defn assert-has-feature
@@ -334,6 +334,14 @@
 (define-premium-feature enable-sso-google?
   "Should we enable advanced configuration for Google Sign-In authentication?"
   :sso-google)
+
+(defn enable-any-sso?
+  "Should we enable any SSO-based authentication?"
+  []
+  (or (enable-sso-jwt?)
+      (enable-sso-saml?)
+      (enable-sso-ldap?)
+      (enable-sso-google?)))
 
 (define-premium-feature enable-session-timeout-config?
   "Should we enable configuring session timeouts?"

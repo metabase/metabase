@@ -21,17 +21,10 @@
 (comment metabase-enterprise.sso.integrations.jwt/keep-me
          metabase-enterprise.sso.integrations.saml/keep-me)
 
-(defn- throw-if-no-premium-features-token []
-  (when-not (or (premium-features/enable-sso-jwt?)
-                (premium-features/enable-sso-saml?))
-    (throw (ex-info (str (tru "SSO requires a valid token"))
-             {:status-code 403}))))
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
-  (throw-if-no-premium-features-token)
   (try
     (sso.i/sso-get req)
     (catch Throwable e
@@ -52,7 +45,6 @@
 (api/defendpoint-schema POST "/"
   "Route the SSO backends call with successful login details"
   [:as req]
-  (throw-if-no-premium-features-token)
   (try
     (sso.i/sso-post req)
     (catch Throwable e

@@ -37,6 +37,28 @@
   `(premium-features-test/with-premium-features #{:sso-jwt}
      ~@body))
 
+(defn- call-with-default-jwt-config [f]
+  (mt/with-temporary-setting-values [jwt-enabled               true
+                                     jwt-identity-provider-uri default-idp-uri
+                                     jwt-shared-secret         default-jwt-secret
+                                     site-url                  "http://localhost"]
+    (f)))
+
+(defmacro with-default-jwt-config [& body]
+  `(call-with-default-jwt-config
+    (fn []
+      ~@body)))
+
+(defmacro ^:private with-jwt-default-setup [& body]
+  `(disable-other-sso-types
+    (fn []
+      (with-sso-jwt-token
+        (saml-test/call-with-login-attributes-cleared!
+         (fn []
+           (call-with-default-jwt-config
+            (fn []
+              ~@body))))))))
+
 (deftest sso-prereqs-test
   (testing "SSO requests fail if JWT hasn't been configured or enabled"
     (mt/with-temporary-setting-values [jwt-enabled               false
@@ -47,9 +69,10 @@
                (saml-test/client :get 400 "/auth/sso"))))
 
       (testing "SSO requests fail if they don't have a valid premium-features token"
-        (premium-features-test/with-premium-features nil
-          (is (= "SSO requires a valid token"
-                 (saml-test/client :get 403 "/auth/sso")))))))
+        (with-default-jwt-config
+          (premium-features-test/with-premium-features #{}
+            (is (= "JWT-based authentication is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                   (saml-test/client :get 402 "/auth/sso"))))))))
 
   (testing "SSO requests fail if JWT is enabled but hasn't been configured"
     (with-sso-jwt-token
@@ -73,23 +96,6 @@
                                          jwt-shared-secret         nil]
         (is (= "SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso")))))))
-
-(defn- call-with-default-jwt-config [f]
-  (mt/with-temporary-setting-values [jwt-enabled               true
-                                     jwt-identity-provider-uri default-idp-uri
-                                     jwt-shared-secret         default-jwt-secret
-                                     site-url                  "http://localhost"]
-    (f)))
-
-(defmacro ^:private with-jwt-default-setup [& body]
-  `(disable-other-sso-types
-    (fn []
-      (with-sso-jwt-token
-        (saml-test/call-with-login-attributes-cleared!
-         (fn []
-           (call-with-default-jwt-config
-            (fn []
-              ~@body))))))))
 
 (deftest redirect-test
   (testing "with JWT configured, a GET request should result in a redirect to the IdP"
