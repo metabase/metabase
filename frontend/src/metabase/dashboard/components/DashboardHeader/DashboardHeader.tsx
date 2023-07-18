@@ -17,7 +17,7 @@ import { Dashboard } from "metabase-types/api";
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
 import { useDispatch } from "metabase/lib/redux";
-import { saveDashboard } from "metabase/dashboard/actions";
+import { updateDashboard } from "metabase/dashboard/actions";
 import {
   EditWarning,
   HeaderRow,
@@ -104,7 +104,7 @@ export function DashboardHeaderComponent({
     async (name: string) => {
       await setDashboardAttribute("name", name);
       if (!isEditing) {
-        await dispatch(saveDashboard({ attributeNames: ["name"] }));
+        await dispatch(updateDashboard({ attributeNames: ["name"] }));
       }
     },
     [setDashboardAttribute, isEditing, dispatch],

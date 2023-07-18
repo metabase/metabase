@@ -17,7 +17,7 @@ import { saveCardsAndTabs } from "./tabs";
 export const SAVE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
 
-export const SAVE_DASHBOARD = "metabase/dashboard/SAVE_DASHBOARD";
+export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
@@ -131,8 +131,8 @@ export const saveDashboardAndCards = createThunkAction(
   },
 );
 
-export const saveDashboard = createThunkAction(
-  SAVE_DASHBOARD,
+export const updateDashboard = createThunkAction(
+  UPDATE_DASHBOARD,
   function ({ attributeNames }) {
     return async function (dispatch, getState) {
       const state = getState();

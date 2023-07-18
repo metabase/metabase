@@ -13,7 +13,7 @@ import { getUser } from "metabase/selectors/user";
 
 import {
   revertToRevision,
-  saveDashboard,
+  updateDashboard,
   toggleAutoApplyFilters,
 } from "metabase/dashboard/actions";
 
@@ -53,7 +53,7 @@ export function DashboardInfoSidebar({
   const handleDescriptionChange = useCallback(
     (description: string) => {
       setDashboardAttribute("description", description);
-      dispatch(saveDashboard({ attributeNames: ["description"] }));
+      dispatch(updateDashboard({ attributeNames: ["description"] }));
     },
     [dispatch, setDashboardAttribute],
   );
@@ -61,7 +61,7 @@ export function DashboardInfoSidebar({
   const handleUpdateCacheTTL = useCallback(
     (cache_ttl: number | null) => {
       setDashboardAttribute("cache_ttl", cache_ttl);
-      dispatch(saveDashboard({ attributeNames: ["cache_ttl"] }));
+      dispatch(updateDashboard({ attributeNames: ["cache_ttl"] }));
     },
     [dispatch, setDashboardAttribute],
   );
