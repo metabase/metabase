@@ -142,15 +142,7 @@ export const saveDashboard = createThunkAction(
       if (attributeNames.length === 0) {
         await dispatch(Dashboards.actions.update(dashboard));
       } else {
-        const attributes = attributeNames.reduce(
-          (attributes, attributeName) => {
-            return {
-              ...attributes,
-              [attributeName]: dashboard[attributeName],
-            };
-          },
-          {},
-        );
+        const attributes = _.pick(dashboard, attributeNames);
 
         await dispatch(
           Dashboards.actions.update({ id: dashboardId }, attributes),
