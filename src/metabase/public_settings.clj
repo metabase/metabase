@@ -565,6 +565,7 @@
                       :official_collections           (premium-features/enable-official-collections?)
                       :question_error_logs            (premium-features/enable-question-error-logs?)
                       :sandboxes                      (premium-features/enable-sandboxes?)
+                      :session_timeout_config         (premium-features/enable-session-timeout-config?)
                       :snippet_collections            (premium-features/enable-snippet-collections?)
                       :sso_google                     (premium-features/enable-sso-google?)
                       :sso_jwt                        (premium-features/enable-sso-jwt?)
