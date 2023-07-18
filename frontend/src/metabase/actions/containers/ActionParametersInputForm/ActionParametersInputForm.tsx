@@ -69,16 +69,11 @@ function ActionParametersInputForm({
   }, [fetchInitialValues]);
 
   useEffect(() => {
-    const canPrefetch = Object.keys(initialValues).length > 0;
-
     if (shouldPrefetch && !hasPrefetchedValues) {
       setPrefetchedValues({});
-
-      if (canPrefetch) {
-        prefetchValues();
-      }
+      prefetchValues();
     }
-  }, [initialValues, shouldPrefetch, hasPrefetchedValues, prefetchValues]);
+  }, [shouldPrefetch, hasPrefetchedValues, prefetchValues]);
 
   const handleSubmit = useCallback(
     async (parameters, actions) => {

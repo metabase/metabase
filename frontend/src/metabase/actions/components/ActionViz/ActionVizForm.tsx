@@ -91,6 +91,12 @@ function ActionVizForm({
         ? PublicApi.prefetchValues
         : ActionsApi.prefetchValues;
 
+    const canPrefetch = Object.keys(initialValues).length > 0;
+
+    if (!canPrefetch) {
+      return {};
+    }
+
     return prefetchValues({
       dashboardId: dashboard.id,
       dashcardId: dashcard.id,
