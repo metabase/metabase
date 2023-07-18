@@ -72,6 +72,9 @@
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
                                  "'nonce-2726c7f26c'"
+                                 ;; for webpack hot reloading
+                                 (when config/is-dev?
+                                   "http://localhost:8080")
                                  "https://accounts.google.com"]
                   :font-src     ["*"]
                   :img-src      ["*"
