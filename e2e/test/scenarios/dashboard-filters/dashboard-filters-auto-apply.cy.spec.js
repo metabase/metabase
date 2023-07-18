@@ -60,24 +60,19 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/dashboard/*", req => {
-      // metabase#31721: Shouldn't call update dashboard twice. This is the API that was unnecessary
-      expect(Object.keys(req.body).sort()).to.not.deep.equal([
-        "description",
-        "name",
-        "parameters",
-      ]);
-    }).as("updateDashboard");
+    cy.intercept(
+      "PUT",
+      "/api/dashboard/*",
+      cy.spy().as("updateDashboardSpy"),
+    ).as("updateDashboard");
+    cy.intercept(
+      "PUT",
+      "/api/dashboard/*/cards",
+      cy.spy().as("updateDashboardCardsSpy"),
+    );
   });
 
-  describe("not modifying dashboard cards", () => {
-    beforeEach(() => {
-      // metabase#31721
-      cy.intercept("PUT", "/api/dashboard/*/cards", req => {
-        throw Error("This API should not be called");
-      });
-    });
-
+  describe("modifying only dashboard", () => {
     it("should handle toggling auto applying filters on and off", () => {
       createDashboard();
       openDashboard();
@@ -154,27 +149,14 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       });
       filterWidget().findByText("2 selections").should("be.visible");
       cy.get("@cardQuery.all").should("have.length", 5);
-    });
 
-    it("should preserve draft parameter values when editing of the dashboard was cancelled", () => {
-      createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-      openDashboard();
-
-      filterWidget().findByText(FILTER.name).click();
-      popover().within(() => {
-        cy.findByText("Gadget").click();
-        cy.button("Add filter").click();
-      });
-      dashboardParametersContainer().button("Apply").should("be.visible");
-
-      editDashboard();
-      dashboardHeader().button("Cancel").click();
-      filterWidget().findByText("Gadget").should("be.visible");
-      dashboardParametersContainer().button("Apply").should("be.visible");
+      // metabase#31721
+      cy.get("@updateDashboardSpy").should("have.callCount", 3);
+      cy.get("@updateDashboardCardsSpy").should("not.have.been.called");
     });
   });
 
-  describe("modifying dashboard cards", () => {
+  describe("modifying dashboard and dashboard cards", () => {
     it("should not preserve draft parameter values when editing the dashboard", () => {
       createDashboard({ dashboardDetails: { auto_apply_filters: false } });
       openDashboard();
@@ -203,6 +185,29 @@ describe("scenarios > dashboards > filters > auto apply", () => {
         cy.findByText("Gadget").should("not.exist");
         cy.button("Apply").should("not.exist");
       });
+
+      // metabase#31721
+      cy.get("@updateDashboardSpy").should("have.callCount", 1);
+      cy.get("@updateDashboardCardsSpy").should("have.callCount", 1);
+    });
+  });
+
+  describe("modify nothing", () => {
+    it("should preserve draft parameter values when editing of the dashboard was cancelled", () => {
+      createDashboard({ dashboardDetails: { auto_apply_filters: false } });
+      openDashboard();
+
+      filterWidget().findByText(FILTER.name).click();
+      popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      dashboardParametersContainer().button("Apply").should("be.visible");
+
+      editDashboard();
+      dashboardHeader().button("Cancel").click();
+      filterWidget().findByText("Gadget").should("be.visible");
+      dashboardParametersContainer().button("Apply").should("be.visible");
     });
   });
 
