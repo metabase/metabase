@@ -23,7 +23,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     });
   });
 
-  it("should show instructional text for text cards with no variables", () => {
+  it("should show instructional text for text and heading cards with no variables", () => {
     editDashboard();
 
     addTextBoxWhileEditing("Text card with no variables");
@@ -148,7 +148,6 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     });
 
     getDashboardCard(0).findByText("Variable: Aujourd'hui").should("exist");
-    // ! NEED TO FIX THIS BELOW. Backslash not being escaped for some reason
     getDashboardCard(1).findByText("Variable: Aujourd'hui").should("exist");
 
     // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
@@ -234,7 +233,6 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
       getDashboardCard(1)
         .findByText("Variable: juillet 19, 2023")
         .should("exist");
-      // ! NEED TO FIX THIS BELOW. Backslash not being escaped for some reason \,
       getDashboardCard(2)
         .findByText("Variable: juillet 19, 2023")
         .should("exist");
