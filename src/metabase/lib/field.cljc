@@ -55,7 +55,7 @@
    field-id     :- ::lib.schema.id/field]
   (merge
    (when (lib.util/first-stage? query stage-number)
-     (when-let [card-id (lib.util/source-card query)]
+     (when-let [card-id (lib.util/source-card-id query)]
        (when-let [card-metadata (lib.card/saved-question-metadata query card-id)]
          (m/find-first #(= (:id %) field-id)
                        card-metadata))))

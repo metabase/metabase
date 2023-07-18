@@ -7,8 +7,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -44,7 +46,8 @@
                                                       [:field
                                                        {:lib/uuid string?
                                                         :join-alias "Categories"}
-                                                       (meta/id :categories :id)]]]}]}]}
+                                                       (meta/id :categories :id)]]]
+                                       :fields      :all}]}]}
           (let [q (lib/query meta/metadata-provider (meta/table-metadata :venues))
                 j (lib/query meta/metadata-provider (meta/table-metadata :categories))]
             (lib/join q (lib/join-clause j [{:lib/type :lib/external-op
@@ -327,7 +330,7 @@
             (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel join-strategy-test
-  (let [query  (lib.tu/query-with-join)
+  (let [query  lib.tu/query-with-join
         [join] (lib/joins query)]
     (testing "join without :strategy"
       (is (= :left-join
@@ -367,16 +370,16 @@
   (is (= [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
           {:lib/type :option/join.strategy, :strategy :right-join}
           {:lib/type :option/join.strategy, :strategy :inner-join}]
-         (lib/available-join-strategies (lib.tu/query-with-join)))))
+         (lib/available-join-strategies lib.tu/query-with-join))))
 
 (deftest ^:parallel join-strategy-display-name-test
-  (let [query (lib.tu/query-with-join)]
+  (let [query lib.tu/query-with-join]
     (is (= ["Left outer join" "Right outer join" "Inner join"]
            (map (partial lib.metadata.calculation/display-name query)
                 (lib/available-join-strategies query))))))
 
 (deftest ^:parallel join-strategy-display-info-test
-  (let [query (lib.tu/query-with-join)]
+  (let [query lib.tu/query-with-join]
     (is (= [{:short-name "left-join", :display-name "Left outer join", :default true}
             {:short-name "right-join", :display-name "Right outer join"}
             {:short-name "inner-join", :display-name "Inner join"}]
@@ -573,7 +576,7 @@
              (meta/table-metadata :categories))))))
 
 (deftest ^:parallel join-conditions-test
-  (let [joins (lib/joins (lib.tu/query-with-join))]
+  (let [joins (lib/joins lib.tu/query-with-join)]
     (is (= 1
            (count joins)))
     (is (=? [[:=
@@ -594,7 +597,7 @@
     meta/saved-question-CardMetadata))
 
 (deftest ^:parallel joinable-columns-join-test
-  (let [query           (lib.tu/query-with-join)
+  (let [query           lib.tu/query-with-join
         [original-join] (lib/joins query)]
     (is (=? {:lib/type :mbql/join, :alias "Cat", :fields :all}
             original-join))
@@ -644,3 +647,31 @@
                                  {:lib/uuid string?, :join-alias "Cat"}
                                  (meta/id :categories :name)]]}
                     (lib/with-join-fields join cols)))))))))
+
+(deftest ^:parallel join-lhs-display-name-test
+  (doseq [[source-table? query]          {true  lib.tu/venues-query
+                                          false lib.tu/query-with-card-source-table}
+          [num-existing-joins query]     {0 query
+                                          1 (lib.tu/add-joins query "J1")
+                                          2 (lib.tu/add-joins query "J1" "J2")}
+          [first-join? join-or-joinable] (list*
+                                          [(zero? num-existing-joins) (meta/table-metadata :venues)]
+                                          [(zero? num-existing-joins) meta/saved-question-CardMetadata]
+                                          (when-let [[first-join & more] (not-empty (lib/joins query))]
+                                            (cons [true first-join]
+                                                  (for [join more]
+                                                    [false join]))))
+          [num-stages query]             {1 query
+                                          2 (lib/append-stage query)}]
+    (testing (str "query w/ source table?" source-table?                                              \newline
+                  "num-existing-joins = "  num-existing-joins                                         \newline
+                  "num-stages = "          num-stages                                                 \newline
+                  "join =\n"               (u/pprint-to-str join-or-joinable)                         \newline
+                  "existing joins = "      (u/pprint-to-str (map lib.options/uuid (lib/joins query))) \newline
+                  "first join? "           first-join?)
+      (is (= (if (and source-table?
+                      (= num-stages 1)
+                      first-join?)
+               "Venues"
+               "Previous results")
+             (lib/join-lhs-display-name query join-or-joinable))))))
