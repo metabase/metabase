@@ -150,7 +150,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       filterWidget().findByText("2 selections").should("be.visible");
       cy.get("@cardQuery.all").should("have.length", 5);
 
-      // metabase#31721
+      cy.log("should not call unnecessary API requests (metabase#31721)");
       cy.get("@updateDashboardSpy").should("have.callCount", 3);
       cy.get("@updateDashboardCardsSpy").should("not.have.been.called");
     });
@@ -186,7 +186,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
         cy.button("Apply").should("not.exist");
       });
 
-      // metabase#31721
+      cy.log("should not call unnecessary API requests (metabase#31721)");
       cy.get("@updateDashboardSpy").should("have.callCount", 1);
       cy.get("@updateDashboardCardsSpy").should("have.callCount", 1);
     });
