@@ -23,16 +23,16 @@
                                                  :content-verification
                                                  :serialization
                                                  :content-management
-                                                 :sso-saml
                                                  :config-text-file
                                                  :email-allow-list
                                                  :hosting
-                                                 :sso
-                                                 :sso-jwt
+                                                 :session-timeout-config
                                                  :sandboxes
                                                  :email-restrict-recipients
+                                                 :sso-google
+                                                 :sso-jwt
                                                  :sso-ldap
-                                                 :session-timeout-config}
+                                                 :sso-saml}
           (is (= {:advanced_config                true
                   :advanced_permissions           true
                   :audit_app                      true
@@ -45,14 +45,15 @@
                   :email_allow_list               true
                   :email_restrict_recipients      true
                   :embedding                      true
-                  :question_error_logs true
+                  :question_error_logs            true
                   :hosting                        true
                   :official_collections           true
                   :sandboxes                      true
+                  :session_timeout_config         true
                   :snippet_collections            true
-                  :sso                            true
+                  :sso_google                     true
                   :sso_jwt                        true
-                  :sso_saml                       true
                   :sso_ldap                       true
+                  :sso_saml                       true
                   :whitelabel                     true}
                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
