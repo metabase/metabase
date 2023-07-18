@@ -1,3 +1,4 @@
+/* eslint-disable quotes */
 import { msgid, ngettext } from "ttag";
 import { inflect } from "metabase/lib/formatting/strings";
 import type { Drill } from "metabase/modes/types";
@@ -19,7 +20,7 @@ export const UnderlyingRecordsDrill: Drill = ({ question, clicked }) => {
   const tableTitle =
     tableName && isShortTableName(tableName)
       ? inflect(tableName, rowCount)
-      : ngettext(msgid`record`, "records", rowCount);
+      : ngettext(msgid`record`, `records`, rowCount);
 
   const actionTitle = ngettext(
     msgid`See this ${tableTitle}`,
