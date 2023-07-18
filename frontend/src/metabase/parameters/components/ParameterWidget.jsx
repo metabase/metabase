@@ -4,10 +4,8 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
-import FieldSet from "../../components/FieldSet";
 import ParameterValueWidget from "./ParameterValueWidget";
-
-import S from "./ParameterWidget.css";
+import { ParameterFieldSet } from "./ParameterWidget.styled";
 
 export default class ParameterWidget extends Component {
   state = {
@@ -82,12 +80,11 @@ export default class ParameterWidget extends Component {
       const legend = fieldHasValueOrFocus ? parameter.name : "";
 
       return (
-        <FieldSet
+        <ParameterFieldSet
           legend={legend}
           noPadding={true}
-          className={cx(className, S.container, {
-            "border-brand": fieldHasValueOrFocus,
-          })}
+          fieldHasValueOrFocus={fieldHasValueOrFocus}
+          className={className}
         >
           {this.renderPopover(
             parameter.value,
@@ -96,7 +93,7 @@ export default class ParameterWidget extends Component {
             isFullscreen,
           )}
           {children}
-        </FieldSet>
+        </ParameterFieldSet>
       );
     };
 
