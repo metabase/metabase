@@ -66,11 +66,12 @@
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the current join alias associated with something, if it has one."
-  [field-or-join :- FieldOrPartialJoin]
+  [field-or-join :- [:maybe FieldOrPartialJoin]]
   (case (lib.dispatch/dispatch-value field-or-join)
-    :field          (:join-alias (lib.options/options field-or-join))
-    :metadata/column (::join-alias field-or-join)
-    :mbql/join      (:alias field-or-join)))
+    :dispatch-type/nil nil
+    :field             (:join-alias (lib.options/options field-or-join))
+    :metadata/column   (::join-alias field-or-join)
+    :mbql/join         (:alias field-or-join)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
@@ -515,26 +516,6 @@
                                         columns)]
     (concat pk fk other)))
 
-;;; this logic is different from what's in [[metabase.lib.remove-replace/remove-join]] so it is not duplicate code.
-(defn- remove-join-and-all-subsequent-joins
-  "Remove a `join-to-remove` and all subsequent joins from a query stage."
-  [query stage-number {join-to-remove-alias :alias, :as _join-to-remove}]
-  (letfn [(remove-join? [a-join]
-            (= (:alias a-join) join-to-remove-alias))
-          (update-joins [existing-joins]
-            (not-empty
-             (reduce
-              (fn [acc a-join]
-                (if (remove-join? a-join)
-                  (reduced acc)
-                  (conj acc a-join)))
-              []
-              existing-joins)))
-          (update-stage [stage]
-            (let [new-joins (update-joins (:joins stage))]
-              (u/assoc-dissoc stage :joins new-joins)))]
-    (lib.util/update-query-stage query stage-number update-stage)))
-
 (mu/defn join-condition-lhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
@@ -558,12 +539,26 @@
     existing-join-or-nil :- [:maybe ::lib.schema.join/join]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
     _rhs-column-or-nil   :- [:maybe lib.metadata/ColumnMetadata]]
-   (let [query (cond-> query
-                 existing-join-or-nil (remove-join-and-all-subsequent-joins stage-number existing-join-or-nil))]
-     (sort-join-condition-columns
-      (lib.metadata.calculation/visible-columns query stage-number
-                                                (lib.util/query-stage query stage-number)
-                                                {:include-implicitly-joinable? false})))))
+   ;; calculate all the visible columns including the existing join; then filter out any columns that come from the
+   ;; existing join and any subsequent joins. The reason for doing things this way rather than removing the joins
+   ;; before calculating visible columns is that we don't want to either create possibly-invalid queries, or have to
+   ;; rely on the logic in [[metabase.lib.remove-replace/remove-join]] which would cause circular references; this is
+   ;; simpler as well.
+   ;;
+   ;; e.g. if we have joins [J1 J2 J3 J4] and current join = J2, then we want to ignore the visible columns from J2,
+   ;; J3, and J4.
+   (let [existing-join-alias    (current-join-alias existing-join-or-nil)
+         join-aliases-to-ignore (into #{}
+                                      (comp (map current-join-alias)
+                                            (drop-while #(not= % existing-join-alias)))
+                                      (joins query stage-number))]
+     (->> (lib.metadata.calculation/visible-columns query stage-number
+                                                    (lib.util/query-stage query stage-number)
+                                                    {:include-implicitly-joinable? false})
+          (remove (fn [col]
+                    (when-let [col-join-alias (current-join-alias col)]
+                      (contains? join-aliases-to-ignore col-join-alias))))
+          sort-join-condition-columns))))
 
 (mu/defn join-condition-rhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
