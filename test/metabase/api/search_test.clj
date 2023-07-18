@@ -16,6 +16,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search-config]
+   [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]

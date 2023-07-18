@@ -15,6 +15,7 @@
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search-config]
+   [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search-util]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -37,10 +38,11 @@
   (mc/schema
     [:map {:closed true}
      [:search-string                       [:maybe ms/NonBlankString]]
-     [:archived?                           :boolean]
      [:current-user-perms                  [:set perms/PathMalliSchema]]
+     [:archived?                           :boolean]
+     [:created-by         {:optional true} [:maybe ms/PositiveInt]]
      [:models             {:optional true} [:maybe [:set SearchableModel]]]
-     [:table-db-id        {:optional true} [:maybe ms/Int]]
+     [:table-db-id        {:optional true} [:maybe ms/PositiveInt]]
      [:limit-int          {:optional true} [:maybe ms/Int]]
      [:offset-int         {:optional true} [:maybe ms/Int]]]))
 
@@ -105,8 +107,6 @@
 ;;; |                                               Shared Query Logic                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private true-clause [:inline [:= 1 1]])
-(def ^:private false-clause [:inline [:= 0 1]])
 
 (mu/defn ^:private model->alias :- keyword?
   [model :- SearchableModel]
@@ -165,36 +165,6 @@
   (let [{:keys [db-model alias]} (get search-config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
 
-(defmulti ^:private archived-where-clause
-  {:arglists '([model archived?])}
-  (fn [model _] model))
-
-(defmethod archived-where-clause :default
-  [model archived?]
-  [:= (keyword (name (model->alias model)) "archived") archived?])
-
-;; Databases can't be archived
-(defmethod archived-where-clause "database"
-  [_model archived?]
-  (if-not archived?
-    true-clause
-    false-clause))
-
-(defmethod archived-where-clause "indexed-entity"
-  [_model archived?]
-  (if-not archived?
-    true-clause
-    false-clause))
-
-;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
-(defmethod archived-where-clause "table"
-  [model archived?]
-  (if archived?
-    false-clause                        ; No tables should appear in archive searches
-    [:and
-     [:= (keyword (name (model->alias model)) "active") true]
-     [:= (keyword (name (model->alias model)) "visibility_type") nil]]))
-
 (defn- wildcard-match
   [s]
   (str "%" s "%"))
@@ -212,17 +182,23 @@
                [:lower column]
                (wildcard-match token)])))))
 
+(defn- build-optional-filters
+  [model {:keys [created-by] :as _search-context}]
+  (cond-> []
+    (int? created-by) (conj (search.filter/created-by-where-clause model created-by))))
+
 (mu/defn ^:private base-where-clause-for-model :- [:fn (fn [x] (and (seq x) (#{:and :inline :=} (first x))))]
-  [model :- SearchableModel {:keys [search-string archived?]} :- SearchContext]
-  (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause model search-string
-                                              (map (let [model-alias (name (model->alias model))]
-                                                     (fn [column]
-                                                       (keyword (str (name model-alias) "." (name column)))))
-                                                   (search-config/searchable-columns-for-model model)))]
-    (if search-clause
-      [:and archived-clause search-clause]
-      archived-clause)))
+  [model                             :- SearchableModel
+   {:keys [search-string archived?]
+    :as search-context}              :- SearchContext]
+  (let [archived-clause         (search.filter/archived-where-clause model archived?)
+        optional-filters-clause (build-optional-filters model search-context)
+        search-clause           (search-string-clause model search-string
+                                                      (map (let [model-alias (name (model->alias model))]
+                                                             (fn [column]
+                                                               (keyword (str (name model-alias) "." (name column)))))
+                                                           (search-config/searchable-columns-for-model model)))]
+    (into [:and] (filter seq [archived-clause search-clause optional-filters-clause]))))
 
 (mu/defn ^:private base-query-for-model :- [:map {:closed true} [:select :any] [:from :any] [:where :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
@@ -412,12 +388,13 @@
 (mu/defn query-model-set
   "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx :- SearchContext]
-  (map #(get (first %) :model)
-       (filter not-empty
-               (for [model search-config/all-models]
-                 (let [search-query     (search-query-for-model model search-ctx)
-                       query-with-limit (sql.helpers/limit search-query 1)]
-                   (mdb.query/query query-with-limit))))))
+  (into #{}
+        (map #(get (first %) :model)
+             (filter not-empty
+                     (for [model search-config/all-models]
+                       (let [search-query     (search-query-for-model model search-ctx)
+                             query-with-limit (sql.helpers/limit search-query 1)]
+                         (mdb.query/query query-with-limit)))))))
 
 (mu/defn ^:private full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
@@ -425,7 +402,6 @@
   [search-ctx :- SearchContext]
   (let [models       (or (:models search-ctx)
                          search-config/all-models)
-        sql-alias    :alias_is_required_by_sql_but_not_needed_here
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (if (= (count models) 1)
       (search-query-for-model (first models) search-ctx)
@@ -433,7 +409,7 @@
        :from     [[{:union-all (vec (for [model models
                                           :let  [query (search-query-for-model model search-ctx)]
                                           :when (seq query)]
-                                      query))} sql-alias]]
+                                      query))} :alias_is_required_by_sql_but_not_needed_here]]
        :order-by order-clause})))
 
 (mu/defn ^:private search
@@ -476,27 +452,35 @@
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+
+
 (mu/defn ^:private search-context :- SearchContext
-  [search-string   :- [:maybe ms/NonBlankString]
-   archived-string :- [:maybe ms/BooleanString]
-   table-db-id     :- [:maybe ms/PositiveInt]
-   models          :- [:maybe [:or SearchableModel [:sequential SearchableModel]]]
-   limit           :- [:maybe ms/PositiveInt]
-   offset          :- [:maybe ms/IntGreaterThanOrEqualToZero]]
+  [{:keys [search-string
+           created-by
+           archived-string
+           table-db-id
+           models
+           limit
+           offset]}]
   (cond-> {:search-string      search-string
-           :archived?          (Boolean/parseBoolean archived-string)
-           :current-user-perms @api/*current-user-permissions-set*}
-    (some? table-db-id) (assoc :table-db-id table-db-id)
-    (some? models)      (assoc :models
-                               (apply hash-set (if (vector? models) models [models])))
-    (some? limit)       (assoc :limit-int limit)
-    (some? offset)      (assoc :offset-int offset)))
+           :current-user-perms @api/*current-user-permissions-set*
+           :archived?          (Boolean/parseBoolean archived-string)}
+    (some? created-by)      (assoc :created-by created-by)
+    (some? table-db-id)     (assoc :table-db-id table-db-id)
+    (some? models)          (assoc :models
+                                   (if models
+                                     (apply hash-set (if (vector? models) models [models]))
+                                     search-config/all-models))
+    (some? limit)           (assoc :limit-int limit)
+    (some? offset)          (assoc :offset-int offset)))
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id]
   {table-db-id [:maybe ms/PositiveInt]}
-  (query-model-set (search-context q archived-string table-db-id nil nil nil)))
+  (query-model-set (search-context {:search-string   q
+                                    :archived-string archived-string
+                                    :table-db-id     table-db-id})))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
@@ -507,20 +491,21 @@
   to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
-  [q archived table_db_id models]
+  [q archived created_by table_db_id models]
   {q            [:maybe ms/NonBlankString]
    archived     [:maybe ms/BooleanString]
    table_db_id  [:maybe ms/PositiveInt]
-   models       [:maybe [:or SearchableModel [:sequential SearchableModel]]]}
+   models       [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   created_by   [:maybe ms/PositiveInt]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         results    (search (search-context
-                            q
-                            archived
-                            table_db_id
-                            models
-                            mw.offset-paging/*limit*
-                            mw.offset-paging/*offset*))
+                            {:search-string   q
+                             :archived-string archived
+                             :table-db-id     table_db_id
+                             :models          models
+                             :limit           mw.offset-paging/*limit*
+                             :offset          mw.offset-paging/*offset*}))
         duration   (- (System/currentTimeMillis) start-time)]
     ;; Only track global searches
     (when (and (nil? models)

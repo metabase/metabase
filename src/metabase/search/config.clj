@@ -1,8 +1,5 @@
 (ns metabase.search.config
   (:require
-   [metabase.models
-    :refer [Action Card Collection Dashboard Database Metric
-            ModelIndexValue Segment Table]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -41,21 +38,21 @@
 
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  {"action"         {:db-model Action, :alias :action}
-   "card"           {:db-model Card, :alias :card}
-   "collection"     {:db-model Collection, :alias :collection}
-   "dashboard"      {:db-model Dashboard, :alias :dashboard}
-   "database"       {:db-model Database, :alias :database}
-   "dataset"        {:db-model Card, :alias :card}
-   "indexed-entity" {:db-model ModelIndexValue :alias :model-index-value}
-   "metric"         {:db-model Metric, :alias :metric}
-   "segment"        {:db-model Segment, :alias :segment}
-   "table"          {:db-model Table, :alias :table}})
+  {"action"         {:db-model :model/Action :alias :action}
+   "card"           {:db-model :model/Card :alias :card}
+   "collection"     {:db-model :model/Collection :alias :collection}
+   "dashboard"      {:db-model :model/Dashboard :alias :dashboard}
+   "database"       {:db-model :model/Database :alias :database}
+   "dataset"        {:db-model :model/Card :alias :card}
+   "indexed-entity" {:db-model :model/ModelIndexValue :alias :model-index-value}
+   "metric"         {:db-model :model/Metric :alias :metric}
+   "segment"        {:db-model :model/Segment :alias :segment}
+   "table"          {:db-model :model/Table :alias :table}})
 
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+  (keys model-to-db-model))
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
