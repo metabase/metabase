@@ -47,6 +47,6 @@ export const ParameterContainer = styled.div<ParameterContainerProps>`
     props.isEditingParameter ? color("brand") : color("white")};
 
   &:hover {
-    color: ${props => !props.isEditingParameter && color("white")};
+    background-color: ${props => !props.isEditingParameter && color("white")};
   }
 `;

@@ -1,21 +1,12 @@
-import {
-  useState,
-  useLayoutEffect,
-  useRef,
-  useMemo,
-  useCallback,
-  useEffect,
-} from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import * as React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import type { Location } from "history";
 
-import { getScrollY } from "metabase/lib/dom";
 import { Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
-import HeaderModal from "metabase/components/HeaderModal";
 import {
   EditWarning,
   HeaderRow,
@@ -36,7 +27,6 @@ interface DashboardHeaderViewProps {
   editWarning: string;
   headerButtons: React.ReactNode[];
   headerClassName: string;
-  headerModalMessage: string;
   location: Location;
   isEditing: boolean;
   isEditingInfo: boolean;
@@ -44,8 +34,6 @@ interface DashboardHeaderViewProps {
   dashboard: Dashboard;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
-  onHeaderModalDone: () => null;
-  onHeaderModalCancel: () => null;
   onLastEditInfoClick: () => null;
   onSave: () => null;
   setDashboardAttribute: (prop: string, value: string) => null;
@@ -58,33 +46,17 @@ function DashboardHeaderView({
   editWarning,
   headerButtons = [],
   headerClassName = "py1 lg-py2 xl-py3 wrapper",
-  headerModalMessage,
   location,
   isEditing,
   isNavBarOpen,
   dashboard,
   isLastEditInfoVisible,
-  onHeaderModalDone,
-  onHeaderModalCancel,
   onLastEditInfoClick,
   onSave,
   setDashboardAttribute,
 }: DashboardHeaderViewProps) {
-  const [headerHeight, setHeaderHeight] = useState(0);
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
-
-  const isModalOpened = headerModalMessage != null;
-
-  useLayoutEffect(() => {
-    if (isModalOpened) {
-      const headerRect = header.current?.getBoundingClientRect();
-      if (headerRect) {
-        const headerHeight = headerRect.top + getScrollY();
-        setHeaderHeight(headerHeight);
-      }
-    }
-  }, [isModalOpened]);
 
   const _headerButtons = useMemo(
     () => (
@@ -129,13 +101,6 @@ function DashboardHeaderView({
           <span>{editWarning}</span>
         </EditWarning>
       )}
-      <HeaderModal
-        isOpen={!!headerModalMessage}
-        height={headerHeight}
-        title={headerModalMessage}
-        onDone={onHeaderModalDone}
-        onCancel={onHeaderModalCancel}
-      />
       <div>
         <HeaderRow
           isNavBarOpen={isNavBarOpen}
