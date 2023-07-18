@@ -233,12 +233,7 @@ class SettingsEditor extends Component {
           !MetabaseSettings.isHosted();
 
         const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
-          <NewVersionIndicator
-            style={{ padding: "4px 8px 4px 8px" }}
-            className="bg-brand rounded text-white text-bold h6"
-          >
-            1
-          </NewVersionIndicator>
+          <NewVersionIndicator>1</NewVersionIndicator>
         ) : null;
 
         return (
