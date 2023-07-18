@@ -515,9 +515,34 @@
                                         columns)]
     (concat pk fk other)))
 
+;;; this logic is different from what's in [[metabase.lib.remove-replace/remove-join]] so it is not duplicate code.
+(defn- remove-join-and-all-subsequent-joins
+  "Remove a `join-to-remove` and all subsequent joins from a query stage."
+  [query stage-number {join-to-remove-alias :alias, :as _join-to-remove}]
+  (letfn [(remove-join? [a-join]
+            (= (:alias a-join) join-to-remove-alias))
+          (update-joins [existing-joins]
+            (not-empty
+             (reduce
+              (fn [acc a-join]
+                (if (remove-join? a-join)
+                  (reduced acc)
+                  (conj acc a-join)))
+              []
+              existing-joins)))
+          (update-stage [stage]
+            (let [new-joins (update-joins (:joins stage))]
+              (u/assoc-dissoc stage :joins new-joins)))]
+    (lib.util/update-query-stage query stage-number update-stage)))
+
 (mu/defn join-condition-lhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
+
+  If you are changing the LHS of a condition for an existing join, pass in that existing join as
+  `existing-join-or-nil` so we can filter out the columns added by it (it doesn't make sense to present the columns
+  added by a join as options for its own LHS) or added by later joins (joins can only depend on things from previous
+  joins). Otherwise pass `nil` when building a new join. See #32005 for more info.
 
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
@@ -525,18 +550,20 @@
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  ([query rhs-column-or-nil]
-   (join-condition-lhs-columns query -1 rhs-column-or-nil))
+  ([query existing-join-or-nil rhs-column-or-nil]
+   (join-condition-lhs-columns query -1 existing-join-or-nil rhs-column-or-nil))
 
-  ([query              :- ::lib.schema/query
-    stage-number       :- :int
+  ([query                :- ::lib.schema/query
+    stage-number         :- :int
+    existing-join-or-nil :- [:maybe ::lib.schema.join/join]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _rhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
-   (sort-join-condition-columns
-    (lib.metadata.calculation/visible-columns query
-                                              stage-number
-                                              (lib.util/query-stage query stage-number)
-                                              {:include-implicitly-joinable? false}))))
+    _rhs-column-or-nil   :- [:maybe lib.metadata/ColumnMetadata]]
+   (let [query (cond-> query
+                 existing-join-or-nil (remove-join-and-all-subsequent-joins stage-number existing-join-or-nil))]
+     (sort-join-condition-columns
+      (lib.metadata.calculation/visible-columns query stage-number
+                                                (lib.util/query-stage query stage-number)
+                                                {:include-implicitly-joinable? false})))))
 
 (mu/defn join-condition-rhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
@@ -697,8 +724,8 @@
      ;; otherwise there ARE existing joins, so this is only the first join if it is the same thing as the first join
      ;; in `existing-joins`.
      (when (join? join-or-joinable)
-       (= (lib.options/uuid join-or-joinable)
-          (lib.options/uuid (first existing-joins)))))))
+       (= (:alias join-or-joinable)
+          (:alias (first existing-joins)))))))
 
 (mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string
   "Get the display name for whatever we are joining. See #32015 for screenshot examples.

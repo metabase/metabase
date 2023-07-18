@@ -426,9 +426,8 @@
           (is (= (:fields expected)
                  (lib/join-fields join))))))))
 
-(defn- query-with-join-with-fields
+(def ^:private query-with-join-with-fields
   "A query against `VENUES` joining `CATEGORIES` with `:fields` set to return only `NAME`."
-  []
   (-> lib.tu/venues-query
       (lib/join (-> (lib/join-clause
                      (meta/table-metadata :categories)
@@ -449,11 +448,11 @@
                  {:lib/desired-column-alias "LATITUDE"}
                  {:lib/desired-column-alias "LONGITUDE"}
                  {:lib/desired-column-alias "PRICE"}]
-                (lib/join-condition-lhs-columns query rhs)))))))
+                (lib/join-condition-lhs-columns query nil rhs)))))))
 
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
   (testing "Include columns from previous join(s)"
-    (let [query (query-with-join-with-fields)]
+    (let [query query-with-join-with-fields]
       (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :users :id)) "User")]]
         (testing (str "rhs = " (pr-str rhs))
           (is (=? [{:lib/desired-column-alias "ID"}
@@ -464,9 +463,37 @@
                    {:lib/desired-column-alias "LONGITUDE"}
                    {:lib/desired-column-alias "PRICE"}
                    {:lib/desired-column-alias "Cat__NAME"}]
-                  (lib/join-condition-lhs-columns query rhs)))
-          (is (= (lib/join-condition-lhs-columns query rhs)
-                 (lib/join-condition-lhs-columns query -1 rhs))))))))
+                  (lib/join-condition-lhs-columns query nil rhs)))
+          (is (= (lib/join-condition-lhs-columns query nil rhs)
+                 (lib/join-condition-lhs-columns query -1 nil rhs))))))))
+
+(deftest ^:parallel join-condition-lhs-columns-exclude-columns-from-existing-join-test
+  (testing "Ignore columns added by a join or any subsequent joins (#32005)"
+    (let [query                  (-> lib.tu/query-with-join
+                                     (lib.tu/add-joins "C2" "C3"))
+          [join-1 join-2 join-3] (lib/joins query)]
+      (is (=? {:lib/type :mbql/join
+               :alias    "Cat"}
+              join-1))
+      (is (=? {:lib/type :mbql/join
+               :alias    "C2"}
+              join-2))
+      (is (=? {:lib/type :mbql/join
+               :alias    "C3"}
+              join-3))
+      (are [join expected] (= expected
+                              (map :lib/desired-column-alias (lib/join-condition-lhs-columns query join nil)))
+        nil
+        ["ID" "Cat__ID" "C2__ID" "C3__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME" "C3__NAME"]
+
+        join-1
+        ["ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE"]
+
+        join-2
+        ["ID" "Cat__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME"]
+
+        join-3
+        ["ID" "Cat__ID" "C2__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME"]))))
 
 (deftest ^:parallel join-condition-rhs-columns-test
   (let [query lib.tu/venues-query]
