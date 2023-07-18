@@ -86,10 +86,10 @@ function ActionVizForm({
   };
 
   const fetchInitialValues = useCallback(async () => {
-    const prefetchValues =
+    const prefetchDashcardValues =
       getDashboardType(dashboard.id) === "public"
-        ? PublicApi.prefetchValues
-        : ActionsApi.prefetchValues;
+        ? PublicApi.prefetchDashcardValues
+        : ActionsApi.prefetchDashcardValues;
 
     const canPrefetch = Object.keys(initialValues).length > 0;
 
@@ -97,7 +97,7 @@ function ActionVizForm({
       return {};
     }
 
-    return prefetchValues({
+    return prefetchDashcardValues({
       dashboardId: dashboard.id,
       dashcardId: dashcard.id,
       parameters: JSON.stringify(initialValues),

@@ -66,7 +66,7 @@ const defaultProps: ActionParametersInputFormProps = {
 };
 
 const fetchInitialValues = () =>
-  ActionsApi.prefetchValues({
+  ActionsApi.prefetchDashcardValues({
     dashboardId: dashboard.id,
     dashcardId: dashcard.id,
     parameters: JSON.stringify({}),

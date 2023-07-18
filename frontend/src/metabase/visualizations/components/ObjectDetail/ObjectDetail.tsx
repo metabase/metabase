@@ -324,7 +324,7 @@ export function ObjectDetailView({
     }
 
     // TODO: update when new endpoint is ready
-    return ActionsApi.prefetchValues({
+    return ActionsApi.prefetchDashcardValues({
       dashboardId: 16,
       dashcardId: 108,
       parameters: JSON.stringify({ id: executeActionId }),
