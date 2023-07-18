@@ -44,7 +44,7 @@ describeEE("official collections", () => {
         },
       }).then(({ body, status, statusText }) => {
         expect(body).to.eq(
-          "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature.",
+          "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/",
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");
