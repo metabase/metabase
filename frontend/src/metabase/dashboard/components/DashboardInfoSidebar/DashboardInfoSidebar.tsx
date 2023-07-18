@@ -85,8 +85,7 @@ export function DashboardInfoSidebar({
           initialValue={dashboard.description}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
-          // XXX: After implementing the test, add this following line.
-          // isOptional
+          isOptional
           isMultiline
           isMarkdown
           placeholder={t`Add description`}
