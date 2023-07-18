@@ -32,6 +32,10 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
     `}
 `;
 
+export const SuggestionSpanRoot = styled.span`
+  color: ${color("text-medium")};
+`;
+
 interface SuggestionSpanContentProps {
   isHighlighted?: boolean;
 }

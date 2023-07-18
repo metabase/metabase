@@ -8,17 +8,18 @@ import {
   ExpressionList,
   ExpressionPopover,
   SuggestionSpanContent,
+  SuggestionSpanRoot,
 } from "./ExpressionEditorSuggestions.styled";
 
 const SuggestionSpan = ({ suggestion, isHighlighted }) => {
   return !isHighlighted && suggestion.range ? (
-    <span className="text-medium">
+    <SuggestionSpanRoot>
       {suggestion.name.slice(0, suggestion.range[0])}
       <SuggestionSpanContent isHighlighted={isHighlighted}>
         {suggestion.name.slice(suggestion.range[0], suggestion.range[1])}
       </SuggestionSpanContent>
       {suggestion.name.slice(suggestion.range[1])}
-    </span>
+    </SuggestionSpanRoot>
   ) : (
     suggestion.name
   );
