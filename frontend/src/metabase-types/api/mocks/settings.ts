@@ -117,6 +117,7 @@ export const createMockTokenFeatures = (
   sandboxes: false,
   sso: false,
   whitelabel: false,
+  dashboard_subscription_filters: false,
   ...opts,
 });
 

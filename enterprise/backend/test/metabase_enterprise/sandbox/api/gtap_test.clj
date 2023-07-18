@@ -309,6 +309,6 @@
              is not enabled"
       (with-redefs [premium-features/enable-sandboxes? (constantly false)]
         (mt/with-temporary-setting-values [premium-embedding-token nil]
-          (is (= "Sandboxes is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+          (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :put 402 "permissions/graph"
                                        (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))))

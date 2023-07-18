@@ -30,14 +30,14 @@
 
     (testing "fails to add an official collection if doesn't have any premium features"
       (premium-features-test/with-premium-features #{}
-        (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+        (is (= "Official collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
                                                                         :color           "#000000"
                                                                         :authority_level "official"})))))
 
     (testing "fails to add an official collection if has :content-management feature"
       (premium-features-test/with-premium-features #{:content-management}
-        (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+        (is (= "Official collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
                                                                         :color           "#000000"
                                                                         :authority_level "official"})))))))
@@ -77,14 +77,14 @@
       (premium-features-test/with-premium-features #{}
         (t2.with-temp/with-temp
           [:model/Collection {id :id} {:authority_level nil}]
-          (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+          (is (= "Official collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))
 
     (testing "fails to update if has :content-management feature"
       (premium-features-test/with-premium-features #{:content-management}
         (t2.with-temp/with-temp
           [:model/Collection {id :id} {:authority_level nil}]
-          (is (= "Official collections is an Enterprise feature. Please upgrade to a paid plan to use this feature."
+          (is (= "Official collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))))
 
 
