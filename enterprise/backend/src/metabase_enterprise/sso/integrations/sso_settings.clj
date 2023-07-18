@@ -111,6 +111,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
 (defsetting saml-configured
   (deferred-tru "Are the mandatory SAML settings configured?")
   :type    :boolean
+  :default false
   :feature :sso-saml
   :setter  :none
   :getter  (fn [] (boolean
@@ -128,7 +129,8 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
                false)))
 
 (defsetting jwt-identity-provider-uri
-  (deferred-tru "URL of JWT based login page"))
+  (deferred-tru "URL of JWT based login page")
+  :feature :sso-jwt)
 
 (defsetting jwt-shared-secret
   (deferred-tru (str "String used to seed the private key used to validate JWT messages."
