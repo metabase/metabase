@@ -9,9 +9,8 @@
    [metabase-enterprise.sso.integrations.jwt]
    [metabase-enterprise.sso.integrations.saml]
    [metabase.api.common :as api]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [stencil.core :as stencil]))
 
