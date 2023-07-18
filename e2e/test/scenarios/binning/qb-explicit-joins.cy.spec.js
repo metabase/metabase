@@ -217,9 +217,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
 
       cy.get(".axis.x", { timeout: 1000 })
-        .should("contain", "January, 1960")
-        .and("contain", "January, 1965")
-        .and("contain", "January, 2000");
+        .should("contain", "January 1960")
+        .and("contain", "January 1965")
+        .and("contain", "January 2000");
 
       cy.get("circle");
 

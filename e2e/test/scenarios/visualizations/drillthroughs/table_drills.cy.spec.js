@@ -155,7 +155,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", function (
       { visitQuestion: true },
     );
 
-    cy.get(".cellData").contains("June,").first().click();
+    cy.get(".cellData").contains("June").first().click();
     popover().within(() => {
       cy.findByText(`Before`).should("be.visible");
       cy.findByText(`After`).should("be.visible");

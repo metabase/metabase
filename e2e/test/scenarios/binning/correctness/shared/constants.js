@@ -20,7 +20,7 @@ export const TIME_OPTIONS = {
   },
   Month: {
     selected: "by month",
-    representativeValues: ["April, 2022", "May, 2022"],
+    representativeValues: ["April 2022", "May 2022"],
   },
   Quarter: {
     selected: "by quarter",
