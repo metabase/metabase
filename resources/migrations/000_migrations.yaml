@@ -15921,8 +15921,18 @@ databaseChangeLog:
                   remarks: 'Was the table created from user-uploaded (i.e., from a CSV) data?'
                   constraints:
                     nullable: false
+
   - changeSet:
       id: v48.00-003
+      author: qnkhuat
+      comment: Added 0.48.0 - drop computation_job_result table
+      changes:
+          - dropTable:
+              tableName: computation_job_result
+      rollback: # no rollback needed since this table has been unused since 2018
+
+  - changeSet:
+      id: v48.00-004
       author: qnkhuat
       comment: Added 0.48.0 - drop computation_job table
       changes:
