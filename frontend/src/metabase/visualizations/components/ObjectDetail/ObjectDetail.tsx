@@ -319,13 +319,17 @@ export function ObjectDetailView({
     : [];
 
   const fetchInitialValues = useCallback(async () => {
+    if (typeof executeActionId !== "number") {
+      return {};
+    }
+
     // TODO: update when new endpoint is ready
     return ActionsApi.prefetchValues({
       dashboardId: 16,
-      dashcardId: 109,
-      parameters: JSON.stringify({}),
+      dashcardId: 108,
+      parameters: JSON.stringify({ id: executeActionId }),
     });
-  }, []);
+  }, [executeActionId]);
 
   if (!data) {
     return null;
