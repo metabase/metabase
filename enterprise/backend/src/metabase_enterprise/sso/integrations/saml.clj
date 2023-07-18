@@ -192,7 +192,7 @@
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
   [{:keys [params], :as request}]
-  (premium-features/assert-has-feature :saml (tru "SAML-based authentication"))
+  (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [continue-url  (u/ignore-exceptions
                         (when-let [s (some-> (:RelayState params) base64-decode)]
