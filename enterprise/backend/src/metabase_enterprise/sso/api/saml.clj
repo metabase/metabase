@@ -5,9 +5,9 @@
    [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.models.setting :as setting]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util.i18n :refer [tru]]
-   [saml20-clj.core :as saml]
-   [metabase.public-settings.premium-features :as premium-features]))
+   [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
 

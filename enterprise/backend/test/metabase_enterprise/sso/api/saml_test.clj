@@ -1,8 +1,8 @@
 (ns metabase-enterprise.sso.api.saml-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]
-   [metabase.public-settings.premium-features-test :as premium-features-test]))
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]))
 
 (deftest saml-settings-test
   (testing "PUT /api/saml/settings"

@@ -141,8 +141,8 @@
   (testing "SSO requests fail if they don't have a valid premium-features token"
     (premium-features-test/with-premium-features #{}
       (with-default-saml-config
-        (is (= "SAML-based authentication is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (client :get 402 "/auth/sso")))))))
+        (is (= "SSO has not been enabled and/or configured"
+               (client :get 400 "/auth/sso")))))))
 
 (deftest require-saml-enabled-test
   (with-sso-saml-token
