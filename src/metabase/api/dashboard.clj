@@ -14,6 +14,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -955,15 +956,24 @@
 
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute"
+
+(defn action-for-dashcard-id
+  "Given a `dashcard-id`, returns the action associated with it if any."
+  [dashcard-id]
+  (->> (t2/select-one-fn :action_id :model/DashboardCard
+                         :id dashcard-id)
+       api/check-404
+       (action/select-action :id)
+       api/check-404))
+
+(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [dashboard-id dashcard-id parameters]
-  {dashboard-id su/IntGreaterThanZero
-   dashcard-id su/IntGreaterThanZero
-   parameters su/JSONString}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   parameters   ms/JSONString}
   (api/read-check :model/Dashboard dashboard-id)
-  (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
+  (actions.execution/fetch-values (action-for-dashcard-id dashcard-id) #pp (json/parse-string parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"

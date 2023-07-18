@@ -298,15 +298,14 @@
      :export-format :api
      :parameters    parameters)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
+(api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [uuid dashcard-id parameters]
-  {dashcard-id su/IntGreaterThanZero
-   parameters su/JSONString}
+  {dashcard-id ms/PositiveInt
+   parameters  ms/JSONString}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
+  (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
+  (actions.execution/fetch-values (api.dashboard/action-for-dashcard-id dashcard-id) (json/parse-string parameters)))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 
