@@ -182,6 +182,13 @@ export const SearchResultsContainer = styled.div`
   }
 `;
 
-export const SearchFunnelIcon = styled(Button)`
+export const SearchFunnelButton = styled(Button)<{ isFiltered?: boolean }>`
   transform: rotate(90deg);
+  margin-right: 0.25rem;
+  border: none;
+
+  ${({ isFiltered }) => isFiltered && `color: ${color("brand")};`}
+  &:hover {
+    background: transparent;
+  }
 `;

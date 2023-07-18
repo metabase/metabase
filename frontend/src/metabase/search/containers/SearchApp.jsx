@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
@@ -16,6 +16,8 @@ import { Icon } from "metabase/core/components/Icon";
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { useSearchFilters } from "metabase/search/hooks/use-search-filters";
+import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 import {
   SearchBody,
   SearchControls,
@@ -82,28 +84,34 @@ const SEARCH_FILTERS = [
 
 export default function SearchApp({ location }) {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
-  const [filter, setFilter] = useState(location.query.type);
+
+  const { searchFilters, setSearchFilters, searchText } = useSearchFilters({
+    location,
+  });
 
   const handleFilterChange = filterItem => {
-    setFilter(filterItem && filterItem.filter);
+    setSearchFilters({
+      [FilterType.Type]: filterItem && filterItem.filter,
+    });
     setPage(0);
   };
 
   const query = {
-    q: location.query.q,
+    q: searchText,
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
+    created_by: null,
   };
 
-  if (filter) {
-    query.models = filter;
+  if (searchFilters[FilterType.Type]) {
+    query.models = searchFilters[FilterType.Type];
   }
 
   return (
     <SearchRoot>
-      {location.query.q && (
+      {searchText && (
         <SearchHeader>
-          <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
+          <Subhead>{jt`Results for "${searchText}"`}</Subhead>
         </SearchHeader>
       )}
       <div>
@@ -151,8 +159,10 @@ export default function SearchApp({ location }) {
                   {filters.length > 0 ? (
                     <Link
                       className={cx("flex align-center mb3", {
-                        "text-brand": filter == null,
-                        "text-inherit": filter != null,
+                        "text-brand":
+                          searchFilters[FilterType.Type] == null ||
+                          searchFilters[FilterType.Type].length > 2,
+                        "text-inherit": searchFilters[FilterType.Type] != null,
                       })}
                       onClick={() => handleFilterChange(null)}
                       to={{
@@ -165,7 +175,8 @@ export default function SearchApp({ location }) {
                     </Link>
                   ) : null}
                   {filters.map(f => {
-                    const isActive = filter === f.filter;
+                    const isActive =
+                      searchFilters[FilterType.Type] === f.filter;
 
                     return (
                       <Link
