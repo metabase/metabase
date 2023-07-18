@@ -12,6 +12,7 @@
    [metabase.models.user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
@@ -35,9 +36,13 @@
 
 (defn- disable-other-sso-types [thunk]
   (classloader/require 'metabase.api.ldap)
-  (mt/with-temporary-setting-values [ldap-enabled false
-                                     jwt-enabled  false]
-    (thunk)))
+  (let [current-features (premium-features/token-features)]
+    ;; The :sso-jwt token is needed to set the jwt-enabled setting
+    (premium-features-test/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [ldap-enabled false
+                                         jwt-enabled  false]
+        (premium-features-test/with-premium-features current-features
+          (thunk))))))
 
 (use-fixtures :each disable-other-sso-types)
 
@@ -54,13 +59,16 @@
      ~@body))
 
 (defn call-with-default-saml-config [f]
-  (mt/with-temporary-setting-values [saml-enabled                       true
-                                     saml-identity-provider-uri         default-idp-uri
-                                     saml-identity-provider-certificate default-idp-cert
-                                     saml-keystore-path                 nil
-                                     saml-keystore-password             nil
-                                     saml-keystore-alias                nil]
-    (f)))
+  (let [current-features (premium-features/token-features)]
+    (premium-features-test/with-premium-features #{:sso-saml}
+      (mt/with-temporary-setting-values [saml-enabled                       true
+                                         saml-identity-provider-uri         default-idp-uri
+                                         saml-identity-provider-certificate default-idp-cert
+                                         saml-keystore-path                 nil
+                                         saml-keystore-password             nil
+                                         saml-keystore-alias                nil]
+        (premium-features-test/with-premium-features current-features
+          (f))))))
 
 (defmacro with-default-saml-config [& body]
   `(call-with-default-saml-config
@@ -137,28 +145,25 @@
                (client :get 402 "/auth/sso")))))))
 
 (deftest require-saml-enabled-test
-  (testing "SSO requests fail if SAML hasn't been configured or enabled"
-    (with-sso-saml-token
+  (with-sso-saml-token
+    (testing "SSO requests fail if SAML hasn't been configured or enabled"
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         nil
                                          saml-identity-provider-certificate nil]
-        (is (some? (client :get 400 "/auth/sso"))))))
+        (is (some? (client :get 400 "/auth/sso")))))
 
-  (testing "SSO requests fail if SAML has been configured but not enabled"
-    (with-sso-saml-token
+    (testing "SSO requests fail if SAML has been configured but not enabled"
       (mt/with-temporary-setting-values [saml-enabled                       false
                                          saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate default-idp-cert]
-        (is (some? (client :get 400 "/auth/sso"))))))
+        (is (some? (client :get 400 "/auth/sso")))))
 
-  (testing "SSO requests fail if SAML is enabled but hasn't been configured"
-    (with-sso-saml-token
+    (testing "SSO requests fail if SAML is enabled but hasn't been configured"
       (mt/with-temporary-setting-values [saml-enabled               true
                                          saml-identity-provider-uri nil]
-        (is (some? (client :get 400 "/auth/sso"))))))
+        (is (some? (client :get 400 "/auth/sso")))))
 
-  (testing "The IDP provider certificate must also be included for SSO to be configured"
-    (with-sso-saml-token
+    (testing "The IDP provider certificate must also be included for SSO to be configured"
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate nil]

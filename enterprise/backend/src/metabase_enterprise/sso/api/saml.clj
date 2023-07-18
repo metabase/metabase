@@ -5,7 +5,9 @@
    [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.models.setting :as setting]
-   [saml20-clj.core :as saml]))
+   [metabase.util.i18n :refer [tru]]
+   [saml20-clj.core :as saml]
+   [metabase.public-settings.premium-features :as premium-features]))
 
 (set! *warn-on-reflection* true)
 
@@ -14,6 +16,7 @@
   [:as {settings :body}]
   {settings :map}
   (api/check-superuser)
+  (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (let [filename (:saml-keystore-path settings)
         password (:saml-keystore-password settings)
         alias (:saml-keystore-alias settings)]
