@@ -53,7 +53,6 @@ import {
 } from "./NativeQueryEditor/utils";
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
-import "./NativeQueryEditor.css";
 import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
