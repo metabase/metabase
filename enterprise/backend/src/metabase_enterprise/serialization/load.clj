@@ -432,8 +432,6 @@
   Any unresolved entities from this resolution process will be tracked via ::unresolved-named so that the card or
   dashboard card holding these visualization settings can be revisited in a future pass."
   [entity]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "Running: " entity)
   (if-let [viz-settings (:visualization_settings entity)]
     (let [resolved-vs (-> (mb.viz/db->norm viz-settings)
                           resolve-top-level-click-behavior
