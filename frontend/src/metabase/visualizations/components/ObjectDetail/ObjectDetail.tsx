@@ -512,6 +512,9 @@ export function ObjectDetailHeader({
               horizontalAttachments={["right", "left"]}
               items={actionItems}
               triggerIcon="ellipsis"
+              triggerProps={{
+                "data-testid": "actions-menu",
+              }}
             />
           )}
 
