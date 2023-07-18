@@ -71,7 +71,7 @@
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 "'unsafe-inline'"
+                                 "'nonce-2726c7f26c'"
                                  "https://accounts.google.com"]
                   :font-src     ["*"]
                   :img-src      ["*"
