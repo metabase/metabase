@@ -101,7 +101,7 @@ export function setup(
 
   fetchMock.get("path:/api/pulse/form_input", channelData);
 
-  fetchMock.get("path:/api/user", {
+  fetchMock.get("path:/api/user/recipients", {
     data: [user],
   });
 
