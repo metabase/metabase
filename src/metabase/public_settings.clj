@@ -260,6 +260,7 @@
 (defsetting embedding-app-origin
   (deferred-tru "Allow this origin to embed the full {0} application"
                 (application-name-for-setting-descriptions))
+  :feature    :embedding
   :visibility :public)
 
 (defsetting enable-nested-queries
