@@ -75,14 +75,14 @@
 (defmacro with-liquibase
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
 
-  (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
-  (liquibase/migrate-up-if-needed! liquibase))"
+    (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
+      (liquibase/migrate-up-if-needed! liquibase))"
   {:style/indent 1}
   [[liquibase-binding conn-or-data-source] & body]
   `(do-with-liquibase
-     ~conn-or-data-source
-     (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
-       ~@body)))
+    ~conn-or-data-source
+    (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
+      ~@body)))
 
 (defn migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations, custom migrations will be ignored."
