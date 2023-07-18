@@ -48,6 +48,57 @@
    [:ref :mbql.clause/field]
    PartialJoin])
 
+(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
+  "Get the current join alias associated with something, if it has one."
+  [field-or-join :- FieldOrPartialJoin]
+  (case (lib.dispatch/dispatch-value field-or-join)
+    :field          (:join-alias (lib.options/options field-or-join))
+    :metadata/column (::join-alias field-or-join)
+    :mbql/join      (:alias field-or-join)))
+
+(declare with-join-alias)
+
+(defn- with-join-alias-update-join-fields
+  "Impl for [[with-join-alias]] for a join: recursively update the `:join-alias` for the `:field` refs inside `:fields`
+  as needed."
+  [join new-alias]
+  (cond-> join
+    (:fields join) (update :fields (fn [fields]
+                                     (if-not (sequential? fields)
+                                       fields
+                                       (mapv (fn [field-ref]
+                                               (with-join-alias field-ref new-alias))
+                                             fields))))))
+
+(defn- with-join-alias-update-join-conditions
+  "Impl for [[with-join-alias]] for a join: recursively update the `:join-alias` for inside the `:conditions` of the
+  join.
+
+  Only updates things that already had a join alias of `old-alias`; does not add alias to things that did not already
+  have one (such as the RHS of a 'typical' join condition). I went back and forth on this behavior, but eventually
+  decided NOT to assume that every join condition is the shape
+
+    [<operator> <lhs-column-from-source> <rhs-column-from-join>]
+
+  This is currently true of normal FE usage, but may not be true everywhere in the future; we don't want to make MLv2
+  impossible to use if you're doing something different like swapping the order of the columns or some sort of more
+  complex condition."
+  [join old-alias new-alias]
+  (if-not old-alias
+    join
+    (mbql.u.match/replace-in join [:conditions]
+      [:field {:join-alias old-alias} _id-or-name]
+      (with-join-alias &match new-alias))))
+
+(defn- with-join-alias-update-join
+  "Impl for [[with-join-alias]] for a join."
+  [join new-alias]
+  (let [old-alias (current-join-alias join)]
+    (-> join
+        (u/assoc-dissoc :alias new-alias)
+        (with-join-alias-update-join-fields new-alias)
+        (with-join-alias-update-join-conditions old-alias new-alias))))
+
 (mu/defn with-join-alias :- FieldOrPartialJoin
   "Add OR REMOVE a specific `join-alias` to `field-or-join`, which is either a `:field`/Field metadata, or a join map.
   Does not recursively update other references (yet; we can add this in the future)."
@@ -62,15 +113,7 @@
     (u/assoc-dissoc field-or-join ::join-alias join-alias)
 
     :mbql/join
-    (u/assoc-dissoc field-or-join :alias join-alias)))
-
-(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
-  "Get the current join alias associated with something, if it has one."
-  [field-or-join :- FieldOrPartialJoin]
-  (case (lib.dispatch/dispatch-value field-or-join)
-    :field          (:join-alias (lib.options/options field-or-join))
-    :metadata/column (::join-alias field-or-join)
-    :mbql/join      (:alias field-or-join)))
+    (with-join-alias-update-join field-or-join join-alias)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
@@ -255,10 +298,17 @@
   references."
   [joinable :- PartialJoin
    fields   :- [:maybe [:or [:enum :all :none] [:sequential some?]]]]
-  (u/assoc-dissoc joinable :fields (cond
-                                     (keyword? fields) fields
-                                     (= fields [])     :none
-                                     :else             (not-empty (mapv lib.ref/ref fields)))))
+  (let [fields (cond
+                 (keyword? fields) fields
+                 (= fields [])     :none
+                 :else             (not-empty
+                                    (into []
+                                          (comp (map lib.ref/ref)
+                                                (if-let [current-alias (current-join-alias joinable)]
+                                                  (map #(with-join-alias % current-alias))
+                                                  identity))
+                                          fields)))]
+    (u/assoc-dissoc joinable :fields fields)))
 
 (defn- select-home-column
   [home-cols cond-fields]
