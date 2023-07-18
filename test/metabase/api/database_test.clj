@@ -1084,18 +1084,20 @@
 
 (deftest get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp* [Database [{db-id :id}]
-                  Table    [_ {:db_id db-id, :schema "schema_1", :name "table_1"}]
-                    ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
+                  Table    [_ {:db_id db-id, :schema "schema_1a", :name "table_1"}]
+                  Table    [_ {:db_id db-id, :schema "schema_1c", :name "table_1"}] ;; out of order for sorting
+                  Table    [_ {:db_id db-id, :schema "schema_1b", :name "table_1"}]
+                  ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
                   Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2a", :visibility_type "hidden"}]
                   Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2b", :visibility_type "cruft"}]
                     ;; table is not active
                   Table    [_ {:db_id db-id, :schema "schema_3", :name "table_3", :active false}]]
     (testing "GET /api/database/:id/schemas should not return schemas with no VISIBLE TABLES"
-      (is (= #{"schema_1"}
-             (set (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id))))))
+      (is (= ["schema_1a" "schema_1b" "schema_1c"]
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id)))))
     (testing "GET /api/database/:id/schemas?include_hidden=true should return schemas with no VISIBLE TABLES"
-      (is (= #{"schema_1" "schema_2"}
-             (set (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas?include_hidden=true" db-id))))))))
+      (is (= ["schema_1a" "schema_1b" "schema_1c" "schema_2"]
+             (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas?include_hidden=true" db-id)))))))
 
 (deftest get-schemas-permissions-test
   (testing "GET /api/database/:id/schemas against permissions"

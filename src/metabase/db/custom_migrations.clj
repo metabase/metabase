@@ -44,7 +44,8 @@
      CustomTaskChange
      ;; TODO I think we need to bound this database connection for custom migrations
      (execute [_# database#]
-       ~migration-body)
+       (t2/with-transaction [_conn#]
+         ~migration-body))
      (getConfirmationMessage [_#]
        (str "Custom migration: " ~name))
      (setUp [_#])
@@ -54,7 +55,8 @@
 
      CustomTaskRollback
      (rollback [_# database#]
-       ~reverse-migration-body)))
+       (t2/with-transaction [_conn#]
+         ~reverse-migration-body))))
 
 (defn no-op
   "No-op logging rollback function"

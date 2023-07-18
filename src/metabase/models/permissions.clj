@@ -423,6 +423,10 @@
   "Schema for a permissions path with a valid format."
   (s/pred valid-path-format? "Valid permissions path"))
 
+(def PathMalliSchema
+  "Malli Schema for a permissions path with a valid format."
+  [:fn {:error/message "Valid permissions path"} valid-path-format?])
+
 (defn- assert-not-admin-group
   "Check to make sure the `:group_id` for `permissions` entry isn't the admin group."
   [{:keys [group_id]}]

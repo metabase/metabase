@@ -1038,7 +1038,10 @@
   {id ms/PositiveInt}
   (let [db (api/check-404 (t2/select-one Database id))]
     (api/check-403 (mi/can-write? db))
-    (driver/syncable-schemas (:engine db) db)))
+    (->> db
+         (driver/syncable-schemas (:engine db))
+         (vec)
+         (sort))))
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."

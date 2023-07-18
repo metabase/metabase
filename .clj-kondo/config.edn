@@ -137,6 +137,8 @@
    honeysql.core/call                   {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                    {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock                 {:message "Use mt/with-clock"}
+   java.util.UUID/randomUUID            {:message "Use clojure.core/random-uuid instead of java.util.UUID/randomUUID"}
+   medley.core/random-uuid              {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.test/with-temp              {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp"}
    ;; metabase.test/with-temp*             {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp*"}
    toucan.db/select                     {:message "Use t2/select instead of toucan.db/select"}
@@ -293,6 +295,10 @@
     metabase.driver.druid.js                                        druid.js
     metabase.driver.druid.query-processor                           druid.qp
     metabase.driver.druid.sync                                      druid.sync
+    metabase.driver.googleanalytics.client                          ga.client
+    metabase.driver.googleanalytics.execute                         ga.execute
+    metabase.driver.googleanalytics.metadata                        ga.metadata
+    metabase.driver.googleanalytics.query-processor                 ga.qp
     metabase.driver.impl                                            driver.impl
     metabase.driver.mongo.execute                                   mongo.execute
     metabase.driver.mongo.parameters                                mongo.params

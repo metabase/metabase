@@ -1,13 +1,15 @@
-import { Route } from "react-router";
+import { Link, Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
 
-import { renderWithProviders, screen, fireEvent } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { DashboardState, State } from "metabase-types/store";
 import { DashboardOrderedTab } from "metabase-types/api";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 
+import { useSelector } from "metabase/lib/redux";
+import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
@@ -32,7 +34,7 @@ function setup({
     },
   };
 
-  const TestComponent = ({ location }: { location: Location }) => {
+  const DashboardComponent = ({ location }: { location: Location }) => {
     const { selectedTabId } = useDashboardTabs({ location });
 
     return (
@@ -41,12 +43,28 @@ function setup({
         <span>Selected tab id is {selectedTabId}</span>
         <br />
         <span>Path is {location.pathname + location.search}</span>
+        <Link to="/someotherpath">Navigate away</Link>
+      </>
+    );
+  };
+
+  const OtherComponent = () => {
+    const selectedTabId = useSelector(getSelectedTabId);
+
+    return (
+      <>
+        <span>Another route</span>
+        <br />
+        <span>Selected tab id is {selectedTabId}</span>
       </>
     );
   };
 
   const { store } = renderWithProviders(
-    <Route path="dashboard/:slug(/:tabSlug)" component={TestComponent} />,
+    <>
+      <Route path="dashboard/:slug(/:tabSlug)" component={DashboardComponent} />
+      <Route path="someotherpath" component={OtherComponent} />
+    </>,
     {
       storeInitialState: { dashboard },
       initialRoute: slug ? `/dashboard/1?tab=${slug}` : "/dashboard/1",
@@ -61,7 +79,7 @@ function setup({
 
 function queryTab(numOrName: number | string) {
   const name = typeof numOrName === "string" ? numOrName : `Tab ${numOrName}`;
-  return screen.queryByRole("tab", { name });
+  return screen.queryByRole("tab", { name, hidden: true });
 }
 
 function selectTab(num: number) {
@@ -77,9 +95,10 @@ function createNewTab() {
 async function selectTabMenuItem(num: number, name: "Delete" | "Rename") {
   const dropdownIcons = screen.getAllByRole("img", {
     name: "chevrondown icon",
+    hidden: true,
   });
   userEvent.click(dropdownIcons[num - 1]);
-  (await screen.findByRole("option", { name })).click();
+  (await screen.findByRole("option", { name, hidden: true })).click();
 }
 
 async function deleteTab(num: number) {
@@ -89,9 +108,11 @@ async function deleteTab(num: number) {
 async function renameTab(num: number, name: string) {
   await selectTabMenuItem(num, "Rename");
 
-  const inputEl = screen.getByRole("textbox", { name: `Tab ${num}` });
-  userEvent.type(inputEl, name);
-  fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+  const inputEl = screen.getByRole("textbox", {
+    name: `Tab ${num}`,
+    hidden: true,
+  });
+  userEvent.type(inputEl, `${name}{enter}`);
 }
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
@@ -315,13 +336,28 @@ describe("DashboardTabs", () => {
         const inputWrapperEl = screen.getAllByTestId(INPUT_WRAPPER_TEST_ID)[0];
         userEvent.dblClick(inputWrapperEl);
 
-        const inputEl = screen.getByRole("textbox", { name: "Tab 1" });
-        userEvent.type(inputEl, name);
-        fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+        const inputEl = screen.getByRole("textbox", {
+          name: "Tab 1",
+          hidden: true,
+        });
+        userEvent.type(inputEl, `${name}{enter}`);
 
         expect(queryTab(name)).toBeInTheDocument();
         expect(await findSlug({ tabId: 1, name })).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("when navigating away from dashboard", () => {
+    it("should preserve selected tab id", () => {
+      setup();
+
+      selectTab(2);
+      expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
+
+      screen.getByText("Navigate away").click();
+      expect(screen.getByText("Another route")).toBeInTheDocument();
+      expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
     });
   });
 });

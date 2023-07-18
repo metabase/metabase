@@ -449,8 +449,7 @@ describe("Question", () => {
         const question = orders_count_question
           .setDisplay("table")
           .lockDisplay()
-          .maybeUnlockDisplay(["table", "scalar"])
-          .setDefaultDisplay();
+          .maybeResetDisplay(["table", "scalar"]);
 
         expect(question.display()).toBe("table");
       });
@@ -459,34 +458,79 @@ describe("Question", () => {
         const question = orders_count_question
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeUnlockDisplay(["table", "scalar"])
-          .setDefaultDisplay();
+          .maybeResetDisplay(["table", "scalar"]);
 
         expect(question.display()).toBe("scalar");
       });
     });
 
-    describe("maybeUnlockDisplay", () => {
-      it("should keep display locked when it was locked with nonsense display", () => {
+    describe("maybeResetDisplay", () => {
+      it("should do nothing when it was locked with sensible display", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const previousSensibleDisplays = sensibleDisplays;
+        const question = new Question(orders_count_card, metadata)
+          .setDisplay("scalar")
+          .lockDisplay()
+          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
+
+        expect(question.displayIsLocked()).toBe(true);
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should do nothing when it was locked with nonsense display", () => {
         const sensibleDisplays = ["table", "scalar"];
         const previousSensibleDisplays = sensibleDisplays;
         const question = new Question(orders_count_card, metadata)
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays);
+          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
 
         expect(question.displayIsLocked()).toBe(true);
+        expect(question.display()).toBe("funnel");
       });
 
-      it("should unlock display it was locked with sensible display which has become unsensible", () => {
+      it("should use default display when nonsense display is used and was not locked", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("funnel")
+          .maybeResetDisplay(sensibleDisplays, sensibleDisplays);
+
+        expect(question.display()).not.toBe("funnel");
+        expect(question.display()).toBe("table");
+      });
+
+      it("should unlock and use new sensible display when it was locked with sensible display which has become not sensible", () => {
         const previousSensibleDisplays = ["funnel"];
         const sensibleDisplays = ["table", "scalar"];
         const question = orders_count_question
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays);
+          .maybeResetDisplay(sensibleDisplays, previousSensibleDisplays);
 
         expect(question.displayIsLocked()).toBe(false);
+        expect(question.display()).not.toBe("funnel");
+        expect(sensibleDisplays).toContain(question.display());
+      });
+
+      it("should keep any sensible display when display was locked", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("scalar")
+          .lockDisplay()
+          .maybeResetDisplay(sensibleDisplays);
+
+        expect(question.display()).not.toBe("table");
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should keep any sensible display when display was not locked (metabase#32075)", () => {
+        const sensibleDisplays = ["table", "scalar"];
+        const question = base_question
+          .setDisplay("scalar")
+          .maybeResetDisplay(sensibleDisplays);
+
+        expect(question.display()).not.toBe("table");
+        expect(question.display()).toBe("scalar");
       });
     });
   });

@@ -33,14 +33,14 @@
   (mt/test-driver :mysql
     (testing "Make sure MySQL CREATE DATABASE statements have ENGINE/CHARACTER SET appended to them (#10691)"
       (sql-jdbc.execute/do-with-connection-with-options
-       :mysql
-       (sql-jdbc.conn/connection-details->spec :mysql
-                                               (mt/dbdef->connection-details :mysql :server nil))
-       {:write? true}
-       (fn [^java.sql.Connection conn]
-         (doseq [statement ["DROP DATABASE IF EXISTS liquibase_test;"
-                            "CREATE DATABASE liquibase_test;"]]
-           (next.jdbc/execute! conn [statement]))))
+        :mysql
+        (sql-jdbc.conn/connection-details->spec :mysql
+                                                (mt/dbdef->connection-details :mysql :server nil))
+        {:write? true}
+        (fn [^java.sql.Connection conn]
+          (doseq [statement ["DROP DATABASE IF EXISTS liquibase_test;"
+                             "CREATE DATABASE liquibase_test;"]]
+            (next.jdbc/execute! conn [statement]))))
       (liquibase/with-liquibase [liquibase (->> (mt/dbdef->connection-details :mysql :db {:database-name "liquibase_test"})
                                                 (sql-jdbc.conn/connection-details->spec :mysql)
                                                 mdb.test-util/->ClojureJDBCSpecDataSource)]

@@ -3,6 +3,7 @@
 export * from "./aggregation";
 export * from "./binning";
 export * from "./breakout";
+export * from "./buckets";
 export * from "./column_types";
 export * from "./common";
 export * from "./comparison";

@@ -119,9 +119,7 @@ function getOperatorsForColumn(
     return null;
   }
 
-  const fieldRef = dimension
-    ? dimension.mbql()
-    : getColumnFieldRef(column, baseType);
+  const fieldRef = getColumnFieldRef(column, baseType);
 
   if (!fieldRef || !isConcreteField(fieldRef)) {
     return null;

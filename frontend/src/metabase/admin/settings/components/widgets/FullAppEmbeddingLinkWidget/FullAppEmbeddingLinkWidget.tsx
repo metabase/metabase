@@ -1,23 +1,14 @@
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { State } from "metabase-types/store";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import SettingHeader from "../../SettingHeader";
 
-interface StateProps {
-  upgradeUrl: string;
-}
+export const FullAppEmbeddingLinkWidget = () => {
+  const upgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, { utm_media: "embed_fullapp" }),
+  );
 
-type FullAppEmbeddingLinkWidgetProps = StateProps;
-
-const mapStateToProps = (state: State): StateProps => ({
-  upgradeUrl: getUpgradeUrl(state, { utm_media: "embed_fullapp" }),
-});
-
-const FullAppEmbeddingLinkWidget = ({
-  upgradeUrl,
-}: FullAppEmbeddingLinkWidgetProps) => {
   const setting = {
     display_name: t`embedding the entire metabase app`,
     description: jt`With ${(
@@ -29,6 +20,3 @@ const FullAppEmbeddingLinkWidget = ({
 
   return <SettingHeader id="embedding-customization-info" setting={setting} />;
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(FullAppEmbeddingLinkWidget);

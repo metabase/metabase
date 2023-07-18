@@ -506,7 +506,10 @@
     :test/jvm-timezone-setting
 
     ;; Does the driver support connection impersonation (i.e. overriding the role used for individual queries)?
-    :connection-impersonation})
+    :connection-impersonation
+
+    ;; Does the driver require specifying a collection (table) for native queries? (mongo)
+    :native-requires-specified-collection})
 
 
 (defmulti supports?

@@ -60,7 +60,6 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io ByteArrayInputStream)
-   (java.util UUID)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -2077,7 +2076,7 @@
             (testing "making public"
               (remains-verified
                (update-card card {:made_public_by_id (mt/user->id :rasta)
-                                  :public_uuid (UUID/randomUUID)})))
+                                  :public_uuid (random-uuid)})))
             (testing "Changing description"
               (remains-verified
                (update-card card {:description "foo"})))
@@ -2217,7 +2216,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- shared-card []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 (deftest share-card-test

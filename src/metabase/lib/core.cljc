@@ -147,6 +147,7 @@
    filterable-columns
    filterable-column-operators
    filter-clause
+   filter-operator
    and
    or
    not
@@ -170,6 +171,7 @@
    join-condition-rhs-columns
    join-conditions
    join-fields
+   join-lhs-display-name
    join-strategy
    joinable-columns
    joins
@@ -200,6 +202,10 @@
    with-native-query
    template-tags
    with-template-tags
+   required-native-extras
+   native-extras
+   with-native-extras
+   with-different-database
    extract-template-tags]
   [lib.order-by
    change-direction
@@ -218,7 +224,8 @@
    remove-clause
    remove-join
    rename-join
-   replace-clause]
+   replace-clause
+   replace-join]
   [lib.stage
    append-stage
    drop-stage]

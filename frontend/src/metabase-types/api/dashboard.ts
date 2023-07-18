@@ -54,7 +54,7 @@ export type BaseDashboardOrderedCard = {
   updated_at: string;
 };
 
-export type VirtualCardDisplay = "text" | "action" | "link";
+export type VirtualCardDisplay = "text" | "action" | "link" | "heading";
 
 export type VirtualCard = Partial<Card> & {
   display: VirtualCardDisplay;

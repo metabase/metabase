@@ -362,6 +362,11 @@
   [filter-operator column & args]
   (apply lib.core/filter-clause filter-operator column args))
 
+(defn ^:export filter-operator
+  "Returns the filter operator of `filter-clause`."
+  [a-query stage-number a-filter-clause]
+  (lib.core/filter-operator a-query stage-number a-filter-clause))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
@@ -405,7 +410,7 @@
   "Get available join strategies for the current Database (based on the Database's
   supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
-  (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))
+  (to-array (lib.core/available-join-strategies a-query stage-number)))
 
 (defn ^:export join-condition-lhs-columns
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
@@ -581,6 +586,30 @@
   [a-query]
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
 
+(defn ^:export required-native-extras
+  "Returns whether the extra keys required by the database."
+  [database-id metadata]
+  (to-array (lib.core/required-native-extras (metadataProvider database-id metadata))))
+
+(defn ^:export with-different-database
+  "Changes the database for this query. The first stage must be a native type.
+   Native extras must be provided if the new database requires it."
+  ([a-query database-id metadata]
+   (with-different-database a-query database-id metadata nil))
+  ([a-query database-id metadata native-extras]
+   (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
+
+(defn ^:export with-native-extras
+  "Updates the extras required for the db to run this query.
+   The first stage must be a native type. Will ignore extras not in `required-native-extras`"
+  [a-query native-extras]
+  (lib.core/with-native-extras a-query (js->clj native-extras :keywordize-keys true)))
+
+(defn ^:export native-extras
+  "Returns the extra keys for native queries associated with this query."
+  [a-query]
+  (clj->js (lib.core/native-extras a-query)))
+
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."
@@ -599,3 +628,9 @@
   Returns `nil` if no matching metadata is found."
   [query-or-metadata-provider table-id]
   (lib.metadata/table-or-card query-or-metadata-provider table-id))
+
+(defn ^:export join-lhs-display-name
+  "Get the display name for whatever we are joining. For an existing join, pass in the join clause. When constructing a
+  join, pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata."
+  [a-query stage-number join-or-joinable]
+  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable))
