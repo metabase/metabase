@@ -40,7 +40,7 @@ export function question(
     query = extractQueryParams(query)
       .map(([key, value]) =>
         value == null
-          ? encodeURIComponent(key) + "="
+          ? `${encodeURIComponent(key)}=`
           : [key, value].map(encodeURIComponent).join("="),
       )
       .join("&");

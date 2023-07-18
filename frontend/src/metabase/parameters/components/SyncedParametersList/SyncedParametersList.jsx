@@ -42,8 +42,8 @@ export function SyncedParametersList({
   setEditingParameter,
 }) {
   useSyncedQueryString(
-    () => getParameterValuesBySlug(parameters, undefined, dashboard),
-    [parameters, dashboard],
+    () => getParameterValuesBySlug(parameters, undefined),
+    [parameters],
   );
 
   return (
