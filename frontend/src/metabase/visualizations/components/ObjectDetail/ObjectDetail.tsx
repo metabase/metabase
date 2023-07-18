@@ -323,13 +323,16 @@ export function ObjectDetailView({
       return {};
     }
 
-    // TODO: update when new endpoint is ready
-    return ActionsApi.prefetchDashcardValues({
-      dashboardId: 16,
-      dashcardId: 108,
-      parameters: JSON.stringify({ id: executeActionId }),
+    return ActionsApi.prefetchValues({
+      id: executeActionId,
+      parameters: JSON.stringify({ id: String(executeActionId) }),
     });
   }, [executeActionId]);
+
+  const initialValues = useMemo(
+    () => ({ id: executeActionId }),
+    [executeActionId],
+  );
 
   if (!data) {
     return null;
@@ -407,6 +410,7 @@ export function ObjectDetailView({
       >
         <ActionExecuteModal
           actionId={executeActionId}
+          initialValues={initialValues}
           fetchInitialValues={fetchInitialValues}
           shouldPrefetch
           onClose={handleExecuteModalClose}
