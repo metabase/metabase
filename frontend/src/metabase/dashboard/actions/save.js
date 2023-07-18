@@ -14,13 +14,13 @@ import { fetchDashboard } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 import { saveCardsAndTabs } from "./tabs";
 
-export const SAVE_DASHBOARD_AND_CARDS =
-  "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
+export const UPDATE_DASHBOARD_AND_CARDS =
+  "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
 
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 
-export const saveDashboardAndCards = createThunkAction(
-  SAVE_DASHBOARD_AND_CARDS,
+export const updateDashboardAndCards = createThunkAction(
+  UPDATE_DASHBOARD_AND_CARDS,
   function () {
     return async function (dispatch, getState) {
       const state = getState();

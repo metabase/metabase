@@ -93,7 +93,7 @@ class DashboardHeader extends Component {
     addMarkdownDashCardToDashboard: PropTypes.func.isRequired,
     addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    saveDashboardAndCards: PropTypes.func.isRequired,
+    updateDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
 
     onEditingChange: PropTypes.func.isRequired,
@@ -179,7 +179,7 @@ class DashboardHeader extends Component {
   }
 
   async onSave() {
-    await this.props.saveDashboardAndCards();
+    await this.props.updateDashboardAndCards();
     this.onDoneEditing();
   }
 
