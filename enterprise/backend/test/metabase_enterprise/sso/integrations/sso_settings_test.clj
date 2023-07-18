@@ -1,9 +1,9 @@
 (ns metabase-enterprise.sso.integrations.sso-settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test.util :as tu]
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]))
+   [metabase.test.util :as tu]))
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
 (def ^:private default-idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
