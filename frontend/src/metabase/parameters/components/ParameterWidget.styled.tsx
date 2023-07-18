@@ -25,3 +25,28 @@ export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
     padding: 0 0.5em;
   }
 `;
+
+interface ParameterContainerProps {
+  isEditingParameter?: boolean;
+}
+
+export const ParameterContainer = styled.div<ParameterContainerProps>`
+  display: flex;
+  align-items: center;
+  border: 1px solid
+    ${props => (props.isEditingParameter ? color("brand") : color("border"))};
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: bold;
+  width: 170px;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  color: ${props => props.isEditingParameter && color("white")};
+  background-color: ${props =>
+    props.isEditingParameter ? color("brand") : color("white")};
+
+  &:hover {
+    color: ${props => !props.isEditingParameter && color("white")};
+  }
+`;

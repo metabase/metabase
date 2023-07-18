@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { Icon } from "metabase/core/components/Icon";
-import { color } from "metabase/lib/colors";
 import ParameterValueWidget from "./ParameterValueWidget";
-import { ParameterFieldSet } from "./ParameterWidget.styled";
+import {
+  ParameterContainer,
+  ParameterFieldSet,
+} from "./ParameterWidget.styled";
 
 export default class ParameterWidget extends Component {
   state = {
@@ -98,30 +99,18 @@ export default class ParameterWidget extends Component {
     };
 
     const renderEditing = () => (
-      <div
-        className={cx(
-          className,
-          "flex align-center bordered rounded cursor-pointer text-bold mr1 mb1",
-          {
-            "bg-brand text-white": isEditingParameter,
-            "text-brand-hover bg-white": !isEditingParameter,
-          },
-        )}
+      <ParameterContainer
+        isEditingParameter={isEditingParameter}
         onClick={() =>
           setEditingParameter(isEditingParameter ? null : parameter.id)
         }
-        style={{
-          padding: 8,
-          width: 170,
-          borderColor: isEditingParameter && color("brand"),
-        }}
       >
         <div className="mr1" onClick={e => e.stopPropagation()}>
           {dragHandle}
         </div>
         {parameter.name}
         <Icon className="flex-align-right" name="gear" size={16} />
-      </div>
+      </ParameterContainer>
     );
 
     if (isFullscreen) {
