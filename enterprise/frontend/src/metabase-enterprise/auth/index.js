@@ -29,14 +29,14 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: null,
       noHeader: true,
       widget: SamlAuthCard,
-      getHidden: () => !hasPremiumFeature("sso"),
+      getHidden: () => !hasPremiumFeature("sso_saml"),
     },
     {
       key: "jwt-enabled",
       description: null,
       noHeader: true,
       widget: JwtAuthCard,
-      getHidden: () => !hasPremiumFeature("sso"),
+      getHidden: () => !hasPremiumFeature("sso_jwt"),
     },
     {
       key: "enable-password-login",
