@@ -133,15 +133,13 @@ export const saveDashboardAndCards = createThunkAction(
 
 export const saveDashboard = createThunkAction(
   SAVE_DASHBOARD,
-  function ({ attributeNames = [] }) {
+  function ({ attributeNames }) {
     return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashboardId } = state.dashboard;
       const dashboard = dashboards[dashboardId];
 
-      if (attributeNames.length === 0) {
-        await dispatch(Dashboards.actions.update(dashboard));
-      } else {
+      if (attributeNames.length > 0) {
         const attributes = _.pick(dashboard, attributeNames);
 
         await dispatch(
