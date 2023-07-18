@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-
-import cx from "classnames";
 import { t } from "ttag";
 import BodyComponent from "metabase/components/BodyComponent";
+import { HeaderModalRoot } from "./HeaderModal.styled";
 
 class HeaderModal extends Component {
   constructor(props, context) {
@@ -21,18 +20,11 @@ class HeaderModal extends Component {
     const { className, height, title, onDone, onCancel, isOpen } = this.props;
     const { initialTop } = this.state;
     return (
-      <div
-        className={cx(
-          className,
-          "absolute top left right bg-brand flex flex-column layout-centered",
-        )}
+      <HeaderModalRoot
+        className={className}
         style={{
-          zIndex: 4,
           height: height,
-          minHeight: 50,
           transform: `translateY(${isOpen ? initialTop : "-100%"})`,
-          transition: "transform 400ms ease-in-out",
-          overflow: "hidden",
         }}
       >
         <h2 className="text-white pb2">{title}</h2>
@@ -49,7 +41,7 @@ class HeaderModal extends Component {
             >{t`Cancel`}</a>
           )}
         </div>
-      </div>
+      </HeaderModalRoot>
     );
   }
 }
