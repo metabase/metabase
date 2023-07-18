@@ -68,7 +68,7 @@
 
 (deftest available-join-strategies-test
   (testing "available-join-strategies returns an array of opaque strategy objects (#32089)"
-    (let [strategies (lib.js/available-join-strategies (lib.tu/query-with-join) -1)]
+    (let [strategies (lib.js/available-join-strategies lib.tu/query-with-join -1)]
       (is (array? strategies))
       (is (= [{:lib/type :option/join.strategy, :strategy :left-join, :default true}
               {:lib/type :option/join.strategy, :strategy :right-join}

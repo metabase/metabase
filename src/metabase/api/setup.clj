@@ -33,9 +33,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,12 +55,12 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [session-id (str (UUID/randomUUID))
+  (let [session-id (str (random-uuid))
         new-user   (first (t2/insert-returning-instances! User
                                                           :email        email
                                                           :first_name   first-name
                                                           :last_name    last-name
-                                                          :password     (str (UUID/randomUUID))
+                                                          :password     (str (random-uuid))
                                                           :is_superuser true))
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it

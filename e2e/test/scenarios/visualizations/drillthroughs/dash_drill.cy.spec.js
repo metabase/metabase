@@ -1,4 +1,3 @@
-// Imported from drillthroughs.e2e.spec.js
 import {
   addOrUpdateDashboardCard,
   restore,

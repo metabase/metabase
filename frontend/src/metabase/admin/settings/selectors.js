@@ -471,6 +471,7 @@ const SECTIONS = {
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
+        key: "-standalone-embeds",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Standalone embeds`,
@@ -478,6 +479,7 @@ const SECTIONS = {
         embedType: "standalone",
       },
       {
+        key: "-full-app-embedding",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Full-app embedding`,
