@@ -973,7 +973,7 @@
    dashcard-id  ms/PositiveInt
    parameters   ms/JSONString}
   (api/read-check :model/Dashboard dashboard-id)
-  (actions.execution/fetch-values (action-for-dashcard-id dashcard-id) #pp (json/parse-string parameters)))
+  (actions.execution/fetch-values (action-for-dashcard-id dashcard-id) (json/parse-string parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"
