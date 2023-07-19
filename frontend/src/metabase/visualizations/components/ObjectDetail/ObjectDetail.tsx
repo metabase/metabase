@@ -459,7 +459,7 @@ export function ObjectDetailHeader({
       </div>
 
       {showControls && (
-        <Flex align="center" gap="xs" p="md">
+        <Flex align="center" gap="0.5rem" p="1rem">
           {canZoom && (
             <>
               <Button
