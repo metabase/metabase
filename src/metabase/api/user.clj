@@ -216,7 +216,7 @@
           data           (into #{}
                           (t2/select
                            (vec (cons User (user-visible-columns)))
-                           (cond-> (user-clauses nil nil (remove #{1} user_group_ids) nil)
+                           (cond-> (user-clauses nil nil (remove #{(u/the-id (perms-group/all-users))} user_group_ids) nil)
                              true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
                              (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
                              (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*))))]
