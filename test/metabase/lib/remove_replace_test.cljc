@@ -773,7 +773,7 @@
         new-join          (lib/with-join-fields original-join :none)]
     (is (=? expected-original
             query))
-    (testing "danglig join-spec leads to no change"
+    (testing "dangling join-spec leads to no change"
       (are [join-spec] (=? expected-original
                            (lib/replace-join query 0 join-spec new-join))
         -1 1 "missing-alias"))
@@ -827,3 +827,44 @@
                    :filters [[:> {} [:field {:join-alias join-alias} (meta/id :venues :id)] 3]]}
                   {:filters [[:< {} [:field {} price-name] 3]]}]}
                 (lib/replace-clause query 0 join1 nil)))))))
+
+(deftest ^:parallel replace-join-with-new-join-test
+  (let [filter-1   #(lib/= (meta/field-metadata :orders :product-id)
+                           (meta/field-metadata :products :id))
+        filter-2   #(lib/=
+                      (meta/field-metadata :orders :created-at)
+                      (meta/field-metadata :products :created-at))
+        query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/join (lib/join-clause (meta/table-metadata :products) [(filter-1)])))
+        new-clause (lib/join-clause (meta/table-metadata :products) [(filter-2)])]
+    (testing "New clause gets alias"
+      (is (=? {:stages [{:joins [{:alias "Products - Created At"}]}]}
+              (lib/replace-clause query -1 (first (lib/joins query)) new-clause))))
+    (testing "New clause alias is maintained if table is maintained"
+      (let [multi-query (-> query
+                            (lib/join (lib/join-clause (meta/table-metadata :products) [(filter-2)]))
+                            (lib/join (lib/join-clause (meta/table-metadata :products) [(filter-2)])))]
+        (is (= ["Products" "Products - Created At" "Products - Created At_2"]
+               (->> multi-query
+                    :stages
+                    first
+                    :joins
+                    (map :alias))
+               (->> (lib/replace-clause multi-query -1 (second (lib/joins multi-query)) new-clause)
+                    :stages
+                    first
+                    :joins
+                    (map :alias))))))
+    (testing "New clause alias reflects new table"
+      (let [multi-query (-> query
+                            (lib/join (lib/join-clause (meta/table-metadata :products) [(filter-2)]))
+                            (lib/join (lib/join-clause (meta/table-metadata :products) [(filter-2)])))]
+        (is (= ["Products" "Users" "Products - Created At_2"]
+               (->> (lib/replace-clause multi-query -1 (second (lib/joins multi-query))
+                                        (lib/join-clause (meta/table-metadata :users)
+                                                         [(lib/= (meta/field-metadata :orders :user-id)
+                                                                 (meta/field-metadata :users :id))]))
+                    :stages
+                    first
+                    :joins
+                    (map :alias))))))))
