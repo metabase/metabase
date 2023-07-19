@@ -126,6 +126,9 @@ export type TokenStatusStatus = "unpaid" | "past-due" | string;
 
 export interface TokenStatus {
   status?: TokenStatusStatus;
+  valid: boolean;
+  "valid-thru"?: string;
+  trial: boolean;
 }
 
 export type DayOfWeekId =
