@@ -3,7 +3,9 @@
             [clojure.core.memoize :as memoize]
             [clojure.data.json :as json]
             [clojure.string :as str]
-            [metabase.models :refer [Card] :as models]
+            [malli.core :as m]
+            [metabase.metabot.settings :as metabot-settings]
+            [metabase.models :refer [Card]]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
 
@@ -79,6 +81,23 @@
     (when (= 200 status)
       (get (json/read-str body) "embeddings"))))
 
+(def inference-schema
+  "The schema used to validate LLM infer input"
+  (m/schema
+    [:map
+     [:prompt string?]
+     [:context
+      [:sequential
+       [:map
+        [:table_name string?]
+        [:table_id integer?]
+        [:fields
+         [:sequential
+          [:map
+           [:field_id integer?]
+           [:field_name string?]
+           [:field_type string?]]]]]]]]))
+
 (defn infer
   "Infer LLM output from a provided prompt and context.
 
@@ -89,17 +108,21 @@
   to select the best single dataset if it doesn't know how to do joins or that
   it will select and join as desired from the provided datasets to provide the
   final answer."
-  [endpoint {:keys [prompt context]}]
-  {:pre [prompt context]}
-  (let [request {:method           :post
-                 :url              (format "%s/infer" endpoint)
-                 :body             (json/write-str {:prompt prompt :context context})
-                 :as               :json
-                 :content-type     :json
-                 :throw-exceptions false}
-        {:keys [body status]} (http/request request)]
-    (when (= 200 status)
-      (:llm_generated body))))
+  ([endpoint {:keys [prompt context] :as args}]
+   {:pre [prompt context (m/validate inference-schema args)]}
+   (let [request {:method           :post
+                  :url              (format "%s/infer" endpoint)
+                  :body             (json/write-str {:prompt prompt :context context})
+                  :as               :json
+                  :content-type     :json
+                  :throw-exceptions false}
+         {:keys [body status]} (http/request request)]
+     (when (= 200 status)
+       (:llm_generated body))))
+  ([prompt-data]
+   (infer
+     (metabot-settings/metabot-standalone-inference-url)
+     prompt-data)))
 
 (defn rank-data-by-prompt
   "Return the ranked datasets by the provided prompt.
@@ -156,19 +179,23 @@
   - summary used to generate embeddings
   - embeddings
   - token count"
-  [base-url models prompt top-n]
-  (let [models+         (map
-                          (fn [model]
-                            (let [precomputes (memoized-model->precomputes base-url model)]
-                              (assoc model :precomputes precomputes)))
-                          models)
-        context         (->> (zipmap models+ (map (comp :embeddings :precomputes) models+))
-                             (rank-data-by-prompt base-url prompt)
-                             (take top-n)
-                             (map (comp :context :precomputes :object)))
-        inference-input {:prompt  prompt
-                         :context context}]
-    (infer base-url inference-input)))
+  ([base-url models prompt top-n]
+   (let [models+         (map
+                           (fn [model]
+                             (let [precomputes (memoized-model->precomputes base-url model)]
+                               (assoc model :precomputes precomputes)))
+                           models)
+         context         (->> (zipmap models+ (map (comp :embeddings :precomputes) models+))
+                              (rank-data-by-prompt base-url prompt)
+                              (take top-n)
+                              (map (comp :context :precomputes :object)))
+         inference-input {:prompt  prompt
+                          :context context}]
+     (infer base-url inference-input)))
+  ([models prompt top-n]
+   (infer-il
+     (metabot-settings/metabot-standalone-inference-url)
+     models prompt top-n)))
 
 (comment
   (def base-url "http://ec2-35-89-53-232.us-west-2.compute.amazonaws.com:5000")

@@ -131,6 +131,8 @@
               (println records-processed))))))))
 
 (comment
+  (model-training-data 1)
+
   (model-training-data->jsonl
     1
     "local/local_models.jsonl"

@@ -117,3 +117,8 @@
   :type :integer
   :visibility :internal
   :default 6000)
+
+(defsetting metabot-standalone-inference-url
+  (deferred-tru "The URL for the deployed standalone instance of metabot.")
+  :visibility :settings-manager
+  :default "http://ec2-35-89-53-232.us-west-2.compute.amazonaws.com:5000")
