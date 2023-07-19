@@ -536,7 +536,7 @@
    :limit  1})
 
 ;; TODO -- add some caching here?
-(s/defn ^:private remapped-field-id :- (s/maybe su/IntGreaterThanZero)
+(s/defn remapped-field-id :- (s/maybe su/IntGreaterThanZero)
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- su/IntGreaterThanZero]

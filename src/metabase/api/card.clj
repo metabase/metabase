@@ -24,8 +24,8 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
-            ViewLog]]
+    :refer [Card CardBookmark Collection Field Database PersistedInfo Pulse
+            Table ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -1095,7 +1095,16 @@ saved later when it is ready."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-      (api.field/field-id->values field-id query))))
+      (if-let [remapped-field-id (chain-filter/remapped-field-id field-id)]
+        (let [field          (api/check-404 (db/select-one Field :id field-id))
+              remapped-field (api/check-404 (db/select-one Field :id remapped-field-id))]
+          ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
+          ;; is what the return-field-values returns above
+          {:values (api.field/search-values field remapped-field query)
+           ;; assume there are more
+           :has_more_values true
+           :field_id field-id})
+        (api.field/field-id->values field-id query)))))
 
 (mu/defn param-values
   "Fetch values for a parameter.
