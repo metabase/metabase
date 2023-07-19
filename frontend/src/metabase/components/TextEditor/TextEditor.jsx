@@ -1,13 +1,13 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { Component, createRef } from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 
 import "ace/ace";
 import "ace/mode-plain_text";
 import "ace/mode-javascript";
 import "ace/mode-json";
+import { TextEditorRoot } from "./TextEditor.styled";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
@@ -26,6 +26,8 @@ export default class TextEditor extends Component {
     theme: null,
   };
 
+  editorRef = createRef();
+
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (
       this._editor &&
@@ -38,7 +40,7 @@ export default class TextEditor extends Component {
   }
 
   _update() {
-    const element = ReactDOM.findDOMNode(this);
+    const element = this.editorRef.current;
 
     if (this._editor == null) {
       return; // _editor is undefined when ace isn't loaded in tests
@@ -64,7 +66,7 @@ export default class TextEditor extends Component {
 
   _updateSize() {
     const doc = this._editor.getSession().getDocument();
-    const element = ReactDOM.findDOMNode(this);
+    const element = this.editorRef.current;
     element.style.height =
       2 * SCROLL_MARGIN + LINE_HEIGHT * doc.getLength() + "px";
     this._editor.resize();
@@ -83,7 +85,7 @@ export default class TextEditor extends Component {
       return;
     }
 
-    const element = ReactDOM.findDOMNode(this);
+    const element = this.editorRef.current;
     this._editor = ace.edit(element);
 
     window.editor = this._editor;
@@ -125,6 +127,13 @@ export default class TextEditor extends Component {
 
   render() {
     const { className, style } = this.props;
-    return <div className={className} style={style} />;
+
+    return (
+      <TextEditorRoot
+        ref={this.editorRef}
+        className={className}
+        style={style}
+      />
+    );
   }
 }
