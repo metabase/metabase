@@ -11,18 +11,11 @@
   that supports the filter should define its own method for the filter.
   "
   (:require
-   [metabase.search.config :as search-config]))
+   [metabase.search.config :as search.config]))
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
 
-(defn ^:private model->alias
-  [model]
-  (-> model search-config/model-to-db-model :alias))
-
-(defn- model-column-alias
-  [model-string column-string]
-  (keyword (name (model->alias model-string)) column-string))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
@@ -35,7 +28,7 @@
 
 (defmethod archived-where-clause :default
   [model archived?]
-  [:= (model-column-alias model "archived") archived?])
+  [:= (search.config/column-with-model-alias model :archived) archived?])
 
 ;; Databases can't be archived
 (defmethod archived-where-clause "database"
@@ -56,8 +49,8 @@
   (if archived?
     false-clause                        ; No tables should appear in archive searches
     [:and
-     [:= (model-column-alias model "active") true]
-     [:= (model-column-alias model "visibility_type") nil]]))
+     [:= (search.config/column-with-model-alias model :active) true]
+     [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;
@@ -76,16 +69,16 @@
 
 (defmethod created-by-where-clause "card"
   [model creator-id]
-  [:= (model-column-alias model "creator_id") creator-id])
+  [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
 (defmethod created-by-where-clause "dataset"
   [model creator-id]
-  [:= (model-column-alias model "creator_id") creator-id])
+  [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
 (defmethod created-by-where-clause "dashboard"
   [model creator-id]
-  [:= (model-column-alias model "creator_id") creator-id])
+  [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
 (defmethod created-by-where-clause "action"
   [model creator-id]
-  [:= (model-column-alias model "creator_id") creator-id])
+  [:= (search.config/column-with-model-alias model :creator_id) creator-id])

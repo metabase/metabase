@@ -38,8 +38,8 @@
   (mc/schema
     [:map {:closed true}
      [:search-string                       [:maybe ms/NonBlankString]]
-     [:current-user-perms                  [:set perms/PathMalliSchema]]
      [:archived?                           :boolean]
+     [:current-user-perms                  [:set perms/PathMalliSchema]]
      [:created-by         {:optional true} [:maybe ms/PositiveInt]]
      [:models             {:optional true} [:maybe [:set SearchableModel]]]
      [:table-db-id        {:optional true} [:maybe ms/PositiveInt]]
@@ -107,11 +107,6 @@
 ;;; |                                               Shared Query Logic                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
-(mu/defn ^:private model->alias :- keyword?
-  [model :- SearchableModel]
-  (-> model search-config/model-to-db-model :alias))
-
 (mu/defn ^:private ->column-alias :- keyword?
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
   column name"
@@ -137,7 +132,7 @@
 
       ;; This is a column reference, need to add the table alias to the column
       maybe-aliased-col
-      (keyword (name (model->alias model)) (name maybe-aliased-col))
+      (search-config/column-with-model-alias model maybe-aliased-col)
 
       ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
       ;; correct type, e.g.
@@ -194,7 +189,7 @@
   (let [archived-clause         (search.filter/archived-where-clause model archived?)
         optional-filters-clause (build-optional-filters model search-context)
         search-clause           (search-string-clause model search-string
-                                                      (map (let [model-alias (name (model->alias model))]
+                                                      (map (let [model-alias (name (search-config/model->alias model))]
                                                              (fn [column]
                                                                (keyword (str (name model-alias) "." (name column)))))
                                                            (search-config/searchable-columns-for-model model)))]

@@ -49,6 +49,18 @@
    "segment"        {:db-model :model/Segment :alias :segment}
    "table"          {:db-model :model/Table :alias :table}})
 
+(defn model->alias
+  "Given a model string returns the model alias"
+  [model]
+  (-> model model-to-db-model :alias))
+
+(defn column-with-model-alias
+  "Given a column and a model name as strings, Return a keyword representing the column with the model alias prepended.
+
+  (column-with-model-alias \"card\" :id) => :card.id)"
+  [model-string column]
+  (keyword (name (model->alias model-string)) (name column)))
+
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
