@@ -1,9 +1,8 @@
 import { t } from "ttag";
-import cx from "classnames";
 import { Flex } from "@mantine/core";
 import { SearchModelType } from "metabase-types/api";
-import { Icon, IconName } from "metabase/core/components/Icon";
-import Button from "metabase/core/components/Button";
+import { IconName } from "metabase/core/components/Icon";
+import { TypeSidebarButton } from "metabase/search/components/TypeSearchSidebar.styled";
 
 const SEARCH_FILTERS: Array<{
   name: string;
@@ -64,22 +63,22 @@ const SEARCH_FILTERS: Array<{
 
 export const TypeSearchSidebar = ({
   availableModels,
-  selectedType,
-  onSelectType
+  selectedType = null,
+  onSelectType,
 }: {
   availableModels: Array<SearchModelType | "app">;
   selectedType: SearchModelType | "app" | null;
-  onSelectType: (type?: SearchModelType | "app") => void;
+  onSelectType: (type: SearchModelType | "app" | null) => void;
 }) => {
   const searchModels: {
     name: string;
-    filter?: SearchModelType | "app";
+    filter: SearchModelType | "app" | null;
     icon: IconName;
   }[] = [
     {
       name: t`All items`,
       icon: "search",
-      filter: undefined,
+      filter: null,
     },
     ...SEARCH_FILTERS.filter(({ filter }) => availableModels.includes(filter)),
   ];
@@ -93,23 +92,15 @@ export const TypeSearchSidebar = ({
     >
       {searchModels.map(({ name, icon, filter }) => {
         return (
-          <Button
+          <TypeSidebarButton
             key={name}
-            className={cx(
-              (!selectedType || selectedType === filter) ? "text-brand" : "text-medium",
-            )}
             onClick={() => onSelectType(filter)}
+            icon={icon}
+            iconSize={16}
+            isActive={filter === selectedType}
           >
-            <Flex
-              gap={"xs"}
-              direction={"row"}
-              justify={"center"}
-              align={"flex-start"}
-            >
-              <Icon name={icon} size={16} />
-              <h4>{name}</h4>
-            </Flex>
-          </Button>
+            <h4>{name}</h4>
+          </TypeSidebarButton>
         );
       })}
     </Flex>
