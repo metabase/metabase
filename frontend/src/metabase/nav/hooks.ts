@@ -23,7 +23,5 @@ export function useShouldShowDatabasePromptBanner(): boolean | undefined {
     return undefined;
   }
 
-  const onlyHasSampleDatabase =
-    databases.length === 1 && databases[0].is_sample;
-  return onlyHasSampleDatabase;
+  return databases.every(database => database.is_sample);
 }

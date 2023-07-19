@@ -12,7 +12,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { useShouldShowDatabasePromptBanner } from "./hooks";
 
-interface setupOpts {
+interface SetupOpts {
   isAdmin?: boolean;
   isPaidPlan?: boolean;
   onlyHaveSampleDatabase?: boolean;
@@ -28,7 +28,7 @@ function setup({
   isPaidPlan = false,
   isWhiteLabeling = false,
   onlyHaveSampleDatabase = false,
-}: setupOpts = {}) {
+}: SetupOpts = {}) {
   if (onlyHaveSampleDatabase) {
     setupDatabasesEndpoints([TEST_DB]);
   } else {
