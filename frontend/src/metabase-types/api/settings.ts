@@ -151,7 +151,11 @@ export interface TokenFeatures {
   hosting: boolean;
   official_collections: boolean;
   sandboxes: boolean;
-  sso: boolean;
+  sso_google: boolean;
+  sso_jwt: boolean;
+  sso_ldap: boolean;
+  sso_saml: boolean;
+  session_timeout_config: boolean;
   whitelabel: boolean;
   dashboard_subscription_filters: boolean;
 }

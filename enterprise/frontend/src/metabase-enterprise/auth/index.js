@@ -29,14 +29,14 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: null,
       noHeader: true,
       widget: SamlAuthCard,
-      getHidden: () => !hasPremiumFeature("sso"),
+      getHidden: () => !hasPremiumFeature("sso_saml"),
     },
     {
       key: "jwt-enabled",
       description: null,
       noHeader: true,
       widget: JwtAuthCard,
-      getHidden: () => !hasPremiumFeature("sso"),
+      getHidden: () => !hasPremiumFeature("sso_jwt"),
     },
     {
       key: "enable-password-login",
@@ -66,6 +66,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       display_name: t`Session timeout`,
       description: t`Time before inactive users are logged out.`,
       widget: SessionTimeoutSetting,
+      getHidden: () => !hasPremiumFeature("session_timeout_config"),
     },
   ]),
 );
@@ -73,6 +74,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/saml": {
+    getHidden: () => !hasPremiumFeature("sso_saml"),
     component: SettingsSAMLForm,
     settings: [
       {
@@ -159,6 +161,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   },
   "authentication/jwt": {
     component: SettingsJWTForm,
+    getHidden: () => !hasPremiumFeature("sso_jwt"),
     settings: [
       {
         key: "jwt-enabled",
@@ -241,27 +244,31 @@ PLUGIN_IS_PASSWORD_USER.push(
     MetabaseSettings.isPasswordLoginEnabled(),
 );
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-  updateIn(sections, ["authentication/ldap", "settings"], settings => [
-    ...settings,
-    {
-      key: "ldap-group-membership-filter",
-      display_name: t`Group membership filter`,
-      type: "string",
-      validations: [
-        value =>
-          (value.match(/\(/g) || []).length !==
-          (value.match(/\)/g) || []).length
-            ? t`Check your parentheses`
-            : null,
-      ],
-    },
-    {
-      key: "ldap-sync-admin-group",
-      display_name: t`Sync Administrator group`,
-      type: "boolean",
-    },
-  ]),
-);
+if (hasPremiumFeature("sso_ldap")) {
+  PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
+    updateIn(sections, ["authentication/ldap", "settings"], settings => [
+      ...settings,
+      {
+        key: "ldap-group-membership-filter",
+        display_name: t`Group membership filter`,
+        type: "string",
+        validations: [
+          value =>
+            (value.match(/\(/g) || []).length !==
+            (value.match(/\)/g) || []).length
+              ? t`Check your parentheses`
+              : null,
+        ],
+      },
+      {
+        key: "ldap-sync-admin-group",
+        display_name: t`Sync Administrator group`,
+        type: "boolean",
+      },
+    ]),
+  );
+}
 
-PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));
+if (hasPremiumFeature("session_timeout_config")) {
+  PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));
+}

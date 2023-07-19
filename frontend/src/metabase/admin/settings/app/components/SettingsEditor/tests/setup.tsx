@@ -7,6 +7,7 @@ import {
   User,
 } from "metabase-types/api";
 import {
+  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -33,7 +34,12 @@ export interface SetupOpts {
 export const setup = ({
   initialRoute = "/admin/settings",
   currentUser = createMockUser({ is_superuser: true }),
-  settings = [],
+  settings = [
+    createMockSettingDefinition({
+      key: "token-features",
+      value: createMockTokenFeatures(),
+    }),
+  ],
   settingValues = createMockSettings(),
   tokenFeatures = createMockTokenFeatures(),
   hasEnterprisePlugins = false,
