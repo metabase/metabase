@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import CheckBox from "metabase/core/components/CheckBox";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
@@ -5,24 +6,49 @@ import * as Lib from "metabase-lib";
 import { ToggleItem, ColumnItem } from "./FieldPicker.styled";
 
 interface FieldPickerProps {
-  columnsInfo: Lib.ColumnDisplayInfo[];
-  isAll: boolean;
-  isNone: boolean;
-  isDisabledDeselection?: boolean;
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
+  isColumnSelected?: (column: Lib.ColumnMetadata) => boolean;
   onToggle: (columnIndex: number, isSelected: boolean) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
 }
 
 export const FieldPicker = ({
-  columnsInfo,
-  isAll,
-  isNone,
-  isDisabledDeselection,
+  query,
+  stageIndex,
+  columns,
   onToggle,
   onSelectAll,
   onSelectNone,
+  isColumnSelected = (column: Lib.ColumnMetadata) =>
+    !!Lib.displayInfo(query, stageIndex, column).selected,
 }: FieldPickerProps) => {
+  const items = useMemo(
+    () =>
+      columns.map(column => ({
+        ...Lib.displayInfo(query, stageIndex, column),
+        column,
+      })),
+    [query, stageIndex, columns],
+  );
+
+  const isAll = useMemo(
+    () => columns.every(isColumnSelected),
+    [columns, isColumnSelected],
+  );
+
+  const isNone = useMemo(
+    () => columns.every(column => !isColumnSelected(column)),
+    [columns, isColumnSelected],
+  );
+
+  const isDisabledDeselection = useMemo(
+    () => columns.filter(isColumnSelected).length <= 1,
+    [columns, isColumnSelected],
+  );
+
   const handleLabelToggle = () => {
     if (isAll) {
       onSelectNone();
@@ -42,13 +68,13 @@ export const FieldPicker = ({
           onChange={handleLabelToggle}
         />
       </ToggleItem>
-      {columnsInfo.map((columnInfo, columnIndex) => (
-        <ColumnItem key={columnIndex}>
+      {items.map((item, index) => (
+        <ColumnItem key={item.longDisplayName}>
           <CheckBox
-            checked={columnInfo.selected}
-            label={columnInfo.displayName}
-            disabled={columnInfo.selected && isDisabledDeselection}
-            onChange={event => onToggle(columnIndex, event.target.checked)}
+            checked={isColumnSelected(item.column)}
+            label={item.displayName}
+            disabled={isColumnSelected(item.column) && isDisabledDeselection}
+            onChange={event => onToggle(index, event.target.checked)}
           />
         </ColumnItem>
       ))}
