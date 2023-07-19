@@ -960,11 +960,9 @@
 (defn action-for-dashcard-id
   "Given a `dashcard-id`, returns the action associated with it if any."
   [dashcard-id]
-  (->> (t2/select-one-fn :action_id :model/DashboardCard
-                         :id dashcard-id)
-       api/check-404
-       (action/select-action :id)
-       api/check-404))
+  (api/check-404
+   (some->> (t2/select-one-fn :action_id :model/DashboardCard :id dashcard-id)
+            (action/select-action :id))))
 
 (api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
