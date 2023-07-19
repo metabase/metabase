@@ -86,7 +86,7 @@ export const createMockVersionInfo = (
 });
 
 export const createMockTokenStatus = (
-  opts?: Partial<TokenFeatures>,
+  opts?: Partial<TokenStatus>,
 ): TokenStatus => ({
   status: "Token is Valid.",
   valid: true,

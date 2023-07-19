@@ -39,12 +39,6 @@ const ENGINES_MOCK = {
   },
 };
 
-const ComponentMock = () => <div />;
-jest.mock(
-  "metabase/databases/containers/DatabaseHelpCard",
-  () => ComponentMock,
-);
-
 async function setup({ cachingEnabled = false, databaseIdParam = "" } = {}) {
   const mockEventListener = jest.spyOn(window, "addEventListener");
 

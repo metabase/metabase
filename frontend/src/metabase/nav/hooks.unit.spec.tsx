@@ -4,7 +4,7 @@ import { mockSettings } from "__support__/settings";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import {
   createMockDatabase,
-  createMockTokenFeatures,
+  createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -38,9 +38,7 @@ function setup({
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
-      "token-features": createMockTokenFeatures(
-        isPaidPlan ? { sso: true } : {},
-      ),
+      "token-status": createMockTokenStatus({ valid: isPaidPlan }),
       "application-name": isWhiteLabeling ? "Acme Corp." : "Metabase",
     }),
   });
