@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 
@@ -31,8 +33,10 @@ function ActionParametersInputForm({
   shouldPrefetch,
   onCancel,
   onSubmit,
-  onSubmitSuccess,
+  onSubmitSuccess = _.noop,
 }: ActionParametersInputFormProps) {
+  const onSubmitSuccessRef = useLatest(onSubmitSuccess);
+
   const [prefetchedValues, setPrefetchedValues] =
     useState<ParametersForActionExecution>({});
 
@@ -68,6 +72,8 @@ function ActionParametersInputForm({
     }
   }, [fetchInitialValues]);
 
+  const prefetchValuesRef = useLatest(prefetchValues);
+
   useEffect(() => {
     if (shouldPrefetch && !hasPrefetchedValues) {
       setPrefetchedValues({});
@@ -81,10 +87,10 @@ function ActionParametersInputForm({
       const { success, error } = await onSubmit(parameters);
       if (success) {
         actions.setErrors({});
-        onSubmitSuccess?.();
+        onSubmitSuccessRef.current();
 
         if (shouldPrefetch) {
-          prefetchValues();
+          prefetchValuesRef.current();
         } else {
           actions.resetForm();
         }
@@ -92,7 +98,7 @@ function ActionParametersInputForm({
         throw new Error(error);
       }
     },
-    [shouldPrefetch, onSubmit, onSubmitSuccess, prefetchValues],
+    [shouldPrefetch, onSubmit, onSubmitSuccessRef, prefetchValuesRef],
   );
 
   if (shouldPrefetch && !hasPrefetchedValues) {
