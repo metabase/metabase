@@ -1,4 +1,5 @@
 import {
+  DATE_RANGE_FORMAT_SPECS,
   formatDateTimeForParameter,
   formatDateTimeRangeWithUnit,
 } from "metabase/lib/formatting/date";
@@ -6,139 +7,52 @@ import { DatetimeUnit } from "metabase-types/api";
 
 describe("formatDateTimeRangeWithUnit", () => {
   // use this to test that the variants of a single date (not a date range) will all be equal
-  const singleDateVariants = (date: any) => [date, [date], [date, date]];
-
-  type DateRangeCase = {
-    testing: string;
-    unit: DatetimeUnit;
-    input: string | [string, string];
-    output: string;
-    verboseOutput?: string;
-  };
-  const dateRangeCases: DateRangeCase[] = [
-    {
-      testing: "single year",
-      unit: "year",
-      input: "2018",
-      output: "2018",
-    },
-    {
-      testing: "year range",
-      unit: "year",
-      input: ["2018", "2020"],
-      output: "2018–2020",
-    },
-    {
-      testing: "single quarter",
-      unit: "quarter",
-      input: "2018-01-01",
-      output: "Q1 2018",
-    },
-    {
-      testing: "quarters across years",
-      unit: "quarter",
-      input: ["2018-01-01", "2019-04-01"],
-      output: "Q1 2018 – Q2 2019",
-    },
-    {
-      testing: "quarters inside a year",
-      unit: "quarter",
-      input: ["2018-01-01", "2018-04-01"],
-      output: "Q1–Q2 2018",
-      verboseOutput: "Q1 2018 – Q2 2018",
-    },
-    {
-      testing: "single month",
-      unit: "month",
-      input: "2018-01-01",
-      output: "January 2018",
-    },
-    {
-      testing: "months across years",
-      unit: "month",
-      input: ["2018-01-01", "2019-04-01"],
-      output: "January 2018 – April 2019",
-    },
-    {
-      testing: "months inside a year",
-      unit: "month",
-      input: ["2018-01-01", "2018-04-01"],
-      output: "January–April 2018",
-      verboseOutput: "January 2018 – April 2018",
-    },
-    {
-      testing: "single week",
-      unit: "week",
-      input: "2018-01-01",
-      output: "January 1–7, 2018",
-      verboseOutput: "January 1, 2018 – January 7, 2018",
-    },
-    {
-      testing: "weeks inside a month",
-      unit: "week",
-      input: ["2018-01-01", "2018-01-08"],
-      output: "January 1–14, 2018",
-      verboseOutput: "January 1, 2018 – January 14, 2018",
-    },
-    {
-      testing: "single day",
-      unit: "day",
-      input: "2018-01-01",
-      output: "January 1, 2018",
-    },
-    {
-      testing: "days inside a month",
-      unit: "day",
-      input: ["2018-01-01", "2018-01-02"],
-      output: "January 1–2, 2018",
-      verboseOutput: "January 1, 2018 – January 2, 2018",
-    },
-    {
-      testing: "whole hour",
-      unit: "hour",
-      input: "2018-01-01T10:00",
-      output: "January 1, 2018, 10:00–59 AM",
-      verboseOutput: "January 1, 2018, 10:00 AM – January 1, 2018, 10:59 AM",
-    },
-    {
-      testing: "hours inside a day",
-      unit: "hour",
-      input: ["2018-01-01T10:00", "2018-01-01T16:00"],
-      output: "January 1, 2018, 10:00 AM – 4:59 PM",
-      verboseOutput: "January 1, 2018, 10:00 AM – January 1, 2018, 4:59 PM",
-    },
-    {
-      testing: "single minute",
-      unit: "minute",
-      input: "2018-01-01T15:30",
-      output: "January 1, 2018, 3:30 PM",
-    },
-    {
-      testing: "minutes across days",
-      unit: "minute",
-      input: ["2018-01-01T10:20", "2019-06-02T16:30"],
-      output: "January 1, 2018, 10:20 AM – June 2, 2019, 4:30 PM",
-    },
-    {
-      testing: "minutes inside a day",
-      unit: "minute",
-      input: ["2018-01-01T10:20", "2018-01-01T16:30"],
-      output: "January 1, 2018, 10:20 AM – 4:30 PM",
-      verboseOutput: "January 1, 2018, 10:20 AM – January 1, 2018, 4:30 PM",
-    },
+  const units: DatetimeUnit[] = [
+    "year",
+    "quarter-of-year",
+    "quarter",
+    "month-of-year",
+    "month",
+    "week-of-year",
+    "week",
+    "day-of-year",
+    "day-of-month",
+    "day-of-week",
+    "day",
+    "hour-of-day",
+    "hour",
+    "minute-of-hour",
+    "minute",
   ];
-  it.each(dateRangeCases)(
-    "should display $testing",
-    ({ unit, input, output, verboseOutput = output }) => {
-      const ranges = Array.isArray(input) ? [input] : singleDateVariants(input);
-      ranges.forEach(range => {
-        expect(
-          formatDateTimeRangeWithUnit(range, unit, { type: "tooltip" }),
-        ).toBe(output);
-        expect(formatDateTimeRangeWithUnit(range, unit)).toBe(verboseOutput);
+
+  for (const unit of units) {
+    describe(`formats for unit ${unit}`, () => {
+      const specs = DATE_RANGE_FORMAT_SPECS[unit];
+      it("should have a default spec in the last position", () => {
+        const i = specs.findIndex(spec => spec.same === null);
+        expect(i).toBe(specs.length - 1);
       });
-    },
-  );
+      for (const {
+        same,
+        test: { output, verboseOutput, input },
+      } of specs) {
+        const inside = same
+          ? `inside the same ${same}`
+          : "with no units in common";
+        it(`should correctly format a ${unit} range ${inside}`, () => {
+          expect(
+            formatDateTimeRangeWithUnit(input, unit, { type: "tooltip" }),
+          ).toBe(output);
+          if (verboseOutput) {
+            // eslint-disable-next-line jest/no-conditional-expect
+            expect(formatDateTimeRangeWithUnit(input, unit)).toBe(
+              verboseOutput,
+            );
+          }
+        });
+      }
+    });
+  }
 });
 
 describe("formatDateTimeForParameter", () => {

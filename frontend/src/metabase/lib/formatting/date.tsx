@@ -57,31 +57,22 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
 
 const DATE_RANGE_MONTH_PLACEHOLDER = "<MONTH>";
 
-type SameMatchUnit = moment.unitOfTime.StartOf | null;
-type StartFormat = string;
-type EndFormat = string | null;
-type JoinPad = string;
+type DateVal = string | number | Moment;
 
-type DateRangeMatch =
-  | [SameMatchUnit, StartFormat]
-  | [SameMatchUnit, StartFormat, EndFormat]
-  | [SameMatchUnit, StartFormat, EndFormat, JoinPad];
+interface DateRangeFormatSpec {
+  same: null | moment.unitOfTime.StartOf;
+  format: [string] | [string, string];
+  dashPad?: string;
+  test: {
+    output: string;
+    verboseOutput?: string;
+    input: [DateVal] | [DateVal, DateVal];
+  };
+}
 
-type TestOutput = string;
-type TestInputStart = string;
-type TestInputEnd = string;
-type DateRangeExample =
-  | [TestOutput] // TODO: remove this
-  | [TestOutput, TestInputStart]
-  | [TestOutput, TestInputStart, TestInputEnd];
-
-type DateRangeMatchAndExample = [DateRangeMatch, DateRangeExample];
-
-type DateRangeFormatSpec = {
-  [unit in DatetimeUnit]: DateRangeMatchAndExample[];
-};
-
-const DATE_RANGE_FORMATS: DateRangeFormatSpec = (() => {
+export const DATE_RANGE_FORMAT_SPECS: {
+  [unit in DatetimeUnit]: DateRangeFormatSpec[];
+} = (() => {
   // dates
   const Y = "YYYY";
   const Q = "[Q]Q";
@@ -116,91 +107,360 @@ const DATE_RANGE_FORMATS: DateRangeFormatSpec = (() => {
     // Use Wikipedia’s date range formatting guidelines for some of these:
     // https://en.wikipedia.org/wiki/Wikipedia:Manual_of_Style/Dates_and_numbers#Ranges
     year: [
-      [
-        ["year", Y],
-        ["2018", "2018"],
-      ],
-      [
-        [null, Y, Y, ""],
-        ["2018–2019", "2018", "2019"],
-      ],
+      {
+        same: "year",
+        format: [Y],
+        test: { output: "2018", input: ["2018"] },
+      },
+      {
+        same: null,
+        format: [Y, Y],
+        test: { output: "2018–2019", input: ["2018", "2019"] },
+      },
     ],
     quarter: [
-      [["quarter", QY], ["Q2 2018"]],
-      [["year", Q, QY, ""], ["Q2–Q4 2019"]],
-      [[null, QY, QY, " "], ["Q2 2018 – Q3 2019"]],
+      {
+        same: "quarter",
+        format: [QY],
+        test: {
+          output: "Q2 2018",
+          input: ["2018-04-01"],
+        },
+      },
+      {
+        same: "year",
+        format: [Q, QY],
+        test: {
+          output: "Q2–Q4 2018",
+          verboseOutput: "Q2 2018 – Q4 2018",
+          input: ["2018-04-01", "2018-10-01"],
+        },
+      },
+      {
+        same: null,
+        format: [QY, QY],
+        dashPad: " ",
+        test: {
+          output: "Q2 2018 – Q3 2019",
+          input: ["2018-04-01", "2019-07-01"],
+        },
+      },
     ],
     "quarter-of-year": [
-      [["quarter", Q], ["Q2"]],
-      [[null, Q, Q, ""], ["Q2–Q4"]],
+      {
+        same: "quarter",
+        format: [Q],
+        test: {
+          output: "Q2",
+          input: ["2018-04-01"],
+        },
+      },
+      {
+        same: null,
+        format: [Q, Q],
+        test: {
+          output: "Q2–Q4",
+          input: ["2018-04-01", "2018-10-01"],
+        },
+      },
     ],
     month: [
-      [["month", MY], ["September 2018"]],
-      [["year", M, MY], ["September–December 2018"]],
-      [[null, MY, MY, " "], ["September 2018 – January 2019"]],
+      {
+        same: "month",
+        format: [MY],
+        test: {
+          output: "September 2018",
+          input: ["2018-09-01"],
+        },
+      },
+      {
+        same: "year",
+        format: [M, MY],
+        test: {
+          output: "September–December 2018",
+          verboseOutput: "September 2018 – December 2018",
+          input: ["2018-09-01", "2018-12-01"],
+        },
+      },
+      {
+        same: null,
+        format: [MY, MY],
+        dashPad: " ",
+        test: {
+          output: "September 2018 – January 2019",
+          input: ["2018-09-01", "2019-01-01"],
+        },
+      },
     ],
     "month-of-year": [
-      [["month", M], ["September"]],
-      [[null, M, M, " "], ["September–December"]],
+      {
+        same: "month",
+        format: [M],
+        test: {
+          output: "September",
+          input: ["2018-09-01"],
+        },
+      },
+      {
+        same: null,
+        format: [M, M],
+        test: {
+          output: "September–December",
+          input: ["2018-09-01", "2018-12-01"],
+        },
+      },
     ],
     week: [
-      [["month", MD, DY], ["January 1–21, 2017"]],
-      [["year", MD, MDY, " "], ["January 1 – May 20, 2017"]],
-      [[null, MDY, MDY, " "], ["January 1, 2017 – February 10, 2018"]],
+      {
+        same: "month",
+        format: [MD, DY],
+        test: {
+          output: "January 1–21, 2017",
+          verboseOutput: "January 1, 2017 – January 21, 2017",
+          input: ["2017-01-01", "2017-01-15"],
+        },
+      },
+      {
+        same: "year",
+        format: [MD, MDY],
+        dashPad: " ",
+        test: {
+          output: "January 1 – May 20, 2017",
+          verboseOutput: "January 1, 2017 – May 20, 2017",
+          input: ["2017-01-01", "2017-05-14"],
+        },
+      },
+      {
+        same: null,
+        format: [MDY, MDY],
+        dashPad: " ",
+        test: {
+          output: "January 1, 2017 – February 10, 2018",
+          input: ["2017-01-01", "2018-02-4"],
+        },
+      },
     ],
     "week-of-year": [
-      [["week", woS], ["20th week of the year"]],
-      [[null, "wo", woP], ["34th-40th weeks of the year"]],
+      {
+        same: "week",
+        format: [woS],
+        test: {
+          output: "20th week of the year",
+          input: ["2017-05-14"],
+        },
+      },
+      {
+        same: null,
+        format: ["wo", woP],
+        test: {
+          output: "34th–40th weeks of the year",
+          input: ["2017-08-20", "2017-10-01"],
+        },
+      },
     ],
     day: [
-      [["day", MDY], ["January 1, 2018"]],
-      [["month", MD, DY], ["January 1–2, 2018"]],
-      [["year", MD, MDY, " "], ["January 1 – February 2, 2018"]],
-      [[null, MDY, MDY, " "], ["January 1, 2018 – January 2, 2019"]],
+      {
+        same: "day",
+        format: [MDY],
+        test: {
+          output: "January 1, 2018",
+          input: ["2018-01-01"],
+        },
+      },
+      {
+        same: "month",
+        format: [MD, DY],
+        test: {
+          output: "January 1–2, 2018",
+          verboseOutput: "January 1, 2018 – January 2, 2018",
+          input: ["2018-01-01", "2018-01-02"],
+        },
+      },
+      {
+        same: "year",
+        format: [MD, MDY],
+        dashPad: " ",
+        test: {
+          output: "January 1 – February 2, 2018",
+          verboseOutput: "January 1, 2018 – February 2, 2018",
+          input: ["2018-01-01", "2018-02-02"],
+        },
+      },
+      {
+        same: null,
+        format: [MDY, MDY],
+        dashPad: " ",
+        test: {
+          output: "January 1, 2018 – February 2, 2019",
+          input: ["2018-01-01", "2019-02-02"],
+        },
+      },
     ],
     "day-of-year": [
-      [["day", DDDoS], ["123rd day of the year"]],
-      [[null, "DDDo", DDDoP], ["100th–123rd days of the year"]],
+      {
+        same: "day",
+        format: [DDDoS],
+        test: {
+          output: "123rd day of the year",
+          input: ["2017-05-03"],
+        },
+      },
+      {
+        same: null,
+        format: ["DDDo", DDDoP],
+        test: {
+          output: "100th–123rd days of the year",
+          input: ["2017-04-10", "2017-05-03"],
+        },
+      },
     ],
     "day-of-month": [
-      [["day", DoS], ["20th day of the month"]],
-      [[null, "Do", DoP], ["10th–12th days of the month"]],
+      {
+        same: "day",
+        format: [DoS],
+        test: {
+          output: "20th day of the month",
+          input: ["2017-02-20"],
+        },
+      },
+      {
+        same: null,
+        format: ["Do", DoP],
+        test: {
+          output: "10th–12th days of the month",
+          input: ["2017-02-10", "2017-02-12"],
+        },
+      },
     ],
     "day-of-week": [
-      [["day", "dddd"], ["Monday"]],
-      [[null, "dddd", "dddd", " "], ["Monday – Thursday"]],
+      {
+        same: "day",
+        format: ["dddd"],
+        test: {
+          output: "Monday",
+          input: ["2017-01-02"],
+        },
+      },
+      {
+        same: null,
+        format: ["dddd", "dddd"],
+        dashPad: " ",
+        test: {
+          output: "Monday – Thursday",
+          input: ["2017-01-02", "2017-01-05"],
+        },
+      },
     ],
     hour: [
-      [["hour", MDYT, MA], ["January 1, 2018, 11:00–59 AM"]],
-      [["day", MDYTA, TA, " "], ["January 1, 2018, 11:00 AM – 2:59 PM"]],
-      [
-        ["year", MDTA, MDYTA, " "],
-        ["January 1, 11:00 AM – February 2, 2018, 2:59 PM"],
-      ],
-      [
-        [null, MDYTA, MDYTA, " "],
-        ["January 1, 2018, 11:00 AM – January 2, 2019, 2:59 PM"],
-      ],
+      {
+        same: "hour",
+        format: [MDYT, MA],
+        test: {
+          output: "January 1, 2018, 11:00–59 AM",
+          input: ["2018-01-01T11:00"],
+        },
+      },
+      {
+        same: "day",
+        format: [MDYTA, TA],
+        dashPad: " ",
+        test: {
+          output: "January 1, 2018, 11:00 AM – 2:59 PM",
+          input: ["2018-01-01T11:00", "2018-01-01T14:59"],
+        },
+      },
+      {
+        same: "year",
+        format: [MDTA, MDYTA],
+        dashPad: " ",
+        test: {
+          output: "January 1, 11:00 AM – February 2, 2018, 2:59 PM",
+          input: ["2018-01-01T11:00", "2018-02-02T14:59"],
+        },
+      },
+      {
+        same: null,
+        format: [MDYTA, MDYTA],
+        dashPad: " ",
+        test: {
+          output: "January 1, 2018, 11:00 AM – February 2, 2019, 2:59 PM",
+          input: ["2018-01-01T11:00", "2019-02-02T14:59"],
+        },
+      },
     ],
     "hour-of-day": [
-      [["hour", T, MA], ["11:00–59 AM"]],
-      [[null, TA, TA, " "], ["11:00 AM – 4:59 PM"]],
+      {
+        same: "hour",
+        format: [T, MA],
+        test: {
+          output: "11:00–59 AM",
+          input: ["2018-01-01T11:00"],
+        },
+      },
+      {
+        same: null,
+        format: [TA, TA],
+        dashPad: " ",
+        test: {
+          output: "11:00 AM – 4:59 PM",
+          input: ["2018-01-01T11:00", "2018-01-01T16:00"],
+        },
+      },
     ],
     minute: [
-      [["minute", MDYTA], ["January 1, 2018, 11:20 AM"]],
-      [["day", MDYTA, TA, " "], ["January 1, 2018, 11:20 AM – 2:35 PM"]],
-      [
-        ["year", MDTA, MDYTA, " "],
-        ["January 1, 11:20 AM – February 2, 2018, 2:35 PM"],
-      ],
-      [
-        [null, MDYTA, MDYTA, " "],
-        ["January 1, 2018, 11:20 AM – January 2, 2019, 2:35 PM"],
-      ],
+      {
+        same: "minute",
+        format: [MDYTA],
+        test: {
+          output: "January 1, 2018, 11:20 AM",
+          input: ["2018-01-01T11:20"],
+        },
+      },
+      {
+        same: "day",
+        format: [MDYTA, TA],
+        dashPad: " ",
+        test: {
+          output: "January 1, 2018, 11:20 AM – 2:35 PM",
+          input: ["2018-01-01T11:20", "2018-01-01T14:35"],
+        },
+      },
+      {
+        same: "year",
+        format: [MDTA, MDYTA],
+        dashPad: " ",
+        test: {
+          output: "January 1, 11:20 AM – February 2, 2018, 2:35 PM",
+          input: ["2018-01-01T11:20", "2018-02-02T14:35"],
+        },
+      },
+      {
+        same: null,
+        format: [MDYTA, MDYTA],
+        dashPad: " ",
+        test: {
+          output: "January 1, 2018, 11:20 AM – January 2, 2019, 2:35 PM",
+          input: ["2018-01-01T11:20", "2019-01-02T14:35"],
+        },
+      },
     ],
     "minute-of-hour": [
-      [["minute", mmS], ["minute :05"]],
-      [[null, mmP, "mm"], ["minutes :05–30"]],
+      {
+        same: "minute",
+        format: [mmS],
+        test: {
+          output: "minute :05",
+          input: ["2018-01-01T11:05"],
+        },
+      },
+      {
+        same: null,
+        format: [mmP, "mm"],
+        test: {
+          output: "minutes :05–30",
+          input: ["2018-01-01T11:05", "2018-01-01T11:30"],
+        },
+      },
     ],
   };
 })();
@@ -275,14 +535,11 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
   }
 }
 
-type DateVal = string | number | Moment;
-
 export function normalizeDateTimeRangeWithUnit(
-  value: DateVal | [DateVal] | [DateVal, DateVal],
+  values: [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
-  const values = Array.isArray(value) ? value : [value];
   const [a, b] = [values[0], values[1] ?? values[0]].map(d =>
     parseTimestamp(d, unit, options.local),
   );
@@ -304,12 +561,12 @@ export function normalizeDateTimeRangeWithUnit(
 
 /** This formats a time with unit as a date range */
 export function formatDateTimeRangeWithUnit(
-  value: DateVal | [DateVal] | [DateVal, DateVal],
+  values: [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
   const [start, end, shift] = normalizeDateTimeRangeWithUnit(
-    value,
+    values,
     unit,
     options,
   );
@@ -329,31 +586,30 @@ export function formatDateTimeRangeWithUnit(
   const formatDate = (date: Moment, formatStr: string) =>
     date.format(formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat));
 
-  const formats = DATE_RANGE_FORMATS[unit];
-  const largestFormat = formats.find(([[matchUnit]]) => matchUnit == null);
-  const smallestFormat =
-    formats.find(([[matchUnit]]) => start.isSame(end, matchUnit)) ??
-    largestFormat;
-  if (!smallestFormat || !largestFormat) {
+  const specs = DATE_RANGE_FORMAT_SPECS[unit];
+  const defaultSpec = specs.find(spec => spec.same === null);
+  const matchSpec =
+    specs.find(spec => start.isSame(end, spec.same)) ?? defaultSpec;
+  if (!matchSpec || !defaultSpec) {
     return String(start);
   }
 
   // Even if we don’t have want to condense, we should avoid empty date ranges like Jan 1 - Jan 1.
   // This is indicated when the smallest matched format has no end format.
-  let [[_, startFormat, endFormat, pad]] = smallestFormat;
-  if (!endFormat) {
-    return formatDate(start, startFormat);
+  if (!matchSpec.format[1]) {
+    return formatDate(start, matchSpec.format[0]);
   }
 
-  [[_, startFormat, endFormat, pad = ""]] = condensed
-    ? smallestFormat
-    : largestFormat;
+  const {
+    format: [startFormat, endFormat],
+    dashPad = "",
+  } = condensed ? matchSpec : defaultSpec;
   return !endFormat
     ? formatDate(start, startFormat)
     : formatDate(start, startFormat) +
-        pad +
+        dashPad +
         EN_DASH +
-        pad +
+        dashPad +
         formatDate(end, endFormat);
 }
 
@@ -467,7 +723,7 @@ export function formatDateTimeWithUnit(
       !options.noRange
     ) {
       // tooltip show range like "January 1 - 7, 2017"
-      return formatDateTimeRangeWithUnit(value, unit, options);
+      return formatDateTimeRangeWithUnit([value], unit, options);
     }
   }
 
