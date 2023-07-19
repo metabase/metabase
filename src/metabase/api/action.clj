@@ -201,6 +201,7 @@
   [action-id parameters]
   {action-id  ms/PositiveInt
    parameters ms/JSONString}
+  (actions/check-actions-enabled! action-id)
   (-> (action/select-action :id action-id :archived false)
       api/read-check
       (actions.execution/fetch-values (json/parse-string parameters))))

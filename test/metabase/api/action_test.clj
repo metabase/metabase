@@ -605,13 +605,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
 
-        (testing "404 if id does not exists"
+        (testing "404 if id does not exist"
           (is (= "Not found."
                  (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
 
         (testing "returns empty map for actions that are not implicit"
           (is (= {}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" http-action-id) :parameters (json/encode {:id 1}))))
+
           (is (= {}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
 
@@ -625,4 +626,9 @@
 
         (testing "fetch for delete action returns the id only"
           (is (= {:id 1}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))
+
+        (mt/with-actions-disabled
+          (testing "error if actions is disabled"
+            (is (= "Actions are not enabled."
+                 (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
