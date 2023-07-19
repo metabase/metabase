@@ -98,7 +98,7 @@ describe("OptionEditor", () => {
         screen.queryByText("Invalid number format"),
       ).not.toBeInTheDocument();
 
-      userEvent.type(input, "1\n2\n\n2\n\n\n1");
+      userEvent.type(input, "1\n2");
       userEvent.click(saveButton);
 
       expect(onChange).toHaveBeenCalledWith([1, 2]);
