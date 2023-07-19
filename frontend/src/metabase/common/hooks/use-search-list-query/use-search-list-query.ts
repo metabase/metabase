@@ -15,5 +15,6 @@ export const useSearchListQuery = (
     getLoading: Search.selectors.getLoading,
     getLoaded: Search.selectors.getLoaded,
     getError: Search.selectors.getError,
+    getListMetadata: Search.selectors.getListMetadata,
   });
 };

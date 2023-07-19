@@ -26,6 +26,10 @@ export interface UseEntityListOwnProps<TItem, TQuery = never> {
     options: EntityQueryOptions<TQuery>,
   ) => boolean | undefined;
   getError: (state: State, options: EntityQueryOptions<TQuery>) => unknown;
+  getListMetadata: (
+    state: State,
+    options: EntityQueryOptions<TQuery>,
+  ) => unknown;
 }
 
 export interface UseEntityListQueryProps<TQuery = never> {
@@ -36,6 +40,7 @@ export interface UseEntityListQueryProps<TQuery = never> {
 
 export interface UseEntityListQueryResult<TItem> {
   data?: TItem[];
+  metadata?: unknown;
   isLoading: boolean;
   error: unknown;
 }
@@ -52,10 +57,12 @@ export const useEntityListQuery = <TItem, TQuery = never>(
     getLoading,
     getLoaded,
     getError,
+    getListMetadata,
   }: UseEntityListOwnProps<TItem, TQuery>,
 ): UseEntityListQueryResult<TItem> => {
   const options = { entityQuery };
   const data = useSelector(state => getList(state, options));
+  const metadata = useSelector(state => getListMetadata(state, options));
   const error = useSelector(state => getError(state, options));
   const isLoading = useSelector(state => getLoading(state, options));
   const isLoadingOrDefault = isLoading ?? enabled;
@@ -78,5 +85,5 @@ export const useEntityListQuery = <TItem, TQuery = never>(
     }
   }, [dispatch, fetchList, entityQuery, reload, enabled, isInvalidated]);
 
-  return { data, isLoading: isLoadingOrDefault, error };
+  return { data, metadata, isLoading: isLoadingOrDefault, error };
 };
