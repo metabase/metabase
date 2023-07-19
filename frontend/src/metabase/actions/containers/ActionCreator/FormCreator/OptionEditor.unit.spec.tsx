@@ -98,10 +98,36 @@ describe("OptionEditor", () => {
         screen.queryByText("Invalid number format"),
       ).not.toBeInTheDocument();
 
-      userEvent.type(input, "1\n2");
+      userEvent.type(input, "1\n2\n\n2\n\n\n1");
       userEvent.click(saveButton);
 
       expect(onChange).toHaveBeenCalledWith([1, 2]);
+    });
+
+    it("should omit empty lines and duplicates", async () => {
+      const { input, saveButton, onChange } = await baseSetup({
+        fieldType: "number",
+        options: [],
+      });
+
+      userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
+      userEvent.click(saveButton);
+
+      expect(onChange).toHaveBeenCalledWith([1, 2]);
+    });
+
+    describe("given string field type", () => {
+      it("should omit empty lines and duplicates", async () => {
+        const { input, saveButton, onChange } = await baseSetup({
+          fieldType: "string",
+          options: [],
+        });
+
+        userEvent.type(input, "1\n2\n\n2\n\n1\n\n");
+        userEvent.click(saveButton);
+
+        expect(onChange).toHaveBeenCalledWith(["1", "2"]);
+      });
     });
   });
 });
