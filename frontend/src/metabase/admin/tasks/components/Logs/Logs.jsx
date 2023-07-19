@@ -46,7 +46,7 @@ function mergeLogs(...logArrays) {
     .value();
 }
 
-export default class Logs extends Component {
+export class Logs extends Component {
   constructor() {
     super();
     this.state = {
