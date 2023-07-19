@@ -106,7 +106,7 @@ describe("URLs", () => {
       cy.findByText(getFullName(normal)).click();
       cy.location("pathname").should(
         "eq",
-        `/collection/9-${getUsersPersonalCollectionSlug(normal)}`,
+        `/collection/7-${getUsersPersonalCollectionSlug(normal)}`,
       );
     });
 
@@ -127,7 +127,7 @@ describe("URLs", () => {
         `${getFullName(admin)}'s Personal Collection`,
       );
 
-      cy.visit(`/collection/9-${getUsersPersonalCollectionSlug(normal)}`);
+      cy.visit(`/collection/7-${getUsersPersonalCollectionSlug(normal)}`);
       cy.findByTestId("collection-name-heading").should(
         "have.text",
         `${getFullName(normal)}'s Personal Collection`,
