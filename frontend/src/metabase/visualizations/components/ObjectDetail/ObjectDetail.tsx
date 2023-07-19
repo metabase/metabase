@@ -29,6 +29,7 @@ import {
   closeObjectDetail,
   followForeignKey,
   loadObjectDetailFKReferences,
+  runQuestionQuery,
   viewNextObjectDetail,
   viewPreviousObjectDetail,
 } from "metabase/query_builder/actions";
@@ -44,6 +45,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 
+import { useDispatch } from "metabase/lib/redux";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
@@ -334,6 +336,12 @@ export function ObjectDetailView({
     [executeActionId],
   );
 
+  const dispatch = useDispatch();
+
+  const handleActionSuccess = useCallback(() => {
+    dispatch(runQuestionQuery());
+  }, [dispatch]);
+
   if (!data) {
     return null;
   }
@@ -414,6 +422,7 @@ export function ObjectDetailView({
           fetchInitialValues={fetchInitialValues}
           shouldPrefetch
           onClose={handleExecuteModalClose}
+          onSuccess={handleActionSuccess}
         />
       </Modal>
     </>
