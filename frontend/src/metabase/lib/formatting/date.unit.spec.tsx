@@ -2,30 +2,11 @@ import {
   DATE_RANGE_FORMAT_SPECS,
   formatDateTimeForParameter,
   formatDateTimeRangeWithUnit,
+  SPECIFIC_DATE_TIME_UNITS,
 } from "metabase/lib/formatting/date";
-import { DatetimeUnit } from "metabase-types/api";
 
 describe("formatDateTimeRangeWithUnit", () => {
-  // use this to test that the variants of a single date (not a date range) will all be equal
-  const units: DatetimeUnit[] = [
-    "year",
-    "quarter-of-year",
-    "quarter",
-    "month-of-year",
-    "month",
-    "week-of-year",
-    "week",
-    "day-of-year",
-    "day-of-month",
-    "day-of-week",
-    "day",
-    "hour-of-day",
-    "hour",
-    "minute-of-hour",
-    "minute",
-  ];
-
-  for (const unit of units) {
+  for (const unit of SPECIFIC_DATE_TIME_UNITS) {
     describe(`formats for unit ${unit}`, () => {
       const specs = DATE_RANGE_FORMAT_SPECS[unit];
       it("should have a default spec in the last position", () => {

@@ -236,7 +236,7 @@ export const DATE_RANGE_FORMAT_SPECS: {
         dashPad: " ",
         test: {
           output: "January 1, 2017 – February 10, 2018",
-          input: ["2017-01-01", "2018-02-4"],
+          input: ["2017-01-01", "2018-02-04"],
         },
       },
     ],
@@ -464,6 +464,51 @@ export const DATE_RANGE_FORMAT_SPECS: {
     ],
   };
 })();
+
+export const SPECIFIC_DATE_TIME_UNITS: DatetimeUnit[] = [
+  "year",
+  "quarter",
+  "quarter-of-year",
+  "month",
+  "month-of-year",
+  "week",
+  "week-of-year",
+  "day",
+  "day-of-week",
+  "day-of-month",
+  "day-of-year",
+  "hour",
+  "hour-of-day",
+  "minute",
+  "minute-of-hour",
+];
+
+export function genDateRangeTable() {
+  const getSpecsRows = (unit: DatetimeUnit) => {
+    const specs = DATE_RANGE_FORMAT_SPECS[unit];
+    return specs.map(({ same, test: { output } }) => {
+      const kind = !same
+        ? "verbose"
+        : same === unit.split("-")[0]
+        ? "single"
+        : `same ${same}`;
+      return [`<em>${kind}</em>`, output].map(s => `<td>${s}</td>`);
+    });
+  };
+  const getUnitRows = (unit: DatetimeUnit) => {
+    const rows = getSpecsRows(unit);
+    rows[0] = [
+      `<td valign=top rowspan="${rows.length}"><code>${unit}</code></td>`,
+      ...rows[0],
+    ];
+    return rows.map(cols => ["<tr>", ...cols, "</tr>"].join("\n"));
+  };
+  const headerRow = ["date unit", "range type", "example"]
+    .map(s => `<td><strong>${s}</strong></td>`)
+    .join("\n");
+  const allRows = SPECIFIC_DATE_TIME_UNITS.map(getUnitRows).flat();
+  return ["<table>", headerRow, ...allRows, "</table>"].join("\n");
+}
 
 const getDayFormat = (options: OptionsType) =>
   options.compact || options.date_abbreviate ? "ddd" : "dddd";
