@@ -24,7 +24,7 @@ export const TIME_OPTIONS = {
   },
   Quarter: {
     selected: "by quarter",
-    representativeValues: ["Q2 - 2022", "Q1 - 2023", "Q1 - 2024", "Q1 - 2025"],
+    representativeValues: ["Q2 2022", "Q1 2023", "Q1 2024", "Q1 2025"],
   },
   Year: {
     selected: "by year",

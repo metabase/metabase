@@ -91,9 +91,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       cy.wait("@dataset");
       cy.get(".axis.x")
-        .should("contain", "Q1 - 1960")
-        .and("contain", "Q1 - 1965")
-        .and("contain", "Q1 - 2000");
+        .should("contain", "Q1 1960")
+        .and("contain", "Q1 1965")
+        .and("contain", "Q1 2000");
     });
 
     it("should work for number", () => {
@@ -160,9 +160,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       cy.wait("@dataset");
       cy.get(".axis.x")
-        .should("contain", "Q1 - 1960")
-        .and("contain", "Q1 - 1965")
-        .and("contain", "Q1 - 2000");
+        .should("contain", "Q1 1960")
+        .and("contain", "Q1 1965")
+        .and("contain", "Q1 2000");
     });
 
     it("should work for number", () => {
@@ -233,9 +233,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Count by People → Birth Date: Quarter");
 
       cy.get(".axis.x")
-        .should("contain", "Q1 - 1960")
-        .and("contain", "Q1 - 1965")
-        .and("contain", "Q1 - 2000");
+        .should("contain", "Q1 1960")
+        .and("contain", "Q1 1965")
+        .and("contain", "Q1 2000");
     });
 
     it("should work for number", () => {
