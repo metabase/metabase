@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { connect } from "react-redux";
-import { useLatest } from "react-use";
 import _ from "underscore";
 import Actions from "metabase/entities/actions";
 import ModalContent from "metabase/components/ModalContent";
@@ -40,23 +39,20 @@ const ActionExecuteModal = ({
   fetchInitialValues,
   shouldPrefetch,
   onSubmit,
-  onClose,
+  onClose = _.noop,
   onSuccess = _.noop,
 }: ActionExecuteModalProps) => {
-  const onSuccessRef = useLatest(onSuccess);
-
   const handleSubmit = useCallback(
-    async (parameters: ParametersForActionExecution) => {
-      const result = await onSubmit({ action, parameters });
-
-      if (result.success) {
-        onSuccessRef.current();
-      }
-
-      return result;
+    (parameters: ParametersForActionExecution) => {
+      return onSubmit({ action, parameters });
     },
-    [action, onSubmit, onSuccessRef],
+    [action, onSubmit],
   );
+
+  const handleSubmitSuccess = useCallback(() => {
+    onClose();
+    onSuccess();
+  }, [onClose, onSuccess]);
 
   return (
     <ModalContent title={action.name} onClose={onClose}>
@@ -67,7 +63,7 @@ const ActionExecuteModal = ({
         shouldPrefetch={shouldPrefetch}
         onCancel={onClose}
         onSubmit={handleSubmit}
-        onSubmitSuccess={onClose}
+        onSubmitSuccess={handleSubmitSuccess}
       />
     </ModalContent>
   );
