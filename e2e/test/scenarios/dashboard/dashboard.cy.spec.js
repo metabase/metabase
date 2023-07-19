@@ -74,7 +74,17 @@ describe("scenarios > dashboard", () => {
 
   it("should update the name and description", () => {
     cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
+    cy.intercept(
+      "PUT",
+      "/api/dashboard/1",
+      cy.spy().as("updateDashboardSpy"),
+    ).as("updateDashboard");
+    cy.intercept(
+      "PUT",
+      "/api/dashboard/*/cards",
+      cy.spy().as("updateDashboardCardsSpy"),
+    );
+
     visitDashboard(1);
     cy.wait("@getDashboard");
 
@@ -111,6 +121,10 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How many orders were placed in each year?").click();
     cy.findByDisplayValue("How many orders were placed in each year?");
+
+    cy.log("should not call unnecessary API requests (metabase#31721)");
+    cy.get("@updateDashboardSpy").should("have.callCount", 2);
+    cy.get("@updateDashboardCardsSpy").should("not.have.been.called");
   });
 
   it("should not take you out of edit mode when updating title", () => {
