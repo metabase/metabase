@@ -6,6 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -14,7 +15,7 @@ import { useCollectionListQuery } from "./use-collection-list-query";
 const TEST_COLLECTION = createMockCollection();
 
 const TestComponent = () => {
-  const { data = [], isLoading, error } = useCollectionListQuery();
+  const { data = [], metadata, isLoading, error } = useCollectionListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -25,6 +26,17 @@ const TestComponent = () => {
       {data.map(collection => (
         <div key={collection.id}>{collection.name}</div>
       ))}
+      <div data-testid="metadata">
+        {metadata && Object.keys(metadata).length > 0
+          ? Object.entries(metadata).map(([key, value]) => (
+              <div key={key}>
+                <div>
+                  {key}: {value}
+                </div>
+              </div>
+            ))
+          : "No metadata"}
+      </div>
     </div>
   );
 };
@@ -62,5 +74,13 @@ describe("useCollectionListQuery", () => {
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
     expect(screen.getByText(TEST_COLLECTION.name)).toBeInTheDocument();
+  });
+
+  it("should show metadata from the response", async () => {
+    setup();
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    expect(
+      within(screen.getByTestId("metadata")).getByText("No metadata"),
+    ).toBeInTheDocument();
   });
 });

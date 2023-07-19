@@ -5,13 +5,14 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "__support__/ui";
 import { useTableListQuery } from "./use-table-list-query";
 
 const TEST_TABLE = createMockTable();
 
 const TestComponent = () => {
-  const { data = [], isLoading, error } = useTableListQuery();
+  const { data = [], metadata, isLoading, error } = useTableListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -22,6 +23,18 @@ const TestComponent = () => {
       {data.map(table => (
         <div key={table.id}>{table.name}</div>
       ))}
+
+      <div data-testid="metadata">
+        {metadata && Object.keys(metadata).length > 0
+          ? Object.entries(metadata).map(([key, value]) => (
+              <div key={key}>
+                <div>
+                  {key}: {value}
+                </div>
+              </div>
+            ))
+          : "No metadata"}
+      </div>
     </div>
   );
 };
@@ -41,5 +54,13 @@ describe("useTableListQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
+  });
+
+  it("should show metadata from the response", async () => {
+    setup();
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    expect(
+      within(screen.getByTestId("metadata")).getByText("No metadata"),
+    ).toBeInTheDocument();
   });
 });
