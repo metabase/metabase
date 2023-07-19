@@ -517,22 +517,15 @@
 
   ([query :- ::lib.schema/query
     stage-number :- :int]
-   (let [current-fields   (fields query stage-number)
-         selected-column? (if (empty? current-fields)
-                            (constantly true)
-                            (fn [column]
-                              (let [col-ref (lib.ref/ref column)]
-                                (boolean
-                                 (some (fn [fields-ref]
-                                         ;; FIXME: This should use [[lib.equality/find-closest-matching-ref]] instead.
-                                         #_{:clj-kondo/ignore [:deprecated-var]}
-                                         (lib.equality/ref= col-ref fields-ref))
-                                       current-fields)))))]
-     (mapv (fn [col]
-             (assoc col :selected? (selected-column? col)))
-           (lib.metadata.calculation/visible-columns query
-                                                     stage-number
-                                                     (lib.util/query-stage query stage-number)
-                                                     {:include-joined?              false
-                                                      :include-expressions?         false
-                                                      :include-implicitly-joinable? false})))))
+   (let [visible-columns (lib.metadata.calculation/visible-columns query
+                                                                   stage-number
+                                                                   (lib.util/query-stage query stage-number)
+                                                                   {:include-joined?              false
+                                                                    :include-expressions?         false
+                                                                    :include-implicitly-joinable? false})
+         selected-fields (fields query stage-number)]
+     (if (empty? selected-fields)
+       (mapv (fn [col]
+               (assoc col :selected? true))
+             visible-columns)
+       (lib.equality/mark-selected-columns visible-columns selected-fields)))))
