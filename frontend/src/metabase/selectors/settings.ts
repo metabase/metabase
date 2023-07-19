@@ -111,7 +111,7 @@ const getUtmSource = (features: TokenFeatures) => {
 
 export const getIsPaidPlan = createSelector(
   (state: State) => getSetting(state, "token-status"),
-  (status: TokenStatus | null) => {
-    return status != null && status.status == null;
+  (token: TokenStatus | null) => {
+    return token != null && token.status == null;
   },
 );
