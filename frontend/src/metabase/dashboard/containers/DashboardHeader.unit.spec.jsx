@@ -35,7 +35,7 @@ const setup = async ({ dashboard = TEST_DASHBOARD }) => {
     addTextDashCardToDashboard: jest.fn(),
     addLinkDashCardToDashboard: jest.fn(),
     fetchDashboard: jest.fn(),
-    saveDashboardAndCards: jest.fn(),
+    updateDashboardAndCards: jest.fn(),
     setDashboardAttribute: jest.fn(),
     onEditingChange: jest.fn(),
     onRefreshPeriodChange: jest.fn(),

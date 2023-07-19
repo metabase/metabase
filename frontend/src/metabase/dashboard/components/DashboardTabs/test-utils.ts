@@ -50,6 +50,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       can_write: true,
       cache_ttl: null,
       auto_apply_filters: true,
+      archived: false,
       "last-edit-info": {
         id: 1,
         email: "",

@@ -13,6 +13,7 @@ import { getUser } from "metabase/selectors/user";
 
 import {
   revertToRevision,
+  updateDashboard,
   toggleAutoApplyFilters,
 } from "metabase/dashboard/actions";
 
@@ -33,13 +34,11 @@ type DashboardAttributeType = string | number | null | boolean;
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
   setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
-  saveDashboardAndCards: (preserveParameters?: boolean) => void;
 }
 
 export function DashboardInfoSidebar({
   dashboard,
   setDashboardAttribute,
-  saveDashboardAndCards,
 }: DashboardInfoSidebarProps) {
   const { data: revisions } = useRevisionListQuery({
     query: { model_type: "dashboard", model_id: dashboard.id },
@@ -54,17 +53,17 @@ export function DashboardInfoSidebar({
   const handleDescriptionChange = useCallback(
     (description: string) => {
       setDashboardAttribute("description", description);
-      saveDashboardAndCards(true);
+      dispatch(updateDashboard({ attributeNames: ["description"] }));
     },
-    [saveDashboardAndCards, setDashboardAttribute],
+    [dispatch, setDashboardAttribute],
   );
 
   const handleUpdateCacheTTL = useCallback(
     (cache_ttl: number | null) => {
       setDashboardAttribute("cache_ttl", cache_ttl);
-      saveDashboardAndCards(true);
+      dispatch(updateDashboard({ attributeNames: ["cache_ttl"] }));
     },
-    [saveDashboardAndCards, setDashboardAttribute],
+    [dispatch, setDashboardAttribute],
   );
 
   const handleToggleAutoApplyFilters = useCallback(
@@ -85,6 +84,7 @@ export function DashboardInfoSidebar({
           initialValue={dashboard.description}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
+          isOptional
           isMultiline
           isMarkdown
           placeholder={t`Add description`}
