@@ -15,7 +15,7 @@ import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_da
 const { admin } = USERS;
 const adminFullName = getFullName(admin);
 
-describeEE("scenarios > saved question moderation", () => {
+describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
