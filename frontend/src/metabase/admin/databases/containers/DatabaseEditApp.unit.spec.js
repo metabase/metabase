@@ -41,7 +41,7 @@ const ENGINES_MOCK = {
 
 const ComponentMock = () => <div />;
 jest.mock(
-  "metabase/databases/containers/DatabaseHelpCard",
+  "metabase/databases/components/DatabaseHelpCard",
   () => ComponentMock,
 );
 
