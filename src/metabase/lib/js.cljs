@@ -639,3 +639,15 @@
   join, pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata."
   [a-query stage-number join-or-joinable]
   (lib.core/join-lhs-display-name a-query stage-number join-or-joinable))
+
+(defn ^:export database-id
+  "Get the Database ID (`:database`) associated with a query. If the query is using
+  the [[metabase.mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  `:source-card`)
+
+    {:database -1337}
+
+  we will attempt to resolve the correct Database ID by getting metadata for the source Card and returning its
+  `:database-id`; if this is not available for one reason or another this will return `nil`."
+  [a-query]
+  (lib.core/database-id a-query))

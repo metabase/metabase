@@ -107,10 +107,11 @@
                               :type     :query
                               :query    {:source-table (meta/id :checkins)
                                          :aggregation  [[:count]]
-                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}]})))
+                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
+              :database-id   (meta/id)}]})))
 
-(def query-with-card-source-table
-  "A query with a `card__<id>` source Table, and a metadata provider that has that Card. Card's name is `My Card`. Card
+(def query-with-source-card
+  "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
   'exports' two columns, `USER_ID` and `count`."
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
@@ -157,7 +158,7 @@
                                  :field_ref      [:aggregation 0]
                                  :effective_type :type/BigInteger}]}]})))
 
-(def query-with-card-source-table-with-result-metadata
+(def query-with-source-card-with-result-metadata
   "A query with a `card__<id>` source Table and a metadata provider that has a Card with `:result_metadata`."
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card-with-result-metadata
