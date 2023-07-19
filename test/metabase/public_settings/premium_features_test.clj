@@ -110,7 +110,6 @@
                                     #'premium-features/enable-whitelabeling?
                                     #'premium-features/enable-audit-app?
                                     #'premium-features/enable-sandboxes?
-                                    #'premium-features/enable-sso?
                                     #'premium-features/enable-advanced-config?
                                     #'premium-features/enable-content-management?
                                     #'premium-features/enable-serialization?]]

@@ -249,7 +249,7 @@
   "Returns an error that can be used to throw when an enterprise feature check fails."
   [feature-name]
   (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                (str/capitalize feature-name))
+                feature-name)
            {:status-code 402}))
 
 (mu/defn assert-has-feature
@@ -319,24 +319,32 @@
   "Should we enable data sandboxes (row-level permissions)?"
   :sandboxes)
 
-(define-premium-feature enable-sso?
-  "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
-  :sso)
-
-(define-premium-feature enable-sso-saml?
-  "Should we enable sso using SAML?"
-  :sso-saml)
-
 (define-premium-feature enable-sso-jwt?
-  "Should we enable sso using JWT?"
+  "Should we enable JWT-based authentication?"
   :sso-jwt)
 
+(define-premium-feature enable-sso-saml?
+  "Should we enable SAML-based authentication?"
+  :sso-saml)
+
 (define-premium-feature enable-sso-ldap?
-  "Should we enable sso using LDAP?"
+  "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
 
+(define-premium-feature enable-sso-google?
+  "Should we enable advanced configuration for Google Sign-In authentication?"
+  :sso-google)
+
+(defn enable-any-sso?
+  "Should we enable any SSO-based authentication?"
+  []
+  (or (enable-sso-jwt?)
+      (enable-sso-saml?)
+      (enable-sso-ldap?)
+      (enable-sso-google?)))
+
 (define-premium-feature enable-session-timeout-config?
-  "Should we enable define session timeout config?"
+  "Should we enable configuring session timeouts?"
   :session-timeout-config)
 
 (define-premium-feature can-disable-password-login?

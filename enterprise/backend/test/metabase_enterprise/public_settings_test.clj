@@ -10,26 +10,27 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest can-turn-off-password-login-with-jwt-enabled
-  (tu/with-temporary-setting-values [jwt-enabled               true
-                                     jwt-identity-provider-uri "example.com"
-                                     jwt-shared-secret         "0123456789012345678901234567890123456789012345678901234567890123"
-                                     enable-password-login     true]
-    (testing "can't change enable-password-login setting if disabled-password-login feature is disabled"
-      (premium-features-test/with-premium-features #{}
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Setting enable-password-login is not enabled because feature :disable-password-login is not available"
-             (public-settings/enable-password-login! false)))))
+  (premium-features-test/with-premium-features #{:sso-jwt}
+    (tu/with-temporary-setting-values [jwt-enabled               true
+                                       jwt-identity-provider-uri "example.com"
+                                       jwt-shared-secret         "0123456789012345678901234567890123456789012345678901234567890123"
+                                       enable-password-login     true]
+      (testing "can't change enable-password-login setting if disabled-password-login feature is disabled"
+        (premium-features-test/with-premium-features #{}
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Setting enable-password-login is not enabled because feature :disable-password-login is not available"
+               (public-settings/enable-password-login! false)))))
 
-    (testing "can change enable-password-login setting if jwt enabled and have disabled-password-login feature"
-      (premium-features-test/with-premium-features #{:disable-password-login}
-        (public-settings/enable-password-login! false)
-        (is (= false
-               (public-settings/enable-password-login)))))))
+      (testing "can change enable-password-login setting if jwt enabled and have disabled-password-login feature"
+        (premium-features-test/with-premium-features #{:disable-password-login}
+          (public-settings/enable-password-login! false)
+          (is (= false
+                 (public-settings/enable-password-login))))))))
 
 (deftest toggle-full-app-embedding-test
   (mt/discard-setting-changes [embedding-app-origin]
-    (testing "can't change embedding-app-origin if doesn't have :embedding feature"
+    (testing "can't change embedding-app-origin if :embedding feature is not available"
       (premium-features-test/with-premium-features #{}
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -38,7 +39,7 @@
 
       (testing "even if env is set, return the default value"
         (mt/with-temp-env-var-value [mb-embedding-app-origin "https://metabase.com"]
-          (is (nil?  (public-settings/embedding-app-origin))))))
+          (is (nil? (public-settings/embedding-app-origin))))))
 
     (testing "can change embedding-app-origin if :embedding is enabled"
       (premium-features-test/with-premium-features #{:embedding}
@@ -50,3 +51,4 @@
           (mt/with-temp-env-var-value [mb-embedding-app-origin "ssh://metabase.com"]
             (is (= "ssh://metabase.com"
                    (public-settings/embedding-app-origin)))))))))
+
