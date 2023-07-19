@@ -12,8 +12,6 @@ interface SetupOpts {
 
 function setup({ dashboard = createMockDashboard() }: SetupOpts = {}) {
   const setDashboardAttribute = jest.fn();
-  // TODO: Needs to change this name after https://github.com/metabase/metabase/pull/32357 is merged
-  const saveDashboardAndCards = jest.fn();
 
   setupRevisionsEndpoints([]);
 
@@ -21,7 +19,6 @@ function setup({ dashboard = createMockDashboard() }: SetupOpts = {}) {
     <DashboardInfoSidebar
       dashboard={dashboard}
       setDashboardAttribute={setDashboardAttribute}
-      saveDashboardAndCards={saveDashboardAndCards}
     />,
   );
 
