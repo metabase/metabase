@@ -97,7 +97,9 @@
            ;; TODO - Investigate this
            [:field_id [:maybe integer?]]
            [:field_name string?]
-           [:field_type string?]]]]]]]]))
+           [:field_type [:or
+                         keyword?
+                         string?]]]]]]]]]))
 
 (defn infer
   "Infer LLM output from a provided prompt and context.
