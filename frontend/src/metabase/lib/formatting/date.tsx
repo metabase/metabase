@@ -487,11 +487,12 @@ export function genDateRangeTable() {
   const getSpecsRows = (unit: DatetimeUnit) => {
     const specs = DATE_RANGE_FORMAT_SPECS[unit];
     return specs.map(({ same, test: { output } }) => {
-      const kind = !same
-        ? "verbose"
-        : same === unit.split("-")[0]
-        ? "single"
-        : `same ${same}`;
+      const kind =
+        same === unit.split("-")[0]
+          ? "single"
+          : same
+          ? `same ${same}`
+          : "otherwise";
       return [`<em>${kind}</em>`, output].map(s => `<td>${s}</td>`);
     });
   };
