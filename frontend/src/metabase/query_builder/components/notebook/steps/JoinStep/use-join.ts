@@ -42,7 +42,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   const addCondition = useCallback(
     (condition: Lib.JoinConditionClause) => {
       const nextConditions = [...conditions, condition];
-      _setConditions([...nextConditions, condition]);
+      _setConditions(nextConditions);
 
       if (table) {
         let nextJoin = Lib.joinClause(table, nextConditions);
