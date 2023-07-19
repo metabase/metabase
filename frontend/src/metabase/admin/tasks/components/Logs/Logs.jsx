@@ -12,23 +12,8 @@ import { UtilApi } from "metabase/services";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import Select, { Option } from "metabase/core/components/Select";
-import { addCSSRule } from "metabase/lib/dom";
-import { color } from "metabase/lib/colors";
+import { LogsContainer } from "./Logs.styled";
 
-const ANSI_COLORS = {
-  black: color("text-dark"),
-  white: color("text-white"),
-  gray: color("text-medium"),
-  red: color("saturated-red"),
-  green: color("saturated-green"),
-  yellow: color("saturated-yellow"),
-  blue: color("saturated-blue"),
-  magenta: color("saturated-purple"),
-  cyan: "cyan",
-};
-for (const [name, color] of Object.entries(ANSI_COLORS)) {
-  addCSSRule(`.react-ansi-style-${name}`, `color: ${color} !important`);
-}
 const MAX_LOGS = 50000;
 
 function logEventKey(ev) {
@@ -149,18 +134,9 @@ export class Logs extends Component {
           loading={!filteredLogs || filteredLogs.length === 0}
         >
           {() => (
-            <div
-              className="rounded bordered bg-light"
-              style={{
-                fontFamily: '"Lucida Console", Monaco, monospace',
-                fontSize: "14px",
-                whiteSpace: "pre",
-                padding: "1em",
-                overflowX: "scroll",
-              }}
-            >
+            <LogsContainer>
               {reactAnsiStyle(React, renderedLogs.join("\n"))}
-            </div>
+            </LogsContainer>
           )}
         </LoadingAndErrorWrapper>
       </div>

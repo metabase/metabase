@@ -194,10 +194,6 @@ function getTextNodeAtPosition(root, index) {
   };
 }
 
-export function addCSSRule(selector, rules, index = 0) {
-  // noop to test emotion changes
-}
-
 export function constrainToScreen(element, direction, padding) {
   if (!element) {
     return false;
