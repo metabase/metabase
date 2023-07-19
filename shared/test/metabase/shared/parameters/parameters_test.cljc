@@ -232,7 +232,7 @@
       "Next 5 Years"))
 
   (t/testing "Date values are formatted using the locale passed in as an argument"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es" false))
+    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es" true))
       "{{foo}}"
       {"foo" {:type :date/single :value "2022-07-09"}}
       "julio 9\\, 2022"
