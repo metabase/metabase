@@ -10,7 +10,7 @@ export function updateColors() {
 
 function replaceApplicationName(string) {
   const applicationName = MetabaseSettings.get("application-name");
-  return string.replace(/Metabase/g, applicationName());
+  return string.replace(/Metabase/g, applicationName);
 }
 
 export function enabledApplicationNameReplacement() {
