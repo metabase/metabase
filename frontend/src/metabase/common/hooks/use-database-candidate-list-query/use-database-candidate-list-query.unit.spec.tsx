@@ -5,7 +5,6 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
-  within,
 } from "__support__/ui";
 import { useDatabaseCandidateListQuery } from "./use-database-candidate-list-query";
 
@@ -15,7 +14,6 @@ const TEST_DB_CANDIDATE = createMockDatabaseCandidate();
 const TestComponent = () => {
   const {
     data = [],
-    metadata,
     isLoading,
     error,
   } = useDatabaseCandidateListQuery({
@@ -31,18 +29,6 @@ const TestComponent = () => {
       {data.map((item, index) => (
         <div key={index}>{item.schema}</div>
       ))}
-
-      <div data-testid="metadata">
-        {metadata && Object.keys(metadata).length > 0
-          ? Object.entries(metadata).map(([key, value]) => (
-              <div key={key}>
-                <div>
-                  {key}: {value}
-                </div>
-              </div>
-            ))
-          : "No metadata"}
-      </div>
     </div>
   );
 };
@@ -62,13 +48,5 @@ describe("useDatabaseCandidateListQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText(TEST_DB_CANDIDATE.schema)).toBeInTheDocument();
-  });
-
-  it("should show metadata from the response", async () => {
-    setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-    expect(
-      within(screen.getByTestId("metadata")).getByText("No metadata"),
-    ).toBeInTheDocument();
   });
 });
