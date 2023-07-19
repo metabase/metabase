@@ -7,7 +7,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 
-const NativeVariablesButton = ({
+export const NativeVariablesButton = ({
   toggleTemplateTagsEditor,
   isShowingTemplateTagsEditor,
   className,
@@ -28,5 +28,3 @@ NativeVariablesButton.shouldRender = ({ question }) =>
   question.query() instanceof NativeQuery &&
   question.database() &&
   question.database().hasFeature("native-parameters");
-
-export default NativeVariablesButton;
