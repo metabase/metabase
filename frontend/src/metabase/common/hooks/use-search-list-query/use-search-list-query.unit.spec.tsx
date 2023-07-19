@@ -17,10 +17,12 @@ import { useSearchListQuery } from "./use-search-list-query";
 const TEST_ITEM = createMockCollectionItem();
 
 const TEST_TABLE_DB_ID = 1;
-const TEST_SEARCH_METADATA = createMockSearchResults({
+const TEST_SEARCH_RESULTS = createMockSearchResults({
   items: [createMockSearchResult({ collection: TEST_ITEM })],
   options: { table_db_id: TEST_TABLE_DB_ID },
 });
+
+const TEST_SEARCH_METADATA = _.omit(TEST_SEARCH_RESULTS, "data");
 
 const TestComponent = () => {
   const {
@@ -80,9 +82,7 @@ describe("useSearchListQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
-    const searchResultMetdata = _.omit(TEST_SEARCH_METADATA, "data");
-
-    for (const [key, value] of Object.entries(searchResultMetdata)) {
+    for (const [key, value] of Object.entries(TEST_SEARCH_METADATA)) {
       expect(
         within(screen.getByTestId("metadata")).getByText(`${key}: ${value}`),
       ).toBeInTheDocument();
