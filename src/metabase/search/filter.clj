@@ -1,8 +1,8 @@
 (ns metabase.search.filter
-  "Namespace that define the filters that are applied to the search results.
-  There are required filters and optional filters.
+  "Namespace that defines the filters that are applied to the search results.
 
-  Archived is an required filters and is always applied, the reason because by default we want to hide archived entities.
+  There are required filters and optional filters.
+  Archived is an required filters and is always applied, the reason because by default we want to hide archived/inactive entities.
 
   But there are OPTIONAL FILTERS like :created-by, :created-at, when these filters are provided, the results will return only
   results of models that have these filters.
@@ -15,7 +15,6 @@
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
-
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;

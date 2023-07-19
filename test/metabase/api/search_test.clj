@@ -11,12 +11,12 @@
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
             DashboardCard Database Metric PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
+   [metabase.models.collection :as collection]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search-config]
-   [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -748,3 +748,50 @@
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
+
+
+;; ------------------------------------------------ Filter Tests ------------------------------------------------ ;;
+
+(deftest filter-by-creator-test
+  (with-search-items-in-root-collection "Filter"
+    (t2.with-temp/with-temp
+      [:model/User      {user-id :id}      {:first_name "Explorer" :last_name "Curious"}
+       :model/Card      {card-id :id}      {:name "Filter Card 1" :creator_id user-id}
+       :model/Card      {card-id-2 :id}    {:name "Filter Card 2" :creator_id user-id
+                                            :collection_id (:id (collection/user->personal-collection user-id))}
+       :model/Card      {model-id :id}     {:name "Filter Dataset 1" :dataset true :creator_id user-id}
+       :model/Dashboard {dashboard-id :id} {:name "Filter Dashboard 1" :creator_id user-id}
+       :model/Action    {action-id :id}    {:name "Filter Action 1" :model_id model-id :creator_id user-id :type :http}]
+
+      (testing "sanity check that without search by created_by we have more results than if a filter is provided"
+        (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q "Filter"))
+               5)))
+
+      (testing "Able to filter by creator"
+        (let [resp (mt/user-http-request :crowberto :get 200 "search" :q "Filter" :created_by user-id)]
+
+          (testing "only a subset of models are applicable"
+            (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
+
+          (testing "results contains only entities with the specified creator"
+            (is (= [[dashboard-id "dashboard" "Filter Dashboard 1"]
+                    [model-id     "dataset"   "Filter Dataset 1"]
+                    [action-id    "action"    "Filter Action 1"]
+                    [card-id      "card"      "Filter Card 1"]
+                    [card-id-2    "card"      "Filter Card 2"]]
+                   (->> (:data resp)
+                        sorted-results
+                        (map (juxt :id :model :name))))))))
+
+      (testing "Still respect the read permissions"
+        (let [resp (mt/user-http-request :rasta :get 200 "search" :q "Filter" :created_by user-id)]
+          (is (not (contains?
+                    (->> (:data resp)
+                         (filter #(= (:model %) "card"))
+                         (map :id)
+                         set)
+                    card-id-2)))))
+
+      (testing "error if creator_id is an integer"
+        (let [resp (mt/user-http-request :crowberto :get 400 "search" :q "Filter" :created_by "not-a-valid-user-id")]
+          (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp))))))))

@@ -447,16 +447,21 @@
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
-
 (mu/defn ^:private search-context :- SearchContext
   [{:keys [search-string
-           created-by
            archived-string
+           created-by
            table-db-id
            models
            limit
-           offset]}]
+           offset]} :- [:map {:closed true}
+                        [:search-string                    ms/NonBlankString]
+                        [:archived-string {:optional true} [:maybe ms/BooleanString]]
+                        [:created-by      {:optional true} [:maybe ms/PositiveInt]]
+                        [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]
+                        [:models          {:optional true} [:maybe [:or SearchableModel [:sequential SearchableModel]]]]
+                        [:limit           {:optional true} [:maybe ms/Int]]
+                        [:offset          {:optional true} [:maybe ms/Int]]]]
   (cond-> {:search-string      search-string
            :current-user-perms @api/*current-user-permissions-set*
            :archived?          (Boolean/parseBoolean archived-string)}
@@ -497,6 +502,7 @@
         results    (search (search-context
                             {:search-string   q
                              :archived-string archived
+                             :created-by      created_by
                              :table-db-id     table_db_id
                              :models          models
                              :limit           mw.offset-paging/*limit*
