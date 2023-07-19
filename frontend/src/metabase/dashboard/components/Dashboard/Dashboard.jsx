@@ -77,7 +77,7 @@ class Dashboard extends Component {
     fetchDashboardCardMetadata: PropTypes.func.isRequired,
     initialize: PropTypes.func.isRequired,
     onRefreshPeriodChange: PropTypes.func,
-    saveDashboardAndCards: PropTypes.func.isRequired,
+    updateDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
     setErrorPage: PropTypes.func,

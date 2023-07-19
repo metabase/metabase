@@ -16,6 +16,8 @@ import { Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
+import { useDispatch } from "metabase/lib/redux";
+import { updateDashboard } from "metabase/dashboard/actions";
 import {
   EditWarning,
   HeaderRow,
@@ -26,8 +28,8 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
-} from "./DashboardHeaderView.styled";
-import { DashboardTabs } from "./DashboardTabs/DashboardTabs";
+} from "../DashboardHeaderView.styled";
+import { DashboardTabs } from "../DashboardTabs/DashboardTabs";
 
 interface DashboardHeaderViewProps {
   editingTitle: string;
@@ -47,11 +49,10 @@ interface DashboardHeaderViewProps {
   onHeaderModalDone: () => null;
   onHeaderModalCancel: () => null;
   onLastEditInfoClick: () => null;
-  onSave: () => null;
   setDashboardAttribute: (prop: string, value: string) => null;
 }
 
-function DashboardHeaderView({
+export function DashboardHeaderComponent({
   editingTitle = "",
   editingSubtitle = "",
   editingButtons = [],
@@ -67,7 +68,6 @@ function DashboardHeaderView({
   onHeaderModalDone,
   onHeaderModalCancel,
   onLastEditInfoClick,
-  onSave,
   setDashboardAttribute,
 }: DashboardHeaderViewProps) {
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -75,6 +75,8 @@ function DashboardHeaderView({
   const header = useRef<HTMLDivElement>(null);
 
   const isModalOpened = headerModalMessage != null;
+
+  const dispatch = useDispatch();
 
   useLayoutEffect(() => {
     if (isModalOpened) {
@@ -102,10 +104,10 @@ function DashboardHeaderView({
     async (name: string) => {
       await setDashboardAttribute("name", name);
       if (!isEditing) {
-        await onSave();
+        await dispatch(updateDashboard({ attributeNames: ["name"] }));
       }
     },
-    [setDashboardAttribute, onSave, isEditing],
+    [setDashboardAttribute, isEditing, dispatch],
   );
 
   useEffect(() => {
@@ -176,6 +178,3 @@ function DashboardHeaderView({
     </div>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DashboardHeaderView;
