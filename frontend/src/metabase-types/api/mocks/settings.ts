@@ -6,6 +6,7 @@ import {
   SettingDefinition,
   Settings,
   TokenFeatures,
+  TokenStatus,
   Version,
   VersionInfo,
   VersionInfoRecord,
@@ -84,22 +85,14 @@ export const createMockVersionInfo = (
   ...opts,
 });
 
-export const createMockTokenStatus = () => ({
+export const createMockTokenStatus = (
+  opts?: Partial<TokenFeatures>,
+): TokenStatus => ({
   status: "Token is Valid.",
   valid: true,
   trial: false,
-  features: [
-    "audit-app",
-    "advanced-permissions",
-    "embedding",
-    "whitelabel",
-    "no-upsell",
-    "advanced-config",
-    "content-management",
-    "sso",
-    "sandboxes",
-  ],
   "valid-thru": "2022-12-30T23:00:00Z",
+  ...opts,
 });
 
 export const createMockTokenFeatures = (

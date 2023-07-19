@@ -112,8 +112,6 @@ const getUtmSource = (features: TokenFeatures) => {
 export const getIsPaidPlan = createSelector(
   (state: State) => getSetting(state, "token-status"),
   (token: TokenStatus | null) => {
-    return (
-      token != null && token.status !== "unpaid" && token.status !== "past-due"
-    );
+    return token != null && token.valid;
   },
 );
