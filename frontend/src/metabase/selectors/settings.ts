@@ -1,9 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import type {
-  Settings,
   SettingKey,
+  Settings,
   TokenFeatures,
+  TokenStatus,
   Version,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -85,7 +86,7 @@ interface UpgradeUrlOpts {
 }
 
 export const getUpgradeUrl = createSelector(
-  (state: State) => getUtmSource(getTokenFeatures(state)),
+  (state: State) => getUtmSource(getSetting(state, "token-features")),
   (state: State) => getSetting(state, "active-users-count"),
   (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
   (source, count, media) => {
@@ -108,11 +109,9 @@ const getUtmSource = (features: TokenFeatures) => {
   }
 };
 
-const getTokenFeatures = (state: State) => getSetting(state, "token-features");
-
 export const getIsPaidPlan = createSelector(
-  getTokenFeatures,
-  (features: TokenFeatures) => {
-    return features.sso || features.hosting;
+  (state: State) => getSetting(state, "token-status"),
+  (status: TokenStatus | null) => {
+    return status != null && status.status == null;
   },
 );
