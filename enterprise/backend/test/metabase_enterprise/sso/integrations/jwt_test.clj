@@ -10,6 +10,7 @@
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -20,9 +21,12 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- disable-other-sso-types [thunk]
-  (mt/with-temporary-setting-values [ldap-enabled false
-                                     saml-enabled false]
-    (thunk)))
+  (let [current-features (premium-features/token-features)]
+    (premium-features-test/with-premium-features #{:sso-saml}
+      (mt/with-temporary-setting-values [ldap-enabled false
+                                         saml-enabled false]
+        (premium-features-test/with-premium-features current-features
+          (thunk))))))
 
 (use-fixtures :each disable-other-sso-types)
 
@@ -38,11 +42,14 @@
      ~@body))
 
 (defn- call-with-default-jwt-config [f]
-  (mt/with-temporary-setting-values [jwt-enabled               true
-                                     jwt-identity-provider-uri default-idp-uri
-                                     jwt-shared-secret         default-jwt-secret
-                                     site-url                  "http://localhost"]
-    (f)))
+  (let [current-features (premium-features/token-features)]
+    (premium-features-test/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [jwt-enabled               true
+                                         jwt-identity-provider-uri default-idp-uri
+                                         jwt-shared-secret         default-jwt-secret
+                                         site-url                  "http://localhost"]
+        (premium-features-test/with-premium-features current-features
+          (f))))))
 
 (defmacro with-default-jwt-config [& body]
   `(call-with-default-jwt-config
@@ -60,37 +67,34 @@
               ~@body))))))))
 
 (deftest sso-prereqs-test
-  (testing "SSO requests fail if JWT hasn't been configured or enabled"
-    (mt/with-temporary-setting-values [jwt-enabled               false
-                                       jwt-identity-provider-uri nil
-                                       jwt-shared-secret         nil]
-      (with-sso-jwt-token
+  (with-sso-jwt-token
+    (testing "SSO requests fail if JWT hasn't been configured or enabled"
+      (mt/with-temporary-setting-values [jwt-enabled               false
+                                         jwt-identity-provider-uri nil
+                                         jwt-shared-secret         nil]
         (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))
+               (saml-test/client :get 400 "/auth/sso")))
 
-      (testing "SSO requests fail if they don't have a valid premium-features token"
-        (with-default-jwt-config
-          (premium-features-test/with-premium-features #{}
-            (is (= "JWT-based authentication is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                   (saml-test/client :get 402 "/auth/sso"))))))))
+        (testing "SSO requests fail if they don't have a valid premium-features token"
+          (with-default-jwt-config
+            (premium-features-test/with-premium-features #{}
+              (is (= "SSO has not been enabled and/or configured"
+                     (saml-test/client :get 400 "/auth/sso"))))))))
 
-  (testing "SSO requests fail if JWT is enabled but hasn't been configured"
-    (with-sso-jwt-token
+    (testing "SSO requests fail if JWT is enabled but hasn't been configured"
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri nil]
         (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))))
+               (saml-test/client :get 400 "/auth/sso")))))
 
-  (testing "SSO requests fail if JWT is configured but hasn't been enabled"
-    (with-sso-jwt-token
+    (testing "SSO requests fail if JWT is configured but hasn't been enabled"
       (mt/with-temporary-setting-values [jwt-enabled               false
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         default-jwt-secret]
         (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))))
+               (saml-test/client :get 400 "/auth/sso")))))
 
-  (testing "The JWT Shared Secret must also be included for SSO to be configured"
-    (with-sso-jwt-token
+    (testing "The JWT Shared Secret must also be included for SSO to be configured"
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         nil]
@@ -246,15 +250,16 @@
 
 (deftest group-mappings-test
   (testing "make sure our setting for mapping group names -> IDs works"
-    (mt/with-temporary-setting-values [jwt-group-mappings {"group_1" [1 2 3]
-                                                           "group_2" [3 4]
-                                                           "group_3" [5]}]
-      (testing "keyword group names"
-        (is (= #{1 2 3 4}
-               (#'mt.jwt/group-names->ids [:group_1 :group_2]))))
-      (testing "string group names"
-        (is (= #{3 4 5}
-               (#'mt.jwt/group-names->ids ["group_2" "group_3"])))))))
+    (with-sso-jwt-token
+      (mt/with-temporary-setting-values [jwt-group-mappings {"group_1" [1 2 3]
+                                                             "group_2" [3 4]
+                                                             "group_3" [5]}]
+        (testing "keyword group names"
+          (is (= #{1 2 3 4}
+                 (#'mt.jwt/group-names->ids [:group_1 :group_2]))))
+        (testing "string group names"
+          (is (= #{3 4 5}
+                 (#'mt.jwt/group-names->ids ["group_2" "group_3"]))))))))
 
 (defn- group-memberships [user-or-id]
   (when-let [group-ids (seq (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
