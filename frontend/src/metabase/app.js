@@ -35,6 +35,8 @@ import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { createHistory } from "history";
 import { syncHistoryWithStore } from "react-router-redux";
+import createCache from "@emotion/cache";
+import { CacheProvider } from "@emotion/react";
 
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
@@ -65,6 +67,7 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
+  const cache = createCache({ key: "emotion", nonce: "2726c7f26c" });
 
   let root;
 
@@ -72,12 +75,14 @@ function _init(reducers, getRoutes, callback) {
 
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
-      <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-        <ThemeProvider>
-          <GlobalStyles />
-          <Router history={history}>{routes}</Router>
-        </ThemeProvider>
-      </DragDropContextProvider>
+      <CacheProvider value={cache}>
+        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+          <ThemeProvider>
+            <GlobalStyles />
+            <Router history={history}>{routes}</Router>
+          </ThemeProvider>
+        </DragDropContextProvider>
+      </CacheProvider>
     </Provider>,
     document.getElementById("root"),
   );
