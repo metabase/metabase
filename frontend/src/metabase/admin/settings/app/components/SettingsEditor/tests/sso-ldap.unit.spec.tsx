@@ -2,6 +2,7 @@ import { screen } from "__support__/ui";
 import {
   createMockGroup,
   createMockSettingDefinition,
+  createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { setupGroupsEndpoint } from "__support__/server-mocks";
@@ -30,6 +31,17 @@ describe("SettingsEditorApp", () => {
     expect(await screen.findByText("Server Settings")).toBeInTheDocument();
     expect(
       await screen.findByText("Group membership filter"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the admin sso notification setting", async () => {
+    setupPremium({
+      initialRoute: "/admin/settings/authentication",
+      settingValues: createMockSettings({ "ldap-enabled": true }),
+    });
+
+    expect(
+      await screen.findByText("Notify admins of new SSO users"),
     ).toBeInTheDocument();
   });
 });

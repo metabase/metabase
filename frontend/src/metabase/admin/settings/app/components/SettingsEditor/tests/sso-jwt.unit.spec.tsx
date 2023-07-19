@@ -1,6 +1,7 @@
 import { screen } from "__support__/ui";
 import {
   createMockGroup,
+  createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { setupGroupsEndpoint } from "__support__/server-mocks";
@@ -37,6 +38,17 @@ describe("SettingsEditorApp", () => {
     expect(await screen.findByText("Server Settings")).toBeInTheDocument();
     expect(
       await screen.findByText("JWT Identity Provider URI"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the admin sso notification setting", async () => {
+    setupPremium({
+      initialRoute: "/admin/settings/authentication",
+      settingValues: createMockSettings({ "jwt-enabled": true }),
+    });
+
+    expect(
+      await screen.findByText("Notify admins of new SSO users"),
     ).toBeInTheDocument();
   });
 });

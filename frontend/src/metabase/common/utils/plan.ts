@@ -19,5 +19,5 @@ export const getPlan = (features?: TokenFeatures | null): Plan => {
 };
 
 const ssoFeatures = ["sso_google", "sso_jwt", "sso_ldap", "sso_saml"] as const;
-export const hasAnySsoFeature = (features: TokenFeatures): boolean =>
-  ssoFeatures.some(ssoFeature => features[ssoFeature]);
+export const hasAnySsoFeature = (features?: TokenFeatures | null): boolean =>
+  features != null && ssoFeatures.some(ssoFeature => features[ssoFeature]);

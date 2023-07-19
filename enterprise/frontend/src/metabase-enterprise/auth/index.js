@@ -1,7 +1,10 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+import {
+  hasAnySsoPremiumFeature,
+  hasPremiumFeature,
+} from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -56,10 +59,11 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: t`When enabled, administrators will receive an email the first time a user uses Single Sign-On.`,
       type: "boolean",
       getHidden: (_, derivedSettings) =>
-        !derivedSettings["google-auth-enabled"] &&
-        !derivedSettings["ldap-enabled"] &&
-        !derivedSettings["saml-enabled"] &&
-        !derivedSettings["jwt-enabled"],
+        !hasAnySsoPremiumFeature() ||
+        (!derivedSettings["google-auth-enabled"] &&
+          !derivedSettings["ldap-enabled"] &&
+          !derivedSettings["saml-enabled"] &&
+          !derivedSettings["jwt-enabled"]),
     },
     {
       key: "session-timeout",
@@ -225,7 +229,10 @@ const SSO_PROVIDER = {
 };
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
-  if (MetabaseSettings.get("other-sso-enabled?")) {
+  if (
+    (hasPremiumFeature("sso_jwt") || hasPremiumFeature("sso_saml")) &&
+    MetabaseSettings.get("other-sso-enabled?")
+  ) {
     providers = [SSO_PROVIDER, ...providers];
   }
   if (
