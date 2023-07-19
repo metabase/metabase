@@ -634,7 +634,7 @@
   something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
   selected columns (those in the join's `:fields`) will include `:selected true` information."
   [a-query stage-number join-or-joinable]
-  (lib.core/joinable-columns a-query stage-number join-or-joinable))
+  (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
 
 (defn ^:export table-or-card-metadata
   "Get TableMetadata if passed an integer `table-id`, or CardMetadata if passed a legacy-style `card__<id>` string.
