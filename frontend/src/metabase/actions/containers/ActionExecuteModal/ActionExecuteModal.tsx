@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { connect } from "react-redux";
+import { useLatest } from "react-use";
 import _ from "underscore";
 import Actions from "metabase/entities/actions";
 import ModalContent from "metabase/components/ModalContent";
@@ -20,6 +21,7 @@ interface OwnProps {
   shouldPrefetch?: boolean;
   onSubmit: (opts: ExecuteActionOpts) => Promise<ActionFormSubmitResult>;
   onClose?: () => void;
+  onSuccess?: () => void;
 }
 
 interface ActionLoaderProps {
@@ -39,12 +41,21 @@ const ActionExecuteModal = ({
   shouldPrefetch,
   onSubmit,
   onClose,
+  onSuccess = _.noop,
 }: ActionExecuteModalProps) => {
+  const onSuccessRef = useLatest(onSuccess);
+
   const handleSubmit = useCallback(
-    (parameters: ParametersForActionExecution) => {
-      return onSubmit({ action, parameters });
+    async (parameters: ParametersForActionExecution) => {
+      const result = await onSubmit({ action, parameters });
+
+      if (result.success) {
+        onSuccessRef.current();
+      }
+
+      return result;
     },
-    [action, onSubmit],
+    [action, onSubmit, onSuccessRef],
   );
 
   return (
