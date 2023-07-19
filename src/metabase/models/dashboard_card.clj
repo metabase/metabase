@@ -105,7 +105,7 @@
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 
-(defn retrieve-action
+(defn dashcard->action
   "Get the action associated with a dashcard if exists, return `nil` otherwise."
   [dashcard-or-dashcard-id]
   (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))

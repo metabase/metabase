@@ -965,7 +965,7 @@
    parameters   ms/JSONString}
   (api/read-check :model/Dashboard dashboard-id)
   (actions.execution/fetch-values
-   (api/check-404 (dashboard-card/retrieve-action dashcard-id))
+   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
    (json/parse-string parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

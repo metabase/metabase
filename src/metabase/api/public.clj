@@ -307,7 +307,7 @@
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
   (actions.execution/fetch-values
-   (api/check-404 (dashboard-card/retrieve-action dashcard-id))
+   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
    (json/parse-string parameters)))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
