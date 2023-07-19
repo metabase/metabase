@@ -6,155 +6,172 @@ import {
   questionInfoButton,
   getFullName,
   setTokenFeatures,
+  popover,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
-import {
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 const adminFullName = getFullName(admin);
 
 describeEE("scenarios > saved question moderation", () => {
-  describe("as an admin", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-      setTokenFeatures("all");
-    });
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
 
-    it("should be able to verify and unverify a saved question", () => {
+  context("without a token", () => {
+    it("should not be able to verify a saved question", () => {
+      cy.log("Gate the API");
+      cy.request({
+        method: "POST",
+        url: "/api/moderation-review",
+        failOnStatusCode: false,
+        body: {
+          status: "verified",
+          moderated_item_id: ORDERS_COUNT_QUESTION_ID,
+          moderated_item_type: "card",
+        },
+      }).then(({ body, status, statusText }) => {
+        expect(body).to.eq(
+          "This API endpoint is only enabled if you have a premium token with the :content-verification feature.",
+        );
+        expect(status).to.eq(402);
+        expect(statusText).to.eq("Payment Required");
+      });
+
+      cy.log("Gate the UI");
       visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      openQuestionActions();
+      popover()
+        .should("contain", "Add to dashboard")
+        .and("not.contain", "Verify this question");
 
-      verifyQuestion();
+      cy.log("Turn the question into a model and try again");
+      cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+        dataset: true,
+      });
 
-      // 1. Question title
-      cy.findByTestId("qb-header-left-side").find(".Icon-verified");
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.visit(`/model/${ORDERS_COUNT_QUESTION_ID}`);
+      cy.wait("@dataset");
 
-      // 2. Question's history
-      questionInfoButton().click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("History");
-      cy.findAllByText("You verified this")
-        .should("have.length", 2)
-        .and("be.visible");
-
-      // 3. Recently viewed list
-      cy.findByPlaceholderText("Search…").click();
-      cy.findByTestId("recently-viewed-item")
-        .should("contain", "Orders, Count")
-        .find(".Icon-verified");
-
-      // 4. Search results
-      cy.findByPlaceholderText("Search…").type("orders{enter}");
-      cy.findAllByTestId("search-result-item")
-        .contains("Orders, Count")
-        .siblings(".Icon-verified");
-
-      // 5. Question's collection
-      cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").closest("a").find(".Icon-verified");
-
-      // Let's go back to the question and remove the verification
-      visitQuestion(ORDERS_COUNT_QUESTION_ID);
-
-      removeQuestionVerification();
-
-      // 1. Question title
-      cy.findByTestId("qb-header-left-side")
-        .find(".Icon-verified")
-        .should("not.exist");
-
-      // 2. Question's history
-      questionInfoButton().click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("History");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("You removed verification");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
-
-      // 3. Recently viewed list
-      cy.findByPlaceholderText("Search…").click();
-      cy.findByTestId("recently-viewed-item")
-        .should("contain", "Orders, Count")
-        .find(".Icon-verified")
-        .should("not.exist");
-
-      // 4. Search results
-      cy.findByPlaceholderText("Search…").type("orders{enter}");
-      cy.findAllByTestId("search-result-item")
-        .contains("Orders, Count")
-        .siblings(".Icon-verified")
-        .should("not.exist");
-
-      // 5. Question's collection
-      cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count")
-        .closest("a")
-        .find(".Icon-verified")
-        .should("not.exist");
+      openQuestionActions();
+      popover()
+        .should("contain", "Edit query definition")
+        .and("not.contain", "Verify this question");
     });
   });
 
-  describe("as a non-admin user", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-      setTokenFeatures("all");
+  context("premium token with paid features", () => {
+    beforeEach(() => setTokenFeatures("all"));
 
-      cy.createModerationReview({
-        status: "verified",
-        moderated_item_type: "card",
-        moderated_item_id: 2,
+    describe("as an admin", () => {
+      it("should be able to verify and unverify a saved question", () => {
+        visitQuestion(ORDERS_COUNT_QUESTION_ID);
+
+        verifyQuestion();
+
+        // 1. Question title
+        cy.findByTestId("qb-header-left-side").find(".Icon-verified");
+
+        // 2. Question's history
+        questionInfoButton().click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("History");
+        cy.findAllByText("You verified this")
+          .should("have.length", 2)
+          .and("be.visible");
+
+        // 3. Recently viewed list
+        cy.findByPlaceholderText("Search…").click();
+        cy.findByTestId("recently-viewed-item")
+          .should("contain", "Orders, Count")
+          .find(".Icon-verified");
+
+        // 4. Search results
+        cy.findByPlaceholderText("Search…").type("orders{enter}");
+        cy.findAllByTestId("search-result-item")
+          .contains("Orders, Count")
+          .siblings(".Icon-verified");
+
+        // 5. Question's collection
+        cy.visit("/collection/root");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders, Count").closest("a").find(".Icon-verified");
+
+        // Let's go back to the question and remove the verification
+        visitQuestion(ORDERS_COUNT_QUESTION_ID);
+
+        removeQuestionVerification();
+
+        // 1. Question title
+        cy.findByTestId("qb-header-left-side")
+          .find(".Icon-verified")
+          .should("not.exist");
+
+        // 2. Question's history
+        questionInfoButton().click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("History");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("You removed verification");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
+
+        // 3. Recently viewed list
+        cy.findByPlaceholderText("Search…").click();
+        cy.findByTestId("recently-viewed-item")
+          .should("contain", "Orders, Count")
+          .find(".Icon-verified")
+          .should("not.exist");
+
+        // 4. Search results
+        cy.findByPlaceholderText("Search…").type("orders{enter}");
+        cy.findAllByTestId("search-result-item")
+          .contains("Orders, Count")
+          .siblings(".Icon-verified")
+          .should("not.exist");
+
+        // 5. Question's collection
+        cy.visit("/collection/root");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders, Count")
+          .closest("a")
+          .find(".Icon-verified")
+          .should("not.exist");
+      });
+    });
+
+    describe("as a non-admin user", () => {
+      beforeEach(() => {
+        cy.createModerationReview({
+          status: "verified",
+          moderated_item_type: "card",
+          moderated_item_id: ORDERS_COUNT_QUESTION_ID,
+        });
+
+        cy.signInAsNormalUser();
       });
 
-      cy.signInAsNormalUser();
-    });
+      it("should be able to see that a question has been verified", () => {
+        visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
-    it("should be able to see that a question has not been verified", () => {
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+        cy.icon("verified");
 
-      cy.icon("verified").should("not.exist");
+        questionInfoButton().click();
+        cy.findAllByText(`${adminFullName} verified this`);
 
-      questionInfoButton().click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${adminFullName} verified this`).should("not.exist");
+        cy.findByPlaceholderText("Search…").type("orders{enter}");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders, Count").parent().icon("verified");
 
-      cy.findByPlaceholderText("Search…").type("orders{enter}");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count, Grouped by Created At (year)")
-        .find(".Icon-verified")
-        .should("not.exist");
+        cy.visit("/collection/root");
 
-      cy.visit("/collection/root");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count, Grouped by Created At (year)")
-        .find(".Icon-verified")
-        .should("not.exist");
-    });
-
-    it("should be able to see that a question has been verified", () => {
-      visitQuestion(ORDERS_COUNT_QUESTION_ID);
-
-      cy.icon("verified");
-
-      questionInfoButton().click();
-      cy.findAllByText(`${adminFullName} verified this`);
-
-      cy.findByPlaceholderText("Search…").type("orders{enter}");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").parent().icon("verified");
-
-      cy.visit("/collection/root");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders, Count").closest("td").icon("verified");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Orders, Count").closest("td").icon("verified");
+      });
     });
   });
 });
