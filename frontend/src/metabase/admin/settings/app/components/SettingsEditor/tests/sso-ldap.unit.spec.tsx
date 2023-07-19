@@ -28,7 +28,6 @@ describe("SettingsEditorApp", () => {
     });
 
     expect(await screen.findByText("Server Settings")).toBeInTheDocument();
-    screen.logTestingPlaygroundURL();
     expect(
       await screen.findByText("Group membership filter"),
     ).toBeInTheDocument();

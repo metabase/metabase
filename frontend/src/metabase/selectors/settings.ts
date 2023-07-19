@@ -3,11 +3,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import type {
   SettingKey,
   Settings,
-  TokenFeatures,
   TokenStatus,
   Version,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import { getPlan } from "metabase/common/utils/plan";
 
 export const getSettings = createSelector(
   (state: State) => state.settings,
@@ -86,7 +86,7 @@ interface UpgradeUrlOpts {
 }
 
 export const getUpgradeUrl = createSelector(
-  (state: State) => getUtmSource(getSetting(state, "token-features")),
+  (state: State) => getPlan(getSetting(state, "token-features")),
   (state: State) => getSetting(state, "active-users-count"),
   (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
   (source, count, media) => {
@@ -100,14 +100,6 @@ export const getUpgradeUrl = createSelector(
     return url.toString();
   },
 );
-
-const getUtmSource = (features: TokenFeatures) => {
-  if (features.sso) {
-    return features.hosting ? "pro-cloud" : "pro-self-hosted";
-  } else {
-    return features.hosting ? "starter" : "oss";
-  }
-};
 
 export const getIsPaidPlan = createSelector(
   (state: State) => getSetting(state, "token-status"),

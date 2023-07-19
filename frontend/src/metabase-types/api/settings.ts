@@ -140,25 +140,28 @@ export type DayOfWeekId =
   | "friday"
   | "saturday";
 
-export interface TokenFeatures {
-  advanced_config: boolean;
-  advanced_permissions: boolean;
-  audit_app: boolean;
-  cache_granular_controls: boolean;
-  disable_password_login: boolean;
-  content_verification: boolean;
-  embedding: boolean;
-  hosting: boolean;
-  official_collections: boolean;
-  sandboxes: boolean;
-  sso_google: boolean;
-  sso_jwt: boolean;
-  sso_ldap: boolean;
-  sso_saml: boolean;
-  session_timeout_config: boolean;
-  whitelabel: boolean;
-  dashboard_subscription_filters: boolean;
-}
+export const tokenFeatures = [
+  "advanced_config",
+  "advanced_permissions",
+  "audit_app",
+  "cache_granular_controls",
+  "disable_password_login",
+  "content_verification",
+  "embedding",
+  "hosting",
+  "official_collections",
+  "sandboxes",
+  "sso_google",
+  "sso_jwt",
+  "sso_ldap",
+  "sso_saml",
+  "session_timeout_config",
+  "whitelabel",
+  "dashboard_subscription_filters",
+] as const;
+
+export type TokenFeature = typeof tokenFeatures[number];
+export type TokenFeatures = Record<TokenFeature, boolean>;
 
 export type PasswordComplexity = {
   total?: number;

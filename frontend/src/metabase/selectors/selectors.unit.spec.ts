@@ -13,25 +13,25 @@ describe("getUpgradeUrl", () => {
     {
       media: "license",
       users: 1,
-      features: { hosting: false, sso: false },
+      features: { hosting: false, sso_jwt: false },
       params: "?utm_media=license&utm_source=oss&utm_users=1",
     },
     {
       media: "permissions_top",
       users: 2,
-      features: { hosting: true, sso: false },
+      features: { hosting: true, sso_jwt: false },
       params: "?utm_media=permissions_top&utm_source=starter&utm_users=2",
     },
     {
       media: "license",
       users: 3,
-      features: { hosting: false, sso: true },
+      features: { hosting: false, sso_jwt: true },
       params: "?utm_media=license&utm_source=pro-self-hosted&utm_users=3",
     },
     {
       media: "license",
       users: undefined,
-      features: { hosting: true, sso: true },
+      features: { hosting: true, sso_jwt: true },
       params: "?utm_media=license&utm_source=pro-cloud",
     },
   ])("should set utm_source", ({ media, features, users, params }) => {
