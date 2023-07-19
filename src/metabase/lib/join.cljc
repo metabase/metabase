@@ -50,11 +50,12 @@
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the current join alias associated with something, if it has one."
-  [field-or-join :- FieldOrPartialJoin]
+  [field-or-join :- [:maybe FieldOrPartialJoin]]
   (case (lib.dispatch/dispatch-value field-or-join)
-    :field          (:join-alias (lib.options/options field-or-join))
-    :metadata/column (::join-alias field-or-join)
-    :mbql/join      (:alias field-or-join)))
+    :dispatch-type/nil nil
+    :field             (:join-alias (lib.options/options field-or-join))
+    :metadata/column   (::join-alias field-or-join)
+    :mbql/join         (:alias field-or-join)))
 
 (declare with-join-alias)
 
@@ -114,15 +115,6 @@
 
     :mbql/join
     (with-join-alias-update-join field-or-join join-alias)))
-
-(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
-  "Get the current join alias associated with something, if it has one."
-  [field-or-join :- [:maybe FieldOrPartialJoin]]
-  (case (lib.dispatch/dispatch-value field-or-join)
-    :dispatch-type/nil nil
-    :field             (:join-alias (lib.options/options field-or-join))
-    :metadata/column   (::join-alias field-or-join)
-    :mbql/join         (:alias field-or-join)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
