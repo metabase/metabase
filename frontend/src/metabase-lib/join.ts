@@ -159,7 +159,7 @@ export function suggestedJoinCondition(
   return ML.suggested_join_condition(query, stageIndex, joinable);
 }
 
-type JoinFields = ColumnMetadata[] | "all" | "none";
+export type JoinFields = ColumnMetadata[] | "all" | "none";
 
 export function joinFields(join: Join): JoinFields {
   return ML.join_fields(join);
