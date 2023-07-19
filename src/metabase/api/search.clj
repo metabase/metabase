@@ -455,7 +455,7 @@
            models
            limit
            offset]} :- [:map {:closed true}
-                        [:search-string                    ms/NonBlankString]
+                        [:search-string                    [:maybe ms/NonBlankString]]
                         [:archived-string {:optional true} [:maybe ms/BooleanString]]
                         [:created-by      {:optional true} [:maybe ms/PositiveInt]]
                         [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]
