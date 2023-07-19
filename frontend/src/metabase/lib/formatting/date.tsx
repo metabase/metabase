@@ -58,15 +58,30 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
 const DATE_RANGE_MONTH_PLACEHOLDER = "<MONTH>";
 
 type SameMatchUnit = moment.unitOfTime.StartOf | null;
+type StartFormat = string;
+type EndFormat = string | null;
+type JoinPad = string;
+
 type DateRangeMatch =
-  | [SameMatchUnit, string]
-  | [SameMatchUnit, string, string]
-  | [SameMatchUnit, string, string, string];
+  | [SameMatchUnit, StartFormat]
+  | [SameMatchUnit, StartFormat, EndFormat]
+  | [SameMatchUnit, StartFormat, EndFormat, JoinPad];
 
-type DateRangeMatchByUnit = { [unit in DatetimeUnit]: DateRangeMatch[] };
+type TestOutput = string;
+type TestInputStart = string;
+type TestInputEnd = string;
+type DateRangeExample =
+  | [TestOutput] // TODO: remove this
+  | [TestOutput, TestInputStart]
+  | [TestOutput, TestInputStart, TestInputEnd];
 
-// TODO: create a type for this
-const DATE_RANGE_FORMATS: DateRangeMatchByUnit = (() => {
+type DateRangeMatchAndExample = [DateRangeMatch, DateRangeExample];
+
+type DateRangeFormatSpec = {
+  [unit in DatetimeUnit]: DateRangeMatchAndExample[];
+};
+
+const DATE_RANGE_FORMATS: DateRangeFormatSpec = (() => {
   // dates
   const Y = "YYYY";
   const Q = "[Q]Q";
@@ -101,73 +116,91 @@ const DATE_RANGE_FORMATS: DateRangeMatchByUnit = (() => {
     // Use Wikipedia’s date range formatting guidelines for some of these:
     // https://en.wikipedia.org/wiki/Wikipedia:Manual_of_Style/Dates_and_numbers#Ranges
     year: [
-      ["year", Y], // 2018
-      [null, Y, Y], // 2018–2019
+      [
+        ["year", Y],
+        ["2018", "2018"],
+      ],
+      [
+        [null, Y, Y, ""],
+        ["2018–2019", "2018", "2019"],
+      ],
     ],
     quarter: [
-      ["quarter", QY], //     Q2 2018
-      ["year", Q, QY], //     Q2–Q4 2019
-      [null, QY, QY, " "], // Q2 2018 – Q3 2019
+      [["quarter", QY], ["Q2 2018"]],
+      [["year", Q, QY, ""], ["Q2–Q4 2019"]],
+      [[null, QY, QY, " "], ["Q2 2018 – Q3 2019"]],
     ],
     "quarter-of-year": [
-      ["quarter", Q], // Q2
-      [null, Q, Q], //   Q2–Q4
+      [["quarter", Q], ["Q2"]],
+      [[null, Q, Q, ""], ["Q2–Q4"]],
     ],
     month: [
-      ["month", MY], //       September 2018
-      ["year", M, MY], //     September–December 2018
-      [null, MY, MY, " "], // September 2018 – January 2019
+      [["month", MY], ["September 2018"]],
+      [["year", M, MY], ["September–December 2018"]],
+      [[null, MY, MY, " "], ["September 2018 – January 2019"]],
     ],
     "month-of-year": [
-      ["month", M], //      September
-      [null, M, M, " "], // September–December
+      [["month", M], ["September"]],
+      [[null, M, M, " "], ["September–December"]],
     ],
     week: [
-      ["month", MD, DY], //      January 1–21, 2017
-      ["year", MD, MDY, " "], // January 1 – May 20, 2017
-      [null, MDY, MDY, " "], //  January 1, 2017 – February 10, 2018
+      [["month", MD, DY], ["January 1–21, 2017"]],
+      [["year", MD, MDY, " "], ["January 1 – May 20, 2017"]],
+      [[null, MDY, MDY, " "], ["January 1, 2017 – February 10, 2018"]],
     ],
     "week-of-year": [
-      ["week", woS], //     20th week of the year
-      [null, "wo", woP], // 34th-40th weeks of the year
+      [["week", woS], ["20th week of the year"]],
+      [[null, "wo", woP], ["34th-40th weeks of the year"]],
     ],
     day: [
-      ["day", MDY], //           January 1, 2018
-      ["month", MD, DY], //      January 1–2, 2018
-      ["year", MD, MDY, " "], // January 1 – February 2, 2018
-      [null, MDY, MDY, " "], //  January 1, 2018 – January 2, 2019
+      [["day", MDY], ["January 1, 2018"]],
+      [["month", MD, DY], ["January 1–2, 2018"]],
+      [["year", MD, MDY, " "], ["January 1 – February 2, 2018"]],
+      [[null, MDY, MDY, " "], ["January 1, 2018 – January 2, 2019"]],
     ],
     "day-of-year": [
-      ["day", DDDoS], //        123rd day of the year
-      [null, "DDDo", DDDoP], // 100th–123rd days of the year
+      [["day", DDDoS], ["123rd day of the year"]],
+      [[null, "DDDo", DDDoP], ["100th–123rd days of the year"]],
     ],
     "day-of-month": [
-      ["day", DoS], //      20th day of the month
-      [null, "Do", DoP], // 10th–12th days of the month
+      [["day", DoS], ["20th day of the month"]],
+      [[null, "Do", DoP], ["10th–12th days of the month"]],
     ],
     "day-of-week": [
-      ["day", "dddd"], //             Monday
-      [null, "dddd", "dddd", " "], // Monday – Thursday
+      [["day", "dddd"], ["Monday"]],
+      [[null, "dddd", "dddd", " "], ["Monday – Thursday"]],
     ],
     hour: [
-      ["hour", MDYT, MA], //         January 1, 2018, 11:00–59 AM
-      ["day", MDYTA, TA, " "], //    January 1, 2018, 11:00 AM – 2:59 PM
-      ["year", MDTA, MDYTA, " "], // January 1, 11:00 AM – February 2, 2018, 2:59 PM
-      [null, MDYTA, MDYTA, " "], //  January 1, 2018, 11:00 AM – January 2, 2019, 2:59 PM
+      [["hour", MDYT, MA], ["January 1, 2018, 11:00–59 AM"]],
+      [["day", MDYTA, TA, " "], ["January 1, 2018, 11:00 AM – 2:59 PM"]],
+      [
+        ["year", MDTA, MDYTA, " "],
+        ["January 1, 11:00 AM – February 2, 2018, 2:59 PM"],
+      ],
+      [
+        [null, MDYTA, MDYTA, " "],
+        ["January 1, 2018, 11:00 AM – January 2, 2019, 2:59 PM"],
+      ],
     ],
     "hour-of-day": [
-      ["hour", T, MA], //     11:00–59 AM
-      [null, TA, TA, " "], // 11:00 AM – 4:59 PM
+      [["hour", T, MA], ["11:00–59 AM"]],
+      [[null, TA, TA, " "], ["11:00 AM – 4:59 PM"]],
     ],
     minute: [
-      ["minute", MDYTA], //          January 1, 2018, 11:20 AM
-      ["day", MDYTA, TA, " "], //    January 1, 2018, 11:20 AM – 2:35 PM
-      ["year", MDTA, MDYTA, " "], // January 1, 11:20 AM – February 2, 2018, 2:35 PM
-      [null, MDYTA, MDYTA, " "], //  January 1, 2018, 11:20 AM – January 2, 2019, 2:35 PM
+      [["minute", MDYTA], ["January 1, 2018, 11:20 AM"]],
+      [["day", MDYTA, TA, " "], ["January 1, 2018, 11:20 AM – 2:35 PM"]],
+      [
+        ["year", MDTA, MDYTA, " "],
+        ["January 1, 11:20 AM – February 2, 2018, 2:35 PM"],
+      ],
+      [
+        [null, MDYTA, MDYTA, " "],
+        ["January 1, 2018, 11:20 AM – January 2, 2019, 2:35 PM"],
+      ],
     ],
     "minute-of-hour": [
-      ["minute", mmS], //   minute :05
-      [null, mmP, "mm"], // minutes :05–30
+      [["minute", mmS], ["minute :05"]],
+      [[null, mmP, "mm"], ["minutes :05–30"]],
     ],
   };
 })();
@@ -297,9 +330,9 @@ export function formatDateTimeRangeWithUnit(
     date.format(formatStr.replace(DATE_RANGE_MONTH_PLACEHOLDER, monthFormat));
 
   const formats = DATE_RANGE_FORMATS[unit];
-  const largestFormat = formats.find(([matchUnit]) => matchUnit == null);
+  const largestFormat = formats.find(([[matchUnit]]) => matchUnit == null);
   const smallestFormat =
-    formats.find(([matchUnit]) => start.isSame(end, matchUnit)) ??
+    formats.find(([[matchUnit]]) => start.isSame(end, matchUnit)) ??
     largestFormat;
   if (!smallestFormat || !largestFormat) {
     return String(start);
@@ -307,12 +340,12 @@ export function formatDateTimeRangeWithUnit(
 
   // Even if we don’t have want to condense, we should avoid empty date ranges like Jan 1 - Jan 1.
   // This is indicated when the smallest matched format has no end format.
-  let [_, startFormat, endFormat, pad] = smallestFormat;
+  let [[_, startFormat, endFormat, pad]] = smallestFormat;
   if (!endFormat) {
     return formatDate(start, startFormat);
   }
 
-  [_, startFormat, endFormat, pad = ""] = condensed
+  [[_, startFormat, endFormat, pad = ""]] = condensed
     ? smallestFormat
     : largestFormat;
   return !endFormat
