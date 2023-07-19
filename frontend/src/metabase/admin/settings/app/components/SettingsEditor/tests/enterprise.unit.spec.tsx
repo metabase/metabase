@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import {
+  createMockGroup,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
+import { setupGroupsEndpoint } from "__support__/server-mocks";
 import { setup, SetupOpts } from "./setup";
 
 const setupEnterprise = (opts?: SetupOpts) => {
@@ -43,5 +45,99 @@ describe("SettingsEditor", () => {
     expect(
       screen.queryByText("Enable Password Authentication"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("authentication", () => {
+    it("should not show JWT and SAML auth options", async () => {
+      setupEnterprise({ initialRoute: "/admin/settings/authentication" });
+
+      expect(
+        await screen.findByText("Sign in with Google"),
+      ).toBeInTheDocument();
+
+      expect(screen.queryByText("SAML")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Allows users to login via a SAML Identity Provider.",
+        ),
+      ).not.toBeInTheDocument();
+
+      expect(screen.queryByText("JWT")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Allows users to login via a JWT Identity Provider.",
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not let users access JWT settings", async () => {
+      setupEnterprise({ initialRoute: "/admin/settings/authentication/jwt" });
+      expect(
+        await screen.findByText("We're a little lost..."),
+      ).toBeInTheDocument();
+    });
+
+    it("should not let users access SAML settings", async () => {
+      setupEnterprise({ initialRoute: "/admin/settings/authentication/saml" });
+      expect(
+        await screen.findByText("We're a little lost..."),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show the session timeout option", async () => {
+      setupEnterprise({
+        initialRoute: "/admin/settings/authentication",
+      });
+
+      expect(
+        await screen.findByText("Sign in with Google"),
+      ).toBeInTheDocument();
+
+      expect(screen.queryByText("Session timeout")).not.toBeInTheDocument();
+    });
+
+    it("should not show the admin sso notification setting", async () => {
+      setupEnterprise({
+        initialRoute: "/admin/settings/authentication",
+      });
+
+      expect(
+        await screen.findByText("Sign in with Google"),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByText("Notify admins of new SSO users"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the advanced LDAP settings", async () => {
+      setupGroupsEndpoint([createMockGroup()]);
+      setupEnterprise({
+        initialRoute: "/admin/settings/authentication/ldap",
+      });
+
+      expect(await screen.findByText("Server Settings")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Group membership filter"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("show a single domain input", async () => {
+      setupEnterprise({
+        initialRoute: "/admin/settings/authentication/google",
+      });
+
+      expect(
+        await screen.findByText("Sign in with Google"),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText(
+          "Allow users to sign up on their own if their Google account email address is from:",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByPlaceholderText("mycompany.com"),
+      ).toBeInTheDocument();
+    });
   });
 });
