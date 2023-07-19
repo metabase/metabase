@@ -50,4 +50,3 @@
           (mt/with-temp-env-var-value [mb-embedding-app-origin "ssh://metabase.com"]
             (is (= "ssh://metabase.com"
                    (public-settings/embedding-app-origin)))))))))
-
