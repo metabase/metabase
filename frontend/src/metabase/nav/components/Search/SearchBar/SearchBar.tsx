@@ -1,10 +1,18 @@
-import { MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import {
+  MouseEvent,
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { withRouter } from "react-router";
 import { Location, LocationDescriptorObject } from "history";
 
 import { usePrevious } from "react-use";
+import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
@@ -17,22 +25,19 @@ import { zoomInRow } from "metabase/query_builder/actions";
 
 import SearchResults from "metabase/nav/components/Search/SearchResults/SearchResults";
 import RecentsList from "metabase/nav/components/Search/RecentsList/RecentsList";
+import { SearchFilterModal } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModal";
+import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 import {
-  getSearchTextFromLocation,
-  isSearchPageLocation,
-} from "metabase/search/util";
-import { useSearchFilters } from "metabase/search/hooks/use-search-filters";
-import { SearchFilterModal } from "../SearchFilterModal/SearchFilterModal";
-import {
+  SearchInputContainer,
+  SearchIcon,
   CloseSearchButton,
+  SearchInput,
+  SearchResultsFloatingContainer,
+  SearchResultsContainer,
   SearchBarRoot,
   SearchFunnelButton,
-  SearchIcon,
-  SearchInput,
-  SearchInputContainer,
-  SearchResultsContainer,
-  SearchResultsFloatingContainer,
 } from "./SearchBar.styled";
+import { SearchFilterType } from "metabase/search/util";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
@@ -40,9 +45,6 @@ type SearchAwareLocation = Location<{ q?: string }>;
 
 type RouterProps = {
   location: SearchAwareLocation;
-  router: {
-    push: (location: LocationDescriptorObject) => void;
-  };
 };
 
 type OwnProps = {
@@ -52,7 +54,35 @@ type OwnProps = {
 
 type Props = RouterProps & OwnProps;
 
+function isSearchPageLocation(location: Location) {
+  const components = location.pathname.split("/");
+  return components[components.length - 1];
+}
+
+function getSearchTextFromLocation(location: SearchAwareLocation) {
+  if (isSearchPageLocation(location)) {
+    return location.query.q || "";
+  }
+  return "";
+}
+
 function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+  const [searchText, setSearchText] = useState<string>(() =>
+    getSearchTextFromLocation(location),
+  );
+
+  const searchFilters = useMemo(
+    () => _.pick(location.query, Object.values(FilterType)) as SearchFilterType,
+    [location.query],
+  );
+
+  const [isActive, { turnOn: setActive, turnOff: setInactive }] =
+    useToggle(false);
+
+  const wasActive = usePrevious(isActive);
+  const previousLocation = usePrevious(location);
+  const container = useRef<HTMLDivElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
 
   const onChangeLocation = useCallback(
@@ -60,25 +90,14 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     [dispatch],
   );
 
-  const {
-    applySearchFilters,
-    hasAppliedSearchFilters,
-    hasSearchText,
-    searchText,
-    setSearchText,
-  } = useSearchFilters({ location, onChangeLocation });
-
-  const [isActive, { turnOn: setActive, turnOff: setInactive }] =
-    useToggle(false);
-  const wasActive = usePrevious(isActive);
-  const previousLocation = usePrevious(location);
-  const container = useRef<HTMLDivElement>(null);
-  const searchInput = useRef<HTMLInputElement>(null);
-
   const onInputContainerClick = useCallback(() => {
     searchInput.current?.focus();
     setActive();
   }, [setActive]);
+
+  const onTextChange = useCallback(e => {
+    setSearchText(e.target.value);
+  }, []);
 
   const onSearchItemSelect = useCallback(
     result => {
@@ -106,7 +125,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       }
       onSearchInactive?.();
     }
-  }, [wasActive, isActive, onSearchActive, onSearchInactive, setSearchText]);
+  }, [wasActive, isActive, onSearchActive, onSearchInactive]);
 
   useEffect(() => {
     function focusOnForwardSlashPress(e: KeyboardEvent) {
@@ -128,7 +147,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     if (previousLocation?.pathname !== location.pathname) {
       setSearchText(getSearchTextFromLocation(location));
     }
-  }, [previousLocation, location, setSearchText]);
+  }, [previousLocation, location]);
 
   useEffect(() => {
     if (previousLocation !== location) {
@@ -137,20 +156,29 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
     }
   }, [previousLocation, location, setInactive]);
 
+  const onApplyFilter = useCallback(
+    filters => {
+      onChangeLocation({
+        pathname: "search",
+        query: { q: searchText.trim(), ...filters },
+      });
+    },
+    [searchText, onChangeLocation],
+  );
+
   const handleInputKeyPress = useCallback(
     e => {
       const hasSearchQuery =
         typeof searchText === "string" && searchText.trim().length > 0;
 
       if (e.key === "Enter" && hasSearchQuery) {
-        onChangeLocation({
-          pathname: "search",
-          query: { q: searchText.trim() },
-        });
+        onApplyFilter(searchFilters);
       }
     },
-    [searchText, onChangeLocation],
+    [searchText, onApplyFilter, searchFilters],
   );
+
+  const hasSearchText = searchText.trim().length > 0;
 
   const handleClickOnClose = useCallback(
     (e: MouseEvent) => {
@@ -161,16 +189,6 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   );
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const openSearchFilterModal = () => {
-    setIsFilterModalOpen(!isFilterModalOpen);
-  };
-
-  const onApplySearchFilters = (filters: Record<string, unknown>) => {
-    setIsFilterModalOpen(false);
-    applySearchFilters(filters);
-  };
-
-  const isSmallScreenAndActive = isSmallScreen() && isActive;
 
   return (
     <SearchBarRoot ref={container}>
@@ -181,21 +199,16 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
           value={searchText}
           placeholder={t`Search` + "…"}
           maxLength={200}
-          onChange={e => setSearchText(e.target.value)}
+          onChange={onTextChange}
           onKeyPress={handleInputKeyPress}
           ref={searchInput}
         />
-        {(!isSmallScreen() || isSmallScreenAndActive) && (
-          <SearchFunnelButton
-            iconSize={12}
-            icon="funnel"
-            onClick={openSearchFilterModal}
-            isFiltered={
-              !!isSearchPageLocation(location) && hasAppliedSearchFilters
-            }
-          />
-        )}
-        {isSmallScreenAndActive && (
+        <SearchFunnelButton
+          icon="funnel"
+          isFiltered={Object.keys(searchFilters).length > 0}
+          onClick={() => setIsFilterModalOpen(true)}
+        />
+        {isSmallScreen() && isActive && (
           <CloseSearchButton onClick={handleClickOnClose}>
             <Icon name="close" />
           </CloseSearchButton>
@@ -215,13 +228,12 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
           )}
         </SearchResultsFloatingContainer>
       )}
-      {isFilterModalOpen && (
-        <SearchFilterModal
-          isOpen={isFilterModalOpen}
-          setIsOpen={isOpen => setIsFilterModalOpen(isOpen)}
-          onApply={onApplySearchFilters}
-        />
-      )}
+      <SearchFilterModal
+        isOpen={isFilterModalOpen}
+        setIsOpen={setIsFilterModalOpen}
+        value={searchFilters}
+        onChangeFilters={onApplyFilter}
+      />
     </SearchBarRoot>
   );
 }

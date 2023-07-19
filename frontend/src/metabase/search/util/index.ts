@@ -1,9 +1,9 @@
 import { Location } from "history";
 import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 
-export type SearchFilterType = Partial<{
-  [key in FilterType]: unknown;
-}>;
+export type SearchFilterType = {
+  [key in FilterType]?: string;
+};
 
 export type SearchAwareLocation = Location<{ q?: string } & SearchFilterType>;
 
@@ -17,4 +17,10 @@ export function getSearchTextFromLocation(location: SearchAwareLocation) {
     return location.query.q || "";
   }
   return "";
+}
+
+export function getFiltersFromLocation(location: SearchAwareLocation) {
+  if (isSearchPageLocation(location)) {
+    return location.query.q || "";
+  }
 }

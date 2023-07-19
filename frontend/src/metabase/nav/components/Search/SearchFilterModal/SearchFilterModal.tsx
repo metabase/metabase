@@ -1,27 +1,40 @@
 import { t } from "ttag";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "metabase/components/Modal";
 import { SearchFilterModalFooter } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModalFooter";
 import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
+import { SearchFilterType } from "metabase/search/util";
 import { TypeFilter } from "./filters/TypeFilter";
 
 export const SearchFilterModal = ({
   isOpen,
   setIsOpen,
-  onApply,
+  value,
+  onChangeFilters,
 }: {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onApply: (filters: { [key in FilterType]?: unknown }) => void;
+  value: SearchFilterType;
+  onChangeFilters: (filters: SearchFilterType) => void;
 }) => {
-  const [output, setOutput] = useState<{ [key in FilterType]?: unknown }>({});
+  const [output, setOutput] = useState<SearchFilterType>(value);
+
+  useEffect(() => {
+    setOutput(value)
+  }, [value]);
+
 
   const closeModal = () => {
     setIsOpen(false);
   };
 
   const clearFilters = () => {
-    setOutput({});
+    onChangeFilters({});
+    setIsOpen(false);
+  };
+
+  const applyFilters = () => {
+    onChangeFilters(output);
     setIsOpen(false);
   };
 
@@ -31,7 +44,7 @@ export const SearchFilterModal = ({
     };
   }, []);
 
-  return (
+  return isOpen ? (
     <Modal isOpen={isOpen} onClose={closeModal} title={t`Filter by`}>
       {Object.entries(availableFilters).map(([key, Filter]) => (
         <Filter
@@ -46,10 +59,10 @@ export const SearchFilterModal = ({
         />
       ))}
       <SearchFilterModalFooter
-        onApply={() => onApply(output)}
+        onApply={applyFilters}
         onCancel={closeModal}
         onClear={clearFilters}
       />
     </Modal>
-  );
+  ) : null;
 };

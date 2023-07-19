@@ -1,9 +1,8 @@
-import { Fragment } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 
 import { jt, t } from "ttag";
-import Link from "metabase/core/components/Link";
+import _ from "underscore";
 
 import Search from "metabase/entities/search";
 
@@ -12,100 +11,50 @@ import EmptyState from "metabase/components/EmptyState";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import Subhead from "metabase/components/type/Subhead";
 
-import { Icon } from "metabase/core/components/Icon";
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { useSearchFilters } from "metabase/search/hooks/use-search-filters";
 import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
-import {
-  SearchBody,
-  SearchControls,
-  SearchEmptyState,
-  SearchHeader,
-  SearchMain,
-  SearchRoot,
-} from "./SearchApp.styled";
+import { getSearchTextFromLocation } from "metabase/search/util";
+import { Grid } from "metabase/ui";
+import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar";
+import { SearchEmptyState, SearchHeader, SearchRoot } from "./SearchApp.styled";
 
 const PAGE_SIZE = 50;
-
-const SEARCH_FILTERS = [
-  {
-    name: t`Apps`,
-    filter: "app",
-    icon: "star",
-  },
-  {
-    name: t`Dashboards`,
-    filter: "dashboard",
-    icon: "dashboard",
-  },
-  {
-    name: t`Collections`,
-    filter: "collection",
-    icon: "folder",
-  },
-  {
-    name: t`Databases`,
-    filter: "database",
-    icon: "database",
-  },
-  {
-    name: t`Models`,
-    filter: "dataset",
-    icon: "model",
-  },
-  {
-    name: t`Raw Tables`,
-    filter: "table",
-    icon: "table",
-  },
-  {
-    name: t`Questions`,
-    filter: "card",
-    icon: "bar",
-  },
-  {
-    name: t`Pulses`,
-    filter: "pulse",
-    icon: "pulse",
-  },
-  {
-    name: t`Metrics`,
-    filter: "metric",
-    icon: "sum",
-  },
-  {
-    name: t`Segments`,
-    filter: "segment",
-    icon: "segment",
-  },
-];
 
 export default function SearchApp({ location }) {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
 
-  const { searchFilters, setSearchFilters, searchText } = useSearchFilters({
-    location,
-  });
+  const searchText = useMemo(
+    () => getSearchTextFromLocation(location),
+    [location],
+  );
 
-  const handleFilterChange = filterItem => {
-    setSearchFilters({
-      [FilterType.Type]: filterItem && filterItem.filter,
-    });
+  const searchFilters = useMemo(() => {
+    return _.pick(location.query, Object.values(FilterType));
+  }, [location.query]);
+
+  const [selectedSidebarType, setSelectedSidebarType] = useState(null);
+
+  useEffect(() => {
+    setSelectedSidebarType(null);
+  }, [searchText, searchFilters]);
+
+  const query = useMemo(
+    () => ({
+      q: searchText,
+      ...searchFilters,
+      models: selectedSidebarType ?? searchFilters[FilterType.Type],
+      limit: PAGE_SIZE,
+      offset: PAGE_SIZE * page,
+    }),
+    [searchText, searchFilters, selectedSidebarType, page],
+  );
+
+  const onChangeSelectedType = filter => {
+    setSelectedSidebarType(filter);
     setPage(0);
   };
-
-  const query = {
-    q: searchText,
-    limit: PAGE_SIZE,
-    offset: PAGE_SIZE * page,
-    created_by: null,
-  };
-
-  if (searchFilters[FilterType.Type]) {
-    query.models = searchFilters[FilterType.Type];
-  }
 
   return (
     <SearchRoot>
@@ -114,94 +63,49 @@ export default function SearchApp({ location }) {
           <Subhead>{jt`Results for "${searchText}"`}</Subhead>
         </SearchHeader>
       )}
-      <div>
-        <Search.ListLoader query={query} wrapped>
-          {({ list, metadata }) => {
-            if (list.length === 0) {
-              return (
-                <SearchEmptyState>
-                  <Card>
-                    <EmptyState
-                      title={t`Didn't find anything`}
-                      message={t`There weren't any results for your search.`}
-                      illustrationElement={<img src={NoResults} />}
-                    />
-                  </Card>
-                </SearchEmptyState>
-              );
-            }
-
-            const availableModels = metadata.available_models || [];
-
-            const filters = SEARCH_FILTERS.filter(f =>
-              availableModels.includes(f.filter),
-            );
-
-            return (
-              <SearchBody>
-                <SearchMain>
-                  <Fragment>
-                    <SearchResultSection items={list} />
-                    <div className="flex justify-end my2">
-                      <PaginationControls
-                        showTotal
-                        pageSize={PAGE_SIZE}
-                        page={page}
-                        itemsLength={list.length}
-                        total={metadata.total}
-                        onNextPage={handleNextPage}
-                        onPreviousPage={handlePreviousPage}
-                      />
-                    </div>
-                  </Fragment>
-                </SearchMain>
-                <SearchControls>
-                  {filters.length > 0 ? (
-                    <Link
-                      className={cx("flex align-center mb3", {
-                        "text-brand":
-                          searchFilters[FilterType.Type] == null ||
-                          searchFilters[FilterType.Type].length > 2,
-                        "text-inherit": searchFilters[FilterType.Type] != null,
-                      })}
-                      onClick={() => handleFilterChange(null)}
-                      to={{
-                        pathname: location.pathname,
-                        query: { ...location.query, type: undefined },
-                      }}
-                    >
-                      <Icon name="search" className="mr1" />
-                      <h4>{t`All results`}</h4>
-                    </Link>
-                  ) : null}
-                  {filters.map(f => {
-                    const isActive =
-                      searchFilters[FilterType.Type] === f.filter;
-
-                    return (
-                      <Link
-                        key={f.filter}
-                        className={cx("mb3 flex align-center", {
-                          "text-brand": isActive,
-                          "text-medium": !isActive,
-                        })}
-                        onClick={() => handleFilterChange(f)}
-                        to={{
-                          pathname: location.pathname,
-                          query: { ...location.query, type: f.filter },
-                        }}
-                      >
-                        <Icon className="mr1" name={f.icon} size={16} />
-                        <h4>{f.name}</h4>
-                      </Link>
-                    );
-                  })}
-                </SearchControls>
-              </SearchBody>
-            );
-          }}
-        </Search.ListLoader>
-      </div>
+      <Search.ListLoader query={query} wrapped>
+        {({ list, metadata }) =>
+          list && list.length > 0 ? (
+            <Grid gutterLg>
+              <Grid.Col span="auto">
+                <SearchResultSection items={list} />
+                <PaginationControls
+                  showTotal
+                  pageSize={PAGE_SIZE}
+                  page={page}
+                  itemsLength={list.length}
+                  total={metadata.total}
+                  onNextPage={handleNextPage}
+                  onPreviousPage={handlePreviousPage}
+                />
+              </Grid.Col>
+              {searchFilters[FilterType.Type] || metadata.available_models ? (
+                <Grid.Col span={2}>
+                  <TypeSearchSidebar
+                    availableModels={metadata.available_models.filter(
+                      filter =>
+                        !searchFilters[FilterType.Type] ||
+                        searchFilters[FilterType.Type].includes(filter),
+                    )}
+                    selectedType={selectedSidebarType}
+                    onSelectType={onChangeSelectedType}
+                  />
+                </Grid.Col>
+              ) : null}
+            </Grid>
+          ) : (
+            <SearchEmptyState>
+              <Card>
+                <EmptyState
+                  title={t`Didn't find anything`}
+                  message={t`There weren't any results for your search.`}
+                  illustrationElement={<img src={NoResults} />}
+                />
+              </Card>
+            </SearchEmptyState>
+          )
+        }
+      </Search.ListLoader>
     </SearchRoot>
   );
 }
