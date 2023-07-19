@@ -36,9 +36,6 @@
       (format "%s: %s: %s" model-name model-description fields-str)
       (format "%s: %s" model-name fields-str))))
 
-;; TODO - Move to metabase.metabot.settings once we've settled on all the right values
-(def base-url "http://ec2-35-91-13-182.us-west-2.compute.amazonaws.com:5000")
-
 (defn token-count
   "Return the token count for a given string.
 
@@ -94,11 +91,12 @@
   final answer."
   [endpoint {:keys [prompt context]}]
   {:pre [prompt context]}
-  (let [request {:method       :post
-                 :url          (format "%s/infer" endpoint)
-                 :body         (json/write-str {:prompt prompt :context context})
-                 :as           :json
-                 :content-type :json}
+  (let [request {:method           :post
+                 :url              (format "%s/infer" endpoint)
+                 :body             (json/write-str {:prompt prompt :context context})
+                 :as               :json
+                 :content-type     :json
+                 :throw-exceptions false}
         {:keys [body status]} (http/request request)]
     (when (= 200 status)
       (:llm_generated body))))
@@ -124,11 +122,11 @@
 
   These values are all candidates for precomputing and storage as they will
   only change when the model changes."
-  [model]
+  [base-url model]
   (let [context       (model->context model)
         compa-summary (model->summary model)
-        embeddings    (embeddings compa-summary)
-        token-count   (token-count (json/write-str context))]
+        embeddings    (embeddings base-url compa-summary)
+        token-count   (token-count base-url (json/write-str context))]
     {:context       context
      :compa-summary compa-summary
      :embeddings    embeddings
@@ -140,9 +138,9 @@
   going to want to store all of this in the app db."
   (memoize/ttl
     ^{::memoize/args-fn (fn [{:keys [id database_id]}] [id database_id])}
-    (fn [model]
+    (fn [base-url model]
       (try
-        (model->precomputes model)
+        (model->precomputes base-url model)
         (catch Exception _
           (log/warn "Unable to get model precomputes")
           [])))
@@ -158,37 +156,39 @@
   - summary used to generate embeddings
   - embeddings
   - token count"
-  [models prompt top-n]
+  [base-url models prompt top-n]
   (let [models+         (map
                           (fn [model]
-                            (let [precomputes (memoized-model->precomputes model)]
+                            (let [precomputes (memoized-model->precomputes base-url model)]
                               (assoc model :precomputes precomputes)))
                           models)
         context         (->> (zipmap models+ (map (comp :embeddings :precomputes) models+))
-                             (rank-data-by-prompt prompt)
+                             (rank-data-by-prompt base-url prompt)
                              (take top-n)
                              (map (comp :context :precomputes :object)))
         inference-input {:prompt  prompt
                          :context context}]
-    (infer inference-input)))
+    (infer base-url inference-input)))
 
 (comment
+  (def base-url "http://ec2-35-89-53-232.us-west-2.compute.amazonaws.com:5000")
+
   ;; Basic API functions:
   ;; How many tokens in this string?
-  (token-count "This is a test")
+  (token-count base-url "This is a test")
   ;; What is the embedding vector for this string?
   (embeddings base-url "This is a test")
   ;; What is the embedding vector for this string?
-  (bulk-embeddings base-url
-                   {"This is a test" "The encoded version of this is a test"})
+  (bulk-embeddings
+    base-url
+    {"This is a test" "The encoded version of this is a test"})
 
   ;; This will create a context of ALL models in db 1. For any nontrivial
   ;; database this will produce context that is far too large.
   (let [prompt  "Show me orders where tax is greater than 0"
         context (->> (t2/select Card :database_id 1 :dataset true)
                      (map model->context))]
-    (infer {:prompt  prompt
-            :context context}))
+    (infer base-url {:prompt prompt :context context}))
 
   ;; This creates a context of only a single model. Note that the context shape
   ;; is still a seq of contexts, but with only a single element
@@ -196,8 +196,7 @@
         context (->> (t2/select-one Card :database_id 1 :dataset true)
                      model->context
                      vector)]
-    (infer {:prompt  prompt
-            :context context}))
+    (infer base-url {:prompt prompt :context context}))
 
   ;; To get around the above limitations (a mega-context or knowing up front
   ;; what model to encode), we are going to use embeddings. In this trivial
@@ -214,12 +213,12 @@
                  "System of a Down is on the radio"
                  "I like turtles"
                  "Do you like green eggs and ham"]]
-    (rank-data-by-prompt endpoint prompt
+    (rank-data-by-prompt base-url prompt
                          (zipmap samples
-                                 (map (partial embeddings endpoint) samples)))
-    (rank-data-by-prompt endpoint prompt
+                                 (map (partial embeddings base-url) samples)))
+    (rank-data-by-prompt base-url prompt
                          (zipmap samples
-                                 (map (partial embeddings endpoint) samples)) 3))
+                                 (map (partial embeddings base-url) samples)) 3))
 
   ;; IRL you'd want to create a map of thing to choose (a model, potentially
   ;; with precomputed values) to embeddings for those things to choose.
@@ -230,20 +229,20 @@
         models          (t2/select Card :database_id 1 :dataset true)
         models+         (map
                           (fn [model]
-                            (let [precomputes (model->precomputes model)]
+                            (let [precomputes (model->precomputes base-url model)]
                               (assoc model :precomputes precomputes)))
                           models)
         ranked-models   (->> (zipmap models+ (map (comp :embeddings :precomputes) models+))
-                             (rank-data-by-prompt prompt)
+                             (rank-data-by-prompt base-url prompt)
                              (take top-n))
         context         (map (comp :context :precomputes :object) ranked-models)
         inference-input {:prompt  prompt
                          :context context}]
-    (infer inference-input))
+    (infer base-url inference-input))
 
   ;; Bring it all together.
   (let [prompt "Show me orders where tax is greater than 0"
         top-n  1
         models (t2/select Card :database_id 1 :dataset true)]
-    (infer-il models prompt top-n))
+    (infer-il base-url models prompt top-n))
   )

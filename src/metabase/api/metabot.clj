@@ -1,17 +1,22 @@
 (ns metabase.api.metabot
   (:require
+   [clojure.data.json :as json]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.metabot :as metabot]
+   [metabase.metabot.context-generator :as metabot-context-generator]
    [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.standalone :as mbs]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [ring.util.io :as ring-io]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.io BufferedWriter)))
 
 (set! *warn-on-reflection* true)
 
@@ -159,5 +164,19 @@
   (let [prompt question
         models (t2/select Card :database_id database-id :dataset true)]
     (mbs/infer-il models prompt (or top_n 1))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/database/training/models/:database-id"
+  "Generate a training dataset based on models for this database"
+  [database-id]
+  {database-id su/IntGreaterThanZero}
+  (log/infof "Metabot generating models dataset for db %s." database-id)
+  (ring-io/piped-input-stream
+    (fn [ostream]
+      (with-open [^BufferedWriter w (io/writer ostream)]
+        (doall
+          (doseq [record (metabot-context-generator/model-training-data database-id)]
+            (io/copy (json/write-str (update record :query json/write-str)) w)
+            (.newLine w)))))))
 
 (api/define-routes)
