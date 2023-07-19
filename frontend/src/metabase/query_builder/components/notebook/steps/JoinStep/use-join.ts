@@ -47,10 +47,28 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     [query, stageIndex, join],
   );
 
-  const setTable = useCallback((nextTable: Lib.Joinable) => {
-    _setTable(nextTable);
-    _setConditions([]);
-  }, []);
+  const setTable = useCallback(
+    (nextTable: Lib.Joinable) => {
+      _setTable(nextTable);
+      const suggestedCondition = Lib.suggestedJoinCondition(
+        query,
+        stageIndex,
+        nextTable,
+      );
+
+      if (suggestedCondition) {
+        const nextConditions = [suggestedCondition];
+        _setConditions(nextConditions);
+        let nextJoin = Lib.joinClause(nextTable, nextConditions);
+        nextJoin = Lib.withJoinFields(nextJoin, "all");
+        nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
+        return Lib.join(query, stageIndex, nextJoin);
+      } else {
+        _setConditions([]);
+      }
+    },
+    [query, stageIndex, strategy],
+  );
 
   const addCondition = useCallback(
     (condition: Lib.JoinConditionClause) => {
