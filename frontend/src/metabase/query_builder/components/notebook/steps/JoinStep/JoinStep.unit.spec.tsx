@@ -107,9 +107,15 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
     const query = getNextQuery();
     const [join] = Lib.joins(query, 0);
     const strategy = Lib.displayInfo(query, 0, Lib.joinStrategy(join));
-    const conditions = Lib.joinConditions(join).map(condition =>
-      Lib.externalOp(condition),
-    );
+
+    const conditions = Lib.joinConditions(join).map(condition => {
+      const externalOp = Lib.externalOp(condition);
+      const [lhsColumn, rhsColumn] = externalOp.args.map(column =>
+        Lib.displayInfo(query, 0, column),
+      );
+      return { ...externalOp, lhsColumn, rhsColumn };
+    });
+
     return {
       query,
       join,
@@ -158,13 +164,8 @@ describe("Notebook Editor > Join Step", () => {
     userEvent.click(within(popover).getByText("Created At"));
 
     const [condition] = getRecentJoin().conditions;
-    const [lhsColumn, rhsColumn] = condition.args;
-    expect(Lib.displayInfo(query, 0, lhsColumn).longDisplayName).toBe(
-      "Created At: Month",
-    );
-    expect(Lib.displayInfo(query, 0, rhsColumn).longDisplayName).toBe(
-      "Products → ID",
-    );
+    expect(condition.lhsColumn.longDisplayName).toBe("Created At: Month");
+    expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
   });
 
   it("should clear selected LHS column", () => {
@@ -189,13 +190,8 @@ describe("Notebook Editor > Join Step", () => {
     userEvent.click(within(popover).getByText("Created At"));
 
     const [condition] = getRecentJoin().conditions;
-    const [lhsColumn, rhsColumn] = condition.args;
-    expect(Lib.displayInfo(query, 0, lhsColumn).longDisplayName).toBe(
-      "Product ID",
-    );
-    expect(Lib.displayInfo(query, 0, rhsColumn).longDisplayName).toBe(
-      "Created At: Month",
-    );
+    expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
+    expect(condition.rhsColumn.longDisplayName).toBe("Created At: Month");
   });
 
   it("should clear selected RHS column", () => {

@@ -164,7 +164,7 @@ export type ExternalOp = {
   args: ExpressionArg[];
 };
 
-export type JoinConditionExternalOp = ExternalOp & {
+export type JoinConditionExternalOp = Omit<ExternalOp, "args"> & {
   args: [ColumnMetadata, ColumnMetadata];
 };
 
