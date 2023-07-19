@@ -94,7 +94,8 @@
         [:fields
          [:sequential
           [:map
-           [:field_id integer?]
+           ;; TODO - Investigate this
+           [:field_id [:maybe integer?]]
            [:field_name string?]
            [:field_type string?]]]]]]]]))
 
