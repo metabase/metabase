@@ -193,8 +193,6 @@ export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
   return ML.picker_info(query, metadata);
 }
 
-type JoinOrJoinable = Join | Joinable;
-
 export function joinableColumns(
   query: Query,
   stageIndex: number,
