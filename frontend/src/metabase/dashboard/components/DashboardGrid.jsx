@@ -27,10 +27,16 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import { addUndo } from "metabase/redux/undo";
+import {
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
+  MOBILE_DEFAULT_CARD_HEIGHT,
+} from "metabase/visualizations/shared/utils/sizes";
+
 import { DashboardCard } from "./DashboardGrid.styled";
 
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
+
 import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
 import DashCard from "./DashCard";
 
@@ -233,14 +239,8 @@ class DashboardGrid extends Component {
     const desktop = cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
-      defaultCardHeight: 6,
-      heightByDisplayType: {
-        action: 1,
-        link: 1,
-        text: 2,
-        heading: 2,
-        scalar: 4,
-      },
+      defaultCardHeight: MOBILE_DEFAULT_CARD_HEIGHT,
+      heightByDisplayType: MOBILE_HEIGHT_BY_DISPLAY_TYPE,
     });
     return { desktop, mobile };
   }
