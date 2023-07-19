@@ -115,6 +115,15 @@
     :mbql/join
     (with-join-alias-update-join field-or-join join-alias)))
 
+(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
+  "Get the current join alias associated with something, if it has one."
+  [field-or-join :- [:maybe FieldOrPartialJoin]]
+  (case (lib.dispatch/dispatch-value field-or-join)
+    :dispatch-type/nil nil
+    :field             (:join-alias (lib.options/options field-or-join))
+    :metadata/column   (::join-alias field-or-join)
+    :mbql/join         (:alias field-or-join)))
+
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
   [query        :- ::lib.schema/query
@@ -569,24 +578,45 @@
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
 
+  If you are changing the LHS of a condition for an existing join, pass in that existing join as
+  `existing-join-or-nil` so we can filter out the columns added by it (it doesn't make sense to present the columns
+  added by a join as options for its own LHS) or added by later joins (joins can only depend on things from previous
+  joins). Otherwise pass `nil` when building a new join. See #32005 for more info.
+
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  ([query rhs-column-or-nil]
-   (join-condition-lhs-columns query -1 rhs-column-or-nil))
+  ([query existing-join-or-nil rhs-column-or-nil]
+   (join-condition-lhs-columns query -1 existing-join-or-nil rhs-column-or-nil))
 
-  ([query              :- ::lib.schema/query
-    stage-number       :- :int
+  ([query                :- ::lib.schema/query
+    stage-number         :- :int
+    existing-join-or-nil :- [:maybe ::lib.schema.join/join]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _rhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
-   (sort-join-condition-columns
-    (lib.metadata.calculation/visible-columns query
-                                              stage-number
-                                              (lib.util/query-stage query stage-number)
-                                              {:include-implicitly-joinable? false}))))
+    _rhs-column-or-nil   :- [:maybe lib.metadata/ColumnMetadata]]
+   ;; calculate all the visible columns including the existing join; then filter out any columns that come from the
+   ;; existing join and any subsequent joins. The reason for doing things this way rather than removing the joins
+   ;; before calculating visible columns is that we don't want to either create possibly-invalid queries, or have to
+   ;; rely on the logic in [[metabase.lib.remove-replace/remove-join]] which would cause circular references; this is
+   ;; simpler as well.
+   ;;
+   ;; e.g. if we have joins [J1 J2 J3 J4] and current join = J2, then we want to ignore the visible columns from J2,
+   ;; J3, and J4.
+   (let [existing-join-alias    (current-join-alias existing-join-or-nil)
+         join-aliases-to-ignore (into #{}
+                                      (comp (map current-join-alias)
+                                            (drop-while #(not= % existing-join-alias)))
+                                      (joins query stage-number))]
+     (->> (lib.metadata.calculation/visible-columns query stage-number
+                                                    (lib.util/query-stage query stage-number)
+                                                    {:include-implicitly-joinable? false})
+          (remove (fn [col]
+                    (when-let [col-join-alias (current-join-alias col)]
+                      (contains? join-aliases-to-ignore col-join-alias))))
+          sort-join-condition-columns))))
 
 (mu/defn join-condition-rhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
@@ -747,8 +777,8 @@
      ;; otherwise there ARE existing joins, so this is only the first join if it is the same thing as the first join
      ;; in `existing-joins`.
      (when (join? join-or-joinable)
-       (= (lib.options/uuid join-or-joinable)
-          (lib.options/uuid (first existing-joins)))))))
+       (= (:alias join-or-joinable)
+          (:alias (first existing-joins)))))))
 
 (mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string
   "Get the display name for whatever we are joining. See #32015 for screenshot examples.
