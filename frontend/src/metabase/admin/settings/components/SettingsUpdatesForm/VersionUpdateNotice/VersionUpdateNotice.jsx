@@ -14,6 +14,7 @@ import {
   HostingCTAIconContainer,
   HostingCTARoot,
   NewVersionContainer,
+  OnLatestVersionMessage,
 } from "./VersionUpdateNotice.styled";
 
 export default function VersionUpdateNotice() {
@@ -51,9 +52,9 @@ function OnLatestVersion({ currentVersion }) {
 
   return (
     <div>
-      <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
+      <OnLatestVersionMessage>
         {t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
-      </div>
+      </OnLatestVersionMessage>
       {!isPaidPlan && <HostingCTA />}
     </div>
   );

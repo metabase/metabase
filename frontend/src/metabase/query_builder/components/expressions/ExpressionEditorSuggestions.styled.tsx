@@ -31,3 +31,18 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
       background-color: ${color("brand")};
     `}
 `;
+
+export const SuggestionSpanRoot = styled.span`
+  color: ${color("text-medium")};
+`;
+
+interface SuggestionSpanContentProps {
+  isHighlighted?: boolean;
+}
+
+export const SuggestionSpanContent = styled.span<SuggestionSpanContentProps>`
+  color: ${props =>
+    props.isHighlighted ? color("white") : color("text-dark")};
+  font-weight: bold;
+  background-color: ${props => props.isHighlighted && color("brand")};
+`;

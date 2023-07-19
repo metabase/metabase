@@ -8,6 +8,7 @@ import UserAvatar from "metabase/components/UserAvatar";
 import { color } from "metabase/lib/colors";
 import Typeahead from "metabase/hoc/Typeahead";
 import { AddRow } from "./AddRow";
+import { AddMemberAutocompleteSuggestionRoot } from "./AddMemberRow.styled";
 
 AddMemberRow.propTypes = {
   users: PropTypes.array.isRequired,
@@ -146,8 +147,8 @@ AddMemberAutocompleteSuggestion.propTypes = {
 
 function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
   return (
-    <div
-      className={cx("px2 py1 cursor-pointer", { "bg-brand": selected })}
+    <AddMemberAutocompleteSuggestionRoot
+      isSelected={selected}
       onClick={onClick}
     >
       <span className="inline-block mr2">
@@ -156,6 +157,6 @@ function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
       <span className={cx("h3", { "text-white": selected })}>
         {user.common_name}
       </span>
-    </div>
+    </AddMemberAutocompleteSuggestionRoot>
   );
 }

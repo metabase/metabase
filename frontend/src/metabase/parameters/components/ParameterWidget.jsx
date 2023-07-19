@@ -1,13 +1,12 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { Icon } from "metabase/core/components/Icon";
-import { color } from "metabase/lib/colors";
-import FieldSet from "../../components/FieldSet";
 import ParameterValueWidget from "./ParameterValueWidget";
-
-import S from "./ParameterWidget.css";
+import {
+  ParameterContainer,
+  ParameterFieldSet,
+} from "./ParameterWidget.styled";
 
 export default class ParameterWidget extends Component {
   state = {
@@ -82,12 +81,11 @@ export default class ParameterWidget extends Component {
       const legend = fieldHasValueOrFocus ? parameter.name : "";
 
       return (
-        <FieldSet
+        <ParameterFieldSet
           legend={legend}
           noPadding={true}
-          className={cx(className, S.container, {
-            "border-brand": fieldHasValueOrFocus,
-          })}
+          fieldHasValueOrFocus={fieldHasValueOrFocus}
+          className={className}
         >
           {this.renderPopover(
             parameter.value,
@@ -96,35 +94,23 @@ export default class ParameterWidget extends Component {
             isFullscreen,
           )}
           {children}
-        </FieldSet>
+        </ParameterFieldSet>
       );
     };
 
     const renderEditing = () => (
-      <div
-        className={cx(
-          className,
-          "flex align-center bordered rounded cursor-pointer text-bold mr1 mb1",
-          {
-            "bg-brand text-white": isEditingParameter,
-            "text-brand-hover bg-white": !isEditingParameter,
-          },
-        )}
+      <ParameterContainer
+        isEditingParameter={isEditingParameter}
         onClick={() =>
           setEditingParameter(isEditingParameter ? null : parameter.id)
         }
-        style={{
-          padding: 8,
-          width: 170,
-          borderColor: isEditingParameter && color("brand"),
-        }}
       >
         <div className="mr1" onClick={e => e.stopPropagation()}>
           {dragHandle}
         </div>
         {parameter.name}
         <Icon className="flex-align-right" name="gear" size={16} />
-      </div>
+      </ParameterContainer>
     );
 
     if (isFullscreen) {
