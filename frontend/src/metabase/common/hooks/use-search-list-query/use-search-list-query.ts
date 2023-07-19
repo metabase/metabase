@@ -1,5 +1,9 @@
 import Search from "metabase/entities/search";
-import { CollectionItem, SearchListQuery } from "metabase-types/api";
+import {
+  CollectionItem,
+  SearchListQuery,
+  SearchResults,
+} from "metabase-types/api";
 import {
   useEntityListQuery,
   UseEntityListQueryProps,
@@ -8,7 +12,7 @@ import {
 
 export const useSearchListQuery = (
   props: UseEntityListQueryProps<SearchListQuery> = {},
-): UseEntityListQueryResult<CollectionItem> => {
+): UseEntityListQueryResult<CollectionItem, Omit<SearchResults, "data">> => {
   return useEntityListQuery(props, {
     fetchList: Search.actions.fetchList,
     getList: Search.selectors.getList,

@@ -11,7 +11,11 @@ export interface EntityQueryOptions<TQuery = never> {
   entityQuery?: TQuery;
 }
 
-export interface UseEntityListOwnProps<TItem, TQuery = never> {
+export interface UseEntityListOwnProps<
+  TItem,
+  TQuery = never,
+  TMetadata = never,
+> {
   fetchList: (query?: TQuery, options?: EntityFetchOptions) => Action;
   getList: (
     state: State,
@@ -29,7 +33,7 @@ export interface UseEntityListOwnProps<TItem, TQuery = never> {
   getListMetadata: (
     state: State,
     options: EntityQueryOptions<TQuery>,
-  ) => unknown;
+  ) => TMetadata | undefined;
 }
 
 export interface UseEntityListQueryProps<TQuery = never> {
@@ -38,14 +42,14 @@ export interface UseEntityListQueryProps<TQuery = never> {
   enabled?: boolean;
 }
 
-export interface UseEntityListQueryResult<TItem> {
+export interface UseEntityListQueryResult<TItem, TMetadata = never> {
   data?: TItem[];
-  metadata?: unknown;
+  metadata?: TMetadata;
   isLoading: boolean;
   error: unknown;
 }
 
-export const useEntityListQuery = <TItem, TQuery = never>(
+export const useEntityListQuery = <TItem, TQuery = never, TMetadata = never>(
   {
     query: entityQuery,
     reload = false,
@@ -58,8 +62,8 @@ export const useEntityListQuery = <TItem, TQuery = never>(
     getLoaded,
     getError,
     getListMetadata,
-  }: UseEntityListOwnProps<TItem, TQuery>,
-): UseEntityListQueryResult<TItem> => {
+  }: UseEntityListOwnProps<TItem, TQuery, TMetadata>,
+): UseEntityListQueryResult<TItem, TMetadata> => {
   const options = { entityQuery };
   const data = useSelector(state => getList(state, options));
   const metadata = useSelector(state => getListMetadata(state, options));
