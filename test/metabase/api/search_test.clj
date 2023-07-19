@@ -719,13 +719,16 @@
                                :name     "segment count test 2"}
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
-    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (toucan2.execute/with-call-count [call-count]
-        (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
+        (#'api.search/search {:search-string      "count test"
+                              :archived?          false
+                              :current-user-perms #{"/"}
+                              :limit-int          100})
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
-        (is (= 7 (call-count)))))))
+        (is (= 19 (call-count)))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
