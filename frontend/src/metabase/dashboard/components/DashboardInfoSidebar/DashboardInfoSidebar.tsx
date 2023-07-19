@@ -85,6 +85,7 @@ export function DashboardInfoSidebar({
           initialValue={dashboard.description}
           isDisabled={!canWrite}
           onChange={handleDescriptionChange}
+          isOptional
           isMultiline
           isMarkdown
           placeholder={t`Add description`}
