@@ -14,7 +14,6 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.action :as action]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
