@@ -8,6 +8,7 @@ export function fillParametersInText({
   dashboard,
   parameterValues,
   text,
+  escapeMarkdown = false,
 }) {
   const parametersByTag = dashcard?.parameter_mappings?.reduce(
     (acc, mapping) => {
@@ -33,7 +34,7 @@ export function fillParametersInText({
     // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
     // translated the same way.
     return withInstanceLanguage(() =>
-      substitute_tags(text, parametersByTag, siteLocale()),
+      substitute_tags(text, parametersByTag, siteLocale(), escapeMarkdown),
     );
   }
 

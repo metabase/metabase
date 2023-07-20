@@ -59,6 +59,7 @@ export function Text({
         dashboard,
         parameterValues,
         text: settings.text,
+        escapeMarkdown: true,
       }),
     [dashcard, dashboard, parameterValues, settings],
   );
