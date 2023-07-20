@@ -87,7 +87,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-test
-  (let [query   lib.tu/query-with-card-source-table
+  (let [query   lib.tu/query-with-source-card
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -170,7 +170,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-with-expressions-test
-  (let [query   (-> lib.tu/query-with-card-source-table
+  (let [query   (-> lib.tu/query-with-source-card
                     (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]

@@ -212,8 +212,8 @@
                   (lib/breakoutable-columns query))))))))
 
 (deftest ^:parallel breakoutable-columns-source-card-test
-  (doseq [varr [#'lib.tu/query-with-card-source-table
-                #'lib.tu/query-with-card-source-table-with-result-metadata]
+  (doseq [varr [#'lib.tu/query-with-source-card
+                #'lib.tu/query-with-source-card-with-result-metadata]
           :let [query @varr]]
     (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
       (let [columns (lib/breakoutable-columns query)]
@@ -371,7 +371,7 @@
 
 (deftest ^:parallel breakoutable-columns-with-source-card-e2e-test
   (testing "A column that comes from a source Card (Saved Question/Model/etc) can be broken out by."
-    (let [query lib.tu/query-with-card-source-table]
+    (let [query lib.tu/query-with-source-card]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (let [name-col (m/find-first #(= (:name %) "USER_ID")
                                      (lib/breakoutable-columns query))]

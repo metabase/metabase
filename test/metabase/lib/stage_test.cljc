@@ -70,7 +70,7 @@
                 (lib.metadata.calculation/returned-columns query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
-  (let [query lib.tu/query-with-card-source-table]
+  (let [query lib.tu/query-with-source-card]
     (is (= "My Card"
            (lib.metadata.calculation/display-name query)))))
 
@@ -167,8 +167,8 @@
 
 (deftest ^:parallel query-with-source-card-include-implicit-columns-test
   (testing "visible-columns should not include implicitly joinable columns when the query has a source Card (#30950)"
-    (doseq [varr [#'lib.tu/query-with-card-source-table
-                  #'lib.tu/query-with-card-source-table-with-result-metadata]
+    (doseq [varr [#'lib.tu/query-with-source-card
+                  #'lib.tu/query-with-source-card-with-result-metadata]
             :let [query @varr]]
       (testing (pr-str varr)
         (is (=? [{:name                     "USER_ID"
