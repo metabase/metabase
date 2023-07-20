@@ -16,7 +16,7 @@ import { Icon } from "metabase/core/components/Icon";
 import CheckBox from "metabase/core/components/CheckBox";
 import NoResults from "assets/img/no_results.svg";
 import { getRowValuesByColumns, getColumnName } from "../../lib/mode";
-import { RemoveRowButton } from "./AuditTableVisualization.styled";
+import { HeaderCell, RemoveRowButton } from "./AuditTableVisualization.styled";
 
 const propTypes = {
   series: PropTypes.array,
@@ -135,14 +135,12 @@ export class AuditTableVisualization extends Component {
                 sorting && sorting.column === getColumnName(column);
 
               return (
-                <th
+                <HeaderCell
                   key={colIndex}
+                  isSortable={isSortable}
+                  isSortedByColumn={isSortedByColumn}
+                  isRightAligned={isColumnRightAligned(column)}
                   onClick={() => this.handleColumnHeaderClick(column)}
-                  className={cx("text-nowrap", {
-                    "text-right": isColumnRightAligned(column),
-                    "text-brand": isSortedByColumn,
-                    "cursor-pointer text-brand-hover": isSortable,
-                  })}
                 >
                   {formatColumn(cols[colIndex])}
                   {isSortedByColumn && (
@@ -152,7 +150,7 @@ export class AuditTableVisualization extends Component {
                       size={10}
                     />
                   )}
-                </th>
+                </HeaderCell>
               );
             })}
           </tr>
