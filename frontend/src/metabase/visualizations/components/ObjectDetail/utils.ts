@@ -143,8 +143,16 @@ export const getActionItems = ({
   onUpdate: (action: WritebackAction) => void;
 }) => {
   const actionItems = [];
-  const deleteAction = actions.find(isValidImplicitDeleteAction);
-  const updateAction = actions.find(isValidImplicitUpdateAction);
+  /**
+   * Public actions require an additional endpoint which is out of scope
+   * of Milestone 1 in #32320 epic.
+   *
+   * @see https://github.com/metabase/metabase/issues/32320
+   * @see https://metaboat.slack.com/archives/C057T1QTB3L/p1689845931726009?thread_ts=1689665950.493399&cid=C057T1QTB3L
+   */
+  const privateActions = actions.filter(action => !action.public_uuid);
+  const deleteAction = privateActions.find(isValidImplicitDeleteAction);
+  const updateAction = privateActions.find(isValidImplicitUpdateAction);
 
   if (updateAction && canRunAction(updateAction, databases)) {
     const action = () => onUpdate(updateAction);
