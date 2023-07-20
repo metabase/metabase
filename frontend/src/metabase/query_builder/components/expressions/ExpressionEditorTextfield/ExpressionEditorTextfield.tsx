@@ -26,6 +26,7 @@ import {
 } from "./ExpressionEditorTextfield.styled";
 
 ace.config.set("basePath", "/assets/ui/");
+ace.config.set("useStrictCSP", true);
 
 type ErrorWithMessage = { message: string; pos?: number; len?: number };
 
