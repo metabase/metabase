@@ -137,7 +137,7 @@
    {:scorer prefix-scorer :name "prefix" :weight 1}])
 
 (def ^:private model->sort-position
-  (zipmap (reverse search-config/all-models) (range)))
+  (zipmap (reverse search-config/models-search-order) (range)))
 
 (defn- model-score
   [{:keys [model]}]

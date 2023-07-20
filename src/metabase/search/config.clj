@@ -1,8 +1,11 @@
 (ns metabase.search.config
   (:require
+   [malli.core :as mc]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli.schema :as ms]))
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the {0} navbar?"
@@ -59,12 +62,33 @@
 
   (column-with-model-alias \"card\" :id) => :card.id)"
   [model-string column]
-  (keyword (name (model->alias model-string)) (name column)))
+  (keyword (str (name (model->alias model-string)) "." (name column))))
 
 (def all-models
-  "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
+  "All valid models to search for. "
+  (set (keys model-to-db-model)))
+
+(def models-search-order
+  "The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
-  (keys model-to-db-model))
+  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+
+(def SearchableModel
+  "Schema for searchable models"
+  (into [:enum] all-models))
+
+(def SearchContext
+  "Map with the various allowed search parameters, used to construct the SQL query."
+  (mc/schema
+    [:map {:closed true}
+     [:search-string                       [:maybe ms/NonBlankString]]
+     [:archived?                           :boolean]
+     [:models                              [:set SearchableModel]]
+     [:current-user-perms                  [:set perms/PathMalliSchema]]
+     [:created-by         {:optional true} [:maybe ms/PositiveInt]]
+     [:table-db-id        {:optional true} [:maybe ms/PositiveInt]]
+     [:limit-int          {:optional true} [:maybe ms/Int]]
+     [:offset-int         {:optional true} [:maybe ms/Int]]]))
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."

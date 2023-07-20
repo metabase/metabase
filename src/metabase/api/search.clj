@@ -4,7 +4,6 @@
    [compojure.core :refer [GET]]
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -12,9 +11,8 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.config :as search-config]
+   [metabase.search.config :as search-config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search-util]
@@ -29,22 +27,6 @@
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private SearchableModel
-  (into [:enum] search-config/all-models))
-
-(def ^:private SearchContext
-  "Map with the various allowed search parameters, used to construct the SQL query."
-  (mc/schema
-    [:map {:closed true}
-     [:search-string                       [:maybe ms/NonBlankString]]
-     [:archived?                           :boolean]
-     [:models                              [:set SearchableModel]]
-     [:current-user-perms                  [:set perms/PathMalliSchema]]
-     [:created-by         {:optional true} [:maybe ms/PositiveInt]]
-     [:table-db-id        {:optional true} [:maybe ms/PositiveInt]]
-     [:limit-int          {:optional true} [:maybe ms/Int]]
-     [:offset-int         {:optional true} [:maybe ms/Int]]]))
 
 (def ^:private HoneySQLColumn
   [:or
@@ -177,23 +159,17 @@
                [:lower column]
                (wildcard-match token)])))))
 
-(defn- build-optional-filters
-  [model {:keys [created-by] :as _search-context}]
-  (cond-> []
-    (int? created-by) (conj (search.filter/created-by-where-clause model created-by))))
+
 
 (mu/defn ^:private base-where-clause-for-model :- [:fn (fn [x] (and (seq x) (#{:and :inline :=} (first x))))]
-  [model                             :- SearchableModel
-   {:keys [search-string archived?]
-    :as search-context}              :- SearchContext]
-  (let [archived-clause         (search.filter/archived-where-clause model archived?)
-        optional-filters-clause (build-optional-filters model search-context)
-        search-clause           (search-string-clause model search-string
-                                                      (map (let [model-alias (name (search-config/model->alias model))]
-                                                             (fn [column]
-                                                               (keyword (str (name model-alias) "." (name column)))))
-                                                           (search-config/searchable-columns-for-model model)))]
-    (into [:and] (filter seq [archived-clause search-clause optional-filters-clause]))))
+  [model          :- SearchableModel
+   search-context :- SearchContext]
+  (let [{:keys [search-string]} search-context
+        filters       (search.filter/build-filters model search-context)
+        search-clause (search-string-clause model search-string
+                                            (map #(search-config/column-with-model-alias model %)
+                                                 (search-config/searchable-columns-for-model model)))]
+    (into [:and] (filter seq (conj filters search-clause)))))
 
 (mu/defn ^:private base-query-for-model :- [:map {:closed true} [:select :any] [:from :any] [:where :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`

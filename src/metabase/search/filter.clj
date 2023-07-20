@@ -11,13 +11,14 @@
   that supports the filter should define its own method for the filter."
   (:require
    [clojure.set :as set]
-   [metabase.search.config :as search.config]))
+   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.util.malli :as mu]))
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
 
 ;; ------------------------------------------------------------------------------------------------;;
-;;                                         Optional filters                                        ;;
+;;                                            Helper fns                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
 (def ^:private feature->supported-models
@@ -27,21 +28,11 @@
   [{:keys [created-by] :as _search-context}]
   (boolean (some some? [created-by])))
 
-(defn search-context->applicable-models
-  "Given a search-context, retuns the list of models that can be applied to it."
-  [{:keys [created-by models] :as search-context}]
-  (if-not (has-optional-filters? search-context)
-    models
-    (cond-> #{}
-      (some? created-by) (set/union (:created-by feature->supported-models))
-
-      true (set/intersection models))))
-
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti archived-where-clause
+(defmulti ^:private archived-where-clause
   "Clause to filter by the archived status of the entity."
   {:arglists '([model archived?])}
   (fn [model _] model))
@@ -76,7 +67,7 @@
 ;;                                         Optional filters                                        ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti created-by-where-clause
+(defmulti ^:private created-by-where-clause
   "Clause to filter by the creator of the entity."
   {:arglists '([model creator-id])}
   (fn [model creator-id]
@@ -102,3 +93,31 @@
 (defmethod created-by-where-clause "action"
   [model creator-id]
   [:= (search.config/column-with-model-alias model :creator_id) creator-id])
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                        Public functions                                         ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(mu/defn search-context->applicable-models :- [:set SearchableModel]
+  "Given a search-context, retuns the list of models that can be applied to it."
+  [{:keys [created-by models] :as search-context} :- SearchContext]
+  (if-not (has-optional-filters? search-context)
+    models
+    (cond-> #{}
+      (some? created-by) (set/union (:created-by feature->supported-models))
+
+      true (set/intersection models))))
+
+(defn- build-optional-filters
+  [model {:keys [created-by] :as _search-context}]
+  (cond-> []
+    (int? created-by) (conj (created-by-where-clause model created-by))))
+
+(mu/defn build-filters
+  "Build the search filters for a model."
+  [model          :- SearchableModel
+   search-context :- SearchContext]
+  (let [{:keys [archived?]} search-context
+        archived-filter  (archived-where-clause model archived?)
+        optional-filter  (build-optional-filters model search-context)]
+    (filter seq (conj optional-filter archived-filter))))

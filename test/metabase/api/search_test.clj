@@ -506,17 +506,17 @@
   (testing "Sandboxing inhibits searching indexes"
     (binding [api/*current-user-id* (mt/user->id :rasta)]
       (is (= [:and
-              [:inline [:= 1 1]]
-              [:or [:like [:lower :model-index-value.name] "%foo%"]]]
+              [:or [:like [:lower :model-index-value.name] "%foo%"]]
+              [:inline [:= 1 1]]]
              (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                          :search-string "foo"
-                                                                         :models             (set search-config/all-models)
+                                                                         :models             search-config/all-models
                                                                          :current-user-perms #{"/"}})))
       (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-        (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
+        (is (= [:and [:or [:= 0 1]] [:inline [:= 1 1]]]
                (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                            :search-string "foo"
-                                                                           :models             (set search-config/all-models)
+                                                                           :models             search-config/all-models
                                                                            :current-user-perms #{"/"}})))))))
 
 (deftest archived-results-test
@@ -725,7 +725,7 @@
       (toucan2.execute/with-call-count [call-count]
         (#'api.search/search {:search-string      "count test"
                               :archived?          false
-                              :models             (set search-config/all-models)
+                              :models             search-config/all-models
                               :current-user-perms #{"/"}
                               :limit-int          100})
         ;; the call count number here are expected to change if we change the search api
@@ -778,10 +778,10 @@
 
           (testing "results contains only entities with the specified creator"
             (is (= [[dashboard-id "dashboard" "Filter Dashboard 1"]
-                    [model-id     "dataset"   "Filter Dataset 1"]
-                    [action-id    "action"    "Filter Action 1"]
                     [card-id      "card"      "Filter Card 1"]
-                    [card-id-2    "card"      "Filter Card 2"]]
+                    [card-id-2    "card"      "Filter Card 2"]
+                    [model-id     "dataset"   "Filter Dataset 1"]
+                    [action-id    "action"    "Filter Action 1"]]
                    (->> (:data resp)
                         sorted-results
                         (map (juxt :id :model :name))))))))
