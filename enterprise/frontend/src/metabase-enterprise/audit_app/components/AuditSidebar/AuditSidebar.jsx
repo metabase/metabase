@@ -1,9 +1,11 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-
-import { IndexLink } from "react-router";
 import cx from "classnames";
-import Link from "metabase/core/components/Link";
+import {
+  SidebarIndexLink,
+  SidebarItemLink,
+  SidebarItemRoot,
+} from "./AuditSidebar.styled";
 
 const AuditSidebarSection = ({ title, children }) => (
   <div className="pb2">
@@ -19,25 +21,17 @@ const AuditSidebarSectionTitle = ({ title }) => (
 );
 
 const AuditSidebarItem = ({ title, path }) => (
-  <div
-    className={cx("my2 cursor-pointer text-brand-hover", {
-      disabled: !path,
-    })}
-  >
+  <SidebarItemRoot isDisabled={!path}>
     {path ? (
-      <Link className="no-decoration" activeClassName="text-brand" to={path}>
+      <SidebarItemLink to={path} activeClassName="active">
         {title}
-      </Link>
+      </SidebarItemLink>
     ) : (
-      <IndexLink
-        className="no-decoration"
-        activeClassName="text-brand"
-        to="/admin/audit"
-      >
+      <SidebarIndexLink to="/admin/audit" activeClassName="active">
         {title}
-      </IndexLink>
+      </SidebarIndexLink>
     )}
-  </div>
+  </SidebarItemRoot>
 );
 
 const AuditSidebarContainer = ({ className, style, children }) => (
