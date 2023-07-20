@@ -67,7 +67,7 @@ describeEE("scenarios > premium > content verification", () => {
   context("premium token with paid features", () => {
     beforeEach(() => setTokenFeatures("all"));
 
-    describe("as an admin", () => {
+    describe("an admin", () => {
       it("should be able to verify and unverify a saved question", () => {
         visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
