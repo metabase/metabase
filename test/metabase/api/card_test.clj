@@ -2735,6 +2735,58 @@
                              (-> response :values set)))
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
+(defmacro let-url
+  "Like normal `let`, but adds `testing` context with the `url` you've bound."
+  {:style/indent 1}
+  [[url-binding url] & body]
+  `(let [url# ~url
+         ~url-binding url#]
+     (testing (str "\nGET /api/" url# "\n")
+       ~@body)))
+
+(defn take-n-values
+  "Call `take` on the `:values` of the result of a field values endpoint.
+
+  (take-n-values 1 {:values          [1 2 3]
+                    :has_more_values false})
+  -> {:values          [1]
+      :has_more_values false}"
+  [result n]
+  (update result :values #(take n %)))
+
+(deftest parameters-with-field-to-field-remapping-test
+  (let [param-key "id_param_id"]
+    (t2.with-temp/with-temp
+      [:model/Card card {:dataset_query
+                         {:database (mt/id)
+                          :type     :native
+                          :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{ID}}"
+                                     :template-tags {"ID" {:id           param-key
+                                                           :name         "ID"
+                                                           :display_name "ID"
+                                                           :type         :dimension
+                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                           :required     true}}}}
+                         :name       "native card with ID field filter"
+                         :parameters [{:id     param-key,
+                                       :type   :id,
+                                       :target [:dimension [:template-tag "ID"]],
+                                       :name   "ID",
+                                       :slug   "ID"}]}]
+      (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
+        (testing "without search query"
+          (let-url [url (param-values-url card param-key)]
+            (is (=? {:has_more_values true
+                     :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
+                    (-> (mt/user-http-request :rasta :get 200 url)
+                        (take-n-values 3))))))
+        (testing "with search query"
+          (let-url [url (param-values-url card param-key "pan")]
+            (is (=? {:has_more_values true
+                     :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
+                    (-> (mt/user-http-request :rasta :get 200 url)
+                        (take-n-values 3))))))))))
+
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
     (testing "we could get the values"
