@@ -7,7 +7,6 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   enableTracking,
-  describeEE,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
@@ -163,65 +162,34 @@ describeWithSnowplow(
   },
 );
 
-describeEE("permissions", () => {
+describe("permissions", () => {
   it("should not snow you upload buttons if you are a sandboxed user", () => {
-    restore("postgres-writable");
+    restore("postgres-12");
     cy.signInAsAdmin();
+
     setTokenFeatures("all");
     enableUploads("postgres");
 
-    const now = Date.now();
-
-    // We need up upload a file to the writable DB so that we can give
-    // out sandboxed user access to *something* on the upload DB
-    cy.readFile(`e2e/support/assets/${validTestFiles[0].fileName}`).then(
-      fixture => {
-        const blob = Cypress.Blob.binaryStringToBlob(
-          fixture,
-          "application/text",
-        );
-        const formData = new FormData();
-        formData.append(
-          "file",
-          blob,
-          `${validTestFiles[0].fileName} Permission Test ${now}`,
-        );
-        formData.append("collection_id", "root");
-
-        cy.request({
-          url: "/api/card/from-csv",
-          method: "POST",
-          headers: {
-            "content-type": "multipart/form-data",
+    //Deny access for all users to wriable DB
+    cy.updatePermissionsGraph({
+      1: {
+        [WRITABLE_DB_ID]: {
+          data: {
+            schemas: "block",
           },
-          body: formData,
-        });
+        },
       },
-    );
+    });
 
     cy.request("GET", `/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-      ({ body: schemas }) => {
-        const uploadedTable = schemas.find(schema =>
-          schema.display_name.includes(`Permission Test ${now}`),
-        );
+      ({ body: tables }) => {
         cy.request("GET", `/api/database/${WRITABLE_DB_ID}/fields`).then(
-          ({ body: fieldData }) => {
-            // Sandbox access to the newly uploaded table
+          ({ body: fields }) => {
+            // Sandbox a table so that the sandboxed user will have read access to a table
             cy.sandboxTable({
-              table_id: uploadedTable.id,
+              table_id: tables[0].id,
               attribute_remappings: {
-                attr_uid: ["dimension", ["field", fieldData[0].id, null]],
-              },
-            });
-
-            //Block "all users" group from having access to the whole schema
-            cy.updatePermissionsGraph({
-              1: {
-                [uploadedTable.db_id]: {
-                  data: {
-                    schemas: "block",
-                  },
-                },
+                attr_uid: ["dimension", ["field", fields[0].id, null]],
               },
             });
           },
@@ -231,11 +199,10 @@ describeEE("permissions", () => {
 
     cy.signInAsSandboxedUser();
     cy.visit("/collection/root");
-
     // No upload icon should appear for the sandboxed user
     cy.findByTestId("collection-menu").within(() => {
       cy.get(".Icon-calendar").should("exist");
-      cy.get(".Icon-upload").should("not.exist");
+      cy.findByLabelText("Upload data").should("not.exist");
     });
   });
 });
