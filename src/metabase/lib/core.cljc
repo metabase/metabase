@@ -190,6 +190,7 @@
    describe-top-level-key
    display-name
    display-info
+   field-id
    suggested-name
    type-of]
   [lib.metric

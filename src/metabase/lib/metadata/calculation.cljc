@@ -91,6 +91,33 @@
                          :stage-number stage-number}
                         e)))))))
 
+(defmulti field-id-method
+  "Find the field id for something or nil."
+  {:arglists '([query stage-number x])}
+  (fn [_query _stage-number x]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod field-id-method :default
+  [_query _stage-number _x]
+  nil)
+
+(mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
+  "Find the field id for something or nil."
+  ([query x]
+   (field-id query -1 x))
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    x]
+   (try
+     (field-id-method query stage-number x)
+     (catch #?(:clj Throwable :cljs :default) e
+       (throw (ex-info (i18n/tru "Error calculating column id for {0}: {1}" (pr-str x) (ex-message e))
+                       {:x            x
+                        :query        query
+                        :stage-number stage-number}
+                       e))))))
+
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
   ;; hopefully this is dev-facing only, so not i18n'ed.

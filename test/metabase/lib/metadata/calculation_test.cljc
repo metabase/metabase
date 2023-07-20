@@ -81,3 +81,13 @@
   (testing "nil has no visible columns (#31366)"
     (is (empty? (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib.metadata.calculation/visible-columns nil))))))
+
+(deftest ^:parallel field-id-test
+  (let [id-meta (meta/field-metadata :venues :id)
+        query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/with-fields [id-meta])
+                  (lib/expression "foo" (lib/= id-meta 10)))
+        venues-id (:id id-meta)]
+    (is (= venues-id (lib/field-id query -1 id-meta)))
+    (is (= venues-id (lib/field-id query -1 (first (lib/fields query)))))
+    (is (nil? (lib/field-id query -1 (first (lib/expressions query)))))))

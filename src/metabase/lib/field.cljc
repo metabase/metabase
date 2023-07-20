@@ -270,6 +270,15 @@
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     "unknown_field"))
 
+(defmethod lib.metadata.calculation/field-id-method :metadata/column
+  [_query _stage-number {field-id :id}]
+  field-id)
+
+(defmethod lib.metadata.calculation/field-id-method :field
+  [query stage-number [_tag _id-or-name, :as field-clause]]
+  (when-let [field-metadata (resolve-field-metadata query stage-number field-clause)]
+    (lib.metadata.calculation/field-id query stage-number field-metadata)))
+
 (defmethod lib.metadata.calculation/display-info-method :metadata/column
   [query stage-number field-metadata]
   (merge
