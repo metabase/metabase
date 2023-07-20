@@ -5,6 +5,7 @@ export function useJoinCondition(
   query: Lib.Query,
   stageIndex: number,
   table: Lib.Joinable,
+  join?: Lib.Join,
   condition?: Lib.JoinConditionClause,
 ) {
   const externalOp = condition ? Lib.externalOp(condition) : undefined;
@@ -26,8 +27,8 @@ export function useJoinCondition(
   );
 
   const lhsColumns = useMemo(
-    () => Lib.joinConditionLHSColumns(query, stageIndex, rhsColumn),
-    [query, stageIndex, rhsColumn],
+    () => Lib.joinConditionLHSColumns(query, stageIndex, join, rhsColumn),
+    [query, stageIndex, join, rhsColumn],
   );
 
   const rhsColumns = useMemo(

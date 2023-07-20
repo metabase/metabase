@@ -91,6 +91,7 @@ export function JoinStep({
         query={query}
         stageIndex={stageIndex}
         condition={condition}
+        join={join}
         table={table}
         color={color}
         readOnly={readOnly}
@@ -148,6 +149,7 @@ interface JoinConditionProps {
   query: Lib.Query;
   stageIndex: number;
   condition?: Lib.JoinConditionClause;
+  join?: Lib.Join;
   table: Lib.Joinable;
   readOnly?: boolean;
   color: string;
@@ -158,6 +160,7 @@ function JoinCondition({
   query,
   stageIndex,
   condition,
+  join,
   table,
   readOnly,
   color,
@@ -173,7 +176,7 @@ function JoinCondition({
     setOperator,
     setLHSColumn,
     setRHSColumn,
-  } = useJoinCondition(query, stageIndex, table, condition);
+  } = useJoinCondition(query, stageIndex, table, join, condition);
 
   const lhsColumnGroup = Lib.groupColumns(lhsColumns);
   const rhsColumnGroup = Lib.groupColumns(rhsColumns);
