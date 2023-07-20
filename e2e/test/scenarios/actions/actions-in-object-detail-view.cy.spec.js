@@ -50,6 +50,7 @@ describe("Model actions in object detail view", () => {
 
       asAdmin(() => {
         createBasicModelActions(modelId);
+
         assertActionsDropdownExists(modelId);
       });
 
@@ -61,16 +62,12 @@ describe("Model actions in object detail view", () => {
 });
 
 function asAdmin(callback) {
-  cy.visit("/");
-  cy.reload();
   cy.signInAsAdmin();
   callback();
   cy.signOut();
 }
 
 function asNormalUser(callback) {
-  cy.visit("/");
-  cy.reload();
   cy.signInAsNormalUser();
   callback();
   cy.signOut();
