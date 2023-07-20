@@ -12,7 +12,7 @@ const propTypes = {
   className: PropTypes.string,
 };
 
-const VisibilityToggler = ({
+export const VisibilityToggler = ({
   isOpen,
   readOnly,
   toggleEditor,
@@ -42,5 +42,3 @@ const VisibilityToggler = ({
 };
 
 VisibilityToggler.propTypes = propTypes;
-
-export default VisibilityToggler;
