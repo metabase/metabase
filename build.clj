@@ -86,17 +86,18 @@
 
 (defn copy-resources! [edition basis]
   (c/step "Copy resources"
-    ;; technically we don't NEED to copy the Clojure source files but it doesn't really hurt anything IMO.
     (doseq [path (all-paths basis)]
-      (c/step (format "Copy %s" path)
-        (b/copy-dir {:target-dir class-dir, :src-dirs [path]})))))
+     (when (not (#{"src" "shared/src" "enterprise/backend/src"} path))
+       (c/step (format "Copy %s" path)
+         (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
 
 (defn create-uberjar! [basis]
   (c/step "Create uberjar"
     (with-duration-ms [duration-ms]
       (d/uber {:class-dir class-dir
                :uber-file uberjar-filename
-               :basis     basis})
+               :basis     basis
+               :exclude   [".*metabase.*.clj[c|s]?$"]})
       (c/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def manifest-entries
