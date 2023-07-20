@@ -27,16 +27,14 @@ describe("Model actions in object detail view", () => {
 
   it("scenario", () => {
     /* Step 1: as a normal user, verify that actions are not visible */
-    asNormalUser(() => {
-      cy.get("@modelId").then(modelId => {
+    cy.get("@modelId").then(modelId => {
+      asNormalUser(() => {
         assertActionsTabNotExists(modelId);
         assertActionsDropdownNotExists(modelId);
       });
-    });
 
-    /* Step 2: as an admin, verify actions are not visible and then enable actions in the model */
-    asAdmin(() => {
-      cy.get("@modelId").then(modelId => {
+      /* Step 2: as an admin, verify actions are not visible and then enable actions in the model */
+      asAdmin(() => {
         assertActionsTabNotExists(modelId);
         assertActionsDropdownNotExists(modelId);
 
@@ -52,10 +50,8 @@ describe("Model actions in object detail view", () => {
         assertActionsTabExists(modelId);
         assertActionsDropdownExists(modelId);
       });
-    });
 
-    asNormalUser(() => {
-      cy.get("@modelId").then(modelId => {
+      asNormalUser(() => {
         assertActionsTabExists(modelId);
         assertActionsDropdownExists(modelId);
       });
