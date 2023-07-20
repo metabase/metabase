@@ -600,10 +600,10 @@
                       query
                       (meta/table-metadata :categories)))
       ;; plain query
-      (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      lib.tu/venues-query
 
       ;; query with an aggregation (FK column is not exported, but is still "visible")
-      (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (-> lib.tu/venues-query
           (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel suggested-join-condition-pk->fk-test
