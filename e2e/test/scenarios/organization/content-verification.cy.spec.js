@@ -35,7 +35,7 @@ describeEE("scenarios > premium > content verification", () => {
         },
       }).then(({ body, status, statusText }) => {
         expect(body).to.eq(
-          "This API endpoint is only enabled if you have a premium token with the :content-verification feature.",
+          "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/",
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");
