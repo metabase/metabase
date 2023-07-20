@@ -16,7 +16,6 @@ export function sortCardsForMobile(a, b) {
   // for items on the same row, sort by x position
   return a.x - b.x;
 }
-
 export function generateMobileLayout({
   desktopLayout,
   defaultCardHeight,
