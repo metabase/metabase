@@ -21,14 +21,19 @@ function Editor() {
   });
   const [hydrated, setHydrated] = useState(false);
   const [saveStatus, setSaveStatus] = useState("Saved");
+  const [showSave, setShowSave] = useState(false);
 
   const debouncedUpdates = useDebouncedCallback(async ({ editor }) => {
     const json = editor.getJSON();
+    setShowSave(true);
     setSaveStatus("Saving...");
     setContent(json);
     // Simulate a delay in saving.
     setTimeout(() => {
       setSaveStatus("Saved");
+      setTimeout(() => {
+        setShowSave(false);
+      }, 500);
     }, 500);
   }, 750);
 
@@ -72,7 +77,14 @@ function Editor() {
   return (
     <>
       <div className="wrapper mt4" style={{ maxWidth: 1800 }}>
-        {saveStatus}
+        {showSave && (
+          <div
+            className="fixed bottom left rounded bg-dark text-white p2"
+            style={{ backgroundColor: "#222" }}
+          >
+            {saveStatus}
+          </div>
+        )}
         <EditorContent editor={editor} />
       </div>
     </>

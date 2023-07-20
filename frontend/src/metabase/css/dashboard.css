@@ -381,3 +381,9 @@
 .ProseMirror:focus {
   outline: none;
 }
+
+.ProseMirror hr {
+  height: 1px;
+  background-color: #e8e8e8;
+  border: none;
+}
