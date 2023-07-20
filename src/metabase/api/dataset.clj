@@ -222,6 +222,6 @@
   {parameter ms/Parameter
    field_ids [:maybe [:sequential ms/PositiveInt]]
    query     :string}
-  (parameter-values parameter field_ids query))
+  (parameter-values parameter field_ids (not-empty query)))
 
 (api/define-routes)

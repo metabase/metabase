@@ -258,26 +258,20 @@
      :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
-;; todo: we need to unify and untangle this stuff
 (defn field-id->values
-  "Fetch values for field id. If query is present, uses `api.field/search-values`, otherwise delegates to
-  `api.field/check-parms-and-return-field-values`."
+  "Fetch values for field id."
   [field-id query]
-  (let [field (api/read-check (t2/select-one Field :id field-id))]
-    (if (str/blank? query)
-      (field->values field)
-      ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
-      ;; is what `check-perms-and-return-field-values` returns above
-      (let [search-field (or
-                          ;; TODO: do I need to think about when (= has-field-values-type :list) ?? https://github.com/metabase/metabase/pull/19901/files
-                          ;; TODO: should there be a read-check here too?
-                          (some->> (chain-filter/remapped-field-id field-id)
-                                   (t2/select-one Field :id))
-                          field)]
-       {:values (search-values field search-field query)
-       ;; assume there are more
-        :has_more_values true
-        :field_id field-id}))))
+  (let [field        (api/read-check (t2/select-one Field :id field-id))
+        search-field (or
+                      ;; TODO: do I need to think about when (= has-field-values-type :list) ?? https://github.com/metabase/metabase/pull/19901/files
+                      ;; TODO: should there be a read-check here too?
+                      (some->> (chain-filter/remapped-field-id field-id)
+                               (t2/select-one Field :id))
+                      field)]
+    {:values (search-values field search-field query)
+     ;; assume there are more
+     :has_more_values true
+     :field_id field-id}))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
 (api/defendpoint GET "/:id/values"
