@@ -517,6 +517,15 @@
                  #(u/round-to-decimals decimal-place %)
                  data))
 
+(defmacro let-url
+  "Like normal `let`, but adds `testing` context with the `url` you've bound."
+  {:style/indent 1}
+  [[url-binding url] & body]
+  `(let [url# ~url
+         ~url-binding url#]
+     (testing (str "\nGET /api/" url# "\n")
+       ~@body)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
@@ -1160,12 +1169,3 @@
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
-
-(defmacro let-url
-  "Like normal `let`, but adds `testing` context with the `url` you've bound."
-  {:style/indent 1}
-  [[url-binding url] & body]
-  `(let [url# ~url
-         ~url-binding url#]
-     (testing (str "\nGET /api/" url# "\n")
-       ~@body)))
