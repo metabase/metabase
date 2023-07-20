@@ -1,6 +1,5 @@
 (ns metabase.api.field
   (:require
-   [clojure.string :as str]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
