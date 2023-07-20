@@ -7,8 +7,8 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
 } from "metabase/plugins";
 
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import Modal from "metabase/components/Modal";
-import MetabaseSettings from "metabase/lib/settings";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
@@ -16,7 +16,7 @@ import CollectionRow from "./components/CollectionRow";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
 import CollectionOptionsButton from "./components/CollectionOptionsButton";
 
-if (MetabaseSettings.enhancementsEnabled()) {
+if (hasPremiumFeature("snippet_collections")) {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(snippetSidebar => ({
     icon: "folder",
     name: t`New folder`,
@@ -72,14 +72,16 @@ PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
 
 PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
 
-PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
-  const collection = snippetSidebar.props.snippetCollection;
-  return (
-    <CollectionOptionsButton
-      {...snippetSidebar.props}
-      {...props}
-      setSidebarState={snippetSidebar.setState.bind(snippetSidebar)}
-      collection={collection}
-    />
-  );
-});
+if (hasPremiumFeature("snippet_collections")) {
+  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
+    const collection = snippetSidebar.props.snippetCollection;
+    return (
+      <CollectionOptionsButton
+        {...snippetSidebar.props}
+        {...props}
+        setSidebarState={snippetSidebar.setState.bind(snippetSidebar)}
+        collection={collection}
+      />
+    );
+  });
+}

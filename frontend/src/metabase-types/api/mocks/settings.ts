@@ -115,6 +115,7 @@ export const createMockTokenFeatures = (
   session_timeout_config: false,
   whitelabel: false,
   dashboard_subscription_filters: false,
+  snippet_collections: false,
   ...opts,
 });
 

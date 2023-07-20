@@ -51,7 +51,7 @@ async function setup({ user = createMockUser() }) {
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(createMockDashboard(TEST_DASHBOARD));
   setupCollectionsEndpoints({ collections: [] });
-  setupCollectionItemsEndpoint(TEST_COLLECTION);
+  setupCollectionItemsEndpoint({ collection: TEST_COLLECTION });
   setupSearchEndpoints([TEST_COLLECTION_ITEM]);
   setupCardsEndpoints([TEST_CARD]);
   setupTableEndpoints([TEST_TABLE]);
