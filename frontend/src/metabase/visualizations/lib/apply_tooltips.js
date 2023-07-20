@@ -335,12 +335,6 @@ export const getStackedTooltipModel = (
     series => series.card?._breakoutColumn != null,
   );
 
-  const seriesToShow = hasBreakout
-    ? seriesWithGroupedData
-    : seriesWithGroupedData.filter(
-        series => series.card?._breakoutColumn == null,
-      );
-
   const formattedXValue = formatValueForTooltip({
     value: xValue,
     column: hoveredSeries?.data?.cols[DIMENSION_INDEX],
@@ -353,7 +347,7 @@ export const getStackedTooltipModel = (
       column: hoveredSeries?.data?.cols[METRIC_INDEX],
     });
 
-  const tooltipRows = seriesToShow
+  const tooltipRows = seriesWithGroupedData
     .map(series => {
       const { card, groupedData, data } = series;
       const datum = groupedData?.find(
@@ -417,9 +411,9 @@ export const getStackedTooltipModel = (
     headerTitle: formattedXValue,
     headerRows,
     bodyRows,
-    totalFormatter: hasBreakout ? totalFormatter : undefined,
-    showTotal: hasBreakout,
-    showPercentages: hasBreakout,
+    totalFormatter,
+    showTotal: true,
+    showPercentages: true,
   };
 };
 
