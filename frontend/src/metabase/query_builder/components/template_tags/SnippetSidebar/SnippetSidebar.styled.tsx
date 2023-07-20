@@ -31,11 +31,11 @@ export const SnippetTitle = styled.span`
   }
 `;
 
-interface SnippetSearchIconProps {
+interface SearchSnippetIconProps {
   isHidden?: boolean;
 }
 
-export const SnippetSearchIcon = styled(Icon)<SnippetSearchIconProps>`
+export const SearchSnippetIcon = styled(Icon)<SearchSnippetIconProps>`
   display: ${props => props.isHidden && "none"};
   cursor: pointer;
   margin-right: 0.5rem;
@@ -45,11 +45,11 @@ export const SnippetSearchIcon = styled(Icon)<SnippetSearchIconProps>`
   }
 `;
 
-interface SnippetAddIconProps {
+interface AddSnippetIconProps {
   isHidden?: boolean;
 }
 
-export const SnippetAddIcon = styled(Icon)<SnippetAddIconProps>`
+export const AddSnippetIcon = styled(Icon)<AddSnippetIconProps>`
   display: ${props => props.isHidden && "none"};
   color: ${color("brand")};
   cursor: pointer;
@@ -57,5 +57,30 @@ export const SnippetAddIcon = styled(Icon)<SnippetAddIconProps>`
 
   &:hover {
     background-color: ${color("bg-light")};
+  }
+`;
+
+export const MenuIconContainer = styled.div`
+  display: flex;
+  padding: 1rem;
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+    background-color: ${color("bg-medium")};
+  }
+`;
+
+interface HideSearchIconProps {
+  isHidden?: boolean;
+}
+
+export const HideSearchIcon = styled(Icon)<HideSearchIconProps>`
+  display: ${props => props.isHidden && "none"};
+  cursor: pointer;
+  padding: 0.5rem;
+
+  &:hover {
+    color: ${color("brand")};
   }
 `;
