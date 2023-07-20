@@ -23,7 +23,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.util UUID)
    (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -266,7 +265,7 @@
                                                                 value)
                                (= col :made_public_by_id) (mt/user->id :crowberto)
                                (= col :embedding_params)  {:category_name "locked"}
-                               (= col :public_uuid)       (str (UUID/randomUUID))
+                               (= col :public_uuid)       (str (random-uuid))
                                (int? value)               (inc value)
                                (boolean? value)           (not value)
                                (string? value)            (str value "_changed")))]
@@ -640,13 +639,13 @@
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (random-uuid))}]
         (is (schema= u/uuid-regex
                      (:public_uuid dashboard)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
-        (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+        (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (random-uuid))}]
           (is (= nil
                  (:public_uuid dashboard))))))))
 

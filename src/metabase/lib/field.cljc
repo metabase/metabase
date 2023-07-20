@@ -55,7 +55,7 @@
    field-id     :- ::lib.schema.id/field]
   (merge
    (when (lib.util/first-stage? query stage-number)
-     (when-let [card-id (lib.util/source-card query)]
+     (when-let [card-id (lib.util/source-card-id query)]
        (when-let [card-metadata (lib.card/saved-question-metadata query card-id)]
          (m/find-first #(= (:id %) field-id)
                        card-metadata))))
@@ -98,8 +98,8 @@
                            (resolve-column-name-in-metadata column-name stage-columns))]
       (cond-> column
         previous-stage-number (-> (dissoc :id :table-id
-                                          ::binning ::temporal-unit
-                                          :metabase.lib.join/join-alias)
+                                          ::binning ::temporal-unit)
+                                  (lib.join/with-join-alias nil)
                                   (assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                   (assoc :lib/source :source/previous-stage))))))
 

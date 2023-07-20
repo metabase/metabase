@@ -57,12 +57,32 @@ export function withJoinConditions(
   return ML.with_join_conditions(join, newConditions);
 }
 
+// Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
+// is the one that comes from the source Table/Card/previous stage of the query or a previous join.
+//
+// If you are changing the LHS of a condition for an existing join, pass in that existing join as
+// so we can filter out the columns added by it (it doesn't make sense to present the columns
+// added by a join as options for its own LHS) or added by later joins (joins can only depend on things from previous
+// joins). Otherwise pass `null` when building a new join. See #32005 for more info.
+//
+// If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+// pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
+//
+// Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
+//
+// Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here.
 export function joinConditionLHSColumns(
   query: Query,
   stageIndex: number,
+  existingJoin?: Join,
   rhsColumn?: ColumnMetadata,
 ): ColumnMetadata[] {
-  return ML.join_condition_lhs_columns(query, stageIndex, rhsColumn);
+  return ML.join_condition_lhs_columns(
+    query,
+    stageIndex,
+    existingJoin,
+    rhsColumn,
+  );
 }
 
 export function joinConditionRHSColumns(
@@ -133,10 +153,23 @@ export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
   return ML.picker_info(query, metadata);
 }
 
+type JoinOrJoinable = Join | Joinable;
+
 export function joinableColumns(
   query: Query,
   stageIndex: number,
-  joinOrJoinable: Join | Joinable,
+  joinOrJoinable: JoinOrJoinable,
 ): ColumnMetadata[] {
   return ML.joinable_columns(query, stageIndex, joinOrJoinable);
+}
+
+// Get the display name to use when rendering a join for whatever we are joining against (e.g. a Table or Card of some
+// sort). See #32015 for screenshot examples. For an existing join, pass in the join clause. When constructing a join,
+// pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata.
+export function joinLHSDisplayName(
+  query: Query,
+  stageIndex: number,
+  joinOrJoinable: JoinOrJoinable,
+): string {
+  return ML.join_lhs_display_name(query, stageIndex, joinOrJoinable);
 }
