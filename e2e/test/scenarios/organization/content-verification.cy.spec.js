@@ -74,15 +74,19 @@ describeEE("scenarios > premium > content verification", () => {
         verifyQuestion();
 
         // 1. Question title
-        cy.findByTestId("qb-header-left-side").find(".Icon-verified");
+        cy.findByTestId("qb-header").within(() => {
+          cy.findByText("Orders, Count");
+          cy.icon("verified");
+        });
 
         // 2. Question's history
         questionInfoButton().click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("History");
-        cy.findAllByText("You verified this")
-          .should("have.length", 2)
-          .and("be.visible");
+        cy.findByTestId("sidebar-right").within(() => {
+          cy.findByText("History");
+          cy.findAllByText("You verified this")
+            .should("have.length", 2)
+            .and("be.visible");
+        });
 
         // 3. Recently viewed list
         cy.findByPlaceholderText("Search…").click();
@@ -98,10 +102,12 @@ describeEE("scenarios > premium > content verification", () => {
 
         // 5. Question's collection
         cy.visit("/collection/root");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Orders, Count").closest("a").find(".Icon-verified");
+        cy.findByRole("table")
+          .findByText("Orders, Count")
+          .closest("td")
+          .icon("verified");
 
-        // Let's go back to the question and remove the verification
+        cy.log("Go back to the question and remove the verification");
         visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
         removeQuestionVerification();
@@ -113,12 +119,11 @@ describeEE("scenarios > premium > content verification", () => {
 
         // 2. Question's history
         questionInfoButton().click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("History");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("You removed verification");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
+        cy.findByTestId("sidebar-right").within(() => {
+          cy.findByText("History");
+          cy.findByText("You removed verification");
+          cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
+        });
 
         // 3. Recently viewed list
         cy.findByPlaceholderText("Search…").click();
@@ -136,10 +141,10 @@ describeEE("scenarios > premium > content verification", () => {
 
         // 5. Question's collection
         cy.visit("/collection/root");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Orders, Count")
-          .closest("a")
-          .find(".Icon-verified")
+        cy.findByRole("table")
+          .findByText("Orders, Count")
+          .closest("td")
+          .icon("verified")
           .should("not.exist");
       });
     });
