@@ -327,9 +327,9 @@ export function ObjectDetailView({
 
     return ActionsApi.prefetchValues({
       id: executeActionId,
-      parameters: JSON.stringify({ id: String(executeActionId) }),
+      parameters: JSON.stringify({ id: String(zoomedRowID) }),
     });
-  }, [executeActionId]);
+  }, [executeActionId, zoomedRowID]);
 
   const initialValues = useMemo(() => ({ id: zoomedRowID }), [zoomedRowID]);
 
