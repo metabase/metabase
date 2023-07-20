@@ -26,8 +26,8 @@ describe("Model actions in object detail view", () => {
   });
 
   it("scenario", () => {
-    /* Step 1: as a normal user, verify that actions are not visible */
     cy.get("@modelId").then(modelId => {
+      /* Step 1: as a normal user, verify that actions are not visible */
       asNormalUser(() => {
         assertActionsTabNotExists(modelId);
         assertActionsDropdownNotExists(modelId);
@@ -38,21 +38,23 @@ describe("Model actions in object detail view", () => {
         assertActionsTabNotExists(modelId);
         assertActionsDropdownNotExists(modelId);
 
-        cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
-        const actionsToggle = cy.findByLabelText("Model actions");
-        cy.log("actions should be disabled in model page");
-        actionsToggle.should("not.be.checked");
-
-        actionsToggle.click();
-        cy.log("actions should be enabled in model detail page");
-        actionsToggle.should("be.checked");
+        enableDatabaseActions();
 
         assertActionsTabExists(modelId);
-        assertActionsDropdownExists(modelId);
+        assertActionsDropdownNotExists(modelId);
       });
 
       asNormalUser(() => {
         assertActionsTabExists(modelId);
+        assertActionsDropdownNotExists(modelId);
+      });
+
+      asAdmin(() => {
+        createBasicModelActions();
+        assertActionsDropdownExists(modelId);
+      });
+
+      asNormalUser(() => {
         assertActionsDropdownExists(modelId);
       });
     });
@@ -69,6 +71,23 @@ function asNormalUser(callback) {
   cy.signInAsNormalUser();
   callback();
   cy.signOut();
+}
+
+function enableDatabaseActions() {
+  cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
+  const actionsToggle = cy.findByLabelText("Model actions");
+  cy.log("actions should be disabled in model page");
+  actionsToggle.should("not.be.checked");
+
+  actionsToggle.click();
+
+  cy.log("actions should be enabled in model detail page");
+  actionsToggle.should("be.checked");
+}
+
+function createBasicModelActions(modelId) {
+  cy.visit(`/model/${modelId}/detail/actions`);
+  cy.findByText("Create basic actions").click();
 }
 
 function assertActionsDropdownExists(modelId) {
