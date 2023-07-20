@@ -109,6 +109,7 @@ function ActionParametersInputForm({
     <ActionForm
       action={action}
       initialValues={values}
+      prefetchesInitialValues={Boolean(fetchInitialValues)}
       hiddenFields={hiddenFields}
       onSubmit={handleSubmit}
       onClose={onCancel}
