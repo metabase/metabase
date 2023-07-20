@@ -1,8 +1,11 @@
 import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
+import Tables from "metabase/entities/tables";
+import { useDispatch } from "metabase/lib/redux";
 import * as Lib from "metabase-lib";
 
 export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
+  const dispatch = useDispatch();
   const previousJoin = usePrevious(join);
 
   const [strategy, _setStrategy] = useState<Lib.JoinStrategy>(
@@ -15,6 +18,8 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     join ? Lib.joinConditions(join) : [],
   );
 
+  const previousTable = usePrevious(table);
+
   useEffect(() => {
     if (join && previousJoin !== join) {
       _setStrategy(Lib.joinStrategy(join));
@@ -22,6 +27,14 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
       _setConditions(Lib.joinConditions(join));
     }
   }, [query, stageIndex, join, previousJoin]);
+
+  useEffect(() => {
+    if (table && table !== previousTable) {
+      const info = Lib.pickerInfo(query, table);
+      const tableId = info.tableId || info.cardId;
+      dispatch(Tables.actions.fetchMetadata({ id: tableId }));
+    }
+  }, [query, table, previousTable, dispatch]);
 
   const setStrategy = useCallback(
     (nextStrategy: Lib.JoinStrategy) => {
