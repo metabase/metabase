@@ -16,7 +16,7 @@
   (testing "POST /api/moderation-review"
     (testing "Should require a token with `:content-verification`"
       (premium-features-test/with-premium-features #{}
-        (is (= "This API endpoint is only enabled if you have a premium token with the :content-verification feature."
+        (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                (mt/user-http-request :rasta :post 402 "moderation-review"
                                      {:text                "review"
                                       :status              "verified"

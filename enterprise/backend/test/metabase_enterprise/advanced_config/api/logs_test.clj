@@ -51,5 +51,5 @@
                  (mt/user-http-request :rasta :get 403 "ee/logs/query_execution/2023-02")))))
       (testing "only works when `:advanced-config` feature is available."
         (premium-features.test/with-premium-features #{}
-          (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-config feature."
+          (is (= "Advanced Config is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :get 402 "ee/logs/query_execution/2023-02"))))))))
