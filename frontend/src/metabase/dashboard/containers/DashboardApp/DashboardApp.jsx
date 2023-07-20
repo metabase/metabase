@@ -30,6 +30,7 @@ import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
+import Editor from "metabase/dashboard/containers/Editor"
 
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
@@ -185,6 +186,10 @@ const DashboardApp = props => {
     timer: DASHBOARD_SLOW_TIMEOUT,
     onTimeout,
   });
+
+  if (props.location.search.includes('test=true')) {
+    return (<Editor />)
+  }
 
   return (
     <div className="shrink-below-content-size full-height">
