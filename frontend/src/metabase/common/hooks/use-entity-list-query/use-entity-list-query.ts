@@ -66,10 +66,6 @@ export const useEntityListQuery = <TItem, TQuery = never>(
   const isLoading = useSelector(state => getLoading(state, options));
   const isLoadingOrDefault = isLoading ?? enabled;
   const isLoaded = useSelector(state => getLoaded(state, options));
-  if (!getListMetadata) {
-    console.log("getListMetadata is undefined");
-    console.trace();
-  }
   const metadata = useSelector(state => getListMetadata?.(state, options));
   const isLoadedPreviously = usePrevious(isLoaded);
   const isInvalidated = !isLoaded && isLoadedPreviously;

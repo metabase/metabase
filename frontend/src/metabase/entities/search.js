@@ -59,8 +59,6 @@ export default createEntity({
           sort_direction,
         });
 
-        console.log(data, rest);
-
         return {
           ...rest,
           data: data

@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { Flex } from "@mantine/core";
 import { SearchModelType } from "metabase-types/api";
 import { IconName } from "metabase/core/components/Icon";
-import { TypeSidebarButton } from "metabase/search/components/TypeSearchSidebar.styled";
+import { TypeSidebarButton } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar.styled";
 
 const SEARCH_FILTERS: Array<{
   name: string;

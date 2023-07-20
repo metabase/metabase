@@ -16,7 +16,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 import { getSearchTextFromLocation } from "metabase/search/util";
-import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar";
+import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
 import {
   SearchBody,
   SearchControls,

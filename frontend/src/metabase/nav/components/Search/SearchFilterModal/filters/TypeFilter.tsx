@@ -3,7 +3,6 @@ import { Checkbox, Flex } from "metabase/ui";
 import { SearchFilter } from "metabase/nav/components/Search/SearchFilterModal/filters/SearchFilter";
 import { SearchModelType } from "metabase-types/api";
 import Search from "metabase/entities/search";
-import { useSearchListQuery } from "metabase/common/hooks";
 
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
@@ -14,12 +13,6 @@ export const TypeFilter = ({
   value: any;
   onChange: (value: any) => void;
 }) => {
-
-  const { metadata } = useSearchListQuery({
-    query: SEARCH_QUERY,
-    enabled: true,
-  });
-
   return (
     <SearchFilter title="Type">
       <Search.ListLoader query={SEARCH_QUERY} wrapped>
