@@ -1,11 +1,13 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers";
+import { restore, visitModel } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const ORDERS_MODEL = {
-  name: "Order",
+const objectId = 11;
+
+const ordersModel = {
+  name: "Orders model",
   dataset: true,
   display: "table",
   database: SAMPLE_DB_ID,
@@ -16,24 +18,21 @@ const ORDERS_MODEL = {
 
 describe("Model actions in object detail view", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/action").as("createBasicActions");
+
     restore();
     cy.signInAsNormalUser();
-    cy.createQuestion(ORDERS_MODEL, {
-      wrapId: true,
-      idAlias: "modelId",
-    });
+    cy.createQuestion(ordersModel, { wrapId: true, idAlias: "modelId" });
     cy.signOut();
   });
 
   it("scenario", () => {
     cy.get("@modelId").then(modelId => {
-      /* Step 1: as a normal user, verify that actions are not visible */
       asNormalUser(() => {
         assertActionsTabNotExists(modelId);
         assertActionsDropdownNotExists(modelId);
       });
 
-      /* Step 2: as an admin, verify actions are not visible and then enable actions in the model */
       asAdmin(() => {
         assertActionsTabNotExists(modelId);
         assertActionsDropdownNotExists(modelId);
@@ -50,7 +49,7 @@ describe("Model actions in object detail view", () => {
       });
 
       asAdmin(() => {
-        createBasicModelActions();
+        createBasicModelActions(modelId);
         assertActionsDropdownExists(modelId);
       });
 
@@ -62,12 +61,16 @@ describe("Model actions in object detail view", () => {
 });
 
 function asAdmin(callback) {
+  cy.visit("/");
+  cy.reload();
   cy.signInAsAdmin();
   callback();
   cy.signOut();
 }
 
 function asNormalUser(callback) {
+  cy.visit("/");
+  cy.reload();
   cy.signInAsNormalUser();
   callback();
   cy.signOut();
@@ -88,16 +91,19 @@ function enableDatabaseActions() {
 function createBasicModelActions(modelId) {
   cy.visit(`/model/${modelId}/detail/actions`);
   cy.findByText("Create basic actions").click();
+  cy.wait("@createBasicActions");
 }
 
 function assertActionsDropdownExists(modelId) {
-  cy.visit(`/model/${modelId}/detail/1`);
+  visitModel(modelId);
+  cy.findByText(objectId).click();
   cy.log("actions dropdown should be shown in object details modal");
   cy.findByTestId("actions-menu").should("exist");
 }
 
 function assertActionsDropdownNotExists(modelId) {
-  cy.visit(`/model/${modelId}/detail/1`);
+  visitModel(modelId);
+  cy.findByText(objectId).click();
   cy.log("actions dropdown should not be shown in object details modal");
   cy.findByTestId("actions-menu").should("not.exist");
 }
