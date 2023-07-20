@@ -13,7 +13,7 @@ import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 import SearchResults from "metabase/nav/components/Search/SearchResults/SearchResults";
@@ -31,6 +31,7 @@ import {
   SearchBarRoot,
   SearchFunnelButton,
 } from "./SearchBar.styled";
+import { getSetting } from "metabase/selectors/settings";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
@@ -60,6 +61,10 @@ function getSearchTextFromLocation(location: SearchAwareLocation) {
 }
 
 function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+  const isTypeaheadEnabled = useSelector(state =>
+    getSetting(state, "search-typeahead-enabled"),
+  );
+
   const [searchText, setSearchText] = useState<string>(
     getSearchTextFromLocation(location),
   );
@@ -191,6 +196,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   return (
     <SearchBarRoot ref={container}>
       <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
+        <div>{isTypeaheadEnabled ? "true" : "false"}</div>
         <SearchIcon name="search" isActive={isActive} />
         <SearchInput
           isActive={isActive}
@@ -212,7 +218,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
           </CloseSearchButton>
         )}
       </SearchInputContainer>
-      {isActive && MetabaseSettings.searchTypeaheadEnabled() && (
+      {isActive && isTypeaheadEnabled && (
         <SearchResultsFloatingContainer>
           {hasSearchText ? (
             <SearchResultsContainer data-testid="search-bar-results-container">
