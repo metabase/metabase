@@ -517,12 +517,14 @@
 
 (defn- remapped-field-id-query [field-id]
   {:select [[:ids.id :id]]
-   :from   [[{::union [{:select [[:dimension.human_readable_field_id :id]]
+   :from   [[{::union [;; Explicit FK Field->Field remapping
+                       {:select [[:dimension.human_readable_field_id :id]]
                         :from   [[:dimension :dimension]]
                         :where  [:and
                                  [:= :dimension.field_id field-id]
                                  [:not= :dimension.human_readable_field_id nil]]
                         :limit  1}
+                       ;; Implicit PK Field-> [Name] Field remapping
                        {:select    [[:dest.id :id]]
                         :from      [[:metabase_field :source]]
                         :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
