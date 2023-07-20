@@ -15,7 +15,7 @@
   Use [[when-premium-feature]] instead if you want the handler to apply if we have the premium feature but pass-thru
   if we do not."
   [feature feature-name handler]
-  (assert (i18n/localized-string? feature-name), (format "`feature-name` %s must be i18ned" feature-name))
+  (assert (i18n/localized-string? feature-name), "`feature-name` must be i18ned")
   (fn [request respond raise]
     (premium-features/assert-has-feature feature feature-name)
     (handler request respond raise)))
