@@ -7,7 +7,21 @@ export function setupSearchEndpoints(items: CollectionItem[]) {
   fetchMock.get("path:/api/search", uri => {
     const url = new URL(uri);
     const models = url.searchParams.getAll("models");
-    const matchedItems = items.filter(({ model }) => models.includes(model));
+    const queryText = url.searchParams.get("q");
+
+    let matchedItems = items;
+
+    if (models && models.length > 0) {
+      matchedItems = matchedItems.filter(({ model }) => models.includes(model));
+    }
+
+    if (queryText) {
+      console.log(matchedItems);
+      matchedItems = matchedItems.filter(({ name }) =>
+        name.includes(queryText),
+      );
+      console.log(matchedItems);
+    }
 
     return {
       data: matchedItems,

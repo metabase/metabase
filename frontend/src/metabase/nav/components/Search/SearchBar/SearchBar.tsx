@@ -12,7 +12,6 @@ import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
-import MetabaseSettings from "metabase/lib/settings";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
@@ -21,6 +20,7 @@ import RecentsList from "metabase/nav/components/Search/RecentsList/RecentsList"
 import { SearchFilterModal } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModal";
 import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 import { SearchFilterType } from "metabase/search/util";
+import { getSetting } from "metabase/selectors/settings";
 import {
   SearchInputContainer,
   SearchIcon,
@@ -31,7 +31,6 @@ import {
   SearchBarRoot,
   SearchFunnelButton,
 } from "./SearchBar.styled";
-import { getSetting } from "metabase/selectors/settings";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
@@ -192,11 +191,11 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   );
 
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const isFiltered = Object.keys(searchFilters).length > 0;
 
   return (
     <SearchBarRoot ref={container}>
       <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
-        <div>{isTypeaheadEnabled ? "true" : "false"}</div>
         <SearchIcon name="search" isActive={isActive} />
         <SearchInput
           isActive={isActive}
@@ -209,7 +208,12 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
         />
         <SearchFunnelButton
           icon="funnel"
-          isFiltered={Object.keys(searchFilters).length > 0}
+          data-testid={
+            isFiltered
+              ? "highlighted-search-bar-filter-button"
+              : "search-bar-filter-button"
+          }
+          isFiltered={isFiltered}
           onClick={() => setIsFilterModalOpen(true)}
         />
         {isSmallScreen() && isActive && (
