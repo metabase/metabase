@@ -361,3 +361,23 @@
   pointer-events: all;
   user-select: auto;
 }
+
+.ProseMirror {
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.ProseMirror pre {
+  background-color: #222;
+  color: white;
+  border-radius: 6px;
+  padding: 20px;
+}
+
+.ProseMirror ul[data-type="taskList"] li div {
+  display: inline-block;
+}
+
+.ProseMirror:focus {
+  outline: none;
+}
