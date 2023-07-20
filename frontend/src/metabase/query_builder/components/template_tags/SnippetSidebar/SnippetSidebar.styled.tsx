@@ -30,3 +30,17 @@ export const SnippetTitle = styled.span`
     color: ${color("brand")};
   }
 `;
+
+interface SnippetSearchIconProps {
+  isHidden?: boolean;
+}
+
+export const SnippetSearchIcon = styled(Icon)<SnippetSearchIconProps>`
+  display: ${props => props.isHidden && "none"};
+  cursor: pointer;
+  margin-right: 0.5rem;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;

@@ -27,6 +27,7 @@ import { SnippetRow } from "../SnippetRow";
 import {
   SidebarFooter,
   SidebarIcon,
+  SnippetSearchIcon,
   SnippetTitle,
 } from "./SnippetSidebar.styled";
 
@@ -168,11 +169,8 @@ class SnippetSidebar extends React.Component {
                   ),
                 ]}
                 {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
-                  <Icon
-                    className={cx(
-                      { hide: showSearch },
-                      "text-brand-hover cursor-pointer mr1",
-                    )}
+                  <SnippetSearchIcon
+                    isHidden={showSearch}
                     onClick={this.showSearch}
                     name="search"
                     size={HEADER_ICON_SIZE}
