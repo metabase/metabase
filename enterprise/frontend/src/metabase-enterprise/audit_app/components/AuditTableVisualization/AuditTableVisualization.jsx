@@ -16,7 +16,11 @@ import { Icon } from "metabase/core/components/Icon";
 import CheckBox from "metabase/core/components/CheckBox";
 import NoResults from "assets/img/no_results.svg";
 import { getRowValuesByColumns, getColumnName } from "../../lib/mode";
-import { HeaderCell, RemoveRowButton } from "./AuditTableVisualization.styled";
+import {
+  HeaderCell,
+  RemoveRowButton,
+  RowCell,
+} from "./AuditTableVisualization.styled";
 
 const propTypes = {
   series: PropTypes.array,
@@ -184,12 +188,10 @@ export class AuditTableVisualization extends Component {
                 };
 
                 return (
-                  <td
+                  <RowCell
                     key={colIndex}
-                    className={cx({
-                      "text-brand cursor-pointer": clickable,
-                      "text-right": isColumnRightAligned(column),
-                    })}
+                    isClickable={clickable}
+                    isRightAligned={isColumnRightAligned(column)}
                     onClick={
                       clickable ? () => onVisualizationClick(clicked) : null
                     }
@@ -210,7 +212,7 @@ export class AuditTableVisualization extends Component {
                         local: true,
                       })}
                     </div>
-                  </td>
+                  </RowCell>
                 );
               })}
 

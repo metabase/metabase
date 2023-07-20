@@ -19,6 +19,17 @@ export const HeaderCell = styled.th<HeaderCellProps>`
   }
 `;
 
+interface RowCellProps {
+  isClickable?: boolean;
+  isRightAligned?: boolean;
+}
+
+export const RowCell = styled.td<RowCellProps>`
+  color: ${props => props.isClickable && color("brand")};
+  cursor: ${props => props.isClickable && "pointer"};
+  text-align: ${props => props.isRightAligned && "right"};
+`;
+
 export const RemoveRowButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
 `;
