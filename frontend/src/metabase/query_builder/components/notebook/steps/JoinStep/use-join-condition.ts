@@ -27,13 +27,27 @@ export function useJoinCondition(
   );
 
   const lhsColumns = useMemo(
-    () => Lib.joinConditionLHSColumns(query, stageIndex, join, rhsColumn),
-    [query, stageIndex, join, rhsColumn],
+    () =>
+      Lib.joinConditionLHSColumns(
+        query,
+        stageIndex,
+        join || table,
+        lhsColumn,
+        rhsColumn,
+      ),
+    [query, stageIndex, join, table, lhsColumn, rhsColumn],
   );
 
   const rhsColumns = useMemo(
-    () => Lib.joinConditionRHSColumns(query, stageIndex, table, lhsColumn),
-    [query, stageIndex, table, lhsColumn],
+    () =>
+      Lib.joinConditionRHSColumns(
+        query,
+        stageIndex,
+        join || table,
+        lhsColumn,
+        rhsColumn,
+      ),
+    [query, stageIndex, join, table, lhsColumn, rhsColumn],
   );
 
   const setOperator = (operator: Lib.FilterOperator) => {

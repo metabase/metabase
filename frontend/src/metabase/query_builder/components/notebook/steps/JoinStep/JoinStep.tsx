@@ -213,7 +213,6 @@ function JoinCondition({
         stageIndex={stageIndex}
         column={lhsColumn}
         columnGroups={lhsColumnGroup}
-        checkIsColumnSelected={col => false}
         label={t`Left column`}
         readOnly={readOnly}
         color={color}
@@ -232,7 +231,6 @@ function JoinCondition({
         stageIndex={stageIndex}
         column={rhsColumn}
         columnGroups={rhsColumnGroup}
-        checkIsColumnSelected={col => false}
         label={t`Right column`}
         readOnly={readOnly}
         color={color}

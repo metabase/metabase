@@ -140,6 +140,38 @@ describe("Notebook Editor > Join Step", () => {
     expect(screen.getByLabelText("Change operator")).toHaveTextContent("=");
   });
 
+  it("should highlight selected LHS column", async () => {
+    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+
+    userEvent.click(screen.getByLabelText("Left column"));
+    const popover = await screen.findByLabelText("grid");
+
+    expect(within(popover).getByLabelText("Product ID")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(within(popover).getByLabelText("ID")).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("should highlight selected RHS column", async () => {
+    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+
+    userEvent.click(screen.getByLabelText("Right column"));
+    const popover = await screen.findByLabelText("grid");
+
+    expect(within(popover).getByLabelText("ID")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(within(popover).getByLabelText("Category")).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
   it("should automatically open RHS table picker", async () => {
     setup();
 
