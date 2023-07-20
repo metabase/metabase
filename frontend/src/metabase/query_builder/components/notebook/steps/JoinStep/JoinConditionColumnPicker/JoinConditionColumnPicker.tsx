@@ -4,7 +4,10 @@ import { t } from "ttag";
 import { Flex, Text } from "metabase/ui";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper/IconButtonWrapper";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { QueryColumnPickerProps } from "metabase/common/components/QueryColumnPicker";
+import {
+  QueryColumnPickerProps,
+  ColumnListItem,
+} from "metabase/common/components/QueryColumnPicker";
 
 import * as Lib from "metabase-lib";
 
@@ -14,12 +17,17 @@ import {
   RemoveIcon,
 } from "./JoinConditionColumnPicker.styled";
 
-interface JoinConditionColumnPickerProps extends QueryColumnPickerProps {
+interface JoinConditionColumnPickerProps
+  extends Omit<QueryColumnPickerProps, "checkIsColumnSelected"> {
   column?: Lib.ColumnMetadata;
   label?: string;
   readOnly?: boolean;
   color: string;
   onRemove: () => void;
+}
+
+function checkIsColumnSelected(item: ColumnListItem) {
+  return !!item.selected;
 }
 
 export function JoinConditionColumnPicker({
@@ -54,6 +62,7 @@ export function JoinConditionColumnPicker({
           query={query}
           stageIndex={stageIndex}
           hasTemporalBucketing
+          checkIsColumnSelected={checkIsColumnSelected}
           onClose={closePopover}
         />
       )}
