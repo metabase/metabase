@@ -23,7 +23,7 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import Search from "metabase/entities/search";
-import SnippetRow from "./snippet-sidebar/SnippetRow";
+import { SnippetRow } from "./SnippetRow";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 16;

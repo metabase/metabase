@@ -82,9 +82,7 @@ class SnippetRowInner extends Component {
   }
 }
 
-const SnippetRow = Snippets.load({
+export const SnippetRow = Snippets.load({
   id: (state, props) => props.item.id,
   wrapped: true,
 })(SnippetRowInner);
-
-export default SnippetRow;
