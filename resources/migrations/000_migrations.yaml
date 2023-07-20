@@ -15948,6 +15948,31 @@ databaseChangeLog:
               tableName: computation_job
       rollback: # no rollback needed since this table has been unused since 2018
 
+  - changeSet:
+      id: v48.00-005
+      author: qnkhuat
+      comment: Added 0.48.0 - Add query_execution.action_id
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: action_id
+                  type: integer
+                  remarks: 'The ID of the action associated with this query execution, if any.'
+
+  - changeSet:
+      id: v48.00-006
+      author: qnkhuat
+      comment: Added 0.48.0 - Index query_execution.action_id
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_action_id
+            columns:
+              column:
+                name: action_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

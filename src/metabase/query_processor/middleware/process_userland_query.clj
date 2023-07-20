@@ -74,7 +74,7 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :card_id :dashboard_id :pulse_id :result_rows :native))
+       (dissoc :error :hash :executor_id :action_id :card_id :dashboard_id :pulse_id :result_rows :native))
    result
    {:status                 :completed
     :average_execution_time (when cached?
@@ -108,13 +108,14 @@
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys [executed-by query-hash context card-id dashboard-id pulse-id]} :info
-    database-id                                                            :database
-    query-type                                                             :type
-    :as                                                                    query}]
+  [{{:keys [executed-by query-hash context action-id card-id dashboard-id pulse-id]} :info
+    database-id                                                                      :database
+    query-type                                                                       :type
+    :as                                                                              query}]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
   {:database_id       database-id
    :executor_id       executed-by
+   :action_id         action-id
    :card_id           card-id
    :dashboard_id      dashboard-id
    :pulse_id          pulse-id
