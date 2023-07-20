@@ -1,25 +1,18 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import cx from "classnames";
-
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import { ButtonRoot } from "./SnippetSidebarButton.styled";
 
-const SnippetSidebarButton = ({
+export const SnippetSidebarButton = ({
   toggleSnippetSidebar,
   isShowingSnippetSidebar,
   className,
   size,
 }) => (
   <Tooltip tooltip={t`SQL Snippets`}>
-    <a
-      className={cx(className, "transition-color text-brand-hover", {
-        "text-brand": isShowingSnippetSidebar,
-      })}
-    >
+    <ButtonRoot className={className} isSelected={isShowingSnippetSidebar}>
       <Icon name="snippet" size={size} onClick={toggleSnippetSidebar} />
-    </a>
+    </ButtonRoot>
   </Tooltip>
 );
-
-export default SnippetSidebarButton;
