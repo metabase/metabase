@@ -24,8 +24,8 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card CardBookmark Collection Database Field PersistedInfo Pulse
-            Table ViewLog]]
+    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
+            ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -33,7 +33,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
-   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
@@ -1096,7 +1095,7 @@ saved later when it is ready."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-      (api.field/field-id->values field-id (not-empty query)))))
+      (api.field/field-id->values field-id query))))
 
 (mu/defn param-values
   "Fetch values for a parameter that contain `query`. If `query` is nil or not provided, return all values.
@@ -1111,8 +1110,8 @@ saved later when it is ready."
     param-key :- ms/NonBlankString
     query     :- [:maybe ms/NonBlankString]]
    (let [param (get (m/index-by :id (or (seq (:parameters card))
-                                              ;; some older cards or cards in e2e just use the template tags on native
-                                              ;; queries
+                                        ;; some older cards or cards in e2e just use the template tags on native
+                                        ;; queries
                                         (card/template-tag-parameters card)))
                     param-key)]
      (when-not param

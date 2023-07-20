@@ -250,7 +250,7 @@
   ;; if there's a remapping, we need to do all sorts of nonsense to make this work and return pairs of
   ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
   ;; [[search-values]] without a search term to fetch all values.
-  (if-let [remapped-field-id (when (= has-field-values-type :list) ;; It's weird that this only applies to :list ?? https://github.com/metabase/metabase/pull/19901/files
+  (if-let [remapped-field-id (when (= has-field-values-type :list)
                                (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
                                      (api/check-404 (t2/select-one Field :id remapped-field-id)))
@@ -262,20 +262,17 @@
   "Fetch values for field id."
   [field-id query]
   (let [field        (api/read-check (t2/select-one Field :id field-id))
-        search-field (or
-                      ;; TODO: do I need to think about when (= has-field-values-type :list) ?? https://github.com/metabase/metabase/pull/19901/files
-                      ;; TODO: should there be a read-check here too?
-                      (some->> (chain-filter/remapped-field-id field-id)
-                               (t2/select-one Field :id))
-                      field)]
-    {:values (search-values field search-field query)
+        search-field (or (some->> (chain-filter/remapped-field-id field-id)
+                                  (t2/select-one Field :id))
+                         field)]
+    {:values          (search-values field search-field query)
      ;; assume there are more
      :has_more_values true
-     :field_id field-id}))
+     :field_id        field-id}))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
 (api/defendpoint GET "/:id/values"
-  "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
+  "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or remapped Field), and (if
   defined by a User) a map of human-readable remapped values."
   [id]
   {id ms/PositiveInt}

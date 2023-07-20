@@ -2744,16 +2744,6 @@
      (testing (str "\nGET /api/" url# "\n")
        ~@body)))
 
-(defn take-n-values
-  "Call `take` on the `:values` of the result of a field values endpoint.
-
-  (take-n-values 1 {:values          [1 2 3]
-                    :has_more_values false})
-  -> {:values          [1]
-      :has_more_values false}"
-  [result n]
-  (update result :values #(take n %)))
-
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id_param_id"]
     (t2.with-temp/with-temp
@@ -2776,16 +2766,14 @@
       (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
         (testing "without search query"
           (let-url [url (param-values-url card param-key)]
-            (is (=? {:has_more_values true
-                     :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
-                    (-> (mt/user-http-request :rasta :get 200 url)
-                        (take-n-values 3))))))
+            (is (partial= {:has_more_values true
+                           :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
+                          (mt/user-http-request :rasta :get 200 url)))))
         (testing "with search query"
           (let-url [url (param-values-url card param-key "pan")]
-            (is (=? {:has_more_values true
-                     :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
-                    (-> (mt/user-http-request :rasta :get 200 url)
-                        (take-n-values 3))))))))))
+            (is (partial= {:has_more_values true
+                           :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
+                          (mt/user-http-request :rasta :get 200 url)))))))))
 
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
