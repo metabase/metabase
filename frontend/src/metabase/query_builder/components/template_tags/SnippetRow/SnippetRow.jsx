@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { t } from "ttag";
-
 import cx from "classnames";
 import { Icon } from "metabase/core/components/Icon";
 import Snippets from "metabase/entities/snippets";
-import { SnippetButton } from "./SnippetRow.styled";
+import { SnippetButton, SnippetContent } from "./SnippetRow.styled";
 
 class SnippetRowInner extends Component {
   constructor(props) {
@@ -29,8 +28,7 @@ class SnippetRowInner extends Component {
           className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3 hover-parent hover--display"
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
-          <div
-            className="flex text-brand-hover"
+          <SnippetContent
             onClick={
               snippet.archived
                 ? () => this.setState({ isOpen: true })
@@ -46,7 +44,7 @@ class SnippetRowInner extends Component {
               className="hover-child"
             />
             <span className="flex-full ml1">{snippet.name}</span>
-          </div>
+          </SnippetContent>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
             className={cx({ "hover-child": !isOpen })}
