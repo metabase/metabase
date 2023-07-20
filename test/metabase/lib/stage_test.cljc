@@ -16,7 +16,7 @@
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel ensure-previous-stages-have-metadata-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query (-> lib.tu/venues-query
                   (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
                   lib/append-stage
                   lib/append-stage)]
@@ -75,7 +75,7 @@
            (lib.metadata.calculation/display-name query)))))
 
 (deftest ^:parallel adding-and-removing-stages
-  (let [query                (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query                lib.tu/venues-query
         query-with-new-stage (-> query
                                  lib/append-stage
                                  (lib/order-by 1 (meta/field-metadata :venues :name) :asc))]
@@ -89,7 +89,7 @@
       (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Cannot drop the only stage" (-> query (lib/drop-stage)))))))
 
 (defn- query-with-expressions []
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query (-> lib.tu/venues-query
                   (lib/expression "ID + 1" (lib/+ (meta/field-metadata :venues :id) 1))
                   (lib/expression "ID + 2" (lib/+ (meta/field-metadata :venues :id) 2)))]
     (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
@@ -201,7 +201,7 @@
             (map lib/ref cols)))))
 
 (deftest ^:parallel fields-should-not-hide-joined-fields
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query (-> lib.tu/venues-query
                   (lib/with-fields [(meta/field-metadata :venues :id)
                                     (meta/field-metadata :venues :name)])
                   (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
