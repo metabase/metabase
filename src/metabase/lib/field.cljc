@@ -536,3 +536,35 @@
                                                      {:include-joined?              false
                                                       :include-expressions?         false
                                                       :include-implicitly-joinable? false})))))
+
+;; TODO: This is a dumb copy-pasta of fieldable-columns that sets :include-joined? and include-expressions? to true.
+;; If we want to keep it, it should be refactored to shared most of the code with fieldable-columns.
+;; Want to buy: a better name for this function.
+(mu/defn fieldable-columns-with-joins :- [:sequential lib.metadata/ColumnMetadata]
+  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query. This is
+  basically just the columns returned by the source Table/Saved Question/Model or previous query stage.
+
+  Includes a `:selected?` key letting you know this column is already in `:fields` or not; if `:fields` is
+  unspecified, all these columns are returned by default, so `:selected?` is true for all columns (this is a little
+  strange but it matches the behavior of the QB UI)."
+  ([query]
+   (fieldable-columns-with-joins query -1))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int]
+   (let [current-fields   (fields query stage-number)
+         selected-column? (if (empty? current-fields)
+                            (constantly true)
+                            (fn [column]
+                              (let [col-ref (lib.ref/ref column)]
+                                (boolean
+                                 (some (constantly true)
+                                       current-fields)))))]
+     (mapv (fn [col]
+             (assoc col :selected? (selected-column? col)))
+           (lib.metadata.calculation/visible-columns query
+                                                     stage-number
+                                                     (lib.util/query-stage query stage-number)
+                                                     {:include-joined?              true
+                                                      :include-expressions?         true
+                                                      :include-implicitly-joinable? false})))))

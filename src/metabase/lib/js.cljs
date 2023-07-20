@@ -396,6 +396,12 @@
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
+(defn ^:export fieldable-columns-with-joins
+  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query, including fields
+  which are expressions or explicitly joined in."
+  [a-query stage-number]
+  (to-array (lib.core/fieldable-columns-with-joins a-query stage-number)))
+
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
