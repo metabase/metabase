@@ -10,33 +10,18 @@ import { useLocalStorage } from "@mantine/hooks";
 import SlashCommand from "./slash-command";
 import ChartExtension from "./chart-extension";
 import SectionExtension from "./section-extension";
-import { ActionIcon, Menu } from "@mantine/core";
-import { Icon } from "metabase/core/components/Icon";
-import SidebarEditor from "./SidebarEditor";
 
-function Editor() {
+function SidebarEditor() {
   const [content, setContent] = useLocalStorage({
-    key: "mb-dash-rich",
-    defaultValue: `
-      <h1>Hello World! 🌎️</h1>
-      <p>You can edit me!</p>
-      <mb-chart></mb-chart>
-    `,
-  });
-
-  const [sidebarContent, setSidebarContent] = useLocalStorage({
     key: "mb-dash-sidebar",
     defaultValue: `
-      <h3>Hello sidebar! 🌎️</h3>
+      <h1>Hello sidebar! 🌎️</h1>
       <p>You can edit me too!</p>
       <mb-chart></mb-chart>
     `,
   });
 
   const [hydrated, setHydrated] = useState(false);
-  const [saveStatus, setSaveStatus] = useState("Saved");
-  const [showSave, setShowSave] = useState(false);
-  const [hasSidebar, setHasSidebar] = useState(false);
 
   const debouncedUpdates = useDebouncedCallback(async ({ editor }) => {
     const json = editor.getJSON();
@@ -92,43 +77,9 @@ function Editor() {
 
   return (
     <>
-      <div className="wrapper mt4" style={{ maxWidth: 1800 }}>
-        {showSave && (
-          <div
-            className="fixed bottom left rounded bg-dark text-white p2"
-            style={{ backgroundColor: "#222" }}
-          >
-            {saveStatus}
-          </div>
-        )}
-        <div className="flex">
-          <Menu className="ml-auto">
-            <Menu.Target>
-              <ActionIcon>
-                <Icon name="ellipsis" />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item onClick={() => setHasSidebar(true)}>
-                {hasSidebar ? "Remove sidebar" : "Add sidebar"}
-              </Menu.Item>
-              <Menu.Item>Subscriptions</Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </div>
-        <div className="flex">
-          <div className="flex-full">
-            <EditorContent editor={editor} />
-          </div>
-          {hasSidebar && (
-            <div style={{ width: 300, backgroundColor: "#e8e8e8" }}>
-              <SidebarEditor />
-            </div>
-          )}
-        </div>
-      </div>
+      <EditorContent editor={editor} />
     </>
   );
 }
 
-export default Editor;
+export default SidebarEditor;
