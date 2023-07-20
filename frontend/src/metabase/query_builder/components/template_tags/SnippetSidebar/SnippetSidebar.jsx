@@ -24,6 +24,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 
 import Search from "metabase/entities/search";
 import { SnippetRow } from "../SnippetRow";
+import { SidebarFooter, SidebarIcon } from "./SnippetSidebar.styled";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 16;
@@ -52,22 +53,10 @@ class SnippetSidebar extends React.Component {
   };
 
   footer = () => (
-    <div
-      className="p2 flex text-small text-medium cursor-pointer text-brand-hover hover-parent hover--display"
-      onClick={() => this.setState({ showArchived: true })}
-    >
-      <Icon
-        className="mr1 text-light hover-child--hidden"
-        name="view_archive"
-        size={ICON_SIZE}
-      />
-      <Icon
-        className="mr1 text-brand hover-child"
-        name="view_archive"
-        size={ICON_SIZE}
-      />
+    <SidebarFooter onClick={() => this.setState({ showArchived: true })}>
+      <SidebarIcon name="view_archive" size={ICON_SIZE} />
       {t`Archived snippets`}
-    </div>
+    </SidebarFooter>
   );
 
   render() {
