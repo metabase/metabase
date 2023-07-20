@@ -13,6 +13,7 @@ import {
   createMockCard,
   createMockDatabase,
   createMockImplicitQueryAction,
+  createMockQueryAction,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
@@ -98,6 +99,18 @@ const implicitUpdateAction = createMockImplicitQueryAction({
   database_id: databaseWithEnabledActions.id,
   name: "Update",
   kind: "row/update",
+});
+
+const implicitArchivedUpdateAction = {
+  ...implicitUpdateAction,
+  name: "Archived Implicit Update",
+  id: 4,
+  archived: true,
+};
+
+const queryAction = createMockQueryAction({
+  id: 5,
+  name: "Query action",
 });
 
 function setup(options?: Partial<ObjectDetailProps>) {
@@ -267,6 +280,8 @@ describe("Object Detail", () => {
       implicitCreateAction,
       implicitDeleteAction,
       implicitUpdateAction,
+      implicitArchivedUpdateAction,
+      queryAction,
     ]);
     setup({ question: mockDataset });
 
@@ -275,8 +290,21 @@ describe("Object Detail", () => {
     userEvent.click(actionsMenu);
 
     const popover = screen.getByTestId("popover");
-    expect(within(popover).getByText("Update")).toBeInTheDocument();
-    expect(within(popover).getByText("Delete")).toBeInTheDocument();
+    expect(
+      within(popover).queryByText(implicitCreateAction.name),
+    ).not.toBeInTheDocument();
+    expect(
+      within(popover).getByText(implicitUpdateAction.name),
+    ).toBeInTheDocument();
+    expect(
+      within(popover).getByText(implicitDeleteAction.name),
+    ).toBeInTheDocument();
+    expect(
+      within(popover).queryByText(implicitArchivedUpdateAction.name),
+    ).not.toBeInTheDocument();
+    expect(
+      within(popover).queryByText(queryAction.name),
+    ).not.toBeInTheDocument();
   });
 
   it("does not render actions menu for non-model questions", async () => {
@@ -285,6 +313,8 @@ describe("Object Detail", () => {
       implicitCreateAction,
       implicitDeleteAction,
       implicitUpdateAction,
+      implicitArchivedUpdateAction,
+      queryAction,
     ]);
     setup({ question: mockQuestion });
 
