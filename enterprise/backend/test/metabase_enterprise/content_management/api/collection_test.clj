@@ -110,12 +110,12 @@
      :model/Card {model-id :id} {:name "A question" :dataset true}]
     (testing "can't use verified questions/models if has :official-collections feature"
       (premium-features-test/with-premium-features #{:official-collections}
-        (is (= "This API endpoint is only enabled if you have a premium token with the :content-verification feature."
+        (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                (mt/user-http-request :crowberto :post 402 "moderation-review"
                                      {:moderated_item_id   card-id
                                       :moderated_item_type :card
                                       :status              :verified})))
-        (is (= "This API endpoint is only enabled if you have a premium token with the :content-verification feature."
+        (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                (mt/user-http-request :crowberto :post 402 "moderation-review"
                                      {:moderated_item_id   model-id
                                       :moderated_item_type :card

@@ -51,7 +51,7 @@
           (mt/with-temp* [Table            [{table-id :id}]
                           PermissionsGroup [{group-id :id}]
                           Card             [{card-id :id}]]
-            (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+            (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                    (mt/user-http-request :crowberto :post 402 "mt/gtap"
                                          {:table_id             table-id
                                           :group_id             group-id
