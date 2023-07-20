@@ -144,7 +144,7 @@ describeEE("scenarios > premium > content verification", () => {
       });
     });
 
-    describe("as a non-admin user", () => {
+    describe("non-admin user", () => {
       beforeEach(() => {
         cy.createModerationReview({
           status: "verified",
@@ -155,22 +155,39 @@ describeEE("scenarios > premium > content verification", () => {
         cy.signInAsNormalUser();
       });
 
-      it("should be able to see that a question has been verified", () => {
+      it("should be able to see that a question has been verified but can't moderate the question themselves", () => {
         visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
-        cy.icon("verified");
+        cy.findByTestId("qb-header").within(() => {
+          cy.findByText("Orders, Count");
+          cy.icon("verified");
+        });
+
+        cy.log("Non-admin users cannot change question verification status.");
+        openQuestionActions();
+        popover()
+          .should("contain", "Add to dashboard")
+          .and("not.contain", "Remove verification");
 
         questionInfoButton().click();
-        cy.findAllByText(`${adminFullName} verified this`);
+        cy.findByTestId("sidebar-right")
+          .findAllByText(`${adminFullName} verified this`)
+          .should("have.length", 2);
 
         cy.findByPlaceholderText("Search…").type("orders{enter}");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Orders, Count").parent().icon("verified");
+        cy.log("Verified content should show up higher in search results");
+        cy.findAllByTestId("search-result-item")
+          .first()
+          .within(() => {
+            cy.findByText("Orders, Count");
+            cy.icon("verified");
+          });
 
         cy.visit("/collection/root");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Orders, Count").closest("td").icon("verified");
+        cy.findByRole("table")
+          .findByText("Orders, Count")
+          .closest("td")
+          .icon("verified");
       });
     });
   });
