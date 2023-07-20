@@ -402,6 +402,15 @@
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns-with-joins a-query stage-number)))
 
+(defn ^:export legacy-field-ref
+  "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
+  [column]
+  (-> column
+      lib.core/ref
+      convert/->legacy-MBQL
+      (update 2 update-keys u/->camelCaseEn)
+      (clj->js :keyword-fn u/qualified-name)))
+
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
