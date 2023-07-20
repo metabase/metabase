@@ -19,7 +19,7 @@ import {
   deletePublicLink,
   updateEnableEmbedding,
   updateEmbeddingParams,
-} from "../actions";
+} from "../../actions";
 
 const QuestionEmbedWidgetPropTypes = {
   className: PropTypes.string,
