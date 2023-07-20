@@ -48,7 +48,7 @@
                                                         :join-alias "Categories"}
                                                        (meta/id :categories :id)]]]
                                        :fields      :all}]}]}
-          (let [q (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (let [q lib.tu/venues-query
                 j (lib/query meta/metadata-provider (meta/table-metadata :categories))]
             (lib/join q (lib/join-clause j [{:lib/type :lib/external-op
                                              :operator :=
@@ -220,7 +220,7 @@
            (lib.join/joined-thing query join)))))
 
 (deftest ^:parallel joins-source-and-desired-aliases-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query (-> lib.tu/venues-query
                   (lib/join (-> (lib/join-clause
                                  (meta/table-metadata :categories)
                                  [(lib/=
@@ -386,57 +386,86 @@
            (map (partial lib.metadata.calculation/display-info query)
                 (lib/available-join-strategies query))))))
 
+(deftest ^:parallel with-join-alias-update-fields-test
+  (testing "with-join-alias should update the alias of columns in :fields"
+    (let [query  lib.tu/query-with-join-with-explicit-fields
+          [join] (lib/joins query)]
+      (is (=? {:alias  "Cat"
+               :fields [[:field {:join-alias "Cat"} (meta/id :categories :name)]]}
+              join))
+      (let [join' (lib/with-join-alias join "New Alias")]
+        (is (=? {:alias  "New Alias"
+                 :fields [[:field {:join-alias "New Alias"} (meta/id :categories :name)]]}
+                join'))))))
+
+(deftest ^:parallel with-join-alias-update-condition-rhs-test
+  (testing "with-join-alias should update the alias of the RHS column(s) in the condition(s)"
+    (let [query  lib.tu/query-with-join
+          [join] (lib/joins query)]
+      (is (=? {:conditions [[:= {}
+                             [:field {} (meta/id :venues :category-id)]
+                             [:field {:join-alias "Cat"} (meta/id :categories :id)]]]
+               :alias      "Cat"}
+              join))
+      (let [join' (lib/with-join-alias join "New Alias")]
+        (is (=? {:conditions [[:= {}
+                               [:field {} (meta/id :venues :category-id)]
+                               [:field {:join-alias "New Alias"} (meta/id :categories :id)]]]
+                 :alias      "New Alias"}
+                join'))))))
+
+(defn- test-with-join-fields [input expected]
+  (testing (pr-str (list 'with-join-fields 'query input))
+    (let [query (-> lib.tu/venues-query
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :categories)
+                                   [(lib/=
+                                     (meta/field-metadata :venues :category-id)
+                                     (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                  (lib/with-join-alias "Cat")
+                                  (lib/with-join-fields input))))]
+      (is (=? {:stages [{:joins [(merge
+                                  {:alias      "Cat"
+                                   :conditions [[:= {}
+                                                 [:field {} (meta/id :venues :category-id)]
+                                                 [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}
+                                  expected)]}]}
+              query))
+      (let [[join] (lib/joins query)]
+        (is (some? join))
+        (is (= (:fields expected)
+               (lib/join-fields join)))))))
+
 (deftest ^:parallel with-join-fields-test
-  (doseq [[message {:keys [input expected]}] {:all
-                                              {:input :all, :expected {:fields :all}}
+  (doseq [{:keys [input expected]}
+          [{:input :all, :expected {:fields :all}}
+           {:input :none, :expected {:fields :none}}
+           ;; (with-join-fields ... []) should set :fields to :none
+           {:input [], :expected {:fields :none}}
+           {:input nil, :expected nil}]]
+    (test-with-join-fields input expected)))
 
-                                              :none
-                                              {:input :none, :expected {:fields :none}}
+(deftest ^:parallel with-join-fields-explicit-fields-test
+  (let [categories-id [:field {:lib/uuid   (str (random-uuid))
+                               :join-alias "Cat"}
+                       (meta/id :categories :id)]]
+    (test-with-join-fields
+     [categories-id]
+     {:fields [categories-id]})))
 
-                                              "(with-join-fields ... []) should set :fields to :none"
-                                              {:input [], :expected {:fields :none}}
+(deftest ^:parallel with-join-fields-update-join-aliases-test
+  (testing "explicit :fields should change join alias for fields that have a different alias (#32437)"
+    (let [categories-id [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :id)]]
+      (test-with-join-fields
+       [(lib/with-join-alias categories-id "Hat")]
+       {:fields [(lib/with-join-alias categories-id "Cat")]}))))
 
-                                              nil
-                                              {:input nil, :expected nil}
-
-                                              "explicit :fields"
-                                              (let [categories-id [:field {:lib/uuid   (str (random-uuid))
-                                                                           :join-alias "Cat"}
-                                                                   (meta/id :categories :id)]]
-                                                {:input    [categories-id]
-                                                 :expected {:fields [categories-id]}})}]
-    (testing message
-      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                      (lib/join (-> (lib/join-clause
-                                     (meta/table-metadata :categories)
-                                     [(lib/=
-                                       (meta/field-metadata :venues :category-id)
-                                       (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
-                                    (lib/with-join-alias "Cat")
-                                    (lib/with-join-fields input))))]
-        (is (=? {:stages [{:joins [(merge
-                                    {:alias      "Cat"
-                                     :conditions [[:= {}
-                                                   [:field {} (meta/id :venues :category-id)]
-                                                   [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}
-                                    expected)]}]}
-                query))
-        (let [[join] (lib/joins query)]
-          (is (some? join))
-          (is (= (:fields expected)
-                 (lib/join-fields join))))))))
-
-(defn- query-with-join-with-fields
-  "A query against `VENUES` joining `CATEGORIES` with `:fields` set to return only `NAME`."
-  []
-  (-> lib.tu/venues-query
-      (lib/join (-> (lib/join-clause
-                     (meta/table-metadata :categories)
-                     [(lib/=
-                       (meta/field-metadata :venues :category-id)
-                       (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
-                    (lib/with-join-alias "Cat")
-                    (lib/with-join-fields [(lib/with-join-alias (meta/field-metadata :categories :name) "Cat")])))))
+(deftest ^:parallel with-join-fields-add-missing-aliases-test
+  (testing "explicit :fields should add join alias to fields missing it (#32437)"
+    (let [categories-id [:field {:lib/uuid (str (random-uuid))} (meta/id :categories :id)]]
+      (test-with-join-fields
+       [categories-id]
+       {:fields [(lib/with-join-alias categories-id "Cat")]}))))
 
 (deftest ^:parallel join-condition-lhs-columns-test
   (let [query lib.tu/venues-query]
@@ -449,11 +478,11 @@
                  {:lib/desired-column-alias "LATITUDE"}
                  {:lib/desired-column-alias "LONGITUDE"}
                  {:lib/desired-column-alias "PRICE"}]
-                (lib/join-condition-lhs-columns query rhs)))))))
+                (lib/join-condition-lhs-columns query nil rhs)))))))
 
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
   (testing "Include columns from previous join(s)"
-    (let [query (query-with-join-with-fields)]
+    (let [query lib.tu/query-with-join-with-explicit-fields]
       (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :users :id)) "User")]]
         (testing (str "rhs = " (pr-str rhs))
           (is (=? [{:lib/desired-column-alias "ID"}
@@ -464,9 +493,37 @@
                    {:lib/desired-column-alias "LONGITUDE"}
                    {:lib/desired-column-alias "PRICE"}
                    {:lib/desired-column-alias "Cat__NAME"}]
-                  (lib/join-condition-lhs-columns query rhs)))
-          (is (= (lib/join-condition-lhs-columns query rhs)
-                 (lib/join-condition-lhs-columns query -1 rhs))))))))
+                  (lib/join-condition-lhs-columns query nil rhs)))
+          (is (= (lib/join-condition-lhs-columns query nil rhs)
+                 (lib/join-condition-lhs-columns query -1 nil rhs))))))))
+
+(deftest ^:parallel join-condition-lhs-columns-exclude-columns-from-existing-join-test
+  (testing "Ignore columns added by a join or any subsequent joins (#32005)"
+    (let [query                  (-> lib.tu/query-with-join
+                                     (lib.tu/add-joins "C2" "C3"))
+          [join-1 join-2 join-3] (lib/joins query)]
+      (is (=? {:lib/type :mbql/join
+               :alias    "Cat"}
+              join-1))
+      (is (=? {:lib/type :mbql/join
+               :alias    "C2"}
+              join-2))
+      (is (=? {:lib/type :mbql/join
+               :alias    "C3"}
+              join-3))
+      (are [join expected] (= expected
+                              (map :lib/desired-column-alias (lib/join-condition-lhs-columns query join nil)))
+        nil
+        ["ID" "Cat__ID" "C2__ID" "C3__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME" "C3__NAME"]
+
+        join-1
+        ["ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE"]
+
+        join-2
+        ["ID" "Cat__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME"]
+
+        join-3
+        ["ID" "Cat__ID" "C2__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME"]))))
 
 (deftest ^:parallel join-condition-rhs-columns-test
   (let [query lib.tu/venues-query]
