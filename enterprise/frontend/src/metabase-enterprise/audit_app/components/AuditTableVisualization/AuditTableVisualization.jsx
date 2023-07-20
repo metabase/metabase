@@ -15,7 +15,7 @@ import EmptyState from "metabase/components/EmptyState";
 import { Icon } from "metabase/core/components/Icon";
 import CheckBox from "metabase/core/components/CheckBox";
 import NoResults from "assets/img/no_results.svg";
-import { getRowValuesByColumns, getColumnName } from "../lib/mode";
+import { getRowValuesByColumns, getColumnName } from "../../lib/mode";
 import { RemoveRowButton } from "./AuditTableVisualization.styled";
 
 const propTypes = {
@@ -38,7 +38,7 @@ const propTypes = {
 
 const ROW_ID_IDX = 0;
 
-export default class AuditTableVisualization extends Component {
+export class AuditTableVisualization extends Component {
   static identifier = "audit-table";
   static noHeader = true;
   static hidden = true;
