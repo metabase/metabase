@@ -16,7 +16,7 @@ import {
 } from "./OptionEditor.styled";
 
 const optionsToText = (options: FieldValueOptions) => options.join("\n");
-const textToOptions = (text: string): FieldValueOptions => {
+export const textToOptions = (text: string): FieldValueOptions => {
   const options = text
     .trim()
     .split("\n")
