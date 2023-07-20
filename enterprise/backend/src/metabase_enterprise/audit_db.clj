@@ -80,7 +80,7 @@
       ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
       (let [report (log/with-no-logs (serialization.cmd/v2-load-internal analytics-root-dir-resource
                                                                          {}
-                                                                         #_token-check? false))]
+                                                                         :token-check? false))]
         (if (not-empty (:errors report))
           (log/info (str "Error Loading Analytics Content: " (pr-str report)))
           (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))

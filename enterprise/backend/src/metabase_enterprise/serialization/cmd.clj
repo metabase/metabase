@@ -84,7 +84,8 @@
   [path
    opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
-   token-check? :- boolean?]
+   & {:keys [token-check?]
+      :or   {token-check? true}}]
   (plugins/load-plugins!)
   (mdb/setup-db!)
   (when token-check?
@@ -102,7 +103,7 @@
    opts are passed to load-metabase"
   [path
    opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
-  (v2-load-internal path opts true))
+  (v2-load-internal path opts :token-check? true))
 
 (defn- select-entities-in-collections
   ([model collections]
