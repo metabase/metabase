@@ -416,14 +416,19 @@
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
 
+  If you are changing the LHS of a condition for an existing join, pass in that existing join as
+  `existing-join-or-nil` so we can filter out the columns added by it (it doesn't make sense to present the columns
+  added by a join as options for its own LHS). Otherwise pass `nil` when building a new join. See #32005 for more
+  info.
+
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  [a-query stage-number rhs-column-or-nil]
-  (to-array (lib.core/join-condition-lhs-columns a-query stage-number rhs-column-or-nil)))
+  [a-query stage-number existing-join-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query stage-number existing-join-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-rhs-columns
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
@@ -621,7 +626,7 @@
   something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
   selected columns (those in the join's `:fields`) will include `:selected true` information."
   [a-query stage-number join-or-joinable]
-  (lib.core/joinable-columns a-query stage-number join-or-joinable))
+  (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
 
 (defn ^:export table-or-card-metadata
   "Get TableMetadata if passed an integer `table-id`, or CardMetadata if passed a legacy-style `card__<id>` string.

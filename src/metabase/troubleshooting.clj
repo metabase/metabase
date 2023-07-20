@@ -1,13 +1,10 @@
 (ns metabase.troubleshooting
   (:require
-   [clojure.java.jmx :as jmx]
    [metabase.analytics.stats :as stats]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
-   [toucan2.core :as t2])
-  (:import
-   (javax.management ObjectName)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -43,15 +40,3 @@
    :run-mode                     (config/config-kw :mb-run-mode)
    :version                      config/mb-version-info
    :settings                     {:report-timezone (driver/report-timezone)}})
-
-(defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
-  (let [bean-id   (.getCanonicalName jmx-bean)
-        props     [:numConnections :numIdleConnections :numBusyConnections
-                   :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-      (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))
-
-(defn connection-pool-info
-  "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."
-  []
-  (->> (reduce conn-pool-bean-diag-info {} (jmx/mbean-names "com.mchange.v2.c3p0:type=PooledDataSource,*"))
-       (assoc {} :connection-pools)))
