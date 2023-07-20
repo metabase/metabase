@@ -4,9 +4,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import MetabotWidget from "metabase/metabot/components/MetabotWidget";
 import Tooltip from "metabase/core/components/Tooltip/Tooltip";
 import { HomeGreeting } from "../HomeGreeting";
-// ! NEED TO USE THIS FOR ILLUSTRATION AS WELL
 import { getHasIllustration } from "../../selectors";
-// ! -------------------------------------
 import { CustomHomePageModal } from "../CustomHomePageModal";
 import {
   LayoutBody,
