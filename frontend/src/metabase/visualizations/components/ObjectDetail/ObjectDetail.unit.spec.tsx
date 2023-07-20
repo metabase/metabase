@@ -1,9 +1,24 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 
+import userEvent from "@testing-library/user-event";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  setupActionsEndpoints,
+  setupCardDataset,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { setupCardDataset } from "__support__/server-mocks";
-import { createMockCard, createMockTable } from "metabase-types/api/mocks";
-
+import { renderWithProviders } from "__support__/ui";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockImplicitQueryAction,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
+  PEOPLE_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -11,6 +26,7 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/core/utils/types";
+import Question from "metabase-lib/Question";
 import type { ObjectDetailProps } from "./types";
 import {
   ObjectDetailView,
@@ -27,6 +43,63 @@ const MOCK_TABLE = createMockTable({
   display_name: "Product",
 });
 
+const mockQuestion = new Question(
+  createMockCard({
+    name: "Product",
+  }),
+);
+
+const ACTIONS_ENABLED_DB_ID = 1;
+
+const metadata = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      id: ACTIONS_ENABLED_DB_ID,
+      settings: { "database-enable-actions": true },
+    }),
+  ],
+});
+
+const mockDataset = new Question(
+  createMockCard({
+    name: "Product",
+    dataset: true,
+    dataset_query: {
+      type: "query",
+      database: ACTIONS_ENABLED_DB_ID,
+      query: {
+        "source-table": PEOPLE_ID,
+      },
+    },
+  }),
+  metadata,
+);
+
+const databaseWithEnabledActions = createMockDatabase({
+  settings: { "database-enable-actions": true },
+});
+
+const implicitCreateAction = createMockImplicitQueryAction({
+  id: 1,
+  database_id: databaseWithEnabledActions.id,
+  name: "Create",
+  kind: "row/create",
+});
+
+const implicitDeleteAction = createMockImplicitQueryAction({
+  id: 2,
+  database_id: databaseWithEnabledActions.id,
+  name: "Delete",
+  kind: "row/delete",
+});
+
+const implicitUpdateAction = createMockImplicitQueryAction({
+  id: 3,
+  database_id: databaseWithEnabledActions.id,
+  name: "Update",
+  kind: "row/update",
+});
+
 function setup(options?: Partial<ObjectDetailProps>) {
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -40,7 +113,7 @@ function setup(options?: Partial<ObjectDetailProps>) {
   const question = checkNotNull(metadata.question(MOCK_CARD.id));
   const table = checkNotNull(metadata.table(MOCK_TABLE.id));
 
-  render(
+  renderWithProviders(
     <ObjectDetailView
       data={testDataset}
       question={question}
@@ -73,6 +146,7 @@ describe("Object Detail", () => {
   it("renders an object detail header", () => {
     render(
       <ObjectDetailHeader
+        actionItems={[]}
         canZoom={false}
         objectName="Large Sandstone Socks"
         objectId={778}
@@ -90,6 +164,7 @@ describe("Object Detail", () => {
   it("renders an object detail header with enabled next object button and disabled previous object button", () => {
     render(
       <ObjectDetailHeader
+        actionItems={[]}
         canZoom={true}
         objectName="Large Sandstone Socks"
         objectId={778}
@@ -184,5 +259,36 @@ describe("Object Detail", () => {
 
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     expect(await screen.findByText(/we're a little lost/i)).toBeInTheDocument();
+  });
+
+  it("renders actions menu", async () => {
+    setupDatabasesEndpoints([databaseWithEnabledActions]);
+    setupActionsEndpoints([
+      implicitCreateAction,
+      implicitDeleteAction,
+      implicitUpdateAction,
+    ]);
+    setup({ question: mockDataset });
+
+    const actionsMenu = await screen.findByTestId("actions-menu");
+    expect(actionsMenu).toBeInTheDocument();
+    userEvent.click(actionsMenu);
+
+    const popover = screen.getByTestId("popover");
+    expect(within(popover).getByText("Update")).toBeInTheDocument();
+    expect(within(popover).getByText("Delete")).toBeInTheDocument();
+  });
+
+  it("does not render actions menu for non-model questions", async () => {
+    setupDatabasesEndpoints([databaseWithEnabledActions]);
+    setupActionsEndpoints([
+      implicitCreateAction,
+      implicitDeleteAction,
+      implicitUpdateAction,
+    ]);
+    setup({ question: mockQuestion });
+
+    const actionsMenu = screen.queryByTestId("actions-menu");
+    expect(actionsMenu).not.toBeInTheDocument();
   });
 });

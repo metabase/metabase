@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
-
 import { useMount, usePrevious } from "react-use";
+
 import { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
@@ -11,9 +11,15 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import {
+  useActionListQuery,
+  useDatabaseListQuery,
+} from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
+import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { Flex } from "metabase/ui/components";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -47,6 +53,7 @@ import type {
 } from "./types";
 
 import {
+  getActionItems,
   getDisplayId,
   getIdValue,
   getObjectName,
@@ -129,7 +136,7 @@ export function ObjectDetailView({
   canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
-  showActions = true,
+  showControls = true,
   showRelations = true,
   showHeader,
   onVisualizationClick,
@@ -279,6 +286,30 @@ export function ObjectDetailView({
     [zoomedRowID, followForeignKey],
   );
 
+  const areImplicitActionsEnabled =
+    question &&
+    question.canWrite() &&
+    question.isDataset() &&
+    question.supportsImplicitActions();
+
+  const { data: actions = [] } = useActionListQuery({
+    enabled: areImplicitActionsEnabled,
+    query: { "model-id": question?.id() },
+  });
+
+  const { data: databases = [] } = useDatabaseListQuery({
+    enabled: areImplicitActionsEnabled,
+  });
+
+  const actionItems = areImplicitActionsEnabled
+    ? getActionItems({
+        actions,
+        databases,
+        onDelete: () => "TODO: metabase#32323",
+        onUpdate: () => "TODO: metabase#32322",
+      })
+    : [];
+
   if (!data) {
     return null;
   }
@@ -318,6 +349,7 @@ export function ObjectDetailView({
         >
           {showHeader && (
             <ObjectDetailHeader
+              actionItems={actionItems}
               canZoom={Boolean(
                 canZoom && (canZoomNextRow || canZoomPreviousRow),
               )}
@@ -325,7 +357,7 @@ export function ObjectDetailView({
               objectId={displayId}
               canZoomPreviousRow={!!canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
-              showActions={showActions}
+              showControls={showControls}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
               viewNextObjectDetail={viewNextObjectDetail}
               closeObjectDetail={closeObjectDetail}
@@ -350,24 +382,30 @@ export function ObjectDetailView({
 }
 
 export interface ObjectDetailHeaderProps {
+  actionItems: {
+    title: string;
+    icon: string;
+    action: () => void;
+  }[];
   canZoom: boolean;
   objectName: string;
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
-  showActions?: boolean;
+  showControls?: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
 }
 
 export function ObjectDetailHeader({
+  actionItems,
   canZoom,
   objectName,
   objectId,
   canZoomPreviousRow,
   canZoomNextRow,
-  showActions = true,
+  showControls = true,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
@@ -380,41 +418,51 @@ export function ObjectDetailHeader({
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
-      {showActions && (
-        <div className="flex align-center">
-          <div className="flex p2">
-            {!!canZoom && (
-              <>
-                <Button
-                  data-testid="view-previous-object-detail"
-                  onlyIcon
-                  borderless
-                  className="mr1"
-                  disabled={!canZoomPreviousRow}
-                  onClick={viewPreviousObjectDetail}
-                  icon="chevronup"
-                />
-                <Button
-                  data-testid="view-next-object-detail"
-                  onlyIcon
-                  borderless
-                  disabled={!canZoomNextRow}
-                  onClick={viewNextObjectDetail}
-                  icon="chevrondown"
-                />
-              </>
-            )}
-            <CloseButton>
+
+      {showControls && (
+        <Flex align="center" gap="xs" p="md">
+          {canZoom && (
+            <>
               <Button
-                data-testid="object-detail-close-button"
+                data-testid="view-previous-object-detail"
                 onlyIcon
                 borderless
-                onClick={closeObjectDetail}
-                icon="close"
+                disabled={!canZoomPreviousRow}
+                onClick={viewPreviousObjectDetail}
+                icon="chevronup"
               />
-            </CloseButton>
-          </div>
-        </div>
+              <Button
+                data-testid="view-next-object-detail"
+                onlyIcon
+                borderless
+                disabled={!canZoomNextRow}
+                onClick={viewNextObjectDetail}
+                icon="chevrondown"
+              />
+            </>
+          )}
+
+          {actionItems.length > 0 && (
+            <EntityMenu
+              horizontalAttachments={["right", "left"]}
+              items={actionItems}
+              triggerIcon="ellipsis"
+              triggerProps={{
+                "data-testid": "actions-menu",
+              }}
+            />
+          )}
+
+          <CloseButton>
+            <Button
+              data-testid="object-detail-close-button"
+              onlyIcon
+              borderless
+              onClick={closeObjectDetail}
+              icon="close"
+            />
+          </CloseButton>
+        </Flex>
       )}
     </ObjectDetailHeaderWrapper>
   );

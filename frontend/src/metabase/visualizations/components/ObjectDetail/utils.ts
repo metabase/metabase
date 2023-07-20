@@ -7,6 +7,7 @@ import type {
   DatasetData,
   TableId,
   VisualizationSettings,
+  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -14,8 +15,10 @@ import {
   isEntityName,
   isPK,
 } from "metabase-lib/types/utils/isa";
-import Question from "metabase-lib/Question";
+import { canRunAction } from "metabase-lib/actions/utils";
+import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
+import Question from "metabase-lib/Question";
 
 import { ObjectId } from "./types";
 
@@ -127,3 +130,41 @@ export const getSinglePKIndex = (cols: DatasetColumn[]) => {
 
   return index === -1 ? undefined : index;
 };
+
+export const getActionItems = ({
+  actions,
+  databases,
+  onDelete,
+  onUpdate,
+}: {
+  actions: WritebackAction[];
+  databases: Database[];
+  onDelete: (action: WritebackAction) => void;
+  onUpdate: (action: WritebackAction) => void;
+}) => {
+  const actionItems = [];
+  const deleteAction = actions.find(isValidImplicitDeleteAction);
+  const updateAction = actions.find(isValidImplicitUpdateAction);
+
+  if (updateAction && canRunAction(updateAction, databases)) {
+    const action = () => onUpdate(updateAction);
+    actionItems.push({ title: t`Update`, icon: "pencil", action });
+  }
+
+  if (deleteAction && canRunAction(deleteAction, databases)) {
+    const action = () => onDelete(deleteAction);
+    actionItems.push({ title: t`Delete`, icon: "trash", action });
+  }
+
+  return actionItems;
+};
+
+export const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" &&
+  action.kind === "row/delete" &&
+  !action.archived;
+
+export const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" &&
+  action.kind === "row/update" &&
+  !action.archived;
