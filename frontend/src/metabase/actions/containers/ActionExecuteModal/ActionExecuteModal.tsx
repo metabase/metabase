@@ -15,8 +15,12 @@ import ActionParametersInputForm from "../ActionParametersInputForm";
 
 interface OwnProps {
   actionId: WritebackActionId;
+  initialValues?: ParametersForActionExecution;
+  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
+  shouldPrefetch?: boolean;
   onSubmit: (opts: ExecuteActionOpts) => Promise<ActionFormSubmitResult>;
   onClose?: () => void;
+  onSuccess?: () => void;
 }
 
 interface ActionLoaderProps {
@@ -31,8 +35,12 @@ const mapDispatchToProps = {
 
 const ActionExecuteModal = ({
   action,
+  initialValues,
+  fetchInitialValues,
+  shouldPrefetch,
   onSubmit,
-  onClose,
+  onClose = _.noop,
+  onSuccess = _.noop,
 }: ActionExecuteModalProps) => {
   const handleSubmit = useCallback(
     (parameters: ParametersForActionExecution) => {
@@ -41,13 +49,21 @@ const ActionExecuteModal = ({
     [action, onSubmit],
   );
 
+  const handleSubmitSuccess = useCallback(() => {
+    onClose();
+    onSuccess();
+  }, [onClose, onSuccess]);
+
   return (
     <ModalContent title={action.name} onClose={onClose}>
       <ActionParametersInputForm
         action={action}
+        initialValues={initialValues}
+        fetchInitialValues={fetchInitialValues}
+        shouldPrefetch={shouldPrefetch}
         onCancel={onClose}
         onSubmit={handleSubmit}
-        onSubmitSuccess={onClose}
+        onSubmitSuccess={handleSubmitSuccess}
       />
     </ModalContent>
   );

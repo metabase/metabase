@@ -186,6 +186,18 @@
   "A query against `VENUES` with an explicit join against `CATEGORIES`."
   (add-joins venues-query "Cat"))
 
+(def query-with-join-with-explicit-fields
+  "A query against `VENUES` with an explicit join against `CATEGORIES`, that includes explicit `:fields` including just
+  `CATEGORIES.NAME`."
+  (-> venues-query
+      (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
+                    (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :category-id)
+                                                      (-> (meta/field-metadata :categories :id)
+                                                          (lib/with-join-alias "Cat")))])
+                    (lib/with-join-alias "Cat")
+                    (lib/with-join-fields [(-> (meta/field-metadata :categories :name)
+                                               (lib/with-join-alias "Cat"))])))))
+
 (def query-with-expression
   "A query with an expression."
   (-> venues-query
