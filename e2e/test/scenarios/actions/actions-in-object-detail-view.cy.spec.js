@@ -4,7 +4,7 @@ import { restore, visitModel } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const objectId = 11;
+const modelObjectId = 11;
 
 const ordersModel = {
   name: "Orders model",
@@ -30,32 +30,36 @@ describe("Model actions in object detail view", () => {
     cy.get("@modelId").then(modelId => {
       asNormalUser(() => {
         assertActionsTabNotExists(modelId);
-        assertActionsDropdownNotExists(modelId);
+        assertActionsDropdownNotExists(modelId, modelObjectId);
       });
 
       asAdmin(() => {
         assertActionsTabNotExists(modelId);
-        assertActionsDropdownNotExists(modelId);
+        assertActionsDropdownNotExists(modelId, modelObjectId);
 
         enableDatabaseActions();
 
         assertActionsTabExists(modelId);
-        assertActionsDropdownNotExists(modelId);
+        assertActionsDropdownNotExists(modelId, modelObjectId);
       });
 
       asNormalUser(() => {
         assertActionsTabExists(modelId);
-        assertActionsDropdownNotExists(modelId);
+        assertActionsDropdownNotExists(modelId, modelObjectId);
       });
 
       asAdmin(() => {
         createBasicModelActions(modelId);
 
-        assertActionsDropdownExists(modelId);
+        assertActionsDropdownExists(modelId, modelObjectId);
       });
 
       asNormalUser(() => {
-        assertActionsDropdownExists(modelId);
+        assertActionsDropdownExists(modelId, modelObjectId);
+
+        openUpdateObjectModal(modelId, modelObjectId);
+
+        assertUpdateModalPrefilled();
       });
     });
   });
@@ -91,14 +95,21 @@ function createBasicModelActions(modelId) {
   cy.wait("@createBasicActions");
 }
 
-function assertActionsDropdownExists(modelId) {
+function assertActionsDropdownExists(modelId, objectId) {
   visitModel(modelId);
   cy.findByText(objectId).click();
   cy.log("actions dropdown should be shown in object details modal");
   cy.findByTestId("actions-menu").should("exist");
 }
 
-function assertActionsDropdownNotExists(modelId) {
+function openUpdateObjectModal(modelId, objectId) {
+  visitModel(modelId);
+  cy.findByText(objectId).click();
+  cy.findByTestId("actions-menu").click();
+  cy.findByText("Update").click();
+}
+
+function assertActionsDropdownNotExists(modelId, objectId) {
   visitModel(modelId);
   cy.findByText(objectId).click();
   cy.log("actions dropdown should not be shown in object details modal");
@@ -116,3 +127,5 @@ function assertActionsTabNotExists(modelId) {
   cy.log("actions tab should be shown in model detail page");
   cy.findByText("Actions").should("not.exist");
 }
+
+function assertUpdateModalPrefilled() {}
