@@ -382,6 +382,10 @@
   outline: none;
 }
 
+.ProseMirror:focus .section-component {
+  border: 1px dotted #e8e8e8;
+}
+
 .ProseMirror hr {
   height: 1px;
   background-color: #e8e8e8;

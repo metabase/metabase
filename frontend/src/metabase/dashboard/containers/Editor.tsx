@@ -9,6 +9,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { useLocalStorage } from "@mantine/hooks";
 import SlashCommand from "./slash-command";
 import ChartExtension from "./chart-extension";
+import SectionExtension from "./section-extension";
 
 function Editor() {
   const [content, setContent] = useLocalStorage({
@@ -55,6 +56,7 @@ function Editor() {
       TaskItem,
       TaskList,
       ChartExtension,
+      SectionExtension,
     ],
     content: content,
     onUpdate: e => {

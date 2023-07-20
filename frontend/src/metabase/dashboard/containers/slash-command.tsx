@@ -85,6 +85,19 @@ const getSuggestionItems = ({ query }: { query: string }) => {
       },
     },
     {
+      title: "Section",
+      description: "Insert a section that can group content",
+      searchTerms: ["section", "group"],
+      command: ({ editor, range }: CommandProps) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent("<section-component></section-component>")
+          .run();
+      },
+    },
+    {
       title: "Text",
       description: "Just start typing with plain text.",
       searchTerms: ["p", "paragraph"],
