@@ -12,6 +12,7 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/core/utils/types";
 import { useSearchListQuery } from "./use-search-list-query";
 
 const TEST_ITEM = createMockCollectionItem();
@@ -49,13 +50,20 @@ const TestComponent = () => {
         <div key={item.id}>{item.name}</div>
       ))}
       <div data-testid="metadata">
-        {metadata && Object.keys(metadata).length > 0
-          ? Object.entries(metadata).map(([key, value]) => (
-              <div key={key}>
-                {key}: {value}
-              </div>
-            ))
-          : "No metadata"}
+        {metadata && (
+          <>
+            <div data-testid="metadata-available-models">
+              {(metadata.available_models || []).join(", ")}
+            </div>
+            <div data-testid="metadata-limit">{metadata.limit}</div>
+            <div data-testid="metadata-models">
+              {(metadata.models || []).join(", ")}
+            </div>
+            <div data-testid="metadata-offset">{metadata.offset}</div>
+            <div data-testid="metadata-table-db-id">{metadata.table_db_id}</div>
+            <div data-testid="metadata-total">{metadata.total}</div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -82,10 +90,33 @@ describe("useSearchListQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
-    for (const [key, value] of Object.entries(TEST_SEARCH_METADATA)) {
-      expect(
-        within(screen.getByTestId("metadata")).getByText(`${key}: ${value}`),
-      ).toBeInTheDocument();
-    }
+    const metadata = within(screen.getByTestId("metadata"));
+
+    const availableModelTextContent = checkNotNull(
+      TEST_SEARCH_METADATA.available_models,
+    ).join(", ");
+
+    const modelsTextContent = checkNotNull(TEST_SEARCH_METADATA.models).join(
+      ", ",
+    );
+
+    expect(metadata.getByTestId("metadata-available-models")).toHaveTextContent(
+      availableModelTextContent,
+    );
+    expect(metadata.getByTestId("metadata-limit")).toHaveTextContent(
+      String(TEST_SEARCH_METADATA.limit),
+    );
+    expect(metadata.getByTestId("metadata-models")).toHaveTextContent(
+      modelsTextContent,
+    );
+    expect(metadata.getByTestId("metadata-offset")).toHaveTextContent(
+      String(TEST_SEARCH_METADATA.offset),
+    );
+    expect(metadata.getByTestId("metadata-table-db-id")).toHaveTextContent(
+      String(TEST_SEARCH_METADATA.table_db_id),
+    );
+    expect(metadata.getByTestId("metadata-total")).toHaveTextContent(
+      String(TEST_SEARCH_METADATA.total),
+    );
   });
 });

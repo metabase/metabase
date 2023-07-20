@@ -26,15 +26,7 @@ function TestComponent() {
       ))}
 
       <div data-testid="metadata">
-        {metadata && Object.keys(metadata).length > 0
-          ? Object.entries(metadata).map(([key, value]) => (
-              <div key={key}>
-                <div>
-                  {key}: {value}
-                </div>
-              </div>
-            ))
-          : "No metadata"}
+        {(!metadata || Object.keys(metadata).length === 0) && "No metadata"}
       </div>
     </div>
   );
@@ -57,7 +49,7 @@ describe("useUserListQuery", () => {
     expect(screen.getByText("Testy Tableton")).toBeInTheDocument();
   });
 
-  it("should show metadata from the response", async () => {
+  it("should not have any metadata in the response", async () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(
