@@ -510,11 +510,13 @@
               [:or [:like [:lower :model-index-value.name] "%foo%"]]]
              (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                          :search-string "foo"
+                                                                         :models             (set search-config/all-models)
                                                                          :current-user-perms #{"/"}})))
       (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
         (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
                (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                            :search-string "foo"
+                                                                           :models             (set search-config/all-models)
                                                                            :current-user-perms #{"/"}})))))))
 
 (deftest archived-results-test
@@ -723,6 +725,7 @@
       (toucan2.execute/with-call-count [call-count]
         (#'api.search/search {:search-string      "count test"
                               :archived?          false
+                              :models             (set search-config/all-models)
                               :current-user-perms #{"/"}
                               :limit-int          100})
         ;; the call count number here are expected to change if we change the search api

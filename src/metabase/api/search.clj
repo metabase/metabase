@@ -39,9 +39,9 @@
     [:map {:closed true}
      [:search-string                       [:maybe ms/NonBlankString]]
      [:archived?                           :boolean]
+     [:models                              [:set SearchableModel]]
      [:current-user-perms                  [:set perms/PathMalliSchema]]
      [:created-by         {:optional true} [:maybe ms/PositiveInt]]
-     [:models             {:optional true} [:maybe [:set SearchableModel]]]
      [:table-db-id        {:optional true} [:maybe ms/PositiveInt]]
      [:limit-int          {:optional true} [:maybe ms/Int]]
      [:offset-int         {:optional true} [:maybe ms/Int]]]))
@@ -386,7 +386,7 @@
   (into #{}
         (map #(get (first %) :model)
              (filter not-empty
-                     (for [model search-config/all-models]
+                     (for [model (:models search-ctx)]
                        (let [search-query     (search-query-for-model model search-ctx)
                              query-with-limit (sql.helpers/limit search-query 1)]
                          (mdb.query/query query-with-limit)))))))
@@ -395,8 +395,7 @@
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
   one model without errors. Therefore we degenerate it down for it"
   [search-ctx :- SearchContext]
-  (let [models       (or (:models search-ctx)
-                         search-config/all-models)
+  (let [models       (:models search-ctx)
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
     (if (= (count models) 1)
       (search-query-for-model (first models) search-ctx)
@@ -462,17 +461,16 @@
                         [:models          {:optional true} [:maybe [:or SearchableModel [:sequential SearchableModel]]]]
                         [:limit           {:optional true} [:maybe ms/Int]]
                         [:offset          {:optional true} [:maybe ms/Int]]]]
-  (cond-> {:search-string      search-string
-           :current-user-perms @api/*current-user-permissions-set*
-           :archived?          (Boolean/parseBoolean archived-string)}
-    (some? created-by)      (assoc :created-by created-by)
-    (some? table-db-id)     (assoc :table-db-id table-db-id)
-    (some? models)          (assoc :models
-                                   (if models
-                                     (apply hash-set (if (vector? models) models [models]))
-                                     search-config/all-models))
-    (some? limit)           (assoc :limit-int limit)
-    (some? offset)          (assoc :offset-int offset)))
+  (let [models (if (string? models) [models] models)
+        ctx    (cond-> {:search-string      search-string
+                        :current-user-perms @api/*current-user-permissions-set*
+                        :archived?          (Boolean/parseBoolean archived-string)
+                        :models             (apply hash-set (if (seq models) models search-config/all-models))}
+                 (some? created-by)  (assoc :created-by created-by)
+                 (some? table-db-id) (assoc :table-db-id table-db-id)
+                 (some? limit)       (assoc :limit-int limit)
+                 (some? offset)      (assoc :offset-int offset))]
+    (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"

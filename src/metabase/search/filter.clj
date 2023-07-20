@@ -7,14 +7,35 @@
   But there are OPTIONAL FILTERS like :created-by, :created-at, when these filters are provided, the results will return only
   results of models that have these filters.
 
-  The multi method for optional filters should have the default implementation return a false-clause, and then each model
-  that supports the filter should define its own method for the filter.
-  "
+  The multi method for optional filters should have the default implementation to throw for unsupported models, and then each model
+  that supports the filter should define its own method for the filter."
   (:require
+   [clojure.set :as set]
    [metabase.search.config :as search.config]))
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                         Optional filters                                        ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private feature->supported-models
+  {:created-by #{"action" "card" "dataset" "dashboard"}})
+
+(defn- has-optional-filters?
+  [{:keys [created-by] :as _search-context}]
+  (boolean (some some? [created-by])))
+
+(defn search-context->applicable-models
+  "Given a search-context, retuns the list of models that can be applied to it."
+  [{:keys [created-by models] :as search-context}]
+  (if-not (has-optional-filters? search-context)
+    models
+    (cond-> #{}
+      (some? created-by) (set/union (:created-by feature->supported-models))
+
+      true (set/intersection models))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
@@ -63,8 +84,8 @@
     model))
 
 (defmethod created-by-where-clause :default
-  [_model _creator-id]
-  false-clause)
+  [model _creator-id]
+  (throw (ex-info "Not implemented" {:model model})))
 
 (defmethod created-by-where-clause "card"
   [model creator-id]
