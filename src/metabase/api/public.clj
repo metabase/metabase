@@ -20,6 +20,7 @@
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -305,7 +306,9 @@
    parameters  ms/JSONString}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
-  (actions.execution/fetch-values (api.dashboard/action-for-dashcard-id dashcard-id) (json/parse-string parameters)))
+  (actions.execution/fetch-values
+   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
+   (json/parse-string parameters)))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 

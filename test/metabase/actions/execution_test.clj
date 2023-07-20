@@ -1,4 +1,4 @@
-(ns metabase.actions.test-util
+(ns metabase.actions.execution-test
   (:require
    [clojure.test :refer :all]
    [metabase.actions.execution :as actions.execution]
@@ -15,8 +15,6 @@
                         {:keys [action-id]} {:type :implicit :kind "row/update"}]
         (is (= {"id" 1 "name" "Red Medicine"}
                (actions.execution/fetch-values (action/select-action :id action-id) {"id" 1})))
-
-        (t2/select :model/QueryExecution :context :action)
         ;; the query execution is saved async, so we need to sleep a bit
         (Thread/sleep 200)
-        (is (true? (t2/exists? :model/QueryExecution :action_id action-id)))))))
+        (is (true? (t2/exists? :model/QueryExecution :action_id action-id :context :action)))))))

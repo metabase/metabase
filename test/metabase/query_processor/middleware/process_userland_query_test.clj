@@ -69,7 +69,7 @@
               :native       false
               :pulse_id     nil
               :card_id      nil
-              :action_id     nil
+              :action_id    nil
               :context      nil
               :running_time true
               :cache_hit    false
@@ -95,7 +95,7 @@
               :json_query   query
               :native       false
               :pulse_id     nil
-              :action_id     nil
+              :action_id    nil
               :card_id      nil
               :context      nil
               :running_time true

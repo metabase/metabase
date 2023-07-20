@@ -177,7 +177,7 @@
                       (vec (cons User (user-visible-columns)))
                       (cond-> (user-clauses status query (if (some? group_id) [group_id] nil) include_deactivated)
                         (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                        true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                        true (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])
                         (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
                         (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
                ;; For admins also include the IDs of Users' Personal Collections
@@ -203,7 +203,7 @@
     {:data   (t2/select
               (vec (cons User (user-visible-columns)))
               (cond-> (user-clauses nil nil nil nil)
-                true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                true (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])
                 (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
                 (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*)))
      :total  (t2/count User (user-clauses nil nil nil nil))
@@ -213,11 +213,11 @@
     (let [user_group_ids (map :id (:user_group_memberships
                                    (-> (fetch-user :id api/*current-user-id*)
                                        (t2/hydrate :user_group_memberships))))
-          data           (into #{}
+          data           (distinct
                           (t2/select
                            (vec (cons User (user-visible-columns)))
-                           (cond-> (user-clauses nil nil (remove #{1} user_group_ids) nil)
-                             true (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                           (cond-> (user-clauses nil nil (remove #{(u/the-id (perms-group/all-users))} user_group_ids) nil)
+                             true (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])
                              (some? mw.offset-paging/*limit*)  (sql.helpers/limit mw.offset-paging/*limit*)
                              (some? mw.offset-paging/*offset*) (sql.helpers/offset mw.offset-paging/*offset*))))]
       {:data   data

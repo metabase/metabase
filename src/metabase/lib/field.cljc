@@ -98,8 +98,8 @@
                            (resolve-column-name-in-metadata column-name stage-columns))]
       (cond-> column
         previous-stage-number (-> (dissoc :id :table-id
-                                          ::binning ::temporal-unit
-                                          :metabase.lib.join/join-alias)
+                                          ::binning ::temporal-unit)
+                                  (lib.join/with-join-alias nil)
                                   (assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                   (assoc :lib/source :source/previous-stage))))))
 
