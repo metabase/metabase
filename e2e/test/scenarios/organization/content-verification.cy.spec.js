@@ -191,6 +191,45 @@ describeEE("scenarios > premium > content verification", () => {
       });
     });
   });
+
+  context("token expired or removed", () => {
+    beforeEach(() => {
+      setTokenFeatures("all");
+      cy.createModerationReview({
+        status: "verified",
+        moderated_item_type: "card",
+        moderated_item_id: ORDERS_COUNT_QUESTION_ID,
+      });
+
+      setTokenFeatures("none");
+    });
+
+    it("should not treat the question as verified anymore", () => {
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+
+      cy.findByTestId("qb-header").within(() => {
+        cy.findByText("Orders, Count");
+        cy.icon("verified").should("not.exist");
+      });
+
+      questionInfoButton().click();
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.contains(/created this./);
+        cy.contains(/verified this/).should("not.exist");
+      });
+
+      cy.findByPlaceholderText("Search…").type("orders{enter}");
+      cy.log(
+        "The question lost the verification status and does not appear high in search results anymore",
+      );
+      cy.findAllByTestId("search-result-item")
+        .as("searchResults")
+        .first()
+        .should("not.contain", "Orders, Count");
+      cy.log("Verified icon should not appear at all in search results");
+      cy.get("@searchResults").icon("verified").should("not.exist");
+    });
+  });
 });
 
 function verifyQuestion() {
