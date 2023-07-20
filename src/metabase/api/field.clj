@@ -8,6 +8,7 @@
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.models.permissions :as perms]
    [metabase.models.table :as table :refer [Table]]
@@ -246,39 +247,37 @@
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
   [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
-  ;; if there's a human-readable remapping, we need to do all sorts of nonsense to make this work and return pairs of
+  ;; if there's a remapping, we need to do all sorts of nonsense to make this work and return pairs of
   ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
   ;; [[search-values]] without a search term to fetch all values.
-  (if-let [human-readable-field-id (when (= has-field-values-type :list)
-                                     (t2/select-one-fn :human_readable_field_id Dimension :field_id (u/the-id field)))]
+  (if-let [remapped-field-id (when (= has-field-values-type :list) ;; It's weird that this only applies to :list ?? https://github.com/metabase/metabase/pull/19901/files
+                               (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (t2/select-one Field :id human-readable-field-id)))
+                                     (api/check-404 (t2/select-one Field :id remapped-field-id)))
      :field_id        field-id
      :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
-
-(defn check-perms-and-return-field-values
-  "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
-  so, return its values."
-  [field-id]
-  (let [field (api/check-404 (t2/select-one Field :id field-id))]
-    (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
-    (field->values field)))
 
 ;; todo: we need to unify and untangle this stuff
 (defn field-id->values
   "Fetch values for field id. If query is present, uses `api.field/search-values`, otherwise delegates to
   `api.field/check-parms-and-return-field-values`."
   [field-id query]
-  (if (str/blank? query)
-    (check-perms-and-return-field-values field-id)
-    (let [field (api/check-404 (t2/select-one Field :id field-id))]
+  (let [field (api/read-check (t2/select-one Field :id field-id))]
+    (if (str/blank? query)
+      (field->values field)
       ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
-      ;; is what the return-field-values returns above
-      {:values (map (comp vector first) (search-values field field query))
+      ;; is what `check-perms-and-return-field-values` returns above
+      (let [search-field (or
+                          ;; TODO: do I need to think about when (= has-field-values-type :list) ?? https://github.com/metabase/metabase/pull/19901/files
+                          ;; TODO: should there be a read-check here too?
+                          (some->> (chain-filter/remapped-field-id field-id)
+                                   (t2/select-one Field :id))
+                          field)]
+       {:values (search-values field search-field query)
        ;; assume there are more
-       :has_more_values true
-       :field_id field-id})))
+        :has_more_values true
+        :field_id field-id}))))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
 (api/defendpoint GET "/:id/values"
@@ -286,7 +285,8 @@
   defined by a User) a map of human-readable remapped values."
   [id]
   {id ms/PositiveInt}
-  (check-perms-and-return-field-values id))
+  (let [field (api/read-check (t2/select-one Field :id id))]
+    (field->values field)))
 
 ;; match things like GET /field%2Ccreated_at%2options
 ;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
@@ -438,13 +438,11 @@
        (log/debug e (trs "Error searching field values"))
        nil))))
 
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/search/:search-id"
+(api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
-  {value su/NonBlankString}
+  {value ms/NonBlankString}
   (let [field        (api/check-404 (t2/select-one Field :id id))
         search-field (api/check-404 (t2/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)
