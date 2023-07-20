@@ -24,7 +24,11 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 
 import Search from "metabase/entities/search";
 import { SnippetRow } from "../SnippetRow";
-import { SidebarFooter, SidebarIcon } from "./SnippetSidebar.styled";
+import {
+  SidebarFooter,
+  SidebarIcon,
+  SnippetTitle,
+} from "./SnippetSidebar.styled";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 16;
@@ -136,8 +140,7 @@ class SnippetSidebar extends React.Component {
                   {snippetCollection.id === "root" ? (
                     t`Snippets`
                   ) : (
-                    <span
-                      className="text-brand-hover cursor-pointer"
+                    <SnippetTitle
                       onClick={() => {
                         const parentId = snippetCollection.parent_id;
                         this.props.setSnippetCollectionId(
@@ -154,7 +157,7 @@ class SnippetSidebar extends React.Component {
                     >
                       <Icon name="chevronleft" className="mr1" />
                       {snippetCollection.name}
-                    </span>
+                    </SnippetTitle>
                   )}
                 </span>
               </div>

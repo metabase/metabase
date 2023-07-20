@@ -22,3 +22,11 @@ export const SidebarFooter = styled.div`
     }
   }
 `;
+
+export const SnippetTitle = styled.span`
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
