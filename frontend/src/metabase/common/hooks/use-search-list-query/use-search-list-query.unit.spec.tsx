@@ -52,16 +52,14 @@ const TestComponent = () => {
       <div data-testid="metadata">
         {metadata && (
           <>
-            <div data-testid="metadata-available-models">
+            <div data-testid="available-models">
               {(metadata.available_models || []).join(", ")}
             </div>
-            <div data-testid="metadata-limit">{metadata.limit}</div>
-            <div data-testid="metadata-models">
-              {(metadata.models || []).join(", ")}
-            </div>
-            <div data-testid="metadata-offset">{metadata.offset}</div>
-            <div data-testid="metadata-table-db-id">{metadata.table_db_id}</div>
-            <div data-testid="metadata-total">{metadata.total}</div>
+            <div data-testid="limit">{metadata.limit}</div>
+            <div data-testid="models">{(metadata.models || []).join(", ")}</div>
+            <div data-testid="offset">{metadata.offset}</div>
+            <div data-testid="table-db-id">{metadata.table_db_id}</div>
+            <div data-testid="total">{metadata.total}</div>
           </>
         )}
       </div>
@@ -100,22 +98,20 @@ describe("useSearchListQuery", () => {
       ", ",
     );
 
-    expect(metadata.getByTestId("metadata-available-models")).toHaveTextContent(
+    expect(metadata.getByTestId("available-models")).toHaveTextContent(
       availableModelTextContent,
     );
-    expect(metadata.getByTestId("metadata-limit")).toHaveTextContent(
+    expect(metadata.getByTestId("limit")).toHaveTextContent(
       String(TEST_SEARCH_METADATA.limit),
     );
-    expect(metadata.getByTestId("metadata-models")).toHaveTextContent(
-      modelsTextContent,
-    );
-    expect(metadata.getByTestId("metadata-offset")).toHaveTextContent(
+    expect(metadata.getByTestId("models")).toHaveTextContent(modelsTextContent);
+    expect(metadata.getByTestId("offset")).toHaveTextContent(
       String(TEST_SEARCH_METADATA.offset),
     );
-    expect(metadata.getByTestId("metadata-table-db-id")).toHaveTextContent(
+    expect(metadata.getByTestId("table-db-id")).toHaveTextContent(
       String(TEST_SEARCH_METADATA.table_db_id),
     );
-    expect(metadata.getByTestId("metadata-total")).toHaveTextContent(
+    expect(metadata.getByTestId("total")).toHaveTextContent(
       String(TEST_SEARCH_METADATA.total),
     );
   });
