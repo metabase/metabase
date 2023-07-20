@@ -209,3 +209,42 @@
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
+
+(def categories-mbql-card
+  "Mock MBQL query Card against the `CATEGORIES` Table."
+  {:lib/type        :metadata/card
+   :id              1
+   :name            "Tarot Card"
+   :dataset-query   {:database (meta/id)
+                     :type     :query
+                     :query    {:source-table (meta/id :categories)}}
+   :result-metadata [(meta/field-metadata :categories :id)
+                     (meta/field-metadata :categories :name)]})
+
+(def metadata-provider-with-categories-mbql-card
+  "A metadata provider with the [[categories-mbql-card]] as Card 1. Composed with the
+  normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+   meta/metadata-provider
+   (mock-metadata-provider
+    {:cards [categories-mbql-card]})))
+
+(def categories-native-card
+  "Mock native query Card against the `CATEGORIES` Table."
+  {:lib/type        :metadata/card
+   :id              1
+   :name            "Tarot Card"
+   :dataset-query   {:database (meta/id)
+                     :type     :native
+                     :native   {:query "SELECT * FROM CATEGORIES;"}}
+   :result-metadata (mapv #(dissoc % :id :table-id)
+                          [(meta/field-metadata :categories :id)
+                           (meta/field-metadata :categories :name)])})
+
+(def metadata-provider-with-categories-native-card
+  "A metadata provider with the [[categories-native-card]] as Card 1. Composed with the
+  normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+   meta/metadata-provider
+   (mock-metadata-provider
+    {:cards [categories-native-card]})))

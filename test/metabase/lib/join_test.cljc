@@ -354,8 +354,8 @@
                                                          (meta/id :venues :category-id)]
                                                         [:field
                                                          {:join-alias "Categories"}
-                                                         (meta/id :categories :id)]]],
-                                          :strategy :right-join,
+                                                         (meta/id :categories :id)]]]
+                                          :strategy :right-join
                                           :alias "Categories"}]}]}
                       (-> lib.tu/venues-query
                           (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
@@ -531,13 +531,46 @@
                                                  lhs-for-query-with-join
                                                  rhs-for-query-with-join))))))
 
-(deftest ^:parallel join-condition-rhs-columns-test
-  (are [join-or-joinable] (=? [{:long-display-name "ID"}
-                               {:long-display-name "Name"}]
-                              (map (partial lib/display-info lib.tu/query-with-join)
-                                   (lib/join-condition-rhs-columns lib.tu/venues-query join-or-joinable nil nil)))
-    (meta/table-metadata :categories)
-    join-for-query-with-join))
+(deftest ^:parallel join-condition-rhs-columns-join-table-test
+  (testing "RHS columns when building a join against a Table"
+    (doseq [query [lib.tu/venues-query
+                   lib.tu/query-with-join]]
+      (let [cols (lib/join-condition-rhs-columns query (meta/table-metadata :categories) nil nil)]
+        (is (=? [{:display-name "ID", :lib/source :source/joins, :table-id (meta/id :categories)}
+                 {:display-name "Name", :lib/source :source/joins, :table-id (meta/id :categories)}]
+                cols))
+        (is (=? [{:display-name "ID", :is-from-join true}
+                 {:display-name "Name", :is-from-join true}]
+                (for [col cols]
+                  (lib/display-info query col))))))))
+
+(deftest ^:parallel join-condition-rhs-columns-join-card-test
+  (testing "RHS columns when building a join against"
+    (doseq [query            [lib.tu/venues-query
+                              lib.tu/query-with-join]
+            [card-type card] {"Native" lib.tu/categories-native-card
+                              "MBQL"   lib.tu/categories-mbql-card}]
+      (testing (str "a " card-type " Card")
+        (let [cols (lib/join-condition-rhs-columns query card nil nil)]
+          (is (=? [{:display-name "ID", :lib/source :source/joins, :lib/card-id 1}
+                   {:display-name "Name", :lib/source :source/joins, :lib/card-id 1}]
+                  cols))
+          (is (=? [{:display-name "ID", :is-from-join true}
+                   {:display-name "Name", :is-from-join true}]
+                  (for [col cols]
+                    (lib/display-info query col)))))))))
+
+(deftest ^:parallel join-condition-rhs-columns-existing-join-test
+  (testing "RHS columns for existing join"
+    (let [cols (lib/join-condition-rhs-columns lib.tu/query-with-join join-for-query-with-join nil nil)]
+      (is (=? [{:display-name "ID",   :lib/source :source/joins, ::lib.join/join-alias "Cat"}
+               {:display-name "Name", :lib/source :source/joins, ::lib.join/join-alias "Cat"}]
+              cols))
+      (testing `lib/display-info
+        (is (=? [{:display-name "ID", :is-from-join true}
+                 {:display-name "Name", :is-from-join true}]
+                (for [col cols]
+                  (lib/display-info lib.tu/query-with-join col))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-test-2
   (let [query lib.tu/venues-query]
@@ -556,8 +589,8 @@
 
 (deftest ^:parallel join-condition-rhs-columns-mark-selected-test
   (testing "#32438"
-    (is (=? [{:long-display-name "ID", :selected true}
-             {:long-display-name "Name"}]
+    (is (=? [{:display-name "ID", :selected true}
+             {:display-name "Name"}]
             (map (partial lib/display-info lib.tu/query-with-join)
                  (lib/join-condition-rhs-columns lib.tu/query-with-join
                                                  join-for-query-with-join
