@@ -1,6 +1,6 @@
 (ns build
   (:require [clojure.java.io :as io]
-            [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.tools.build.api :as b]
             [clojure.tools.build.util.zip :as build.zip]
             [clojure.tools.namespace.dependency :as ns.deps]
@@ -66,10 +66,14 @@
   (let [ns-decls   (mapcat
                     (comp ns.find/find-ns-decls-in-dir io/file)
                     (all-paths basis))
-        ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
-    (->> (dependencies-graph ns-decls)
-         ns.deps/topo-sort
-         (filter ns-symbols))))
+        ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))
+        sorted     (->> (dependencies-graph ns-decls)
+                        ns.deps/topo-sort
+                        (filter ns-symbols))
+        orphans    (set/difference (set ns-symbols) (set sorted))]
+    (concat
+     orphans
+     sorted)))
 
 (defn compile-sources! [basis]
   (u/step "Compile Clojure source files"
