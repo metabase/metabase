@@ -111,7 +111,7 @@ export const CustomHomePageModal = ({
           onChange={handleChange}
           collectionFilter={(
             collection: Collection,
-            index: number,
+            _index: number,
             allCollections: Collection[],
           ) =>
             !isPersonalCollectionOrChild(collection, allCollections) ||

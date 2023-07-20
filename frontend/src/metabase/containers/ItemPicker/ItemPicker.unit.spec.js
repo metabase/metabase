@@ -17,6 +17,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import SnippetCollections from "metabase/entities/snippet-collections";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import ItemPicker from "./ItemPicker";
@@ -310,8 +311,9 @@ describe("ItemPicker", () => {
     it("should filter collections", async () => {
       await setup({
         query: "foo",
-        collectionFilter: collection =>
-          collection.personal_owner_id === null || collection.id === "root",
+        collectionFilter: (collection, _index, allCollections) =>
+          !isPersonalCollectionOrChild(collection, allCollections) ||
+          collection.id === "root",
       });
 
       expect(screen.queryByText(/personal/i)).not.toBeInTheDocument();
