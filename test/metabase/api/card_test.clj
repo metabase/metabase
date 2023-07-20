@@ -51,6 +51,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
    [metabase.upload :as upload]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
@@ -2735,15 +2736,6 @@
                              (-> response :values set)))
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
-(defmacro let-url
-  "Like normal `let`, but adds `testing` context with the `url` you've bound."
-  {:style/indent 1}
-  [[url-binding url] & body]
-  `(let [url# ~url
-         ~url-binding url#]
-     (testing (str "\nGET /api/" url# "\n")
-       ~@body)))
-
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id_param_id"]
     (t2.with-temp/with-temp
@@ -2765,12 +2757,12 @@
                                        :slug   "ID"}]}]
       (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
         (testing "without search query"
-          (let-url [url (param-values-url card param-key)]
+          (tu/let-url [url (param-values-url card param-key)]
             (is (partial= {:has_more_values true
                            :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
                           (mt/user-http-request :rasta :get 200 url)))))
         (testing "with search query"
-          (let-url [url (param-values-url card param-key "pan")]
+          (tu/let-url [url (param-values-url card param-key "pan")]
             (is (partial= {:has_more_values true
                            :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
                           (mt/user-http-request :rasta :get 200 url)))))))))

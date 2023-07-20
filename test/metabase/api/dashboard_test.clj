@@ -47,6 +47,7 @@
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -2506,15 +2507,6 @@
   (add-query-params (format "dashboard/%d/params/%s/values" (u/the-id dashboard-or-id) (name param-key))
                     query-params))
 
-(defmacro let-url
-  "Like normal `let`, but adds `testing` context with the `url` you've bound."
-  {:style/indent 1}
-  [[url-binding url] & body]
-  `(let [url# ~url
-         ~url-binding url#]
-     (testing (str "\nGET /api/" url# "\n")
-       ~@body)))
-
 (defn chain-filter-search-url [dashboard-or-id param-key query & query-params]
   {:pre [(some? param-key)]}
   (add-query-params (str (format "dashboard/%d/params/%s/search/" (u/the-id dashboard-or-id) (name param-key))
@@ -2548,17 +2540,17 @@
                (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
                                                                                          (:id dashboard)
                                                                                          (:category-name param-keys)))))))
-      (let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
-                                             (:price param-keys) 4)]
+      (tu/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
+                                                (:price param-keys) 4)]
         (testing "\nShow me names of categories that have expensive venues (price = 4)"
           (is (= {:values          ["Japanese" "Steakhouse"]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
       ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
       ;; middleware does the right thing and converts the values to a vector
-      (let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
-                                             (:price param-keys) 3
-                                             (:price param-keys) 4)]
+      (tu/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
+                                                (:price param-keys) 3
+                                                (:price param-keys) 4)]
         (testing "\nmultiple values"
           (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
             (is (= {:values          ["American" "Asian" "BBQ"]
@@ -2733,7 +2725,7 @@
                     :has_more_values false}
                    (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))
 
-      (let-url [url (chain-filter-search-url dashboard (:category-name param-keys) "house" (:price param-keys) 4)]
+      (tu/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) "house" (:price param-keys) 4)]
         (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
           (is (= {:values          ["Steakhouse"]
                   :has_more_values false}
@@ -2744,7 +2736,7 @@
                        ""
                        "   "
                        "\n"]]
-          (let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
+          (tu/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
             (is (= "API endpoint does not exist."
                    (mt/user-http-request :rasta :get 404 url)))))))
 
@@ -2776,7 +2768,7 @@
                                           {:parameter_id "_PRICE_"
                                            :card_id      (:id card)}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
-          (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
+          (tu/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          ["African" "American" "Artisan"]
                     :has_more_values false}
                    (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))
@@ -2786,13 +2778,13 @@
     (chain-filter-test/with-human-readable-values-remapping
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
-          (let-url [url (chain-filter-values-url dashboard "_CATEGORY_ID_" "_PRICE_" 4)]
+          (tu/let-url [url (chain-filter-values-url dashboard "_CATEGORY_ID_" "_PRICE_" 4)]
             (is (= {:values          [[40 "Japanese"]
                                       [67 "Steakhouse"]]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))
         (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
-          (let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "house" "_PRICE_" 4)]
+          (tu/let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "house" "_PRICE_" 4)]
             (is (= {:values          [[67 "Steakhouse"]]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
@@ -2801,13 +2793,13 @@
   (testing "Chain filtering for Fields that have a Field -> Field remapping\n"
     (with-chain-filter-fixtures [{:keys [dashboard]}]
       (testing "GET /api/dashboard/:id/params/:param-key/values"
-        (let-url [url (chain-filter-values-url dashboard "_ID_")]
+        (tu/let-url [url (chain-filter-values-url dashboard "_ID_")]
           (is (= {:values          [[29 "20th Century Cafe"]
                                     [ 8 "25°"]
                                     [93 "33 Taps"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
-        (let-url [url (chain-filter-values-url dashboard "_ID_" "_PRICE_" 4)]
+        (tu/let-url [url (chain-filter-values-url dashboard "_ID_" "_PRICE_" 4)]
           (is (= {:values          [[55 "Dal Rae Restaurant"]
                                     [61 "Lawry's The Prime Rib"]
                                     [16 "Pacific Dining Car - Santa Monica"]]
@@ -2815,11 +2807,11 @@
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
 
       (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
-        (let-url [url (chain-filter-search-url dashboard "_ID_" "fish")]
+        (tu/let-url [url (chain-filter-search-url dashboard "_ID_" "fish")]
           (is (= {:values          [[90 "Señor Fish"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
-        (let-url [url (chain-filter-search-url dashboard "_ID_" "sushi" "_PRICE_" 4)]
+        (tu/let-url [url (chain-filter-search-url dashboard "_ID_" "sushi" "_PRICE_" 4)]
           (is (= {:values          [[77 "Sushi Nakazawa"]
                                     [79 "Sushi Yasuda"]
                                     [81 "Tanoshi Sushi & Sake Bar"]]
@@ -2831,13 +2823,13 @@
     (chain-filter-test/with-fk-field-to-field-remapping
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
-          (let-url [url (chain-filter-values-url dashboard "_CATEGORY_ID_" "_PRICE_" 4)]
+          (tu/let-url [url (chain-filter-values-url dashboard "_CATEGORY_ID_" "_PRICE_" 4)]
             (is (= {:values          [[40 "Japanese"]
                                       [67 "Steakhouse"]]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))
         (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
-          (let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "house" "_PRICE_" 4)]
+          (tu/let-url [url (chain-filter-search-url dashboard "_CATEGORY_ID_" "house" "_PRICE_" 4)]
             (is (= {:values          [[67 "Steakhouse"]]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
@@ -2848,17 +2840,17 @@
     (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
-          (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]
+          (tu/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]
             (is (= {:values          ["Bad" "Good"]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url))))
           (testing "Shouldn't use cached FieldValues if the request has any additional constraints"
-            (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
+            (tu/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
               (is (= {:values          ["Japanese" "Steakhouse"]
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))
         (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
-          (let-url [url (chain-filter-search-url dashboard "_CATEGORY_NAME_" "ood")]
+          (tu/let-url [url (chain-filter-search-url dashboard "_CATEGORY_NAME_" "ood")]
             (is (= {:values          ["Good"]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
@@ -2871,13 +2863,13 @@
   (testing "getting values"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "It uses the results of the card's query execution"
-        (let-url [url (chain-filter-values-url dashboard (:card param-keys))]
+        (tu/let-url [url (chain-filter-values-url dashboard (:card param-keys))]
           (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))
 
       (testing "it only returns search matches"
-        (let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
+        (tu/let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
           (is (= {:values          ["African"]
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))))
@@ -2893,7 +2885,7 @@
                                                       :values_source_type   "card"
                                                       :values_source_config {:card_id     card-id
                                                                              :value_field (mt/$ids $venues.name)}}]}]]
-          (let-url [url (chain-filter-values-url dashboard "abc")]
+          (tu/let-url [url (chain-filter-values-url dashboard "abc")]
             (is (= "chain-filter" (mt/user-http-request :rasta :get 200 url))))))
 
       (testing "if card is archived"
@@ -2905,7 +2897,7 @@
                                                       :values_source_type   "card"
                                                       :values_source_config {:card_id     card-id
                                                                              :value_field (mt/$ids $venues.name)}}]}]]
-          (let-url [url (chain-filter-values-url dashboard "abc")]
+          (tu/let-url [url (chain-filter-values-url dashboard "abc")]
             (is (= "chain-filter" (mt/user-http-request :rasta :get 200 url))))))))
 
   (testing "users must have permissions to read the collection that source card is in"
@@ -2983,7 +2975,7 @@
                                 (fields->parameter native-card-fields native-card-id))]
         (t2.with-temp/with-temp [Dashboard {dash-id :id} {:parameters parameters}]
           (doseq [param parameters]
-            (let-url [url (chain-filter-values-url dash-id (:id param))]
+            (tu/let-url [url (chain-filter-values-url dash-id (:id param))]
               (is (some? (mt/user-http-request :rasta :get 200 url))))))))))
 
 (deftest valid-filter-fields-test

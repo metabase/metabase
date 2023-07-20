@@ -11,6 +11,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -62,17 +63,17 @@
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
           (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
             (testing "GET /api/dashboard/:id/params/:param-key/values"
-              (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
-                                          (is (= {:values          ["African" "American"]
-                                                  :has_more_values false}
-                                                 (->> url
-                                                      (mt/user-http-request :rasta :get 200)
-                                                      (chain-filter-test/take-n-values 2))))))
+              (tu/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
+                (is (= {:values          ["African" "American"]
+                        :has_more_values false}
+                       (->> url
+                            (mt/user-http-request :rasta :get 200)
+                            (chain-filter-test/take-n-values 2))))))
             (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
-              (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
-                                          (is (= {:values          ["African" "American"]
-                                                  :has_more_values false}
-                                                 (mt/user-http-request :rasta :get 200 url)))))))))))
+              (tu/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
+                (is (= {:values          ["African" "American"]
+                        :has_more_values false}
+                       (mt/user-http-request :rasta :get 200 url)))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
