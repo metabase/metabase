@@ -27,6 +27,7 @@ import { SnippetRow } from "../SnippetRow";
 import {
   SidebarFooter,
   SidebarIcon,
+  SnippetAddIcon,
   SnippetSearchIcon,
   SnippetTitle,
 } from "./SnippetSidebar.styled";
@@ -170,10 +171,10 @@ class SnippetSidebar extends React.Component {
                 ]}
                 {snippets.length >= MIN_SNIPPETS_FOR_SEARCH && (
                   <SnippetSearchIcon
-                    isHidden={showSearch}
-                    onClick={this.showSearch}
                     name="search"
                     size={HEADER_ICON_SIZE}
+                    isHidden={showSearch}
+                    onClick={this.showSearch}
                   />
                 )}
 
@@ -181,13 +182,10 @@ class SnippetSidebar extends React.Component {
                   <TippyPopoverWithTrigger
                     triggerClasses="flex"
                     triggerContent={
-                      <Icon
-                        className={cx(
-                          { hide: showSearch },
-                          "text-brand bg-light-hover rounded p1 cursor-pointer",
-                        )}
+                      <SnippetAddIcon
                         name="add"
                         size={HEADER_ICON_SIZE}
+                        isHidden={showSearch}
                       />
                     }
                     placement="bottom-end"

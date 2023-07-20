@@ -44,3 +44,18 @@ export const SnippetSearchIcon = styled(Icon)<SnippetSearchIconProps>`
     color: ${color("brand")};
   }
 `;
+
+interface SnippetAddIconProps {
+  isHidden?: boolean;
+}
+
+export const SnippetAddIcon = styled(Icon)<SnippetAddIconProps>`
+  display: ${props => props.isHidden && "none"};
+  color: ${color("brand")};
+  cursor: pointer;
+  border-radius: 0.5rem;
+
+  &:hover {
+    background-color: ${color("bg-light")};
+  }
+`;
