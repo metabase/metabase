@@ -24,17 +24,19 @@ import {
 
 const ERRORS = {
   MISSING_REQUIRED_PARAMETERS: "missing required parameters",
-};
+} as const;
 
 const SUBSCRIPTION = {
   UNSUBSCRIBE: "unsubscribe",
   RESUBSCRIBE: "resubscribe",
-};
+} as const;
+
+type Subscription = typeof SUBSCRIPTION[keyof typeof SUBSCRIPTION];
 
 export const UnsubscribePage = ({
   location,
 }: UnsubscribeProps): JSX.Element => {
-  const [subscriptionChange, setSubscriptionChange] = useState(
+  const [subscriptionChange, setSubscriptionChange] = useState<Subscription>(
     SUBSCRIPTION.UNSUBSCRIBE,
   );
 
@@ -50,7 +52,7 @@ export const UnsubscribePage = ({
   });
 
   if (error) {
-    if (error?.message === ERRORS.MISSING_REQUIRED_PARAMETERS) {
+    if (error.message === ERRORS.MISSING_REQUIRED_PARAMETERS) {
       return <NotFound />;
     }
 
