@@ -52,6 +52,8 @@
 (mr/def ::breakouts
   [:sequential {:min 1} [:ref ::ref/ref]])
 
+;;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
+;;; twice. (#32489)
 (mr/def ::fields
   [:sequential {:min 1} [:ref ::ref/ref]])
 
