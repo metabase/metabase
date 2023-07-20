@@ -40,14 +40,14 @@ const AuditSidebarItem = ({ title, path }) => (
   </div>
 );
 
-const AuditSidebar = ({ className, style, children }) => (
+const AuditSidebarContainer = ({ className, style, children }) => (
   <div style={style} className={cx("p4", className)}>
     {children}
   </div>
 );
 
-const AuditAppSidebar = props => (
-  <AuditSidebar {...props}>
+export const AuditSidebar = props => (
+  <AuditSidebarContainer {...props}>
     <AuditSidebarSection title={t`People`}>
       <AuditSidebarItem title={t`Team members`} path="/admin/audit/members" />
     </AuditSidebarSection>
@@ -65,7 +65,5 @@ const AuditAppSidebar = props => (
         path="/admin/audit/subscriptions"
       />
     </AuditSidebarSection>
-  </AuditSidebar>
+  </AuditSidebarContainer>
 );
-
-export default AuditAppSidebar;
