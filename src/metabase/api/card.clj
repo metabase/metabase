@@ -24,7 +24,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card CardBookmark Collection Field Database PersistedInfo Pulse
+    :refer [Card CardBookmark Collection Database Field PersistedInfo Pulse
             Table ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -33,6 +33,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
@@ -1096,8 +1097,8 @@ saved later when it is ready."
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
       (if-let [remapped-field-id (chain-filter/remapped-field-id field-id)]
-        (let [field          (api/check-404 (db/select-one Field :id field-id))
-              remapped-field (api/check-404 (db/select-one Field :id remapped-field-id))]
+        (let [field          (api/check-404 (t2/select-one Field :id field-id))
+              remapped-field (api/check-404 (t2/select-one Field :id remapped-field-id))]
           ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
           ;; is what the return-field-values returns above
           {:values (api.field/search-values field remapped-field query)
