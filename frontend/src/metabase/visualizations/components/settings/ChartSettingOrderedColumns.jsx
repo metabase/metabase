@@ -5,7 +5,6 @@ import _ from "underscore";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { findColumnForColumnSetting } from "metabase-lib/queries/utils/dataset";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import ColumnItem from "./ColumnItem";
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 
@@ -17,7 +16,6 @@ export const ChartSettingOrderedColumns = ({
   onShowWidget,
   getColumnName: _getColumnName,
 }) => {
-  const query = question?.query();
   const topLevelQuery = question?._getMLv2Query();
 
   const [enabledColumns, disabledColumns] = useMemo(
@@ -33,26 +31,24 @@ export const ChartSettingOrderedColumns = ({
     [value, columns],
   );
 
-  const additionalColumnsInfo = useMemo(() => {
-    if (!(query instanceof StructuredQuery)) {
+  const additionalColumnGroups = useMemo(() => {
+    if (!question.isStructured()) {
       return [];
     }
 
-    return Lib.fieldableColumns(topLevelQuery, -1)
-      .map(column => ({
+    const columns = Lib.fieldableColumns(topLevelQuery, -1).filter(
+      column => !Lib.displayInfo(topLevelQuery, -1, column).selected,
+    );
+    const columnGroups = Lib.groupColumns(columns);
+
+    return columnGroups.map(columnGroup => ({
+      ...Lib.displayInfo(topLevelQuery, -1, columnGroup),
+      columns: Lib.getColumnsFromColumnGroup(columnGroup).map(column => ({
         column,
-        columnInfo: Lib.displayInfo(topLevelQuery, -1, column),
-        dimension: query
-          .parseFieldReference(Lib.legacyFieldRef(column))
-          .getMLv1CompatibleDimension(),
-      }))
-      .filter(
-        ({ dimension }) =>
-          !columns.some(column =>
-            dimension.isSameBaseDimension(column.field_ref),
-          ),
-      );
-  }, [topLevelQuery, query, columns]);
+        ...Lib.displayInfo(topLevelQuery, -1, column),
+      })),
+    }));
+  }, [question, topLevelQuery]);
 
   const handleEnable = useCallback(
     columnSetting => {
@@ -104,9 +100,9 @@ export const ChartSettingOrderedColumns = ({
     [onShowWidget, columns],
   );
 
-  const handleAddNewField = useCallback(
-    dimension => {
-      const fieldRef = dimension.mbql();
+  const handleAddNewColumn = useCallback(
+    column => {
+      const fieldRef = Lib.legacyFieldRef(column);
       const columnSettingIndex = value.findIndex(columnSetting =>
         _.isEqual(fieldRef, columnSetting.fieldRef),
       );
@@ -151,7 +147,7 @@ export const ChartSettingOrderedColumns = ({
           {t`Add fields from the list below`}
         </div>
       )}
-      {disabledColumns.length > 0 || additionalColumnsInfo.length > 0 ? (
+      {disabledColumns.length > 0 || additionalColumnGroups.length > 0 ? (
         <h4 className="mb2 mt4 pt4 border-top">{t`More columns`}</h4>
       ) : null}
       <div data-testid="disabled-columns">
@@ -165,18 +161,21 @@ export const ChartSettingOrderedColumns = ({
           />
         ))}
       </div>
-      {additionalColumnsInfo.length > 0 && (
-        <div>
-          {additionalColumnsInfo.map(({ columnInfo, dimension }, index) => (
+      {additionalColumnGroups.map(({ displayName, columns }, index) => (
+        <div key={index}>
+          <div className="my2 text-medium text-bold text-uppercase text-small">
+            {displayName}
+          </div>
+          {columns.map(({ column, displayName }, index) => (
             <ColumnItem
               key={index}
-              title={columnInfo.displayName}
-              onAdd={() => handleAddNewField(dimension)}
+              title={displayName}
               role="listitem"
+              onAdd={() => handleAddNewColumn(column)}
             />
           ))}
         </div>
-      )}
+      ))}
     </div>
   );
 };
