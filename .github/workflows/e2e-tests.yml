@@ -80,6 +80,13 @@ jobs:
           key: .babel_cache-${{github.event.number}}-${{hashFiles('yarn.lock')}}
           restore-keys: babel-cache-
 
+      - name: Cache Shadow Cljs
+        uses: actions/cache@v3
+        with:
+          path: ./.shadow-cljs
+          key: .shadow-cljs-${{github.event.number}}-${{hashFiles('yarn.lock')}}
+          restore-keys: shadow-cljs-
+
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
 
