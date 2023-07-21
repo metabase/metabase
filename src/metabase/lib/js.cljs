@@ -408,8 +408,8 @@
   (-> column
       lib.core/ref
       convert/->legacy-MBQL
-      (update 2 update-keys u/->camelCaseEn)
-      (clj->js :keyword-fn u/qualified-name)))
+      (update 2 update-vals u/qualified-name)
+      clj->js))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
