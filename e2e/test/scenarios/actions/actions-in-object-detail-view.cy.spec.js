@@ -4,8 +4,6 @@ import { restore, visitModel } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const modelObjectId = 11;
-
 const ordersModel = {
   name: "Orders model",
   dataset: true,
@@ -16,9 +14,29 @@ const ordersModel = {
   },
 };
 
+const order11 = {
+  active_subscription: true,
+  country: "TZ",
+  legacy_plan: false,
+  longitude: 33.08333,
+  id: 11,
+  email: "leannon-clay@gmail.example",
+  latitude: -2.85,
+  seats: 8,
+  last_name: "Leannon",
+  first_name: "Clay",
+  source: "Twitter",
+  trial_converted: true,
+  created_at: "2020-09-29T03:34:24+07:00",
+  plan: "Basic",
+  trial_ends_at: "2020-10-13T12:00:00+07:00",
+  canceled_at: null,
+};
+
 describe("Model actions in object detail view", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/action").as("createBasicActions");
+    cy.intercept("GET", "/api/action/*/execute").as("prefetchValues");
 
     restore();
     cy.signInAsNormalUser();
@@ -30,34 +48,34 @@ describe("Model actions in object detail view", () => {
     cy.get("@modelId").then(modelId => {
       asNormalUser(() => {
         assertActionsTabNotExists(modelId);
-        assertActionsDropdownNotExists(modelId, modelObjectId);
+        assertActionsDropdownNotExists(modelId, order11.id);
       });
 
       asAdmin(() => {
         assertActionsTabNotExists(modelId);
-        assertActionsDropdownNotExists(modelId, modelObjectId);
+        assertActionsDropdownNotExists(modelId, order11.id);
 
         enableDatabaseActions();
 
         assertActionsTabExists(modelId);
-        assertActionsDropdownNotExists(modelId, modelObjectId);
+        assertActionsDropdownNotExists(modelId, order11.id);
       });
 
       asNormalUser(() => {
         assertActionsTabExists(modelId);
-        assertActionsDropdownNotExists(modelId, modelObjectId);
+        assertActionsDropdownNotExists(modelId, order11.id);
       });
 
       asAdmin(() => {
         createBasicModelActions(modelId);
 
-        assertActionsDropdownExists(modelId, modelObjectId);
+        assertActionsDropdownExists(modelId, order11.id);
       });
 
       asNormalUser(() => {
-        assertActionsDropdownExists(modelId, modelObjectId);
+        assertActionsDropdownExists(modelId, order11.id);
 
-        openUpdateObjectModal(modelId, modelObjectId);
+        openUpdateObjectModal(modelId, order11.id);
 
         assertUpdateModalPrefilled();
       });
