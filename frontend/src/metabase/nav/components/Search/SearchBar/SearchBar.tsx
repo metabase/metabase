@@ -162,24 +162,24 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
 
   const onApplyFilter = useCallback(
     filters => {
+      onInputContainerClick();
       setSearchFilters(filters);
-      if (hasSearchText) {
-        onChangeLocation({
-          pathname: "search",
-          query: { q: searchText.trim(), ...filters },
-        });
-      }
     },
-    [hasSearchText, onChangeLocation, searchText],
+    [onInputContainerClick],
   );
 
   const handleInputKeyPress = useCallback(
     e => {
       if (e.key === "Enter") {
-        onApplyFilter(searchFilters);
+        if (hasSearchText) {
+          onChangeLocation({
+            pathname: "search",
+            query: { q: searchText.trim(), ...searchFilters },
+          });
+        }
       }
     },
-    [onApplyFilter, searchFilters],
+    [hasSearchText, onChangeLocation, searchFilters, searchText],
   );
 
   const handleClickOnClose = useCallback(
@@ -207,14 +207,17 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
           ref={searchInput}
         />
         <SearchFunnelButton
-          icon="funnel"
+          icon="filter"
           data-testid={
             isFiltered
               ? "highlighted-search-bar-filter-button"
               : "search-bar-filter-button"
           }
           isFiltered={isFiltered}
-          onClick={() => setIsFilterModalOpen(true)}
+          onClick={e => {
+            e.stopPropagation();
+            setIsFilterModalOpen(true);
+          }}
         />
         {isSmallScreen() && isActive && (
           <CloseSearchButton onClick={handleClickOnClose}>

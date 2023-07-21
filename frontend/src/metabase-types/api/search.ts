@@ -5,6 +5,8 @@ import { FieldReference } from "./query";
 import { TableId } from "./table";
 
 export type SearchModelType =
+  | "action"
+  | "app"
   | "card"
   | "collection"
   | "dashboard"
@@ -14,8 +16,7 @@ export type SearchModelType =
   | "indexed-entity"
   | "pulse"
   | "segment"
-  | "metric"
-  | "action";
+  | "metric";
 
 export interface SearchScore {
   weight: number;

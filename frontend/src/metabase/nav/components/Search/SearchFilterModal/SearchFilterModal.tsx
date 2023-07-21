@@ -20,9 +20,8 @@ export const SearchFilterModal = ({
   const [output, setOutput] = useState<SearchFilterType>(value);
 
   useEffect(() => {
-    setOutput(value)
+    setOutput(value);
   }, [value]);
-
 
   const closeModal = () => {
     setIsOpen(false);
