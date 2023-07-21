@@ -216,6 +216,7 @@ function assertOrderFormPrefilled(object) {
 
 function assertInputValue(labelText, value) {
   const expectedValue = value || "";
+
   cy.log(`input for "${labelText}" should have value "${expectedValue}"`);
   cy.findByLabelText(labelText).should("have.value", expectedValue);
 }
@@ -224,6 +225,7 @@ function assertDateInputValue(labelText, value) {
   const expectedValue = moment(value)
     .format()
     .replace(/-\d\d:\d\d$/, "");
+
   cy.log(`input for "${labelText}" should have value "${expectedValue}"`);
   cy.findByLabelText(labelText).should("have.value", expectedValue);
 }
