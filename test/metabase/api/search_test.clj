@@ -756,45 +756,69 @@
 ;; ------------------------------------------------ Filter Tests ------------------------------------------------ ;;
 
 (deftest filter-by-creator-test
-  (with-search-items-in-root-collection "Filter"
-    (t2.with-temp/with-temp
-      [:model/User      {user-id :id}      {:first_name "Explorer" :last_name "Curious"}
-       :model/Card      {card-id :id}      {:name "Filter Card 1" :creator_id user-id}
-       :model/Card      {card-id-2 :id}    {:name "Filter Card 2" :creator_id user-id
-                                            :collection_id (:id (collection/user->personal-collection user-id))}
-       :model/Card      {model-id :id}     {:name "Filter Dataset 1" :dataset true :creator_id user-id}
-       :model/Dashboard {dashboard-id :id} {:name "Filter Dashboard 1" :creator_id user-id}
-       :model/Action    {action-id :id}    {:name "Filter Action 1" :model_id model-id :creator_id user-id :type :http}]
+  (let [search-term "Created by Filter"]
+    (with-search-items-in-root-collection search-term
+      (t2.with-temp/with-temp
+        [:model/User      {user-id :id}      {:first_name "Explorer" :last_name "Curious"}
+         :model/Card      {card-id :id}      {:name (format "%s Card 1" search-term) :creator_id user-id}
+         :model/Card      {card-id-2 :id}    {:name (format "%s Card 2" search-term) :creator_id user-id
+                                              :collection_id (:id (collection/user->personal-collection user-id))}
+         :model/Card      {card-id-3 :id}    {:name (format "%s Card 3" search-term) :creator_id user-id :archived true}
+         :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :dataset true :creator_id user-id}
+         :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
+         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
 
-      (testing "sanity check that without search by created_by we have more results than if a filter is provided"
-        (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q "Filter"))
-               5)))
+        (testing "sanity check that without search by created_by we have more results than if a filter is provided"
+          (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
+                 5)))
 
-      (testing "Able to filter by creator"
-        (let [resp (mt/user-http-request :crowberto :get 200 "search" :q "Filter" :created_by user-id)]
+        (testing "Able to filter by creator"
+          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id)]
 
-          (testing "only a subset of models are applicable"
-            (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
+            (testing "only a subset of models are applicable"
+              (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
 
-          (testing "results contains only entities with the specified creator"
-            (is (= [[dashboard-id "dashboard" "Filter Dashboard 1"]
-                    [card-id      "card"      "Filter Card 1"]
-                    [card-id-2    "card"      "Filter Card 2"]
-                    [model-id     "dataset"   "Filter Dataset 1"]
-                    [action-id    "action"    "Filter Action 1"]]
-                   (->> (:data resp)
-                        sorted-results
-                        (map (juxt :id :model :name))))))))
+            (testing "results contains only entities with the specified creator"
+              (is (= [[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
+                      [card-id      "card"      "Created by Filter Card 1"]
+                      [card-id-2    "card"      "Created by Filter Card 2"]
+                      [model-id     "dataset"   "Created by Filter Dataset 1"]
+                      [action-id    "action"    "Created by Filter Action 1"]]
+                     (->> (:data resp)
+                          sorted-results
+                          (map (juxt :id :model :name))))))))
 
-      (testing "Still respect the read permissions"
-        (let [resp (mt/user-http-request :rasta :get 200 "search" :q "Filter" :created_by user-id)]
-          (is (not (contains?
-                    (->> (:data resp)
-                         (filter #(= (:model %) "card"))
-                         (map :id)
-                         set)
-                    card-id-2)))))
+        (testing "Works with archived filter"
+          (is (=? [{:model "card"
+                    :id     card-id-3
+                    :archived true}]
+                  (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :archived true)))))
 
-      (testing "error if creator_id is an integer"
-        (let [resp (mt/user-http-request :crowberto :get 400 "search" :q "Filter" :created_by "not-a-valid-user-id")]
-          (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp))))))))
+        (testing "Works with models filter"
+          (testing "return intersections of supported models with provided models"
+            (is (= #{"dashboard" "card"}
+                   (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "card" :models "dashboard")
+                        :data
+                        (map :model)
+                        set))))
+
+          (testing "return nothing if there is no intersection"
+            (is (= #{}
+                   (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "table" :models "database")
+                        :data
+                        (map :model)
+                        set)))))
+
+
+       (testing "respect the read permissions"
+         (let [resp (mt/user-http-request :rasta :get 200 "search" :q search-term :created_by user-id)]
+           (is (not (contains?
+                     (->> (:data resp)
+                          (filter #(= (:model %) "card"))
+                          (map :id)
+                          set)
+                     card-id-2)))))
+
+       (testing "error if creator_id is not an integer"
+         (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
+           (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))

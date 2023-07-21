@@ -1,10 +1,11 @@
 (ns metabase.search.config
   (:require
    [malli.core :as mc]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.models.permissions :as perms]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
 (defsetting search-typeahead-enabled
@@ -57,11 +58,12 @@
   [model]
   (-> model model-to-db-model :alias))
 
-(defn column-with-model-alias
-  "Given a column and a model name as strings, Return a keyword representing the column with the model alias prepended.
+(mu/defn column-with-model-alias :- keyword?
+  "Given a column and a model name, Return a keyword representing the column with the model alias prepended.
 
   (column-with-model-alias \"card\" :id) => :card.id)"
-  [model-string column]
+  [model-string :- ms/KeywordOrString
+   column       :- ms/KeywordOrString]
   (keyword (str (name (model->alias model-string)) "." (name column))))
 
 (def all-models
@@ -69,9 +71,11 @@
   (set (keys model-to-db-model)))
 
 (def models-search-order
-  "The order of this list also influences the order of the results: items earlier in the
+  "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
   ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+
+(assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
 (def SearchableModel
   "Schema for searchable models"

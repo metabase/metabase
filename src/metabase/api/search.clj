@@ -373,14 +373,20 @@
   [search-ctx :- SearchContext]
   (let [models       (:models search-ctx)
         order-clause [((fnil order-clause "") (:search-string search-ctx))]]
-    (if (= (count models) 1)
-      (search-query-for-model (first models) search-ctx)
-      {:select   [:*]
-       :from     [[{:union-all (vec (for [model models
-                                          :let  [query (search-query-for-model model search-ctx)]
-                                          :when (seq query)]
-                                      query))} :alias_is_required_by_sql_but_not_needed_here]]
-       :order-by order-clause})))
+    (cond
+     (= (count models) 0)
+     {:select [nil]}
+
+     (= (count models) 1)
+     (search-query-for-model (first models) search-ctx)
+
+     :else
+     {:select   [:*]
+      :from     [[{:union-all (vec (for [model models
+                                         :let  [query (search-query-for-model model search-ctx)]
+                                         :when (seq query)]
+                                     query))} :alias_is_required_by_sql_but_not_needed_here]]
+      :order-by order-clause})))
 
 (mu/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
@@ -423,20 +429,20 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn ^:private search-context :- SearchContext
-  [{:keys [search-string
-           archived-string
+  [{:keys [archived-string
            created-by
-           table-db-id
-           models
            limit
-           offset]} :- [:map {:closed true}
-                        [:search-string                    [:maybe ms/NonBlankString]]
-                        [:archived-string {:optional true} [:maybe ms/BooleanString]]
-                        [:created-by      {:optional true} [:maybe ms/PositiveInt]]
-                        [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]
-                        [:models          {:optional true} [:maybe [:or SearchableModel [:sequential SearchableModel]]]]
-                        [:limit           {:optional true} [:maybe ms/Int]]
-                        [:offset          {:optional true} [:maybe ms/Int]]]]
+           models
+           offset
+           search-string
+           table-db-id]} :- [:map {:closed true}
+                             [:search-string                    [:maybe ms/NonBlankString]]
+                             [:archived-string {:optional true} [:maybe ms/BooleanString]]
+                             [:created-by      {:optional true} [:maybe ms/PositiveInt]]
+                             [:limit           {:optional true} [:maybe ms/Int]]
+                             [:models          {:optional true} [:maybe [:or SearchableModel [:sequential SearchableModel]]]]
+                             [:offset          {:optional true} [:maybe ms/Int]]
+                             [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]]]
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:search-string      search-string
                         :current-user-perms @api/*current-user-permissions-set*
