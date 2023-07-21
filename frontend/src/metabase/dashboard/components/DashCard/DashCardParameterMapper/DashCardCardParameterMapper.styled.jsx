@@ -7,7 +7,7 @@ import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
-export const Container = styled.div<{ isSmall: boolean }>`
+export const Container = styled.div`
   margin: ${({ isSmall }) => (isSmall ? 0 : space(1))} 0;
   display: flex;
   flex-direction: column;
