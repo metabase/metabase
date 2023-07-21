@@ -192,7 +192,7 @@ function ItemPicker<TId>({
       const collection = item.collection_id
         ? collectionsById[item.collection_id]
         : collectionsById["root"];
-      return collection.can_write;
+      return collection?.can_write;
     },
     [models, collectionsById],
   );

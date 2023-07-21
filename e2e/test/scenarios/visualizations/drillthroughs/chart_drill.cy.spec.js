@@ -51,7 +51,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gadget");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January, 2023");
+    cy.contains("January 2023");
     cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
 
     // drag across to filter
@@ -69,7 +69,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains(/^Created At is May.*2022/);
     // more granular axis labels
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("June, 2022");
+    cy.contains("June 2022");
     // confirm that product category is still broken out
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gadget");
@@ -313,7 +313,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders by Created At: Week").click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January, 2025");
+    cy.contains("January 2025");
 
     // drill into a recent week
     cy.get(".dot").eq(-4).click({ force: true });

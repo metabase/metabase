@@ -118,7 +118,16 @@
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
    [:result-metadata {:optional true} [:maybe [:sequential :map]]]
-   [:dataset {:optional true} :boolean]])
+   ;; whether this Card is a Model or not.
+   [:dataset         {:optional true} :boolean]
+   ;; I think Database ID is always supposed to be present for a Card, altho our mock metadata in tests might not have
+   ;; it. It's `NOT NULL` in the application database. Probably safe to generally assume it's there.
+   ;;
+   ;; TODO -- confirm whether we can make this non-optional in the schema or not.
+   [:database-id     {:optional true} [:maybe ::lib.schema.id/database]]
+   ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
+   ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
+   [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (def SegmentMetadata
   "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."

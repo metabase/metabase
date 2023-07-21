@@ -45,7 +45,7 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis").last().click();
+      cy.icon("ellipsis").first().click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit user").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

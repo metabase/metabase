@@ -61,6 +61,58 @@
    [:ref ::lib.schema.join/join]
    Joinable])
 
+(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
+  "Get the current join alias associated with something, if it has one."
+  [field-or-join :- [:maybe FieldOrPartialJoin]]
+  (case (lib.dispatch/dispatch-value field-or-join)
+    :dispatch-type/nil nil
+    :field             (:join-alias (lib.options/options field-or-join))
+    :metadata/column   (::join-alias field-or-join)
+    :mbql/join         (:alias field-or-join)))
+
+(declare with-join-alias)
+
+(defn- with-join-alias-update-join-fields
+  "Impl for [[with-join-alias]] for a join: recursively update the `:join-alias` for the `:field` refs inside `:fields`
+  as needed."
+  [join new-alias]
+  (cond-> join
+    (:fields join) (update :fields (fn [fields]
+                                     (if-not (sequential? fields)
+                                       fields
+                                       (mapv (fn [field-ref]
+                                               (with-join-alias field-ref new-alias))
+                                             fields))))))
+
+(defn- with-join-alias-update-join-conditions
+  "Impl for [[with-join-alias]] for a join: recursively update the `:join-alias` for inside the `:conditions` of the
+  join.
+
+  Only updates things that already had a join alias of `old-alias`; does not add alias to things that did not already
+  have one (such as the RHS of a 'typical' join condition). I went back and forth on this behavior, but eventually
+  decided NOT to assume that every join condition is the shape
+
+    [<operator> <lhs-column-from-source> <rhs-column-from-join>]
+
+  This is currently true of normal FE usage, but may not be true everywhere in the future; we don't want to make MLv2
+  impossible to use if you're doing something different like swapping the order of the columns or some sort of more
+  complex condition."
+  [join old-alias new-alias]
+  (if-not old-alias
+    join
+    (mbql.u.match/replace-in join [:conditions]
+      [:field {:join-alias old-alias} _id-or-name]
+      (with-join-alias &match new-alias))))
+
+(defn- with-join-alias-update-join
+  "Impl for [[with-join-alias]] for a join."
+  [join new-alias]
+  (let [old-alias (current-join-alias join)]
+    (-> join
+        (u/assoc-dissoc :alias new-alias)
+        (with-join-alias-update-join-fields new-alias)
+        (with-join-alias-update-join-conditions old-alias new-alias))))
+
 (mu/defn with-join-alias :- FieldOrPartialJoin
   "Add OR REMOVE a specific `join-alias` to `field-or-join`, which is either a `:field`/Field metadata, or a join map.
   Does not recursively update other references (yet; we can add this in the future)."
@@ -75,16 +127,7 @@
     (u/assoc-dissoc field-or-join ::join-alias join-alias)
 
     :mbql/join
-    (u/assoc-dissoc field-or-join :alias join-alias)))
-
-(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
-  "Get the current join alias associated with something, if it has one."
-  [field-or-join :- [:maybe FieldOrPartialJoin]]
-  (case (lib.dispatch/dispatch-value field-or-join)
-    :dispatch-type/nil nil
-    :field             (:join-alias (lib.options/options field-or-join))
-    :metadata/column   (::join-alias field-or-join)
-    :mbql/join         (:alias field-or-join)))
+    (with-join-alias-update-join field-or-join join-alias)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
   "Resolve a join with a specific `join-alias`."
@@ -269,10 +312,17 @@
   references."
   [joinable :- PartialJoin
    fields   :- [:maybe [:or [:enum :all :none] [:sequential some?]]]]
-  (u/assoc-dissoc joinable :fields (cond
-                                     (keyword? fields) fields
-                                     (= fields [])     :none
-                                     :else             (not-empty (mapv lib.ref/ref fields)))))
+  (let [fields (cond
+                 (keyword? fields) fields
+                 (= fields [])     :none
+                 :else             (not-empty
+                                    (into []
+                                          (comp (map lib.ref/ref)
+                                                (if-let [current-alias (current-join-alias joinable)]
+                                                  (map #(with-join-alias % current-alias))
+                                                  identity))
+                                          fields)))]
+    (u/assoc-dissoc joinable :fields fields)))
 
 (defn- select-home-column
   [home-cols cond-fields]
@@ -376,27 +426,31 @@
     (run! generator taken-names)
     (generator base-name)))
 
-(mu/defn ^:private add-default-alias :- ::lib.schema.join/join
+(mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one."
   [query        :- ::lib.schema/query
    stage-number :- :int
    a-join       :- JoinWithOptionalAlias]
-  (let [stage       (lib.util/query-stage query stage-number)
-        home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
-        cond-fields (mbql.u.match/match (:conditions a-join) :field)
-        home-col    (select-home-column home-cols cond-fields)
-        join-alias  (-> (calculate-join-alias query a-join home-col)
-                        (generate-unique-name (map :alias (:joins stage))))
-        home-refs   (mapv lib.ref/ref home-cols)
-        join-refs   (mapv lib.ref/ref
-                          (lib.metadata.calculation/returned-columns
-                           (lib.query/query-with-stages query (:stages a-join))))]
-    (-> a-join
-        (update :conditions
-                (fn [conditions]
-                  (mapv #(add-alias-to-condition query % join-alias home-refs join-refs)
-                        conditions)))
-        (with-join-alias join-alias))))
+  (if (contains? a-join :alias)
+    ;; if the join clause comes with an alias, keep it and assume that the
+    ;; condition fields have the right join-aliases too
+    a-join
+    (let [stage       (lib.util/query-stage query stage-number)
+          home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
+          cond-fields (mbql.u.match/match (:conditions a-join) :field)
+          home-col    (select-home-column home-cols cond-fields)
+          join-alias  (-> (calculate-join-alias query a-join home-col)
+                          (generate-unique-name (keep :alias (:joins stage))))
+          home-refs   (mapv lib.ref/ref home-cols)
+          join-refs   (mapv lib.ref/ref
+                            (lib.metadata.calculation/returned-columns
+                              (lib.query/query-with-stages query (:stages a-join))))]
+      (-> a-join
+          (update :conditions
+                  (fn [conditions]
+                    (mapv #(add-alias-to-condition query % join-alias home-refs join-refs)
+                          conditions)))
+          (with-join-alias join-alias)))))
 
 (mu/defn join :- ::lib.schema/query
   "Add a join clause to a `query`."
@@ -406,11 +460,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     a-join       :- PartialJoin]
-   (let [a-join (if (contains? a-join :alias)
-                  ;; if the join clause comes with an alias, keep it and assume that the
-                  ;; condition fields have the right join-aliases too
-                  a-join
-                  (add-default-alias query stage-number a-join))]
+   (let [a-join (add-default-alias query stage-number a-join)]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) a-join))))))
 
@@ -752,7 +802,7 @@
 
   ([query             :- ::lib.schema/query
     stage-number      :- :int
-    join-or-joinable  :- JoinOrJoinable]
+    join-or-joinable  :- [:maybe JoinOrJoinable]]
    (if (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
             (first-join? query stage-number join-or-joinable)           ; first join?
             (lib.util/source-table-id query))                           ; query ultimately uses source Table?
