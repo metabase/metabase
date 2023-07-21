@@ -26,6 +26,7 @@ const CLJS_SRC_PATH_DEV = __dirname + "/frontend/src/cljs";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
+const WEBPACK_CACHE_PATH = __dirname + "/.webpack-cache";
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -185,7 +186,7 @@ const config = (module.exports = {
   cache: useFilesystemCache
     ? {
         type: "filesystem",
-        cacheDirectory: ".webpack-cache",
+        cacheDirectory: WEBPACK_CACHE_PATH,
         buildDependencies: {
           // invalidates the cache on configuration change
           config: [__filename],
