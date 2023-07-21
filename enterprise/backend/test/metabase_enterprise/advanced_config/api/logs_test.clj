@@ -32,7 +32,7 @@
                         QueryExecution [qe-b (merge query-execution-defaults
                                                     {:executor_id user-id
                                                      :started_at  (t/minus now (t/days 32))})]]
-          (premium-features.test/with-premium-features #{:advanced-config}
+          (premium-features.test/with-premium-features #{:audit-app}
             (testing "Query Executions within `:yyyy-mm` are returned."
               (is (= [(select-keys qe-a [:started_at :id])]
                      ;; we're calling the function directly instead of calling the API
