@@ -1,6 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore, visitModel } from "e2e/support/helpers";
+import { popover, restore, undoToast, visitModel } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -128,13 +128,16 @@ describe("Model actions in object detail view", () => {
         actionExecuteModal().within(() => {
           actionForm().within(() => {
             assertOrderFormPrefilled(ORDER_12);
+
             cy.findByLabelText("Quantity").clear().type(UPDATED_QUANTITY);
             cy.findByText("Update").click();
           });
         });
 
+        assertSuccessfullUpdateToast();
         objectDetailModal().icon("close").click();
 
+        cy.log("updated quantity should be present in the table");
         cy.findByText(UPDATED_QUANTITY_FORMATTED).should("exist");
       });
     });
@@ -216,8 +219,15 @@ function assertOrderFormPrefilled(object) {
 
 function assertInputValue(labelText, value) {
   const expectedValue = value || "";
-  cy.log(`Input for "${labelText}" should have value "${expectedValue}"`);
+  cy.log(`input for "${labelText}" should have value "${expectedValue}"`);
   cy.findByLabelText(labelText).should("have.value", expectedValue);
+}
+
+function assertSuccessfullUpdateToast() {
+  cy.log("it shows a toast informing the update was successfull");
+  undoToast().within(() => {
+    cy.findByText("Successfully updated").should("be.visible");
+  });
 }
 
 function actionForm() {
