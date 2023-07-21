@@ -45,8 +45,7 @@ export function JoinTablePicker({
   const handleTableChange = (tableId: number | string) =>
     onChangeTable(Lib.tableOrCardMetadata(query, tableId));
 
-  const tableFilter = (table: Table) =>
-    !tableId || table.db_id === pickerInfo?.tableId;
+  const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
 
   return (
     <NotebookCellItem
