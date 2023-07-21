@@ -17,6 +17,12 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   const [conditions, _setConditions] = useState<Lib.JoinConditionClause[]>(
     join ? Lib.joinConditions(join) : [],
   );
+  const [columns, _setColumns] = useState(
+    join ? Lib.joinableColumns(query, stageIndex, join) : [],
+  );
+  const [selectedColumns, _setSelectedColumns] = useState(
+    getInitiallySelectedColumns(query, stageIndex, join),
+  );
 
   const previousTable = usePrevious(table);
 
@@ -24,7 +30,11 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     if (join && previousJoin !== join) {
       _setStrategy(Lib.joinStrategy(join));
       _setTable(Lib.joinedThing(query, join));
+      _setColumns(Lib.joinableColumns(query, stageIndex, join));
       _setConditions(Lib.joinConditions(join));
+    }
+    if (!previousJoin && join) {
+      _setSelectedColumns([]);
     }
   }, [query, stageIndex, join, previousJoin]);
 
@@ -35,6 +45,29 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
       dispatch(Tables.actions.fetchMetadata({ id: tableId }));
     }
   }, [query, table, previousTable, dispatch]);
+
+  const isColumnSelected = (column: Lib.ColumnMetadata) => {
+    return join
+      ? !!Lib.displayInfo(query, stageIndex, column).selected
+      : selectedColumns.includes(column);
+  };
+
+  const setSelectedColumns = (nextSelectedColumns: Lib.JoinFields) => {
+    if (join) {
+      const nextJoin = Lib.withJoinFields(join, nextSelectedColumns);
+      const nextQuery = Lib.replaceClause(query, stageIndex, join, nextJoin);
+      _setColumns(Lib.joinableColumns(nextQuery, stageIndex, nextJoin));
+      return nextQuery;
+    }
+
+    if (nextSelectedColumns === "all") {
+      _setSelectedColumns(columns);
+    } else if (nextSelectedColumns === "none") {
+      _setSelectedColumns([]);
+    } else {
+      _setSelectedColumns(nextSelectedColumns);
+    }
+  };
 
   const setStrategy = useCallback(
     (nextStrategy: Lib.JoinStrategy) => {
@@ -49,7 +82,6 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
 
   const setTable = useCallback(
     (nextTable: Lib.Joinable) => {
-      _setTable(nextTable);
       const suggestedCondition = Lib.suggestedJoinCondition(
         query,
         stageIndex,
@@ -64,6 +96,10 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
         nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
         return Lib.join(query, stageIndex, nextJoin);
       } else {
+        const columns = Lib.joinableColumns(query, stageIndex, nextTable);
+        _setTable(nextTable);
+        _setColumns(columns);
+        _setSelectedColumns(columns);
         _setConditions([]);
       }
     },
@@ -77,12 +113,12 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
 
       if (table) {
         let nextJoin = Lib.joinClause(table, nextConditions);
-        nextJoin = Lib.withJoinFields(nextJoin, "all");
+        nextJoin = Lib.withJoinFields(nextJoin, selectedColumns);
         nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
         return Lib.join(query, stageIndex, nextJoin);
       }
     },
-    [query, stageIndex, table, strategy, conditions],
+    [query, stageIndex, table, strategy, selectedColumns, conditions],
   );
 
   const updateCondition = useCallback(
@@ -104,11 +140,14 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   return {
     strategy,
     table,
+    columns,
     conditions,
     setStrategy,
     setTable,
     addCondition,
     updateCondition,
+    isColumnSelected,
+    setSelectedColumns,
   };
 }
 
@@ -118,4 +157,18 @@ function getDefaultJoinStrategy(query: Lib.Query, stageIndex: number) {
     strategy => Lib.displayInfo(query, stageIndex, strategy).default,
   );
   return defaultStrategy || strategies[0];
+}
+
+function getInitiallySelectedColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  join?: Lib.Join,
+) {
+  if (!join) {
+    return [];
+  }
+  const columns = Lib.joinableColumns(query, stageIndex, join);
+  return columns.filter(
+    column => Lib.displayInfo(query, stageIndex, column).selected,
+  );
 }

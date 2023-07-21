@@ -9,6 +9,7 @@ interface FieldPickerProps {
   query: Lib.Query;
   stageIndex: number;
   columns: Lib.ColumnMetadata[];
+  "data-testid"?: string;
   isColumnSelected?: (column: Lib.ColumnMetadata) => boolean;
   onToggle: (columnIndex: number, isSelected: boolean) => void;
   onSelectAll: () => void;
@@ -24,6 +25,7 @@ export const FieldPicker = ({
   onSelectNone,
   isColumnSelected = (column: Lib.ColumnMetadata) =>
     !!Lib.displayInfo(query, stageIndex, column).selected,
+  ...props
 }: FieldPickerProps) => {
   const items = useMemo(
     () =>
@@ -58,7 +60,7 @@ export const FieldPicker = ({
   };
 
   return (
-    <ul>
+    <ul data-testid={props["data-testid"]}>
       <ToggleItem>
         <StackedCheckBox
           className=""
