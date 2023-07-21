@@ -462,7 +462,10 @@
     ring.adapter.jetty9.servlet                                     servlet
     saml20-clj.core                                                 saml
     toucan.db                                                       db
-    toucan.models                                                   models}}}
+    toucan.models                                                   models}}
+
+  :metabase/validate-deftest                   {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs {:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -528,7 +531,10 @@
 
  :hooks
  {:analyze-call
-  {clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
+  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+   cljs.test/is                                                                                                              hooks.clojure.test/is
+   clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
+   clojure.test/is                                                                                                           hooks.clojure.test/is
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*
@@ -703,8 +709,8 @@
   source-namespaces
   {:linters
    {:discouraged-var
-    {clojure.core/with-redefs {:message "Don't use with-redefs"}
-     clojure.core/eval        {:message "Don't use eval"}}}}
+    {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
+     clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
 
   printable-namespaces
   {:linters

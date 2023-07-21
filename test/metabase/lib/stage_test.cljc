@@ -16,7 +16,7 @@
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel ensure-previous-stages-have-metadata-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query (-> lib.tu/venues-query
                   (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
                   lib/append-stage
                   lib/append-stage)]
@@ -70,12 +70,12 @@
                 (lib.metadata.calculation/returned-columns query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
-  (let [query lib.tu/query-with-card-source-table]
+  (let [query lib.tu/query-with-source-card]
     (is (= "My Card"
            (lib.metadata.calculation/display-name query)))))
 
 (deftest ^:parallel adding-and-removing-stages
-  (let [query                (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query                lib.tu/venues-query
         query-with-new-stage (-> query
                                  lib/append-stage
                                  (lib/order-by 1 (meta/field-metadata :venues :name) :asc))]
@@ -89,7 +89,7 @@
       (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Cannot drop the only stage" (-> query (lib/drop-stage)))))))
 
 (defn- query-with-expressions []
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query (-> lib.tu/venues-query
                   (lib/expression "ID + 1" (lib/+ (meta/field-metadata :venues :id) 1))
                   (lib/expression "ID + 2" (lib/+ (meta/field-metadata :venues :id) 2)))]
     (is (=? {:stages [{:expressions [[:+ {:lib/expression-name "ID + 1"} [:field {} (meta/id :venues :id)] 1]
@@ -167,8 +167,8 @@
 
 (deftest ^:parallel query-with-source-card-include-implicit-columns-test
   (testing "visible-columns should not include implicitly joinable columns when the query has a source Card (#30950)"
-    (doseq [varr [#'lib.tu/query-with-card-source-table
-                  #'lib.tu/query-with-card-source-table-with-result-metadata]
+    (doseq [varr [#'lib.tu/query-with-source-card
+                  #'lib.tu/query-with-source-card-with-result-metadata]
             :let [query @varr]]
       (testing (pr-str varr)
         (is (=? [{:name                     "USER_ID"
@@ -201,7 +201,7 @@
             (map lib/ref cols)))))
 
 (deftest ^:parallel fields-should-not-hide-joined-fields
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query (-> lib.tu/venues-query
                   (lib/with-fields [(meta/field-metadata :venues :id)
                                     (meta/field-metadata :venues :name)])
                   (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
