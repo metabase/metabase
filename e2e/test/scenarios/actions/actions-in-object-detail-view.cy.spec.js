@@ -1,6 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, visitModel } from "e2e/support/helpers";
+import { popover, restore, visitModel } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -38,6 +38,9 @@ const ORDER_12 = {
   tax: 10.19,
 };
 
+const UPDATED_QUANTITY = 987654321;
+const UPDATED_QUANTITY_FORMATTED = "987,654,321";
+
 describe("Model actions in object detail view", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/action").as("createBasicActions");
@@ -55,52 +58,86 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabNotExists(modelId);
 
-        visitObjectDetails(modelId, ORDER_11.id);
-        assertActionsDropdownNotExists();
+        visitObjectDetail(modelId, ORDER_11.id);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
       });
 
       asAdmin(() => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabNotExists(modelId);
 
-        visitObjectDetails(modelId, ORDER_11.id);
-        assertActionsDropdownNotExists();
+        visitObjectDetail(modelId, ORDER_11.id);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
 
         enableDatabaseActions();
 
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabExists(modelId);
 
-        visitObjectDetails(modelId, ORDER_11.id);
-        assertActionsDropdownNotExists();
+        visitObjectDetail(modelId, ORDER_11.id);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
       });
 
       asNormalUser(() => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabExists(modelId);
 
-        visitObjectDetails(modelId, ORDER_11.id);
-        assertActionsDropdownNotExists();
+        visitObjectDetail(modelId, ORDER_11.id);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
       });
 
       asAdmin(() => {
         createBasicModelActions(modelId);
-        visitObjectDetails(modelId, ORDER_11.id);
-        assertActionsDropdownExists();
+        visitObjectDetail(modelId, ORDER_11.id);
+        objectDetailModal().within(() => {
+          assertActionsDropdownExists();
+        });
       });
 
       asNormalUser(() => {
-        visitObjectDetails(modelId, ORDER_11.id);
-        assertActionsDropdownExists();
-        openUpdateObjectModal(modelId, ORDER_11.id);
-        assertOrderFormPrefilled(ORDER_11);
-        cy.icon("close").last().click();
-        cy.icon("close").last().click();
+        visitObjectDetail(modelId, ORDER_11.id);
+        objectDetailModal().within(() => {
+          assertActionsDropdownExists();
+        });
 
-        visitObjectDetails(modelId, ORDER_12.id);
-        assertActionsDropdownExists();
-        openUpdateObjectModal(modelId, ORDER_12.id);
-        assertOrderFormPrefilled(ORDER_12);
+        openUpdateObjectModal();
+        actionExecuteModal().within(() => {
+          actionForm().within(() => {
+            assertOrderFormPrefilled(ORDER_11);
+          });
+
+          cy.icon("close").click();
+        });
+
+        objectDetailModal().icon("close").click();
+
+        visitObjectDetail(modelId, ORDER_12.id);
+        objectDetailModal().within(() => {
+          assertActionsDropdownExists();
+        });
+
+        openUpdateObjectModal();
+        actionExecuteModal().within(() => {
+          actionForm().within(() => {
+            assertOrderFormPrefilled(ORDER_12);
+            cy.findByLabelText("Quantity").clear().type(UPDATED_QUANTITY);
+            cy.findByText("Update").click();
+          });
+
+          cy.icon("close").click();
+        });
+
+        objectDetailModal().icon("close").click();
+
+        cy.findByText(UPDATED_QUANTITY_FORMATTED).should("exist");
       });
     });
   });
@@ -137,16 +174,14 @@ function createBasicModelActions(modelId) {
   cy.wait("@createBasicActions");
 }
 
-function visitObjectDetails(modelId, objectId) {
+function visitObjectDetail(modelId, objectId) {
   visitModel(modelId);
   cy.findAllByText(objectId).first().click();
 }
 
-function openUpdateObjectModal(modelId, objectId) {
-  visitModel(modelId);
-  cy.findAllByText(objectId).first().click();
+function openUpdateObjectModal() {
   cy.findByTestId("actions-menu").click();
-  cy.findByText("Update").click();
+  popover().findByText("Update").click();
 }
 
 function assertActionsDropdownExists() {
@@ -185,6 +220,18 @@ function assertInputValue(labelText, value) {
   const expectedValue = value || "";
   cy.log(`Input for "${labelText}" should have value "${expectedValue}"`);
   cy.findByLabelText(labelText).should("have.value", expectedValue);
+}
+
+function actionForm() {
+  return cy.findByTestId("action-form");
+}
+
+function objectDetailModal() {
+  return cy.findByTestId("object-detail");
+}
+
+function actionExecuteModal() {
+  return cy.findByTestId("action-execute-modal");
 }
 
 /**
