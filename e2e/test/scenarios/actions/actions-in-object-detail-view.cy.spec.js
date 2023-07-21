@@ -1,53 +1,45 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { popover, restore, undoToast, visitModel } from "e2e/support/helpers";
+import moment from "moment-timezone";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  popover,
+  resetTestTable,
+  restore,
+  resyncDatabase,
+  undoToast,
+  visitModel,
+} from "e2e/support/helpers";
+
+const PG_DB_ID = 2;
+const PG_ORDERS_TABLE_ID = 9;
+const WRITABLE_TEST_TABLE = "scoreboard_actions";
 
 const ORDERS_MODEL = {
   name: "Orders model",
   dataset: true,
   display: "table",
-  database: SAMPLE_DB_ID,
+  database: PG_DB_ID,
   query: {
-    "source-table": ORDERS_ID,
+    "source-table": PG_ORDERS_TABLE_ID,
   },
 };
 
-const ORDER_11 = {
-  total: 67.33421061366487,
-  product_id: 76,
-  user_id: 1,
-  discount: null,
-  id: 11,
-  quantity: 6,
-  subtotal: 63.82421061366486,
-  created_at: "2024-07-22T20:31:01.969-07:00",
-  tax: 3.51,
-};
-
-const ORDER_12 = {
-  total: 158.4190052655229,
-  product_id: 7,
-  user_id: 3,
-  discount: null,
-  id: 12,
-  quantity: 7,
-  subtotal: 148.22900526552291,
-  created_at: "2024-06-26T23:21:13.271-07:00",
-  tax: 10.19,
-};
-
-const UPDATED_QUANTITY = 987654321;
-const UPDATED_QUANTITY_FORMATTED = "987,654,321";
+const FIRST_ORDER_ID = 11;
+const SECOND_ORDER_ID = 12;
+const UPDATED_SCORE = 987654321;
+const UPDATED_SCORE_FORMATTED = "987,654,321";
 
 describe("Model actions in object detail view", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/action").as("createBasicActions");
-    cy.intercept("GET", "/api/action/*/execute").as("prefetchValues");
+    cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
+      "prefetchValues",
+    );
 
-    restore();
-    cy.signInAsNormalUser();
+    resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
+    restore("postgres-writable");
+    cy.signInAsAdmin();
+    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TEST_TABLE });
     cy.createQuestion(ORDERS_MODEL, { wrapId: true, idAlias: "modelId" });
     cy.signOut();
   });
@@ -58,7 +50,7 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabNotExists(modelId);
 
-        visitObjectDetail(modelId, ORDER_11.id);
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
@@ -68,7 +60,7 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabNotExists(modelId);
 
-        visitObjectDetail(modelId, ORDER_11.id);
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
@@ -78,7 +70,7 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabExists(modelId);
 
-        visitObjectDetail(modelId, ORDER_11.id);
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
@@ -88,7 +80,7 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabExists(modelId);
 
-        visitObjectDetail(modelId, ORDER_11.id);
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
@@ -97,40 +89,48 @@ describe("Model actions in object detail view", () => {
       asAdmin(() => {
         createBasicModelActions(modelId);
 
-        visitObjectDetail(modelId, ORDER_11.id);
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
       });
 
       asNormalUser(() => {
-        visitObjectDetail(modelId, ORDER_11.id);
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
 
         openUpdateObjectModal();
         actionExecuteModal().within(() => {
-          actionForm().within(() => {
-            assertOrderFormPrefilled(ORDER_11);
+          cy.wait("@prefetchValues").then(request => {
+            const firstOrder = request.response.body;
+
+            actionForm().within(() => {
+              assertOrderFormPrefilled(firstOrder);
+            });
           });
 
           cy.icon("close").click();
         });
         objectDetailModal().icon("close").click();
 
-        visitObjectDetail(modelId, ORDER_12.id);
+        visitObjectDetail(modelId, SECOND_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
 
         openUpdateObjectModal();
         actionExecuteModal().within(() => {
-          actionForm().within(() => {
-            assertOrderFormPrefilled(ORDER_12);
+          cy.wait("@prefetchValues").then(request => {
+            const secondOrder = request.response.body;
 
-            cy.findByLabelText("Quantity").clear().type(UPDATED_QUANTITY);
-            cy.findByText("Update").click();
+            actionForm().within(() => {
+              assertOrderFormPrefilled(secondOrder);
+
+              cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
+              cy.findByText("Update").click();
+            });
           });
         });
         objectDetailModal().icon("close").click();
@@ -138,7 +138,7 @@ describe("Model actions in object detail view", () => {
         assertSuccessfullUpdateToast();
 
         cy.log("updated quantity should be present in the table");
-        cy.findByText(UPDATED_QUANTITY_FORMATTED).should("exist");
+        cy.findByText(UPDATED_SCORE_FORMATTED).should("exist");
       });
     });
   });
@@ -207,18 +207,23 @@ function assertActionsTabNotExists(modelId) {
 
 function assertOrderFormPrefilled(object) {
   assertInputValue("ID", object.id);
-  assertInputValue("User ID", object.user_id);
-  assertInputValue("Product ID", object.product_id);
-  assertInputValue("Subtotal", object.subtotal);
-  assertInputValue("Tax", object.tax);
-  assertInputValue("Total", object.total);
-  assertInputValue("Discount", object.discount);
-  assertInputValue("Created At", dateToIso(object.created_at));
-  assertInputValue("Quantity", object.quantity);
+  assertInputValue("Team Name", object.team_name);
+  assertInputValue("Score", object.score);
+  assertInputValue("Status", object.status);
+  assertDateInputValue("Created At", object.created_at);
+  assertDateInputValue("Updated At", object.updated_at);
 }
 
 function assertInputValue(labelText, value) {
   const expectedValue = value || "";
+  cy.log(`input for "${labelText}" should have value "${expectedValue}"`);
+  cy.findByLabelText(labelText).should("have.value", expectedValue);
+}
+
+function assertDateInputValue(labelText, value) {
+  const expectedValue = moment(value)
+    .format()
+    .replace(/-\d\d:\d\d$/, "");
   cy.log(`input for "${labelText}" should have value "${expectedValue}"`);
   cy.findByLabelText(labelText).should("have.value", expectedValue);
 }
@@ -240,11 +245,4 @@ function objectDetailModal() {
 
 function actionExecuteModal() {
   return cy.findByTestId("action-execute-modal");
-}
-
-/**
- * Turns "2024-07-22T20:31:01.969-07:00" into "2024-07-22T20:31:01"
- */
-function dateToIso(timestamp) {
-  return timestamp.replace(/\..*/, "");
 }
