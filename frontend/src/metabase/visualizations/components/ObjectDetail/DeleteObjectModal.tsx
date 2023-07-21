@@ -8,14 +8,20 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import { useDispatch } from "metabase/lib/redux";
 
+import { ObjectId } from "./types";
+
 interface Props {
   actionId: WritebackActionId | undefined;
+  objectId: ObjectId | undefined;
   onClose: () => void;
+  onSuccess: () => void;
 }
 
 export const DeleteObjectModal: FunctionComponent<Props> = ({
   actionId,
+  objectId,
   onClose,
+  onSuccess,
 }) => {
   const dispatch = useDispatch();
 
@@ -24,8 +30,15 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
     id: actionId,
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!action || objectId === null || typeof objectId === "undefined") {
+      return;
+    }
+
+    const parameters = { id: objectId };
     dispatch(executeAction({ action, parameters }));
+    onClose();
+    onSuccess();
   };
 
   return (
@@ -36,6 +49,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button
           key="delete"
           danger
+          disabled={!action}
           onClick={handleSubmit}
         >{t`Delete forever`}</Button>,
       ]}

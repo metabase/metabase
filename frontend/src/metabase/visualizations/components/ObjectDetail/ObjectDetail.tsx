@@ -434,12 +434,10 @@ export function ObjectDetailView({
         onClose={handleDeleteModalClose}
       >
         <DeleteObjectModal
-          // actionId={deleteActionId}
-          // initialValues={initialValues}
-          // fetchInitialValues={fetchInitialValues}
-          // shouldPrefetch
+          actionId={deleteActionId}
+          objectId={zoomedRowID}
           onClose={handleDeleteModalClose}
-          // onSuccess={handleActionSuccess}
+          onSuccess={handleActionSuccess}
         />
       </Modal>
     </>
