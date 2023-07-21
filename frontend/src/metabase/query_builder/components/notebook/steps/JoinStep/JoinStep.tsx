@@ -214,6 +214,7 @@ function JoinCondition({
         column={lhsColumn}
         columnGroups={lhsColumnGroup}
         label={t`Left column`}
+        isInitiallyVisible={!condition}
         readOnly={readOnly}
         color={color}
         onSelect={handleLHSColumnChange}
