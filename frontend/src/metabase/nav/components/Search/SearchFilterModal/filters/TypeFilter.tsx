@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import { getTranslatedEntityName } from "metabase/nav/utils";
 import { Checkbox, Flex } from "metabase/ui";
 import { SearchFilter } from "metabase/nav/components/Search/SearchFilterModal/filters/SearchFilter";
@@ -10,9 +11,11 @@ const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 export const TypeFilter = ({
   value = [],
   onChange,
+  "data-testid": dataTestId,
 }: {
   value?: SearchModelType[];
   onChange: (value: SearchModelType[]) => void;
+  "data-testid": string;
 }) => {
   const { metadata, isLoading } = useSearchListQuery({ query: SEARCH_QUERY });
 
@@ -21,7 +24,7 @@ export const TypeFilter = ({
   return isLoading ? (
     <LoadingSpinner />
   ) : (
-    <SearchFilter title="Type">
+    <SearchFilter data-testid={dataTestId} title={t`Type`}>
       <Checkbox.Group
         value={value}
         onChange={onChange}

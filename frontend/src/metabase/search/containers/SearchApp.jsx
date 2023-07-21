@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 
 import { jt, t } from "ttag";
-import _ from "underscore";
 
 import Search from "metabase/entities/search";
 
@@ -14,8 +13,10 @@ import Subhead from "metabase/components/type/Subhead";
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
-import { getSearchTextFromLocation } from "metabase/search/util";
+import {
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+} from "metabase/search/util";
 import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
 import {
   SearchBody,
@@ -37,8 +38,8 @@ export default function SearchApp({ location }) {
   );
 
   const searchFilters = useMemo(() => {
-    return _.pick(location.query, Object.values(FilterType));
-  }, [location.query]);
+    return getFiltersFromLocation(location);
+  }, [location]);
 
   const [selectedSidebarType, setSelectedSidebarType] = useState(null);
 
@@ -50,7 +51,7 @@ export default function SearchApp({ location }) {
     () => ({
       q: searchText,
       ...searchFilters,
-      models: selectedSidebarType ?? searchFilters[FilterType.Type],
+      models: selectedSidebarType ?? searchFilters.type,
       limit: PAGE_SIZE,
       offset: PAGE_SIZE * page,
     }),
@@ -85,13 +86,13 @@ export default function SearchApp({ location }) {
                   onPreviousPage={handlePreviousPage}
                 />
               </SearchMain>
-              {searchFilters[FilterType.Type] || metadata.available_models ? (
+              {searchFilters.type || metadata.available_models ? (
                 <SearchControls>
                   <TypeSearchSidebar
                     availableModels={metadata.available_models.filter(
                       filter =>
-                        !searchFilters[FilterType.Type] ||
-                        searchFilters[FilterType.Type].includes(filter),
+                        !searchFilters.type ||
+                        searchFilters.type.includes(filter),
                     )}
                     selectedType={selectedSidebarType}
                     onSelectType={onChangeSelectedType}

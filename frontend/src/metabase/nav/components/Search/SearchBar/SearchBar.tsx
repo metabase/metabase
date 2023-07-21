@@ -5,7 +5,6 @@ import { withRouter } from "react-router";
 import { Location, LocationDescriptorObject } from "history";
 
 import { usePrevious } from "react-use";
-import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 
 import { useKeyboardShortcut } from "metabase/hooks/use-keyboard-shortcut";
@@ -18,9 +17,8 @@ import { zoomInRow } from "metabase/query_builder/actions";
 import SearchResults from "metabase/nav/components/Search/SearchResults/SearchResults";
 import RecentsList from "metabase/nav/components/Search/RecentsList/RecentsList";
 import { SearchFilterModal } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModal";
-import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
-import { SearchFilterType } from "metabase/search/util";
 import { getSetting } from "metabase/selectors/settings";
+import { getFiltersFromLocation } from "metabase/search/util";
 import {
   SearchInputContainer,
   SearchIcon,
@@ -69,7 +67,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   );
 
   const [searchFilters, setSearchFilters] = useState(
-    _.pick(location.query, Object.values(FilterType)) as SearchFilterType,
+    getFiltersFromLocation(location),
   );
 
   const [isActive, { turnOn: setActive, turnOff: setInactive }] =

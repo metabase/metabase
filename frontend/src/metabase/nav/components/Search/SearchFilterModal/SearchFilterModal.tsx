@@ -2,8 +2,7 @@ import { t } from "ttag";
 import { useEffect, useMemo, useState } from "react";
 import Modal from "metabase/components/Modal";
 import { SearchFilterModalFooter } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModalFooter";
-import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
-import { SearchFilterType } from "metabase/search/util";
+import { SearchFilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 import { TypeFilter } from "./filters/TypeFilter";
 
 export const SearchFilterModal = ({
@@ -39,7 +38,7 @@ export const SearchFilterModal = ({
 
   const availableFilters = useMemo(() => {
     return {
-      [FilterType.Type]: TypeFilter,
+      type: TypeFilter,
     };
   }, []);
 
@@ -49,7 +48,7 @@ export const SearchFilterModal = ({
         <Filter
           key={key}
           data-testid={`${key}-search-filter`}
-          value={output[key as FilterType]}
+          value={output[key]}
           onChange={val =>
             setOutput({
               ...output,

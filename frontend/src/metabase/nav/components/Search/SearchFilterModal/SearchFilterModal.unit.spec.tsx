@@ -2,13 +2,10 @@ import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { waitFor, within, renderWithProviders, screen } from "__support__/ui";
 import { SearchFilterModal } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModal";
-import { SearchFilterType } from "metabase/search/util";
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import {
-  createMockSearchResult,
-} from "metabase-types/api/mocks";
+import { createMockSearchResult } from "metabase-types/api/mocks";
 import { SearchModelType } from "metabase-types/api";
-import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
+import { SearchFilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 
 const TestSearchFilterModal = ({
   initialFilters = {},
@@ -46,8 +43,8 @@ const TEST_TYPES: SearchModelType[] = [
 ];
 
 const TEST_INITIAL_FILTERS: SearchFilterType = {
-  [FilterType.Type]: TEST_TYPES,
-}
+  type: TEST_TYPES,
+};
 
 const setup = async ({
   initialFilters = {},
@@ -80,32 +77,20 @@ const setup = async ({
 };
 
 describe("SearchFilterModal", () => {
-  describe("Keyboard navigation", () => {
-    it("Allow keyboard navigation through all filters", async () => {
-      await setup();
+  // TODO: Write keyboard navigation tests.
 
-      expect(
-        within(
-          screen.getByTestId("type-filter-checkbox-group"),
-        ).getByDisplayValue(TEST_TYPES[0]),
-      ).toHaveFocus();
-
-      screen.debug(undefined, 100000);
-      // TODO
-    });
-
-    it("Allow selection of filters with keyboard", async () => {
-      await setup();
-      screen.debug(undefined, 100000);
-      // TODO
-    });
-  });
-
-  describe("Filter display",  () => {
+  describe("Filter display", () => {
     it("should populate selected filters when `value` is passed in", async () => {
       await setup({
         initialFilters: TEST_INITIAL_FILTERS,
-      })
+      });
+
+      const typeFilter = screen.getByTestId("type-search-filter");
+      within(typeFilter)
+        .getAllByRole("checkbox")
+        .forEach(checkbox => {
+          expect(checkbox).toBeChecked();
+        });
     });
   });
 

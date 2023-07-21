@@ -1,12 +1,9 @@
 import { Location } from "history";
-import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
-import { SearchModelType } from "metabase-types/api";
-
-export type SearchFilterType = {
-  [FilterType.Type]?: SearchModelType[] | undefined;
-} & {
-  [key in FilterType]?: string | string[];
-};
+import _ from "underscore";
+import {
+  SearchFilterKeys,
+  SearchFilterType,
+} from "metabase/nav/components/Search/SearchFilterModal/types";
 
 export type SearchAwareLocation = Location<{ q?: string } & SearchFilterType>;
 
@@ -24,6 +21,7 @@ export function getSearchTextFromLocation(location: SearchAwareLocation) {
 
 export function getFiltersFromLocation(location: SearchAwareLocation) {
   if (isSearchPageLocation(location)) {
-    return location.query.q || "";
+    return _.pick(location.query, Object.values(SearchFilterKeys));
   }
+  return {};
 }

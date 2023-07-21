@@ -1,5 +1,5 @@
-import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
+import { setupRecentViewsEndpoints } from "__support__/server-mocks";
 import RecentsList from "./RecentsList";
 
 const recentsData = [
@@ -40,12 +40,8 @@ const recentsData = [
   },
 ];
 
-function mockRecentsEndpoint(recents) {
-  fetchMock.get("path:/api/activity/recent_views", recents);
-}
-
 async function setup(recents = recentsData) {
-  mockRecentsEndpoint(recents);
+  setupRecentViewsEndpoints(recents);
 
   renderWithProviders(<RecentsList />);
 

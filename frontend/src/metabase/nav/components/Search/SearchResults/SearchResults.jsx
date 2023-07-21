@@ -10,7 +10,6 @@ import Search from "metabase/entities/search";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
-import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 import { EmptyStateContainer } from "./SearchResults.styled";
 
 const propTypes = {
@@ -87,7 +86,7 @@ export default _.compose(
       q: props.searchText,
       limit: DEFAULT_SEARCH_LIMIT,
       ...props.searchFilters,
-      models: props.searchFilters[FilterType.Type],
+      models: props.searchFilters.type,
     }),
   }),
 )(SearchResults);
