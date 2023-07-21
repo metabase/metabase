@@ -126,7 +126,9 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
   function getRecentJoin() {
     const query = getNextQuery();
     const [join] = Lib.joins(query, 0);
+
     const strategy = Lib.displayInfo(query, 0, Lib.joinStrategy(join));
+    const fields = Lib.joinFields(join);
 
     const conditions = Lib.joinConditions(join).map(condition => {
       const externalOp = Lib.externalOp(condition);
@@ -141,6 +143,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
       join,
       strategy,
       conditions,
+      fields,
     };
   }
 
@@ -272,7 +275,7 @@ describe("Notebook Editor > Join Step", () => {
     expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
     expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
 
-    expect(screen.getByLabelText("Left column")).toHaveTextContent(
+    expect(await screen.findByLabelText("Left column")).toHaveTextContent(
       "Product ID",
     );
     expect(screen.getByLabelText("Right column")).toHaveTextContent("ID");
@@ -401,6 +404,60 @@ describe("Notebook Editor > Join Step", () => {
 
     const [condition] = getRecentJoin().conditions;
     expect(condition.operator).toBe("!=");
+  });
+
+  describe("join fields", () => {
+    it("should be 'all' by default", async () => {
+      const { getRecentJoin } = setup();
+
+      const popover = screen.getByTestId("popover");
+      userEvent.click(await within(popover).findByText("Products"));
+
+      const { fields } = getRecentJoin();
+      expect(fields).toBe("all");
+    });
+
+    it.todo("should select a few columns when adding a join");
+
+    it.todo("should be able to select no columns when adding a new join");
+
+    it("should select a few columns for an existing join", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ topLevelQuery: getJoinedQuery() }),
+      );
+
+      userEvent.click(screen.getByLabelText("Pick columns"));
+      const picker = await screen.findByTestId("join-columns-picker");
+
+      // Excluding a few columns
+      userEvent.click(within(picker).getByText("Category"));
+      userEvent.click(within(picker).getByText("Price"));
+
+      const { query, fields } = getRecentJoin();
+      const columns = fields as Lib.ColumnMetadata[];
+      const category = columns.find(
+        column => Lib.displayInfo(query, 0, column).name === "CATEGORY",
+      );
+      const price = columns.find(
+        column => Lib.displayInfo(query, 0, column).name === "PRICE",
+      );
+      expect(columns).not.toHaveLength(0);
+      expect(category).toBeUndefined();
+      expect(price).toBeUndefined();
+    });
+
+    it("should be able to select no columns for an existing join", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ topLevelQuery: getJoinedQuery() }),
+      );
+
+      userEvent.click(screen.getByLabelText("Pick columns"));
+      const picker = await screen.findByTestId("join-columns-picker");
+      userEvent.click(within(picker).getByText("Select none"));
+
+      const { fields } = getRecentJoin();
+      expect(fields).toBe("none");
+    });
   });
 
   it.todo("field selection");

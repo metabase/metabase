@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { Box, Flex, Text } from "metabase/ui";
 
@@ -37,11 +36,14 @@ export function JoinStep({
   const {
     strategy,
     table,
+    columns,
     conditions,
     setStrategy,
     setTable,
     addCondition,
     updateCondition,
+    isColumnSelected,
+    setSelectedColumns,
   } = useJoin(query, stageIndex, join);
 
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
@@ -72,6 +74,13 @@ export function JoinStep({
       updateQuery(nextQuery);
     } else {
       setIsAddingNewCondition(true);
+    }
+  };
+
+  const handleSelectedColumnsChange = (nextColumns: Lib.JoinFields) => {
+    const nextQuery = setSelectedColumns(nextColumns);
+    if (nextQuery) {
+      updateQuery(nextQuery);
     }
   };
 
@@ -142,11 +151,13 @@ export function JoinStep({
             query={query}
             stageIndex={stageIndex}
             table={table}
+            columns={columns}
             color={color}
             isStartedFromModel={isStartedFromModel}
             readOnly={readOnly}
+            isColumnSelected={isColumnSelected}
             onChangeTable={handleTableChange}
-            onChangeFields={_.noop}
+            onChangeFields={handleSelectedColumnsChange}
           />
         </Flex>
       </NotebookCell>
