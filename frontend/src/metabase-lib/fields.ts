@@ -19,3 +19,14 @@ export function fieldableColumns(
 ): ColumnMetadata[] {
   return ML.fieldable_columns(query, stageIndex);
 }
+
+export function fieldableColumnsWithJoins(
+  query: Query,
+  stageIndex: number,
+): ColumnMetadata[] {
+  return ML.fieldable_columns_with_joins(query, stageIndex);
+}
+
+export function legacyFieldRef(column: ColumnMetadata): any[] {
+  return ML.legacy_field_ref(column);
+}

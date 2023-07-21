@@ -2,13 +2,11 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-
+import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { findColumnForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
 import ColumnItem from "./ColumnItem";
-
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 
 export const ChartSettingOrderedColumns = ({
@@ -20,6 +18,8 @@ export const ChartSettingOrderedColumns = ({
   getColumnName: _getColumnName,
 }) => {
   const query = question?.query();
+  const topLevelQuery = question?._getMLv2Query();
+
   const [enabledColumns, disabledColumns] = useMemo(
     () =>
       _.partition(
@@ -33,14 +33,10 @@ export const ChartSettingOrderedColumns = ({
     [value, columns],
   );
 
-  let additionalFieldOptions = { count: 0 };
-  if (columns && query instanceof StructuredQuery) {
-    additionalFieldOptions = query.fieldsOptions(dimension => {
-      return !_.find(columns, column =>
-        dimension.isSameBaseDimension(column.field_ref),
-      );
-    });
-  }
+  const additionalColumns =
+    query instanceof StructuredQuery
+      ? Lib.fieldableColumns(topLevelQuery, -1)
+      : [];
 
   const handleEnable = useCallback(
     columnSetting => {
@@ -138,7 +134,7 @@ export const ChartSettingOrderedColumns = ({
           {t`Add fields from the list below`}
         </div>
       )}
-      {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
+      {disabledColumns.length > 0 || additionalColumns.length > 0 ? (
         <h4 className="mb2 mt4 pt4 border-top">{t`More columns`}</h4>
       ) : null}
       <div data-testid="disabled-columns">
@@ -152,33 +148,15 @@ export const ChartSettingOrderedColumns = ({
           />
         ))}
       </div>
-      {additionalFieldOptions.count > 0 && (
+      {additionalColumns.length > 0 && (
         <div>
-          {additionalFieldOptions.dimensions.map((dimension, index) => (
+          {additionalColumns.map((column, index) => (
             <ColumnItem
               key={index}
-              title={dimension.displayName()}
-              onAdd={() => handleAddNewField(dimension.mbql())}
+              title={Lib.displayInfo(topLevelQuery, -1, column).displayName}
+              onAdd={() => handleAddNewField(Lib.legacyFieldRef(column))}
               role="listitem"
             />
-          ))}
-          {additionalFieldOptions.fks.map((fk, index) => (
-            <div key={fk.id}>
-              <div className="my2 text-medium text-bold text-uppercase text-small">
-                {fk.name ||
-                  (fk.field.target
-                    ? fk.field.target.table.display_name
-                    : fk.field.display_name)}
-              </div>
-              {fk.dimensions.map((dimension, index) => (
-                <ColumnItem
-                  key={index}
-                  title={dimension.displayName()}
-                  onAdd={() => handleAddNewField(dimension.mbql())}
-                  role="listitem"
-                />
-              ))}
-            </div>
           ))}
         </div>
       )}
