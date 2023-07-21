@@ -33,10 +33,26 @@ export const ChartSettingOrderedColumns = ({
     [value, columns],
   );
 
-  const additionalColumns =
-    query instanceof StructuredQuery
-      ? Lib.fieldableColumns(topLevelQuery, -1)
-      : [];
+  const additionalColumnsInfo = useMemo(() => {
+    if (!(query instanceof StructuredQuery)) {
+      return [];
+    }
+
+    return Lib.fieldableColumns(topLevelQuery, -1)
+      .map(column => ({
+        column,
+        columnInfo: Lib.displayInfo(topLevelQuery, -1, column),
+        dimension: query
+          .parseFieldReference(Lib.legacyFieldRef(column))
+          .getMLv1CompatibleDimension(),
+      }))
+      .filter(
+        ({ dimension }) =>
+          !columns.some(column =>
+            dimension.isSameBaseDimension(column.field_ref),
+          ),
+      );
+  }, [topLevelQuery, query, columns]);
 
   const handleEnable = useCallback(
     columnSetting => {
@@ -89,7 +105,8 @@ export const ChartSettingOrderedColumns = ({
   );
 
   const handleAddNewField = useCallback(
-    fieldRef => {
+    dimension => {
+      const fieldRef = dimension.mbql();
       const columnSettingIndex = value.findIndex(columnSetting =>
         _.isEqual(fieldRef, columnSetting.fieldRef),
       );
@@ -134,7 +151,7 @@ export const ChartSettingOrderedColumns = ({
           {t`Add fields from the list below`}
         </div>
       )}
-      {disabledColumns.length > 0 || additionalColumns.length > 0 ? (
+      {disabledColumns.length > 0 || additionalColumnsInfo.length > 0 ? (
         <h4 className="mb2 mt4 pt4 border-top">{t`More columns`}</h4>
       ) : null}
       <div data-testid="disabled-columns">
@@ -148,13 +165,13 @@ export const ChartSettingOrderedColumns = ({
           />
         ))}
       </div>
-      {additionalColumns.length > 0 && (
+      {additionalColumnsInfo.length > 0 && (
         <div>
-          {additionalColumns.map((column, index) => (
+          {additionalColumnsInfo.map(({ columnInfo, dimension }, index) => (
             <ColumnItem
               key={index}
-              title={Lib.displayInfo(topLevelQuery, -1, column).displayName}
-              onAdd={() => handleAddNewField(Lib.legacyFieldRef(column))}
+              title={columnInfo.displayName}
+              onAdd={() => handleAddNewField(dimension)}
               role="listitem"
             />
           ))}
