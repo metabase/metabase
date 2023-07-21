@@ -21,6 +21,7 @@ interface JoinConditionColumnPickerProps
   extends Omit<QueryColumnPickerProps, "checkIsColumnSelected"> {
   column?: Lib.ColumnMetadata;
   label?: string;
+  isInitiallyVisible?: boolean;
   readOnly?: boolean;
   color: string;
   onRemove: () => void;
@@ -35,6 +36,7 @@ export function JoinConditionColumnPicker({
   stageIndex,
   column,
   label,
+  isInitiallyVisible = false,
   readOnly = false,
   color,
   onRemove,
@@ -44,6 +46,7 @@ export function JoinConditionColumnPicker({
 
   return (
     <TippyPopoverWithTrigger
+      isInitiallyVisible={isInitiallyVisible}
       renderTrigger={({ onClick }) => (
         <ColumnNotebookCellItem
           tableName={columnInfo?.table?.displayName}

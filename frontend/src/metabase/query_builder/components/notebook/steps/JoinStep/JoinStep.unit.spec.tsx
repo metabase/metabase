@@ -190,6 +190,22 @@ describe("Notebook Editor > Join Step", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should open the LHS table picker after right table is selected", async () => {
+    setup();
+
+    userEvent.click(screen.getByLabelText("Right table"));
+    const tablePicker = await screen.findByTestId("popover");
+    userEvent.click(await within(tablePicker).findByText("Products"));
+
+    const columnPicker = await screen.findByLabelText("grid");
+
+    expect(within(columnPicker).getByText("Order")).toBeInTheDocument();
+    expect(within(columnPicker).getByText("Product ID")).toBeInTheDocument();
+    expect(
+      within(columnPicker).queryByText("Products"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should highlight selected LHS column", async () => {
     setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
 
