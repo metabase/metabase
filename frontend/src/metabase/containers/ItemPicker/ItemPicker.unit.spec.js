@@ -91,7 +91,7 @@ const DASHBOARD = {
     name: "Regular dashboard (nested)",
     collection_id: COLLECTION.REGULAR.id,
   }),
-  PERSONAL_CHILD: createMockDashboard({
+  PERSONAL_CHILD: dashboard({
     id: 3,
     name: "Personal dashboard",
     model: "dashboard",
