@@ -131,8 +131,6 @@ describe("Model actions in object detail view", () => {
             cy.findByLabelText("Quantity").clear().type(UPDATED_QUANTITY);
             cy.findByText("Update").click();
           });
-
-          cy.icon("close").click();
         });
 
         objectDetailModal().icon("close").click();
@@ -200,7 +198,7 @@ function assertActionsTabExists(modelId) {
 }
 
 function assertActionsTabNotExists(modelId) {
-  cy.log("actions tab should be shown in model detail page");
+  cy.log("actions tab should not be shown in model detail page");
   cy.findByText("Actions").should("not.exist");
 }
 
