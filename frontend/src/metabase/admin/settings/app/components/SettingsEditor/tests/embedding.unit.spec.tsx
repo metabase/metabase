@@ -7,8 +7,8 @@ import {
 import { screen } from "__support__/ui";
 import { setup, SetupOpts } from "./setup";
 
-const setupEmbedding = (opts?: SetupOpts) => {
-  setup({
+const setupEmbedding = async (opts?: SetupOpts) => {
+  await setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({
       embedding: true,
@@ -19,7 +19,7 @@ const setupEmbedding = (opts?: SetupOpts) => {
 
 describe("SettingsEditor", () => {
   it("should allow to configure the origin for full-app embedding", async () => {
-    setupEmbedding({
+    await setupEmbedding({
       settings: [
         createMockSettingDefinition({ key: "enable-embedding" }),
         createMockSettingDefinition({ key: "embedding-app-origin" }),
@@ -29,7 +29,7 @@ describe("SettingsEditor", () => {
       }),
     });
 
-    userEvent.click(await screen.findByText("Embedding"));
+    userEvent.click(screen.getByText("Embedding"));
     userEvent.click(screen.getByText("Full-app embedding"));
     expect(screen.getByText("Full-app embedding")).toBeInTheDocument();
     expect(screen.getByText("Authorized origins")).toBeInTheDocument();

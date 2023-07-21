@@ -14,7 +14,6 @@ import {
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
-import User from "metabase/entities/users";
 
 import {
   cleanPulse,
@@ -32,6 +31,7 @@ import {
   fetchPulseFormInput,
   testPulse,
 } from "metabase/pulse/actions";
+import { UserApi } from "metabase/services";
 
 export const CHANNEL_ICONS = {
   email: "mail",
@@ -112,6 +112,7 @@ class SharingSidebarInner extends Component {
     // use this to know where to go "back" to
     returnMode: [],
     isSaving: false,
+    users: undefined,
   };
 
   static propTypes = {
@@ -126,13 +127,17 @@ class SharingSidebarInner extends Component {
     pulses: PropTypes.array,
     onCancel: PropTypes.func.isRequired,
     setPulseArchived: PropTypes.func.isRequired,
-    users: PropTypes.array,
     params: PropTypes.object,
   };
 
   componentDidMount() {
     this.props.fetchPulseFormInput();
+    this.fetchUsers();
   }
+
+  fetchUsers = async () => {
+    this.setState({ users: (await UserApi.list()).data });
+  };
 
   setPulse = pulse => {
     this.props.updateEditingPulse(pulse);
@@ -251,9 +256,8 @@ class SharingSidebarInner extends Component {
   };
 
   render() {
-    const { editingMode } = this.state;
-    const { pulse, pulses, formInput, testPulse, users, dashboard } =
-      this.props;
+    const { editingMode, users } = this.state;
+    const { pulse, pulses, formInput, testPulse, dashboard } = this.props;
 
     const isLoading = !pulses || !users || !pulse || !formInput?.channels;
 
@@ -407,7 +411,6 @@ const SharingSidebar = _.compose(
     query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
     loadingAndErrorWrapper: false,
   }),
-  User.loadList({ loadingAndErrorWrapper: false }),
   connect(mapStateToProps, mapDispatchToProps),
 )(SharingSidebarInner);
 

@@ -7,8 +7,8 @@ import {
 import { screen } from "__support__/ui";
 import { setup, SetupOpts } from "./setup";
 
-const setupPasswordLogin = (opts?: SetupOpts) => {
-  setup({
+const setupPasswordLogin = async (opts?: SetupOpts) => {
+  await setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({
       disable_password_login: true,
@@ -19,7 +19,7 @@ const setupPasswordLogin = (opts?: SetupOpts) => {
 
 describe("SettingsEditor", () => {
   it("should allow to toggle off password login", async () => {
-    setupPasswordLogin({
+    await setupPasswordLogin({
       settings: [
         createMockSettingDefinition({ key: "enable-password-login" }),
         createMockSettingDefinition({ key: "google-auth-enabled" }),
@@ -30,7 +30,7 @@ describe("SettingsEditor", () => {
       }),
     });
 
-    userEvent.click(await screen.findByText("Authentication"));
+    userEvent.click(screen.getByText("Authentication"));
     expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
     expect(
       screen.getByText("Enable Password Authentication"),

@@ -116,6 +116,8 @@ export const createMockTokenFeatures = (
   whitelabel: false,
   dashboard_subscription_filters: false,
   snippet_collections: false,
+  email_allow_list: false,
+  email_restrict_recipients: false,
   ...opts,
 });
 
@@ -209,5 +211,6 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "uploads-database-id": null,
   "uploads-table-prefix": null,
   "uploads-schema-name": null,
+  "user-visibility": null,
   ...opts,
 });

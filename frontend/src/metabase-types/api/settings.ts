@@ -159,6 +159,8 @@ export const tokenFeatures = [
   "whitelabel",
   "dashboard_subscription_filters",
   "snippet_collections",
+  "email_allow_list",
+  "email_restrict_recipients",
 ] as const;
 
 export type TokenFeature = typeof tokenFeatures[number];
@@ -265,6 +267,9 @@ export interface Settings {
   "uploads-database-id": number | null;
   "uploads-schema-name": string | null;
   "uploads-table-prefix": string | null;
+  "user-visibility": string | null;
 }
 
 export type SettingKey = keyof Settings;
+
+export type SettingValue = Settings[SettingKey];
