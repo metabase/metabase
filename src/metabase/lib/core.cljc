@@ -10,6 +10,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.database :as lib.database]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -35,6 +36,7 @@
          lib.card/keep-me
          lib.column-group/keep-me
          lib.common/keep-me
+         lib.database/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
@@ -91,6 +93,8 @@
    group-columns]
   [lib.common
    external-op]
+  [lib.database
+   database-id]
   [lib.expression
    expression
    expressions
