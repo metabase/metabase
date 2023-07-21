@@ -140,7 +140,8 @@
   [lib.field
    fields
    with-fields
-   fieldable-columns]
+   fieldable-columns
+   fieldable-columns-with-joins]
   [lib.filter
    filter
    filters
