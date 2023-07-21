@@ -15,22 +15,15 @@ const ordersModel = {
 };
 
 const order11 = {
-  active_subscription: true,
-  country: "TZ",
-  legacy_plan: false,
-  longitude: 33.08333,
+  total: 67.33421061366487,
+  product_id: 76,
+  user_id: 1,
+  discount: null,
   id: 11,
-  email: "leannon-clay@gmail.example",
-  latitude: -2.85,
-  seats: 8,
-  last_name: "Leannon",
-  first_name: "Clay",
-  source: "Twitter",
-  trial_converted: true,
-  created_at: "2020-09-29T03:34:24+07:00",
-  plan: "Basic",
-  trial_ends_at: "2020-10-13T12:00:00+07:00",
-  canceled_at: null,
+  quantity: 6,
+  subtotal: 63.82421061366486,
+  created_at: "2024-07-22T20:31:01.969-07:00",
+  tax: 3.51,
 };
 
 describe("Model actions in object detail view", () => {
@@ -77,7 +70,7 @@ describe("Model actions in object detail view", () => {
 
         openUpdateObjectModal(modelId, order11.id);
 
-        assertUpdateModalPrefilled();
+        assertOrderFormPrefilled(order11);
       });
     });
   });
@@ -146,4 +139,19 @@ function assertActionsTabNotExists(modelId) {
   cy.findByText("Actions").should("not.exist");
 }
 
-function assertUpdateModalPrefilled() {}
+function assertOrderFormPrefilled(object) {
+  assertInputValue("ID", object.id);
+  assertInputValue("User ID", object.user_id);
+  assertInputValue("Product ID", object.product_id);
+  assertInputValue("Subtotal", object.subtotal);
+  assertInputValue("Tax", object.tax);
+  assertInputValue("Total", object.total);
+  assertInputValue("Discount", object.discount);
+  assertInputValue("Quantity", object.quantity);
+}
+
+function assertInputValue(labelText, value) {
+  const expectedValue = value || "";
+  cy.log(`Input for "${labelText}" should have value "${expectedValue}"`);
+  cy.findByLabelText(labelText).should("have.value", expectedValue);
+}
