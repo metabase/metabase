@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import SearchBar from "metabase/nav/components/Search/SearchBar/SearchBar";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
@@ -16,7 +16,6 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import { CollectionItem, RecentItem } from "metabase-types/api";
-import { delay } from "metabase/lib/promise";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Jeff Winger",
@@ -43,14 +42,6 @@ const TEST_RECENT_VIEWS_RESULTS: RecentItem[] = [
   }),
 );
 
-const TestSearchBarComponent = () => {
-  return (
-    <div>
-      <SearchBar />
-    </div>
-  );
-};
-
 const setup = ({
   initialRoute = "/",
   searchResultItems = TEST_SEARCH_RESULTS,
@@ -65,20 +56,28 @@ const setup = ({
   setupSearchEndpoints(searchResultItems);
   setupRecentViewsEndpoints(recentViewsItems);
 
-  renderWithProviders(<Route path="*" component={TestSearchBarComponent} />, {
-    withRouter: true,
-    initialRoute,
-    storeInitialState: state,
-  });
+  const { history } = renderWithProviders(
+    <Route path="*" component={SearchBar} />,
+    {
+      withRouter: true,
+      initialRoute,
+      storeInitialState: state,
+    },
+  );
+
+  return { history };
 };
 
 describe("SearchBar", () => {
   describe("typing a search query", () => {
     it("should change URL when user types a query and hits `Enter`", async () => {
-      setup();
+      const { history } = setup();
+
       userEvent.type(screen.getByPlaceholderText("Search…"), "er{enter}");
-      await delay(2000);
-      expect(window.location.pathname).toBe("/search?q=er");
+
+      const location = history?.getCurrentLocation();
+      expect(location?.pathname).toEqual("search");
+      expect(location?.search).toEqual("?q=er");
     });
     it("should render 'No Results Found' when the query has no results", () => {
       expect(true).toBe(false);
@@ -108,43 +107,55 @@ describe("SearchBar", () => {
       setup();
       screen.getByPlaceholderText("Search…").click();
       userEvent.type(screen.getByPlaceholderText("Search…"), "er");
+
       const resultItems = await screen.findAllByTestId("search-result-item");
-
-      /*
-       *
-       * NOTE TO SELF - MAKE SURE TO MAKE THIS LOOK NICER AND A LITTLE CLEANER
-       *
-       * */
-
       expect(resultItems.length).toBe(2);
 
-      // tab over the filter, then tab to the first search item
-      userEvent.tab();
-      userEvent.tab();
-
-      const filteredElement = resultItems.find(element =>
-        element.textContent?.includes("Jeff"),
-      );
-
-      expect(filteredElement).toHaveFocus();
-
+      // tab over the filter button
       userEvent.tab();
 
-      const secondFilteredElement = resultItems.find(element =>
-        element.textContent?.includes("Britta"),
-      );
+      // There are two search results, each with a link to `Our analytics`,
+      // so we want to navigate to the search result, then the collection link.
+      for (const substring of ["Jeff", "Britta"]) {
+        userEvent.tab();
 
-      expect(secondFilteredElement).toHaveFocus();
+        const filteredElement = resultItems.find(element =>
+          element.textContent?.includes(substring),
+        );
+
+        expect(filteredElement).not.toBeUndefined();
+        expect(filteredElement).toHaveFocus();
+
+        userEvent.tab();
+
+        expect(
+          within(filteredElement as HTMLElement).getByText("Our analytics"),
+        ).toHaveFocus();
+      }
     });
   });
-  describe("highlighting", () => {
-    it("should highlight filter button when filters are applied", () => {
+  describe("populating existing query", () => {
+    it("should populate text and highlight filter button when a query is in the search bar", () => {
       setup({
         initialRoute: "/search?q=foo&type=card",
       });
 
+      expect(screen.getByPlaceholderText("Search…")).toHaveValue("foo");
+
       expect(
         screen.getByTestId("highlighted-search-bar-filter-button"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not populate text or highlight filter button on non-search pages", () => {
+      setup({
+        initialRoute: "/collection/root?q=foo&type=card&type=dashboard",
+      });
+
+      expect(screen.getByPlaceholderText("Search…")).toBeEmpty();
+
+      expect(
+        screen.getByTestId("search-bar-filter-button"),
       ).toBeInTheDocument();
     });
   });

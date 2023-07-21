@@ -4,11 +4,12 @@ import { TypeFilter } from "metabase/nav/components/Search/SearchFilterModal/fil
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { SearchModelType } from "metabase-types/api";
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import { createMockCollectionItem } from "metabase-types/api/mocks";
+import { createMockCollectionItem, createMockSearchResult } from "metabase-types/api/mocks";
 
 type TypeFilterSetupProps = {
   availableModels?: SearchModelType[];
   initialValue?: SearchModelType[];
+  onChangeFilters?: (value: SearchModelType[]) => void;
 };
 
 const TEST_TYPES: SearchModelType[] = [
@@ -35,18 +36,16 @@ const TEST_TYPE_SUBSET: SearchModelType[] = [
 
 const TestTypeFilterComponent = ({
   initialValue = [],
+  onChangeFilters = jest.fn(),
 }: TypeFilterSetupProps) => {
   const [value, setValue] = useState<SearchModelType[]>(initialValue);
-  return (
-    <div>
-      <TypeFilter value={value} onChange={value => setValue(value)} />
-      <ul data-testid="selected-types">
-        {value.map(type => (
-          <li key={type}>{type}</li>
-        ))}
-      </ul>
-    </div>
-  );
+
+  const onChange = (value: SearchModelType[]) => {
+    setValue(value);
+    onChangeFilters(value);
+  };
+
+  return <TypeFilter value={value} onChange={onChange} />;
 };
 
 const setup = async ({
@@ -55,14 +54,25 @@ const setup = async ({
 }: TypeFilterSetupProps = {}) => {
   setupSearchEndpoints(
     availableModels.map((type, index) =>
-      createMockCollectionItem({ model: type, id: index + 1 }),
+      createMockSearchResult({ model: type, id: index + 1 }),
     ),
   );
 
-  renderWithProviders(<TestTypeFilterComponent initialValue={initialValue} />);
+  const onChangeFilters = jest.fn();
+
+  renderWithProviders(
+    <TestTypeFilterComponent
+      onChangeFilters={onChangeFilters}
+      initialValue={initialValue}
+    />,
+  );
   await waitFor(() =>
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
   );
+
+  return {
+    onChangeFilters,
+  };
 };
 
 const getCheckboxes = () => {
@@ -86,31 +96,28 @@ describe("TypeFilter", () => {
   });
 
   it("should allow selecting multiple types", async () => {
-    await setup();
+    const { onChangeFilters } = await setup();
     const options = getCheckboxes();
 
     for (const option of options) {
       userEvent.click(option);
     }
 
-    const selectedTypes = screen.getByTestId("selected-types");
-    expect(within(selectedTypes).getAllByRole("listitem")).toHaveLength(
-      TEST_TYPES.length,
-    );
+    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPES.length);
+    expect(onChangeFilters).toHaveBeenLastCalledWith(TEST_TYPES);
   });
 
   it("should allow de-selecting multiple types", async () => {
-    await setup({ initialValue: TEST_TYPES });
-    const options = getCheckboxes();
+    const { onChangeFilters } = await setup({ initialValue: TEST_TYPE_SUBSET });
 
-    for (const option of options) {
-      userEvent.click(option);
+    const options = getCheckboxes();
+    const checkedOptions = options.filter(option => option.checked);
+    for (const checkedOption of checkedOptions) {
+      userEvent.click(checkedOption);
     }
 
-    const selectedTypes = screen.getByTestId("selected-types");
-    expect(within(selectedTypes).getAllByRole("listitem")).toHaveLength(
-      TEST_TYPES.length,
-    );
+    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPE_SUBSET.length);
+    expect(onChangeFilters).toHaveBeenLastCalledWith([]);
   });
 
   it("should populate the filter with initial values", async () => {

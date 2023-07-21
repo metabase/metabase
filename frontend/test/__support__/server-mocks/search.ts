@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
-import type { CollectionItem } from "metabase-types/api";
+import type { CollectionItem, SearchResult } from "metabase-types/api";
 
-export function setupSearchEndpoints(items: CollectionItem[]) {
+export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
   const availableModels = items.map(({ model }) => model);
 
   fetchMock.get("path:/api/search", uri => {

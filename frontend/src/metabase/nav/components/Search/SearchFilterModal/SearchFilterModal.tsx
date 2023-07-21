@@ -48,6 +48,7 @@ export const SearchFilterModal = ({
       {Object.entries(availableFilters).map(([key, Filter]) => (
         <Filter
           key={key}
+          data-testid={`${key}-search-filter`}
           value={output[key as FilterType]}
           onChange={val =>
             setOutput({

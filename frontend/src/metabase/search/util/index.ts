@@ -1,8 +1,11 @@
 import { Location } from "history";
 import { FilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
+import { SearchModelType } from "metabase-types/api";
 
 export type SearchFilterType = {
-  [key in FilterType]?: string;
+  [FilterType.Type]?: SearchModelType[] | undefined;
+} & {
+  [key in FilterType]?: string | string[];
 };
 
 export type SearchAwareLocation = Location<{ q?: string } & SearchFilterType>;

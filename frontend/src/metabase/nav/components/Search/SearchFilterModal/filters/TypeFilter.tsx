@@ -8,10 +8,10 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
 export const TypeFilter = ({
-  value,
+  value = [],
   onChange,
 }: {
-  value: SearchModelType[];
+  value?: SearchModelType[];
   onChange: (value: SearchModelType[]) => void;
 }) => {
   const { metadata, isLoading } = useSearchListQuery({ query: SEARCH_QUERY });
