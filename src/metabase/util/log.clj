@@ -191,3 +191,9 @@
    (macros/case
     :cljs (glogi-spy (str *ns*) level expr #(format ~fmt %))
     :clj  `(spyf ~level ~fmt ~expr))))
+
+(defmacro with-no-logs
+  "Turns off logs in body."
+  [& body]
+  `(binding [clojure.tools.logging/*logger-factory* clojure.tools.logging.impl/disabled-logger-factory]
+     ~@body))

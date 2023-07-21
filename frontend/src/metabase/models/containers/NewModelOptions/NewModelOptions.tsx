@@ -50,7 +50,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
   const itemsCount = (hasDataAccess ? 1 : 0) + (hasNativeWrite ? 1 : 0);
 
   return (
-    <OptionsRoot>
+    <OptionsRoot data-testid="new-model-options">
       <Grid className="justifyCenter">
         {hasDataAccess && (
           <OptionsGridItem itemsCount={itemsCount}>

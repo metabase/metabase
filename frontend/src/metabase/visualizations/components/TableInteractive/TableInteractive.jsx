@@ -347,7 +347,19 @@ class TableInteractive extends Component {
   onColumnReorder(columnIndex, newColumnIndex) {
     const { settings, onUpdateVisualizationSettings } = this.props;
     const columns = settings["table.columns"].slice(); // copy since splice mutates
-    columns.splice(newColumnIndex, 0, columns.splice(columnIndex, 1)[0]);
+
+    const enabledColumns = columns
+      .map((c, index) => ({ ...c, index }))
+      .filter(c => c.enabled);
+
+    const adjustedColumnIndex = enabledColumns[columnIndex].index;
+    const adjustedNewColumnIndex = enabledColumns[newColumnIndex].index;
+
+    columns.splice(
+      adjustedNewColumnIndex,
+      0,
+      columns.splice(adjustedColumnIndex, 1)[0],
+    );
     onUpdateVisualizationSettings({
       "table.columns": columns,
     });
@@ -1137,7 +1149,6 @@ export default _.compose(
 
 const DetailShortcut = forwardRef((_props, ref) => (
   <div
-    id="detail-shortcut"
     className="TableInteractive-cellWrapper cursor-pointer"
     ref={ref}
     style={{
@@ -1148,6 +1159,7 @@ const DetailShortcut = forwardRef((_props, ref) => (
       width: SIDEBAR_WIDTH,
       zIndex: 3,
     }}
+    data-testid="detail-shortcut"
   >
     <Tooltip tooltip={t`View Details`}>
       <Button

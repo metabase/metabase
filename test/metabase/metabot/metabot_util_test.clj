@@ -180,7 +180,7 @@
                           :type     "native"
                           :native   {:query         sql
                                      :template-tags (update-vals
-                                                     (lib-native/template-tags inner_query)
+                                                     (lib-native/extract-template-tags inner_query)
                                                      (fn [m] (update m :id str)))}})]
             (is (some? (seq (get-in results [:data :rows]))))))))))
 

@@ -6,6 +6,7 @@ import {
   setupSMTP,
   describeEE,
   getFullName,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -72,12 +73,12 @@ describe("scenarios > admin > people", () => {
 
       cy.get("@groupsTab").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(GROUP).closest("tr").contains("3");
+      cy.findByText(GROUP).closest("tr").contains("4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(GROUP).click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("3 members");
+      cy.findByText("4 members");
 
       cy.button("Add members").click();
       cy.focused().type(admin.first_name);
@@ -86,11 +87,11 @@ describe("scenarios > admin > people", () => {
       cy.button("Add").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("4 members");
+      cy.findByText("5 members");
 
       removeUserFromGroup(adminUserName);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("3 members");
+      cy.findByText("4 members");
 
       // should load the members when navigating to the group directly
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
@@ -464,6 +465,7 @@ describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {

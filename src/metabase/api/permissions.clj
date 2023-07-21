@@ -26,7 +26,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -52,6 +51,13 @@
   metabase-enterprise.sandbox.models.group-table-access-policy
   [_sandboxes]
   (throw (ex-info (tru "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature.")
+                  {:status-code 402})))
+
+(defenterprise upsert-impersonations!
+  "OSS implementation of `upsert-impersonations!`. Errors since this is an enterprise feature."
+  metabase-enterprise.advanced-permissions.models.connection-impersonation
+  [_impersonations]
+  (throw (ex-info (tru "Connection impersonation is an Enterprise feature. Please upgrade to a paid plan to use this feature.")
                   {:status-code 402})))
 
 (api/defendpoint PUT "/graph"
@@ -85,11 +91,17 @@
                                      "\n"
                                      (pr-str explained))}))))
     (t2/with-transaction [_conn]
-     (perms/update-data-perms-graph! (dissoc graph :sandboxes))
-     (if-let [sandboxes (:sandboxes body)]
-       (let [new-sandboxes (upsert-sandboxes! sandboxes)]
-         (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
-       (perms/data-perms-graph)))))
+      (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
+      (let [sandbox-updates        (:sandboxes graph)
+            sandboxes              (when sandbox-updates
+                                     (upsert-sandboxes! sandbox-updates))
+            impersonation-updates  (:impersonations graph)
+            impersonations         (when impersonation-updates
+                                     (upsert-impersonations! impersonation-updates))]
+        (merge
+         (perms/data-perms-graph)
+         (when sandboxes {:sandboxes sandboxes})
+         (when impersonations {:impersonations impersonations}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
@@ -146,7 +158,7 @@
                                    [:= :user_id api/*current-user-id*]
                                    [:= :is_group_manager true]]}])]
     (-> (ordered-groups mw.offset-paging/*limit* mw.offset-paging/*offset* query)
-        (hydrate :member_count))))
+        (t2/hydrate :member_count))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/group/:id"
@@ -155,7 +167,7 @@
   (validation/check-group-manager id)
   (api/check-404
    (-> (t2/select-one PermissionsGroup :id id)
-       (hydrate :members))))
+       (t2/hydrate :members))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/group"

@@ -16,7 +16,6 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
@@ -315,7 +314,7 @@
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"
   [fields]
-  (for [field (hydrate fields :table)
+  (for [field (t2/hydrate fields :table)
         :when (mi/can-read? field)]
     (dissoc field :table)))
 
@@ -339,7 +338,7 @@
   (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
                           (:fk_target_field_id field))
         target-field    (when-let [target-field (and target-field-id (t2/select-one Field :id target-field-id))]
-                          (when (mi/can-write? (hydrate target-field :table))
+                          (when (mi/can-write? (t2/hydrate target-field :table))
                             target-field))]
     (assoc field :target target-field)))
 
@@ -441,7 +440,8 @@
     (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
         (update :table_id           serdes/*export-table-fk*)
-        (update :fk_target_field_id serdes/*export-field-fk*))))
+        (update :fk_target_field_id serdes/*export-field-fk*)
+        (dissoc :fingerprint :last_analyzed :fingerprint_version))))
 
 (defmethod serdes/load-xform "Field"
   [field]

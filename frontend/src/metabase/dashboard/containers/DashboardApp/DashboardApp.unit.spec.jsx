@@ -50,7 +50,7 @@ const TEST_TABLE = createMockTable();
 async function setup({ user = createMockUser() }) {
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(createMockDashboard(TEST_DASHBOARD));
-  setupCollectionsEndpoints([]);
+  setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint(TEST_COLLECTION);
   setupSearchEndpoints([TEST_COLLECTION_ITEM]);
   setupCardsEndpoints([TEST_CARD]);

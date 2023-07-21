@@ -142,7 +142,7 @@ export default _.compose(
 const BulkActionControls = ({ selected, reload }) => (
   <span>
     <Button
-      ml={1}
+      className="ml1"
       medium
       onClick={async () => {
         try {
@@ -155,7 +155,7 @@ const BulkActionControls = ({ selected, reload }) => (
       }}
     >{t`Unarchive`}</Button>
     <Button
-      ml={1}
+      className="ml1"
       medium
       onClick={async () => {
         try {

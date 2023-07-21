@@ -11,7 +11,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-test
-  (let [query   (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (let [query   lib.tu/venues-query
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (not (mc/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
@@ -45,9 +45,9 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel aggregation-and-breakout-test
-  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
-                    (lib/breakout (lib/field "VENUES" "NAME")))
+  (let [query   (-> lib.tu/venues-query
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
+                    (lib/breakout (meta/field-metadata :venues :name)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -66,9 +66,9 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel multi-stage-test
-  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
-                    (lib/breakout (lib/field "VENUES" "NAME"))
+  (let [query   (-> lib.tu/venues-query
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
+                    (lib/breakout (meta/field-metadata :venues :name))
                     (lib/append-stage))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -87,28 +87,18 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-test
-  (let [query   (lib.tu/query-with-card-source-table)
+  (let [query   lib.tu/query-with-source-card
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "User ID", :lib/source :source/card}
-                                             {:display-name "Count", :lib/source :source/card}]}
-             {::lib.column-group/group-type :group-type/join.implicit
-              :fk-field-id                  (meta/id :checkins :user-id)
-              ::lib.column-group/columns    [{:display-name "ID", :lib/source :source/implicitly-joinable}
-                                             {:display-name "Name", :lib/source :source/implicitly-joinable}
-                                             {:display-name "Last Login", :lib/source :source/implicitly-joinable}]}]
+                                             {:display-name "Count", :lib/source :source/card}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"
                 :display-name           "My Card"
                 :is-from-join           false
-                :is-implicitly-joinable false}
-               {:name                   "USER_ID"
-                :display-name           "User ID"
-                :fk-reference-name      "User"
-                :is-from-join           false
-                :is-implicitly-joinable true}]
+                :is-implicitly-joinable false}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -116,7 +106,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel joins-test
-  (let [query   (lib.tu/query-with-join)
+  (let [query   lib.tu/query-with-join
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -147,7 +137,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel expressions-test
-  (let [query   (lib.tu/query-with-expression)
+  (let [query   lib.tu/query-with-expression
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -180,30 +170,20 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-with-expressions-test
-  (let [query   (-> (lib.tu/query-with-card-source-table)
+  (let [query   (-> lib.tu/query-with-source-card
                     (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "User ID", :lib/source :source/card}
                                              {:display-name "Count", :lib/source :source/card}
-                                             {:display-name "expr", :lib/source :source/expressions}]}
-             {::lib.column-group/group-type :group-type/join.implicit
-              :fk-field-id                  (meta/id :checkins :user-id)
-              ::lib.column-group/columns    [{:display-name "ID", :lib/source :source/implicitly-joinable}
-                                             {:display-name "Name", :lib/source :source/implicitly-joinable}
-                                             {:display-name "Last Login", :lib/source :source/implicitly-joinable}] }]
+                                             {:display-name "expr", :lib/source :source/expressions}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"
                 :display-name           "My Card"
                 :is-from-join           false
-                :is-implicitly-joinable false}
-               {:name                   "USER_ID"
-                :display-name           "User ID"
-                :fk-reference-name      "User"
-                :is-from-join           false
-                :is-implicitly-joinable true}]
+                :is-implicitly-joinable false}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -211,7 +191,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel native-query-test
-  (let [query  (lib.tu/native-query)
+  (let [query  lib.tu/native-query
         groups (lib/group-columns (lib/orderable-columns query))]
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "another Field", :lib/source :source/native}
@@ -225,7 +205,7 @@
                 (lib/display-info query group)))))))
 
 (deftest ^:parallel native-source-query-test
-  (let [query  (-> (lib.tu/native-query)
+  (let [query  (-> lib.tu/native-query
                    lib/append-stage)
         groups (lib/group-columns (lib/orderable-columns query))]
     (is (=? [{::lib.column-group/group-type :group-type/main

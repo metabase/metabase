@@ -52,6 +52,7 @@ export interface LinkVizProps {
   settings: DashboardOrderedCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
+  isEditingParameter?: boolean;
 }
 
 function LinkViz({
@@ -59,6 +60,7 @@ function LinkViz({
   isEditing,
   onUpdateVisualizationSettings,
   settings,
+  isEditingParameter,
 }: LinkVizProps) {
   const {
     link: { url, entity },
@@ -99,7 +101,7 @@ function LinkViz({
   if (entity) {
     if (isRestrictedLinkEntity(entity)) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper fade={isEditingParameter}>
           <RestrictedEntityDisplay />
         </EditLinkCardWrapper>
       );
@@ -114,7 +116,10 @@ function LinkViz({
 
     if (isEditing) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper
+          data-testid="entity-edit-display-link"
+          fade={isEditingParameter}
+        >
           <EntityDisplay entity={wrappedEntity} showDescription={false} />
         </EditLinkCardWrapper>
       );
@@ -125,6 +130,7 @@ function LinkViz({
     return (
       <DisplayLinkCardWrapper>
         <CardLink
+          data-testid="entity-view-display-link"
           to={wrappedEntity.getUrl()}
           target={target}
           rel="noreferrer"
@@ -136,9 +142,9 @@ function LinkViz({
     );
   }
 
-  if (isEditing) {
+  if (isEditing && !isEditingParameter) {
     return (
-      <EditLinkCardWrapper>
+      <EditLinkCardWrapper data-testid="custom-edit-text-link">
         <TippyPopover
           visible={inputIsFocused && !isUrlString(url)}
           content={
@@ -148,6 +154,7 @@ function LinkViz({
               <SearchResultsContainer>
                 <SearchResults
                   searchText={url?.trim()}
+                  forceEntitySelect
                   onEntitySelect={handleEntitySelect}
                   models={MODELS_TO_SEARCH}
                 />
@@ -173,7 +180,10 @@ function LinkViz({
   }
 
   return (
-    <DisplayLinkCardWrapper>
+    <DisplayLinkCardWrapper
+      data-testid="custom-view-text-link"
+      fade={isEditingParameter}
+    >
       <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
         <UrlLinkDisplay url={url} />
       </CardLink>

@@ -11,11 +11,6 @@ interface ActionButtonProps {
   transparent?: boolean;
   large?: boolean;
   onClick: () => void;
-
-  // styled-system props
-  mt?: number | number[];
-  mr?: number | number[];
-  ml?: number | number[];
 }
 
 function ActionButton({

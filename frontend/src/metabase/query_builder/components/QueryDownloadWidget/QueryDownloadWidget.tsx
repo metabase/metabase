@@ -98,7 +98,6 @@ QueryDownloadWidget.shouldRender = ({
   isResultDirty,
 }: QueryDownloadWidgetOpts) => {
   return (
-    !isResultDirty &&
     result &&
     !result.error &&
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result)

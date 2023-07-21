@@ -52,9 +52,7 @@
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -127,7 +125,7 @@
 (defmacro ^:private with-dashboards-in-writeable-collection [dashboards-or-ids & body]
   `(do-with-dashboards-in-a-collection perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
-(defn- do-with-simple-dashboard-with-tabs
+(defn do-with-simple-dashboard-with-tabs
   [f]
   (t2.with-temp/with-temp
     [Dashboard           {dashboard-id :id} {}
@@ -143,10 +141,12 @@
                                              :position     1}
      DashboardCard       {dashcard-id-1 :id} {:dashboard_id     dashboard-id
                                               :card_id          card-id-1
-                                              :dashboard_tab_id dashtab-id-1}
+                                              :dashboard_tab_id dashtab-id-1
+                                              :row              1}
      DashboardCard       {dashcard-id-2 :id} {:dashboard_id     dashboard-id
                                               :card_id          card-id-2
-                                              :dashboard_tab_id dashtab-id-2}]
+                                              :dashboard_tab_id dashtab-id-2
+                                              :row              2}]
     (f {:dashboard-id  dashboard-id
         :card-id-1     card-id-1
         :card-id-2     card-id-1
@@ -155,7 +155,7 @@
         :dashcard-id-1 dashcard-id-1
         :dashcard-id-2 dashcard-id-2})))
 
-(defmacro ^:private with-simple-dashboard-with-tabs
+(defmacro with-simple-dashboard-with-tabs
   "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
   [[bindings] & body]
   `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
@@ -1128,6 +1128,11 @@
                      (set (map :name cards-in-coll)))
                   "Cards should have \"-- Duplicate\" appended"))))))))
 
+(defn- ordered-cards-by-position
+  "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/ordered-cards]] does."
+  [dashboard-or-id]
+  (sort dashboard-card/dashcard-comparator (dashboard/ordered-cards dashboard-or-id)))
+
 (deftest copy-dashboard-with-tab-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "for a dashboard that has tabs"
@@ -1144,10 +1149,11 @@
                                             {:order-by [[:position :asc]]})
               new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
          (testing "Cards are located correctly between tabs"
-                     (is (= (map #(select-keys % [:name :display :dashboard_tab_id]) (dashboard/ordered-cards dashboard-id))
-                            (map #(select-keys % [:name :display :dashboard_tab_id])
-                                 (for [card (dashboard/ordered-cards new-dash-id)]
-                                   (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
+           (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
+                       (ordered-cards-by-position dashboard-id))
+                  (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
+                       (for [card (ordered-cards-by-position new-dash-id)]
+                         (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
 
          (testing "new tabs should have the same name and position"
            (is (= (map #(dissoc % :id) original-tabs)
@@ -1389,6 +1395,7 @@
                                                              (format "dashboard/%d/cards" dashboard-id)
                                                              {:cards        [new-dashcard-info]
                                                               :ordered_tabs []}))}))))))
+
 (deftest e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
        (t2.with-temp/with-temp
@@ -1595,14 +1602,14 @@
                                             :size_x           4
                                             :size_y           4
                                             :col              1
-                                            :row              1
+                                            :row              2
                                             :dashboard_tab_id -1
                                             :card_id          card-id-1}
                                            {:id               -1
                                             :size_x           4
                                             :size_y           4
                                             :col              1
-                                            :row              1
+                                            :row              3
                                             :dashboard_tab_id -2
                                             :card_id          card-id-2}]})
             tab-1-id (t2/select-one-pk :model/DashboardTab :name "New Tab 1" :dashboard_id dashboard-id)
@@ -1627,7 +1634,7 @@
                                  :dashboard_id dashboard-id
                                  :name         "New Tab 2"
                                  :position     1}]}
-               resp))))))
+                (update resp :cards #(sort dashboard-card/dashcard-comparator %))))))))
 
 (deftest update-cards-error-handling-test
   (testing "PUT /api/dashboard/:id/cards"
@@ -1665,12 +1672,12 @@
         (is (= [{:data {"dashboard_id"   dashboard-id
                         "num_tabs"       1
                         "total_num_tabs" 4
-                        "event"          "dashboard_tabs_deleted"},
+                        "event"          "dashboard_tab_deleted"},
                  :user-id (str (mt/user->id :rasta))}
                 {:data {"dashboard_id"   dashboard-id
                         "num_tabs"       2
                         "total_num_tabs" 4
-                        "event"          "dashboard_tabs_created"}
+                        "event"          "dashboard_tab_created"}
                  :user-id (str (mt/user->id :rasta))}]
                (take-last 2 (snowplow-test/pop-event-data-and-user-id!))))))
 
@@ -1800,13 +1807,15 @@
   (testing "database_enabled_actions should hydrate according to database-enable-actions setting"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data
-        (doseq [enable? [true false]]
-          (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable?}}
-            (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
-              (mt/with-temp* [Dashboard     [{dashboard-id :id}]
-                              DashboardCard [_ {:action_id action-id, :dashboard_id dashboard-id}]]
-                (is (partial= {:ordered_cards [{:action {:database_enabled_actions enable?}}]}
-                              (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))))
+        (doseq [enable-actions? [true false]
+                encrypt-db?     [true false]]
+          (mt/with-temp-env-var-value [mb-encryption-secret-key encrypt-db?]
+            (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable-actions?}}
+              (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
+                (mt/with-temp* [Dashboard     [{dashboard-id :id}]
+                                DashboardCard [_ {:action_id action-id, :dashboard_id dashboard-id}]]
+                  (is (partial= {:ordered_cards [{:action {:database_enabled_actions enable-actions?}}]}
+                                (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
@@ -2115,7 +2124,7 @@
                                                 :description "something"
                                                 :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
                :has_multiple_changes true
-               :description          "added a description and renamed it from \"b\" to \"c\", rearranged the cards and added some series to card 123."}
+               :description          "added a description and renamed it from \"b\" to \"c\", modified the cards and added some series to card 123."}
               {:is_reversion         false
                :is_creation          true
                :message              nil
@@ -2201,7 +2210,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- shared-dashboard []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 ;;; -------------------------------------- POST /api/dashboard/:id/public_link ---------------------------------------
@@ -3181,6 +3190,13 @@
                 (is (= [1 "Shop"]
                        (mt/first-row
                          (mt/run-mbql-query categories {:filter [:= $id 1]})))))
+              (testing "Missing required parameter according to the template tag"
+                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
+                              (mt/user-http-request :crowberto :post 500 execute-path
+                                                    {:parameters {"name" "Bird"}})))
+                (is (= [1 "Shop"]
+                       (mt/first-row
+                        (mt/run-mbql-query categories {:filter [:= $id 1]})))))
               (testing "Extra target parameter"
                 (is (partial= {:rows-affected 1}
                               (mt/user-http-request :crowberto :post 200 execute-path
@@ -3238,7 +3254,7 @@
                        (mt/user-http-request :crowberto :post 400 execute-path
                                              {:parameters {"id" 1 "fail" "true"}}))))
               (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No destination parameter found for id \"extra\". Found: #{\"id\" \"fail\"}"}
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"fail\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
@@ -3314,10 +3330,33 @@
                 (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1 "id" 1}}))))
+              (testing "Extra parameter should fail even if it's a model field"
+                (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"id\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"id"   1
+                                                                  "name" "Birds"}}))))
               (testing "Missing pk parameter should fail gracefully"
                 (is (partial= "Missing primary key parameter: \"id\""
                               (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {"name" "Birds"}})))))))))))
+                                                    {:parameters {}})))))))))))
+
+(deftest dashcard-hidden-parameter-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {:keys [action-id model-id]} {:type                   :implicit
+                                                      :visualization_settings {:fields {"name" {:id     "name"
+                                                                                                :hidden true}}}}]
+        (testing "Supplying a hidden parameter value should fail gracefully for GET /api/dashboard/:id/dashcard/:id/execute"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id    action-id
+                                                            :card_id      model-id}]]
+            (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
+                          (mt/user-http-request :crowberto :post 400 (format "dashboard/%s/dashcard/%s/execute"
+                                                                             dashboard-id
+                                                                             dashcard-id)
+                                                {:parameters {:name "Darth Vader"}})))))))))
 
 (defn- custom-action-for-field [field-name]
   ;; It seems the :type of parameters or template-tag doesn't matter??
@@ -3511,6 +3550,36 @@
               (testing "Prefetch should limit to id and name"
                 (let [values (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1})))]
                   (is (= {:id 1 :name "Red Medicine"} values))))
+              (testing "Update should only allow name"
+                (is (= {:rows-updated [1]}
+                       (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
+                (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
+
+(deftest dashcard-implicit-action-only-expose-unhidden-fields
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-tables #{"venues" "categories"}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{card-id :id} {:dataset true, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+                          {:keys [action-id]} {:type :implicit
+                                               :kind "row/update"
+                                               :visualization_settings {:fields {"id"    {:id     "id"
+                                                                                          :hidden false}
+                                                                                 "name"  {:id     "name"
+                                                                                          :hidden false}
+                                                                                 "price" {:id     "price"
+                                                                                          :hidden true}}}}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :card_id card-id}]]
+            (testing "Dashcard should only have id and name params"
+              (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
+                            (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+              (testing "Prefetch should only return non-hidden fields"
+                (is (= {:id 1 :name "Red Medicine"} ; price is hidden
+                       (mt/user-http-request :crowberto :get 200 (str execute-path "?parameters=" (json/encode {:id 1}))))))
               (testing "Update should only allow name"
                 (is (= {:rows-updated [1]}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))

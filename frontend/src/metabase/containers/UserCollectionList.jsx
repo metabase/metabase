@@ -55,11 +55,11 @@ const UserCollectionList = ({ collectionsById }) => (
                             collectionsById[user.personal_collection_id],
                           )}
                         >
-                          <Card p={2} hoverable>
+                          <Card className="p2" hoverable>
                             <CardContent>
                               <Icon
                                 name="person"
-                                mr={1}
+                                classname="mr1"
                                 color={color("text-medium")}
                                 size={18}
                               />

@@ -13,7 +13,7 @@ import {
 
 import type { OptionsType } from "./types";
 
-const RANGE_SEPARATOR = ` – `;
+const EN_DASH = `–`;
 
 type DEFAULT_DATE_FORMATS_TYPE = { [key: string]: string };
 const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
@@ -125,15 +125,32 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
   }
 }
 
+type DateVal = string | number;
+
 /** This formats a time with unit as a date range */
 export function formatDateTimeRangeWithUnit(
-  value: string | number,
+  value: DateVal | [DateVal] | [DateVal, DateVal],
   unit: DatetimeUnit,
   options: OptionsType = {},
 ) {
-  const m = parseTimestamp(value, unit, options.local);
-  if (!m.isValid()) {
-    return String(value);
+  const values = Array.isArray(value) ? value : [value];
+  const [a, b] = [values[0], values[1] ?? values[0]].map(d =>
+    parseTimestamp(d, unit, options.local),
+  );
+  if (!a.isValid() || !b.isValid()) {
+    return String(a);
+  }
+
+  // The client's unit boundaries might not line up with the data returned from the server.
+  // We shift the range so that the start lines up with the value.
+  const start = a.clone().startOf(unit);
+  const end = b.clone().endOf(unit);
+  const shift = a.diff(start, "days");
+  [start, end].forEach(d => d.add(shift, "days"));
+
+  if (!start.isValid() || !end.isValid()) {
+    // TODO: when is this used?
+    return formatWeek(a, options);
   }
 
   // Tooltips should show full month name, but condense "MMMM D, YYYY - MMMM D, YYYY" to "MMMM D - D, YYYY" etc
@@ -141,40 +158,58 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  // The client's unit boundaries might not line up with the data returned from the server.
-  // We shift the range so that the start lines up with the value.
-  const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
-  const shift = m.diff(start, "days");
-  [start, end].forEach(d => d.add(shift, "days"));
+  const sameYear = start.year() === end.year();
+  const sameQuarter = start.quarter() === end.quarter();
+  const sameMonth = start.month() === end.month();
+  const sameDayOfMonth = start.date() === end.date();
 
-  if (start.isValid() && end.isValid()) {
-    if (!condensed || start.year() !== end.year()) {
-      // January 1, 2018 - January 2, 2019
-      return (
-        start.format(`${monthFormat} D, YYYY`) +
-        RANGE_SEPARATOR +
-        end.format(`${monthFormat} D, YYYY`)
-      );
-    } else if (start.month() !== end.month()) {
-      // January 1 - Feburary 2, 2018
-      return (
-        start.format(`${monthFormat} D`) +
-        RANGE_SEPARATOR +
-        end.format(`${monthFormat} D, YYYY`)
-      );
-    } else {
-      // January 1 - 2, 2018
-      return (
-        start.format(`${monthFormat} D`) +
-        RANGE_SEPARATOR +
-        end.format(`D, YYYY`)
-      );
-    }
-  } else {
-    // TODO: when is this used?
-    return formatWeek(m, options);
-  }
+  const Y = "YYYY";
+  const Q = "[Q]Q";
+  const QY = "[Q]Q YYYY";
+  const M = monthFormat;
+  const MY = `${monthFormat} YYYY`;
+  const MDY = `${monthFormat} D, YYYY`;
+  const MD = `${monthFormat} D`;
+  const DY = `D, YYYY`;
+
+  // Drop down to day resolution if shift causes misalignment with desired resolution boundaries
+  const date_resolution =
+    (shift === 0 ? options.date_resolution : null) ?? "day";
+
+  // Use Wikipedia’s date range formatting guidelines
+  // https://en.wikipedia.org/wiki/Wikipedia:Manual_of_Style/Dates_and_numbers#Ranges
+  const [startFormat, endFormat, pad = ""] = {
+    year:
+      !sameYear || !condensed
+        ? [Y, Y] // 2018–2019
+        : [Y], // 2018
+    quarter:
+      !sameYear || !condensed
+        ? [QY, QY, " "] // Q2 2018 – Q3 2019
+        : !sameQuarter
+        ? [Q, QY] // Q2–Q4 2019
+        : [QY], // Q2 2018
+    month:
+      !sameYear || !condensed
+        ? [MY, MY, " "] // September 2018 – January 2019
+        : !sameMonth
+        ? [M, MY] // September–December 2018
+        : [MY], // September 2018
+    day:
+      !sameYear || !condensed
+        ? [MDY, MDY, " "] // January 1, 2018 – January 2, 2019
+        : !sameMonth
+        ? [MD, MDY, " "] // January 1 – February 2, 2018
+        : !sameDayOfMonth
+        ? [MD, DY] // January 1–2, 2018
+        : [MDY], // January 1, 2018
+  }[date_resolution];
+
+  const startStr = start.format(startFormat);
+  const endStr = end.format(endFormat ?? startFormat);
+  return startStr === endStr
+    ? startStr
+    : startStr + pad + EN_DASH + pad + endStr;
 }
 
 export function formatRange(
@@ -186,11 +221,11 @@ export function formatRange(
   if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
     return (
       <span>
-        {start} {RANGE_SEPARATOR} {end}
+        {start} {EN_DASH} {end}
       </span>
     );
   } else {
-    return `${start} ${RANGE_SEPARATOR} ${end}`;
+    return `${start}  ${EN_DASH}  ${end}`;
   }
 }
 

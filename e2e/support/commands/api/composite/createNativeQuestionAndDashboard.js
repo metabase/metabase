@@ -13,7 +13,7 @@ Cypress.Commands.add(
                   // Add sane defaults for the dashboard card size and position
                   row: 0,
                   col: 0,
-                  size_x: 8,
+                  size_x: 11,
                   size_y: 6,
                 },
               ],

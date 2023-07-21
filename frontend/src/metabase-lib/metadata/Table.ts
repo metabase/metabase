@@ -49,6 +49,10 @@ class Table {
     return this.fields ?? [];
   }
 
+  getMetrics() {
+    return this.metrics ?? [];
+  }
+
   isVirtualCard() {
     return isVirtualCardId(this.id);
   }

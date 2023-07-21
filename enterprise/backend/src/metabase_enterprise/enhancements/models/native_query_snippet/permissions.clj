@@ -1,11 +1,12 @@
 (ns metabase-enterprise.enhancements.models.native-query-snippet.permissions
   "EE implementation of NativeQuerySnippet permissions."
   (:require
-   [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -17,10 +18,10 @@
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"
-  :feature :any
+  :feature :content-management
   ([snippet]
    (and
-    (not (mt.api.u/segmented-user?))
+    (not (premium-features/sandboxed-user?))
     (snippet.perms/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
@@ -28,10 +29,10 @@
 
 (defenterprise can-write?
   "Can the current User edit this `snippet`?"
-  :feature :any
+  :feature :content-management
   ([snippet]
    (and
-    (not (mt.api.u/segmented-user?))
+    (not (premium-features/sandboxed-user?))
     (snippet.perms/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)))
   ([model id]
@@ -39,19 +40,19 @@
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"
-  :feature :any
+  :feature :content-management
   [_model m]
   (and
-   (not (mt.api.u/segmented-user?))
+   (not (premium-features/sandboxed-user?))
    (snippet.perms/has-any-native-permissions?)
    (has-parent-collection-perms? m :write)))
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"
-  :feature :any
+  :feature :content-management
   [snippet changes]
   (and
-   (not (mt.api.u/segmented-user?))
+   (not (premium-features/sandboxed-user?))
    (snippet.perms/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))

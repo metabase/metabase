@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 

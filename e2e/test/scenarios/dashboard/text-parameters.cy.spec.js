@@ -3,6 +3,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
+  getDashboardCard,
   setFilter,
   filterWidget,
   addTextBox,
@@ -25,7 +26,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     addTextBox("Text card with no variables", {
       parseSpecialCharSequences: false,
     });
-    editDashboard();
     setFilter("Number", "Equal to");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
@@ -36,7 +36,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
 
   it("should allow dashboard filters to be connected to tags in text cards", () => {
     addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
-    editDashboard();
     setFilter("Number", "Equal to");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -67,6 +66,30 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     cy.findByText("foo").should("exist");
   });
 
+  it("should not transform text variables to plain text (metabase#31626)", () => {
+    const textContent = "Variable: {{foo}}";
+    addTextBox(textContent, { parseSpecialCharSequences: false });
+    setFilter("Number", "Equal to");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Select…").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("foo").click();
+    saveDashboard();
+
+    filterWidget().click();
+    cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
+    cy.button("Add filter").click();
+
+    // view mode
+    getDashboardCard(0).click().findByText("Variable: 1").should("be.visible");
+
+    editDashboard();
+
+    // edit mode
+    getDashboardCard(0).click().findByText(textContent).should("be.visible");
+  });
+
   it("should translate parameter values into the instance language", () => {
     // Set user locale to English explicitly so that we can change the site locale separately, without the user
     // locale following it (by default, user locale matches site locale)
@@ -77,7 +100,6 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     cy.reload();
 
     addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
-    editDashboard();
     setFilter("Time", "Relative Date");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -123,7 +145,7 @@ describe("scenarios > dashboard > parameters in text cards", () => {
         ],
       });
       const updatedSize = {
-        size_x: 8,
+        size_x: 11,
         size_y: 6,
       };
       cy.editDashboardCard(card, updatedSize);
@@ -137,7 +159,13 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.findByText("Single Date").click();
 
       // Create text card and connect parameter
-      addTextBox("Variable: {{foo}}", { parseSpecialCharSequences: false });
+      cy.findByLabelText("Add a heading or text box").click();
+      popover().within(() => {
+        cy.findByText("Text").click();
+      });
+      cy.findByPlaceholderText(
+        "You can use Markdown here, and include variables {{like_this}}",
+      ).type("Variable: {{foo}}", { parseSpecialCharSequences: false });
       cy.findByText("Single Date").click();
       cy.findByText("Select…").click();
       cy.findByText("foo").click();
@@ -145,7 +173,7 @@ describe("scenarios > dashboard > parameters in text cards", () => {
 
       cy.findByText("Single Date").click();
       popover().within(() => {
-        cy.findByRole("textbox").click().clear().type("07/19/2017").blur();
+        cy.findByRole("textbox").click().clear().type("07/19/2023").blur();
         cy.button("Update filter").click();
       });
 
@@ -154,10 +182,10 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.findByText("Small Marble Shoes").should("not.exist");
 
       // Parameter value in widget should use user localization (English)
-      cy.findByText("July 19, 2017").should("exist");
+      cy.findByText("July 19, 2023").should("exist");
 
       // Parameter value in dashboard should use site localization (French)
-      cy.findByText("Variable: juillet 19, 2017").should("exist");
+      cy.findByText("Variable: juillet 19, 2023").should("exist");
     });
   });
 });

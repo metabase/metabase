@@ -33,7 +33,6 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -352,7 +351,7 @@
                                  :base_type :type/Integer}
                                 {:name      "t"
                                  :base_type :type/Text}]}]
-                     (->> (hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                     (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
                           (map table-fingerprint)))))))))))
 
 (deftest group-on-time-column-test
@@ -621,9 +620,9 @@
           (is (thrown-with-msg?
                 Exception
                 #"Killed mysql process id [\d,]+ due to timeout."
-                (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"]))))
+                (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 10 ["select sleep(5)"]))))
         (testing "When the query takes less time than the timeout, it is successful."
-          (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
+          (is (some? (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
 
 (deftest syncable-schemas-test
   (mt/test-driver :mysql

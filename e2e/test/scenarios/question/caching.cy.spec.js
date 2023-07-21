@@ -5,18 +5,21 @@ import {
   questionInfoButton,
   rightSidebar,
   popover,
+  setTokenFeatures,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
   it("can set cache ttl for a saved question", () => {
-    cy.intercept("PUT", "/api/card/1").as("updateQuestion");
-    visitQuestion(1);
+    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateQuestion");
+    visitQuestion(ORDERS_QUESTION_ID);
 
     questionInfoButton().click();
 

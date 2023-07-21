@@ -6,12 +6,13 @@
 
 (defn interactive?
   "Whether we're running these scripts interactively, and can prompt the user for input. By default, this is
-  true (except when running in CircleCI), but if the env var `INTERACTIVE=false` is set, these scripts will not prompt
-  for input. Be sure to set this when running scripts in CI or other places that automate them."
+  true (except when running in CI), but if the env var `INTERACTIVE=false` is set, these scripts will not prompt
+  for input. Be sure to set this when running scripts in CI or other places that automate them. Most CI providers
+  set the `CI` env var to true by default, so we can use that as a fallback."
   []
   (if-let [env-var (env/env :interactive)]
     (Boolean/parseBoolean env-var)
-    (not (:circleci env/env))))
+    (not (:ci env/env))))
 
 (defn read-line-with-prompt
   "Prompt for and read a value from stdin. Accepts two options: `:default`, which is the default value to use if the

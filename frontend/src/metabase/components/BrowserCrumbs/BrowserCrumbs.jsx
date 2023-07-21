@@ -31,7 +31,11 @@ const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
             <Crumb>{crumb.title}</Crumb>
           )}
           {index < crumbs.length - 1 ? (
-            <Icon name="chevronright" color={color("text-light")} mx={1} />
+            <Icon
+              name="chevronright"
+              color={color("text-light")}
+              className="mx1"
+            />
           ) : null}
         </BrowserCrumbsItem>
       ))}

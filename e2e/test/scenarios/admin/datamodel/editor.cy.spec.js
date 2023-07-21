@@ -6,6 +6,7 @@ import {
   popover,
   restore,
   startNewQuestion,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import {
   SAMPLE_DB_ID,
@@ -388,6 +389,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("should allow changing the table name with data model permissions only", () => {
@@ -633,7 +635,7 @@ const getFieldSection = fieldName => {
 };
 
 const moveField = (fieldIndex, deltaY) => {
-  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0);
+  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0, { force: true });
   cy.get("#ColumnsList")
     .trigger("mousemove", 10, deltaY)
     .trigger("mouseup", 10, deltaY);

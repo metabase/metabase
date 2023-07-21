@@ -147,11 +147,9 @@ export const VisualizationDirtyState = ({
     })}
   >
     <RunButtonWithTooltip
-      className="shadowed"
+      className="py2 px3 shadowed"
       circular
       compact
-      py={2}
-      px={3}
       result={result}
       hidden={!isRunnable || hidden}
       isRunning={isRunning}

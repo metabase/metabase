@@ -33,14 +33,14 @@ describe("scenarios > dashboard > parameters", () => {
             card_id: 2,
             row: 0,
             col: 0,
-            size_x: 4,
+            size_x: 5,
             size_y: 4,
           },
           {
             card_id: 2,
             row: 0,
             col: 4,
-            size_x: 4,
+            size_x: 5,
             size_y: 4,
           },
         ],
@@ -135,7 +135,7 @@ describe("scenarios > dashboard > parameters", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 8,
               series: [],
               visualization_settings: {},
@@ -285,7 +285,7 @@ describe("scenarios > dashboard > parameters", () => {
             card_id,
             row: 0,
             col: 0,
-            size_x: 8,
+            size_x: 11,
             size_y: 6,
             parameter_mappings: [
               {
@@ -309,7 +309,11 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Confirm that the correct parameter type is connected to the native question's field filter
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText("Column to filter on").parent().contains("Native Filter");
+
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("Native Filter");
+      });
 
       // Update the underlying question's query
       cy.request("PUT", `/api/card/${card_id}`, {
@@ -397,7 +401,7 @@ describe("scenarios > dashboard > parameters", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 14,
+              size_x: 19,
               size_y: 12,
               parameter_mappings: [
                 {

@@ -4,6 +4,7 @@ import {
   describeEE,
   assertPermissionForItem,
   modifyPermission,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
@@ -18,6 +19,7 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     cy.intercept("PUT", "/api/table/*").as("tableUpdate");
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
@@ -50,7 +52,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Assert the Data Model page state
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Data Model");
+    cy.findByText("Table Metadata");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 Queryable Table");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -99,7 +101,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Assert the Data Model page state
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Data Model");
+    cy.findByText("Table Metadata");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("4 Queryable Tables");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -42,15 +42,10 @@ import * as FILTER from "metabase-lib/queries/utils/filter";
 import * as QUERY from "metabase-lib/queries/utils/query";
 
 // TODO: remove these dependencies
-import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import {
-  getTemplateTagParametersFromCard,
-  remapParameterValuesToTemplateTags,
-} from "metabase-lib/parameters/utils/template-tags";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -203,8 +198,10 @@ class QuestionInner {
       }
     }
 
+    const isVirtualDashcard = !this._card.id;
     // `dataset_query` is null for questions on a dashboard the user don't have access to
-    console.warn("Unknown query type: " + datasetQuery?.type);
+    !isVirtualDashcard &&
+      console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
   isNative(): boolean {
@@ -316,16 +313,24 @@ class QuestionInner {
     return this._card && this._card.displayIsLocked;
   }
 
-  // If we're locked to a display that is no longer "sensible", unlock it
-  // unless it was locked in unsensible
-  maybeUnlockDisplay(sensibleDisplays, previousSensibleDisplays): Question {
+  maybeResetDisplay(sensibleDisplays, previousSensibleDisplays): Question {
     const wasSensible =
       previousSensibleDisplays == null ||
       previousSensibleDisplays.includes(this.display());
     const isSensible = sensibleDisplays.includes(this.display());
     const shouldUnlock = wasSensible && !isSensible;
-    const locked = this.displayIsLocked() && !shouldUnlock;
-    return this.setDisplayIsLocked(locked);
+    const defaultDisplay = this.setDefaultDisplay().display();
+
+    if (isSensible && defaultDisplay === "table") {
+      // any sensible display is better than the default table display
+      return this;
+    }
+
+    if (shouldUnlock && this.displayIsLocked()) {
+      return this.setDisplayIsLocked(false).setDefaultDisplay();
+    }
+
+    return this.setDefaultDisplay();
   }
 
   // Switches display based on data shape. For 1x1 data, we show a scalar. If
@@ -495,7 +500,16 @@ class QuestionInner {
 
   supportsImplicitActions(): boolean {
     const query = this.query();
-    return query instanceof StructuredQuery && !query.hasAnyClauses();
+
+    // we want to check the metadata for the underlying table, not the model
+    const table = query.sourceTable();
+
+    const hasSinglePk =
+      table?.fields?.filter(field => field.isPK())?.length === 1;
+
+    return (
+      query instanceof StructuredQuery && !query.hasAnyClauses() && hasSinglePk
+    );
   }
 
   canAutoRun(): boolean {
@@ -651,7 +665,7 @@ class QuestionInner {
     }
   }
 
-  composeDataset() {
+  composeDataset(): Question {
     if (!this.isDataset() || !this.isSaved()) {
       return this;
     }
@@ -988,92 +1002,6 @@ class QuestionInner {
     return this._card && this._card.archived;
   }
 
-  getUrl({
-    originalQuestion,
-    clean = true,
-    query,
-    includeDisplayIsLocked,
-    creationType,
-    ...options
-  }: {
-    originalQuestion?: Question;
-    clean?: boolean;
-    query?: Record<string, any>;
-    includeDisplayIsLocked?: boolean;
-    creationType?: string;
-  } = {}): string {
-    const question = this.omitTransientCardIds();
-
-    if (
-      !question.id() ||
-      (originalQuestion && question.isDirtyComparedTo(originalQuestion))
-    ) {
-      return Urls.question(null, {
-        hash: question._serializeForUrl({
-          clean,
-          includeDisplayIsLocked,
-          creationType,
-        }),
-        query,
-      });
-    } else {
-      return Urls.question(question.card(), { query });
-    }
-  }
-
-  getAutomaticDashboardUrl(
-    filters,
-    /*?: Filter[] = []*/
-  ) {
-    let cellQuery = "";
-
-    if (filters.length > 0) {
-      const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
-      cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
-    }
-
-    const questionId = this.id();
-
-    if (questionId != null && !isTransientId(questionId)) {
-      return `/auto/dashboard/question/${questionId}${cellQuery}`;
-    } else {
-      const adHocQuery = utf8_to_b64url(
-        JSON.stringify(this.card().dataset_query),
-      );
-      return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
-    }
-  }
-
-  getComparisonDashboardUrl(
-    filters,
-    /*?: Filter[] = []*/
-  ) {
-    let cellQuery = "";
-
-    if (filters.length > 0) {
-      const mbqlFilter = filters.length > 1 ? ["and", ...filters] : filters[0];
-      cellQuery = `/cell/${utf8_to_b64url(JSON.stringify(mbqlFilter))}`;
-    }
-
-    const questionId = this.id();
-    const query = this.query();
-
-    if (query instanceof StructuredQuery) {
-      const tableId = query.tableId();
-
-      if (tableId) {
-        if (questionId != null && !isTransientId(questionId)) {
-          return `/auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
-        } else {
-          const adHocQuery = utf8_to_b64url(
-            JSON.stringify(this.card().dataset_query),
-          );
-          return `/auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
-        }
-      }
-    }
-  }
-
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
     return this.setCard({
@@ -1246,7 +1174,7 @@ class QuestionInner {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  private _convertParametersToMbql() {
+  _convertParametersToMbql(): Question {
     if (!this.isStructured()) {
       return this;
     }
@@ -1303,43 +1231,6 @@ class QuestionInner {
   generateQueryDescription() {
     const query = this._getMLv2Query();
     return ML.suggestedName(query);
-  }
-
-  getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
-    const includeDisplayIsLocked = true;
-
-    if (this.isStructured()) {
-      const questionWithParameters = this.setParameters(parameters);
-
-      if (this.query().isEditable()) {
-        return questionWithParameters
-          .setParameterValues(parameterValues)
-          ._convertParametersToMbql()
-          .getUrl({
-            clean,
-            originalQuestion: this,
-            includeDisplayIsLocked,
-            query: { objectId },
-          });
-      } else {
-        const query = getParameterValuesBySlug(parameters, parameterValues);
-        return questionWithParameters.markDirty().getUrl({
-          clean,
-          query,
-          includeDisplayIsLocked,
-        });
-      }
-    } else {
-      return this.getUrl({
-        clean,
-        query: remapParameterValuesToTemplateTags(
-          this.query().templateTags(),
-          parameters,
-          parameterValues,
-        ),
-        includeDisplayIsLocked,
-      });
-    }
   }
 
   getModerationReviews() {

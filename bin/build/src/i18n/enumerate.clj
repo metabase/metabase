@@ -61,7 +61,7 @@
     'metabase.shared.util.i18n/trs})
 
 (def ^:private plural-translation-macro-names
-  #{"trsn" "trsu" "deferred-trsn" "deferred-trun"})
+  #{"trsn" "trun" "deferred-trsn" "deferred-trun"})
 
 (s/def ::translate (s/and
                      (complement vector?)
@@ -90,7 +90,7 @@
                              (apply str (rest i18n-string)))]
       (merge {:message message}
              (when (string? pl-i18n-string)
-               {:message-pl i18n-string})))))
+               {:message-pl pl-i18n-string})))))
 
 (defn- analyze-translations
   "Takes roots to grasp returning a map of :file, :line, :original (the original form), and :message. If identifying the

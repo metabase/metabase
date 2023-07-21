@@ -23,7 +23,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -1251,7 +1250,7 @@
     (t2.with-temp/with-temp [User temp-user]
       (is (schema= {:personal_collection_id su/IntGreaterThanZero
                     s/Keyword               s/Any}
-                   (hydrate temp-user :personal_collection_id))))))
+                   (t2/hydrate temp-user :personal_collection_id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

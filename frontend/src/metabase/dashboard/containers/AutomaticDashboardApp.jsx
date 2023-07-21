@@ -32,6 +32,7 @@ import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import * as Q from "metabase-lib/queries/utils/query";
 import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
+import { isSegment } from "metabase-lib/queries/utils/filter";
 
 import {
   ItemContent,
@@ -221,7 +222,7 @@ const TransientFilter = ({ filter, metadata }) => {
     <div className="mr3">
       <Icon
         size={12}
-        name={getIconForFilter(dimension.field())}
+        name={getIconForFilter(filter, dimension)}
         className="mr1"
       />
       <Filter filter={filter} metadata={metadata} />
@@ -229,8 +230,14 @@ const TransientFilter = ({ filter, metadata }) => {
   );
 };
 
-const getIconForFilter = field => {
-  if (field.isDate()) {
+const getIconForFilter = (filter, dimension) => {
+  const field = dimension?.field();
+
+  if (isSegment(filter)) {
+    return "star";
+  } else if (!field) {
+    return "label";
+  } else if (field.isDate()) {
     return "calendar";
   } else if (field.isLocation()) {
     return "location";
@@ -268,19 +275,17 @@ const SuggestionsList = ({ suggestions, section }) => (
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
             <Link
-              hover={{ color: color("brand") }}
               key={itemIndex}
               to={item.url}
-              className="block hover-parent hover--visibility"
+              className="mb1 block hover-parent hover--visibility text-brand-hover"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
-              mb={1}
             >
-              <Card p={2} hoverable>
+              <Card className="p2" hoverable>
                 <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
-                    mr={1}
+                    className="mr1"
                   />
                   <h4 className="text-wrap">{item.title}</h4>
                   <ItemDescription className="hover-child">

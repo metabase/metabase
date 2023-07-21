@@ -234,15 +234,16 @@
     (sync/sync-table! table)
     (is (= (merge
             (table-defaults)
-            {:schema       "default"
-             :name         "movie"
-             :display_name "Movie"
-             :fields       [(field:movie-id)
-                            (assoc (field:movie-studio)
-                                   :fk_target_field_id false
-                                   :semantic_type nil
-                                   :has_field_values :auto-list)
-                            (field:movie-title)]})
+            {:schema              "default"
+             :name                "movie"
+             :display_name        "Movie"
+             :initial_sync_status "complete"
+             :fields              [(field:movie-id)
+                                   (assoc (field:movie-studio)
+                                          :fk_target_field_id false
+                                          :semantic_type nil
+                                          :has_field_values :auto-list)
+                                   (field:movie-title)]})
            (table-details (t2/select-one Table :id (:id table)))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

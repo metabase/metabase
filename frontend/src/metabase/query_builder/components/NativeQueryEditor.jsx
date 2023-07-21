@@ -59,7 +59,7 @@ import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-class NativeQueryEditor extends Component {
+export class NativeQueryEditor extends Component {
   _localUpdate = false;
 
   constructor(props) {

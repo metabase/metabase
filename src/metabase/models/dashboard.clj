@@ -35,7 +35,6 @@
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -179,19 +178,34 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
+(def ^:private excluded-columns-for-dashboard-revision
+  [:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id
+   ;; not sure what position is for, from the column remark:
+   ;; > The position this Dashboard should appear in the Dashboards list,
+   ;;   lower-numbered positions appearing before higher numbered ones.
+   ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
+   :public_uuid :made_public_by_id
+   :position])
+
+(def ^:private excluded-columns-for-dashcard-revision
+  [:entity_id :created_at :updated_at :collection_authority_level])
+
+(def ^:private excluded-columns-for-dashboard-tab-revision
+  [:created_at :updated_at :entity_id])
+
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
-  (-> dashboard
-      (select-keys [:collection_id :description :name :cache_ttl :auto_apply_filters])
+  (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
-                           (-> (select-keys dashboard-card [:dashboard_tab_id :size_x :size_y :row :col :id :card_id])
+                           (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
-      (assoc :tabs (map #(dissoc % :created_at :updated_at :entity_id) (ordered-tabs dashboard)))))
+      (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (ordered-tabs dashboard)))))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (t2/select [DashboardCard :id :size_x :size_y :row :col :card_id :dashboard_id]
-                                    :dashboard_id dashboard-id)
+  (let [current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
+                                           :model/DashboardCard
+                                           :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (u/classify-changes current-cards serialized-cards)]
     (when (seq to-delete)
@@ -253,17 +267,18 @@
                  num-prev-cards (count prev-card-ids)
                  new-card-ids   (set (map :id (:cards dashboard)))
                  num-new-cards  (count new-card-ids)
-                 num-cards-diff (abs (- num-prev-cards num-new-cards))]
+                 num-cards-diff (abs (- num-prev-cards num-new-cards))
+                 keys-changes   (set (flatten (concat (map keys (:cards changes))
+                                                      (map keys (:cards removals)))))]
              (cond
                (and
                  (set/subset? prev-card-ids new-card-ids)
-                 (< num-prev-cards num-new-cards))         (deferred-trun "added a card" "added {0} cards" num-cards-diff)
+                 (< num-prev-cards num-new-cards))                     (deferred-trun "added a card" "added {0} cards" num-cards-diff)
                (and
                  (set/subset? new-card-ids prev-card-ids)
-                 (> num-prev-cards num-new-cards))         (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
-               (and (= num-prev-cards num-new-cards)
-                    (= prev-card-ids new-card-ids))        (deferred-tru "rearranged the cards")
-               :else                                       (deferred-tru "modified the cards"))))
+                 (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
+               (set/subset? keys-changes #{:row :col :size_x :size_y}) (deferred-tru "rearranged the cards")
+               :else                                                   (deferred-tru "modified the cards"))))
 
          (when (or (:tabs changes) (:tabs removals))
            (let [prev-tabs     (:tabs prev-dashboard)
@@ -305,7 +320,7 @@
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
   (let [dash (-> (t2/select-one Dashboard :id (u/the-id dashboard-or-id))
-                 (hydrate [:ordered_cards :card]))]
+                 (t2/hydrate [:ordered_cards :card]))]
     (params/dashcards->param-field-ids (:ordered_cards dash))))
 
 (defn- update-field-values-for-on-demand-dbs!
@@ -393,7 +408,7 @@
                                                                 result-metadata-for-query)))
                             (dissoc :id))))]
       (events/publish-event! :card-create card)
-      (hydrate card :creator :dashboard_count :can_write :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- applied-filters-blurb
   [applied-filters]
@@ -442,7 +457,7 @@
                                                                           (assoc :collection_id (:id collection))
                                                                           save-card!))))
                             dashcard (-> dashcard
-                                         (dissoc :card :id)
+                                         (dissoc :card :id :creator_id)
                                          (update :parameter_mappings
                                                  (partial map #(assoc % :card_id (:id card))))
                                          (assoc :series series)
@@ -460,7 +475,7 @@
                                                    {param-id ParamWithMapping})
   [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
                  s/Keyword                    s/Any}]
-  (let [dashboard           (hydrate dashboard [:ordered_cards :card])
+  (let [dashboard           (t2/hydrate dashboard [:ordered_cards :card])
         param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:ordered_cards dashboard)
@@ -497,7 +512,7 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (defmethod serdes/extract-query "Dashboard" [_ opts]
-  (eduction (map #(hydrate % :ordered_cards))
+  (eduction (map #(t2/hydrate % :ordered_cards))
             (serdes/extract-query-collections Dashboard opts)))
 
 (defn- extract-dashcard
@@ -518,9 +533,9 @@
   [_model-name _opts dash]
   (let [dash (cond-> dash
                (nil? (:ordered_cards dash))
-               (hydrate :ordered_cards)
+               (t2/hydrate :ordered_cards)
                (nil? (:ordered_tabs dash))
-               (hydrate :ordered_tabs))]
+               (t2/hydrate :ordered_tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
         (update :ordered_tabs      #(mapv extract-dashtab %))

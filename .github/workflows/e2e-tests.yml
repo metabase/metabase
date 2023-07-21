@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   # We'll record runs using Replay.io and their browser on a schedule as an experiment
   schedule:
-    - cron: '0 */8 * * *'
+    - cron: '0 22 * * 0'
   push:
     branches:
       - "master"
@@ -71,13 +71,16 @@ jobs:
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
       QA_DB_ENABLED: true
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
+      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
@@ -88,13 +91,14 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "auditing"
+          - "actions"
           - "admin"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "downloads"
           - "embedding"
           - "filters"
           - "joins"
@@ -256,13 +260,14 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "auditing"
+          - "actions"
           - "admin"
           - "binning"
           - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "downloads"
           - "embedding"
           - "filters"
           - "joins"
@@ -285,13 +290,12 @@ jobs:
 
   visual-regression-tests:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     needs: build
     if: ${{ github.event_name != 'schedule' }}
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
     services:
       maildev:
         image: maildev/maildev:2.0.5

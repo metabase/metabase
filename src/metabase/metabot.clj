@@ -45,7 +45,7 @@
                                        (:id model)
                                        user_prompt
                                        final-sql)
-              template-tags (lib-native/template-tags inner_query)
+              template-tags (lib-native/extract-template-tags inner_query)
               dataset       {:dataset_query          {:database database_id
                                                       :type     "native"
                                                       :native   {:query         final-sql

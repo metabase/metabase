@@ -75,9 +75,6 @@ export default class LineAreaBarChart extends Component {
   static noHeader = true;
   static supportsSeries = true;
 
-  static minSize = { width: 4, height: 3 };
-  static defaultSize = { width: 4, height: 3 };
-
   static isSensible({ cols, rows }) {
     return (
       rows.length > 1 &&
@@ -265,15 +262,17 @@ export default class LineAreaBarChart extends Component {
     const {
       card,
       series,
+      settings,
       visualizationIsClickable,
       onEditSeries,
       onVisualizationClick,
       onChangeCardAndRun,
     } = this.props;
 
-    const single = isReversed
-      ? series[series.length - index - 1]
-      : series[index];
+    const orderedSeries = getOrderedSeries(series, settings, isReversed);
+
+    const single = orderedSeries[index];
+
     const hasBreakout = card._breakoutColumn != null;
 
     if (onEditSeries && !hasBreakout) {

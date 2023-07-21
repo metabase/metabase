@@ -4,7 +4,17 @@ import {
   visitDashboard,
   modal,
   dashboardHeader,
+  navigationSidebar,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  enableTracking,
+  main,
 } from "e2e/support/helpers";
+import { USERS } from "e2e/support/cypress_data";
+
+const { admin } = USERS;
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
@@ -166,6 +176,25 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByRole("status").findByText("Saved");
 
+      cy.log(
+        "disabling custom-homepge-setting should also remove custom-homepage-dashboard-setting",
+      );
+
+      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+      cy.findByRole("status").findByText("Saved");
+
+      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+      cy.findByTestId("custom-homepage-dashboard-setting").should(
+        "contain",
+        "Select a dashboard",
+      );
+
+      cy.findByTestId("custom-homepage-dashboard-setting")
+        .findByRole("button")
+        .click();
+
+      popover().findByText("Orders in a dashboard").click();
+
       cy.findByRole("navigation").findByText("Exit admin").click();
       cy.location("pathname").should("equal", "/dashboard/1");
 
@@ -183,17 +212,28 @@ describe("scenarios > home > custom homepage", () => {
     it("should give you the option to set a custom home page using home page CTA", () => {
       cy.visit("/");
       cy.get("main").findByText("Customize").click();
-      modal()
-        .findByText(/Select a dashboard/i)
-        .click();
+
+      modal().within(() => {
+        cy.findByRole("button", { name: "Save" }).should("be.disabled");
+        cy.findByText(/Select a dashboard/i).click();
+      });
 
       //Ensure that personal collections have been removed
       popover().contains("Your personal collection").should("not.exist");
       popover().contains("All personal collections").should("not.exist");
 
       popover().findByText("Orders in a dashboard").click();
-      modal().findByText("Save").click();
+      modal().findByRole("button", { name: "Save" }).click();
       cy.location("pathname").should("equal", "/dashboard/1");
+
+      cy.findByRole("status").within(() => {
+        cy.findByText("This dashboard has been set as your homepage.").should(
+          "exist",
+        );
+        cy.findByText(
+          "You can change this in Admin > Settings > General.",
+        ).should("exist");
+      });
     });
   });
 
@@ -210,6 +250,119 @@ describe("scenarios > home > custom homepage", () => {
       cy.visit("/");
 
       cy.location("pathname").should("equal", "/");
+    });
+
+    it("should not show you a toast after it has been dismissed", () => {
+      cy.visit("/");
+      cy.findByRole("status").within(() => {
+        cy.findByText(
+          /Your admin has set this dashboard as your homepage/,
+        ).should("exist");
+        cy.findByText("Got it").click();
+      });
+
+      cy.log("let the dashboard load");
+      dashboardHeader().findByText("Orders in a dashboard");
+
+      cy.log("Ensure that internal state was updated");
+      navigationSidebar().findByText("Home").click();
+      dashboardHeader().findByText("Orders in a dashboard");
+
+      cy.findByTestId("undo-list")
+        .contains(/Your admin has set this dashboard as your homepage/)
+        .should("not.exist");
+
+      cy.log("Ensure that on refresh, the proper settings are given");
+      cy.visit("/");
+      dashboardHeader().findByText("Orders in a dashboard");
+      cy.findByTestId("undo-list")
+        .contains(/Your admin has set this dashboard as your homepage/)
+        .should("not.exist");
+    });
+
+    it("should only show one toast on login", () => {
+      cy.signOut();
+      cy.visit("/auth/login");
+      cy.findByLabelText("Email address")
+        .should("be.focused")
+        .type(admin.email);
+      cy.findByLabelText("Password").type(admin.password);
+      cy.findByRole("button", { name: /sign in/i }).click();
+
+      cy.findByRole("status").within(() => {
+        cy.contains(
+          /Your admin has set this dashboard as your homepage/,
+        ).should("have.length", 1);
+      });
+    });
+
+    it("should show the default homepage if the dashboard was archived (#31599)", () => {
+      // Archive dashboard
+      visitDashboard(1);
+      dashboardHeader().within(() => {
+        cy.findByLabelText("dashboard-menu-button").click();
+      });
+      popover().within(() => {
+        cy.findByText("Archive").click();
+      });
+      modal().within(() => {
+        cy.findByText("Archive").click();
+      });
+
+      // Navigate to home
+      navigationSidebar().within(() => {
+        cy.findByText("Home").click();
+      });
+      main().within(() => {
+        cy.findByText("We're a little lost...").should("not.exist");
+        cy.findByText("Customize").should("be.visible");
+      });
+    });
+  });
+});
+
+describeWithSnowplow("scenarios > setup", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events through admin settings", () => {
+    cy.visit("/admin/settings/general");
+    cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+
+    cy.findByTestId("custom-homepage-dashboard-setting")
+      .findByRole("button")
+      .click();
+
+    popover().findByText("Orders in a dashboard").click();
+
+    cy.findByRole("status").findByText("Saved");
+
+    expectGoodSnowplowEvent({
+      event: "homepage_dashboard_enabled",
+      source: "admin",
+    });
+  });
+
+  it("should send snowplow events through homepage", () => {
+    cy.visit("/");
+    cy.get("main").findByText("Customize").click();
+    modal()
+      .findByText(/Select a dashboard/i)
+      .click();
+
+    popover().findByText("Orders in a dashboard").click();
+    modal().findByText("Save").click();
+    expectGoodSnowplowEvent({
+      event: "homepage_dashboard_enabled",
+      source: "homepage",
     });
   });
 });

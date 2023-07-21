@@ -14,7 +14,6 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -77,7 +76,7 @@
                              :base_type :type/Integer}
                             {:name      "time"
                              :base_type :type/Text}]}]
-                 (->> (hydrate (t2/select Table :db_id db-id {:order-by [:name]}) :fields)
+                 (->> (t2/hydrate (t2/select Table :db_id db-id {:order-by [:name]}) :fields)
                       (map table-fingerprint))))
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
@@ -113,7 +112,7 @@
                              :base_type :type/Text}
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
-                 (->> (hydrate (t2/select Table :db_id db-id
+                 (->> (t2/hydrate (t2/select Table :db_id db-id
                                           {:where    [:in :name ["groupby_test" "v_groupby_test"]]
                                            :order-by [:name]}) :fields)
                       (map table-fingerprint)))))))))

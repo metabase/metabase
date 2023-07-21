@@ -1,5 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
-import { measureText } from "metabase/lib/measure-text";
+import { measureTextWidth } from "metabase/lib/measure-text";
 import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/theme";
 import { color } from "metabase/lib/colors";
 import { RowChart } from "./RowChart";
@@ -72,7 +72,7 @@ Default.args = {
 
   theme: getStaticChartTheme(color),
 
-  measureText: measureText,
+  measureTextWidth,
 
   style: { fontFamily: "Lato" },
 };

@@ -11,6 +11,7 @@ import {
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
+import { trackCardCreated } from "../analytics";
 import { ADD_CARD_TO_DASH } from "./core";
 import { fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
@@ -99,10 +100,14 @@ export const addDashCardToDashboard = function ({
   };
 };
 
-export const addTextDashCardToDashboard = function ({ dashId, tabId }) {
-  const virtualTextCard = createCard();
-  virtualTextCard.display = "text";
-  virtualTextCard.archived = false;
+export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("text", dashId);
+
+  const virtualTextCard = {
+    ...createCard(),
+    display: "text",
+    archived: false,
+  };
 
   const dashcardOverrides = {
     card: virtualTextCard,
@@ -117,7 +122,32 @@ export const addTextDashCardToDashboard = function ({ dashId, tabId }) {
   });
 };
 
+export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("heading", dashId);
+
+  const virtualTextCard = {
+    ...createCard(),
+    display: "heading",
+    archived: false,
+  };
+
+  const dashcardOverrides = {
+    card: virtualTextCard,
+    visualization_settings: {
+      virtual_card: virtualTextCard,
+      "dashcard.background": false,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+    tabId,
+  });
+};
+
 export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("link", dashId);
+
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -140,6 +170,8 @@ export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
 export const addActionToDashboard =
   async ({ dashId, tabId, action, displayType }) =>
   dispatch => {
+    trackCardCreated("action", dashId);
+
     const virtualActionsCard = {
       ...createCard(),
       id: action.model_id,

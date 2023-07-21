@@ -1,6 +1,7 @@
 (ns metabase.api.model-index
   (:require
    [compojure.core :refer [POST]]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -48,6 +49,7 @@
                                            :pk-ref     pk_ref
                                            :value-ref  value_ref
                                            :creator-id api/*current-user-id*})]
+      (snowplow/track-event! ::snowplow/index-model-entities-enabled api/*current-user-id* {:model-id model_id})
       (task.index-values/add-indexing-job model-index)
       (model-index/add-values! model-index)
       (t2/select-one ModelIndex :id (:id model-index)))))

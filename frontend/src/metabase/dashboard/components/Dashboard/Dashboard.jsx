@@ -25,7 +25,10 @@ import {
   ParametersAndCardsContainer,
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
-import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
+import {
+  DashboardEmptyState,
+  TabEmptyState,
+} from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
@@ -46,7 +49,6 @@ class Dashboard extends Component {
     isFullscreen: PropTypes.bool,
     isNightMode: PropTypes.bool,
     isSharing: PropTypes.bool,
-    isEditable: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
@@ -57,6 +59,7 @@ class Dashboard extends Component {
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
+    dashcardData: PropTypes.object,
     selectedTabId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
@@ -71,9 +74,10 @@ class Dashboard extends Component {
     cancelFetchDashboardCardData: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     fetchDashboardCardData: PropTypes.func.isRequired,
+    fetchDashboardCardMetadata: PropTypes.func.isRequired,
     initialize: PropTypes.func.isRequired,
     onRefreshPeriodChange: PropTypes.func,
-    saveDashboardAndCards: PropTypes.func.isRequired,
+    updateDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
     setErrorPage: PropTypes.func,
@@ -101,14 +105,12 @@ class Dashboard extends Component {
   };
 
   static defaultProps = {
-    isEditable: true,
     isSharing: false,
   };
 
   constructor(props) {
     super(props);
     this.parametersWidgetRef = createRef();
-    this.parametersAndCardsContainerRef = createRef();
   }
 
   static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
@@ -140,7 +142,16 @@ class Dashboard extends Component {
     if (prevProps.dashboardId !== this.props.dashboardId) {
       await this.loadDashboard(this.props.dashboardId);
       this.throttleParameterWidgetStickiness();
-    } else if (
+      return;
+    }
+
+    if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
+      this.props.fetchDashboardCardData();
+      this.props.fetchDashboardCardMetadata();
+      return;
+    }
+
+    if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
     ) {
@@ -175,6 +186,7 @@ class Dashboard extends Component {
     try {
       await fetchDashboard(dashboardId, location.query, {
         clearCache: !isNavigatingBackToDashboard,
+        preserveParameters: isNavigatingBackToDashboard,
       });
       if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
@@ -195,22 +207,6 @@ class Dashboard extends Component {
       }
     }
   }
-
-  getDashboardWithFilteredCards = () => {
-    if (!this.props.dashboard) {
-      return;
-    }
-
-    return {
-      ...this.props.dashboard,
-      ordered_cards: this.props.dashboard.ordered_cards.filter(
-        dc =>
-          !this.props.selectedTabId ||
-          dc.dashboard_tab_id === this.props.selectedTabId ||
-          dc.dashboard_tab_id === null,
-      ),
-    };
-  };
 
   setEditing = isEditing => {
     this.props.onRefreshPeriodChange(null);
@@ -258,13 +254,18 @@ class Dashboard extends Component {
       isHeaderVisible,
       embedOptions,
       isAutoApplyFilters,
+      selectedTabId,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
-    const dashboardHasCards =
-      this.getDashboardWithFilteredCards()?.ordered_cards.length > 0 ?? false;
+    const dashboardHasCards = dashboard?.ordered_cards.length > 0 ?? false;
+    const tabHasCards =
+      dashboard?.ordered_cards.filter(
+        c =>
+          selectedTabId !== undefined && c.dashboard_tab_id === selectedTabId,
+      ).length > 0 ?? false;
     const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
@@ -332,12 +333,14 @@ class Dashboard extends Component {
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer
                 data-testid="dashboard-parameters-and-cards"
-                ref={element => (this.parametersAndCardsContainerRef = element)}
+                shouldMakeDashboardHeaderStickyAfterScrolling={
+                  !isFullscreen && (isEditing || isSharing)
+                }
               >
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     data-testid="dashboard-parameters-widget-container"
-                    ref={element => (this.parametersWidgetRef = element)}
+                    ref={this.parametersWidgetRef}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
                     topNav={embedOptions?.top_nav}
@@ -351,15 +354,18 @@ class Dashboard extends Component {
                   addMarginTop={cardsContainerShouldHaveMarginTop}
                   id="Dashboard-Cards-Container"
                 >
-                  {dashboardHasCards ? (
+                  {dashboardHasCards && tabHasCards ? (
                     <DashboardGrid
                       {...this.props}
-                      dashboard={this.getDashboardWithFilteredCards()}
+                      dashboard={this.props.dashboard}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
                     />
+                  ) : dashboardHasCards ? (
+                    <TabEmptyState isNightMode={shouldRenderAsNightMode} />
                   ) : (
                     <DashboardEmptyState
+                      dashboard={dashboard}
                       isNightMode={shouldRenderAsNightMode}
                       addQuestion={this.onAddQuestion}
                       closeNavbar={this.props.closeNavbar}

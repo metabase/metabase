@@ -1,10 +1,14 @@
 (ns metabase.lib.types.isa-test
   (:require
-   [clojure.test :refer [deftest is are testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.constants :as lib.types.constants]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.lib.types.isa :as lib.types.isa]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-isa-test
   (testing "nil doesn't belong to any type"
@@ -28,7 +32,8 @@
               :type/Text)))))
 
 (deftest ^:parallel column-isa-test
-  (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))
         orderable-columns (lib/orderable-columns query)
         columns-of-type (fn [typ] (filter #(lib.types.isa/isa? % typ)
                                          orderable-columns))]
@@ -55,7 +60,36 @@
                   :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
                   :semantic-type :type/PK
                   :effective-type :type/BigInteger}]
-                (columns-of-type :Relation/*))))))
+                (columns-of-type :Relation/*))))
+      (testing "experssions"
+        (is (=? [{:name "ID"
+                  :lib/desired-column-alias "ID"
+                  :semantic-type :type/PK
+                  :effective-type :type/BigInteger}
+                 {:name "CATEGORY_ID"
+                  :lib/desired-column-alias "CATEGORY_ID"
+                  :semantic-type :type/FK
+                  :effective-type :type/Integer}
+                 {:name "LATITUDE"
+                  :lib/desired-column-alias "LATITUDE"
+                  :semantic-type :type/Latitude
+                  :effective-type :type/Float}
+                 {:name "LONGITUDE"
+                  :lib/desired-column-alias "LONGITUDE"
+                  :semantic-type :type/Longitude
+                  :effective-type :type/Float}
+                 {:name "PRICE"
+                  :lib/desired-column-alias "PRICE"
+                  :semantic-type :type/Category
+                  :effective-type :type/Integer}
+                 {:name "myadd"
+                  :lib/desired-column-alias "myadd"
+                  :effective-type :type/Integer}
+                 {:name "ID"
+                  :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                  :semantic-type :type/PK
+                  :effective-type :type/BigInteger}]
+                (filter lib.types.isa/numeric? orderable-columns))))))
 
 (deftest ^:parallel field-type-test
   (testing "temporal"

@@ -29,7 +29,6 @@ const LegacyChoropleth = ({
         }
       >
         {() => (
-          // eslint-disable-line react/display-name
           <svg
             className="flex-full m1"
             viewBox={`${minX} ${minY} ${width} ${height}`}

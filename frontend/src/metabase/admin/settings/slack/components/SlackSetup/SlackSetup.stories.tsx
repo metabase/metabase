@@ -15,7 +15,6 @@ export const Default: ComponentStory<typeof SlackSetup> = args => {
 };
 
 Default.args = {
-  // eslint-disable-next-line react/display-name
   Form: () => <div />,
   manifest: "app: token",
   isBot: false,

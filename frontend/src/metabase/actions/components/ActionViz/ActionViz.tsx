@@ -1,5 +1,9 @@
 import { t } from "ttag";
 import type { VisualizationSettings } from "metabase-types/api";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import Action from "./Action";
 
 const isForm = (object: any, computedSettings: VisualizationSettings) =>
@@ -18,8 +22,8 @@ export default Object.assign(Action, {
   disableSettingsConfig: true,
   canSavePng: false,
 
-  minSize: { width: 1, height: 1 },
-  defaultSize: { width: 3, height: 1 },
+  minSize: getMinSize("action"),
+  defaultSize: getDefaultSize("action"),
 
   checkRenderable: () => true,
   isSensible: () => false,

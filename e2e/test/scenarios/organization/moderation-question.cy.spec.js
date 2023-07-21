@@ -5,9 +5,14 @@ import {
   openQuestionActions,
   questionInfoButton,
   getFullName,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 const adminFullName = getFullName(admin);
@@ -17,10 +22,11 @@ describeEE("scenarios > saved question moderation", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("should be able to verify and unverify a saved question", () => {
-      visitQuestion(2);
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       verifyQuestion();
 
@@ -53,7 +59,7 @@ describeEE("scenarios > saved question moderation", () => {
       cy.findByText("Orders, Count").closest("a").find(".Icon-verified");
 
       // Let's go back to the question and remove the verification
-      visitQuestion(2);
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       removeQuestionVerification();
 
@@ -99,6 +105,7 @@ describeEE("scenarios > saved question moderation", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       cy.createModerationReview({
         status: "verified",
@@ -110,7 +117,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see that a question has not been verified", () => {
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
       cy.icon("verified").should("not.exist");
 
@@ -133,7 +140,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see that a question has been verified", () => {
-      visitQuestion(2);
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       cy.icon("verified");
 

@@ -54,7 +54,10 @@ export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
 
 export type FieldValuesType = "list" | "search" | "none";
 
+export type FieldDimensionType = "internal" | "external";
+
 export type FieldDimension = {
+  type: FieldDimensionType;
   name: string;
   human_readable_field_id?: FieldId;
   human_readable_field?: Field;
@@ -100,6 +103,7 @@ export interface Field {
   max_value?: number;
   min_value?: number;
   has_field_values: FieldValuesType;
+  has_more_values?: boolean;
 
   caveats?: string | null;
   points_of_interest?: string;

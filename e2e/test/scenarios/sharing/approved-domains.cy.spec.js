@@ -5,7 +5,9 @@ import {
   sidebar,
   visitQuestion,
   visitDashboard,
+  setTokenFeatures,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";
@@ -20,12 +22,13 @@ describeEE(
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
       setupSMTP();
       setAllowedDomains();
     });
 
     it("should validate approved email domains for a question alert", () => {
-      visitQuestion(1);
+      visitQuestion(ORDERS_QUESTION_ID);
 
       cy.icon("bell").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

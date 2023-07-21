@@ -1,11 +1,12 @@
 (ns metabase.events.revision-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events.revision :as revision]
    [metabase.models
     :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
+   [metabase.models.dashboard :as dashboard]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -24,34 +25,34 @@
    :collection_id          nil
    :collection_position    nil
    :collection_preview     true
-   :creator_id             (:creator_id card)
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)
    :dataset                false
    :description            nil
    :display                :table
    :enable_embedding       false
-   :entity_id              (:entity_id card)
    :embedding_params       nil
-   :id                     (u/the-id card)
-   :made_public_by_id      nil
    :name                   (:name card)
    :parameters             []
    :parameter_mappings     []
-   :public_uuid            nil
    :cache_ttl              nil
    :query_type             :query
    :table_id               (mt/id :categories)
    :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
-  {:collection_id      (:collection_id dashboard)
-   :description        nil
-   :cache_ttl          nil
-   :auto_apply_filters true
-   :name               (:name dashboard)
-   :tabs               []
-   :cards              []})
+  {:collection_id       (:collection_id dashboard)
+   :description         nil
+   :cache_ttl           nil
+   :auto_apply_filters  true
+   :name                (:name dashboard)
+   :tabs                []
+   :cards               []
+   :archived            false
+   :collection_position nil
+   :enable_embedding    false
+   :embedding_params    nil
+   :parameters          []})
 
 (deftest card-create-test
   (testing ":card-create"
@@ -85,6 +86,19 @@
                 :model       "Card"
                 :model_id    card-id)))))))
 
+(deftest card-update-shoud-not-contains-public-info-test
+  (testing ":card-update"
+    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+      (revision/process-revision-event! {:topic :card-update
+                                         :item  card})
+      ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
+      ;; otherwise revert a card to earlier revision might toggle the public sharing settings
+      (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
+                                    (->> (t2/select-one-fn :object Revision
+                                                           :model       "Card"
+                                                           :model_id    card-id)
+                                     keys set)))))))
+
 (deftest dashboard-create-test
   (testing ":dashboard-create"
     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
@@ -117,11 +131,25 @@
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
+
+(deftest dashboard-update-shoud-not-contains-public-info-test
+  (testing ":dashboard-update"
+    (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+      (revision/process-revision-event! {:topic :dashboard-update
+                                         :item  dashboard})
+
+      ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
+      ;; otherwise revert a card to earlier revision might toggle the public sharing settings
+      (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
+                                    (->> (t2/select-one-fn :object Revision
+                                                           :model       "Dashboard"
+                                                           :model_id    dashboard-id)
+                                         keys set)))))))
 (deftest dashboard-add-cards-test
   (testing ":dashboard-add-cards"
-    (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
-                    DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
+    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
+                             Card          {card-id :id}                     (card-properties)
+                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (revision/process-revision-event! {:topic :dashboard-add-cards
                                          :item  {:id        dashboard-id
                                                  :actor_id  (mt/user->id :rasta)
@@ -130,7 +158,7 @@
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
               :object       (assoc (dashboard->revision-object dashboard)
-                                   :cards [(assoc (select-keys dashcard [:id :card_id :size_x :size_y :row :col :dashboard_tab_id]) :series [])])
+                                   :cards [(assoc (apply dissoc dashcard @#'dashboard/excluded-columns-for-dashcard-revision) :series [])])
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
@@ -140,9 +168,9 @@
 
 (deftest dashboard-remove-cards-test
   (testing ":dashboard-remove-cards"
-    (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
-                    DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
+    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
+                             Card          {card-id :id}                     (card-properties)
+                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
       (revision/process-revision-event! {:topic :dashboard-remove-cards
                                          :item  {:id        dashboard-id
@@ -161,9 +189,9 @@
 
 (deftest dashboard-reposition-cards-test
   (testing ":dashboard-reposition-cards"
-    (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
-                    Card          [{card-id :id}                     (card-properties)]
-                    DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
+    (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
+                             Card          {card-id :id}                     (card-properties)
+                             DashboardCard dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]
       (t2/update! DashboardCard (:id dashcard) {:size_x 3})
       (revision/process-revision-event! {:topic :dashboard-reeposition-cards
                                          :item  {:id        dashboard-id
@@ -172,14 +200,18 @@
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :crowberto)
-              :object       (assoc (dashboard->revision-object dashboard) :cards [{:id               (:id dashcard)
-                                                                                   :card_id          card-id
-                                                                                   :size_x           3
-                                                                                   :size_y           4
-                                                                                   :row              0
-                                                                                   :col              0
-                                                                                   :series           []
-                                                                                   :dashboard_tab_id nil}])
+              :object       (assoc (dashboard->revision-object dashboard) :cards [{:id                    (:id dashcard)
+                                                                                   :card_id               card-id
+                                                                                   :size_x                3
+                                                                                   :size_y                4
+                                                                                   :row                   0
+                                                                                   :col                   0
+                                                                                   :series                []
+                                                                                   :dashboard_tab_id      nil
+                                                                                   :action_id nil
+                                                                                   :parameter_mappings     []
+                                                                                   :visualization_settings {}
+                                                                                   :dashboard_id           dashboard-id}])
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
@@ -265,9 +297,9 @@
 
 (deftest metric-create-test
   (testing ":metric-create"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Metric   [metric       {:table_id id, :definition {:a "b"}}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Metric   metric            {:table_id id, :definition {:a "b"}}]
       (revision/process-revision-event! {:topic :metric-create
                                          :item  metric})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
@@ -293,9 +325,9 @@
 
 (deftest metric-update-test
   (testing ":metric-update"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Metric   [metric       {:table_id id, :definition {:a "b"}}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Metric   metric            {:table_id id, :definition {:a "b"}}]
       (revision/process-revision-event! {:topic :metric-update
                                          :item  (assoc metric
                                                        :actor_id         (mt/user->id :crowberto)
@@ -323,9 +355,9 @@
 
 (deftest metric-delete-test
   (testing ":metric-delete"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Metric   [metric       {:table_id id, :definition {:a "b"}, :archived true}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Metric   metric            {:table_id id, :definition {:a "b"}, :archived true}]
       (revision/process-revision-event! {:topic :metric-delete
                                          :item  metric})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
@@ -352,10 +384,10 @@
 
 (deftest segment-create-test
   (testing ":segment-create"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Segment  [segment      {:table_id   id
-                                            :definition {:a "b"}}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Segment  segment           {:table_id   id
+                                                         :definition {:a "b"}}]
       (revision/process-revision-event! {:topic :segment-create
                                          :item  segment})
       (let [revision (-> (t2/select-one Revision :model "Segment", :model_id (:id segment))
@@ -379,10 +411,10 @@
 
 (deftest segment-update-test
   (testing ":segment-update"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table [{:keys [id]} {:db_id database-id}]
-                    Segment [segment {:table_id   id
-                                      :definition {:a "b"}}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Segment  segment           {:table_id   id
+                                                         :definition {:a "b"}}]
       (revision/process-revision-event! {:topic :segment-update
                                          :item  (assoc segment
                                                        :actor_id         (mt/user->id :crowberto)
@@ -409,11 +441,11 @@
 
 (deftest segment-delete-test
   (testing ":segment-delete"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{:keys [id]} {:db_id database-id}]
-                    Segment  [segment      {:table_id   id
-                                            :definition {:a "b"}
-                                            :archived   true}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             Segment  segment           {:table_id   id
+                                                         :definition {:a "b"}
+                                                         :archived   true}]
       (revision/process-revision-event! {:topic :segment-delete
                                          :item  segment})
       (is (= {:model        "Segment"

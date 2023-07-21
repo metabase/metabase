@@ -18,7 +18,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -408,7 +407,7 @@
   (mt/with-model-cleanup [User Collection]
     ;; insert all the users
     (t2/query {:insert-into (t2/table-name User)
-               :values      (repeatedly num-users #(assoc (tt/with-temp-defaults User) :date_joined :%now))})
+               :values      (repeatedly num-users #(assoc (t2.with-temp/with-temp-defaults User) :date_joined :%now))})
     (let [max-id   (:max-id (t2/select-one [User [:%max.id :max-id]]))
           ;; determine the range of IDs we inserted -- MySQL doesn't support INSERT INTO ... RETURNING like Postgres
           ;; so this is the fastest way to do this
@@ -417,7 +416,7 @@
       ;; insert the Collections
       (t2/query {:insert-into (t2/table-name Collection)
                  :values      (for [user-id user-ids
-                                    :let    [collection (tt/with-temp-defaults Collection)]]
+                                    :let    [collection (t2.with-temp/with-temp-defaults Collection)]]
                                 (assoc collection
                                        :personal_owner_id user-id
                                        :slug "my_collection"))}))

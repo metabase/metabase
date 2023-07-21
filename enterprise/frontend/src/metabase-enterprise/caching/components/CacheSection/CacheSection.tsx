@@ -5,7 +5,6 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import NumericInput from "metabase/core/components/NumericInput";
-import { color } from "metabase/lib/colors";
 
 import { normalizeCacheTTL } from "../../utils";
 
@@ -38,7 +37,7 @@ const CacheSection = ({ initialCacheTTL, onSave }: CacheSectionProps) => {
         renderTrigger={({ onClick, visible }) => (
           <Button
             borderless
-            color={color("brand")}
+            className="text-brand"
             onClick={onClick}
             iconRight={visible ? "chevronup" : "chevrondown"}
           >

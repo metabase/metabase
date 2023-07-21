@@ -4,6 +4,7 @@ import {
   visitDashboard,
   filterWidget,
   describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -49,6 +50,7 @@ describeEE("issue 24966", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     // Add user attribute to existing ("nodata" / id:3 user
     cy.request("PUT", "/api/user/3", {
@@ -87,7 +89,7 @@ describeEE("issue 24966", () => {
             card_id,
             col: 0,
             row: 0,
-            size_x: 12,
+            size_x: 16,
             size_y: 8,
             parameter_mappings: [
               {

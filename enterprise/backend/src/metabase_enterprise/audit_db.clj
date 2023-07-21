@@ -1,7 +1,11 @@
 (ns metabase-enterprise.audit-db
-  (:require [metabase.db.env :as mdb.env]
+  (:require [clojure.java.io :as io]
+            [metabase-enterprise.serialization.cmd :as serialization.cmd]
+            [metabase.config :as config]
+            [metabase.db.env :as mdb.env]
             [metabase.models.database :refer [Database]]
             [metabase.public-settings.premium-features :refer [defenterprise]]
+            [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
@@ -25,7 +29,7 @@
        (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
        (t2/insert! Database {:is_audit         true
                              :id               default-audit-db-id
-                             :name             "Audit Database"
+                             :name             "Internal Metabase Database"
                              :description      "Internal Audit DB used to power metabase analytics."
                              :engine           engine
                              :is_full_sync     true
@@ -42,20 +46,38 @@
     (cond
       (nil? audit-db)
       (u/prog1 ::installed
-        (log/info "Audit DB does not exist, Installing...")
+        (log/info "Installing Audit DB...")
         (install-database! mdb.env/db-type))
 
       (not= mdb.env/db-type (:engine audit-db))
       (u/prog1 ::updated
-        (log/infof "Updating the Audit DB engine to %s." (name mdb.env/db-type))
+        (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name mdb.env/db-type))
         (t2/update! Database :is_audit true {:engine mdb.env/db-type})
         (ensure-db-installed!))
 
       :else
       ::no-op)))
 
+(def analytics-root-dir-resource
+  "Where to look for analytics content created by Metabase to load into the app instance on startup."
+  (io/resource "instance_analytics"))
+
 (defenterprise ensure-audit-db-installed!
-  "EE implementation of `ensure-db-installed!`."
+  "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
   :feature :none
   []
-  (ensure-db-installed!))
+  (u/prog1 (ensure-db-installed!)
+    ;; There's a sync scheduled, but we want to force a sync right away:
+    (if-let [audit-db (t2/select-one :model/Database {:where [:= :is_audit true]})]
+      (do (log/info "Beginning Audit DB Sync...")
+          (log/with-no-logs (sync-metadata/sync-db-metadata! audit-db))
+          (log/info "Audit DB Sync Complete."))
+      (when (not config/is-prod?)
+        (log/warn "Audit DB was not installed correctly!!")))
+    ;; load instance analytics content (collections/dashboards/cards/etc.) when the resource exists:
+    (when analytics-root-dir-resource
+      (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
+      (let [report (log/with-no-logs (serialization.cmd/v2-load analytics-root-dir-resource {}))]
+        (if (not-empty (:errors report))
+          (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+          (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))

@@ -54,9 +54,6 @@ export const CloseButton = styled.div`
   margin-left: 1rem;
   padding-left: 1rem;
   border-left: 1px solid ${color("border")};
-  ${breakpointMinMedium} {
-    display: none;
-  }
 `;
 
 export const ErrorWrapper = styled.div`
@@ -81,6 +78,13 @@ export interface GridItemProps {
 export const GridCell = styled.div<GridItemProps>`
   grid-column: span ${props => props.colSpan || 1} / span
     ${props => props.colSpan || 1};
+`;
+
+export const FitImage = styled.img`
+  max-width: 100%;
+  max-height: 18rem;
+  object-fit: contain;
+  margin: 1rem auto;
 `;
 
 export const RootModal = styled(Modal)`

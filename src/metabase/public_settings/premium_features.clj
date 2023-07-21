@@ -221,7 +221,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn ^:private token-features :- #{su/NonBlankString}
+  (schema/defn token-features :- #{su/NonBlankString}
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -292,6 +292,10 @@
   "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
   :sso)
 
+(define-premium-feature can-disable-password-login?
+  "Can we password login?"
+  :disable-password-login)
+
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
   "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
   notifications, more in the future)?"
@@ -303,9 +307,16 @@
   :advanced-permissions)
 
 (define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
-  etc.)?"
+  "Should we enable Question verifications (and more in the future, like workflows, forking, etc.)?"
   :content-management)
+
+(define-premium-feature ^{:added "0.41.0"} enable-official-collections?
+  "Should we enable Official Collections?"
+  :official-collections)
+
+(define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
+  "Should we enable Snippet collections"
+  :snippet-collections)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"
@@ -363,10 +374,7 @@
 (defn- check-feature
   [feature]
   (or (= feature :none)
-      (if (= feature :any)
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        (enable-enhancements?)
-        (has-feature? feature))))
+      (has-feature? feature)))
 
 (defn dynamic-ee-oss-fn
   "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the
@@ -473,9 +481,9 @@
 
   ###### `:feature`
 
-  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:any` to
-  require a valid premium token with at least one feature, but no specific feature. Use `:none` to always run the
-  EE implementation if available, regardless of token.
+  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:none` to
+  always run the EE implementation if available, regardless of token (WARNING: this is not recommended for most use
+  cases. You probably want to gate your code by a specific premium feature.)
 
   ###### `:fallback`
 
@@ -508,10 +516,9 @@
                         (assoc :fn-name fn-name))]
     `(defenterprise-impl ~args)))
 
-
-(defenterprise segmented-user?
-  "Returns a boolean if the current user is a segmented user. In OSS is always false. Will throw an error
-  if [[api/*current-user-id*]] is not bound."
+(defenterprise sandboxed-user?
+  "Returns a boolean if the current user uses sandboxing for any database. In OSS this is always false. Will throw an
+  error if [[api/*current-user-id*]] is not bound."
   metabase-enterprise.sandbox.api.util
   []
   (when-not api/*current-user-id*
@@ -520,4 +527,26 @@
     (throw (ex-info (str (tru "No current user found"))
                     {:status-code 403})))
   ;; oss doesn't have sandboxing. But we throw if no current-user-id so the behavior doesn't change when ee version
+  ;; becomes available
   false)
+
+(defenterprise impersonated-user?
+  "Returns a boolean if the current user uses connection impersonation for any database. In OSS this is always false.
+  Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.advanced-permissions.api.util
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be using impersonations.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
+  ;; ee version becomes available
+  false)
+
+(defn sandboxed-or-impersonated-user?
+  "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
+  false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  []
+  (or (sandboxed-user?)
+      (impersonated-user?)))

@@ -6,7 +6,9 @@ import {
   sidebar,
   visitQuestion,
   visitDashboard,
+  setTokenFeatures,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const allowedDomain = "metabase.test";
 const deniedDomain = "metabase.example";
@@ -22,12 +24,13 @@ describeEE(
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
       setupSMTP();
       setAllowedDomains();
     });
 
     it("should validate approved email domains for a question alert in the audit app", () => {
-      visitQuestion(1);
+      visitQuestion(ORDERS_QUESTION_ID);
       cy.icon("bell").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Set up an alert").click();
@@ -49,9 +52,9 @@ describeEE(
 
     it("should validate approved email domains for a dashboard subscription in the audit app", () => {
       visitDashboard(1);
-      cy.icon("share").click();
+      cy.icon("subscription").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Dashboard subscriptions").click();
+      cy.findByText("Create a dashboard subscription").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Email it").click();
 

@@ -261,7 +261,7 @@ class SettingsSlackForm extends Component {
           {settings}
           <li className="m2 mb4">
             <Button
-              mr={2}
+              className="mr2"
               primary={!disabled}
               success={submitting === "success"}
               disabled={disabled}

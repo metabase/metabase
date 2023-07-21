@@ -14,7 +14,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
-import { saveDashboardAndCards } from "metabase/dashboard/actions/save";
+import { updateDashboard } from "metabase/dashboard/actions/save";
 import {
   getDashboard,
   getDraftParameterValues,
@@ -136,6 +136,7 @@ export const setParameterMapping = createThunkAction(
         target,
       });
     }
+
     dispatch(
       setDashCardAttributes({
         id: dashcard_id,
@@ -336,13 +337,14 @@ export const toggleAutoApplyFilters = createThunkAction(
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {
+      dispatch(applyDraftParameterValues());
       dispatch(
         setDashboardAttributes({
           id: dashboardId,
           attributes: { auto_apply_filters: isEnabled },
         }),
       );
-      dispatch(saveDashboardAndCards(true));
+      dispatch(updateDashboard({ attributeNames: ["auto_apply_filters"] }));
       if (!isEnabled) {
         trackAutoApplyFiltersDisabled(dashboardId);
       }

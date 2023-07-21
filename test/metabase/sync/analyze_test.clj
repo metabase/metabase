@@ -172,7 +172,7 @@
 (defn- api-sync!
   "Trigger a sync of `table` via the API."
   [table]
-  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync" (:db_id table))))
+  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (:db_id table))))
 
 ;; use these functions to create fake Tables & Fields that are actually backed by something real in the database.
 ;; Otherwise when we go to resync them the logic will figure out Table/Field doesn't exist and mark it as inactive

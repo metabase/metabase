@@ -35,7 +35,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
     - uses: actions/checkout@v3
     - name: Prepare back-end environment
@@ -134,7 +134,7 @@ jobs:
     if: github.event.pull_request.draft == true && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     name: be-tests-java-11-ee-pre-check
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
@@ -167,7 +167,7 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-    timeout-minutes: 35
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:

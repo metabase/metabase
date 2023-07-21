@@ -80,6 +80,7 @@
   ;; MB groups IDs
   (deferred-tru "JSON containing LDAP to Metabase group mappings.")
   :type    :json
+  :cache?  false
   :default {}
   :getter  (fn []
              (json/parse-string (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))

@@ -4,10 +4,12 @@ import {
   visitDashboard,
   openPeopleTable,
   describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -20,7 +22,7 @@ describe("search > recently viewed", () => {
     cy.findByTextEnsureVisible("Address");
 
     // "Orders" question
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     // "Orders in a dashboard" dashboard
     visitDashboard(1);
@@ -45,7 +47,12 @@ describe("search > recently viewed", () => {
       "Dashboard",
       "/dashboard/1-orders-in-a-dashboard",
     );
-    assertRecentlyViewedItem(1, "Orders", "Question", "/question/1-orders");
+    assertRecentlyViewedItem(
+      ORDERS_QUESTION_ID,
+      "Orders",
+      "Question",
+      `/question/${ORDERS_QUESTION_ID}-orders`,
+    );
     assertRecentlyViewedItem(
       2,
       "People",
@@ -69,6 +76,7 @@ describeEE("search > recently viewed > enterprise features", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     cy.request("POST", "/api/moderation-review", {
       status: "verified",
@@ -76,7 +84,7 @@ describeEE("search > recently viewed > enterprise features", () => {
       moderated_item_type: "card",
     });
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     cy.findByTestId("qb-header-left-side").find(".Icon-verified");
   });

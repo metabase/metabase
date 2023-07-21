@@ -27,7 +27,6 @@ class AddSeriesModal extends Component {
     dashcard: PropTypes.object.isRequired,
     dashcardData: PropTypes.object.isRequired,
     fetchCardData: PropTypes.func.isRequired,
-    fetchDatabaseMetadata: PropTypes.func.isRequired,
     setDashCardAttributes: PropTypes.func.isRequired,
     loadMetadataForQueries: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,

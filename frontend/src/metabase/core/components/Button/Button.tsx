@@ -7,8 +7,6 @@ import {
   ElementType,
 } from "react";
 import styled from "@emotion/styled";
-import { color, space } from "styled-system";
-import type { SpaceProps } from "styled-system";
 import _ from "underscore";
 import { Icon, IconName } from "metabase/core/components/Icon";
 import {
@@ -67,6 +65,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   onlyIcon?: boolean;
   fullWidth?: boolean;
   onlyText?: boolean;
+  light?: boolean;
 }
 
 const BaseButton = forwardRef(function BaseButton(
@@ -132,10 +131,7 @@ const BaseButton = forwardRef(function BaseButton(
   );
 });
 
-const Button = styled(BaseButton)<SpaceProps>`
-  ${color};
-  ${space};
-`;
+const Button = styled(BaseButton)``;
 
 Button.displayName = "Button";
 

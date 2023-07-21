@@ -294,7 +294,6 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       render() {
-        // eslint-disable-next-line no-unused-vars
         const { question, metadata, ...rest } = this.props;
         return <ComposedComponent {...rest} />;
       }

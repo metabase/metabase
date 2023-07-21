@@ -478,19 +478,20 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
-(defmethod sql-jdbc.execute/connection-with-timezone :h2
-  [driver database ^String _timezone-id]
+(defmethod sql-jdbc.execute/do-with-connection-with-options :h2
+  [driver db-or-id-or-spec {:keys [write?], :as options} f]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
   ;; steps that are in the default impl
-  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
-    (try
-      ;; in H2, setting readOnly to true doesn't prevent writes
-      ;; see https://github.com/h2database/h2database/issues/1163
-      (doto conn
-        (.setReadOnly true))
-      (catch Throwable e
-        (.close conn)
-        (throw e)))))
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   (dissoc options :session-timezone)
+   (fn [^java.sql.Connection conn]
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       ;; in H2, setting readOnly to true doesn't prevent writes
+       ;; see https://github.com/h2database/h2database/issues/1163
+       (.setReadOnly conn (not write?)))
+     (f conn))))
 
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :h2

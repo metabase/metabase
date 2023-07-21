@@ -9,6 +9,7 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "__support__/ui";
 import { useSchemaListQuery } from "./use-schema-list-query";
 
@@ -21,6 +22,7 @@ const TEST_DATABASE = createMockDatabase({
 const TestComponent = () => {
   const {
     data = [],
+    metadata,
     isLoading,
     error,
   } = useSchemaListQuery({
@@ -36,6 +38,10 @@ const TestComponent = () => {
       {data.map(schema => (
         <div key={schema.id}>{schema.name}</div>
       ))}
+
+      <div data-testid="metadata">
+        {(!metadata || Object.keys(metadata).length === 0) && "No metadata"}
+      </div>
     </div>
   );
 };
@@ -70,5 +76,13 @@ describe("useSchemaListQuery", () => {
     setup({ hasDataAccess: false });
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText(PERMISSION_ERROR)).toBeInTheDocument();
+  });
+
+  it("should not have any metadata in the response", async () => {
+    setup();
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    expect(
+      within(screen.getByTestId("metadata")).getByText("No metadata"),
+    ).toBeInTheDocument();
   });
 });

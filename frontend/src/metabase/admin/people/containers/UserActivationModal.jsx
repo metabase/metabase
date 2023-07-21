@@ -27,7 +27,7 @@ class UserActivationModalInner extends Component {
         >
           <Text>{t`${user.common_name} won't be able to log in anymore.`}</Text>
           <Button
-            ml="auto"
+            className="ml-auto"
             danger
             onClick={() => user.deactivate() && onClose()}
           >
@@ -45,7 +45,7 @@ class UserActivationModalInner extends Component {
             {t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
           </Text>
           <Button
-            ml="auto"
+            className="ml-auto"
             danger
             onClick={() => user.reactivate() && onClose()}
           >

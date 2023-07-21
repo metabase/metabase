@@ -21,17 +21,11 @@
             Field
             FieldValues
             LoginHistory
-            Metric
-            NativeQuerySnippet
             Permissions
             PermissionsGroup
             PermissionsGroupMembership
             PersistedInfo
-            Pulse
-            PulseCard
-            PulseChannel
             Revision
-            Segment
             Setting
             Table
             TaskHistory
@@ -158,14 +152,14 @@
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36"
             :ip_address         "0:0:0:0:0:0:0:1"})
 
-   Metric
+   :model/Metric
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
             :table_id    (data/id :checkins)})
 
-   NativeQuerySnippet
+   :model/NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)
             :name       (tu.random/random-name)
             :content    "1 = 1"})
@@ -184,19 +178,19 @@
             :created_at    (t/zoned-date-time)
             :creator_id    (rasta-id)})
 
-   PermissionsGroup
+   :model/PermissionsGroup
    (fn [_] {:name (tu.random/random-name)})
 
-   Pulse
+   :model/Pulse
    (fn [_] {:creator_id (rasta-id)
             :name       (tu.random/random-name)})
 
-   PulseCard
+   :model/PulseCard
    (fn [_] {:position    0
             :include_csv false
             :include_xls false})
 
-   PulseChannel
+   :model/PulseChannel
    (constantly {:channel_type  :email
                 :details       {}
                 :schedule_type :daily
@@ -207,7 +201,7 @@
             :is_creation  false
             :is_reversion false})
 
-   Segment
+   :model/Segment
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
@@ -247,7 +241,7 @@
       :time_matters true
       :creator_id   (rasta-id)})
 
-   User
+   :model/User
    (fn [_] {:first_name (tu.random/random-name)
             :last_name  (tu.random/random-name)
             :email      (tu.random/random-email)
@@ -380,6 +374,7 @@
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
   [setting-k value thunk & {:keys [raw-setting?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
+  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
@@ -393,28 +388,28 @@
                              (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
         (try
-         (if raw-setting?
-           (upsert-raw-setting! original-value setting-k value)
-           (setting/set! setting-k value))
-         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-           (thunk))
-         (catch Throwable e
-           (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                           {:setting  setting-k
-                            :location (symbol (name (:namespace setting)) (name setting-k))
-                            :value    value}
-                           e)))
-         (finally
-          (try
-           (if raw-setting?
-             (restore-raw-setting! original-value setting-k)
-             (setting/set! setting-k original-value))
-           (catch Throwable e
-             (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                             {:setting        setting-k
-                              :location       (symbol (name (:namespace setting)) setting-k)
-                              :original-value original-value}
-                             e))))))))))
+          (if raw-setting?
+            (upsert-raw-setting! original-value setting-k value)
+            (setting/set! setting-k value))
+          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+            (thunk))
+          (catch Throwable e
+            (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                            {:setting  setting-k
+                             :location (symbol (name (:namespace setting)) (name setting-k))
+                             :value    value}
+                            e)))
+          (finally
+            (try
+              (if raw-setting?
+                (restore-raw-setting! original-value setting-k)
+                (setting/set! setting-k original-value))
+              (catch Throwable e
+                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
+                                {:setting        setting-k
+                                 :location       (symbol (name (:namespace setting)) setting-k)
+                                 :original-value original-value}
+                                e))))))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
@@ -427,7 +422,6 @@
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -440,7 +434,6 @@
   using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -621,7 +614,7 @@
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
-                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (mdb.u/primary-key model))))
+                                     [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (first (t2/primary-keys model)))))
                                                                             :max-id]]))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
@@ -631,7 +624,7 @@
                 ;; might not have an old max ID if this is the first time the macro is used in this test run.
                 :let  [old-max-id            (or (get model->old-max-id model)
                                                  0)
-                       max-id-condition      [:> (mdb.u/primary-key model) old-max-id]
+                       max-id-condition      [:> (first (t2/primary-keys model)) old-max-id]
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
           (t2/query-one
            {:delete-from (t2/table-name model)

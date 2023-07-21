@@ -16,12 +16,6 @@
   (fn [x _binning]
     (lib.dispatch/dispatch-value x)) :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod with-binning-method :dispatch-type/fn
-  [f binning]
-  (fn [query stage-number]
-    (let [x (f query stage-number)]
-      (with-binning-method x binning))))
-
 (mu/defn with-binning
   "Add binning to an MBQL clause or something that can be converted to an MBQL clause.
   Eg. for a Field or Field metadata or `:field` clause, this might do something like this:
@@ -80,20 +74,15 @@
    :default      true
    :mbql         {:strategy :default}})
 
-(defn- dont-bin []
-  {:display-name (i18n/tru "Don''t bin")
-   :mbql         nil})
-
 (defn- with-binning-option-type [m]
-  (assoc m :lib/type ::binning-option))
+  (assoc m :lib/type :option/binning))
 
 (def ^:private *numeric-binning-strategies
   (delay (mapv with-binning-option-type
                [(default-auto-bin)
                 {:display-name (i18n/tru "10 bins")  :mbql {:strategy :num-bins :num-bins 10}}
                 {:display-name (i18n/tru "50 bins")  :mbql {:strategy :num-bins :num-bins 50}}
-                {:display-name (i18n/tru "100 bins") :mbql {:strategy :num-bins :num-bins 100}}
-                (dont-bin)])))
+                {:display-name (i18n/tru "100 bins") :mbql {:strategy :num-bins :num-bins 100}}])))
 
 (defn numeric-binning-strategies
   "List of binning options for numeric fields. These split the data evenly into a fixed number of bins."
@@ -107,8 +96,7 @@
            {:display-name (i18n/tru "Bin every 0.1 degrees") :mbql {:strategy :bin-width :bin-width 0.1}}
            {:display-name (i18n/tru "Bin every 1 degree")    :mbql {:strategy :bin-width :bin-width 1.0}}
            {:display-name (i18n/tru "Bin every 10 degrees")  :mbql {:strategy :bin-width :bin-width 10.0}}
-           {:display-name (i18n/tru "Bin every 20 degrees")  :mbql {:strategy :bin-width :bin-width 20.0}}
-           (dont-bin)])))
+           {:display-name (i18n/tru "Bin every 20 degrees")  :mbql {:strategy :bin-width :bin-width 20.0}}])))
 
 (defn coordinate-binning-strategies
   "List of binning options for coordinate fields (ie. latitude and longitude). These split the data into as many
@@ -118,7 +106,7 @@
 
 (defn binning-display-name
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
-  It's called directly by `:field` or `:metadata/field`'s [[lib.metadata.calculation/display-name]]."
+  It's called directly by `:field` or `:metadata/column`'s [[lib.metadata.calculation/display-name]]."
   [{:keys [bin-width num-bins strategy] :as binning-options} field-metadata]
   (when binning-options
     (case strategy
@@ -128,9 +116,9 @@
                         "°"))
       :default   (i18n/tru "Auto binned"))))
 
-(defmethod lib.metadata.calculation/display-info-method ::binning-option
+(defmethod lib.metadata.calculation/display-info-method :option/binning
   [_query _stage-number binning-option]
-  (select-keys binning-option [:display-name :default]))
+  (select-keys binning-option [:display-name :default :selected]))
 
 (defmethod lib.metadata.calculation/display-info-method ::binning
   [query stage-number binning-value]
@@ -138,3 +126,11 @@
     (merge {:display-name (binning-display-name binning-value field-metadata)}
            (when (= :default (:strategy binning-value))
              {:default true}))))
+
+(mu/defn strategy= :- boolean?
+  "Given a binning option (as returned by [[available-binning-strategies]]) and the binning value (possibly nil) from
+  a column, check if they match."
+  [binning-option :- ::lib.schema.binning/binning-option
+   column-binning :- [:maybe ::lib.schema.binning/binning]]
+  (= (:mbql binning-option)
+     (select-keys column-binning [:strategy :num-bins :bin-width])))

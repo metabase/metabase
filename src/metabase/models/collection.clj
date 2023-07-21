@@ -7,7 +7,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
@@ -22,13 +21,13 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [potemkin :as p]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols])
+   [toucan2.protocols :as t2.protocols]
+   [toucan2.realize :as t2.realize])
   (:import
    (metabase.models.collection.root RootCollection)))
 
@@ -37,15 +36,30 @@
 (comment collection.root/keep-me)
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
-(p/import-vars [collection.root root-collection])
+(p/import-vars [collection.root root-collection root-collection-with-ui-details])
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
   254)
 
-(models/defmodel Collection :collection)
+(def Collection
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Card symbol in our codebase."
+  :model/Collection)
+
+(methodical/defmethod t2/table-name :model/Collection [_model] :collection)
+
+(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
+  [_original-model _k]
+  :model/Collection)
+
+(t2/deftransforms :model/Collection
+  {:namespace       mi/transform-keyword
+   :authority_level mi/transform-keyword})
 
 (doto Collection
+  (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -190,16 +204,6 @@
   (when (and owner-id collection-namespace)
     (let [msg (tru "Personal Collections must be in the default namespace")]
       (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
-
-(defn root-collection-with-ui-details
-  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
-  [collection-namespace]
-  (m/assoc-some root-collection
-                :name (case (keyword collection-namespace)
-                        :snippets (tru "Top folder")
-                        (tru "Our analytics"))
-                :namespace collection-namespace
-                :id   "root"))
 
 (def ^:private CollectionWithLocationOrRoot
   (s/cond-pre
@@ -486,7 +490,7 @@
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
-       (visible-collection-ids->direct-visible-descendant-clause (hydrate collection :effective_location) visible-collection-ids)
+       (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
        ;; don't want personal collections in collection items. Only on the sidebar
        [:= :personal_owner_id nil]]
       ;; (any additional conditions)
@@ -678,7 +682,8 @@
 
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
 
-(defn- pre-insert [{collection-name :name, color :color, :as collection}]
+(t2/define-before-insert :model/Collection
+  [{collection-name :name, color :color, :as collection}]
   (assert-valid-location collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-hex-color color)
@@ -723,10 +728,10 @@
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
                                     [id]))))
 
-(defn- post-insert [collection]
+(t2/define-after-insert :model/Collection
+  [collection]
   (u/prog1 collection
-    (copy-parent-permissions! collection)))
-
+    (copy-parent-permissions! (toucan2.realize/realize collection))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
@@ -841,8 +846,12 @@
                  (if (keyword? v) (name v) (str v)))]
     (apply = (map std-fn namespaces))))
 
-(defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
-  (let [collection-before-updates (t2/select-one Collection :id id)]
+(t2/define-before-update :model/Collection
+  [collection]
+  (let [collection-before-updates (t2/instance :model/Collection (t2/original collection))
+        {collection-name :name
+         color           :color
+         :as collection-updates}  (or (t2/changes collection) {})]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (:personal_owner_id collection-before-updates)
@@ -861,7 +870,7 @@
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
     ;; (5) make sure hex color is valid
     (when (api/column-will-change? :color collection-before-updates collection-updates)
-     (assert-valid-hex-color color))
+      (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)
@@ -880,7 +889,8 @@
   *allow-deleting-personal-collections*
   false)
 
-(defn- pre-delete [collection]
+(t2/define-before-delete :model/Collection
+  [collection]
   ;; Delete all the Children of this Collection
   (t2/delete! Collection :location (children-location collection))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
@@ -916,7 +926,7 @@
 
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
-                      (hydrate :parent_id)
+                      (t2/hydrate :parent_id)
                       :parent_id)]
     (if parent-id
       (serdes/identity-hash (t2/select-one Collection :id parent-id))
@@ -925,17 +935,6 @@
 (defmethod serdes/hash-fields Collection
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
-
-(mi/define-methods
- Collection
- {:hydration-keys (constantly [:collection])
-  :types          (constantly {:namespace       :keyword
-                               :authority_level :keyword})
-  :properties     (constantly {::mi/entity-id true})
-  :pre-insert     pre-insert
-  :post-insert    post-insert
-  :pre-update     pre-update
-  :pre-delete     pre-delete})
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set]}]
   (if (seq collection-set)
@@ -952,7 +951,7 @@
         parent           (some-> coll
                                  :id
                                  fetch-collection
-                                 (hydrate :parent_id)
+                                 (t2/hydrate :parent_id)
                                  :parent_id
                                  fetch-collection)
         parent-id        (when parent
@@ -1094,10 +1093,10 @@
   (or (user->existing-personal-collection user-or-id)
       (try
         (first (t2/insert-returning-instances! Collection
-                                               :name              (user->personal-collection-name user-or-id :site)
-                                               :personal_owner_id (u/the-id user-or-id)
-                                               ;; a nice slate blue color
-                                               :color             "#31698A"))
+                                               {:name              (user->personal-collection-name user-or-id :site)
+                                                :personal_owner_id (u/the-id user-or-id)
+                                                ;; a nice slate blue color
+                                                :color             "#31698A"}))
         ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
         (catch Throwable _

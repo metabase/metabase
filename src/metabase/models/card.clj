@@ -105,15 +105,17 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
+(def ^:private excluded-columns-for-card-revision
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id])
+
 (defmethod revision/serialize-instance :model/Card
   ([instance]
    (revision/serialize-instance Card nil instance))
   ([_model _id instance]
-   (cond-> (dissoc instance :created_at :updated_at)
+   (cond-> (apply dissoc instance excluded-columns-for-card-revision)
      ;; datasets should preserve edits to metadata
      (not (:dataset instance))
      (dissoc :result_metadata))))
-
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -445,9 +447,9 @@
   (serdes/extract-query-collections Card opts))
 
 (defn- export-result-metadata [card metadata]
-  (when (and (:dataset card) metadata)
+  (when (and metadata (:dataset card))
     (for [m metadata]
-      (-> m
+      (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
           (m/update-existing :id        serdes/*export-field-fk*)
           (m/update-existing :field_ref serdes/export-mbql)))))

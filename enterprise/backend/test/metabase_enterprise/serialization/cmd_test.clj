@@ -11,9 +11,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,7 +31,7 @@
                    :email        "nobody@nowhere.com"
                    :first_name   (mt/random-name)
                    :last_name    (mt/random-name)
-                   :password     (str (UUID/randomUUID))
+                   :password     (str (random-uuid))
                    :date_joined  :%now
                    :is_active    true
                    :is_superuser true)

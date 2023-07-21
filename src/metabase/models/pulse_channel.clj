@@ -12,7 +12,6 @@
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 ;; ## Static Definitions
@@ -113,11 +112,26 @@
 
 ;; ## Entity
 
-(models/defmodel PulseChannel :pulse_channel)
+(def PulseChannel
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/PulseChannel)
 
-(doto PulseChannel
+(methodical/defmethod t2/table-name :model/PulseChannel [_model] :pulse_channel)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/PulseChannel)
+
+(doto :model/PulseChannel
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
+
+(t2/deftransforms :model/PulseChannel
+ {:details mi/transform-json
+  :channel_type mi/transform-keyword
+  :schedule_type mi/transform-keyword
+  :schedule_frame mi/transform-keyword})
 
 (mi/define-simple-hydration-method recipients
   :recipients
@@ -141,14 +155,14 @@
   in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
   true)
 
-(defn- pre-delete
-  "This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
-  deleted. Archives `Pulse` if the channel being deleted is its last channel."
+(t2/define-before-delete :model/PulseChannel
   [{pulse-id :pulse_id, pulse-channel-id :id}]
+  ;; This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
+  ;; deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
     (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
-        (t2/update! :metabase.models.pulse/Pulse pulse-id {:archived true})))))
+        (t2/update! :model/Pulse pulse-id {:archived true})))))
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
@@ -193,18 +207,13 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
-(mi/define-methods
- PulseChannel
- {:hydration-keys (constantly [:pulse_channel])
-  :types          (constantly {:details        :json
-                               :channel_type   :keyword
-                               :schedule_type  :keyword
-                               :schedule_frame :keyword})
-  :properties     (constantly {::mi/timestamped? true
-                               ::mi/entity-id    true})
-  :pre-delete     pre-delete
-  :pre-insert     validate-email-domains
-  :pre-update     validate-email-domains})
+(t2/define-before-insert :model/PulseChannel
+  [pulse-channel]
+  (validate-email-domains pulse-channel))
+
+(t2/define-before-update :model/PulseChannel
+  [pulse-channel]
+  (validate-email-domains (mi/pre-update-changes pulse-channel)))
 
 (defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]

@@ -1,4 +1,3 @@
-import { normalize } from "normalizr";
 import _ from "underscore";
 
 import { createSelector } from "@reduxjs/toolkit";
@@ -6,8 +5,6 @@ import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import {
-  fetchData,
-  createThunkAction,
   compose,
   withAction,
   withCachedDataAndRequestState,
@@ -22,6 +19,8 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
@@ -42,26 +41,6 @@ const Databases = createEntity({
 
   // ACTION CREATORS
   objectActions: {
-    fetchDatabaseMetadata: createThunkAction(
-      FETCH_DATABASE_METADATA,
-      ({ id }, { reload = false, params } = {}) =>
-        (dispatch, getState) =>
-          fetchData({
-            dispatch,
-            getState,
-            requestStatePath: ["metadata", "databases", id],
-            existingStatePath: ["metadata", "databases", id],
-            getData: async () => {
-              const databaseMetadata = await MetabaseApi.db_metadata({
-                dbId: id,
-                ...params,
-              });
-              return normalize(databaseMetadata, DatabaseSchema);
-            },
-            reload,
-          }),
-    ),
-
     fetchIdFields: compose(
       withAction(FETCH_DATABASE_IDFIELDS),
       withCachedDataAndRequestState(
@@ -104,11 +83,15 @@ const Databases = createEntity({
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
 
     getIdFields: createSelector(
-      [state => getMetadata(state).fields, (state, props) => props.databaseId],
+      [
+        state => getMetadata(state).fieldsList(),
+        (state, props) => props.databaseId,
+      ],
       (fields, databaseId) =>
-        Object.values(fields).filter(f => {
-          const { db_id } = f.table || {}; // a field's table can be null
-          return db_id === databaseId && f.isPK();
+        fields.filter(field => {
+          const dbId = field?.table?.db_id;
+          const isRealField = !isVirtualCardId(field.table_id);
+          return dbId === databaseId && isRealField && field.isPK();
         }),
     ),
   },

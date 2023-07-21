@@ -41,7 +41,7 @@ class UserPasswordResetModal extends Component {
 
         <ButtonContainer>
           <Button
-            ml="auto"
+            className="ml-auto"
             onClick={async () => {
               if (emailConfigured) {
                 await user.resetPasswordEmail();

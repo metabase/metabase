@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
-import { createRef, Component, Fragment } from "react";
+import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+
+import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
 import { getIsNavbarOpen } from "metabase/redux/app";
 
@@ -18,6 +20,7 @@ import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 
+import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -34,7 +37,7 @@ import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
 
-import DashboardHeaderView from "../components/DashboardHeaderView";
+import { DashboardHeaderComponent } from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
@@ -66,7 +69,6 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-    this.addQuestionModal = createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
@@ -76,7 +78,6 @@ class DashboardHeader extends Component {
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
-    isEditable: PropTypes.bool.isRequired,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
@@ -88,10 +89,11 @@ class DashboardHeader extends Component {
     setRefreshElapsedHook: PropTypes.func.isRequired,
 
     addCardToDashboard: PropTypes.func.isRequired,
-    addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addHeadingDashCardToDashboard: PropTypes.func.isRequired,
+    addMarkdownDashCardToDashboard: PropTypes.func.isRequired,
     addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    saveDashboardAndCards: PropTypes.func.isRequired,
+    updateDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
 
     onEditingChange: PropTypes.func.isRequired,
@@ -100,7 +102,6 @@ class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
 
     onSharingClick: PropTypes.func.isRequired,
-
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
@@ -113,6 +114,14 @@ class DashboardHeader extends Component {
     addActionToDashboard: PropTypes.func.isRequired,
 
     databases: PropTypes.object,
+
+    dashboardId: PropTypes.number,
+    selectedTabId: PropTypes.number,
+
+    location: PropTypes.shape({
+      query: PropTypes.object,
+      pathname: PropTypes.string,
+    }),
   };
 
   handleEdit(dashboard) {
@@ -127,8 +136,15 @@ class DashboardHeader extends Component {
     toggleBookmark(this.props.dashboardId);
   }
 
-  onAddTextBox() {
-    this.props.addTextDashCardToDashboard({
+  onAddMarkdownBox() {
+    this.props.addMarkdownDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
+  }
+
+  onAddHeading() {
+    this.props.addHeadingDashCardToDashboard({
       dashId: this.props.dashboard.id,
       tabId: this.props.selectedTabId,
     });
@@ -162,8 +178,8 @@ class DashboardHeader extends Component {
     );
   }
 
-  async onSave(preserveParameters) {
-    await this.props.saveDashboardAndCards(preserveParameters);
+  async onSave() {
+    await this.props.updateDashboardAndCards();
     this.onDoneEditing();
   }
 
@@ -218,7 +234,6 @@ class DashboardHeader extends Component {
       isBookmarked,
       isEditing,
       isFullscreen,
-      isEditable,
       location,
       onFullscreenChange,
       createBookmark,
@@ -231,7 +246,7 @@ class DashboardHeader extends Component {
       databases,
     } = this.props;
 
-    const canEdit = dashboard.can_write && isEditable && !!dashboard;
+    const canEdit = dashboard.can_write;
 
     const hasModelActionsEnabled = Object.values(databases).some(
       hasDatabaseActionsEnabled,
@@ -263,21 +278,21 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
-      // Add text card button
+      // Text/Headers
       buttons.push(
-        <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
-          <a
-            data-metabase-event="Dashboard;Add Text Box"
-            key="add-text"
-            aria-label={t`Add a text box`}
-            className="text-brand-hover cursor-pointer"
-            onClick={() => this.onAddTextBox()}
-          >
-            <DashboardHeaderButton>
-              <Icon name="string" size={18} />
-            </DashboardHeaderButton>
-          </a>
+        <Tooltip
+          key="dashboard-add-heading-or-text-button"
+          tooltip={t`Add a heading or text`}
+        >
+          <TextOptionsButton
+            onAddMarkdown={() => this.onAddMarkdownBox()}
+            onAddHeading={() => this.onAddHeading()}
+          />
         </Tooltip>,
+      );
+
+      // Add link card button
+      buttons.push(
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
           <DashboardHeaderButton
             onClick={() => this.onAddLinkCard()}
@@ -314,6 +329,7 @@ class DashboardHeader extends Component {
                 <DashboardHeaderButton
                   key="parameters"
                   onClick={showAddParameterPopover}
+                  aria-label={t`Add a filter`}
                 >
                   <Icon name="filter" />
                 </DashboardHeaderButton>
@@ -379,10 +395,14 @@ class DashboardHeader extends Component {
       });
 
       extraButtons.push({
-        title: t`Export as PDF`,
+        title:
+          dashboard.ordered_tabs?.length > 1
+            ? t`Export tab as PDF`
+            : t`Export as PDF`,
         icon: "document",
+        testId: "dashboard-export-pdf-button",
         action: () => {
-          this.saveAsImage();
+          this.saveAsPDF();
         },
       });
 
@@ -441,10 +461,12 @@ class DashboardHeader extends Component {
     return buttons;
   }
 
-  saveAsImage = async () => {
+  saveAsPDF = async () => {
     const { dashboard } = this.props;
     const cardNodeSelector = "#Dashboard-Cards-Container";
-    await saveDashboardPdf(cardNodeSelector, dashboard.name);
+    await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+      trackExportDashboardToPDF(dashboard.id);
+    });
   };
 
   render() {
@@ -457,14 +479,14 @@ class DashboardHeader extends Component {
       setSidebar,
       isHomepageDashboard,
     } = this.props;
-
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <DashboardHeaderView
+      <DashboardHeaderComponent
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
+        location={this.props.location}
         dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
@@ -481,7 +503,6 @@ class DashboardHeader extends Component {
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-        onSave={() => this.onSave(true)}
       />
     );
   }

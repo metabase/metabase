@@ -7,9 +7,28 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
+
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+
+(def PersistedInfo
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Card symbol in our codebase."
+  :model/PersistedInfo)
+
+(methodical/defmethod t2/table-name :model/PersistedInfo [_model] :persisted_info)
+
+(derive :model/PersistedInfo :metabase/model)
+
+(t2/deftransforms :model/PersistedInfo
+  {:definition {:in  mi/json-in
+                :out (fn [definition]
+                       (when-let [definition (not-empty (mi/json-out-with-keywordization definition))]
+                         (update definition :field-definitions (fn [field-definitions]
+                                                                 (mapv #(update % :base-type keyword)
+                                                                       field-definitions)))))}})
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
@@ -54,20 +73,6 @@
   (->> (str/replace (u/lower-case-en nom) #"\s+" "_")
        (take 10)
        (apply str)))
-
-(models/add-type! ::definition
-                  :in mi/json-in
-                  :out (fn [definition]
-                         (when-let [definition (not-empty (mi/json-out-with-keywordization definition))]
-                           (update definition :field-definitions (fn [field-definitions]
-                                                                   (mapv #(update % :base-type keyword)
-                                                                         field-definitions))))))
-
-(models/defmodel PersistedInfo :persisted_info)
-
-(mi/define-methods
- PersistedInfo
- {:types (constantly {:definition ::definition})})
 
 (mi/define-batched-hydration-method persisted?
   :persisted

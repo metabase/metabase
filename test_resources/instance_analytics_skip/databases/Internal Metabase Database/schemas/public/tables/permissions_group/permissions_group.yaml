@@ -1,0 +1,21 @@
+description: null
+entity_type: null
+schema: public
+show_in_getting_started: false
+name: permissions_group
+caveats: null
+active: true
+db_id: Internal Metabase Database
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: permissions_group
+visibility_type: null
+field_order: database
+initial_sync_status: complete
+display_name: Permissions Group
+created_at: '2023-06-07T23:03:21.684473Z'
+points_of_interest: null

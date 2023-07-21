@@ -382,7 +382,7 @@
        (fn [_ _]
          (is (= (into {} (map (fn [user-kwd]
                                 (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
-                                                       :to      #{"rasta@metabase.com" "crowberto@metabase.com"}
+                                                       :to      #{(:email (mt/fetch-user user-kwd))}
                                                        :body    [{"Pulse Name" true}
                                                                  pulse.test-util/png-attachment
                                                                  pulse.test-util/png-attachment]}))
@@ -703,6 +703,21 @@
                                      :body    {"<h1>dashboard description</h1>" true}})
                 (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
 
+(deftest nonuser-email-test
+  (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
+    (mt/with-temp* [Card                  [{card-id :id} {:name "Test card"}]
+                    Pulse                 [{pulse-id :id} {:name "Pulse Name"}]
+                    PulseCard             [_ {:pulse_id pulse-id
+                                              :card_id  card-id}]
+                    PulseChannel          [{pc-id :id} {:pulse_id pulse-id
+                                                        :details {:emails ["nonuser@metabase.com"]}}]
+                    PulseChannelRecipient [_ {:user_id (pulse.test-util/rasta-id)
+                                              :pulse_channel_id pc-id}]]
+      (pulse.test-util/email-test-setup
+       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
+       (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
+       (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe"))))))
+
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
     (mt/with-temp* [Card         [{card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
@@ -797,8 +812,8 @@
                                                  :details      {:channel "#general"}}]
           (pulse.test-util/slack-test-setup
            (let [pulse-data (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))
-                 slack-data (m/find-first #(contains? % :channel-id) pulse-data)
-                 email-data (m/find-first #(contains? % :subject) pulse-data)]
+                 slack-data (m/find-first map? pulse-data)
+                 email-data (first (m/find-first seq? pulse-data))]
              (is (= {:channel-id  "#general"
                      :attachments [{:blocks
                                     [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
@@ -869,10 +884,10 @@
     old))
 
 (def ^:private fake-email-notification
-  {:subject      "test-message"
+  [{:subject      "test-message"
    :recipients   ["whoever@example.com"]
    :message-type :text
-   :message      "test message body"})
+   :message      "test message body"}])
 
 (deftest email-notification-retry-test
   (testing "send email succeeds w/o retry"

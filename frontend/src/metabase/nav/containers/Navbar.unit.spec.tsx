@@ -37,7 +37,7 @@ async function setup({
   const isAdminApp = pathname.startsWith("/admin");
 
   if (hasContentToFetch) {
-    setupCollectionsEndpoints([]);
+    setupCollectionsEndpoints({ collections: [] });
     setupDatabasesEndpoints([createMockDatabase()]);
     fetchMock.get("path:/api/bookmark", []);
   }

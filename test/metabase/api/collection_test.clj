@@ -126,18 +126,20 @@
                                                                  :authority_level "official"}
                                  Collection _                   {:name     "Crowberto's Child Collection"
                                                                  :location (collection/location-path crowberto-root)}]
-          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
+          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection" }
                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
-                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-            (is (= (into (set (map :name (t2/select Collection))) public-collections)
-                   crowbertos))
+                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))
+                ;; TODO better IA test data
+                hide-ia-user #(set (remove #{"Instance Analytics" "Audit" "a@a.a a@a.a's Personal Collection" "a@a.a's Personal Collection"} %))]
+            (is (= (hide-ia-user (into (set (map :name (t2/select Collection))) public-collections))
+                   (hide-ia-user crowbertos)))
             (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                   crowbertos-with-excludes))
+                   (hide-ia-user crowbertos-with-excludes)))
             (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
             (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
             (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
-                   luckys))
+                   (hide-ia-user luckys)))
             (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
@@ -1032,7 +1034,7 @@
                (api-get-collection-ancestors a :archived true))))
       (testing "children"
         (is (partial= [(collection-item "B")]
-                       (api-get-collection-children a :archived true)))))))
+                      (api-get-collection-children a :archived true)))))))
 
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
