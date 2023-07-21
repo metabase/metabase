@@ -57,6 +57,7 @@ import type {
   OnVisualizationClickType,
 } from "./types";
 
+import { DeleteObjectModal } from "./DeleteObjectModal";
 import {
   getActionItems,
   getDisplayId,
@@ -160,10 +161,15 @@ export function ObjectDetailView({
   const prevData = usePrevious(passedData);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
   const [data, setData] = useState<DatasetData>(passedData);
-  const [executeActionId, setExecuteActionId] = useState<WritebackActionId>();
+  const [updateActionId, setUpdateActionId] = useState<WritebackActionId>();
+  const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
 
   const handleExecuteModalClose = () => {
-    setExecuteActionId(undefined);
+    setUpdateActionId(undefined);
+  };
+
+  const handleDeleteModalClose = () => {
+    setDeleteActionId(undefined);
   };
 
   const pkIndex = useMemo(
@@ -315,21 +321,21 @@ export function ObjectDetailView({
     ? getActionItems({
         actions,
         databases,
-        onDelete: () => "TODO: metabase#32323",
-        onUpdate: action => setExecuteActionId(action.id),
+        onDelete: action => setDeleteActionId(action.id),
+        onUpdate: action => setUpdateActionId(action.id),
       })
     : [];
 
   const fetchInitialValues = useCallback(async () => {
-    if (typeof executeActionId !== "number") {
+    if (typeof updateActionId !== "number") {
       return {};
     }
 
     return ActionsApi.prefetchValues({
-      id: executeActionId,
+      id: updateActionId,
       parameters: JSON.stringify({ id: String(zoomedRowID) }),
     });
-  }, [executeActionId, zoomedRowID]);
+  }, [updateActionId, zoomedRowID]);
 
   const initialValues = useMemo(() => ({ id: zoomedRowID }), [zoomedRowID]);
 
@@ -410,16 +416,30 @@ export function ObjectDetailView({
       </ObjectDetailContainer>
 
       <Modal
-        isOpen={typeof executeActionId === "number"}
+        isOpen={typeof updateActionId === "number"}
         onClose={handleExecuteModalClose}
       >
         <ActionExecuteModal
-          actionId={executeActionId}
+          actionId={updateActionId}
           initialValues={initialValues}
           fetchInitialValues={fetchInitialValues}
           shouldPrefetch
           onClose={handleExecuteModalClose}
           onSuccess={handleActionSuccess}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={typeof deleteActionId === "number"}
+        onClose={handleDeleteModalClose}
+      >
+        <DeleteObjectModal
+          // actionId={deleteActionId}
+          // initialValues={initialValues}
+          // fetchInitialValues={fetchInitialValues}
+          // shouldPrefetch
+          onClose={handleDeleteModalClose}
+          // onSuccess={handleActionSuccess}
         />
       </Modal>
     </>
