@@ -3,29 +3,27 @@
   `:add-default-userland-constraints?` `:middleware` option."
   (:require
    [metabase.models.setting :as setting]
-   [metabase.config :as config]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(def ^:private default-max-results-bare-rows (config/config-int :mb-default-max-results-bare-rows))
-
-;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to [[default-max-results-bare-rows]])
-;; to a setting in 0.43 the setting, which allows for DB local value, can still be nil, so any places below that used
-;; to reference the former constant value have to expect it could return nil instead
 (setting/defsetting max-results-bare-rows
   (deferred-tru "Maximum number of rows to return specifically on :rows type queries via the API.")
-  :visibility     :authenticated
+  :visibility     :internal
   :type           :integer
+  :default        2000
   :database-local :allowed)
 
-(def ^:private max-results
-  "General maximum number of rows to return from an API query."
-  (config/config-int :mb-max-results))
+(setting/defsetting max-results
+  (deferred-tru "General maximum number of rows to return from an API query.")
+  :visibility     :internal
+  :type           :integer
+  :default        10000
+  :database-local :allowed)
 
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
   []
   {:max-results           max-results
-   :max-results-bare-rows (or (max-results-bare-rows) default-max-results-bare-rows)})
+   :max-results-bare-rows max-results-bare-rows})
 
 (defn- ensure-valid-constraints
   "`:max-results-bare-rows` must be less than or equal to `:max-results`, so if someone sets `:max-results` but not
