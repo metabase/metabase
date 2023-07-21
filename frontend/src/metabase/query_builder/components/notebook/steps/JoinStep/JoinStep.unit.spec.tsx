@@ -1,12 +1,22 @@
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForElementToBeRemoved,
+  within,
+} from "__support__/ui";
+import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { createMockCollectionItem } from "metabase-types/api/mocks";
+import {
+  createMockCollectionItem,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createStructuredModelCard,
@@ -20,17 +30,27 @@ import { createMockNotebookStep } from "../../test-utils";
 import { JoinStep } from "./JoinStep";
 
 const SAMPLE_DATABASE = createSampleDatabase();
+const ANOTHER_DATABASE = createMockDatabase({
+  id: 2,
+  name: "Another Database",
+});
+const DATABASES = [SAMPLE_DATABASE, ANOTHER_DATABASE];
 const MODEL = createStructuredModelCard();
 
 const STATE = createMockState({
   entities: createMockEntitiesState({
-    databases: [SAMPLE_DATABASE],
+    databases: DATABASES,
     questions: [MODEL],
   }),
 });
 
+const metadata = createMockMetadata({
+  databases: DATABASES,
+  questions: [MODEL],
+});
+
 function getJoinedQuery() {
-  const query = createQuery();
+  const query = createQuery({ metadata });
 
   const table = Lib.tableOrCardMetadata(query, PRODUCTS_ID);
   const findLHSColumn = columnFinder(
@@ -66,7 +86,7 @@ function getJoinedQuery() {
 function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
   const updateQuery = jest.fn();
 
-  setupDatabasesEndpoints([SAMPLE_DATABASE]);
+  setupDatabasesEndpoints(DATABASES);
   setupSearchEndpoints([createMockCollectionItem(MODEL)]);
 
   function Wrapper() {
@@ -138,6 +158,36 @@ describe("Notebook Editor > Join Step", () => {
     );
     expect(screen.getByLabelText("Right column")).toHaveTextContent("ID");
     expect(screen.getByLabelText("Change operator")).toHaveTextContent("=");
+  });
+
+  it("should open the source query database in RHS table picker", async () => {
+    setup();
+
+    userEvent.click(screen.getByLabelText("Right table"));
+    const popover = await screen.findByTestId("popover");
+    await waitForElementToBeRemoved(() =>
+      within(popover).queryByText(/Loading/),
+    );
+
+    expect(within(popover).getByText("Sample Database")).toBeInTheDocument();
+    expect(within(popover).getByText("Products")).toBeInTheDocument();
+    expect(within(popover).getByText("People")).toBeInTheDocument();
+    expect(within(popover).getByText("Reviews")).toBeInTheDocument();
+  });
+
+  it("should not allow picking a right table from another database", async () => {
+    setup();
+
+    userEvent.click(screen.getByLabelText("Right table"));
+    const popover = await screen.findByTestId("popover");
+
+    // Go back to the database list
+    userEvent.click(within(popover).getByText("Sample Database"));
+
+    expect(within(popover).getByText("Sample Database")).toBeInTheDocument();
+    expect(
+      within(popover).queryByText(ANOTHER_DATABASE.name),
+    ).not.toBeInTheDocument();
   });
 
   it("should highlight selected LHS column", async () => {

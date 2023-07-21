@@ -1,8 +1,12 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
-
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+
+import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/lib/redux";
+import * as Lib from "metabase-lib";
+import type Table from "metabase-lib/metadata/Table";
 
 import { NotebookCellItem } from "../../../NotebookCell";
 import { PickerButton } from "./JoinTablePicker.styled";
@@ -25,13 +29,24 @@ export function JoinTablePicker({
   color,
   onChangeTable,
 }: JoinTablePickerProps) {
+  const metadata = useSelector(getMetadata);
+
   const tableInfo = table ? Lib.displayInfo(query, stageIndex, table) : null;
   const pickerInfo = table ? Lib.pickerInfo(query, table) : null;
 
-  const label = tableInfo?.displayName || t`Pick a table…`;
+  const databaseId = pickerInfo?.databaseId || Lib.databaseID(query);
+  const tableId = pickerInfo?.tableId || pickerInfo?.cardId;
+
+  const databases = useMemo(() => {
+    const database = metadata.database(databaseId);
+    return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
+  }, [databaseId, metadata]);
 
   const handleTableChange = (tableId: number | string) =>
     onChangeTable(Lib.tableOrCardMetadata(query, tableId));
+
+  const tableFilter = (table: Table) =>
+    !tableId || table.db_id === pickerInfo?.tableId;
 
   return (
     <NotebookCellItem
@@ -44,10 +59,16 @@ export function JoinTablePicker({
         hasTableSearch
         canChangeDatabase={false}
         isInitiallyOpen={!table}
-        selectedDatabaseId={pickerInfo?.databaseId}
-        selectedTableId={pickerInfo?.tableId || pickerInfo?.cardId}
+        databases={databases}
+        tableFilter={tableFilter}
+        selectedDatabaseId={databaseId}
+        selectedTableId={tableId}
         setSourceTableFn={handleTableChange}
-        triggerElement={<PickerButton>{label}</PickerButton>}
+        triggerElement={
+          <PickerButton>
+            {tableInfo?.displayName || t`Pick a table…`}
+          </PickerButton>
+        }
       />
     </NotebookCellItem>
   );
