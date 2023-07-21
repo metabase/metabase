@@ -7,6 +7,9 @@ export function setupSearchEndpoints(items: CollectionItem[]) {
   fetchMock.get("path:/api/search", uri => {
     const url = new URL(uri);
     const models = url.searchParams.getAll("models");
+    const limit = Number(url.searchParams.get("limit"));
+    const offset = Number(url.searchParams.get("offset"));
+    const table_db_id = url.searchParams.get("table_db_id") || null;
     const queryText = url.searchParams.get("q");
 
     let matchedItems = items;
@@ -16,11 +19,9 @@ export function setupSearchEndpoints(items: CollectionItem[]) {
     }
 
     if (queryText) {
-      console.log(matchedItems);
       matchedItems = matchedItems.filter(({ name }) =>
         name.includes(queryText),
       );
-      console.log(matchedItems);
     }
 
     return {
@@ -28,9 +29,9 @@ export function setupSearchEndpoints(items: CollectionItem[]) {
       total: matchedItems.length,
       models, // this should reflect what is in the query param
       available_models: availableModels,
-      limit: null,
-      offset: null,
-      table_db_id: null,
+      limit,
+      offset,
+      table_db_id,
     };
   });
 }

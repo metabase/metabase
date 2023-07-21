@@ -600,10 +600,10 @@
                       query
                       (meta/table-metadata :categories)))
       ;; plain query
-      (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      lib.tu/venues-query
 
       ;; query with an aggregation (FK column is not exported, but is still "visible")
-      (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (-> lib.tu/venues-query
           (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel suggested-join-condition-pk->fk-test
@@ -707,7 +707,7 @@
 
 (deftest ^:parallel join-lhs-display-name-test
   (doseq [[source-table? query]          {true  lib.tu/venues-query
-                                          false lib.tu/query-with-card-source-table}
+                                          false lib.tu/query-with-source-card}
           [num-existing-joins query]     {0 query
                                           1 (lib.tu/add-joins query "J1")
                                           2 (lib.tu/add-joins query "J1" "J2")}
