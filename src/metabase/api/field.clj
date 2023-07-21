@@ -1,5 +1,6 @@
 (ns metabase.api.field
   (:require
+   [clojure.string :as str]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -263,8 +264,8 @@
                                   (t2/select-one Field :id))
                          field)]
     {:values          (search-values field search-field query)
-     ;; assume there are more
-     :has_more_values true
+     ;; assume there are more if doing a search, otherwise there are no more values
+     :has_more_values (not (str/blank? query))
      :field_id        field-id}))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
@@ -396,6 +397,10 @@
 
       [<value-of-field> <matching-value-of-search-field>].
 
+   If `search-field` and `field` are the same, simply return 1-vectors like
+
+      [<matching-value-of-field>].
+
    For example, with the Sample Database, you could search for the first three IDs & names of People whose name
   contains `Ma` as follows:
 
@@ -411,16 +416,8 @@
    (try
      (let [field   (follow-fks field)
            limit   (or maybe-limit default-max-field-search-limit)
-           results (qp/process-query (search-values-query field search-field value limit))
-           rows    (get-in results [:data :rows])]
-       ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
-       ;; return them as-is
-       (if-not (= (u/the-id field) (u/the-id search-field))
-         rows
-         ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
-         ;; value to get the format the frontend expects
-         (for [[result] rows]
-           [result result])))
+           results (qp/process-query (search-values-query field search-field value limit))]
+       (get-in results [:data :rows]))
      ;; this Exception is usually one that can be ignored which is why I gave it log level debug
      (catch Throwable e
        (log/debug e (trs "Error searching field values"))
