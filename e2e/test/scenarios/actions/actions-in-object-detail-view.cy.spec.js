@@ -4,7 +4,7 @@ import { restore, visitModel } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const ordersModel = {
+const ORDERS_MODEL = {
   name: "Orders model",
   dataset: true,
   display: "table",
@@ -14,7 +14,7 @@ const ordersModel = {
   },
 };
 
-const order11 = {
+const ORDER_11 = {
   total: 67.33421061366487,
   product_id: 76,
   user_id: 1,
@@ -26,7 +26,7 @@ const order11 = {
   tax: 3.51,
 };
 
-const order12 = {
+const ORDER_12 = {
   total: 158.4190052655229,
   product_id: 7,
   user_id: 3,
@@ -45,7 +45,7 @@ describe("Model actions in object detail view", () => {
 
     restore();
     cy.signInAsNormalUser();
-    cy.createQuestion(ordersModel, { wrapId: true, idAlias: "modelId" });
+    cy.createQuestion(ORDERS_MODEL, { wrapId: true, idAlias: "modelId" });
     cy.signOut();
   });
 
@@ -55,7 +55,7 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabNotExists(modelId);
 
-        visitObjectDetails(modelId, order11.id);
+        visitObjectDetails(modelId, ORDER_11.id);
         assertActionsDropdownNotExists();
       });
 
@@ -63,7 +63,7 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabNotExists(modelId);
 
-        visitObjectDetails(modelId, order11.id);
+        visitObjectDetails(modelId, ORDER_11.id);
         assertActionsDropdownNotExists();
 
         enableDatabaseActions();
@@ -71,7 +71,7 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabExists(modelId);
 
-        visitObjectDetails(modelId, order11.id);
+        visitObjectDetails(modelId, ORDER_11.id);
         assertActionsDropdownNotExists();
       });
 
@@ -79,28 +79,28 @@ describe("Model actions in object detail view", () => {
         cy.visit(`/model/${modelId}/detail`);
         assertActionsTabExists(modelId);
 
-        visitObjectDetails(modelId, order11.id);
+        visitObjectDetails(modelId, ORDER_11.id);
         assertActionsDropdownNotExists();
       });
 
       asAdmin(() => {
         createBasicModelActions(modelId);
-        visitObjectDetails(modelId, order11.id);
+        visitObjectDetails(modelId, ORDER_11.id);
         assertActionsDropdownExists();
       });
 
       asNormalUser(() => {
-        visitObjectDetails(modelId, order11.id);
+        visitObjectDetails(modelId, ORDER_11.id);
         assertActionsDropdownExists();
-        openUpdateObjectModal(modelId, order11.id);
-        assertOrderFormPrefilled(order11);
+        openUpdateObjectModal(modelId, ORDER_11.id);
+        assertOrderFormPrefilled(ORDER_11);
         cy.icon("close").last().click();
         cy.icon("close").last().click();
 
-        visitObjectDetails(modelId, order12.id);
+        visitObjectDetails(modelId, ORDER_12.id);
         assertActionsDropdownExists();
-        openUpdateObjectModal(modelId, order12.id);
-        assertOrderFormPrefilled(order12);
+        openUpdateObjectModal(modelId, ORDER_12.id);
+        assertOrderFormPrefilled(ORDER_12);
       });
     });
   });
