@@ -147,6 +147,7 @@ function assertOrderFormPrefilled(object) {
   assertInputValue("Tax", object.tax);
   assertInputValue("Total", object.total);
   assertInputValue("Discount", object.discount);
+  assertInputValue("Created At", dateToIso(object.created_at));
   assertInputValue("Quantity", object.quantity);
 }
 
@@ -154,4 +155,11 @@ function assertInputValue(labelText, value) {
   const expectedValue = value || "";
   cy.log(`Input for "${labelText}" should have value "${expectedValue}"`);
   cy.findByLabelText(labelText).should("have.value", expectedValue);
+}
+
+/**
+ * Turns "2024-07-22T20:31:01.969-07:00" into "2024-07-22T20:31:01"
+ */
+function dateToIso(timestamp) {
+  return timestamp.replace(/\..*/, "");
 }
