@@ -6,6 +6,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.common :as api]
    [metabase.api.search :as api.search]
+   [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
@@ -731,7 +732,7 @@
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
-        (is (= 19 (call-count)))))))
+        (is (= 10 (call-count)))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
@@ -751,7 +752,6 @@
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
-
 
 ;; ------------------------------------------------ Filter Tests ------------------------------------------------ ;;
 

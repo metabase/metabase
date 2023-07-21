@@ -8,6 +8,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -356,16 +357,18 @@
   [instance]
   (mi/can-read? instance))
 
-(mu/defn query-model-set
+(mu/defn query-model-set :- [:set SearchableModel]
   "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx :- SearchContext]
-  (into #{}
-        (map #(get (first %) :model)
-             (filter not-empty
-                     (for [model (:models search-ctx)]
-                       (let [search-query     (search-query-for-model model search-ctx)
-                             query-with-limit (sql.helpers/limit search-query 1)]
-                         (mdb.query/query query-with-limit)))))))
+  (let [model-queries (for [model (:models search-ctx)]
+                        {:nest (sql.helpers/limit (search-query-for-model model search-ctx) 1)})
+        query         (when (pos-int? (count model-queries))
+                        {:select [:*]
+                         :from   [[{:union-all model-queries} :dummy_alias]]})]
+    (into #{} (some->> query
+                       mdb.query/query
+                       (map :model)
+                       set))))
 
 (mu/defn ^:private full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
@@ -416,8 +419,8 @@
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
     {:total            (count total-results)
      :data             (cond->> total-results
-                         (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                         (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+                         (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                         (some? (:limit-int search-ctx)) (take (:limit-int search-ctx)))
      :available_models (query-model-set search-ctx)
      :limit            (:limit-int search-ctx)
      :offset           (:offset-int search-ctx)
