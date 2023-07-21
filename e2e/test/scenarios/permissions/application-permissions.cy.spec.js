@@ -173,7 +173,7 @@ describeEE("scenarios > admin > permissions > application", () => {
 
         cy.visit("/admin/tools/errors");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("The page you asked for couldn't be found.");
+        cy.findByText("Sorry, you don’t have permission to see that.");
 
         cy.visit("/admin/troubleshooting/help");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
