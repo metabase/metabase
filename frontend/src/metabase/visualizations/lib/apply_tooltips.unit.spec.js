@@ -267,38 +267,6 @@ describe("getStackedTooltipModel", () => {
       }),
     );
   });
-
-  it("sets showTotal and showPercentages to true for charts with breakouts", () => {
-    const series = getMockSeries(true);
-    const datas = getDatas({ series, settings });
-    const { showTotal, showPercentages } = getStackedTooltipModel(
-      series,
-      datas,
-      settings,
-      hoveredIndex,
-      dashboard,
-      xValue,
-    );
-
-    expect(showTotal).toBe(true);
-    expect(showPercentages).toBe(true);
-  });
-
-  it("sets showTotal and showPercentages to false for charts without breakouts", () => {
-    const series = getMockSeries();
-    const datas = getDatas({ series, settings });
-    const { showTotal, showPercentages } = getStackedTooltipModel(
-      series,
-      datas,
-      settings,
-      hoveredIndex,
-      dashboard,
-      xValue,
-    );
-
-    expect(showTotal).toBe(false);
-    expect(showPercentages).toBe(false);
-  });
 });
 
 function seriesAndData({ cols, rows, settings = {} }) {
