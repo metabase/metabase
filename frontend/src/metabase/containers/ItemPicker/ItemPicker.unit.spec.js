@@ -312,8 +312,7 @@ describe("ItemPicker", () => {
       await setup({
         query: "foo",
         collectionFilter: (collection, _index, allCollections) =>
-          !isPersonalCollectionOrChild(collection, allCollections) ||
-          collection.id === "root",
+          !isPersonalCollectionOrChild(collection, allCollections),
       });
 
       expect(screen.queryByText(/personal/i)).not.toBeInTheDocument();
@@ -334,8 +333,8 @@ describe("ItemPicker", () => {
 
     it("should not show items of filtered collections when searching", async () => {
       await setup({
-        collectionFilter: collection =>
-          collection.personal_owner_id === null || collection.id === "root",
+        collectionFilter: (collection, _index, allCollections) =>
+          !isPersonalCollectionOrChild(collection, allCollections),
       });
 
       userEvent.click(screen.getByRole("img", { name: /search/ }));

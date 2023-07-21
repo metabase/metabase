@@ -113,10 +113,7 @@ export const CustomHomePageModal = ({
             collection: Collection,
             _index: number,
             allCollections: Collection[],
-          ) =>
-            !isPersonalCollectionOrChild(collection, allCollections) ||
-            collection.id === "root"
-          }
+          ) => !isPersonalCollectionOrChild(collection, allCollections)}
         />
       </ModalContent>
     </Modal>

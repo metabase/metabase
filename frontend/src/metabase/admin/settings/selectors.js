@@ -123,12 +123,8 @@ const SECTIONS = {
         ],
         getProps: setting => ({
           value: setting.value,
-          collectionFilter: (collection, index, allCollections) => {
-            return (
-              !isPersonalCollectionOrChild(collection, allCollections) ||
-              collection.id === "root"
-            );
-          },
+          collectionFilter: (collection, index, allCollections) =>
+            !isPersonalCollectionOrChild(collection, allCollections),
         }),
         onChanged: (oldVal, newVal) => {
           if (newVal && !oldVal) {
