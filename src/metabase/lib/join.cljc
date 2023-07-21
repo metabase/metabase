@@ -793,7 +793,7 @@
 
   ([query             :- ::lib.schema/query
     stage-number      :- :int
-    join-or-joinable  :- JoinOrJoinable]
+    join-or-joinable  :- [:maybe JoinOrJoinable]]
    (if (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
             (first-join? query stage-number join-or-joinable)           ; first join?
             (lib.util/source-table-id query))                           ; query ultimately uses source Table?
