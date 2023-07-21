@@ -55,6 +55,16 @@
                                              :args     [(lib/ref (meta/field-metadata :venues :category-id))
                                                         (lib/ref (meta/field-metadata :categories :id))]}]))))))
 
+(deftest ^:parallel join-clause-test
+  (testing "Should have :fields :all by default (#32419)"
+    (is (=? {:lib/type    :mbql/join
+             :stages      [{:lib/type     :mbql.stage/mbql
+                            :lib/options  {:lib/uuid string?}
+                            :source-table (meta/id :orders)}]
+             :lib/options {:lib/uuid string?}
+             :fields      :all}
+            (lib/join-clause (meta/table-metadata :orders))))))
+
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
