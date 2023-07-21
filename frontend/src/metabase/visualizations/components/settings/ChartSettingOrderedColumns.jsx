@@ -36,9 +36,7 @@ export const ChartSettingOrderedColumns = ({
       return [];
     }
 
-    const columns = Lib.fieldableColumns(topLevelQuery, -1).filter(
-      column => !Lib.displayInfo(topLevelQuery, -1, column).selected,
-    );
+    const columns = Lib.fieldableColumnsWithJoins(topLevelQuery, -1);
     const columnGroups = Lib.groupColumns(columns);
 
     return columnGroups.map(columnGroup => ({
@@ -161,10 +159,10 @@ export const ChartSettingOrderedColumns = ({
           />
         ))}
       </div>
-      {additionalColumnGroups.map(({ displayName, columns }, index) => (
+      {additionalColumnGroups.map(({ displayName, table, columns }, index) => (
         <div key={index}>
           <div className="my2 text-medium text-bold text-uppercase text-small">
-            {displayName}
+            {table?.displayName ?? displayName}
           </div>
           {columns.map(({ column, displayName }, index) => (
             <ColumnItem
