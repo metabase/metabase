@@ -96,6 +96,7 @@ describe("Model actions in object detail view", () => {
 
       asAdmin(() => {
         createBasicModelActions(modelId);
+
         visitObjectDetail(modelId, ORDER_11.id);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
@@ -116,7 +117,6 @@ describe("Model actions in object detail view", () => {
 
           cy.icon("close").click();
         });
-
         objectDetailModal().icon("close").click();
 
         visitObjectDetail(modelId, ORDER_12.id);
@@ -133,9 +133,9 @@ describe("Model actions in object detail view", () => {
             cy.findByText("Update").click();
           });
         });
+        objectDetailModal().icon("close").click();
 
         assertSuccessfullUpdateToast();
-        objectDetailModal().icon("close").click();
 
         cy.log("updated quantity should be present in the table");
         cy.findByText(UPDATED_QUANTITY_FORMATTED).should("exist");
