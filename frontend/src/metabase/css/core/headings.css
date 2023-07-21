@@ -22,7 +22,7 @@ h6,
 /**
  * Correct the font size on `h1` elements within `section` and
  * `article` contexts in Chrome, Firefox, and Safari.
- * https://github.com/necolas/normalize.css/blob/master/normalize.css#L40
+ * https://github.com/necolas/normalize.css/blob/fc091cc/normalize.css#L40
  */
 h1 {
   font-size: 2em;
