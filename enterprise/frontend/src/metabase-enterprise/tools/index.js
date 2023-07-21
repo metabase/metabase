@@ -8,7 +8,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import ErrorOverview from "./containers/ErrorOverview";
 import ErrorDetail from "./containers/ErrorDetail";
 
-if (hasPremiumFeature("question_error_logs")) {
+if (hasPremiumFeature("audit_app")) {
   PLUGIN_ADMIN_TOOLS.INDEX_ROUTE = "errors";
 
   PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES_INFO = [
