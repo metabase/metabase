@@ -22,6 +22,8 @@ import {
   SET_MODAL_SNIPPET,
   SET_SNIPPET_COLLECTION_ID,
   CLOSE_QB_NEWB_MODAL,
+  CREATE_EDITABLE_COLUMN,
+  CREATE_EDITABLE_COLUMN_COMPLETED,
   SOFT_RELOAD_CARD,
   RELOAD_CARD,
   API_CREATE_QUESTION,
@@ -226,7 +228,9 @@ export const uiControls = handleActions(
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
     },
-
+    [CREATE_EDITABLE_COLUMN]: state => ({
+      ...state,
+    }),
     [RUN_QUERY]: state => ({
       ...state,
       isRunning: true,
@@ -380,6 +384,12 @@ export const card = handleActions(
           : card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
+    },
+
+    [CREATE_EDITABLE_COLUMN_COMPLETED]: {
+        next: (state, { payload: { card, query } }) => {
+          return card;
+      },
     },
 
     [CREATE_PUBLIC_LINK]: {

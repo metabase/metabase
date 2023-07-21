@@ -83,6 +83,72 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   return api;
 }
 
+export async function editEditableColumn(
+  question, 
+  pk, 
+  column,
+  value
+) {
+  return MetabaseApi.edit_editable_column({
+    card_id: question.id(),
+    pk, 
+    column,
+    value,
+  })
+}
+
+export async function createCustomColumnAndQuery(
+  question,
+  {
+    cancelDeferred,
+    isDirty = false,
+    ignoreCache = false,
+    collectionPreview = false,
+  } = {},
+) {
+  // const canUseCardApiEndpoint = !isDirty && question.isSaved();
+  const parameters = normalizeParameters(question.parameters());
+  // const card = question.card();
+  
+  // WIP: always use the datasetQuery endpoint for now
+  // if (false) { // (canUseCardApiEndpoint) {
+  //   const { dashboardId, dashcardId } = card;
+
+  //   const queryParams = {
+  //     cardId: question.id(),
+  //     dashboardId,
+  //     dashcardId,
+  //     ignore_cache: ignoreCache,
+  //     collection_preview: collectionPreview,
+  //     parameters,
+  //     create_custom_column: true,
+  //   };
+
+  //   return [
+  //     await CardApi.query(queryParams, {
+  //       cancelled: cancelDeferred.promise,
+  //     }),
+  //   ];
+  // }
+
+  const createCustomColumn = datasetQuery => {
+    return MetabaseApi.dataset( 
+      {
+        ...datasetQuery, 
+        parameters,
+        create_custom_column: true, 
+        card_id: question.id(),
+      },
+    );
+  };
+
+  const datasetQueries = question
+    .atomicQueries()
+    .map(query => query.datasetQuery());
+
+  return Promise.all(datasetQueries.map(createCustomColumn));
+};
+
 export async function runQuestionQuery(
   question,
   {
@@ -95,7 +161,7 @@ export async function runQuestionQuery(
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
   const parameters = normalizeParameters(question.parameters());
   const card = question.card();
-
+  
   if (canUseCardApiEndpoint) {
     const { dashboardId, dashcardId } = card;
 
@@ -354,6 +420,7 @@ export const MetabaseApi = {
   // table_sync_metadata:        POST("/api/table/:tableId/sync"),
   table_rescan_values: POST("/api/table/:tableId/rescan_values"),
   table_discard_values: POST("/api/table/:tableId/discard_values"),
+  edit_editable_column: POST("/api/card/:cardId/edit_editable_column"),
   field_get: GET("/api/field/:fieldId"),
   // field_summary:               GET("/api/field/:fieldId/summary"),
   field_values: GET("/api/field/:fieldId/values"),

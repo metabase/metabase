@@ -6,7 +6,10 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
+import { 
+  runQuestionQuery as apiRunQuestionQuery, 
+  createCustomColumnAndQuery 
+} from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
@@ -85,6 +88,78 @@ export const runDirtyQuestionQuery = () => async (dispatch, getState) => {
   }
 
   return dispatch(runQuestionQuery());
+};
+
+/**
+ * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
+ * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
+ */
+export const CREATE_EDITABLE_COLUMN = "metabase/qb/CREATE_EDITABLE_COLUMN";
+export const createCustomColumn = () => {
+  return async (dispatch, getState) => {
+    dispatch(loadStartUIControls());
+    const questionFromCard = card =>
+      card && new Question(card, getMetadata(getState()));
+    
+    const overrideWithCard = null;
+
+    const question = overrideWithCard
+      ? questionFromCard(overrideWithCard)
+      : getQuestion(getState());
+    const originalQuestion = getOriginalQuestion(getState());
+
+    const cardIsDirty = originalQuestion
+      ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
+        question.id() == null
+      : true;
+
+    // if (shouldUpdateUrl) {
+    //   const isAdHocModel =
+    //     question.isDataset() &&
+    //     isAdHocModelQuestion(question, originalQuestion);
+
+    //   dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
+    // }
+
+    const cancelQueryDeferred = defer();
+
+
+    createCustomColumnAndQuery(question, {
+      cancelDeferred: cancelQueryDeferred,
+      ignoreCache: false,
+      isDirty: cardIsDirty,
+    })
+      .then(newQuery => {
+        // createCustomColumnAndQuery(question, {
+        //   cancelDeferred: cancelQueryDeferred,
+        //   ignoreCache: false,
+        //   isDirty: cardIsDirty,
+        // })
+        //   .then(queryResults => {
+        //     queryTimer(duration =>
+        //       MetabaseAnalytics.trackStructEvent(
+        //         "QueryBuilder",
+        //         "Run Query",
+        //         question.type(),
+        //         duration,
+        //       ),
+        //     );
+        //     return dispatch(queryCompleted(question, queryResults));
+        //   })
+        //   .catch(error => dispatch(queryErrored(startTime, error)));
+        //   )
+    //   
+    //   
+        return dispatch(createEditableColumnCompleted(question, newQuery));
+         
+        // TODO: dispatch a run query event?
+        // return dispatch(queryCompleted(question, queryResults));
+      })
+      // .catch(error => dispatch(queryErrored(startTime, error)));
+
+
+    dispatch({ type: CREATE_EDITABLE_COLUMN, payload: { cancelQueryDeferred } });
+  };
 };
 
 /**
@@ -170,6 +245,51 @@ const loadStartUIControls = createThunkAction(
 
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
+
+export const CREATE_EDITABLE_COLUMN_COMPLETED = "metabase/qb/CREATE_EDITABLE_COLUMN_COMPLETED";
+export const createEditableColumnCompleted = (question, newQuery) => {
+  return async (dispatch, getState) => {
+    const [queryData] = newQuery;
+    // const [{ data: prevData }] = getQueryResults(getState()) || [{}];
+    const originalQuestion = getOriginalQuestion(getState());
+    // const isDirty =
+    //   question.query().isEditable() &&
+    //   question.isDirtyComparedTo(originalQuestion);
+
+    // TODO: assume it's dirty for now
+    // if (true) { // (isDirty) {
+      // TODO: handle native questions. for now, ignore
+    // if (question.isNative()) {
+    //   question = question.syncColumnsAndSettings(
+    //     originalQuestion,
+    //     queryResults[0],
+    //   );
+    // }
+    newQuery = question.query().setDatasetQuery(queryData);
+    question = question.setQuery(newQuery);
+    // }
+
+    const card = question.card();
+
+    // const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
+    // const isEditingSavedModel = isEditingModel && !!originalQuestion;
+    // const modelMetadata = isEditingSavedModel
+    //   ? preserveModelMetadata(queryResults, originalQuestion)
+    //   : undefined;
+    //   
+
+
+    dispatch({
+      type: CREATE_EDITABLE_COLUMN_COMPLETED,
+      payload: {
+        card,
+        data: queryData,
+      },
+    });
+    // TODO: don't know what this does
+    // dispatch(loadCompleteUIControls());
+  };
+};
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {

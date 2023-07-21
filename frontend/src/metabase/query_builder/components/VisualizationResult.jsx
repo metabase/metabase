@@ -127,6 +127,7 @@ export default class VisualizationResult extends Component {
             selectedTimelineEventIds={selectedTimelineEventIds}
             handleVisualizationClick={this.props.handleVisualizationClick}
             onOpenTimelines={this.props.onOpenTimelines}
+            editEditableColumn={this.props.editEditableColumn}
             onSelectTimelineEvents={this.props.selectTimelineEvents}
             onDeselectTimelineEvents={this.props.deselectTimelineEvents}
             onOpenChartSettings={this.props.onOpenChartSettings}

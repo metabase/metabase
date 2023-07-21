@@ -302,6 +302,12 @@ class Visualization extends PureComponent {
     this.props.onChangeCardAndRun({ nextCard, previousCard, objectId });
   };
 
+  handleEditEditableColumn = ({ pk, value }) => {
+    const { series } = this.state;
+    const card = series && series[0].card;
+    this.props.editEditableColumn({ card, pk, value });
+  }
+
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {
     this.setState({ yAxisSplit, warnings });
   };
@@ -522,6 +528,7 @@ class Visualization extends PureComponent {
               clicked={clicked}
               clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
+              handleEditEditableColumn={this.handleEditEditableColumn}
               onClose={this.hideActions}
               series={series}
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}

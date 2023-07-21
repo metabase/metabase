@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
    [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -24,6 +25,11 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.sync :as sync]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -73,12 +79,50 @@
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
+(defn- scan-and-sync-table!
+  [database table]
+  (sync-fields/sync-fields-for-table! database table)
+  (future
+    (sync/sync-table! table)))
+
+(defn- create-custom-column [database-id card-id query]
+  ;; create a new table for the card
+  ;; run the query joined with the new table, returning results
+
+  (let [table-name (str "editable_column_table_" card-id)
+        database   (or (t2/select-one Database :id database-id)
+                       (throw (Exception. (tru "The uploads database does not exist."))))
+        driver     (driver.u/database->driver database)
+        _          (driver/drop-table! driver database-id table-name)
+        _          (driver/create-table! driver database-id table-name {"pk" (driver/upload-type->database-type driver ::upload/int)
+                                                                        "comment" (driver/upload-type->database-type driver ::upload/text)})
+        table      (or (t2/select-one Table :db_id database-id :name table-name)
+                       (sync-tables/create-or-reactivate-table! database {:name table-name, :schema nil}))
+        {table-alias :display_name
+         table-id    :id}  table
+        _sync              (scan-and-sync-table! database table)
+        editable-column-pk (t2/select-one-fn :id :model/Field :table_id table-id :name "pk")
+        card-pk-table-id   (get-in query [:query :source-table])
+        card-pk-id         (t2/select-one-fn :id :model/Field :table_id card-pk-table-id :semantic_type "type/PK")
+        query'             (update-in query [:query :joins] (fnil conj []) {:fields :all ;; TODO: select all columns except the PK
+                                                                            :source-table table-id
+                                                                            :condition [:=
+                                                                                        [:field card-pk-id nil]
+                                                                                        [:field editable-column-pk {:join-alias table-alias}]]
+                                                                            :alias table-alias})]
+    query'))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
-  [:as {{:keys [database] :as query} :body}]
-  {database (s/maybe s/Int)}
-  (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
+  [:as {{:keys [database create_custom_column card_id] :as query} :body}]
+  {database             (s/maybe s/Int)
+   create_custom_column (s/maybe s/Bool)
+   card_id              (s/maybe s/Int)}
+  (if create_custom_column
+    (dissoc (create-custom-column database card_id query) :create_custom_column)
+    (run-query-async (dissoc (update-in query [:middleware :js-int-to-string?] (fnil identity true))
+                             :create_custom_column))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------

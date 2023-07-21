@@ -13,6 +13,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 
 import { openUrl } from "metabase/redux/app";
 
+import { MetabaseApi } from "metabase/services";
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
 import { ModelIndexes } from "metabase/entities/model-indexes";
@@ -119,6 +120,20 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
     dispatch(loadMetadataForCard(card));
   };
 };
+
+/**
+ * Upserts a row in the editable column
+ */
+export const EDIT_EDITABLE_COLUMN = "metabase/qb/EDIT_EDITABLE_COLUMN";
+export const editEditableColumn = createThunkAction(
+  EDIT_EDITABLE_COLUMN,
+  // TODO: add column argument
+  ({ card, pk, value}) => {
+  return async (dispatch, getState) => {
+    MetabaseApi.edit_editable_column({ cardId: card.dataset_query["card-id"], pk, "column": "COMMENT", value });
+    dispatch(runQuestionQuery());
+  }
+});
 
 /**
  * User-triggered events that are handled with this action:

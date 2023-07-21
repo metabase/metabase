@@ -6,6 +6,7 @@
    [clojure.core.async :as a]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
@@ -16,6 +17,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.email.messages :as messages]
@@ -932,26 +934,68 @@ saved later when it is ready."
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
+(defn- create-custom-column [card-id parameters]
+  ;; create a new table for the card
+  ;; run the query joined with the new table, returning results
+  (let [table-name (str "custom_column_table_" card-id)
+        driver :postgres
+        db-id  (:database_id card-id)]
+    #_(driver/create-table! driver db-id table-name col->database-type)
+    (qp.card/run-query-for-card-async
+     card-id :api
+     :parameters   parameters
+     :ignore_cache true
+     :dashboard-id nil
+     :context      :question
+     :middleware   {:process-viz-settings? false}))
+  )
+
+(api/defendpoint POST "/:card-id/edit_editable_column"
+  "Upsert a value into the editable column for a card."
+  [card-id :as {{:keys [pk column value]} :body}]
+  {card-id              ms/PositiveInt
+   pk                   ms/PositiveInt
+   column               :string
+   value                [:maybe :string]}
+  (let [card     (api/check-404 (t2/select-one :model/Card :id card-id))
+        table-name (keyword (str "editable_column_table_" card-id))
+        table    (t2/select-one :model/Table :name (name table-name))
+        database-id (:db_id table)
+        driver   (driver.u/database->driver database-id)
+        format   #(sql.qp/format-honeysql driver %)]
+    (metabase.driver.sql-jdbc.actions/with-jdbc-transaction [conn database-id]
+      (cond
+        (str/blank? value)
+        (jdbc/execute! {:connection conn} (format {:delete-from table-name :where [:= :pk pk]}))
+        (seq (jdbc/query {:connection conn} (format {:select [:*] :from table-name :where [:= :pk pk]})))
+        (jdbc/execute! {:connection conn} (format {:update table-name :set {:comment value} :where  [:= :pk pk]}))
+        :else
+        (jdbc/execute! {:connection conn} (format {:insert-into table-name :values [{:pk pk :comment value}]})))
+      (jdbc/query {:connection conn} (format {:select [:*] :from table-name})))))
+
 
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
-  {card-id            ms/PositiveInt
-   ignore_cache       [:maybe :boolean]
-   collection_preview [:maybe :boolean]
-   dashboard_id       [:maybe ms/PositiveInt]}
+  [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview create_custom_column], :or {ignore_cache false dashboard_id nil}} :body}]
+  {card-id              ms/PositiveInt
+   ignore_cache         [:maybe :boolean]
+   collection_preview   [:maybe :boolean]
+   dashboard_id         [:maybe ms/PositiveInt]
+   create_custom_column [:maybe :boolean]}
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (qp.card/run-query-for-card-async
-   card-id :api
-   :parameters   parameters
-   :ignore_cache ignore_cache
-   :dashboard-id dashboard_id
-   :context      (if collection_preview :collection :question)
-   :middleware   {:process-viz-settings? false}))
+  (if create_custom_column
+    (create-custom-column card-id parameters)
+    (qp.card/run-query-for-card-async
+     card-id :api
+     :parameters   parameters
+     :ignore_cache ignore_cache
+     :dashboard-id dashboard_id
+     :context      (if collection_preview :collection :question)
+     :middleware   {:process-viz-settings? false})))
 
 (api/defendpoint POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.

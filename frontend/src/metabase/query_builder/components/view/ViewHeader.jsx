@@ -199,6 +199,7 @@ SavedQuestionLeftSide.propTypes = {
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   onOpenQuestionInfo: PropTypes.func.isRequired,
+  createCustomColumn: PropTypes.func.isRequired,
   onSave: PropTypes.func,
 };
 
@@ -208,6 +209,7 @@ function SavedQuestionLeftSide(props) {
     isObjectDetail,
     isAdditionalInfoVisible,
     onOpenQuestionInfo,
+    createCustomColumn,
     onSave,
   } = props;
 
@@ -237,6 +239,10 @@ function SavedQuestionLeftSide(props) {
       data-testid="qb-header-left-side"
       showSubHeader={showSubHeader}
     >
+      <button 
+        style={{ backgroundColor: "yellow" }}
+        onClick={createCustomColumn}
+      >Add column</button>
       <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer isDataset={isDataset}>
           <HeadBreadcrumbs
@@ -379,6 +385,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isBookmarked: PropTypes.bool,
   toggleBookmark: PropTypes.func,
   onOpenQuestionInfo: PropTypes.func,
+  createCustomColumn: PropTypes.func,
   onCloseQuestionInfo: PropTypes.func,
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.func,

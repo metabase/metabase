@@ -26,6 +26,7 @@ interface ChartClickActionsProps {
   dispatch: Dispatch;
   onChangeCardAndRun: OnChangeCardAndRun;
   onUpdateVisualizationSettings: () => void;
+  handleEditEditableColumn: any;
   onClose?: () => void;
 }
 
@@ -45,6 +46,15 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
     if (this.props.onClose) {
       this.props.onClose();
     }
+  };
+  
+  handleEditValue = (value: string) => {
+    const {
+      clicked,
+      handleEditEditableColumn,
+    } = this.props;
+    const pk = clicked.data[0].value;
+    handleEditEditableColumn({ pk, value });
   };
 
   handleClickAction = (action: RegularClickAction) => {
@@ -172,8 +182,10 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
             popover
           ) : (
             <ChartClickActionsView
+              clicked={clicked}
               clickActions={clickActions}
               onClick={this.handleClickAction}
+              handleEditValue={this.handleEditValue}
             />
           )
         }
