@@ -12,7 +12,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-test
-  (let [query   (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query   lib.tu/venues-query
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (not (mc/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
@@ -46,7 +46,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel aggregation-and-breakout-test
-  (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query   (-> lib.tu/venues-query
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
                     (lib/breakout (meta/field-metadata :venues :name)))
         columns (lib/orderable-columns query)
@@ -67,7 +67,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel multi-stage-test
-  (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query   (-> lib.tu/venues-query
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :id)))
                     (lib/breakout (meta/field-metadata :venues :name))
                     (lib/append-stage))
@@ -88,7 +88,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-test
-  (let [query   lib.tu/query-with-card-source-table
+  (let [query   lib.tu/query-with-source-card
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
@@ -171,7 +171,7 @@
              (mapcat lib/columns-group-columns groups))))))
 
 (deftest ^:parallel source-card-with-expressions-test
-  (let [query   (-> lib.tu/query-with-card-source-table
+  (let [query   (-> lib.tu/query-with-source-card
                     (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
