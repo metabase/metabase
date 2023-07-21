@@ -10,7 +10,7 @@ export const getMembershipsList = createSelector(
   memberships => Object.values(memberships) || [],
 );
 
-export const getGroupMembersips = createSelector(
+export const getGroupMemberships = createSelector(
   [getMembershipsList, (_state, props) => props.group.id],
   (membershipsList, groupId) =>
     membershipsList.filter(membership => membership.group_id === groupId),
