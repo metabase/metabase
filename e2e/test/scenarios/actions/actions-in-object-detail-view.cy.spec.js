@@ -26,6 +26,18 @@ const order11 = {
   tax: 3.51,
 };
 
+const order12 = {
+  total: 158.4190052655229,
+  product_id: 7,
+  user_id: 3,
+  discount: null,
+  id: 12,
+  quantity: 7,
+  subtotal: 148.22900526552291,
+  created_at: "2024-06-26T23:21:13.271-07:00",
+  tax: 10.19,
+};
+
 describe("Model actions in object detail view", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/action").as("createBasicActions");
@@ -40,37 +52,55 @@ describe("Model actions in object detail view", () => {
   it("scenario", () => {
     cy.get("@modelId").then(modelId => {
       asNormalUser(() => {
+        cy.visit(`/model/${modelId}/detail`);
         assertActionsTabNotExists(modelId);
-        assertActionsDropdownNotExists(modelId, order11.id);
+
+        visitObjectDetails(modelId, order11.id);
+        assertActionsDropdownNotExists();
       });
 
       asAdmin(() => {
+        cy.visit(`/model/${modelId}/detail`);
         assertActionsTabNotExists(modelId);
-        assertActionsDropdownNotExists(modelId, order11.id);
+
+        visitObjectDetails(modelId, order11.id);
+        assertActionsDropdownNotExists();
 
         enableDatabaseActions();
 
+        cy.visit(`/model/${modelId}/detail`);
         assertActionsTabExists(modelId);
-        assertActionsDropdownNotExists(modelId, order11.id);
+
+        visitObjectDetails(modelId, order11.id);
+        assertActionsDropdownNotExists();
       });
 
       asNormalUser(() => {
+        cy.visit(`/model/${modelId}/detail`);
         assertActionsTabExists(modelId);
-        assertActionsDropdownNotExists(modelId, order11.id);
+
+        visitObjectDetails(modelId, order11.id);
+        assertActionsDropdownNotExists();
       });
 
       asAdmin(() => {
         createBasicModelActions(modelId);
-
-        assertActionsDropdownExists(modelId, order11.id);
+        visitObjectDetails(modelId, order11.id);
+        assertActionsDropdownExists();
       });
 
       asNormalUser(() => {
-        assertActionsDropdownExists(modelId, order11.id);
-
+        visitObjectDetails(modelId, order11.id);
+        assertActionsDropdownExists();
         openUpdateObjectModal(modelId, order11.id);
-
         assertOrderFormPrefilled(order11);
+        cy.icon("close").last().click();
+        cy.icon("close").last().click();
+
+        visitObjectDetails(modelId, order12.id);
+        assertActionsDropdownExists();
+        openUpdateObjectModal(modelId, order12.id);
+        assertOrderFormPrefilled(order12);
       });
     });
   });
@@ -91,6 +121,7 @@ function asNormalUser(callback) {
 function enableDatabaseActions() {
   cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
   const actionsToggle = cy.findByLabelText("Model actions");
+
   cy.log("actions should be disabled in model page");
   actionsToggle.should("not.be.checked");
 
@@ -106,35 +137,34 @@ function createBasicModelActions(modelId) {
   cy.wait("@createBasicActions");
 }
 
-function assertActionsDropdownExists(modelId, objectId) {
+function visitObjectDetails(modelId, objectId) {
   visitModel(modelId);
-  cy.findByText(objectId).click();
-  cy.log("actions dropdown should be shown in object details modal");
-  cy.findByTestId("actions-menu").should("exist");
+  cy.findAllByText(objectId).first().click();
 }
 
 function openUpdateObjectModal(modelId, objectId) {
   visitModel(modelId);
-  cy.findByText(objectId).click();
+  cy.findAllByText(objectId).first().click();
   cy.findByTestId("actions-menu").click();
   cy.findByText("Update").click();
 }
 
-function assertActionsDropdownNotExists(modelId, objectId) {
-  visitModel(modelId);
-  cy.findByText(objectId).click();
+function assertActionsDropdownExists() {
+  cy.log("actions dropdown should be shown in object details modal");
+  cy.findByTestId("actions-menu").should("exist");
+}
+
+function assertActionsDropdownNotExists() {
   cy.log("actions dropdown should not be shown in object details modal");
   cy.findByTestId("actions-menu").should("not.exist");
 }
 
 function assertActionsTabExists(modelId) {
-  cy.visit(`/model/${modelId}/detail`);
   cy.log("actions tab should be shown in model detail page");
   cy.findByText("Actions").should("exist");
 }
 
 function assertActionsTabNotExists(modelId) {
-  cy.visit(`/model/${modelId}/detail`);
   cy.log("actions tab should be shown in model detail page");
   cy.findByText("Actions").should("not.exist");
 }
