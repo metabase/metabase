@@ -26,7 +26,7 @@ const propTypes = {
   parameters: PropTypes.array.isRequired,
   placeholder: PropTypes.string.isRequired,
   setValue: PropTypes.func.isRequired,
-  value: PropTypes.string,
+  value: PropTypes.arrayOf(PropTypes.string),
   question: PropTypes.object,
   dashboard: PropTypes.object,
 };
