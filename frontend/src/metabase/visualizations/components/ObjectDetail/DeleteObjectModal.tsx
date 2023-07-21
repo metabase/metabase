@@ -55,7 +55,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       ]}
       onClose={onClose}
     >
-      {t`This will permanantly delete the row. There’s no undoing this, so please be sure.`}
+      {t`This will permanently delete the row. There’s no undoing this, so please be sure.`}
     </ModalContent>
   );
 };
