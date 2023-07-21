@@ -14,7 +14,7 @@
    :output-dir "frontend/src/cljs_release/"
    :dev        {:output-dir "frontend/src/cljs/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
-   :compiler-options {:optimizations :simple :reader-features #{:cljs-release}}
+   :compiler-options {:reader-features #{:cljs-release}}
    :cache-root ".shadow-cljs"
    :entries    [metabase.domain-entities.queries.util
                 metabase.lib.column-group
@@ -32,4 +32,8 @@
                 metabase.types
                 metabase.util.devtools]}
 
-}}
+:test
+  {:target    :node-test
+   :output-to "target/node-tests.js"
+   :ns-regexp "-test$"
+   :autorun   true}}}
