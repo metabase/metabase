@@ -126,8 +126,8 @@
 
 (defn ^:export field-id
   "Find the field id for something or nil."
-  [a-query stage-number fieldable]
-  (lib.core/field-id a-query stage-number fieldable))
+  [field-metadata]
+  (lib.core/field-id field-metadata))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."

@@ -142,6 +142,7 @@
    upper
    lower]
   [lib.field
+   field-id
    fields
    with-fields
    fieldable-columns]
@@ -194,7 +195,6 @@
    describe-top-level-key
    display-name
    display-info
-   field-id
    suggested-name
    type-of]
   [lib.metric
