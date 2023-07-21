@@ -124,7 +124,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get("circle");
     });
 
-    it("should work for number DELME", () => {
+    it("should work for number DELME 2", () => {
       changeBinningForDimension({
         name: "TOTAL",
         fromBinning: "Auto bin",
