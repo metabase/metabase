@@ -159,11 +159,13 @@ export const ChartSettingOrderedColumns = ({
           />
         ))}
       </div>
-      {additionalColumnGroups.map(({ displayName, table, columns }, index) => (
+      {additionalColumnGroups.map(({ displayName, columns }, index) => (
         <div key={index}>
-          <div className="my2 text-medium text-bold text-uppercase text-small">
-            {table?.displayName ?? displayName}
-          </div>
+          {additionalColumnGroups.length > 1 && (
+            <div className="my2 text-medium text-bold text-uppercase text-small">
+              {displayName}
+            </div>
+          )}
           {columns.map(({ column, displayName }, index) => (
             <ColumnItem
               key={index}

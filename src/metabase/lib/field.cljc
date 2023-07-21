@@ -567,4 +567,4 @@
                                                      (lib.util/query-stage query stage-number)
                                                      {:include-joined?              true
                                                       :include-expressions?         true
-                                                      :include-implicitly-joinable? true})))))
+                                                      :include-implicitly-joinable? false})))))
