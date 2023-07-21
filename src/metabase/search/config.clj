@@ -67,7 +67,7 @@
   (keyword (str (name (model->alias model-string)) "." (name column))))
 
 (def all-models
-  "All valid models to search for. "
+  "Set of all valid models to search for. "
   (set (keys model-to-db-model)))
 
 (def models-search-order
