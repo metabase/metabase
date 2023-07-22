@@ -397,14 +397,23 @@
       (pull-unresolved-names-up vs-norm [::mb.viz/column-settings] resolved-cs))
     vs-norm))
 
+(defn- resolve-table-column-field-ref [[f-type f-str f-md]]
+  (if (names/fully-qualified-field-name? f-str)
+    [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
+    [f-type f-str f-md]))
+
 (defn- resolve-pivot-table-settings
   "Resolve the entries in a :pivot_table.column_split map (which is under a :visualization_settings map). These map entries
   may contain fully qualified field names, or even other cards. In case of an unresolved name (i.e. a card that hasn't
   yet been loaded), we will track it under ::unresolved-names and revisit on the next pass."
   [vs-norm]
-  (if-let [col-settings (::mb.viz/table vs-norm)]
-    (let [resolved-cs (reduce-kv accumulate-converted-column-settings {} col-settings)]
-      (pull-unresolved-names-up vs-norm [:rows :colmuns] resolved-cs))
+  (if (:pivot_table.column_split vs-norm)
+    (letfn [(resolve-vec [pivot vec-type]
+              (update-in pivot [:pivot_table.column_split vec-type] (fn [tbl-vecs]
+                                                                      (mapv resolve-table-column-field-ref tbl-vecs))))]
+      (-> vs-norm
+          (resolve-vec :rows)
+          (resolve-vec :columns)))
     vs-norm))
 
 (defn- resolve-table-columns
@@ -414,11 +423,7 @@
   to detect or track ::unresolved-names."
   [vs-norm]
   (if (::mb.viz/table-columns vs-norm)
-    (letfn [(resolve-table-column-field-ref [[f-type f-str f-md]]
-              (if (names/fully-qualified-field-name? f-str)
-                [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
-                [f-type f-str f-md]))
-            (resolve-field-id [tbl-col]
+    (letfn [(resolve-field-id [tbl-col]
               (update tbl-col ::mb.viz/table-column-field-ref resolve-table-column-field-ref))]
       (update vs-norm ::mb.viz/table-columns (fn [tbl-cols]
                                                (mapv resolve-field-id tbl-cols))))

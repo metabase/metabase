@@ -72,6 +72,8 @@
         (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
         (throw e)))))
 
+(v1-load "./pt-test" {:mode :update})
+
 (mu/defn v2-load
   "SerDes v2 load entry point.
 

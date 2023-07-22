@@ -433,12 +433,13 @@
                                                                 :aggregation [:sum [:field ~'numeric-field-id nil]]
                                                                 :breakout [[:field ~'category-field-id nil]]}}
                                         :visualization_settings
-                                        {:pivot_table.column_split {:columns (keyword (format
+                                        {:pivot_table.column_split {:columns [(keyword (format
+                                                                                        "[\"field\",%d,null]"
+                                                                                        ~'latitude-field-id))]
+                                                                    :rows    [(keyword (format
                                                                                        "[\"field\",%d,null]"
-                                                                                       ~'latitude-field-id))
-                                                                    :rows    (keyword (format
-                                                                                       "[\"field\",%d,null]"
-                                                                                       ~'latitude-field-id))}}}]]
+                                                                                       ~'latitude-field-id))]
+                                                                    :values  [["aggregation" 0]]}}}]]
      (qp.store/with-store ~@body)))
 
 ;; Don't memoize as IDs change in each `with-world` context
