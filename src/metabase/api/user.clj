@@ -9,6 +9,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.ldap :as api.ldap]
    [metabase.api.session :as api.session]
+   [metabase.config :as config]
    [metabase.email.messages :as messages]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -40,9 +41,10 @@
 
 (set! *warn-on-reflection* true)
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
-                                          'metabase-enterprise.advanced-permissions.common
-                                          'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
+(when config/ee-available?
+ (classloader/require 'metabase-enterprise.sandbox.api.util
+                    'metabase-enterprise.advanced-permissions.common
+                    'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."

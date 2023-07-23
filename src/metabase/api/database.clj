@@ -7,6 +7,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -205,7 +206,7 @@
   name and ID of these databases, removing all other fields."
   [dbs]
   (let [filtered-dbs
-        (if-let [f (u/ignore-exceptions
+        (if-let [f (when config/ee-available?
                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
           (f dbs)
@@ -1118,7 +1119,7 @@
                              :visibility_type nil
                              {:order-by [[:display_name :asc]]}))]
      (if include_editable_data_model
-       (if-let [f (u/ignore-exceptions
+       (if-let [f (when config/ee-available?
                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
          (f tables)

@@ -91,7 +91,8 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.config :as config])
   (:import
    (clojure.lang Keyword Symbol)
    (java.io StringWriter)
@@ -412,7 +413,7 @@
   []
   (or api/*is-superuser?*
       (do
-        (u/ignore-exceptions
+        (when config/ee-available?
          (classloader/require 'metabase-enterprise.advanced-permissions.common
                               'metabase.public-settings.premium-features))
         (if-let [current-user-has-application-permissions?

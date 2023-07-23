@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.config :as config]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -12,7 +13,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -49,7 +49,7 @@
   in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE code is
   present. This feature is only enabled if we have a valid Enterprise Edition™ token."
   (let [dlay (delay
-               (u/ignore-exceptions
+               (when config/ee-available?
                  (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
                  (resolve 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions)))]
     (fn [query]
