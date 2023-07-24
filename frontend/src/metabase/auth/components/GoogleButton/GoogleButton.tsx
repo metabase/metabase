@@ -4,6 +4,7 @@ import { getIn } from "icepick";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 import {
@@ -49,15 +50,19 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
   return (
     <GoogleButtonRoot>
       {isCard && clientId ? (
-        <GoogleOAuthProvider clientId={clientId}>
-          <GoogleLogin
-            useOneTap
-            onSuccess={handleLogin}
-            onError={handleError}
-            locale={locale}
-            width="300"
-          />
-        </GoogleOAuthProvider>
+        <ErrorBoundary>
+          <GoogleOAuthProvider clientId={clientId}>
+            <GoogleLogin
+              useOneTap
+              onSuccess={handleLogin}
+              onError={handleError}
+              locale={locale}
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore
+              width={300}
+            />
+          </GoogleOAuthProvider>
+        </ErrorBoundary>
       ) : (
         <TextLink to={Urls.login(redirectUrl)}>
           {t`Sign in with Google`}
