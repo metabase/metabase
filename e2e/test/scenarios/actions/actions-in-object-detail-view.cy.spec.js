@@ -138,9 +138,13 @@ describe("Model actions in object detail view", () => {
         assertSuccessfullUpdateToast();
         assertScoreUpdatedInTable();
 
+        visitObjectDetail(modelId, SECOND_ORDER_ID);
+        objectDetailModal().within(() => {
+          assertActionsDropdownExists();
+        });
         openDeleteObjectModal();
         deleteObjectModal().findByText("Delete forever").click();
-        assertSuccessfullDeleteToast();
+        assertFailedDeleteToast();
       });
     });
   });
@@ -252,16 +256,19 @@ function assertScoreUpdatedInTable() {
 
 function assertSuccessfullUpdateToast() {
   cy.log("it shows a toast informing the update was successful");
-  undoToast().within(() => {
-    cy.findByText("Successfully updated").should("be.visible");
-  });
+  undoToast().should("have.attr", "color", "success");
+  undoToast().findByText("Successfully updated").should("be.visible");
 }
 
-function assertSuccessfullDeleteToast() {
+// function assertSuccessfullDeleteToast() {
+//   cy.log("it shows a toast informing the delete failed");
+//   undoToast().should("have.attr", "color", "success");
+//   undoToast().findByText("Successfully deleted").should("be.visible");
+// }
+
+function assertFailedDeleteToast() {
   cy.log("it shows a toast informing the delete was successful");
-  undoToast().within(() => {
-    cy.findByText("Successfully deleted").should("be.visible");
-  });
+  undoToast().should("have.attr", "color", "error");
 }
 
 function actionForm() {
