@@ -560,26 +560,34 @@
 
 (def ^:private drill-down-progressions
   [;; DateTime drill down
-   {:applies?  #(some-> % :unit #{:year :quarter :month :week :day :hour})
-    :successor #(lib.options/update-options update :unit {:year    :quarter
-                                                          :quarter :month
-                                                          :month   :week
-                                                          :week    :day
-                                                          :day     :hour
-                                                          :hour    :minute})}
+   {:predicates [#(some-> % :unit #{:year :quarter :month :week :day :hour})]
+    :next-stage #(lib.options/update-options update :unit {:year    :quarter
+                                                           :quarter :month
+                                                           :month   :week
+                                                           :week    :day
+                                                           :day     :hour
+                                                           :hour    :minute})}
    #_(map temporal-bucketing-step )
    ;; Country => State => City
    ]
   )
 
-#_(defn- match-progression)
+(defn- match-progression
+  "A progression applies to a query and dimensions if for each function in `:predicates` there exists some column that
+  satisfies it. (The columns may be different for each predicate, there just needs to be some column that passes each.)"
+  [query stage-number columns]
+  (->> drill-down-progressions
+       (filter #((:applies? %) ))
+  )
+
 ;; START HERE: Test the next-breakouts with the comment in d-t-t, figure out an interface for the progressions.
 ;; Probably flattening it into simply a set of [predicate? apply] pairs.
 
 (defn- next-breakouts [query stage-number dimensions]
   (when-let [columns (not-empty (field-columns-by-name query stage-number dimensions))]
     columns
-    #_(when-let [[progression current-step] (match-progression query stage-number columns)]
+    (when-let [progression (match-progression query stage-number columns)]
+      progression
       )
     ))
 
