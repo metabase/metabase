@@ -20,7 +20,7 @@ describe(
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.intercept("PUT", "/api/setting").as("updateSettings")
+      cy.intercept("PUT", "/api/setting").as("updateSettings");
       cy.intercept("PUT", "/api/setting/*").as("updateSetting");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
       cy.intercept("POST", "/api/dataset").as("dataset");
@@ -125,13 +125,15 @@ describe(
       setupLdap();
       cy.signOut();
       cy.visit("/auth/login");
-      cy.findByLabelText("Username or email address").type("user01@example.org");
+      cy.findByLabelText("Username or email address").type(
+        "user01@example.org",
+      );
       cy.findByLabelText("Password").type("123456");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sign in").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(/[a-z ]+, Bar1/i);
-    })
+      cy.button("Sign in").click();
+      cy.findByTestId("main-navbar-root").within(() => {
+        cy.findByText("Home").should("exist");
+      });
+    });
 
     describe("Group Mappings Widget", () => {
       beforeEach(() => {
@@ -156,47 +158,43 @@ describe(
   },
 );
 
-describeEE(
-  "LDAP EE",
-  { tags: "@external" },
-  () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-      setTokenFeatures("all");
+describeEE("LDAP EE", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("should allow user login on EE when LDAP is enabled", () => {
+    setupLdap();
+    cy.signOut();
+    cy.visit("/auth/login");
+    cy.findByLabelText("Username or email address").type("user01@example.org");
+    cy.findByLabelText("Password").type("123456");
+    cy.button("Sign in").click();
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByText("Home").should("exist");
     });
 
-    it("should allow user login on EE when LDAP is enabled", () => {
-      setupLdap();
-      cy.signOut();
-      cy.visit("/auth/login");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByLabelText("Username or email address").type("user01@example.org");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByLabelText("Password").type("123456");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sign in").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(/[a-z ]+, Bar1/i);
+    cy.signOut();
+    cy.signInAsAdmin();
 
-      cy.signOut();
-      cy.signInAsAdmin();
-
-      // Check that attributes are synced
-      cy.visit("/admin/people");
+    // Check that attributes are synced
+    cy.visit("/admin/people");
+    cy.get(".ContentTable").within(() => {
       cy.findByText("Bar1 Bar1")
         .closest("tr")
         .within(() => {
           cy.icon("ellipsis").click();
         });
-      popover().within(() => {
-        cy.findByText("Edit user").click();
-      });
-      cy.get("input[value='uid']").should("exist");
-      cy.get("input[value='user01@example.org']").should("exist");
-    })
-  }
-);
+    });
+    popover().within(() => {
+      cy.findByText("Edit user").click();
+    });
+    cy.get("input[value='uid']").should("exist");
+    cy.get("input[value='user01@example.org']").should("exist");
+  });
+});
 
 const getLdapCard = () => {
   return cy.findByText("LDAP").parent().parent();
