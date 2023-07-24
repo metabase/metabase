@@ -213,30 +213,6 @@ export function ObjectDetailView({
     }
   });
 
-  const viewPrevious = useCallback(() => {
-    if (isModalOpen) {
-      return;
-    }
-
-    viewPreviousObjectDetail();
-  }, [isModalOpen, viewPreviousObjectDetail]);
-
-  const viewNext = useCallback(() => {
-    if (isModalOpen) {
-      return;
-    }
-
-    viewNextObjectDetail();
-  }, [isModalOpen, viewNextObjectDetail]);
-
-  const close = useCallback(() => {
-    if (isModalOpen) {
-      return;
-    }
-
-    closeObjectDetail();
-  }, [isModalOpen, closeObjectDetail]);
-
   useEffect(() => {
     if (hasNotFoundError) {
       return;
@@ -244,12 +220,12 @@ export function ObjectDetailView({
 
     const onKeyDown = (event: KeyboardEvent) => {
       const capturedKeys: Record<string, () => void> = {
-        ArrowUp: viewPrevious,
-        ArrowDown: viewNext,
-        Escape: close,
+        ArrowUp: viewPreviousObjectDetail,
+        ArrowDown: viewNextObjectDetail,
+        Escape: closeObjectDetail,
       };
 
-      if (capturedKeys[event.key]) {
+      if (capturedKeys[event.key] && !isModalOpen) {
         event.preventDefault();
         capturedKeys[event.key]();
       }
@@ -257,7 +233,13 @@ export function ObjectDetailView({
 
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [close, hasNotFoundError, viewPrevious, viewNext]);
+  }, [
+    hasNotFoundError,
+    viewPreviousObjectDetail,
+    viewNextObjectDetail,
+    closeObjectDetail,
+    isModalOpen,
+  ]);
 
   useEffect(() => {
     if (maybeLoading && pkIndex !== undefined) {
