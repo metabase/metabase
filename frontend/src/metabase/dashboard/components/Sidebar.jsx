@@ -1,7 +1,8 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import { SidebarRoot } from "./Sidebar.styled";
+
+const WIDTH = 384;
 
 const propTypes = {
   closeIsDisabled: PropTypes.bool,
@@ -12,7 +13,8 @@ const propTypes = {
 
 function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
   return (
-    <SidebarRoot
+    <aside
+      style={{ width: WIDTH, minWidth: WIDTH }}
       className="flex flex-column border-left bg-white"
       aria-label="subscriptions sidebar"
     >
@@ -43,7 +45,7 @@ function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
           )}
         </div>
       )}
-    </SidebarRoot>
+    </aside>
   );
 }
 

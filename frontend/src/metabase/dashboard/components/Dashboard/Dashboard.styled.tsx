@@ -91,8 +91,6 @@ export const ParametersAndCardsContainer = styled.div<{
   shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
 }>`
   flex: auto;
-  flex-basis: 384px;
-  flex-shrink: 1;
   min-width: 0;
   overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
     shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
