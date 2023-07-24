@@ -141,6 +141,7 @@ export function openQuestionsSidebar() {
 
 export function createNewTab() {
   cy.findByLabelText("Create new tab").click();
+  cy.findByText(`There's nothing here, yet.`).should("be.visible");
 }
 
 export function deleteTab(tabName) {
