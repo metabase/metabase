@@ -367,6 +367,7 @@ export function ObjectDetailView({
 
   const handleDeleteSuccess = () => {
     handleActionSuccess();
+    closeObjectDetail();
   };
 
   if (!data) {
