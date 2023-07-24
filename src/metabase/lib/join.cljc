@@ -198,8 +198,10 @@
    unique-name-fn :- fn?
    col            :- :map]
   (assoc col
-         :lib/source-column-alias  (:name col)
-         :lib/desired-column-alias (unique-name-fn (joined-field-desired-alias (:alias join) (:name col)))))
+         :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) col)
+         :lib/desired-column-alias (unique-name-fn (joined-field-desired-alias
+                                                    (:alias join)
+                                                    ((some-fn :lib/source-column-alias :name) col)))))
 
 (defmethod lib.metadata.calculation/returned-columns-method :mbql/join
   [query
@@ -287,11 +289,11 @@
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([joinable]
-   (join-clause-method joinable))
+   (-> (join-clause-method joinable)
+       (u/assoc-default :fields :all)))
 
   ([joinable conditions]
    (-> (join-clause joinable)
-       (u/assoc-default :fields :all)
        (with-join-conditions conditions))))
 
 (mu/defn with-join-fields :- PartialJoin
