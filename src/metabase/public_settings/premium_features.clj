@@ -373,10 +373,6 @@
   "Should we enable official collections (and more in the future, like workflows, forking, etc.)?"
   :content-management)
 
-(define-premium-feature ^{:added "0.41.0"} enable-question-error-logs?
-  "Should we enable viewing question error logs?"
-  :question-error-logs)
-
 (define-premium-feature ^{:added "0.41.0"} enable-official-collections?
   "Should we enable Official Collections?"
   :official-collections)

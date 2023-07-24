@@ -9,7 +9,6 @@
 
 (deftest properties-token-features-test
   (premium-features-test/with-premium-features #{:dashboard-subscription-filters
-                                                 :question-error-logs
                                                  :disable-password-login
                                                  :audit-app
                                                  :snippet-collections
@@ -45,7 +44,6 @@
                   :email_allow_list               true
                   :email_restrict_recipients      true
                   :embedding                      true
-                  :question_error_logs            true
                   :hosting                        true
                   :official_collections           true
                   :sandboxes                      true
