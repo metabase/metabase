@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru
   (:require
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
@@ -549,6 +550,63 @@
     ;; TODO: Implement this - it's actually a URL in v1 rather than a click handler.
     ))
 
+;;; ---------------------------------------- Zoom in ---------------------------------------------
+(defn- field-columns-by-name [query stage-number dimensions]
+  (let [by-name (m/index-by :name (lib.metadata.calculation/visible-columns query stage-number query))]
+    (for [{:keys [column-name]} dimensions
+          :let [column (get by-name column-name)]
+          :when (and column (not= (:lib/source column) :source/expressions))]
+      column)))
+
+(def ^:private drill-down-progressions
+  [;; DateTime drill down
+   {:applies?  #(some-> % :unit #{:year :quarter :month :week :day :hour})
+    :successor #(lib.options/update-options update :unit {:year    :quarter
+                                                          :quarter :month
+                                                          :month   :week
+                                                          :week    :day
+                                                          :day     :hour
+                                                          :hour    :minute})}
+   #_(map temporal-bucketing-step )
+   ;; Country => State => City
+   ]
+  )
+
+#_(defn- match-progression)
+;; START HERE: Test the next-breakouts with the comment in d-t-t, figure out an interface for the progressions.
+;; Probably flattening it into simply a set of [predicate? apply] pairs.
+
+(defn- next-breakouts [query stage-number dimensions]
+  (when-let [columns (not-empty (field-columns-by-name query stage-number dimensions))]
+    columns
+    #_(when-let [[progression current-step] (match-progression query stage-number columns)]
+      )
+    ))
+
+(mu/defn ^:private zoom-in-drill :- [:maybe [:ref ::lib.schema.drill-thru/drill-thru]]
+  "Zooms in on some window, showing it in finer detail.
+
+  For example: The month of a year, days or weeks of a quarter, smaller lat/long regions, etc.
+
+  This is different from the `:drill-thru/zoom` type, which is for showing the details of a single object."
+  ;; TODO: This naming is confusing. Fix it?
+  [query                             :- ::lib.schema/query
+   stage-number                      :- :int
+   {:keys [column dimensions value]} :- ::lib.schema.drill-thru/context]
+  (when (and (structured-query? query stage-number)
+             column
+             (some? value)
+             (not-empty dimensions))
+    {:lib/type   ::drill-thru
+     :type       :drill-thru/underlying-records
+     ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?
+     ;; Note that some languages have different plurals for exactly 2, or for 1, 2-5, and 6+.
+     :row-count  (if (number? value) value 2)
+     :table-name (some->> (lib.util/source-table-id query)
+                          (lib.metadata/table query)
+                          (lib.metadata.calculation/display-name query stage-number))})
+  )
+
 ;;; --------------------------------------- Top Level --------------------------------------------
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
@@ -559,6 +617,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    context      :- ::lib.schema.drill-thru/context]
+  #?(:cljs (js/console.log query context))
   (keep #(% query stage-number context)
         ;; TODO: Missing drills: automatic insights, format.
         [distribution-drill

@@ -119,11 +119,11 @@
   Recurses into nested sequences and maps."
   [x]
   (cond
-    (map? x)     (-> x
-                     (update-keys u/->camelCaseEn)
-                     (update-vals display-info-js))
-    (seqable? x) (map display-info-js x)
-    :else        x))
+    (map? x)        (-> x
+                        (update-keys u/->camelCaseEn)
+                        (update-vals display-info-js))
+    (sequential? x) (map display-info-js x)
+    :else           x))
 
 (defn ^:export display-info
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
