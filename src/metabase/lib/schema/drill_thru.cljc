@@ -78,6 +78,12 @@
      [:lib/type     [:= :metabase.lib.drill-thru/drill-thru]]
      [:column       lib.metadata/ColumnMetadata]
      [:initial-op   [:maybe ::lib.schema.filter/operator]]]]
+   [:drill-thru/underlying-records
+    [:map
+     [:type         keyword?]
+     [:lib/type     [:= :metabase.lib.drill-thru/drill-thru]]
+     [:row-count    number?]
+     [:table-name   [:maybe string?]]]]
    [:drill-thru/automatic-insights
     [:map
      [:type         keyword?]
