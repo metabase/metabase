@@ -4,9 +4,10 @@ import type { ColumnMetadata, ExpressionClause, Query } from "./types";
 export function expression(
   query: Query,
   stageIndex: number,
+  expressionName: string,
   clause: ExpressionClause,
 ): Query {
-  return ML.expression(query, stageIndex, clause);
+  return ML.expression(query, stageIndex, expressionName, clause);
 }
 
 export function expressions(
