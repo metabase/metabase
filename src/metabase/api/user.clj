@@ -150,9 +150,7 @@
     (some? group_ids)                                  (sql.helpers/where
                                                         [:in :permissions_group_membership.group_id group_ids])
     (some? mw.offset-paging/*limit*)                   (sql.helpers/limit mw.offset-paging/*limit*)
-    (some? mw.offset-paging/*offset*)                  (sql.helpers/offset mw.offset-paging/*offset*)
-    true                                               (sql.helpers/order-by
-                                                        [:%lower.last_name :asc] [:%lower.first_name :asc])))
+    (some? mw.offset-paging/*offset*)                  (sql.helpers/offset mw.offset-paging/*offset*)))
 
 (defn- filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
@@ -187,7 +185,9 @@
     {:data   (cond-> (t2/select
                       (vec (cons User (user-visible-columns)))
                       (cond-> clauses
-                        (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])))
+                        (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
+                        true             (sql.helpers/order-by
+                                          [:%lower.last_name :asc] [:%lower.first_name :asc])))
 
                ;; For admins also include the IDs of Users' Personal Collections
                api/*is-superuser?*
@@ -223,7 +223,8 @@
   []
   (cond
    (or (= :all (user-visibility)) api/*is-superuser?*)
-   (let [clauses (user-clauses nil nil nil nil)]
+   (let [clauses (-> (user-clauses nil nil nil nil)
+                     (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
     {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
      :limit  mw.offset-paging/*limit*
@@ -232,7 +233,8 @@
    (and (= :group (user-visibility)) (not (premium-features/sandboxed-or-impersonated-user?)))
    (let [user-ids (same-groups-user-ids api/*current-user-id*)
          clauses  (cond-> (user-clauses nil nil nil nil)
-                    (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids]))]
+                    (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
+                    true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
      {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
       :total  (t2/count :model/User (filter-clauses-without-paging clauses))
       :limit  mw.offset-paging/*limit*
