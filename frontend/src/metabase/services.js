@@ -441,6 +441,8 @@ export const SessionApi = {
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
   password_reset_token_valid: GET("/api/session/password_reset_token_valid"),
+  unsubscribe: POST("/api/session/pulse/unsubscribe"),
+  undo_unsubscribe: POST("/api/session/pulse/unsubscribe/undo"),
 };
 
 export const SettingsApi = {
