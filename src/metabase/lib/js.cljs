@@ -17,6 +17,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -426,7 +427,9 @@
                            (assoc :include-expressions? (.-include_expressions? js-options))
                            (opts "include_implicitly_joinable")
                            (assoc :include-implicitly-joinable? (.-include_implicitly_joinable js-options)))))]
-    (to-array (lib.metadata.calculation/visible-columns a-query stage-number a-query options))))
+    (to-array (lib.metadata.calculation/visible-columns a-query stage-number
+                                                        (lib.util/query-stage a-query stage-number)
+                                                        options))))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
@@ -434,7 +437,9 @@
   (-> column
       lib.core/ref
       convert/->legacy-MBQL
-      (update 2 update-vals u/qualified-name)
+      (update 2 update-vals #(if (qualified-keyword? %)
+                               (u/qualified-name %)
+                               %))
       clj->js))
 
 (defn ^:export join-strategy
