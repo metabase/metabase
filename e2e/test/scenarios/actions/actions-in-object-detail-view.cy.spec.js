@@ -136,9 +136,7 @@ describe("Model actions in object detail view", () => {
         objectDetailModal().icon("close").click();
 
         assertSuccessfullUpdateToast();
-
-        cy.log("updated quantity should be present in the table");
-        cy.findByText(UPDATED_SCORE_FORMATTED).should("exist");
+        assertScoreUpdatedInTable();
       });
     });
   });
@@ -228,6 +226,13 @@ function assertDateInputValue(labelText, value) {
 
   cy.log(`input for "${labelText}" should have value "${expectedValue}"`);
   cy.findByLabelText(labelText).should("have.value", expectedValue);
+}
+
+function assertScoreUpdatedInTable() {
+  cy.log("updated quantity should be present in the table");
+  cy.findByTestId("TableInteractive-root")
+    .findByText(UPDATED_SCORE_FORMATTED)
+    .should("exist");
 }
 
 function assertSuccessfullUpdateToast() {
