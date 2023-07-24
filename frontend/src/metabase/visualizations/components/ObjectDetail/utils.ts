@@ -2,6 +2,10 @@ import { t } from "ttag";
 
 import { singularize, formatValue } from "metabase/lib/formatting";
 
+import {
+  isImplicitDeleteAction,
+  isImplicitUpdateAction,
+} from "metabase/actions/utils";
 import type {
   DatasetColumn,
   DatasetData,
@@ -168,11 +172,7 @@ export const getActionItems = ({
 };
 
 export const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
-  action.type === "implicit" &&
-  action.kind === "row/delete" &&
-  !action.archived;
+  isImplicitDeleteAction(action) && !action.archived;
 
 export const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
-  action.type === "implicit" &&
-  action.kind === "row/update" &&
-  !action.archived;
+  isImplicitUpdateAction(action) && !action.archived;
