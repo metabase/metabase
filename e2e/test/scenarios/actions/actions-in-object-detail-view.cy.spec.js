@@ -137,6 +137,10 @@ describe("Model actions in object detail view", () => {
 
         assertSuccessfullUpdateToast();
         assertScoreUpdatedInTable();
+
+        openDeleteObjectModal();
+        deleteObjectModal().findByText("Delete forever").click();
+        assertSuccessfullDeleteToast();
       });
     });
   });
@@ -187,6 +191,11 @@ function visitModelDetail(modelId) {
 function openUpdateObjectModal() {
   cy.findByTestId("actions-menu").click();
   popover().findByText("Update").click();
+}
+
+function openDeleteObjectModal() {
+  cy.findByTestId("actions-menu").click();
+  popover().findByText("Delete").click();
 }
 
 function assertActionsDropdownExists() {
@@ -242,9 +251,16 @@ function assertScoreUpdatedInTable() {
 }
 
 function assertSuccessfullUpdateToast() {
-  cy.log("it shows a toast informing the update was successfull");
+  cy.log("it shows a toast informing the update was successful");
   undoToast().within(() => {
     cy.findByText("Successfully updated").should("be.visible");
+  });
+}
+
+function assertSuccessfullDeleteToast() {
+  cy.log("it shows a toast informing the delete was successful");
+  undoToast().within(() => {
+    cy.findByText("Successfully deleted").should("be.visible");
   });
 }
 
@@ -258,4 +274,8 @@ function objectDetailModal() {
 
 function actionExecuteModal() {
   return cy.findByTestId("action-execute-modal");
+}
+
+function deleteObjectModal() {
+  return cy.findByTestId("delete-object-modal");
 }
