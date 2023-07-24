@@ -51,7 +51,6 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
-   [metabase.test.util :as tu]
    [metabase.upload :as upload]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
@@ -2757,12 +2756,12 @@
                                        :slug   "ID"}]}]
       (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
         (testing "without search query"
-          (tu/let-url [url (param-values-url card param-key)]
+          (mt/let-url [url (param-values-url card param-key)]
             (is (partial= {:has_more_values true
                            :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
                           (mt/user-http-request :rasta :get 200 url)))))
         (testing "with search query"
-          (tu/let-url [url (param-values-url card param-key "pan")]
+          (mt/let-url [url (param-values-url card param-key "pan")]
             (is (partial= {:has_more_values true
                            :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
                           (mt/user-http-request :rasta :get 200 url)))))))))
