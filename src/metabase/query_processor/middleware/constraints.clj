@@ -10,20 +10,22 @@
   :visibility     :internal
   :type           :integer
   :default        2000
-  :database-local :allowed)
+  :database-local :allowed
+  :getter         (fn [] (setting/get-value-of-type :integer :max-results-bare-rows)))
 
 (setting/defsetting max-results
   (deferred-tru "General maximum number of rows to return from an API query.")
   :visibility     :internal
   :type           :integer
   :default        10000
-  :database-local :allowed)
+  :database-local :allowed
+  :getter         (fn [] (setting/get-value-of-type :integer :max-results)))
 
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
   []
-  {:max-results           max-results
-   :max-results-bare-rows max-results-bare-rows})
+  {:max-results           (setting/get :max-results)
+   :max-results-bare-rows (setting/get :max-results-bare-rows)})
 
 (defn- ensure-valid-constraints
   "`:max-results-bare-rows` must be less than or equal to `:max-results`, so if someone sets `:max-results` but not
