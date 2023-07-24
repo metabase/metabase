@@ -2,11 +2,16 @@ import { FunctionComponent } from "react";
 import { t } from "ttag";
 
 import { WritebackActionId } from "metabase-types/api";
-import { executeAction } from "metabase/actions/actions";
+import {
+  getActionErrorMessage,
+  getActionExecutionMessage,
+} from "metabase/actions/utils";
 import { useActionQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
+import { ActionsApi } from "metabase/services";
 
 import { ObjectId } from "./types";
 
@@ -36,9 +41,21 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
     }
 
     const parameters = { id: objectId };
-    dispatch(executeAction({ action, parameters }));
-    onClose();
-    onSuccess();
+
+    try {
+      const result = await ActionsApi.execute({
+        id: action.id,
+        parameters,
+      });
+
+      const message = getActionExecutionMessage(action, result);
+      dispatch(addUndo({ message, toastColor: "success" }));
+      onClose();
+      onSuccess();
+    } catch (error) {
+      const message = getActionErrorMessage(error);
+      dispatch(addUndo({ icon: "warning", toastColor: "error", message }));
+    }
   };
 
   return (
