@@ -1095,7 +1095,7 @@ saved later when it is ready."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-      (api.field/field-id->values field-id query))))
+      (api.field/search-values-from-field-id field-id query))))
 
 (mu/defn param-values
   "Fetch values for a parameter that contain `query`. If `query` is nil or not provided, return all values.

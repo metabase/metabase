@@ -256,8 +256,8 @@
      :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
-(defn field-id->values
-  "Fetch values for field id."
+(defn search-values-from-field-id
+  "Search for values of a field given by `field-id` that contain `query`."
   [field-id query]
   (let [field        (api/read-check (t2/select-one Field :id field-id))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
