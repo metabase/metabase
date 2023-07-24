@@ -424,6 +424,28 @@
                  :alias      "New Alias"}
                 join'))))))
 
+(deftest ^:parallel with-join-alias-update-condition-rhs-set-alias-for-first-time-test
+  (testing "with-join-alias should set the alias of the RHS column(s) when setting the alias for the first time"
+    (let [query  lib.tu/query-with-join
+          [join] (lib/joins query)
+          join   (-> join
+                     (dissoc :alias)
+                     (update :conditions (fn [conditions]
+                                           (mapv (fn [[operator opts lhs rhs :as _condition]]
+                                                   [operator opts lhs (lib/with-join-alias rhs nil)])
+                                                 conditions))))]
+      (is (=? {:conditions [[:= {}
+                             [:field {} (meta/id :venues :category-id)]
+                             [:field {:join-alias (symbol "nil #_\"key is not present.\"")} (meta/id :categories :id)]]]
+               :alias      (symbol "nil #_\"key is not present.\"")}
+              join))
+      (let [join' (lib/with-join-alias join "New Alias")]
+        (is (=? {:conditions [[:= {}
+                               [:field {} (meta/id :venues :category-id)]
+                               [:field {:join-alias "New Alias"} (meta/id :categories :id)]]]
+                 :alias      "New Alias"}
+                join'))))))
+
 (deftest ^:parallel with-join-conditions-empty-test
   (let [query  lib.tu/query-with-join
         [join] (lib/joins query)]
