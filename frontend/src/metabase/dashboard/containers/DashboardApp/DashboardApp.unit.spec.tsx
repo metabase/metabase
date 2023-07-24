@@ -137,7 +137,7 @@ describe("DashboardApp", function () {
       expect(screen.getByText(/add a saved question/i)).toBeInTheDocument();
     });
 
-    it("should should show an empty state without a prompt to add a question if the user doesn't have write access", async () => {
+    it("should should show an empty state without the 'add a question' prompt if the user lacks write access", async () => {
       await setup({ dashboard: { can_write: false } });
 
       expect(

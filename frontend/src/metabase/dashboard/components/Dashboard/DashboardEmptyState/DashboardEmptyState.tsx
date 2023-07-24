@@ -54,13 +54,13 @@ export function DashboardEmptyState({
   );
 }
 
-interface DashboardEmptyStateWithoutAddPrompt {
+interface DashboardEmptyStateWithoutAddPromptProps {
   isNightMode: boolean;
 }
 
 export function DashboardEmptyStateWithoutAddPrompt({
   isNightMode,
-}: DashboardEmptyStateWithoutAddPrompt) {
+}: DashboardEmptyStateWithoutAddPromptProps) {
   return (
     <Container isNightMode={isNightMode}>
       <EmptyState title={t`There's nothing here, yet.`} />
