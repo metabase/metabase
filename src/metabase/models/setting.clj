@@ -81,6 +81,7 @@
    [environ.core :as env]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
@@ -91,8 +92,7 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan2.core :as t2]
-   [metabase.config :as config])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang Keyword Symbol)
    (java.io StringWriter)
