@@ -48,7 +48,7 @@ describe("Model actions in object detail view", () => {
     cy.get("@modelId").then(modelId => {
       asNormalUser(() => {
         visitModelDetail(modelId);
-        assertActionsTabNotExists(modelId);
+        assertActionsTabNotExists();
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
@@ -58,7 +58,7 @@ describe("Model actions in object detail view", () => {
 
       asAdmin(() => {
         visitModelDetail(modelId);
-        assertActionsTabNotExists(modelId);
+        assertActionsTabNotExists();
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
@@ -68,7 +68,7 @@ describe("Model actions in object detail view", () => {
         enableDatabaseActions();
 
         visitModelDetail(modelId);
-        assertActionsTabExists(modelId);
+        assertActionsTabExists();
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
@@ -78,7 +78,7 @@ describe("Model actions in object detail view", () => {
 
       asNormalUser(() => {
         visitModelDetail(modelId);
-        assertActionsTabExists(modelId);
+        assertActionsTabExists();
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
@@ -208,12 +208,12 @@ function assertActionsDropdownNotExists() {
   cy.findByTestId("actions-menu").should("not.exist");
 }
 
-function assertActionsTabExists(modelId) {
+function assertActionsTabExists() {
   cy.log("actions tab should be shown in model detail page");
   cy.findByText("Actions").should("exist");
 }
 
-function assertActionsTabNotExists(modelId) {
+function assertActionsTabNotExists() {
   cy.log("actions tab should not be shown in model detail page");
   cy.findByText("Actions").should("not.exist");
 }
