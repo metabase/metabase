@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import Actions from "metabase/entities/actions";
@@ -39,20 +38,17 @@ const ActionExecuteModal = ({
   fetchInitialValues,
   shouldPrefetch,
   onSubmit,
-  onClose = _.noop,
-  onSuccess = _.noop,
+  onClose,
+  onSuccess,
 }: ActionExecuteModalProps) => {
-  const handleSubmit = useCallback(
-    (parameters: ParametersForActionExecution) => {
-      return onSubmit({ action, parameters });
-    },
-    [action, onSubmit],
-  );
+  const handleSubmit = (parameters: ParametersForActionExecution) => {
+    return onSubmit({ action, parameters });
+  };
 
-  const handleSubmitSuccess = useCallback(() => {
-    onClose();
-    onSuccess();
-  }, [onClose, onSuccess]);
+  const handleSubmitSuccess = () => {
+    onClose?.();
+    onSuccess?.();
+  };
 
   return (
     <ModalContent

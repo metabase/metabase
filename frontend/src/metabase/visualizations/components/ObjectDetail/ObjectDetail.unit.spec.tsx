@@ -10,6 +10,7 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders } from "__support__/ui";
+import { getNextId } from "__support__/utils";
 import {
   createMockCard,
   createMockDatabase,
@@ -34,11 +35,6 @@ import {
   ObjectDetailView,
 } from "./ObjectDetail";
 import type { ObjectDetailProps } from "./types";
-
-const getNextId = (() => {
-  let id = 0;
-  return () => ++id;
-})();
 
 const MOCK_CARD = createMockCard({
   name: "Product",
