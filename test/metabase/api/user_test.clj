@@ -117,12 +117,15 @@
 
         (testing "not affected by the visibility setting"
           (doseq [visibility-value [:all :group :none]]
-            (is (= :all (api.user/user-visibility)))
             (mt/with-temporary-setting-values [user-visibility visibility-value]
-              (is (= [crowberto lucky rasta]
-                     (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
-                          (filter mt/test-user?)
-                          (map :email)))))))))))
+              (testing "`user-visibility` setting returns the default value"
+                (is (= :all (api.user/user-visibility))))
+
+              (testing "return all user by default"
+                (is (= [crowberto lucky rasta]
+                       (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
+                            (filter mt/test-user?)
+                            (map :email))))))))))))
 
 (deftest user-recipients-list-ee-test
   (premium-features-set/with-premium-features #{:email-restrict-recipients}

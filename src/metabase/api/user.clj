@@ -154,8 +154,8 @@
     true                                               (sql.helpers/order-by
                                                         [:%lower.last_name :asc] [:%lower.first_name :asc])))
 
-(defn- count-clauses
-  "Given a clause, return the clause used to count."
+(defn- filter-clauses-without-paging
+  "Given a where clause, return a clause that can be used to count."
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
@@ -196,7 +196,7 @@
                (or api/*is-superuser?*
                    api/*is-group-manager?*)
                (t2/hydrate :group_ids))
-     :total  (t2/count User (count-clauses clauses))
+     :total  (t2/count User (filter-clauses-without-paging clauses))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
@@ -225,7 +225,7 @@
    (or (= :all (user-visibility)) api/*is-superuser?*)
    (let [clauses (user-clauses nil nil nil nil)]
     {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
-     :total  (t2/count :model/User (count-clauses clauses))
+     :total  (t2/count :model/User (filter-clauses-without-paging clauses))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*})
 
@@ -234,7 +234,7 @@
          clauses  (cond-> (user-clauses nil nil nil nil)
                     (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids]))]
      {:data   (t2/select (vec (cons User (user-visible-columns))) clauses)
-      :total  (t2/count :model/User (count-clauses clauses))
+      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
       :limit  mw.offset-paging/*limit*
       :offset mw.offset-paging/*offset*})
 
