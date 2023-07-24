@@ -364,10 +364,10 @@
         query         (when (pos-int? (count model-queries))
                         {:select [:*]
                          :from   [[{:union-all model-queries} :dummy_alias]]})]
-    (into #{} (some->> query
-                       mdb.query/query
-                       (map :model)
-                       set))))
+    (set (some->> query
+                  mdb.query/query
+                  (map :model)
+                  set))))
 
 (mu/defn ^:private full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
