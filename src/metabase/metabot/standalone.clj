@@ -5,9 +5,7 @@
             [clojure.string :as str]
             [malli.core :as m]
             [metabase.metabot.settings :as metabot-settings]
-            [metabase.models :refer [Card]]
-            [metabase.util.log :as log]
-            [toucan2.core :as t2]))
+            [metabase.util.log :as log]))
 
 (defn model->context
   "Convert a model to a 'context', the representation used to tell the LLM
@@ -208,6 +206,10 @@
      models prompt top-n)))
 
 (comment
+  ;;
+  (apply require
+         '[[metabase.models :refer [Card]]
+           [toucan2.core :as t2]])
   (def base-url "http://ec2-35-89-53-232.us-west-2.compute.amazonaws.com:5000")
 
   ;; Basic API functions:
