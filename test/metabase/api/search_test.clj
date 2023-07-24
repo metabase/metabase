@@ -6,7 +6,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.common :as api]
    [metabase.api.search :as api.search]
-   [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
