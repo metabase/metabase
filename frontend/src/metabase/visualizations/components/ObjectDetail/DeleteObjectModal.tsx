@@ -9,10 +9,12 @@ import {
 import { useActionQuery } from "metabase/common/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
+import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { ActionsApi } from "metabase/services";
 
+import { ActionQueryError } from "./DeleteObjectModal.styled";
 import { ObjectId } from "./types";
 
 interface Props {
@@ -30,7 +32,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
 }) => {
   const dispatch = useDispatch();
 
-  const { data: action } = useActionQuery({
+  const { data: action, error } = useActionQuery({
     enabled: typeof actionId === "number",
     id: actionId,
   });
@@ -40,12 +42,12 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       return;
     }
 
-    const parameters = { id: objectId };
-
     try {
       const result = await ActionsApi.execute({
         id: action.id,
-        parameters,
+        parameters: {
+          id: objectId,
+        },
       });
 
       const message = getActionExecutionMessage(action, result);
@@ -73,6 +75,12 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       onClose={onClose}
     >
       {t`This will permanently delete the row. There’s no undoing this, so please be sure.`}
+
+      {error && (
+        <ActionQueryError>
+          {getResponseErrorMessage(error) || t`An error occurred`}
+        </ActionQueryError>
+      )}
     </ModalContent>
   );
 };
