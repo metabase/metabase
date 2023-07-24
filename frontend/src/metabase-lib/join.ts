@@ -169,7 +169,7 @@ export function joinableColumns(
 export function joinLHSDisplayName(
   query: Query,
   stageIndex: number,
-  joinOrJoinable: JoinOrJoinable,
+  joinOrJoinable?: JoinOrJoinable,
 ): string {
   return ML.join_lhs_display_name(query, stageIndex, joinOrJoinable);
 }

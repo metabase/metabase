@@ -714,6 +714,7 @@
           [first-join? join-or-joinable] (list*
                                           [(zero? num-existing-joins) (meta/table-metadata :venues)]
                                           [(zero? num-existing-joins) meta/saved-question-CardMetadata]
+                                          [(zero? num-existing-joins) nil]
                                           (when-let [[first-join & more] (not-empty (lib/joins query))]
                                             (cons [true first-join]
                                                   (for [join more]

@@ -413,27 +413,31 @@
     (run! generator taken-names)
     (generator base-name)))
 
-(mu/defn ^:private add-default-alias :- ::lib.schema.join/join
+(mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one."
   [query        :- ::lib.schema/query
    stage-number :- :int
    a-join       :- JoinWithOptionalAlias]
-  (let [stage       (lib.util/query-stage query stage-number)
-        home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
-        cond-fields (mbql.u.match/match (:conditions a-join) :field)
-        home-col    (select-home-column home-cols cond-fields)
-        join-alias  (-> (calculate-join-alias query a-join home-col)
-                        (generate-unique-name (map :alias (:joins stage))))
-        home-refs   (mapv lib.ref/ref home-cols)
-        join-refs   (mapv lib.ref/ref
-                          (lib.metadata.calculation/returned-columns
-                           (lib.query/query-with-stages query (:stages a-join))))]
-    (-> a-join
-        (update :conditions
-                (fn [conditions]
-                  (mapv #(add-alias-to-condition query % join-alias home-refs join-refs)
-                        conditions)))
-        (with-join-alias join-alias))))
+  (if (contains? a-join :alias)
+    ;; if the join clause comes with an alias, keep it and assume that the
+    ;; condition fields have the right join-aliases too
+    a-join
+    (let [stage       (lib.util/query-stage query stage-number)
+          home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
+          cond-fields (mbql.u.match/match (:conditions a-join) :field)
+          home-col    (select-home-column home-cols cond-fields)
+          join-alias  (-> (calculate-join-alias query a-join home-col)
+                          (generate-unique-name (keep :alias (:joins stage))))
+          home-refs   (mapv lib.ref/ref home-cols)
+          join-refs   (mapv lib.ref/ref
+                            (lib.metadata.calculation/returned-columns
+                              (lib.query/query-with-stages query (:stages a-join))))]
+      (-> a-join
+          (update :conditions
+                  (fn [conditions]
+                    (mapv #(add-alias-to-condition query % join-alias home-refs join-refs)
+                          conditions)))
+          (with-join-alias join-alias)))))
 
 (mu/defn join :- ::lib.schema/query
   "Add a join clause to a `query`."
@@ -443,11 +447,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     a-join       :- PartialJoin]
-   (let [a-join (if (contains? a-join :alias)
-                  ;; if the join clause comes with an alias, keep it and assume that the
-                  ;; condition fields have the right join-aliases too
-                  a-join
-                  (add-default-alias query stage-number a-join))]
+   (let [a-join (add-default-alias query stage-number a-join)]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) a-join))))))
 
@@ -793,7 +793,7 @@
 
   ([query             :- ::lib.schema/query
     stage-number      :- :int
-    join-or-joinable  :- JoinOrJoinable]
+    join-or-joinable  :- [:maybe JoinOrJoinable]]
    (if (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
             (first-join? query stage-number join-or-joinable)           ; first join?
             (lib.util/source-table-id query))                           ; query ultimately uses source Table?
