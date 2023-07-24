@@ -7,6 +7,7 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   enableTracking,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
@@ -160,6 +161,51 @@ describeWithSnowplow(
     });
   },
 );
+
+describe("permissions", () => {
+  it("should not snow you upload buttons if you are a sandboxed user", () => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+
+    setTokenFeatures("all");
+    enableUploads("postgres");
+
+    //Deny access for all users to wriable DB
+    cy.updatePermissionsGraph({
+      1: {
+        [WRITABLE_DB_ID]: {
+          data: {
+            schemas: "block",
+          },
+        },
+      },
+    });
+
+    cy.request("GET", `/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+      ({ body: tables }) => {
+        cy.request("GET", `/api/database/${WRITABLE_DB_ID}/fields`).then(
+          ({ body: fields }) => {
+            // Sandbox a table so that the sandboxed user will have read access to a table
+            cy.sandboxTable({
+              table_id: tables[0].id,
+              attribute_remappings: {
+                attr_uid: ["dimension", ["field", fields[0].id, null]],
+              },
+            });
+          },
+        );
+      },
+    );
+
+    cy.signInAsSandboxedUser();
+    cy.visit("/collection/root");
+    // No upload icon should appear for the sandboxed user
+    cy.findByTestId("collection-menu").within(() => {
+      cy.get(".Icon-calendar").should("exist");
+      cy.findByLabelText("Upload data").should("not.exist");
+    });
+  });
+});
 
 function uploadFile(testFile, valid = true) {
   cy.get("@collectionId").then(collectionId =>
