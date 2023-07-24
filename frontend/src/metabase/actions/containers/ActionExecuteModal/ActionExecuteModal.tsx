@@ -38,16 +38,16 @@ const ActionExecuteModal = ({
   fetchInitialValues,
   shouldPrefetch,
   onSubmit,
-  onClose = _.noop,
-  onSuccess = _.noop,
+  onClose,
+  onSuccess,
 }: ActionExecuteModalProps) => {
   const handleSubmit = (parameters: ParametersForActionExecution) => {
     return onSubmit({ action, parameters });
   };
 
   const handleSubmitSuccess = () => {
-    onClose();
-    onSuccess();
+    onClose?.();
+    onSuccess?.();
   };
 
   return (
