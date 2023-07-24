@@ -47,7 +47,7 @@ describe("Model actions in object detail view", () => {
   it("scenario", () => {
     cy.get("@modelId").then(modelId => {
       asNormalUser(() => {
-        cy.visit(`/model/${modelId}/detail`);
+        visitModelDetail(modelId);
         assertActionsTabNotExists(modelId);
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
@@ -57,7 +57,7 @@ describe("Model actions in object detail view", () => {
       });
 
       asAdmin(() => {
-        cy.visit(`/model/${modelId}/detail`);
+        visitModelDetail(modelId);
         assertActionsTabNotExists(modelId);
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
@@ -67,7 +67,7 @@ describe("Model actions in object detail view", () => {
 
         enableDatabaseActions();
 
-        cy.visit(`/model/${modelId}/detail`);
+        visitModelDetail(modelId);
         assertActionsTabExists(modelId);
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
@@ -77,7 +77,7 @@ describe("Model actions in object detail view", () => {
       });
 
       asNormalUser(() => {
-        cy.visit(`/model/${modelId}/detail`);
+        visitModelDetail(modelId);
         assertActionsTabExists(modelId);
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
@@ -176,6 +176,12 @@ function createBasicModelActions(modelId) {
 function visitObjectDetail(modelId, objectId) {
   visitModel(modelId);
   cy.findAllByText(objectId).first().click();
+}
+
+function visitModelDetail(modelId) {
+  visitModel(modelId);
+  cy.icon("info").click();
+  cy.findByTestId("sidebar-right").findByText("Model details").click();
 }
 
 function openUpdateObjectModal() {
