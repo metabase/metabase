@@ -326,6 +326,7 @@
                     {:column-name "count" :value 87}]
        :dimensions [{:column-name "STATE" :value "WI"}]})
     (#'metabase.lib.drill-thru/next-breakouts query -1 [{:column-name "STATE" :value "WI"}])
+
     #_(->> (lib/available-drill-thrus query -1 {:column (metabase.lib.metadata/field metadata-provider subtotal)
                                               :value nil
                                               #_#_:value  "2018-05-15T08:04:04.58Z"})
