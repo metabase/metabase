@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { getFormTitle } from "metabase/actions/utils";
+import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 
 import type {
   ActionDashboardCard,
@@ -104,8 +104,7 @@ function ActionVizForm({
     });
   }, [dashboard.id, dashcard.id, initialValues]);
 
-  const shouldPrefetch =
-    action.type === "implicit" && action.kind === "row/update";
+  const shouldPrefetch = isImplicitUpdateAction(action);
 
   if (shouldDisplayButton) {
     return (

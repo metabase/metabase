@@ -334,3 +334,9 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
 export const isActionPublic = (action: Partial<WritebackAction>) => {
   return action.public_uuid != null;
 };
+
+export const isImplicitDeleteAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" && action.kind === "row/delete";
+
+export const isImplicitUpdateAction = (action: WritebackAction): boolean =>
+  action.type === "implicit" && action.kind === "row/update";
