@@ -221,6 +221,7 @@
   doall-recursive
   file->bytes
   is-uuid-string?
+  let-url
   obj->json->obj
   postwalk-pred
   round-all-decimals
