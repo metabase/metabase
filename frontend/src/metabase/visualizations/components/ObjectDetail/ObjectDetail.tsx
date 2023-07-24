@@ -57,6 +57,7 @@ import type {
   OnVisualizationClickType,
 } from "./types";
 
+import { DeleteObjectModal } from "./DeleteObjectModal";
 import {
   getActionItems,
   getDisplayId,
@@ -160,10 +161,19 @@ export function ObjectDetailView({
   const prevData = usePrevious(passedData);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
   const [data, setData] = useState<DatasetData>(passedData);
-  const [executeActionId, setExecuteActionId] = useState<WritebackActionId>();
+  const [actionId, setActionId] = useState<WritebackActionId>();
+  const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
+
+  const isActionExecuteModalOpen = typeof actionId === "number";
+  const isDeleteModalOpen = typeof deleteActionId === "number";
+  const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
 
   const handleExecuteModalClose = () => {
-    setExecuteActionId(undefined);
+    setActionId(undefined);
+  };
+
+  const handleDeleteModalClose = () => {
+    setDeleteActionId(undefined);
   };
 
   const pkIndex = useMemo(
@@ -215,12 +225,9 @@ export function ObjectDetailView({
         Escape: closeObjectDetail,
       };
 
-      if (capturedKeys[event.key]) {
+      if (capturedKeys[event.key] && !isModalOpen) {
         event.preventDefault();
         capturedKeys[event.key]();
-      }
-      if (event.key === "Escape") {
-        closeObjectDetail();
       }
     };
 
@@ -231,6 +238,7 @@ export function ObjectDetailView({
     viewPreviousObjectDetail,
     viewNextObjectDetail,
     closeObjectDetail,
+    isModalOpen,
   ]);
 
   useEffect(() => {
@@ -315,21 +323,21 @@ export function ObjectDetailView({
     ? getActionItems({
         actions,
         databases,
-        onDelete: () => "TODO: metabase#32323",
-        onUpdate: action => setExecuteActionId(action.id),
+        onDelete: action => setDeleteActionId(action.id),
+        onUpdate: action => setActionId(action.id),
       })
     : [];
 
   const fetchInitialValues = useCallback(async () => {
-    if (typeof executeActionId !== "number") {
+    if (typeof actionId !== "number") {
       return {};
     }
 
     return ActionsApi.prefetchValues({
-      id: executeActionId,
+      id: actionId,
       parameters: JSON.stringify({ id: String(zoomedRowID) }),
     });
-  }, [executeActionId, zoomedRowID]);
+  }, [actionId, zoomedRowID]);
 
   const initialValues = useMemo(() => ({ id: zoomedRowID }), [zoomedRowID]);
 
@@ -337,6 +345,11 @@ export function ObjectDetailView({
 
   const handleActionSuccess = () => {
     dispatch(runQuestionQuery());
+  };
+
+  const handleDeleteSuccess = () => {
+    handleActionSuccess();
+    closeObjectDetail();
   };
 
   if (!data) {
@@ -410,16 +423,25 @@ export function ObjectDetailView({
       </ObjectDetailContainer>
 
       <Modal
-        isOpen={typeof executeActionId === "number"}
+        isOpen={isActionExecuteModalOpen}
         onClose={handleExecuteModalClose}
       >
         <ActionExecuteModal
-          actionId={executeActionId}
+          actionId={actionId}
           initialValues={initialValues}
           fetchInitialValues={fetchInitialValues}
           shouldPrefetch
           onClose={handleExecuteModalClose}
           onSuccess={handleActionSuccess}
+        />
+      </Modal>
+
+      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
+        <DeleteObjectModal
+          actionId={deleteActionId}
+          objectId={zoomedRowID}
+          onClose={handleDeleteModalClose}
+          onSuccess={handleDeleteSuccess}
         />
       </Modal>
     </>
