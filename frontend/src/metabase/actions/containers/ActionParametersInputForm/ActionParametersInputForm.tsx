@@ -68,7 +68,8 @@ function ActionParametersInputForm({
       const fetchedValues = await fetchInitialValues();
       setPrefetchedValues(fetchedValues);
     } catch (error) {
-      // ignore silently
+      // do not show user this error
+      console.error(error);
     }
   }, [fetchInitialValues]);
 
