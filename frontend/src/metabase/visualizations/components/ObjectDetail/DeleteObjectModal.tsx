@@ -2,19 +2,13 @@ import { FunctionComponent } from "react";
 import { t } from "ttag";
 
 import { WritebackActionId } from "metabase-types/api";
-import {
-  getActionErrorMessage,
-  getActionExecutionMessage,
-} from "metabase/actions/utils";
-import { useActionQuery } from "metabase/common/hooks";
+import { getActionErrorMessage } from "metabase/actions/utils";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { ActionsApi } from "metabase/services";
 
-import { ActionQueryError } from "./DeleteObjectModal.styled";
 import { ObjectId } from "./types";
 
 interface Props {
@@ -32,25 +26,21 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
 }) => {
   const dispatch = useDispatch();
 
-  const { data: action, error } = useActionQuery({
-    enabled: typeof actionId === "number",
-    id: actionId,
-  });
+  const disabled =
+    typeof actionId === "undefined" ||
+    typeof objectId === "undefined" ||
+    objectId === null;
 
   const handleSubmit = async () => {
-    if (!action || objectId === null || typeof objectId === "undefined") {
-      return;
-    }
-
     try {
-      const result = await ActionsApi.execute({
-        id: action.id,
+      await ActionsApi.execute({
+        id: actionId,
         parameters: {
           id: objectId,
         },
       });
 
-      const message = getActionExecutionMessage(action, result);
+      const message = t`Successfully deleted`;
       dispatch(addUndo({ message, toastColor: "success" }));
       onClose();
       onSuccess();
@@ -68,19 +58,13 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button
           key="delete"
           danger
-          disabled={!action}
+          disabled={disabled}
           onClick={handleSubmit}
         >{t`Delete forever`}</Button>,
       ]}
       onClose={onClose}
     >
       {t`This will permanently delete the row. There’s no undoing this, so please be sure.`}
-
-      {error && (
-        <ActionQueryError>
-          {getResponseErrorMessage(error) || t`An error occurred`}
-        </ActionQueryError>
-      )}
     </ModalContent>
   );
 };

@@ -1,5 +1,4 @@
 export * from "./use-action-list-query";
-export * from "./use-action-query";
 export * from "./use-collection-list-query";
 export * from "./use-collection-query";
 export * from "./use-dashboard-query";
