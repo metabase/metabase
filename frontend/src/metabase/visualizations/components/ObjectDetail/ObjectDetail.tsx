@@ -164,6 +164,10 @@ export function ObjectDetailView({
   const [updateActionId, setUpdateActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
 
+  const isUpdateModalOpen = typeof updateActionId === "number";
+  const isDeleteModalOpen = typeof deleteActionId === "number";
+  const isModalOpen = isUpdateModalOpen || isDeleteModalOpen;
+
   const handleExecuteModalClose = () => {
     setUpdateActionId(undefined);
   };
@@ -209,6 +213,30 @@ export function ObjectDetailView({
     }
   });
 
+  const viewPrevious = useCallback(() => {
+    if (isModalOpen) {
+      return;
+    }
+
+    viewPreviousObjectDetail();
+  }, [isModalOpen, viewPreviousObjectDetail]);
+
+  const viewNext = useCallback(() => {
+    if (isModalOpen) {
+      return;
+    }
+
+    viewNextObjectDetail();
+  }, [isModalOpen, viewNextObjectDetail]);
+
+  const close = useCallback(() => {
+    if (isModalOpen) {
+      return;
+    }
+
+    closeObjectDetail();
+  }, [isModalOpen, closeObjectDetail]);
+
   useEffect(() => {
     if (hasNotFoundError) {
       return;
@@ -216,28 +244,20 @@ export function ObjectDetailView({
 
     const onKeyDown = (event: KeyboardEvent) => {
       const capturedKeys: Record<string, () => void> = {
-        ArrowUp: viewPreviousObjectDetail,
-        ArrowDown: viewNextObjectDetail,
-        Escape: closeObjectDetail,
+        ArrowUp: viewPrevious,
+        ArrowDown: viewNext,
+        Escape: close,
       };
 
       if (capturedKeys[event.key]) {
         event.preventDefault();
         capturedKeys[event.key]();
       }
-      if (event.key === "Escape") {
-        closeObjectDetail();
-      }
     };
 
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [
-    hasNotFoundError,
-    viewPreviousObjectDetail,
-    viewNextObjectDetail,
-    closeObjectDetail,
-  ]);
+  }, [close, hasNotFoundError, viewPrevious, viewNext]);
 
   useEffect(() => {
     if (maybeLoading && pkIndex !== undefined) {
@@ -345,6 +365,10 @@ export function ObjectDetailView({
     dispatch(runQuestionQuery());
   };
 
+  const handleDeleteSuccess = () => {
+    handleActionSuccess();
+  };
+
   if (!data) {
     return null;
   }
@@ -437,7 +461,7 @@ export function ObjectDetailView({
           actionId={deleteActionId}
           objectId={zoomedRowID}
           onClose={handleDeleteModalClose}
-          onSuccess={handleActionSuccess}
+          onSuccess={handleDeleteSuccess}
         />
       </Modal>
     </>
