@@ -38,6 +38,7 @@
       (format "%s: %s: %s" model-name model-description fields-str)
       (format "%s: %s" model-name fields-str))))
 
+;; TODO - Remove until we need it. For now it's noise
 (defn token-count
   "Return the token count for a given string.
 
@@ -55,6 +56,7 @@
     (when (= 200 status)
       (:token_count body))))
 
+;; TODO - Kill this. Bulk endpoints only.
 (defn embeddings
   "Convert the input string to an embedding vector (a vector of floats).
 
@@ -121,9 +123,12 @@
                   :throw-exceptions false}
          {:keys [body status]} (http/request request)]
      (when (= 200 status)
+       ;; This will just be something like 'mbql'
        (:llm_generated body))))
   ([prompt-data]
    (infer
+     ;; Give this a better name to disambiguate between the ring app
+     ;; (what we want) and flask app (what the ring app will call)
      (metabot-settings/metabot-standalone-inference-url)
      prompt-data)))
 
@@ -173,8 +178,10 @@
     ;; 1 hour
     :ttl/threshold (* 1000 60 60)))
 
+;; TODO - This is just a local thing, but is going to go away as soon as we
+;; determine the right storage/cache and we should be returning MBQL, not IL.
 (defn infer-il
-  "Produce inferred il/or from a set of models to choose from, a prompt, and
+  "Produce inferred il from a set of models to choose from, a prompt, and
   number of desired models to include in the context.
 
   Currently, uses a ttl cache of 1 hour to store precomputed results:
