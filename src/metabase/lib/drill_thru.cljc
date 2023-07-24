@@ -551,46 +551,6 @@
     ))
 
 ;;; ---------------------------------------- Zoom in ---------------------------------------------
-(defn- field-columns-by-name [query stage-number dimensions]
-  (let [by-name (m/index-by :name (lib.metadata.calculation/visible-columns query stage-number query))]
-    (for [{:keys [column-name]} dimensions
-          :let [column (get by-name column-name)]
-          :when (and column (not= (:lib/source column) :source/expressions))]
-      column)))
-
-(def ^:private drill-down-progressions
-  [;; DateTime drill down
-   {:predicates [#(some-> % :unit #{:year :quarter :month :week :day :hour})]
-    :next-stage #(lib.options/update-options update :unit {:year    :quarter
-                                                           :quarter :month
-                                                           :month   :week
-                                                           :week    :day
-                                                           :day     :hour
-                                                           :hour    :minute})}
-   #_(map temporal-bucketing-step )
-   ;; Country => State => City
-   ]
-  )
-
-(defn- match-progression
-  "A progression applies to a query and dimensions if for each function in `:predicates` there exists some column that
-  satisfies it. (The columns may be different for each predicate, there just needs to be some column that passes each.)"
-  [query stage-number columns]
-  (->> drill-down-progressions
-       (filter #((:applies? %) ))
-  )
-
-;; START HERE: Test the next-breakouts with the comment in d-t-t, figure out an interface for the progressions.
-;; Probably flattening it into simply a set of [predicate? apply] pairs.
-
-(defn- next-breakouts [query stage-number dimensions]
-  (when-let [columns (not-empty (field-columns-by-name query stage-number dimensions))]
-    columns
-    (when-let [progression (match-progression query stage-number columns)]
-      progression
-      )
-    ))
-
 (mu/defn ^:private zoom-in-drill :- [:maybe [:ref ::lib.schema.drill-thru/drill-thru]]
   "Zooms in on some window, showing it in finer detail.
 
