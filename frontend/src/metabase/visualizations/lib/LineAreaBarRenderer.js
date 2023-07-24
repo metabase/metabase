@@ -154,6 +154,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   warn,
 ) {
   const dataset = crossfilter();
+  const { _raw } = props.series;
 
   const normalized = isNormalized(props.settings, datas);
   // get the sum of the metric for each dimension value in order to scale
@@ -166,6 +167,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
     }
 
     props.series = addPercentSignsToDisplayNames(props.series);
+    props.series._raw = _raw;
 
     const normalizedValues = datas.flatMap(data =>
       data.map(([d, m]) => m / scaleFactors[d]),
@@ -175,6 +177,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
       maximumSignificantDigits: 2,
     });
     props.series = addDecimalsToPercentColumn(props.series, decimals);
+    props.series._raw = _raw;
   }
 
   datas.map((data, i) =>
@@ -683,6 +686,11 @@ function addTrendlineChart(
 
   const rawSeries = series._raw || series;
   const insights = rawSeries[0].data.insights || [];
+
+  // TODO: If isStacked(settings) && isNormalized(settings),
+  //    precompute getTrendDataPointsFromInsight for each insight i,
+  //    then divide each y coord by the total of all y-coords for that x.
+  //    This should give us a percentage trend line.
 
   for (const insight of insights) {
     const index = findSeriesIndexForColumnName(series, insight.col);
