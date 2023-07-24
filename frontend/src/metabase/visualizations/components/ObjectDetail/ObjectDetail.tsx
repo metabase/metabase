@@ -161,15 +161,15 @@ export function ObjectDetailView({
   const prevData = usePrevious(passedData);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
   const [data, setData] = useState<DatasetData>(passedData);
-  const [updateActionId, setUpdateActionId] = useState<WritebackActionId>();
+  const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
 
-  const isUpdateModalOpen = typeof updateActionId === "number";
+  const isActionExecuteModalOpen = typeof actionId === "number";
   const isDeleteModalOpen = typeof deleteActionId === "number";
-  const isModalOpen = isUpdateModalOpen || isDeleteModalOpen;
+  const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
 
   const handleExecuteModalClose = () => {
-    setUpdateActionId(undefined);
+    setActionId(undefined);
   };
 
   const handleDeleteModalClose = () => {
@@ -342,20 +342,20 @@ export function ObjectDetailView({
         actions,
         databases,
         onDelete: action => setDeleteActionId(action.id),
-        onUpdate: action => setUpdateActionId(action.id),
+        onUpdate: action => setActionId(action.id),
       })
     : [];
 
   const fetchInitialValues = useCallback(async () => {
-    if (typeof updateActionId !== "number") {
+    if (typeof actionId !== "number") {
       return {};
     }
 
     return ActionsApi.prefetchValues({
-      id: updateActionId,
+      id: actionId,
       parameters: JSON.stringify({ id: String(zoomedRowID) }),
     });
-  }, [updateActionId, zoomedRowID]);
+  }, [actionId, zoomedRowID]);
 
   const initialValues = useMemo(() => ({ id: zoomedRowID }), [zoomedRowID]);
 
@@ -440,11 +440,11 @@ export function ObjectDetailView({
       </ObjectDetailContainer>
 
       <Modal
-        isOpen={typeof updateActionId === "number"}
+        isOpen={isActionExecuteModalOpen}
         onClose={handleExecuteModalClose}
       >
         <ActionExecuteModal
-          actionId={updateActionId}
+          actionId={actionId}
           initialValues={initialValues}
           fetchInitialValues={fetchInitialValues}
           shouldPrefetch
@@ -453,10 +453,7 @@ export function ObjectDetailView({
         />
       </Modal>
 
-      <Modal
-        isOpen={typeof deleteActionId === "number"}
-        onClose={handleDeleteModalClose}
-      >
+      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={zoomedRowID}
