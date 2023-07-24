@@ -367,14 +367,6 @@ export function ObjectDetailView({
 
   const handleDeleteSuccess = () => {
     handleActionSuccess();
-
-    if (canZoomNextRow) {
-      viewNextObjectDetail();
-    } else if (canZoomPreviousRow) {
-      viewPreviousObjectDetail();
-    } else {
-      closeObjectDetail();
-    }
   };
 
   if (!data) {
