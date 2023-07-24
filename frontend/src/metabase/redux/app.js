@@ -1,4 +1,5 @@
 import { push, LOCATION_CHANGE } from "react-router-redux";
+import { createSelector } from "@reduxjs/toolkit";
 
 import {
   combineReducers,
@@ -10,6 +11,8 @@ import {
   openInBlankWindow,
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
+
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error) {
@@ -60,9 +63,22 @@ export const openNavbar = createAction(OPEN_NAVBAR);
 export const closeNavbar = createAction(CLOSE_NAVBAR);
 export const toggleNavbar = createAction(TOGGLE_NAVBAR);
 
-export function getIsNavbarOpen(state) {
-  return state.app.isNavbarOpen;
-}
+export const getIsNavbarOpen = createSelector(
+  [getIsEmbedded, getEmbedOptions, state => state.app.isNavbarOpen],
+  (isEmbedded, embedOptions, isNavbarOpen) => {
+    // in an embedded instance, when the app bar is hidden, but the nav bar is not
+    // we need to force the sidebar to be open or else it will be totally inaccessible
+    if (
+      isEmbedded &&
+      embedOptions.side_nav === true &&
+      embedOptions.top_nav === false
+    ) {
+      return true;
+    }
+
+    return isNavbarOpen;
+  },
+);
 
 const isNavbarOpen = handleActions(
   {
