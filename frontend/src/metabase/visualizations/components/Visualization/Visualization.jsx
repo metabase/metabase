@@ -250,6 +250,7 @@ class Visualization extends PureComponent {
         clicked.column,
         clicked.value,
         clicked.data,
+        clicked.dimensions,
       );
       if (mlv2Drills && mlv2Drills.length > 0) {
         //console.log(question, clicked?.column, clicked?.value, mlv2Drills);
