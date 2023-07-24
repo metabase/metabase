@@ -2760,7 +2760,7 @@
             "venues.name has semantic_type=type/Name, so it will be searched")
         (testing "without search query"
           (mt/let-url [url (param-values-url card param-key)]
-            (is (partial= {:has_more_values true
+            (is (partial= {:has_more_values false
                            :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
                           (mt/user-http-request :rasta :get 200 url)))))
         (testing "with search query"
