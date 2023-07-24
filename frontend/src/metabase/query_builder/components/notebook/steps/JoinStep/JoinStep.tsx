@@ -42,6 +42,12 @@ export function JoinStep({
 
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
 
+  const lhsDisplayName = Lib.joinLHSDisplayName(
+    query,
+    stageIndex,
+    join || table,
+  );
+
   const handleStrategyChange = (nextStrategy: Lib.JoinStrategy) => {
     setStrategy(nextStrategy);
     if (join) {
@@ -111,7 +117,7 @@ export function JoinStep({
       <NotebookCell className="flex-full" color={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} aria-label={t`Left table`}>
-            Orders
+            {lhsDisplayName}
           </NotebookCellItem>
           <JoinStrategyPicker
             query={query}
