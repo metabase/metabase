@@ -14,6 +14,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
@@ -396,11 +397,36 @@
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
-(defn ^:export fieldable-columns-with-joins
-  "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query, including fields
-  which are expressions or explicitly joined in."
-  [a-query stage-number]
-  (to-array (lib.core/fieldable-columns-with-joins a-query stage-number)))
+(def ^:private visible-columns-defaults
+  {:include-joined?              true
+   :include-expressions?         true
+   :include-implicitly-joinable? true})
+
+
+;; TODO: Added as an expedient to fix metabase/metabase#32373. Due to the interaction with viz-settings, this issue
+;; was difficult to fix entirely within MLv2. Once viz-settings are ported, this function should not be needed, and the
+;; FE logic using it should be ported to MLv2 behind more meaningful names.
+(defn ^:export visible-columns
+  "Return a sequence of column metadatas for columns visible at the given stage of the query. Takes a map of options
+  which defines the set of columns to return. All the options default to *true*, ie. everything is returned by default.
+  ```
+  {
+    include_joined: true,
+    include_expressions true,
+    include_implicitly_joinable: true,
+  }
+  ```"
+  [a-query stage-number ^js js-options]
+  (let [options (merge visible-columns-defaults
+                       (when-let [opts (some-> js-options js-keys set)]
+                         (cond-> {}
+                           (opts "include_joined")
+                           (assoc :include-joined? (.-include_joined js-options))
+                           (opts "include_expressions")
+                           (assoc :include-expressions? (.-include_expressions? js-options))
+                           (opts "include_implicitly_joinable")
+                           (assoc :include-implicitly-joinable? (.-include_implicitly_joinable js-options)))))]
+    (to-array (lib.metadata.calculation/visible-columns a-query stage-number a-query options))))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
