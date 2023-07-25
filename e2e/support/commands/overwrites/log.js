@@ -28,7 +28,7 @@ function appendStyleIfItDoesntExists(logConfig) {
     style.textContent = `
       .command-name-${logConfig.name} .command-pin-target{
         color: #ffffff !important;
-        background-color: darkorchid !important;;
+        background-color: #7f43c9 !important;
         font-weight: bold !important;
       }
     `;
