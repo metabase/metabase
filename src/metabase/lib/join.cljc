@@ -109,7 +109,7 @@
   If `old-alias` is specified, uses [[metabase.mbql.util.match]] to update all the `:field` references using the old
   alias.
 
-  If `old-alias` is `nil`, updates the RHS of all 'normal' conditions (binary filter clauses with two `:field` refs as
+  If `old-alias` is `nil`, updates the RHS of all 'standard' conditions (binary filter clauses with two `:field` refs as
   args, e.g. the kind you'd get if you were using [[join-condition-operators]] and the like to create them). This
   currently doesn't handle more complex filter clauses that were created without the 'normal' MLv2 functions used by
   the frontend; we can add this in the future if we need it."
