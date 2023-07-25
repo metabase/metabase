@@ -701,7 +701,12 @@ function addTrendlineChart(
   }
 
   const rawSeries = series._raw || series;
-  const insights = rawSeries[0].data.insights || [];
+  const insights = (rawSeries[0].data.insights || []).filter(insight => {
+    const index = findSeriesIndexForColumnName(series, insight.col);
+    const shouldShowSeries = index !== -1;
+    const hasTrendLineData = insight.slope != null && insight.offset != null;
+    return shouldShowSeries && hasTrendLineData;
+  });
 
   const trendDatas = getTrendDatasFromInsights(insights, {
     xDomain,
@@ -711,14 +716,6 @@ function addTrendlineChart(
 
   for (const [insight, trendData] of _.zip(insights, trendDatas)) {
     const index = findSeriesIndexForColumnName(series, insight.col);
-
-    const shouldShowSeries = index !== -1;
-    const hasTrendLineData = insight.slope != null && insight.offset != null;
-
-    if (!shouldShowSeries || !hasTrendLineData) {
-      continue;
-    }
-
     const seriesSettings = settings.series(series[index]);
     const color = lighten(seriesSettings.color, 0.25);
 
