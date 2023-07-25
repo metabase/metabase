@@ -60,10 +60,6 @@
           "description": "Should we enable data sandboxes (row-level permissions)?",
           "type": "boolean"
         },
-        "sso": {
-          "description": "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?",
-          "type": "boolean"
-        },
         "email_allow_list": {
           "description": "Should we enable restrict email domains for subscription recipients?",
           "type": "boolean"
@@ -122,10 +118,6 @@
         },
         "advanced_permissions": {
           "description": "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level permissions, etc.)?",
-          "type": "boolean"
-        },
-        "content_management": {
-          "description": "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking, etc.)?",
           "type": "boolean"
         },
         "hosting": {
