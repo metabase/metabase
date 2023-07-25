@@ -191,8 +191,8 @@ describeEE("LDAP EE", { tags: "@external" }, () => {
     popover().within(() => {
       cy.findByText("Edit user").click();
     });
-    cy.get("input[value='uid']").should("exist");
-    cy.get("input[value='user01@example.org']").should("exist");
+    cy.findByDisplayValue("uid").should("exist");
+    cy.findByDisplayValue("user01@example.org").should("exist");
   });
 });
 
