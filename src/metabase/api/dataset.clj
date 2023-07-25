@@ -86,9 +86,8 @@
     (sync/sync-table! table)))
 
 (defn- create-custom-column [database-id card-id query]
-  ;; create a new table for the card
+  ;; create a new table for the card, and
   ;; run the query joined with the new table, returning results
-
   (let [table-name (str "editable_column_table_" card-id)
         database   (or (t2/select-one Database :id database-id)
                        (throw (Exception. (tru "The uploads database does not exist."))))
@@ -101,15 +100,18 @@
         {table-alias :display_name
          table-id    :id}  table
         _sync              (scan-and-sync-table! database table)
-        editable-column-pk (t2/select-one-fn :id :model/Field :table_id table-id :name "pk")
+        {editable-pk-id     :pk
+         editable-column-id :comment} (t2/select-fn->pk (comp keyword :name) :model/Field :table_id table-id)
         card-pk-table-id   (get-in query [:query :source-table])
         card-pk-id         (t2/select-one-fn :id :model/Field :table_id card-pk-table-id :semantic_type "type/PK")
-        query'             (update-in query [:query :joins] (fnil conj []) {:fields :all ;; TODO: select all columns except the PK
-                                                                            :source-table table-id
-                                                                            :condition [:=
-                                                                                        [:field card-pk-id nil]
-                                                                                        [:field editable-column-pk {:join-alias table-alias}]]
-                                                                            :alias table-alias})]
+        query'             (update-in query
+                                      [:query :joins]
+                                      (fnil conj []) {:fields [[:field editable-column-id {:join-alias table-alias}]]
+                                                      :source-table table-id
+                                                      :condition [:=
+                                                                  [:field card-pk-id nil]
+                                                                  [:field editable-pk-id {:join-alias table-alias}]]
+                                                      :alias table-alias})]
     query'))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
