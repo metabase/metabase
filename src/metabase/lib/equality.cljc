@@ -130,10 +130,11 @@
 
   ([metadata-providerable a-ref refs]
    (or (find-closest-matching-ref a-ref refs)
-       (mbql.u.match/match-one a-ref
-         [:field opts (field-id :guard integer?)]
-         (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-           (find-closest-matching-ref [:field opts field-name] refs))))))
+       (when metadata-providerable
+         (mbql.u.match/match-one a-ref
+           [:field opts (field-id :guard integer?)]
+           (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
+             (find-closest-matching-ref [:field opts field-name] refs)))))))
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching
@@ -153,9 +154,7 @@
          refs                   (mapv lib.ref/ref columns)
          matching-selected-refs (into #{}
                                       (map (fn [selected-ref]
-                                             (if metadata-providerable
-                                               (find-closest-matching-ref metadata-providerable selected-ref refs)
-                                               (find-closest-matching-ref selected-ref refs))))
+                                             (find-closest-matching-ref metadata-providerable selected-ref refs)))
                                       selected-refs)]
      (mapv (fn [col a-ref]
              (assoc col :selected? (contains? matching-selected-refs a-ref)))
