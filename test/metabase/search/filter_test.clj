@@ -40,9 +40,8 @@
 
 (deftest ^:parallel build-filters-test
   (testing "no optional filters"
-    (is (=
-         [[:= :card.archived false]]
-         (search.filter/build-filters "card" default-search-ctx))))
+    (is (= [[:= :card.archived false]]
+           (search.filter/build-filters "card" default-search-ctx))))
 
   (testing "optional filters"
     (testing "created-by"
