@@ -5,7 +5,8 @@ import {
   describeEE,
   setupMetabaseCloud,
   isOSS,
-  isPremium,
+  isEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -238,7 +239,9 @@ describe("scenarios > admin > settings", () => {
     "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
     { tags: "@OSS" },
     () => {
-      const lastItem = isPremium ? "Appearance" : "Caching";
+      isEE && setTokenFeatures("all");
+
+      const lastItem = isOSS ? "Caching" : "Appearance";
 
       cy.visit("/admin/settings/setup");
       cy.get(".AdminList .AdminList-item")
@@ -313,6 +316,7 @@ describeEE("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)

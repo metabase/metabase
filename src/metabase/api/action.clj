@@ -16,9 +16,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -180,7 +178,7 @@
   (let [action (api/read-check Action id :archived false)]
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
-               (u/prog1 (str (UUID/randomUUID))
+               (u/prog1 (str (random-uuid))
                  (t2/update! Action id
                              {:public_uuid <>
                               :made_public_by_id api/*current-user-id*})))}))

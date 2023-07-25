@@ -132,7 +132,7 @@
       :else                                    :dimension)))
 
 (defn- random-query-id []
-  (str (java.util.UUID/randomUUID)))
+  (str (random-uuid)))
 
 (defn- query-type->default-query [query-type]
   (merge

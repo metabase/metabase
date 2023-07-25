@@ -76,7 +76,7 @@
         (log/info (trs "Liquibase is ready."))
         (case direction
           :up            (liquibase/migrate-up-if-needed! liquibase)
-          :force         (liquibase/force-migrate-up-if-needed! conn liquibase)
+          :force         (liquibase/force-migrate-up-if-needed! liquibase)
           :down          (apply liquibase/rollback-major-version db-type conn liquibase args)
           :print         (print-migrations-and-quit-if-needed! liquibase)
           :release-locks (liquibase/force-release-locks! liquibase))

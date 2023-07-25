@@ -145,7 +145,7 @@ describe("scenarios > question > nested", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("10511");
-    cy.findAllByText("June, 2022");
+    cy.findAllByText("June 2022");
     cy.findAllByText("13");
   });
 

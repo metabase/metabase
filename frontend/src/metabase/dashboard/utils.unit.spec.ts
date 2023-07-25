@@ -1,5 +1,6 @@
 import {
   fetchDataOrError,
+  getCurrentTabDashboardCards,
   getDashcardResultsError,
   getVisibleCardIds,
   hasDatabaseActionsEnabled,
@@ -7,6 +8,7 @@ import {
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import {
+  createMockDashboard,
   createMockDashboardCardWithVirtualCard,
   createMockDashboardOrderedCard,
   createMockDatabase,
@@ -282,6 +284,50 @@ describe("Dashboard utils", () => {
       expect(visibleIds).toStrictEqual(
         new Set([virtualCardId, normalCardId, hidingWhenEmptyCardId]),
       );
+    });
+  });
+
+  describe("getCurrentTabDashboardCards", () => {
+    it("when selectedTabId=null returns cards with dashboard_tab_id=undefined", () => {
+      const selectedTabId = null;
+      const dashcard = createMockDashboardOrderedCard({
+        dashboard_tab_id: undefined,
+      });
+      const dashboard = createMockDashboard({
+        ordered_cards: [dashcard],
+      });
+
+      expect(
+        getCurrentTabDashboardCards(dashboard, selectedTabId),
+      ).toStrictEqual([
+        {
+          card: dashcard.card,
+          dashcard,
+        },
+      ]);
+    });
+
+    it("returns cards from selected tab only", () => {
+      const selectedTabId = 1;
+      const visibleDashcard = createMockDashboardOrderedCard({
+        dashboard_tab_id: 1,
+      });
+      const hiddenDashcard = createMockDashboardOrderedCard({
+        dashboard_tab_id: 2,
+      });
+
+      const dashboard = createMockDashboard({
+        ordered_cards: [visibleDashcard, hiddenDashcard],
+      });
+
+      expect(
+        getCurrentTabDashboardCards(dashboard, selectedTabId),
+      ).toStrictEqual([
+        {
+          card: visibleDashcard.card,
+          dashcard: visibleDashcard,
+        },
+      ]);
     });
   });
 });

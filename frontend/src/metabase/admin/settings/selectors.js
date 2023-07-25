@@ -5,11 +5,17 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
-import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_EMBEDDING,
+} from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
+
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+
 import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
@@ -18,7 +24,7 @@ import { UploadSettings } from "./components/UploadSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import EmbeddingCustomizationInfo from "./components/widgets/EmbeddingCustomizationInfo";
+import { EmbeddingCustomizationWidget } from "./components/widgets/EmbeddingCustomizationWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -29,7 +35,7 @@ import {
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
-import FullAppEmbeddingLinkWidget from "./components/widgets/FullAppEmbeddingLinkWidget";
+import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 
@@ -67,7 +73,7 @@ function updateSectionsWithPlugins(sections) {
   }
 }
 
-const SECTIONS = updateSectionsWithPlugins({
+const SECTIONS = {
   setup: {
     name: t`Setup`,
     order: 10,
@@ -117,8 +123,8 @@ const SECTIONS = updateSectionsWithPlugins({
         ],
         getProps: setting => ({
           value: setting.value,
-          collectionFilter: collection =>
-            collection.personal_owner_id === null || collection.id === "root",
+          collectionFilter: (collection, index, allCollections) =>
+            !isPersonalCollectionOrChild(collection, allCollections),
         }),
         onChanged: (oldVal, newVal) => {
           if (newVal && !oldVal) {
@@ -468,6 +474,7 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
+        key: "-standalone-embeds",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Standalone embeds`,
@@ -475,6 +482,7 @@ const SECTIONS = updateSectionsWithPlugins({
         embedType: "standalone",
       },
       {
+        key: "-full-app-embedding",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Full-app embedding`,
@@ -521,10 +529,9 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
-        widget: EmbeddingCustomizationInfo,
+        widget: EmbeddingCustomizationWidget,
         getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] ||
-          MetabaseSettings.isEnterprise(),
+          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
         widget: () => (
@@ -555,8 +562,7 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         widget: FullAppEmbeddingLinkWidget,
         getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] ||
-          MetabaseSettings.isEnterprise(),
+          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
         widget: () => (
@@ -702,7 +708,11 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-});
+};
+
+const getSectionsWithPlugins = _.once(() =>
+  updateSectionsWithPlugins(SECTIONS),
+);
 
 export const getSettings = createSelector(
   state => state.admin.settings.settings,
@@ -741,9 +751,10 @@ export const getSections = createSelector(
       return {};
     }
 
+    const sections = getSectionsWithPlugins();
     const settingsByKey = _.groupBy(settings, "key");
     const sectionsWithAPISettings = {};
-    for (const [slug, section] of Object.entries(SECTIONS)) {
+    for (const [slug, section] of Object.entries(sections)) {
       const isHidden = section.getHidden?.(derivedSettingValues);
 
       if (isHidden || (section.adminOnly && !isAdmin)) {

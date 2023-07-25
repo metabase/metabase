@@ -198,7 +198,7 @@ export const PLUGIN_MODERATION = {
     question?: Question,
     isModerator?: boolean,
     reload?: () => void,
-  ) => ({}),
+  ) => [],
 };
 
 export const PLUGIN_CACHING = {
@@ -280,4 +280,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
   getMenuItems: (question?: any, onChange?: any) => ({}),
+};
+
+export const PLUGIN_EMBEDDING = {
+  isEnabled: () => false,
 };

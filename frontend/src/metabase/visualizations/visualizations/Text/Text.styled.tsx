@@ -151,16 +151,16 @@ export const ReactMarkdownStyleWrapper = styled.div`
     margin: 0.375em 0 0.25em 0;
   }
 
-  .text-card-markdown h1:first-child,
-  .text-card-markdown h2:first-child,
-  .text-card-markdown h3:first-child,
-  .text-card-markdown h4:first-child,
-  .text-card-markdown h5:first-child,
-  .text-card-markdown h6:first-child,
-  .text-card-markdown p:first-child,
-  .text-card-markdown ul:first-child,
-  .text-card-markdown ol:first-child,
-  .text-card-markdown table:first-child {
+  .text-card-markdown h1:first-of-type,
+  .text-card-markdown h2:first-of-type,
+  .text-card-markdown h3:first-of-type,
+  .text-card-markdown h4:first-of-type,
+  .text-card-markdown h5:first-of-type,
+  .text-card-markdown h6:first-of-type,
+  .text-card-markdown p:first-of-type,
+  .text-card-markdown ul:first-of-type,
+  .text-card-markdown ol:first-of-type,
+  .text-card-markdown table:first-of-type {
     margin-top: 0.125em;
   }
 
@@ -251,7 +251,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   .text-card-markdown tr {
     border-bottom: 1px solid color-mod(${color("border")} alpha(-70%));
   }
-  .text-card-markdown tr:nth-child(even) {
+  .text-card-markdown tr:nth-of-type(even) {
     background-color: color-mod(${color("bg-black")} alpha(-98%));
   }
   .text-card-markdown th,

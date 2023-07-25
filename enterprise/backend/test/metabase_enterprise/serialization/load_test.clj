@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.serialization.cmd :refer [v1-dump v1-load]]
+   [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.models
     :refer [Card
@@ -130,33 +131,47 @@
   (fn [instance _fingerprint]
     (mi/model instance)))
 
+(defn- test-loaded-card [card card-name]
+  (when (= "My Nested Card" card-name)
+    (testing "Visualization settings for a Card were persisted correctly"
+      (let [vs (:visualization_settings card)
+            col (-> (:column_settings vs)
+                    first)
+            [col-key col-val] col
+            col-ref (mb.viz/parse-db-column-ref col-key)
+            {:keys [::mb.viz/field-id]} col-ref
+            [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as _tbl-col} & _] (:table.columns vs)
+            [_ col-field-id _] col-field-ref]
+        (is (some? (:table.columns vs)))
+        (is (some? (:column_settings vs)))
+        (is (integer? field-id))
+        (is (= "latitude" (-> (t2/select-one-fn :name Field :id field-id)
+                              u/lower-case-en)))
+        (is (= {:show_mini_bar true
+                :column_title "Parallel"} col-val))
+        (is (= "Venue Category" col-name))
+        (is (true? col-enabled))
+        (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
+        (is (= "category_id" (-> (t2/select-one-fn :name Field :id col-field-id)
+                                 u/lower-case-en)))))))
+
+(defn- test-pivot-card [card card-name]
+  (when (= "Pivot Table Card" card-name)
+    (testing "Visualization settings for a Card were persisted correctly"
+      (let [vs      (:visualization_settings card)
+            pivot   (:pivot_table.column_split vs)
+            vecs    (concat (:columns pivot) (:rows pivot))]
+        (is (some? vecs))
+        (doseq [[_ field-id _] vecs]
+          (is (integer? field-id) "fieldRef within pivot table was properly serialized and loaded"))))))
+
 (defmethod assert-loaded-entity Card
   [{card-name :name :as card} {:keys [query-results collections]}]
   (testing (format "Card: %s" card-name)
     (query-res-match query-results card)
     (collection-names-match collections card)
-    (when (= "My Nested Card" card-name)
-      (testing "Visualization settings for a Card were persisted correctly"
-        (let [vs (:visualization_settings card)
-              col (-> (:column_settings vs)
-                      first)
-              [col-key col-val] col
-              col-ref (mb.viz/parse-db-column-ref col-key)
-              {:keys [::mb.viz/field-id]} col-ref
-              [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as _tbl-col} & _] (:table.columns vs)
-              [_ col-field-id _] col-field-ref]
-          (is (some? (:table.columns vs)))
-          (is (some? (:column_settings vs)))
-          (is (integer? field-id))
-          (is (= "latitude" (-> (t2/select-one-fn :name Field :id field-id)
-                              u/lower-case-en)))
-          (is (= {:show_mini_bar true
-                  :column_title "Parallel"} col-val))
-          (is (= "Venue Category" col-name))
-          (is (true? col-enabled))
-          (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
-          (is (= "category_id" (-> (t2/select-one-fn :name Field :id col-field-id)
-                                   u/lower-case-en))))))
+    (test-loaded-card card card-name)
+    (test-pivot-card card card-name)
     card))
 
 (defn- collection-parent-name [collection]
@@ -331,7 +346,8 @@
                                                                 card-id-temporal-unit
                                                                 card-id-with-native-snippet
                                                                 card-id-temporal-unit
-                                                                card-join-card-id])
+                                                                card-join-card-id
+                                                                card-id-pivot-table])
                            :collections   (gather-collections [card-id
                                                                card-arch-id
                                                                card-id-root
@@ -345,7 +361,8 @@
                                                                card-id-temporal-unit
                                                                card-id-with-native-snippet
                                                                card-id-temporal-unit
-                                                               card-join-card-id])
+                                                               card-join-card-id
+                                                               card-id-pivot-table])
                            :entities      [[Database           (t2/select-one Database :id db-id)]
                                            [Table              (t2/select-one Table :id table-id)]
                                            [Table              (t2/select-one Table :id table-id-categories)]
@@ -391,7 +408,8 @@
                                            [Collection         (t2/select-one Collection :id snippet-nested-collection-id)]
                                            [NativeQuerySnippet (t2/select-one NativeQuerySnippet :id nested-snippet-id)]
                                            [Card               (t2/select-one Card :id card-id-with-native-snippet)]
-                                           [Card               (t2/select-one Card :id card-join-card-id)]]})]
+                                           [Card               (t2/select-one Card :id card-join-card-id)]
+                                           [Card               (t2/select-one Card :id card-id-pivot-table)]]})]
         (with-world-cleanup
           (v1-load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (t2/select-one Database :name ts/temp-db-name)
@@ -408,3 +426,8 @@
             fingerprint))))
     (finally
       (delete-directory! dump-dir))))
+
+(deftest resolve-dashboard-parameters-test
+  (let [parameters [{:values_source_config {:card_id "foo"}}]]
+    (with-redefs [load/fully-qualified-name->card-id {"foo" 1}]
+      (is (= [1] (mapv (comp :card_id :values_source_config) (#'load/resolve-dashboard-parameters parameters)))))))

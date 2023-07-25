@@ -374,6 +374,7 @@
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
   [setting-k value thunk & {:keys [raw-setting?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
+  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
@@ -421,7 +422,6 @@
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
@@ -434,7 +434,6 @@
   using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value

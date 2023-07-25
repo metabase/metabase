@@ -42,7 +42,7 @@ function Badge({
       isSingleLine={isSingleLine}
       {...props}
     >
-      {icon && <BadgeIcon {...getIconProps(icon)} $hasMargin={!!children} />}
+      {icon && <BadgeIcon {...getIconProps(icon)} hasMargin={!!children} />}
       {children && (
         <BadgeText className="text-wrap" isSingleLine={isSingleLine}>
           {children}
