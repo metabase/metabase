@@ -404,6 +404,5 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it.todo("field selection");
-  it.todo("default condition");
   it.todo("multiple conditions");
 });
