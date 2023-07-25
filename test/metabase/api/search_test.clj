@@ -790,14 +790,14 @@
               (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
 
             (testing "results contains only entities with the specified creator"
-              (is (= [[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
-                      [card-id      "card"      "Created by Filter Card 1"]
-                      [card-id-2    "card"      "Created by Filter Card 2"]
-                      [model-id     "dataset"   "Created by Filter Dataset 1"]
-                      [action-id    "action"    "Created by Filter Action 1"]]
+              (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
+                       [card-id      "card"      "Created by Filter Card 1"]
+                       [card-id-2    "card"      "Created by Filter Card 2"]
+                       [model-id     "dataset"   "Created by Filter Dataset 1"]
+                       [action-id    "action"    "Created by Filter Action 1"]}
                      (->> (:data resp)
-                          sorted-results
-                          (map (juxt :id :model :name))))))))
+                          (map (juxt :id :model :name))
+                          set))))))
 
         (testing "Works with archived filter"
           (is (=? [{:model "card"
