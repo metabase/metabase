@@ -126,7 +126,6 @@ describe("Model actions in object detail view", () => {
           });
         });
         objectDetailModal().icon("close").click();
-
         assertSuccessfullUpdateToast();
         assertUpdatedScoreInTable();
 
@@ -309,15 +308,10 @@ function assertSuccessfullUpdateToast() {
 }
 
 function assertSuccessfullDeleteToast() {
-  cy.log("it shows a toast informing the delete failed");
+  cy.log("it shows a toast informing the delete was successful");
   undoToast().should("have.attr", "color", "success");
   undoToast().findByText("Successfully deleted").should("be.visible");
 }
-
-// function assertFailedDeleteToast() {
-//   cy.log("it shows a toast informing the delete was successful");
-//   undoToast().should("have.attr", "color", "error");
-// }
 
 function actionForm() {
   return cy.findByTestId("action-form");
