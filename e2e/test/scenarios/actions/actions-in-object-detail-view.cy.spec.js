@@ -2,6 +2,7 @@ import moment from "moment-timezone";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
+  modal,
   popover,
   resetTestTable,
   restore,
@@ -32,6 +33,7 @@ const UPDATED_SCORE_FORMATTED = "987,654,321";
 describe("Model actions in object detail view", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/action").as("createBasicActions");
+    cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
     cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
       "prefetchValues",
     );
@@ -47,9 +49,11 @@ describe("Model actions in object detail view", () => {
   it("scenario", () => {
     cy.get("@modelId").then(modelId => {
       asNormalUser(() => {
+        cy.log("As normal user: verify database actions are enabled");
         visitModelDetail(modelId);
         assertActionsTabExists();
 
+        cy.log("As normal user: verify there are no model actions to run");
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
@@ -57,16 +61,20 @@ describe("Model actions in object detail view", () => {
       });
 
       asAdmin(() => {
+        cy.log("As admin: verify database actions are enabled");
         visitModelDetail(modelId);
         assertActionsTabExists();
 
+        cy.log("As admin: Verify that there are no model actions to run");
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
 
+        cy.log("As admin: create basic model actions");
         createBasicModelActions(modelId);
 
+        cy.log("As admin: verify there are model actions to run");
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
@@ -74,11 +82,13 @@ describe("Model actions in object detail view", () => {
       });
 
       asNormalUser(() => {
+        cy.log("As normal user: verify there are model actions to run (1)");
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
 
+        cy.log("As normal user: verify update form gets prefilled");
         openUpdateObjectModal();
         actionExecuteModal().within(() => {
           cy.wait("@prefetchValues").then(request => {
@@ -93,11 +103,15 @@ describe("Model actions in object detail view", () => {
         });
         objectDetailModal().icon("close").click();
 
+        cy.log("As normal user: verify there are model actions to run (2)");
         visitObjectDetail(modelId, SECOND_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
 
+        cy.log(
+          "As normal user: verify form gets prefilled with values for another entity and run update action",
+        );
         openUpdateObjectModal();
         actionExecuteModal().within(() => {
           cy.wait("@prefetchValues").then(request => {
@@ -116,6 +130,7 @@ describe("Model actions in object detail view", () => {
         assertSuccessfullUpdateToast();
         assertScoreUpdatedInTable();
 
+        cy.log("As normal user: run delete action");
         visitObjectDetail(modelId, SECOND_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
@@ -126,19 +141,27 @@ describe("Model actions in object detail view", () => {
       });
 
       asAdmin(() => {
+        cy.log("As admin: verify database actions are enabled");
         visitModelDetail(modelId);
         assertActionsTabExists();
 
-        disableDatabaseActions();
+        cy.log("As admin: disable basic model actions");
+        disableBasicModelActions(modelId);
 
+        cy.log("As admin: disable database actions");
+        disableDatabaseActions(WRITABLE_DB_ID);
+
+        cy.log("As admin: verify database actions are disabled");
         visitModelDetail(modelId);
         assertActionsTabNotExists();
       });
 
       asNormalUser(() => {
+        cy.log("As normal user: verify database actions are disabled");
         visitModelDetail(modelId);
         assertActionsTabNotExists();
 
+        cy.log("As normal user: verify there are no model actions to run");
         visitObjectDetail(modelId, FIRST_ORDER_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
@@ -160,8 +183,8 @@ function asNormalUser(callback) {
   cy.signOut();
 }
 
-function disableDatabaseActions() {
-  cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+function disableDatabaseActions(databaseId) {
+  cy.visit(`/admin/databases/${databaseId}`);
   const actionsToggle = cy.findByLabelText("Model actions");
 
   cy.log("actions should be enabled in model page");
@@ -174,9 +197,17 @@ function disableDatabaseActions() {
 }
 
 function createBasicModelActions(modelId) {
-  cy.visit(`/model/${modelId}/detail/actions`);
+  visitModelDetailActions(modelId);
   cy.findByText("Create basic actions").click();
   cy.wait("@createBasicActions");
+}
+
+function disableBasicModelActions(modelId) {
+  visitModelDetailActions(modelId);
+  cy.findByLabelText("Actions menu").click();
+  popover().findByText("Disable basic actions").click();
+  modal().findByText("Disable").click();
+  cy.wait("@getModelActions");
 }
 
 function visitObjectDetail(modelId, objectId) {
@@ -188,6 +219,11 @@ function visitModelDetail(modelId) {
   visitModel(modelId);
   cy.icon("info").click();
   cy.findByTestId("sidebar-right").findByText("Model details").click();
+}
+
+function visitModelDetailActions(modelId) {
+  visitModelDetail(modelId);
+  cy.findByText("Actions").click();
 }
 
 function openUpdateObjectModal() {
