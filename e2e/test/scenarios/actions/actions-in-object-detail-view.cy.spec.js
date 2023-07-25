@@ -128,7 +128,7 @@ describe("Model actions in object detail view", () => {
         objectDetailModal().icon("close").click();
 
         assertSuccessfullUpdateToast();
-        assertScoreUpdatedInTable();
+        assertUpdatedScoreInTable();
 
         cy.log("As normal user: run delete action");
         visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
@@ -137,7 +137,8 @@ describe("Model actions in object detail view", () => {
         });
         openDeleteObjectModal();
         deleteObjectModal().findByText("Delete forever").click();
-        assertFailedDeleteToast();
+        assertSuccessfullDeleteToast();
+        assertUpdatedScoreNotInTable();
       });
 
       asAdmin(() => {
@@ -287,11 +288,18 @@ function assertDateInputValue(labelText, value) {
   cy.findByLabelText(labelText).should("have.value", expectedValue);
 }
 
-function assertScoreUpdatedInTable() {
+function assertUpdatedScoreInTable() {
   cy.log("updated quantity should be present in the table");
   cy.findByTestId("TableInteractive-root")
     .findByText(UPDATED_SCORE_FORMATTED)
     .should("exist");
+}
+
+function assertUpdatedScoreNotInTable() {
+  cy.log("updated quantity should not be present in the table");
+  cy.findByTestId("TableInteractive-root")
+    .findByText(UPDATED_SCORE_FORMATTED)
+    .should("not.exist");
 }
 
 function assertSuccessfullUpdateToast() {
@@ -300,16 +308,16 @@ function assertSuccessfullUpdateToast() {
   undoToast().findByText("Successfully updated").should("be.visible");
 }
 
-// function assertSuccessfullDeleteToast() {
-//   cy.log("it shows a toast informing the delete failed");
-//   undoToast().should("have.attr", "color", "success");
-//   undoToast().findByText("Successfully deleted").should("be.visible");
-// }
-
-function assertFailedDeleteToast() {
-  cy.log("it shows a toast informing the delete was successful");
-  undoToast().should("have.attr", "color", "error");
+function assertSuccessfullDeleteToast() {
+  cy.log("it shows a toast informing the delete failed");
+  undoToast().should("have.attr", "color", "success");
+  undoToast().findByText("Successfully deleted").should("be.visible");
 }
+
+// function assertFailedDeleteToast() {
+//   cy.log("it shows a toast informing the delete was successful");
+//   undoToast().should("have.attr", "color", "error");
+// }
 
 function actionForm() {
   return cy.findByTestId("action-form");
