@@ -236,6 +236,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
     providers = [SSO_PROVIDER, ...providers];
   }
   if (
+    hasPremiumFeature("disable_password_login") &&
     !MetabaseSettings.isPasswordLoginEnabled() &&
     !MetabaseSettings.isLdapEnabled()
   ) {
