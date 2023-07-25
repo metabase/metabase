@@ -80,6 +80,10 @@
           "description": "Should we enable initialization on launch from a config file?",
           "type": "boolean"
         },
+        "sso": {
+          "description": "DEPRECATED: Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?",
+          "type": "boolean"
+        },
         "sso_jwt":  {
           "description": "Should we enable JWT-based authentication?",
           "type": "boolean"
@@ -94,6 +98,14 @@
         },
         "sso_google":  {
           "description": "Should we enable advanced configuration for Google Sign-In authentication?",
+          "type": "boolean"
+        },
+        "advanced_config": {
+          "description": "DEPRECATED: Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for notifications, more in the future)?",
+          "type": "boolean"
+        },
+        "content_management": {
+          "description": "DEPRECATED: Should we enable official Collections, Question verifications (and more in the future, like workflows, forking, etc.)?",
           "type": "boolean"
         },
         "disable_password_login":  {
