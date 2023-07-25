@@ -17,11 +17,9 @@
                                                  :official-collections
                                                  :whitelabel
                                                  :no-upsell
-                                                 :advanced-config
                                                  :cache-granular-controls
                                                  :content-verification
                                                  :serialization
-                                                 :content-management
                                                  :config-text-file
                                                  :email-allow-list
                                                  :hosting
@@ -32,12 +30,10 @@
                                                  :sso-jwt
                                                  :sso-ldap
                                                  :sso-saml}
-          (is (= {:advanced_config                true
-                  :advanced_permissions           true
+          (is (= {:advanced_permissions           true
                   :audit_app                      true
                   :cache_granular_controls        true
                   :config_text_file               true
-                  :content_management             true
                   :content_verification           true
                   :dashboard_subscription_filters true
                   :disable_password_login         true

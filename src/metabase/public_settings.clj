@@ -550,12 +550,10 @@
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
-  :getter     (fn [] {:advanced_config                (premium-features/enable-advanced-config?)
-                      :advanced_permissions           (premium-features/enable-advanced-permissions?)
+  :getter     (fn [] {:advanced_permissions           (premium-features/enable-advanced-permissions?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
                       :config_text_file               (premium-features/enable-config-text-file?)
-                      :content_management             (premium-features/enable-content-management?)
                       :content_verification           (premium-features/enable-content-verification?)
                       :dashboard_subscription_filters (premium-features/enable-dashboard-subscription-filters?)
                       :disable_password_login         (premium-features/can-disable-password-login?)

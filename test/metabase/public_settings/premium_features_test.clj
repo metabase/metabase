@@ -110,8 +110,6 @@
                                     #'premium-features/enable-whitelabeling?
                                     #'premium-features/enable-audit-app?
                                     #'premium-features/enable-sandboxes?
-                                    #'premium-features/enable-advanced-config?
-                                    #'premium-features/enable-content-management?
                                     #'premium-features/enable-serialization?]]
                 (testing (format "\n%s is false" (:name (meta has-feature?)))
                   (is (not (has-feature?)))))
