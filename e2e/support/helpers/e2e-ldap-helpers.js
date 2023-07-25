@@ -1,6 +1,12 @@
 /**
- * Make sure you have the ldap test server running locally:
- * `docker run -p 389:389 osixia/openldap:1.5.0`
+  Make sure you have the ldap test server running locally:
+    docker run -p 389:389 \
+      --env LDAP_ADMIN_PASSWORD=adminpass \
+      --env LDAP_USERS=user01@example.org,user02@example.org \
+      --env LDAP_PASSWORDS=123456,123465 \
+      --env LDAP_ROOT=dc=example,dc=org \
+      --env LDAP_PORT_NUMBER=389 \
+      bitnami/openldap:2.6.4
  */
 export const setupLdap = () => {
   cy.log("Set up LDAP mock server");
