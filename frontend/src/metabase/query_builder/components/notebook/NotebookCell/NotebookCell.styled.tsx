@@ -19,6 +19,7 @@ export const NotebookCell = styled.div<{ color: string; padding?: string }>`
 export const NotebookCellItemContainer = styled.div<{
   color: string;
   inactive?: boolean;
+  readOnly?: boolean;
 }>`
   display: flex;
   align-items: center;
@@ -29,6 +30,11 @@ export const NotebookCellItemContainer = styled.div<{
   border: 2px solid transparent;
   border-color: ${props =>
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
+
+  cursor: ${props =>
+    !props.inactive && !props.readOnly && !!props.onClick
+      ? "pointer"
+      : "default"};
 
   &:hover {
     border-color: ${props => props.inactive && alpha(props.color, 0.8)};
