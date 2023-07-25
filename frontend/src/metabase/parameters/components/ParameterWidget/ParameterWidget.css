@@ -1,0 +1,31 @@
+:local(.container) {
+  composes: flex align-center from "style";
+  transition: opacity 500ms linear;
+  border: 2px solid var(--color-border);
+  margin: 0.5em 0;
+  padding: 0.25em 1em;
+  width: 100%;
+}
+
+:local(.container) legend {
+  text-transform: none;
+  position: relative;
+  height: 2px;
+  line-height: 0;
+  margin-left: -0.45em;
+  padding: 0 0.5em;
+}
+
+:local(.container.deemphasized) {
+  opacity: 0.4;
+}
+:local(.container.deemphasized:hover) {
+  opacity: 1;
+}
+
+@media screen and (min-width: 440px) {
+  :local(.container) {
+    margin-right: 0.85em;
+    width: auto;
+  }
+}
