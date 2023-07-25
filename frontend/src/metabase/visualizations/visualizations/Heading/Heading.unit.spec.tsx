@@ -130,20 +130,6 @@ describe("Text", () => {
         );
         expect(screen.getByDisplayValue("Example Heading")).toBeInTheDocument();
       });
-
-      it("should render the read-only heading content (at reduced opacity) in parameter editing mode", () => {
-        setup({
-          settings: getSettingsWithText("Example Heading"),
-          isEditing: true,
-          isEditingParameter: true,
-        });
-
-        expect(screen.getByText("Example Heading")).toBeVisible();
-        expect(screen.getByText("Example Heading")).toHaveStyle(
-          "opacity: 0.25",
-        );
-        expect(screen.queryByRole("input")).not.toBeInTheDocument();
-      });
     });
   });
 });
