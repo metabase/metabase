@@ -458,12 +458,14 @@
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived-string table-db-id]
+  [q archived-string table-db-id created_by]
   {archived-string [:maybe ms/BooleanString]
-   table-db-id     [:maybe ms/PositiveInt]}
+   table-db-id     [:maybe ms/PositiveInt]
+   created_by      [:maybe ms/PositiveInt]}
   (query-model-set (search-context {:search-string   q
                                     :archived-string archived-string
                                     :table-db-id     table-db-id
+                                    :created-by      created_by
                                     :models          search-config/all-models})))
 
 (api/defendpoint GET "/"

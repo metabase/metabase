@@ -135,7 +135,8 @@
                                                   (assoc action-model-params :collection_id (u/the-id coll)))]
                     Action      [{action-id :id
                                   :as action}   (merge (data-map "action %s action")
-                                                 {:type :query, :model_id (u/the-id action-model)})]
+                                                 {:type :query :model_id (u/the-id action-model)
+                                                  :creator_id  (mt/user->id :rasta)})]
                     QueryAction [_qa (query-action action-id)]
                     Card        [card           (coll-data-map "card %s card" coll)]
                     Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
@@ -272,7 +273,7 @@
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3")))))))
 
-(deftest query-model-set
+(deftest archived-models-test
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
@@ -283,6 +284,17 @@
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
       (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
+
+(deftest query-model-set-test
+  (with-search-items-in-root-collection "query-model-set"
+    (testing "should returns a list of models that search result will return"
+     (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+            (set (mt/user-http-request :crowberto :get 200 "search/models" :q "query-model-set")))))
+    (testing "return a subsets of model for created-by filter"
+      (is (= #{"dashboard" "dataset" "card" "action"}
+             (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                        :q "query-model-set"
+                                        :created_by (mt/user->id :rasta))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
