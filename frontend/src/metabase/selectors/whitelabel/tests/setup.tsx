@@ -7,15 +7,17 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import type { LoadingMessage, TokenFeatures } from "metabase-types/api";
 
+export interface SetupOpts {
+  loadingMessage?: LoadingMessage;
+  tokenFeatures?: Partial<TokenFeatures>;
+  hasEnterprisePlugins?: boolean;
+}
+
 export function setup({
   loadingMessage = "doing-science",
   tokenFeatures = {},
   hasEnterprisePlugins = false,
-}: {
-  loadingMessage?: LoadingMessage;
-  tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
-} = {}) {
+}: SetupOpts = {}) {
   const state = createMockState({
     settings: mockSettings({
       "loading-message": loadingMessage,
