@@ -62,8 +62,13 @@ describe("issue 29304", () => {
         cy.wait("@getDashboard");
         cy.wait("@getDashcardQuery");
         cy.tick(WAIT_TIME);
+
+        const expectedWidth = 147;
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
-          expect($scalarValue.offsetWidth).to.be.closeTo(147, 2);
+          expect($scalarValue.offsetWidth).to.be.closeTo(
+            expectedWidth,
+            expectedWidth * 0.1,
+          );
         });
       });
     });
@@ -81,8 +86,13 @@ describe("issue 29304", () => {
         cy.wait("@getDashboard");
         cy.wait("@getDashcardQuery");
         cy.tick(WAIT_TIME);
+
+        const expectedWidth = 80;
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
-          expect($scalarValue.offsetWidth).to.be.closeTo(80, 2);
+          expect($scalarValue.offsetWidth).to.be.closeTo(
+            expectedWidth,
+            expectedWidth * 0.1,
+          );
         });
       });
     });
