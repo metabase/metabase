@@ -26,7 +26,7 @@
       []
       ...)
 
-  DEPRECATED: use [[InstanceOf:Malli]] instead."
+  DEPRECATED: use [[InstanceOf]] and Malli instead."
   [model]
   (s/pred (fn [x]
             (instance-of? model x))
@@ -37,7 +37,7 @@
   the `<Model>Instance` or calling [[type]] or [[class]] on a model yourself, since that won't work once we switch to
   Toucan 2.
 
-    (s/defn my-fn :- (mi/InstanceOf:Schema User)
+    (mu/defn my-fn :- (mi/InstanceOf User)
       []
       ...)"
   [model]
