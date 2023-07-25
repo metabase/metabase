@@ -3,6 +3,8 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import * as Urls from "metabase/lib/urls";
+import ErrorBoundary from "metabase/ErrorBoundary";
+
 import {
   GoogleButtonRoot,
   AuthError,
@@ -52,15 +54,16 @@ const GoogleButton = ({
   return (
     <GoogleButtonRoot>
       {isCard && clientId ? (
-        <GoogleOAuthProvider clientId={clientId}>
-          <GoogleLogin
-            useOneTap
-            onSuccess={handleLogin}
-            onError={handleError}
-            locale={locale}
-            width="300"
-          />
-        </GoogleOAuthProvider>
+        <ErrorBoundary>
+          <GoogleOAuthProvider clientId={clientId}>
+            <GoogleLogin
+              useOneTap
+              onSuccess={handleLogin}
+              onError={handleError}
+              locale={locale}
+            />
+          </GoogleOAuthProvider>
+        </ErrorBoundary>
       ) : (
         <TextLink to={Urls.login(redirectUrl)}>
           {t`Sign in with Google`}
