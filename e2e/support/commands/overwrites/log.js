@@ -1,6 +1,6 @@
 Cypress.Commands.overwrite("log", (originalFn, text) => {
   const logConfig = {
-    displayName: `=== ${window.logCalls}. ${text}`,
+    displayName: `${window.logCalls}. ${text}`,
     name: "log",
     message: "",
   };
