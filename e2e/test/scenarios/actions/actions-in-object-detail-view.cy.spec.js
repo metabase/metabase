@@ -57,6 +57,14 @@ describe("Model actions in object detail view", () => {
       });
 
       asAdmin(() => {
+        visitModelDetail(modelId);
+        assertActionsTabExists();
+
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
+
         createBasicModelActions(modelId);
 
         visitObjectDetail(modelId, FIRST_ORDER_ID);
@@ -136,26 +144,6 @@ describe("Model actions in object detail view", () => {
           assertActionsDropdownNotExists();
         });
       });
-
-      asAdmin(() => {
-        visitModelDetail(modelId);
-        assertActionsTabNotExists();
-
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
-        objectDetailModal().within(() => {
-          assertActionsDropdownNotExists();
-        });
-
-        enableDatabaseActions();
-
-        visitModelDetail(modelId);
-        assertActionsTabExists();
-
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
-        objectDetailModal().within(() => {
-          assertActionsDropdownNotExists();
-        });
-      });
     });
   });
 });
@@ -170,19 +158,6 @@ function asNormalUser(callback) {
   cy.signInAsNormalUser();
   callback();
   cy.signOut();
-}
-
-function enableDatabaseActions() {
-  cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-  const actionsToggle = cy.findByLabelText("Model actions");
-
-  cy.log("actions should be disabled in model page");
-  actionsToggle.should("not.be.checked");
-
-  actionsToggle.click();
-
-  cy.log("actions should be enabled in model page");
-  actionsToggle.should("be.checked");
 }
 
 function disableDatabaseActions() {
