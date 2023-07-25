@@ -57,5 +57,5 @@ export function getTrendDataPointsFromInsight(insight, xDomain, count = 10) {
 
 function getValuesInRange(start, end, count) {
   const delta = (end - start) / (count - 1);
-  return _.range(start, end, delta).concat([end]);
+  return _.range(count).map(i => start + delta * i);
 }

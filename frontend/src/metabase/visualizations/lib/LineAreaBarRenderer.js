@@ -673,6 +673,22 @@ function findSeriesIndexForColumnName(series, colName) {
 
 const TREND_LINE_POINT_SPACING = 25;
 
+function getTrendDatasFromInsights(insights, { xDomain, settings, parent }) {
+  const numPoints = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
+  const trendDatas = insights.map(insight =>
+    getTrendDataPointsFromInsight(insight, xDomain, numPoints),
+  );
+  if (!isNormalized(settings)) {
+    return trendDatas;
+  }
+  const sums = _.range(numPoints).map(i =>
+    trendDatas.reduce((sum, trendData) => sum + trendData[i][1], 0),
+  );
+  return trendDatas.map(trendData =>
+    trendData.map(([x, y], i) => [x, y / sums[i]]),
+  );
+}
+
 function addTrendlineChart(
   { series, settings, onHoverChange },
   { xDomain },
@@ -687,12 +703,13 @@ function addTrendlineChart(
   const rawSeries = series._raw || series;
   const insights = rawSeries[0].data.insights || [];
 
-  // TODO: If isStacked(settings) && isNormalized(settings),
-  //    precompute getTrendDataPointsFromInsight for each insight i,
-  //    then divide each y coord by the total of all y-coords for that x.
-  //    This should give us a percentage trend line.
+  const trendDatas = getTrendDatasFromInsights(insights, {
+    xDomain,
+    settings,
+    parent,
+  });
 
-  for (const insight of insights) {
+  for (const [insight, trendData] of _.zip(insights, trendDatas)) {
     const index = findSeriesIndexForColumnName(series, insight.col);
 
     const shouldShowSeries = index !== -1;
@@ -705,8 +722,6 @@ function addTrendlineChart(
     const seriesSettings = settings.series(series[index]);
     const color = lighten(seriesSettings.color, 0.25);
 
-    const points = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
-    const trendData = getTrendDataPointsFromInsight(insight, xDomain, points);
     const trendDimension = crossfilter(trendData).dimension(d => d[0]);
 
     // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
