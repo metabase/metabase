@@ -14,7 +14,6 @@ import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";
 import ModelLink from "../ModelLink";
 import DatabasePicker from "../DatabasePicker";
-import { MetabotHeaderRoot } from "./MetabotHeader.styled";
 
 interface OwnProps {
   model?: Question;
@@ -88,18 +87,7 @@ const MetabotHeader = ({
   const placeholder = getPlaceholder(model);
 
   return (
-    <MetabotHeaderRoot>
       <MetabotMessage>{title}</MetabotMessage>
-      <MetabotPrompt
-        prompt={prompt}
-        placeholder={placeholder}
-        user={user}
-        isLoading={queryStatus === "running"}
-        onChangePrompt={onChangePrompt}
-        onSubmitPrompt={onSubmitPrompt}
-        onCancel={onCancel}
-      />
-    </MetabotHeaderRoot>
   );
 };
 

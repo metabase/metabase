@@ -104,13 +104,13 @@
     "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
     database-id
     question)
-  #_(let [{:keys [mbql]} (mbql-inference/infer-mbql question)]
+  (let [{:keys [mbql]} (mbql-inference/infer-mbql question)]
     {:card {:dataset_query {:database 1                     ;;TODO
                             :type :query
                             :query mbql}
             :display :table
             :visualization_settings {}}})
-  (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
+  #_(let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
         context {:database    (metabot-util/denormalize-database database)
                  :user_prompt question

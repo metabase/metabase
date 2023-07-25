@@ -10,7 +10,6 @@ import {
   getQueryResults,
   getQueryStatus,
 } from "../../selectors";
-import MetabotQueryEditor from "../MetabotQueryEditor";
 import MetabotVisualization from "../MetabotVisualization";
 import MetabotFeedback from "../MetabotFeedback";
 import MetabotDisplayToggle from "../MetabotDisplayToggle";
@@ -55,12 +54,7 @@ const MetabotQueryBuilder = ({
 
   return (
     <QueryBuilderRoot>
-      {hasResults && <MetabotQueryEditor />}
-      {isRunning ? (
-        <QueryRunningState loadingMessage={loadingMessage} />
-      ) : hasErrors ? (
-        <QueryErrorState queryError={queryError} />
-      ) : hasResults ? (
+      { hasResults ? (
         <MetabotVisualization />
       ) : (
         <QueryIdleState />
