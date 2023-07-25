@@ -1,11 +1,11 @@
 import { Route } from "react-router";
 
-import MetabaseSettings from "metabase/lib/settings";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+import type { TokenFeatures } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 
 import { Login } from "../Login";
 
@@ -13,22 +13,28 @@ interface SetupOpts {
   initialRoute?: string;
   isPasswordLoginEnabled?: boolean;
   isGoogleAuthEnabled?: boolean;
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
 }
 
 export const setup = ({
   initialRoute = "/auth/login",
   isPasswordLoginEnabled = true,
   isGoogleAuthEnabled = false,
+  hasEnterprisePlugins = false,
+  tokenFeatures = {},
 }: SetupOpts = {}) => {
   const state = createMockState({
-    settings: createMockSettingsState({
+    settings: mockSettings({
       "enable-password-login": isPasswordLoginEnabled,
       "google-auth-enabled": isGoogleAuthEnabled,
+      "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
 
-  MetabaseSettings.set("enable-password-login", isPasswordLoginEnabled);
-  MetabaseSettings.set("google-auth-enabled", isGoogleAuthEnabled);
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
 
   renderWithProviders(
     <>
@@ -37,9 +43,4 @@ export const setup = ({
     </>,
     { storeInitialState: state, withRouter: true, initialRoute },
   );
-};
-
-export const cleanUp = () => {
-  MetabaseSettings.set("enable-password-login", true);
-  MetabaseSettings.set("google-auth-enabled", false);
 };

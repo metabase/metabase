@@ -1,12 +1,8 @@
 import { screen } from "__support__/ui";
 
-import { setup, cleanUp } from "./setup";
+import { setup } from "./setup";
 
 describe("Login", () => {
-  afterEach(() => {
-    cleanUp();
-  });
-
   it("should render a list of auth providers", () => {
     setup({ isPasswordLoginEnabled: true, isGoogleAuthEnabled: true });
 
