@@ -1,4 +1,4 @@
-import { getWhiteLabeledLoadingMessage } from "..";
+import { getIsWhiteLabeling, getWhiteLabeledLoadingMessage } from "..";
 import { SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts = {}) {
@@ -22,5 +22,19 @@ describe("getWhiteLabeledLoadingMessage (EE without token)", () => {
     const { getState } = setup({ loadingMessage: "running-query" });
 
     expect(getWhiteLabeledLoadingMessage(getState())).toBe("Doing science...");
+  });
+});
+
+describe("getIsWhiteLabeling (EE without token)", () => {
+  it("should return false when application-name is unchanged", () => {
+    const { getState } = setup();
+
+    expect(getIsWhiteLabeling(getState())).toBe(false);
+  });
+
+  it("should return false when application-name is changed", () => {
+    const { getState } = setup({ applicationName: "something else" });
+
+    expect(getIsWhiteLabeling(getState())).toBe(false);
   });
 });

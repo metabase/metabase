@@ -9,18 +9,21 @@ import type { LoadingMessage, TokenFeatures } from "metabase-types/api";
 
 export interface SetupOpts {
   loadingMessage?: LoadingMessage;
+  applicationName?: string;
   tokenFeatures?: Partial<TokenFeatures>;
   hasEnterprisePlugins?: boolean;
 }
 
 export function setup({
   loadingMessage = "doing-science",
+  applicationName = "Metabase",
   tokenFeatures = {},
   hasEnterprisePlugins = false,
 }: SetupOpts = {}) {
   const state = createMockState({
     settings: mockSettings({
       "loading-message": loadingMessage,
+      "application-name": applicationName,
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });

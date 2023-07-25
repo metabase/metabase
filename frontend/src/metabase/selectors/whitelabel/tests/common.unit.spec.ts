@@ -1,4 +1,4 @@
-import { getWhiteLabeledLoadingMessage } from "..";
+import { getIsWhiteLabeling, getWhiteLabeledLoadingMessage } from "..";
 import { setup } from "./setup";
 
 describe("getWhiteLabeledLoadingMessage (OSS)", () => {
@@ -18,5 +18,19 @@ describe("getWhiteLabeledLoadingMessage (OSS)", () => {
     const { getState } = setup({ loadingMessage: "running-query" });
 
     expect(getWhiteLabeledLoadingMessage(getState())).toBe("Doing science...");
+  });
+});
+
+describe("getIsWhiteLabeling (OSS)", () => {
+  it("should return false when application-name is unchanged", () => {
+    const { getState } = setup();
+
+    expect(getIsWhiteLabeling(getState())).toBe(false);
+  });
+
+  it("should return false when application-name is changed", () => {
+    const { getState } = setup({ applicationName: "something else" });
+
+    expect(getIsWhiteLabeling(getState())).toBe(false);
   });
 });
