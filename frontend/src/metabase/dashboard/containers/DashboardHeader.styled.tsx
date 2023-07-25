@@ -15,7 +15,7 @@ export const DashboardHeaderActionDivider = styled.div`
 
 export const DashboardHeaderButton = styled(Button)<{
   isActive?: boolean;
-  visible?: boolean;
+  visibleOnSmallScreen?: boolean;
 }>`
   padding: 0.25rem 0.5rem;
   height: 2rem;
@@ -34,7 +34,7 @@ export const DashboardHeaderButton = styled(Button)<{
 
   ${breakpointMaxSmall} {
     ${props =>
-      !props.visible &&
+      !props.visibleOnSmallScreen &&
       css`
         display: none;
       `}
@@ -44,5 +44,5 @@ export const DashboardHeaderButton = styled(Button)<{
 DashboardHeaderButton.defaultProps = {
   onlyIcon: true,
   iconSize: 20,
-  visible: true,
+  visibleOnSmallScreen: true,
 };
