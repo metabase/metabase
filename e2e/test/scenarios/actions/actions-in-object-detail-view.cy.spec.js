@@ -12,21 +12,21 @@ import {
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
-const PG_ORDERS_TABLE_ID = 9;
+const PG_SCOREBOARD_TABLE_ID = 9;
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 
-const ORDERS_MODEL = {
-  name: "Orders model",
+const SCORES_MODEL = {
+  name: "Scores model",
   dataset: true,
   display: "table",
   database: PG_DB_ID,
   query: {
-    "source-table": PG_ORDERS_TABLE_ID,
+    "source-table": PG_SCOREBOARD_TABLE_ID,
   },
 };
 
-const FIRST_ORDER_ID = 11;
-const SECOND_ORDER_ID = 12;
+const FIRST_SCORE_ROW_ID = 11;
+const SECOND_SCORE_ROW_ID = 12;
 const UPDATED_SCORE = 987654321;
 const UPDATED_SCORE_FORMATTED = "987,654,321";
 
@@ -42,7 +42,7 @@ describe("Model actions in object detail view", () => {
     restore("postgres-writable");
     cy.signInAsAdmin();
     resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TEST_TABLE });
-    cy.createQuestion(ORDERS_MODEL, { wrapId: true, idAlias: "modelId" });
+    cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
     cy.signOut();
   });
 
@@ -54,7 +54,7 @@ describe("Model actions in object detail view", () => {
         assertActionsTabExists();
 
         cy.log("As normal user: verify there are no model actions to run");
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
@@ -66,7 +66,7 @@ describe("Model actions in object detail view", () => {
         assertActionsTabExists();
 
         cy.log("As admin: Verify that there are no model actions to run");
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
@@ -75,7 +75,7 @@ describe("Model actions in object detail view", () => {
         createBasicModelActions(modelId);
 
         cy.log("As admin: verify there are model actions to run");
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
@@ -83,7 +83,7 @@ describe("Model actions in object detail view", () => {
 
       asNormalUser(() => {
         cy.log("As normal user: verify there are model actions to run (1)");
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
@@ -92,10 +92,10 @@ describe("Model actions in object detail view", () => {
         openUpdateObjectModal();
         actionExecuteModal().within(() => {
           cy.wait("@prefetchValues").then(request => {
-            const firstOrder = request.response.body;
+            const firstScoreRow = request.response.body;
 
             actionForm().within(() => {
-              assertOrderFormPrefilled(firstOrder);
+              assertScoreFormPrefilled(firstScoreRow);
             });
           });
 
@@ -104,7 +104,7 @@ describe("Model actions in object detail view", () => {
         objectDetailModal().icon("close").click();
 
         cy.log("As normal user: verify there are model actions to run (2)");
-        visitObjectDetail(modelId, SECOND_ORDER_ID);
+        visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
@@ -115,10 +115,10 @@ describe("Model actions in object detail view", () => {
         openUpdateObjectModal();
         actionExecuteModal().within(() => {
           cy.wait("@prefetchValues").then(request => {
-            const secondOrder = request.response.body;
+            const secondScoreRow = request.response.body;
 
             actionForm().within(() => {
-              assertOrderFormPrefilled(secondOrder);
+              assertScoreFormPrefilled(secondScoreRow);
 
               cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
               cy.findByText("Update").click();
@@ -131,7 +131,7 @@ describe("Model actions in object detail view", () => {
         assertScoreUpdatedInTable();
 
         cy.log("As normal user: run delete action");
-        visitObjectDetail(modelId, SECOND_ORDER_ID);
+        visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownExists();
         });
@@ -149,7 +149,7 @@ describe("Model actions in object detail view", () => {
         disableBasicModelActions(modelId);
 
         cy.log("As admin user: verify there are no model actions to run");
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
@@ -168,7 +168,7 @@ describe("Model actions in object detail view", () => {
         assertActionsTabNotExists();
 
         cy.log("As normal user: verify there are no model actions to run");
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
         objectDetailModal().within(() => {
           assertActionsDropdownNotExists();
         });
@@ -262,7 +262,7 @@ function assertActionsTabNotExists() {
   cy.findByText("Actions").should("not.exist");
 }
 
-function assertOrderFormPrefilled(object) {
+function assertScoreFormPrefilled(object) {
   assertInputValue("ID", object.id);
   assertInputValue("Team Name", object.team_name);
   assertInputValue("Score", object.score);
