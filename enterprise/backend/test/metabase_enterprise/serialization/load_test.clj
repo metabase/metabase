@@ -131,33 +131,47 @@
   (fn [instance _fingerprint]
     (mi/model instance)))
 
+(defn- test-loaded-card [card card-name]
+  (when (= "My Nested Card" card-name)
+    (testing "Visualization settings for a Card were persisted correctly"
+      (let [vs (:visualization_settings card)
+            col (-> (:column_settings vs)
+                    first)
+            [col-key col-val] col
+            col-ref (mb.viz/parse-db-column-ref col-key)
+            {:keys [::mb.viz/field-id]} col-ref
+            [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as _tbl-col} & _] (:table.columns vs)
+            [_ col-field-id _] col-field-ref]
+        (is (some? (:table.columns vs)))
+        (is (some? (:column_settings vs)))
+        (is (integer? field-id))
+        (is (= "latitude" (-> (t2/select-one-fn :name Field :id field-id)
+                              u/lower-case-en)))
+        (is (= {:show_mini_bar true
+                :column_title "Parallel"} col-val))
+        (is (= "Venue Category" col-name))
+        (is (true? col-enabled))
+        (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
+        (is (= "category_id" (-> (t2/select-one-fn :name Field :id col-field-id)
+                                 u/lower-case-en)))))))
+
+(defn- test-pivot-card [card card-name]
+  (when (= "Pivot Table Card" card-name)
+    (testing "Visualization settings for a Card were persisted correctly"
+      (let [vs      (:visualization_settings card)
+            pivot   (:pivot_table.column_split vs)
+            vecs    (concat (:columns pivot) (:rows pivot))]
+        (is (some? vecs))
+        (doseq [[_ field-id _] vecs]
+          (is (integer? field-id) "fieldRef within pivot table was properly serialized and loaded"))))))
+
 (defmethod assert-loaded-entity Card
   [{card-name :name :as card} {:keys [query-results collections]}]
   (testing (format "Card: %s" card-name)
     (query-res-match query-results card)
     (collection-names-match collections card)
-    (when (= "My Nested Card" card-name)
-      (testing "Visualization settings for a Card were persisted correctly"
-        (let [vs (:visualization_settings card)
-              col (-> (:column_settings vs)
-                      first)
-              [col-key col-val] col
-              col-ref (mb.viz/parse-db-column-ref col-key)
-              {:keys [::mb.viz/field-id]} col-ref
-              [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as _tbl-col} & _] (:table.columns vs)
-              [_ col-field-id _] col-field-ref]
-          (is (some? (:table.columns vs)))
-          (is (some? (:column_settings vs)))
-          (is (integer? field-id))
-          (is (= "latitude" (-> (t2/select-one-fn :name Field :id field-id)
-                              u/lower-case-en)))
-          (is (= {:show_mini_bar true
-                  :column_title "Parallel"} col-val))
-          (is (= "Venue Category" col-name))
-          (is (true? col-enabled))
-          (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
-          (is (= "category_id" (-> (t2/select-one-fn :name Field :id col-field-id)
-                                   u/lower-case-en))))))
+    (test-loaded-card card card-name)
+    (test-pivot-card card card-name)
     card))
 
 (defn- collection-parent-name [collection]
