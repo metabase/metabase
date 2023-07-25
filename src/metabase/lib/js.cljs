@@ -401,6 +401,28 @@
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
+(defn ^:export add-field
+  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  Exactly what this means depends on the source of the field:
+  - Source table/card: add it to the `:fields` list
+      - If `:fields` is missing, it's implicitly `:all`, so do nothing.
+  - Implicit join: add it to the `:fields` list; query processor will do the right thing with it.
+  - Explicit join: add it to that join's `:fields` list.
+  - Custom expression: Do nothing - expressions are always included."
+  [a-query stage-number column]
+  (lib.core/add-field a-query stage-number column))
+
+(defn ^:export remove-field
+  "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
+  query. Exactly what this means depends on the source of the field:
+  - Source table/card: remove it to the `:fields` list
+      - If `:fields` is missing, it's implicitly `:all` - populate it with all the columns except the given one.
+  - Implicit join: remove it from the `:fields` list; do nothing if it's not there.
+  - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables).
+  - Custom expression: Throw - the custom expression should itself be removed."
+  [a-query stage-number column]
+  (lib.core/remove-field a-query stage-number column))
+
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
