@@ -44,7 +44,9 @@ async function setup({ cachingEnabled = false, databaseIdParam = "" } = {}) {
 
   const settings = mockSettings({
     engines: ENGINES_MOCK,
-    "token-features": createMockTokenFeatures({ advanced_config: true }),
+    "token-features": createMockTokenFeatures({
+      cache_granular_controls: true,
+    }),
     "enable-query-caching": cachingEnabled,
   });
 
