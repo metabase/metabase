@@ -531,6 +531,5 @@ describe("Notebook Editor > Join Step", () => {
     });
   });
 
-  it.todo("field selection");
   it.todo("multiple conditions");
 });
