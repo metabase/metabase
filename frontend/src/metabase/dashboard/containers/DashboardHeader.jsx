@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -122,6 +121,18 @@ class DashboardHeader extends Component {
       query: PropTypes.object,
       pathname: PropTypes.string,
     }),
+
+    createBookmark: PropTypes.func,
+    deleteBookmark: PropTypes.func,
+    isBookmarked: PropTypes.bool,
+    dashboardBeforeEditing: PropTypes.object,
+    parametersWidget: PropTypes.node,
+    isShowingDashboardInfoSidebar: PropTypes.bool,
+    isAddParameterPopoverOpen: PropTypes.bool,
+    showAddParameterPopover: PropTypes.func,
+    hideAddParameterPopover: PropTypes.func,
+    addParameter: PropTypes.func,
+    isHomepageDashboard: PropTypes.bool,
   };
 
   handleEdit(dashboard) {
@@ -368,6 +379,7 @@ class DashboardHeader extends Component {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <DashboardHeaderButton
+            visibleOnSmallScreen={false}
             key="edit"
             aria-label={t`Edit dashboard`}
             data-metabase-event="Dashboard;Edit"
