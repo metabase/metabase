@@ -18,17 +18,6 @@
 (def ^:private false-clause [:inline [:= 0 1]])
 
 ;; ------------------------------------------------------------------------------------------------;;
-;;                                            Helper fns                                           ;;
-;; ------------------------------------------------------------------------------------------------;;
-
-(def ^:private feature->supported-models
-  {:created-by #{"action" "card" "dataset" "dashboard"}})
-
-(defn- has-optional-filters?
-  [{:keys [created-by] :as _search-context}]
-  (boolean (some some? [created-by])))
-
-;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
 ;; ------------------------------------------------------------------------------------------------;;
 
@@ -67,31 +56,46 @@
 ;;                                         Optional filters                                        ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti ^:private created-by-clause
-  "Clause to filter by the creator of the entity."
-  {:arglists '([model creator-id])}
-  (fn [model _creator-id]
-    model))
+(defmulti ^:private optional-filter-clause
+  "Clause for optional filters.
+  Dispath with an array of [filter model-name]."
+  {:arglists '([model fitler filter-value])}
+  (fn [filter model _filter-value]
+    [filter model]))
 
-(defmethod created-by-clause :default
-  [model _creator-id]
-  (throw (ex-info (format "Created by filter for %s is not supported" model) {:model model})))
+(defmethod optional-filter-clause :default
+  [filter model _creator-id]
+  (throw (ex-info (format "%s filter for %s is not supported" filter model) {:filter filter :model model})))
 
-(defmethod created-by-clause "card"
-  [model creator-id]
+;; Created by filters
+(defmethod optional-filter-clause [:created-by "card"]
+  [_filter model creator-id]
   [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
-(defmethod created-by-clause "dataset"
-  [model creator-id]
+(defmethod optional-filter-clause [:created-by "dataset"]
+  [_filter model creator-id]
   [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
-(defmethod created-by-clause "dashboard"
-  [model creator-id]
+(defmethod optional-filter-clause [:created-by "dashboard"]
+  [_filter model creator-id]
   [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
-(defmethod created-by-clause "action"
-  [model creator-id]
+(defmethod optional-filter-clause [:created-by "action"]
+  [_filter model creator-id]
   [:= (search.config/column-with-model-alias model :creator_id) creator-id])
+
+(defn ^:private feature->supported-models
+  "Return A map of filter to its support models.
+
+  E.g: {:created-by #{\"card\" \"dataset\" \"dashboard\" \"action\"}}
+
+  This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
+  []
+  (->> (dissoc (methods optional-filter-clause) :default)
+       keys
+       (reduce (fn [acc [filter model]]
+                 (update acc filter set/union #{model}))
+               {})))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Public functions                                         ;;
@@ -101,18 +105,14 @@
   "Given a search-context, retuns the list of models that can be applied to it.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
-  [{:keys [created-by models] :as search-context} :- SearchContext]
-  (if-not (has-optional-filters? search-context)
-    models
-    (cond-> #{}
-      (some? created-by) (set/union (:created-by feature->supported-models))
-
-      true               (set/intersection models))))
+  [{:keys [created-by models] :as _search-context} :- SearchContext]
+  (cond-> models
+    (some? created-by) (set/intersection (:created-by (feature->supported-models)))))
 
 (defn- build-optional-filters
   [model {:keys [created-by] :as _search-context}]
   (cond-> []
-    (int? created-by) (conj (created-by-clause model created-by))))
+    (int? created-by) (conj (optional-filter-clause :created-by model created-by))))
 
 (mu/defn build-filters
   "Build the search filters for a model."

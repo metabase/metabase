@@ -38,7 +38,6 @@
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by 1})))))))
 
-
 (deftest ^:parallel build-filters-test
   (testing "no optional filters"
     (is (=
@@ -47,15 +46,14 @@
 
   (testing "optional filters"
     (testing "created-by"
-      (is (=
-           [[:= :card.creator_id 1] [:= :card.archived false]]
-           (search.filter/build-filters "card"
-                                        (merge default-search-ctx
-                                               {:created-by 1}))))
+      (is (= [[:= :card.creator_id 1] [:= :card.archived false]]
+             (search.filter/build-filters "card"
+                                          (merge default-search-ctx
+                                                 {:created-by 1}))))
       (testing "throw error for unsupport models"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Created by filter for database is not supported"
+             #":created-by filter for database is not supported"
              (search.filter/build-filters "database"
                                           (merge default-search-ctx
                                                  {:created-by 1}))))))))

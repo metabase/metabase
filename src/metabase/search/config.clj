@@ -53,6 +53,17 @@
    "segment"        {:db-model :model/Segment :alias :segment}
    "table"          {:db-model :model/Table :alias :table}})
 
+(def all-models
+  "Set of all valid models to search for. "
+  (set (keys model-to-db-model)))
+
+(def models-search-order
+  "The order of this list influences the order of the results: items earlier in the
+  list will be ranked higher."
+  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+
+(assert (= all-models (set models-search-order)) "The models search order has to include all models")
+
 (defn model->alias
   "Given a model string returns the model alias"
   [model]
@@ -65,17 +76,6 @@
   [model-string :- ms/KeywordOrString
    column       :- ms/KeywordOrString]
   (keyword (str (name (model->alias model-string)) "." (name column))))
-
-(def all-models
-  "Set of all valid models to search for. "
-  (set (keys model-to-db-model)))
-
-(def models-search-order
-  "The order of this list influences the order of the results: items earlier in the
-  list will be ranked higher."
-  ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
-
-(assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
 (def SearchableModel
   "Schema for searchable models"

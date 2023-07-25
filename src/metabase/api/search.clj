@@ -439,17 +439,17 @@
            search-string
            table-db-id]} :- [:map {:closed true}
                              [:search-string                    [:maybe ms/NonBlankString]]
+                             [:models                           [:maybe [:set SearchableModel]]]
                              [:archived-string {:optional true} [:maybe ms/BooleanString]]
                              [:created-by      {:optional true} [:maybe ms/PositiveInt]]
                              [:limit           {:optional true} [:maybe ms/Int]]
-                             [:models          {:optional true} [:maybe [:or SearchableModel [:sequential SearchableModel]]]]
                              [:offset          {:optional true} [:maybe ms/Int]]
                              [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]]]
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:search-string      search-string
                         :current-user-perms @api/*current-user-permissions-set*
                         :archived?          (Boolean/parseBoolean archived-string)
-                        :models             (apply hash-set (if (seq models) models search-config/all-models))}
+                        :models             models}
                  (some? created-by)  (assoc :created-by created-by)
                  (some? table-db-id) (assoc :table-db-id table-db-id)
                  (some? limit)       (assoc :limit-int limit)
@@ -459,10 +459,12 @@
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id]
-  {table-db-id [:maybe ms/PositiveInt]}
+  {archived-string [:maybe ms/BooleanString]
+   table-db-id     [:maybe ms/PositiveInt]}
   (query-model-set (search-context {:search-string   q
                                     :archived-string archived-string
-                                    :table-db-id     table-db-id})))
+                                    :table-db-id     table-db-id
+                                    :models          search-config/all-models})))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
@@ -481,12 +483,16 @@
    created_by   [:maybe ms/PositiveInt]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
+        models-set (cond
+                    (nil? models)    search-config/all-models
+                    (string? models) #{models}
+                    :else            (set models))
         results    (search (search-context
                             {:search-string   q
                              :archived-string archived
                              :created-by      created_by
                              :table-db-id     table_db_id
-                             :models          models
+                             :models          models-set
                              :limit           mw.offset-paging/*limit*
                              :offset          mw.offset-paging/*offset*}))
         duration   (- (System/currentTimeMillis) start-time)]
