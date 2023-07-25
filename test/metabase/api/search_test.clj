@@ -11,6 +11,7 @@
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
             DashboardCard Database Metric PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
+   [metabase.models.collection :as collection]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -134,7 +135,8 @@
                                                   (assoc action-model-params :collection_id (u/the-id coll)))]
                     Action      [{action-id :id
                                   :as action}   (merge (data-map "action %s action")
-                                                 {:type :query, :model_id (u/the-id action-model)})]
+                                                 {:type :query :model_id (u/the-id action-model)
+                                                  :creator_id  (mt/user->id :rasta)})]
                     QueryAction [_qa (query-action action-id)]
                     Card        [card           (coll-data-map "card %s card" coll)]
                     Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
@@ -271,7 +273,7 @@
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3")))))))
 
-(deftest query-model-set
+(deftest archived-models-test
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
@@ -282,6 +284,17 @@
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
       (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
+
+(deftest query-model-set-test
+  (with-search-items-in-root-collection "query-model-set"
+    (testing "should returns a list of models that search result will return"
+     (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+            (set (mt/user-http-request :crowberto :get 200 "search/models" :q "query-model-set")))))
+    (testing "return a subsets of model for created-by filter"
+      (is (= #{"dashboard" "dataset" "card" "action"}
+             (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                        :q "query-model-set"
+                                        :created_by (mt/user->id :rasta))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
@@ -505,15 +518,17 @@
   (testing "Sandboxing inhibits searching indexes"
     (binding [api/*current-user-id* (mt/user->id :rasta)]
       (is (= [:and
-              [:inline [:= 1 1]]
-              [:or [:like [:lower :model-index-value.name] "%foo%"]]]
+              [:or [:like [:lower :model-index-value.name] "%foo%"]]
+              [:inline [:= 1 1]]]
              (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                          :search-string "foo"
+                                                                         :models             search-config/all-models
                                                                          :current-user-perms #{"/"}})))
       (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-        (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
+        (is (= [:and [:or [:= 0 1]] [:inline [:= 1 1]]]
                (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                            :search-string "foo"
+                                                                           :models             search-config/all-models
                                                                            :current-user-perms #{"/"}})))))))
 
 (deftest archived-results-test
@@ -718,13 +733,17 @@
                                :name     "segment count test 2"}
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
-    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (toucan2.execute/with-call-count [call-count]
-        (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
+        (#'api.search/search {:search-string      "count test"
+                              :archived?          false
+                              :models             search-config/all-models
+                              :current-user-perms #{"/"}
+                              :limit-int          100})
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
-        (is (= 7 (call-count)))))))
+        (is (= 10 (call-count)))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
@@ -744,3 +763,73 @@
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
+
+;; ------------------------------------------------ Filter Tests ------------------------------------------------ ;;
+
+(deftest filter-by-creator-test
+  (let [search-term "Created by Filter"]
+    (with-search-items-in-root-collection search-term
+      (t2.with-temp/with-temp
+        [:model/User      {user-id :id}      {:first_name "Explorer" :last_name "Curious"}
+         :model/Card      {card-id :id}      {:name (format "%s Card 1" search-term) :creator_id user-id}
+         :model/Card      {card-id-2 :id}    {:name (format "%s Card 2" search-term) :creator_id user-id
+                                              :collection_id (:id (collection/user->personal-collection user-id))}
+         :model/Card      {card-id-3 :id}    {:name (format "%s Card 3" search-term) :creator_id user-id :archived true}
+         :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :dataset true :creator_id user-id}
+         :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
+         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
+
+        (testing "sanity check that without search by created_by we have more results than if a filter is provided"
+          (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
+                 5)))
+
+        (testing "Able to filter by creator"
+          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id)]
+
+            (testing "only a subset of models are applicable"
+              (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
+
+            (testing "results contains only entities with the specified creator"
+              (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
+                       [card-id      "card"      "Created by Filter Card 1"]
+                       [card-id-2    "card"      "Created by Filter Card 2"]
+                       [model-id     "dataset"   "Created by Filter Dataset 1"]
+                       [action-id    "action"    "Created by Filter Action 1"]}
+                     (->> (:data resp)
+                          (map (juxt :id :model :name))
+                          set))))))
+
+        (testing "Works with archived filter"
+          (is (=? [{:model "card"
+                    :id     card-id-3
+                    :archived true}]
+                  (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :archived true)))))
+
+        (testing "Works with models filter"
+          (testing "return intersections of supported models with provided models"
+            (is (= #{"dashboard" "card"}
+                   (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "card" :models "dashboard")
+                        :data
+                        (map :model)
+                        set))))
+
+          (testing "return nothing if there is no intersection"
+            (is (= #{}
+                   (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "table" :models "database")
+                        :data
+                        (map :model)
+                        set)))))
+
+
+       (testing "respect the read permissions"
+         (let [resp (mt/user-http-request :rasta :get 200 "search" :q search-term :created_by user-id)]
+           (is (not (contains?
+                     (->> (:data resp)
+                          (filter #(= (:model %) "card"))
+                          (map :id)
+                          set)
+                     card-id-2)))))
+
+       (testing "error if creator_id is not an integer"
+         (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
+           (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))

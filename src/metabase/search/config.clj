@@ -1,11 +1,12 @@
 (ns metabase.search.config
   (:require
-   [metabase.models
-    :refer [Action Card Collection Dashboard Database Metric
-            ModelIndexValue Segment Table]]
+   [malli.core :as mc]
+   [metabase.models.permissions :as perms]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the {0} navbar?"
@@ -41,21 +42,57 @@
 
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  {"action"         {:db-model Action, :alias :action}
-   "card"           {:db-model Card, :alias :card}
-   "collection"     {:db-model Collection, :alias :collection}
-   "dashboard"      {:db-model Dashboard, :alias :dashboard}
-   "database"       {:db-model Database, :alias :database}
-   "dataset"        {:db-model Card, :alias :card}
-   "indexed-entity" {:db-model ModelIndexValue :alias :model-index-value}
-   "metric"         {:db-model Metric, :alias :metric}
-   "segment"        {:db-model Segment, :alias :segment}
-   "table"          {:db-model Table, :alias :table}})
+  {"action"         {:db-model :model/Action :alias :action}
+   "card"           {:db-model :model/Card :alias :card}
+   "collection"     {:db-model :model/Collection :alias :collection}
+   "dashboard"      {:db-model :model/Dashboard :alias :dashboard}
+   "database"       {:db-model :model/Database :alias :database}
+   "dataset"        {:db-model :model/Card :alias :card}
+   "indexed-entity" {:db-model :model/ModelIndexValue :alias :model-index-value}
+   "metric"         {:db-model :model/Metric :alias :metric}
+   "segment"        {:db-model :model/Segment :alias :segment}
+   "table"          {:db-model :model/Table :alias :table}})
 
 (def all-models
-  "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
+  "Set of all valid models to search for. "
+  (set (keys model-to-db-model)))
+
+(def models-search-order
+  "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
   ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
+
+(assert (= all-models (set models-search-order)) "The models search order has to include all models")
+
+(defn model->alias
+  "Given a model string returns the model alias"
+  [model]
+  (-> model model-to-db-model :alias))
+
+(mu/defn column-with-model-alias :- keyword?
+  "Given a column and a model name, Return a keyword representing the column with the model alias prepended.
+
+  (column-with-model-alias \"card\" :id) => :card.id)"
+  [model-string :- ms/KeywordOrString
+   column       :- ms/KeywordOrString]
+  (keyword (str (name (model->alias model-string)) "." (name column))))
+
+(def SearchableModel
+  "Schema for searchable models"
+  (into [:enum] all-models))
+
+(def SearchContext
+  "Map with the various allowed search parameters, used to construct the SQL query."
+  (mc/schema
+    [:map {:closed true}
+     [:search-string                       [:maybe ms/NonBlankString]]
+     [:archived?                           :boolean]
+     [:models                              [:set SearchableModel]]
+     [:current-user-perms                  [:set perms/PathMalliSchema]]
+     [:created-by         {:optional true} [:maybe ms/PositiveInt]]
+     [:table-db-id        {:optional true} [:maybe ms/PositiveInt]]
+     [:limit-int          {:optional true} [:maybe ms/Int]]
+     [:offset-int         {:optional true} [:maybe ms/Int]]]))
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
