@@ -11,6 +11,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
@@ -421,12 +422,12 @@
   (let [options (merge visible-columns-defaults
                        (when-let [opts (some-> js-options js-keys set)]
                          (cond-> {}
-                           (opts "include_joined")
-                           (assoc :include-joined? (.-include_joined js-options))
-                           (opts "include_expressions")
-                           (assoc :include-expressions? (.-include_expressions? js-options))
-                           (opts "include_implicitly_joinable")
-                           (assoc :include-implicitly-joinable? (.-include_implicitly_joinable js-options)))))]
+                           (opts "includeJoined")
+                           (assoc :include-joined? (.-includeJoined js-options))
+                           (opts "includeExpressions")
+                           (assoc :include-expressions? (.-includeExpressions? js-options))
+                           (opts "includeImplicitlyJoinable")
+                           (assoc :include-implicitly-joinable? (.-includeImplicitlyJoinable js-options)))))]
     (to-array (lib.metadata.calculation/visible-columns a-query stage-number
                                                         (lib.util/query-stage a-query stage-number)
                                                         options))))
@@ -441,6 +442,22 @@
                                (u/qualified-name %)
                                %))
       clj->js))
+
+(defn ^:export find-column-index-from-legacy-ref
+  "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`), search through it for a field matching the
+  given legacy field ref. Returns the index, or -1 if no matching column is found."
+  [a-query _stage-number legacy-columns legacy-field-ref]
+  (let [columns   (map #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
+        field-ref (-> legacy-field-ref
+                      (js->clj :keywordize-keys true)
+                      (update 0 keyword)
+                      convert/->pMBQL)]
+    (or (->> columns
+             (keep-indexed #(when (lib.equality/find-closest-matching-ref a-query field-ref
+                                                                          [(lib.core/ref %2)])
+                              %1))
+             first)
+        -1)))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
