@@ -268,18 +268,18 @@ describe("Notebook Editor > Join Step", () => {
     const popover = screen.getByTestId("popover");
     userEvent.click(await within(popover).findByText("Products"));
 
+    expect(await screen.findByLabelText("Left column")).toHaveTextContent(
+      "Product ID",
+    );
+    expect(screen.getByLabelText("Right column")).toHaveTextContent("ID");
+    expect(screen.getByLabelText("Change operator")).toHaveTextContent("=");
+
     const { conditions } = getRecentJoin();
     const [condition] = conditions;
     expect(conditions).toHaveLength(1);
     expect(condition.operator).toBe("=");
     expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
     expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
-
-    expect(await screen.findByLabelText("Left column")).toHaveTextContent(
-      "Product ID",
-    );
-    expect(screen.getByLabelText("Right column")).toHaveTextContent("ID");
-    expect(screen.getByLabelText("Change operator")).toHaveTextContent("=");
   });
 
   it("should change LHS column", async () => {
@@ -413,8 +413,10 @@ describe("Notebook Editor > Join Step", () => {
       const popover = screen.getByTestId("popover");
       userEvent.click(await within(popover).findByText("Products"));
 
-      const { fields } = getRecentJoin();
-      expect(fields).toBe("all");
+      await waitFor(() => {
+        const { fields } = getRecentJoin();
+        expect(fields).toBe("all");
+      });
     });
 
     it.todo("should select a few columns when adding a join");
