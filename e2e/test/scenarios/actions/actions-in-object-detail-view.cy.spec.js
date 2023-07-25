@@ -1,6 +1,6 @@
 import moment from "moment-timezone";
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   popover,
   resetTestTable,
@@ -46,36 +46,6 @@ describe("Model actions in object detail view", () => {
 
   it("scenario", () => {
     cy.get("@modelId").then(modelId => {
-      asNormalUser(() => {
-        visitModelDetail(modelId);
-        assertActionsTabNotExists();
-
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
-        objectDetailModal().within(() => {
-          assertActionsDropdownNotExists();
-        });
-      });
-
-      asAdmin(() => {
-        visitModelDetail(modelId);
-        assertActionsTabNotExists();
-
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
-        objectDetailModal().within(() => {
-          assertActionsDropdownNotExists();
-        });
-
-        enableDatabaseActions();
-
-        visitModelDetail(modelId);
-        assertActionsTabExists();
-
-        visitObjectDetail(modelId, FIRST_ORDER_ID);
-        objectDetailModal().within(() => {
-          assertActionsDropdownNotExists();
-        });
-      });
-
       asNormalUser(() => {
         visitModelDetail(modelId);
         assertActionsTabExists();
@@ -146,6 +116,46 @@ describe("Model actions in object detail view", () => {
         deleteObjectModal().findByText("Delete forever").click();
         assertFailedDeleteToast();
       });
+
+      asAdmin(() => {
+        visitModelDetail(modelId);
+        assertActionsTabExists();
+
+        disableDatabaseActions();
+
+        visitModelDetail(modelId);
+        assertActionsTabNotExists();
+      });
+
+      asNormalUser(() => {
+        visitModelDetail(modelId);
+        assertActionsTabNotExists();
+
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
+      });
+
+      asAdmin(() => {
+        visitModelDetail(modelId);
+        assertActionsTabNotExists();
+
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
+
+        enableDatabaseActions();
+
+        visitModelDetail(modelId);
+        assertActionsTabExists();
+
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
+      });
     });
   });
 });
@@ -163,7 +173,7 @@ function asNormalUser(callback) {
 }
 
 function enableDatabaseActions() {
-  cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
+  cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
   const actionsToggle = cy.findByLabelText("Model actions");
 
   cy.log("actions should be disabled in model page");
@@ -171,8 +181,21 @@ function enableDatabaseActions() {
 
   actionsToggle.click();
 
-  cy.log("actions should be enabled in model detail page");
+  cy.log("actions should be enabled in model page");
   actionsToggle.should("be.checked");
+}
+
+function disableDatabaseActions() {
+  cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+  const actionsToggle = cy.findByLabelText("Model actions");
+
+  cy.log("actions should be enabled in model page");
+  actionsToggle.should("be.checked");
+
+  actionsToggle.click();
+
+  cy.log("actions should be disabled in model page");
+  actionsToggle.should("not.be.checked");
 }
 
 function createBasicModelActions(modelId) {
