@@ -73,16 +73,7 @@ const MetabotWidget = ({
   return (
     <MetabotHeader>
       <MetabotMessage>
-        {getGreetingMessage(user)} {t`You can ask me things about your data.`}{" "}
-        {databases.length > 1 &&
-          jt`I’m thinking about the ${(
-            <DatabasePicker
-              key="picker"
-              databases={databases}
-              selectedDatabaseId={databaseId}
-              onChange={setDatabaseId}
-            />
-          )} database right now.`}
+        {getGreetingMessage(user)} {t`Ask me something about any of your models.`}
       </MetabotMessage>
       <MetabotPrompt
         prompt={prompt}
