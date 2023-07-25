@@ -148,6 +148,12 @@ describe("Model actions in object detail view", () => {
         cy.log("As admin: disable basic model actions");
         disableBasicModelActions(modelId);
 
+        cy.log("As admin user: verify there are no model actions to run");
+        visitObjectDetail(modelId, FIRST_ORDER_ID);
+        objectDetailModal().within(() => {
+          assertActionsDropdownNotExists();
+        });
+
         cy.log("As admin: disable database actions");
         disableDatabaseActions(WRITABLE_DB_ID);
 
