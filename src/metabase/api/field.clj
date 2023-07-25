@@ -427,7 +427,9 @@
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
-  {value ms/NonBlankString}
+  {id        ms/PositiveInt
+   search-id ms/PositiveInt
+   value     ms/NonBlankString}
   (let [field        (api/check-404 (t2/select-one Field :id id))
         search-field (api/check-404 (t2/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)
