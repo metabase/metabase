@@ -21,7 +21,7 @@
 (mu/defn views-by-time
   "Get views of a Card or Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`."
   [model    :- ModelName
-   model-id :- ms/IntStringGreaterThanZero
+   model-id :- ms/PositiveInt
    unit     :- common/DateTimeUnitStr]
   {:metadata [[:date  {:display_name "Date",  :base_type (common/datetime-unit-str->base-type unit)}]
               [:views {:display_name "Views", :base_type :type/Integer}]]
