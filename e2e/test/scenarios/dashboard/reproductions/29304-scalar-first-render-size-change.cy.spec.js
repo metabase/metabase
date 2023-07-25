@@ -64,8 +64,7 @@ describe("issue 29304", () => {
         const DASHCARD_FIRST_RENDER_TIMEOUT = 400;
         cy.tick(DASHCARD_FIRST_RENDER_TIMEOUT);
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
-          // Before the fix the width would be around 50px
-          expect($scalarValue.offsetWidth).to.be.greaterThan(100);
+          expect($scalarValue.offsetWidth).to.be.closeTo(147, 2);
         });
       });
     });
@@ -86,8 +85,7 @@ describe("issue 29304", () => {
         const DASHCARD_FIRST_RENDER_TIMEOUT = 400;
         cy.tick(DASHCARD_FIRST_RENDER_TIMEOUT);
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
-          // Before the fix the width would be around 30px
-          expect($scalarValue.offsetWidth).to.be.greaterThan(60);
+          expect($scalarValue.offsetWidth).to.be.closeTo(80, 2);
         });
       });
     });
