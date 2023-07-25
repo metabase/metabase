@@ -45,7 +45,7 @@
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
    [schema.core :as s]))
 
 (defn- check-results-and-metadata-keys-match
@@ -68,8 +68,9 @@
   (for [[k v] metadata]
     (assoc v :name (name k))))
 
-(s/defn ^:private format-results [{:keys [results metadata]} :- {:results  [su/Map]
-                                                                 :metadata audit.i/ResultsMetadata}]
+(mu/defn ^:private format-results [{:keys [results metadata]} :- [:map
+                                                                  [:results  [:sequential :map]]
+                                                                  [:metadata audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)
    :rows (for [row results]
