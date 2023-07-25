@@ -8,8 +8,11 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { DATA_BUCKET } from "metabase/containers/DataPicker";
 
+import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+
+import type { TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import type Table from "metabase-lib/metadata/Table";
 
@@ -42,6 +45,7 @@ export function JoinTablePicker({
   onChangeTable,
   onChangeFields,
 }: JoinTablePickerProps) {
+  const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
   const tableInfo = table ? Lib.displayInfo(query, stageIndex, table) : null;
@@ -65,8 +69,10 @@ export function JoinTablePicker({
     return undefined;
   }, [tableId, isStartedFromModel]);
 
-  const handleTableChange = (tableId: number | string) =>
+  const handleTableChange = async (tableId: TableId) => {
+    await dispatch(Tables.actions.fetchMetadata({ id: tableId }));
     onChangeTable(Lib.tableOrCardMetadata(query, tableId));
+  };
 
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
 

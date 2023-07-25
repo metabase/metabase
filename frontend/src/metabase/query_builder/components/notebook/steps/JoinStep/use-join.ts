@@ -1,11 +1,8 @@
 import { useEffect, useCallback, useState } from "react";
 import { usePrevious } from "react-use";
-import Tables from "metabase/entities/tables";
-import { useDispatch } from "metabase/lib/redux";
 import * as Lib from "metabase-lib";
 
 export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
-  const dispatch = useDispatch();
   const previousJoin = usePrevious(join);
 
   const [strategy, _setStrategy] = useState<Lib.JoinStrategy>(
@@ -17,20 +14,20 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   const [conditions, _setConditions] = useState<Lib.JoinConditionClause[]>(
     join ? Lib.joinConditions(join) : [],
   );
-  const [columns, _setColumns] = useState(
-    join ? Lib.joinableColumns(query, stageIndex, join) : [],
-  );
   const [selectedColumns, _setSelectedColumns] = useState(
     getInitiallySelectedColumns(query, stageIndex, join),
   );
 
-  const previousTable = usePrevious(table);
+  const columns = join
+    ? Lib.joinableColumns(query, stageIndex, join)
+    : table
+    ? Lib.joinableColumns(query, stageIndex, table)
+    : [];
 
   useEffect(() => {
     if (join && previousJoin !== join) {
       _setStrategy(Lib.joinStrategy(join));
       _setTable(Lib.joinedThing(query, join));
-      _setColumns(Lib.joinableColumns(query, stageIndex, join));
       _setConditions(Lib.joinConditions(join));
     }
     if (!previousJoin && join) {
@@ -38,29 +35,29 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     }
   }, [query, stageIndex, join, previousJoin]);
 
-  useEffect(() => {
-    if (table && table !== previousTable) {
-      const info = Lib.pickerInfo(query, table);
-      const tableId = info.tableId || info.cardId;
-      dispatch(Tables.actions.fetchMetadata({ id: tableId }));
-    }
-  }, [query, table, previousTable, dispatch]);
-
   const isColumnSelected = (column: Lib.ColumnMetadata) => {
-    return join
-      ? !!Lib.displayInfo(query, stageIndex, column).selected
-      : selectedColumns.includes(column);
+    if (join) {
+      return !!Lib.displayInfo(query, stageIndex, column).selected;
+    }
+    return selectedColumns.some(selectedColumn =>
+      Lib.isSameColumn(query, stageIndex, selectedColumn, column),
+    );
   };
 
   const setSelectedColumns = (nextSelectedColumns: Lib.JoinFields) => {
     if (join) {
       const nextJoin = Lib.withJoinFields(join, nextSelectedColumns);
       const nextQuery = Lib.replaceClause(query, stageIndex, join, nextJoin);
-      _setColumns(Lib.joinableColumns(nextQuery, stageIndex, nextJoin));
       return nextQuery;
     }
 
+    // Table should be in place, it's a check for TypeScript
+    if (!table) {
+      return;
+    }
+
     if (nextSelectedColumns === "all") {
+      const columns = Lib.joinableColumns(query, stageIndex, table);
       _setSelectedColumns(columns);
     } else if (nextSelectedColumns === "none") {
       _setSelectedColumns([]);
@@ -98,7 +95,6 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
       } else {
         const columns = Lib.joinableColumns(query, stageIndex, nextTable);
         _setTable(nextTable);
-        _setColumns(columns);
         _setSelectedColumns(columns);
         _setConditions([]);
       }
