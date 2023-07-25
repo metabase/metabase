@@ -195,15 +195,13 @@ describe("Notebook Editor > Join Step", () => {
 
     userEvent.click(screen.getByLabelText("Right table"));
     const tablePicker = await screen.findByTestId("popover");
-    userEvent.click(await within(tablePicker).findByText("Products"));
+    userEvent.click(await within(tablePicker).findByText("Reviews"));
 
     const columnPicker = await screen.findByLabelText("grid");
 
     expect(within(columnPicker).getByText("Order")).toBeInTheDocument();
     expect(within(columnPicker).getByText("Product ID")).toBeInTheDocument();
-    expect(
-      within(columnPicker).queryByText("Products"),
-    ).not.toBeInTheDocument();
+    expect(within(columnPicker).queryByText(/Review/i)).not.toBeInTheDocument();
   });
 
   it("should highlight selected LHS column", async () => {
