@@ -192,7 +192,7 @@ describeEE("LDAP EE", { tags: "@external" }, () => {
       cy.findByText("Edit user").click();
     });
     cy.findByDisplayValue("uid").should("exist");
-    cy.findByDisplayValue("user01@example.org").should("exist");
+    cy.findByDisplayValue("homedirectory").should("exist");
   });
 });
 
