@@ -154,7 +154,6 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   warn,
 ) {
   const dataset = crossfilter();
-  const { _raw } = props.series;
 
   const normalized = isNormalized(props.settings, datas);
   // get the sum of the metric for each dimension value in order to scale
@@ -166,8 +165,8 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
       }
     }
 
+    const { _raw } = props.series;
     props.series = addPercentSignsToDisplayNames(props.series);
-    props.series._raw = _raw;
 
     const normalizedValues = datas.flatMap(data =>
       data.map(([d, m]) => m / scaleFactors[d]),
