@@ -16,13 +16,6 @@
   padding: 0 0.5em;
 }
 
-:local(.container.deemphasized) {
-  opacity: 0.4;
-}
-:local(.container.deemphasized:hover) {
-  opacity: 1;
-}
-
 @media screen and (min-width: 440px) {
   :local(.container) {
     margin-right: 0.85em;
