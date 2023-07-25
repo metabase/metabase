@@ -68,6 +68,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
+   (java.sql Connection)
    (java.io File)))
 
 (set! *warn-on-reflection* true)
@@ -957,8 +958,7 @@ saved later when it is ready."
    pk                   ms/PositiveInt
    column               :string
    value                [:maybe :string]}
-  (let [card     (api/check-404 (t2/select-one :model/Card :id card-id))
-        table-name (keyword (str "editable_column_table_" card-id))
+  (let [table-name (keyword (str "editable_column_table_" card-id))
         table    (t2/select-one :model/Table :name (name table-name))
         database-id (:db_id table)
         driver   (driver.u/database->driver database-id)
