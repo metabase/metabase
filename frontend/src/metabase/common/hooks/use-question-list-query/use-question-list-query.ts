@@ -16,5 +16,6 @@ export const useQuestionListQuery = (
     getLoading: Questions.selectors.getLoading,
     getLoaded: Questions.selectors.getLoaded,
     getError: Questions.selectors.getError,
+    getListMetadata: Questions.selectors.getListMetadata,
   });
 };

@@ -15,5 +15,6 @@ export const useMetricListQuery = (
     getLoading: Metrics.selectors.getLoading,
     getLoaded: Metrics.selectors.getLoaded,
     getError: Metrics.selectors.getError,
+    getListMetadata: Metrics.selectors.getListMetadata,
   });
 };
