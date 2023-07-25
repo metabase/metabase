@@ -91,7 +91,6 @@
       (binding [*ns* (the-ns ns-symb)]
         (loop []
           (let [form (tools.reader/read reader false ::eof)]
-            (println "form:" form) ; NOCOMMIT
             (cond
               (= form ::eof)
               (throw (ex-info (str "Cannot find source for " query-type)
