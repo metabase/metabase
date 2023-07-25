@@ -29,50 +29,48 @@ if (hasPremiumFeature("snippet_collections")) {
         },
       }),
   }));
-}
 
-PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
-  snippetSidebar =>
-    snippetSidebar.state.modalSnippetCollection && (
-      <Modal
-        onClose={() =>
-          snippetSidebar.setState({ modalSnippetCollection: null })
-        }
-      >
-        <SnippetCollectionFormModal
-          collection={snippetSidebar.state.modalSnippetCollection}
+  PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
+    snippetSidebar =>
+      snippetSidebar.state.modalSnippetCollection && (
+        <Modal
           onClose={() =>
             snippetSidebar.setState({ modalSnippetCollection: null })
           }
-          onSaved={() => {
-            snippetSidebar.setState({ modalSnippetCollection: null });
-          }}
-        />
-      </Modal>
-    ),
-  snippetSidebar =>
-    snippetSidebar.state.permissionsModalCollectionId != null && (
-      <Modal
-        onClose={() =>
-          snippetSidebar.setState({ permissionsModalCollectionId: null })
-        }
-      >
-        <CollectionPermissionsModal
-          params={{
-            slug: snippetSidebar.state.permissionsModalCollectionId,
-          }}
+        >
+          <SnippetCollectionFormModal
+            collection={snippetSidebar.state.modalSnippetCollection}
+            onClose={() =>
+              snippetSidebar.setState({ modalSnippetCollection: null })
+            }
+            onSaved={() => {
+              snippetSidebar.setState({ modalSnippetCollection: null });
+            }}
+          />
+        </Modal>
+      ),
+    snippetSidebar =>
+      snippetSidebar.state.permissionsModalCollectionId != null && (
+        <Modal
           onClose={() =>
             snippetSidebar.setState({ permissionsModalCollectionId: null })
           }
-          namespace="snippets"
-        />
-      </Modal>
-    ),
-);
+        >
+          <CollectionPermissionsModal
+            params={{
+              slug: snippetSidebar.state.permissionsModalCollectionId,
+            }}
+            onClose={() =>
+              snippetSidebar.setState({ permissionsModalCollectionId: null })
+            }
+            namespace="snippets"
+          />
+        </Modal>
+      ),
+  );
 
-PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
+  PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
 
-if (hasPremiumFeature("snippet_collections")) {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
     const collection = snippetSidebar.props.snippetCollection;
     return (
