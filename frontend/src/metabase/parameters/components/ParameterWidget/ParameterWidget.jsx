@@ -4,10 +4,9 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
-import FieldSet from "../../../components/FieldSet";
 import ParameterValueWidget from "../ParameterValueWidget";
 
-import S from "./ParameterWidget.css";
+import { StyledFieldSet } from "./ParameterWidget.styled";
 
 export class ParameterWidget extends Component {
   state = {
@@ -82,10 +81,10 @@ export class ParameterWidget extends Component {
       const legend = fieldHasValueOrFocus ? parameter.name : "";
 
       return (
-        <FieldSet
+        <StyledFieldSet
           legend={legend}
           noPadding={true}
-          className={cx(className, S.container, {
+          className={cx(className, {
             "border-brand": fieldHasValueOrFocus,
           })}
         >
@@ -96,7 +95,7 @@ export class ParameterWidget extends Component {
             isFullscreen,
           )}
           {children}
-        </FieldSet>
+        </StyledFieldSet>
       );
     };
 
