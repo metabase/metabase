@@ -107,10 +107,10 @@
   [_ table-id]
   (t2/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(s/defn ^:private cards-with-ids :- (s/maybe [(mi/InstanceOf:Schema Card)])
+(mu/defn ^:private cards-with-ids :- [:maybe [:sequential (mi/InstanceOf Card)]]
   "Return unarchived Cards with `card-ids`.
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
-  [card-ids :- [su/IntGreaterThanZero]]
+  [card-ids :- [:sequential ms/PositiveInt]]
   (when (seq card-ids)
     (let [card-id->card (m/index-by :id (t2/select Card, :id [:in (set card-ids)], :archived false))]
       (filter identity (map card-id->card card-ids)))))

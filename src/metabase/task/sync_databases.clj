@@ -21,6 +21,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -133,12 +134,14 @@
 
 (s/defn ^:private trigger-key :- TriggerKey
   "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
-  [database :- (mi/InstanceOf:Schema Database) task-info :- TaskInfo]
+  [database  :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Database)
+   task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
 (s/defn ^:private cron-schedule :- u.cron/CronScheduleString
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
-  [database :- (mi/InstanceOf:Schema Database) task-info :- TaskInfo]
+  [database  :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Database)
+   task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
 (s/defn ^:private job-class :- Class
@@ -148,7 +151,8 @@
 
 (s/defn ^:private trigger-description :- s/Str
   "Return an appropriate description string for a job/trigger for Database described by `task-info`."
-  [database :- (mi/InstanceOf:Schema Database) task-info :- TaskInfo]
+  [database  :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Database)
+   task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/the-id database)))
 
 (s/defn ^:private job-description :- s/Str
@@ -163,15 +167,16 @@
 
 (s/defn ^:private delete-task!
   "Cancel a single sync task for `database-or-id` and `task-info`."
-  [database :- (mi/InstanceOf:Schema Database) task-info :- TaskInfo]
+  [database  :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Database)
+   task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
                    (trs "Unscheduling task for Database {0}: trigger: {1}" (u/the-id database) (.getName trigger-key))))
     (task/delete-trigger! trigger-key)))
 
-(s/defn unschedule-tasks-for-db!
+(mu/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
-  [database :- (mi/InstanceOf:Schema Database)]
+  [database :- (mi/InstanceOf Database)]
   (doseq [task [sync-analyze-task-info field-values-task-info]]
     (delete-task! database task)))
 
@@ -195,7 +200,8 @@
 
 (s/defn ^:private trigger :- CronTrigger
   "Build a Quartz Trigger for `database` and `task-info`."
-  [database :- (mi/InstanceOf:Schema Database) task-info :- TaskInfo]
+  [database  :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Database)
+   task-info :- TaskInfo]
   (triggers/build
    (triggers/with-description (trigger-description database task-info))
    (triggers/with-identity (trigger-key database task-info))
@@ -212,10 +218,9 @@
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
-#_ {:clj-kondo/ignore [:unused-private-var]}
-(s/defn ^:private check-and-schedule-tasks-for-db!
+(mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
-  [database :- (mi/InstanceOf:Schema Database)]
+  [database :- (mi/InstanceOf Database)]
   (let [sync-job (task/job-info (job-key sync-analyze-task-info))
         fv-job   (task/job-info (job-key field-values-task-info))
 

@@ -153,13 +153,16 @@
     (is (= "SELECT CAST(field AS timestamp)"
            (cast-unless-type-in (h1x/with-type-info :field {::hx/database-type "date"}))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (def ^:private typed-form (h1x/with-type-info :field {::hx/database-type "text"}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel TypedHoneySQLForm-test
   (testing "should generate readable output"
     (is (= (pr-str `(h1x/with-type-info :field {::hx/database-type "text"}))
            (pr-str typed-form)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel type-info-test
   (testing "should let you get info"
     (is (= {::hx/database-type "text"}
@@ -168,6 +171,7 @@
            (h1x/type-info :field)
            (h1x/type-info nil)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel with-type-info-test
   (testing "should let you update info"
     (is (= (h1x/with-type-info :field {::hx/database-type "date"})
@@ -208,6 +212,7 @@
     nil            nil    true
     :%current_date nil    true))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel unwrap-typed-honeysql-form-test
   (testing "should be able to unwrap"
     (is (= :field

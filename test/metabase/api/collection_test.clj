@@ -656,7 +656,7 @@
                              Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
                              Card       _                        {:name "ZZ" :collection_id collection-id}
                              Card       _                        {:name "AA" :collection_id collection-id}
-                             Revision   _revision1               {:model    "Card"
+                             Revision   revision1                {:model    "Card"
                                                                   :model_id card1-id
                                                                   :user_id  user2-id
                                                                   :object   (revision/serialize-instance card1 card1-id card1)}
@@ -669,7 +669,7 @@
              (t2/query-one {:update :revision
                             ;; in the past
                             :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
-                            :where  [:= :id (:id _revision1)]})))
+                            :where  [:= :id (:id revision1)]})))
       (testing "Results include last edited information from the `Revision` table"
         (is (= [{:name "AA"}
                 {:name "Card with history 1",

@@ -237,12 +237,14 @@
       "asdf/"
       "123"
       nil
-      {}
-      []
-      true
-      false
-      (keyword "/asdf/")
-      1234)))
+      ;; these trigger Kondo warnings because the function expects a string or nil, but we should probably test behavior
+      ;; anyway for cases where you're passing in a local and Kondo can't infer the type
+      #_:clj-kondo/ignore {}
+      #_:clj-kondo/ignore []
+      #_:clj-kondo/ignore true
+      #_:clj-kondo/ignore false
+      #_:clj-kondo/ignore (keyword "/asdf/")
+      #_:clj-kondo/ignore 1234)))
 
 
 ;;; -------------------------------------------------- data-perms-path ---------------------------------------------------

@@ -74,6 +74,7 @@
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both
+   #_{:clj-kondo/ignore [:deprecated-var]}
    (mi/InstanceOf:Schema Database)
    {:id       su/IntGreaterThanZero
     :engine   s/Keyword
@@ -91,6 +92,7 @@
 
 (def ^:private TableInstanceWithRequiredStoreKeys
   (s/both
+   #_{:clj-kondo/ignore [:deprecated-var]}
    (mi/InstanceOf:Schema Table)
    {:schema (s/maybe s/Str)
     :name   su/NonBlankString
@@ -119,6 +121,7 @@
 
 (def ^:private FieldInstanceWithRequiredStorekeys
   (s/both
+   #_{:clj-kondo/ignore [:deprecated-var]}
    (mi/InstanceOf:Schema Field)
    {:name                               su/NonBlankString
     :table_id                           su/IntGreaterThanZero

@@ -26,6 +26,7 @@
 
 (def SourceEntity
   "A source for a card. Can be either a table or another card."
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (s/cond-pre (mi/InstanceOf:Schema Table) (mi/InstanceOf:Schema Card)))
 
 (def Bindings
