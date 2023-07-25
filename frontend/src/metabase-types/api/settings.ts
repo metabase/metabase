@@ -141,7 +141,6 @@ export type DayOfWeekId =
   | "saturday";
 
 export const tokenFeatures = [
-  "advanced_config",
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
