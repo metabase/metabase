@@ -66,6 +66,34 @@
         dataset (infer-sql-or-throw context question)]
     (add-viz-to-dataset context dataset)))
 
+;{
+; "card": {
+;          "dataset_query": {
+;                            "database": 1,
+;                            "type": "native",
+;                            "native": {
+;                                       "query": "WITH ORDERS_PEOPLE_PRODUCTS AS (SELECT\n  \"SUBTOTAL\" AS ORDER_SUBTOTAL,\n  \"TAX\" AS ORDER_TAX,\n  \"TOTAL\" AS ORDER_TOTAL,\n  \"DISCOUNT\" AS ORDER_DISCOUNT,\n  \"CREATED_AT\" AS ORDER_CREATION_TIME,\n  \"QUANTITY\" AS ORDER_QUANTITY,\n  \"People - User__ADDRESS\" AS CUSTOMER_ADDRESS,\n  \"People - User__EMAIL\" AS CUSTOMER_EMAIL,\n  \"People - User__PASSWORD\" AS CUSTOMER_PASSWORD,\n  \"People - User__NAME\" AS CUSTOMER_NAME,\n  \"People - User__CITY\" AS CUSTOMER_CITY,\n  \"People - User__LONGITUDE\" AS CUSTOMER_LONGITUDE,\n  \"People - User__STATE\" AS CUSTOMER_STATE,\n  \"People - User__SOURCE\" AS CUSTOMER_SOURCE,\n  \"People - User__BIRTH_DATE\" AS CUSTOMER_BIRTH_DATE,\n  \"People - User__ZIP\" AS CUSTOMER_ZIPCODE,\n  \"People - User__LATITUDE\" AS CUSTOMER_LATITUDE,\n  \"People - User__CREATED_AT\" AS CUSTOMER_CREATION_DATE,\n  \"Products__EAN\" AS PRODUCT_EAN,\n  \"Products__TITLE\" AS PRODUCT_NAME,\n  \"Products__CATEGORY\" AS PRODUCT_CATEGORY,\n  \"Products__VENDOR\" AS PRODUCT_VENDOR,\n  \"Products__PRICE\" AS PRODUCT_PRICE,\n  \"Products__RATING\" AS PRODUCT_RATING,\n  \"Products__CREATED_AT\" AS PRODUCT_CREATION_DATE\nFROM\n  {{#1}} AS INNER_QUERY) SELECT\n  *\nFROM\n  ORDERS_PEOPLE_PRODUCTS;",
+;                                       "template-tags": {
+;                                                         "#1": {
+;                                                                "type": "card",
+;                                                                "name": "#1",
+;                                                                "id": "01ee71cc-2bef-4a4c-9654-da58247b5d95",
+;                                                                "card-id": 1,
+;                                                                "display-name": "#1"
+;                                                                }
+;                                                         }
+;                                       }
+;                            },
+;          "display": "table",
+;          "visualization_settings": {}
+;          },
+; "prompt_template_versions": [
+;                              "infer_model:0001",
+;                              "infer_sql:0005"
+;                              ],
+; "bot-sql": "SELECT\n  *\nFROM\n  ORDERS_PEOPLE_PRODUCTS;"
+; }
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id"
   "Ask Metabot to generate a native question given a prompt about a given database."
@@ -76,6 +104,12 @@
     "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
     database-id
     question)
+  #_(let [{:keys [mbql]} (mbql-inference/infer-mbql question)]
+    {:card {:dataset_query {:database 1                     ;;TODO
+                            :type :query
+                            :query mbql}
+            :display :table
+            :visualization_settings {}}})
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
         context {:database    (metabot-util/denormalize-database database)
