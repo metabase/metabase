@@ -8,7 +8,7 @@ import debounce from "lodash.debounce";
 import resizeObserver from "metabase/lib/resize-observer";
 import { isCypressActive } from "metabase/env";
 
-export const WAIT_TIME = 300;
+const WAIT_TIME = 300;
 
 const REFRESH_MODE = {
   throttle: fn => _.throttle(fn, WAIT_TIME),

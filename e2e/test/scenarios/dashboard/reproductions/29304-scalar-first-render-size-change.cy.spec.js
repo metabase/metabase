@@ -1,7 +1,10 @@
 import { restore } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { WAIT_TIME } from "metabase/components/ExplicitSize";
+
+// Couldn't import from `metabase/components/ExplicitSize` because dependency issue.
+// It will fail Cypress tests.
+const WAIT_TIME = 300;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -61,7 +64,8 @@ describe("issue 29304", () => {
 
         cy.wait("@getDashboard");
         cy.wait("@getDashcardQuery");
-        cy.tick(WAIT_TIME);
+        // This extra 1ms is crucial, without this the test would fail.
+        cy.tick(WAIT_TIME + 1);
 
         const expectedWidth = 147;
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
@@ -85,7 +89,8 @@ describe("issue 29304", () => {
 
         cy.wait("@getDashboard");
         cy.wait("@getDashcardQuery");
-        cy.tick(WAIT_TIME);
+        // This extra 1ms is crucial, without this the test would fail.
+        cy.tick(WAIT_TIME + 1);
 
         const expectedWidth = 80;
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
