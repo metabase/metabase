@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -74,6 +75,20 @@
        (take 10)
        (apply str)))
 
+(defn refreshable-states
+  "States of `persisted_info` records which can be refreshed."
+  []
+  (if (premium-features/enable-cache-granular-controls?)
+    #{"creating" "persisted" "error"}
+    #{"creating" "persisted" "error" "off"}))
+
+(defn prunable-states
+  "States of `persisted_info` records which can be pruned"
+  []
+  (if (premium-features/enable-cache-granular-controls?)
+    #{"deletable" "off"}
+    #{"deletable"}))
+
 (mi/define-batched-hydration-method persisted?
   :persisted
   "Hydrate a card :is_persisted for the frontend."
@@ -81,7 +96,7 @@
   (when (seq cards)
     (let [existing-ids (t2/select-fn-set :card_id PersistedInfo
                                          :card_id [:in (map :id cards)]
-                                         :state [:not-in ["off" "deletable"]])]
+                                         :state [:in (refreshable-states)])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))
