@@ -1,22 +1,16 @@
 (ns metabase.api.metabot
   (:require
-   [clojure.data.json :as json]
-   [clojure.java.io :as io]
-   [clojure.string :as str]
-   [compojure.core :refer [POST]]
-   [metabase.api.common :as api]
-   [metabase.metabot :as metabot]
-   [metabase.metabot.context-generator :as metabot-context-generator]
-   [metabase.metabot.feedback :as metabot-feedback]
-   [metabase.metabot.standalone :as mbs]
-   [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Database]]
-   [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [ring.util.io :as ring-io]
-   [schema.core :as s]
-   [toucan2.core :as t2])
-  (:import (java.io BufferedWriter)))
+    [clojure.string :as str]
+    [compojure.core :refer [POST]]
+    [metabase.api.common :as api]
+    [metabase.metabot :as metabot]
+    [metabase.metabot.feedback :as metabot-feedback]
+    [metabase.metabot.mbql-inference :as mbql-inference]
+    [metabase.metabot.util :as metabot-util]
+    [metabase.models :refer [Card Database]]
+    [metabase.util.log :as log]
+    [metabase.util.schema :as su]
+    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,25 +19,25 @@
   [database-id]
   (when-not (metabot-util/supported? database-id)
     (throw
-     (let [message "Metabot is not supported for this database type."]
-       (ex-info
-        message
-        {:status-code 400
-         :message     message})))))
+      (let [message "Metabot is not supported for this database type."]
+        (ex-info
+          message
+          {:status-code 400
+           :message     message})))))
 
 (defn- infer-sql-or-throw
   "An http-friendly version of infer-sql that throws a useful error if it fails to produce sql."
   [context question]
   (or
-   (metabot/infer-sql context)
-   (throw
-    (let [message (format
-                   "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
-                   question)]
-      (ex-info
-       message
-       {:status-code 400
-        :message     message})))))
+    (metabot/infer-sql context)
+    (throw
+      (let [message (format
+                      "Query '%s' didn't produce any SQL. Perhaps try a more detailed query."
+                      question)]
+        (ex-info
+          message
+          {:status-code 400
+           :message     message})))))
 
 (defn- add-viz-to-dataset
   "Given a calling context and resulting dataset, add a more interesting visual to the card."
@@ -61,9 +55,9 @@
   ;{model-id ms/PositiveInt
   ; question string?}
   (log/infof
-   "Metabot '/api/metabot/model/%s' being called with prompt: '%s'"
-   model-id
-   question)
+    "Metabot '/api/metabot/model/%s' being called with prompt: '%s'"
+    model-id
+    question)
   (let [model   (api/check-404 (t2/select-one Card :id model-id :dataset true))
         _       (check-database-support (:database_id model))
         context {:model       (metabot-util/denormalize-model model)
@@ -79,9 +73,9 @@
   {database-id su/IntGreaterThanZero
    question    su/NonBlankString}
   (log/infof
-   "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
-   database-id
-   question)
+    "Metabot '/api/metabot/database/%s' being called with prompt: '%s'"
+    database-id
+    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
         context {:database    (metabot-util/denormalize-database database)
@@ -92,16 +86,16 @@
             dataset (infer-sql-or-throw context question)]
         (add-viz-to-dataset context dataset))
       (throw
-       (let [message (format
-                      (str/join
-                       " "
-                       ["Query '%s' didn't find a good match to your data."
-                        "Perhaps try a query that mentions the model name or columns more specifically."])
-                      question)]
-         (ex-info
-          message
-          {:status-code 400
-           :message     message}))))))
+        (let [message (format
+                        (str/join
+                          " "
+                          ["Query '%s' didn't find a good match to your data."
+                           "Perhaps try a query that mentions the model name or columns more specifically."])
+                        question)]
+          (ex-info
+            message
+            {:status-code 400
+             :message     message}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/database/:database-id/query"
@@ -110,9 +104,9 @@
   {database-id su/IntGreaterThanZero
    question    su/NonBlankString}
   (log/infof
-   "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
-   database-id
-   question)
+    "Metabot '/api/metabot/database/%s/query' being called with prompt: '%s'"
+    database-id
+    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
         context {:database    (metabot-util/denormalize-database database)
@@ -128,55 +122,21 @@
     {:feedback stored-feedback
      :message  "Thanks for your feedback"}
     (throw
-     (let [message "There was a problem submitting your feedback."]
-       (ex-info
-        message
-        {:status-code 500
-         :message     message})))))
+      (let [message "There was a problem submitting your feedback."]
+        (ex-info
+          message
+          {:status-code 500
+           :message     message})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; Direct generation of MBQL using our standalone pretrained LLMs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/model/mbql/:model-id"
-  "Ask Metabot to generate an MBQL query given a prompt about a given model."
-  [model-id :as {{:keys [question]} :body}]
-  ;{model-id ms/PositiveInt
-  ; question string?}
-  (log/infof
-    "Metabot '/api/metabot/model/mbql/%s' being called with prompt: '%s'"
-    model-id
-    question)
-  (let [model   (api/check-404 (t2/select-one Card :id model-id :dataset true))
-        context (mbs/model->context model)]
-    (mbs/infer {:prompt question :context context})))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/database/mbql/:database-id"
-  "Ask Metabot to generate an MBQL query given a prompt about a given database."
-  [database-id :as {{:keys [question top_n]} :body}]
-  {database-id su/IntGreaterThanZero
-   question    su/NonBlankString
-   top_n       (s/maybe su/IntGreaterThanZero)}
-  (log/infof
-    "Metabot '/api/metabot/database/mbql/%s' being called with prompt: '%s'"
-    database-id
-    question)
-  (let [prompt question
-        models (t2/select Card :database_id database-id :dataset true)]
-    (mbs/infer-il models prompt (or top_n 1))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/database/training/models/:database-id"
+(api/defendpoint-schema POST "/mbql"
   "Generate a training dataset based on models for this database"
-  [database-id]
-  {database-id su/IntGreaterThanZero}
-  (log/infof "Metabot generating models dataset for db %s." database-id)
-  (ring-io/piped-input-stream
-    (fn [ostream]
-      (with-open [^BufferedWriter w (io/writer ostream)]
-        (doall
-          (doseq [record (metabot-context-generator/model-training-data database-id)]
-            (io/copy (json/write-str (update record :query json/write-str)) w)
-            (.newLine w)))))))
+  [prompt]
+  {prompt su/NonBlankString}
+  (log/infof "Metabot generating mbql for prompt: %s" prompt)
+  (mbql-inference/infer-mbql prompt))
 
 (api/define-routes)
+

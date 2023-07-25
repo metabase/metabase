@@ -550,3 +550,36 @@
    (some->> (score-prompt-embeddings prompt-objects prompt)
             seq
             (apply max-key :prompt_match))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Inference WS/IL Methods ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn model->context
+  "Convert a model to a 'context', the representation used to tell the LLM
+  about what is stored in the model.
+
+  The context contains the table name and id as well as field names and ids.
+  This is what the LLMs are currently trained on, so modifying this context
+  will likely require retraining as well. We probably _should_ remove ids since
+  they add no value when we replace them in the prompts and we should add model
+  descriptions for fields."
+  [{model-name :name model-id :id :keys [result_metadata]}]
+  {:table_name model-name
+   :table_id   model-id
+   :fields     (for [{field-id :id field-name :display_name field_type :base_type} result_metadata]
+                 {:field_id field-id :field_name field-name :field_type field_type})})
+
+(defn model->summary
+  "Create a summary description appropriate for embedding.
+
+  The embeddings created here will be compared to the embedding for the prompt
+  and the closest match(es) will be used for inferencing. This summary should
+  contain terms that relate well to the user prompt. The summary should be
+  word-oriented rather than data oriented (provide a sentence, not json) as the
+  comparison will be sentence to sentence."
+  [{model-name :name model-description :description :keys [result_metadata]}]
+  (let [fields-str (str/join "," (map :display_name result_metadata))]
+    (if (seq model-description)
+      (format "%s: %s: %s" model-name model-description fields-str)
+      (format "%s: %s" model-name fields-str))))
+
+
