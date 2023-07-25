@@ -34,8 +34,9 @@ export const DashboardHeaderButton = styled(Button)<{
 
   ${breakpointMaxSmall} {
     ${props =>
+      !props.visible &&
       css`
-        ${props.visible ? "" : "display: none;"}
+        display: none;
       `}
   }
   }
