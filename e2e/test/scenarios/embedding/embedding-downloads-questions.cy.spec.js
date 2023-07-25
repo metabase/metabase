@@ -4,6 +4,9 @@ import {
   visitQuestion,
   visitEmbeddedPage,
   popover,
+  setTokenFeatures,
+  visitIframe,
+  filterWidget,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -88,6 +91,43 @@ describeEE("scenarios > embedding > questions > downloads", () => {
 
         cy.get(".cellData").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download");
+      });
+    });
+  });
+
+  context("premium token with paid features", () => {
+    beforeEach(() => setTokenFeatures("all"));
+
+    it("should be possible to disable downloads", () => {
+      cy.get("@questionId").then(questionId => {
+        visitQuestion(questionId);
+        openEmbeddingSettingsPage();
+
+        cy.log("Disable downloads");
+        cy.findByLabelText("Enable users to download data from this embed?")
+          .should("be.checked")
+          .click()
+          .should("not.be.checked");
+
+        cy.log('Use API to "publish" this question and to enable its filter');
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            text: "enabled",
+          },
+        });
+
+        visitIframe();
+
+        filterWidget().type("Foo{enter}");
+        cy.get(".cellData").should("have.text", "Foo");
+
+        cy.location("search").should("eq", "?text=Foo");
+        cy.location("hash").should("match", /&hide_download_button=true$/);
+
+        cy.log("We don't even show the footer if it's empty");
+        cy.findByRole("contentinfo").should("not.exist");
+        cy.icon("download").should("not.exist");
       });
     });
   });
