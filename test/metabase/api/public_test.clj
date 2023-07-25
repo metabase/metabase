@@ -397,11 +397,11 @@
           (t2/update! Card (u/the-id card) {:archived true})
           (is (= {:name true, :ordered_cards 0, :ordered_tabs 0}
                  (fetch-public-dashboard dash)))))
-            (testing "dashboard with tabs should return ordered_tabs"
-        (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
-          (is (= {:name true, :ordered_cards 2, :ordered_tabs 2}
-                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+      (testing "dashboard with tabs should return ordered_tabs"
+       (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
+         (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
+         (is (= {:name true, :ordered_cards 2, :ordered_tabs 2}
+                (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]

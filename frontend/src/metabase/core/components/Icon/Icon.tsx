@@ -1,4 +1,5 @@
 import React, { SVGAttributes, forwardRef } from "react";
+import isPropValid from "@emotion/is-prop-valid";
 import cx from "classnames";
 import Tooltip from "../Tooltip";
 import { Icons } from "./icons";
@@ -15,10 +16,13 @@ export interface IconProps extends SVGAttributes<SVGSVGElement> {
 }
 
 export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
-  { name, className, size = defaultSize, tooltip, ...rest }: IconProps,
+  { name, className, size = defaultSize, tooltip, ...restProps }: IconProps,
   ref,
 ) {
   const IconComponent = (Icons[name] ?? Icons["unknown"]).component;
+  const validProps = Object.fromEntries(
+    Object.entries(restProps).filter(([key]) => isPropValid(key)),
+  );
 
   const icon = (
     <IconComponent
@@ -28,7 +32,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
       className={cx(`Icon Icon-${name}`, className)}
       width={size}
       height={size}
-      {...rest}
+      {...validProps}
     />
   );
 

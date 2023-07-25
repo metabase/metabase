@@ -14,7 +14,7 @@
 
 (deftest ^:parallel source-card-infer-metadata-test
   (testing "We should be able to calculate metadata for a Saved Question missing results_metadata"
-    (let [query lib.tu/query-with-card-source-table]
+    (let [query lib.tu/query-with-source-card]
       (is (=? [{:id                       (meta/id :checkins :user-id)
                 :name                     "USER_ID"
                 :lib/source               :source/card
@@ -73,7 +73,7 @@
 
 (deftest ^:parallel card-results-metadata-merge-metadata-provider-metadata-test
   (testing "Merge metadata from the metadata provider into result-metadata (#30046)"
-    (let [query lib.tu/query-with-card-source-table-with-result-metadata]
+    (let [query lib.tu/query-with-source-card-with-result-metadata]
       (is (=? [{:lib/type                 :metadata/column
                 :id                       (meta/id :checkins :user-id)
                 :table-id                 (meta/id :checkins)
