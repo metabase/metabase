@@ -431,8 +431,12 @@ describe("Notebook Editor > Join Step", () => {
       );
 
       // Excluding a few columns
+      userEvent.click(within(joinColumnsPicker).getByText("Reviewer"));
       userEvent.click(within(joinColumnsPicker).getByText("Product ID"));
       userEvent.click(within(joinColumnsPicker).getByText("Created At"));
+
+      // Bring Reviewer column back
+      userEvent.click(within(joinColumnsPicker).getByText("Reviewer"));
 
       userEvent.click(screen.getByLabelText("Left column"));
       const lhsColumnPicker = await screen.findByLabelText("grid");
@@ -450,6 +454,9 @@ describe("Notebook Editor > Join Step", () => {
 
       const { query, fields } = getRecentJoin();
       const columns = fields as Lib.ColumnMetadata[];
+      const reviewer = columns.find(
+        column => Lib.displayInfo(query, 0, column).name === "REVIEWER",
+      );
       const category = columns.find(
         column => Lib.displayInfo(query, 0, column).name === "PRODUCT_ID",
       );
@@ -457,6 +464,7 @@ describe("Notebook Editor > Join Step", () => {
         column => Lib.displayInfo(query, 0, column).name === "CREATED_AT",
       );
       expect(columns).not.toHaveLength(0);
+      expect(reviewer).not.toBeUndefined();
       expect(category).toBeUndefined();
       expect(price).toBeUndefined();
     });
@@ -501,11 +509,18 @@ describe("Notebook Editor > Join Step", () => {
       const picker = await screen.findByTestId("join-columns-picker");
 
       // Excluding a few columns
-      userEvent.click(within(picker).getByText("Category"));
+      userEvent.click(within(picker).getByText("Vendor"));
       userEvent.click(within(picker).getByText("Price"));
+      userEvent.click(within(picker).getByText("Category"));
+
+      // Bring Vendors column back
+      userEvent.click(within(picker).getByText("Vendor"));
 
       const { query, fields } = getRecentJoin();
       const columns = fields as Lib.ColumnMetadata[];
+      const vendor = columns.find(
+        column => Lib.displayInfo(query, 0, column).name === "VENDOR",
+      );
       const category = columns.find(
         column => Lib.displayInfo(query, 0, column).name === "CATEGORY",
       );
@@ -513,6 +528,7 @@ describe("Notebook Editor > Join Step", () => {
         column => Lib.displayInfo(query, 0, column).name === "PRICE",
       );
       expect(columns).not.toHaveLength(0);
+      expect(vendor).not.toBeUndefined();
       expect(category).toBeUndefined();
       expect(price).toBeUndefined();
     });
