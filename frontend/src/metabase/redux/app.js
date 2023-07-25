@@ -13,6 +13,7 @@ import {
 } from "metabase/lib/dom";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getIsAppBarVisible } from "metabase/selectors/app";
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error) {
@@ -64,15 +65,16 @@ export const closeNavbar = createAction(CLOSE_NAVBAR);
 export const toggleNavbar = createAction(TOGGLE_NAVBAR);
 
 export const getIsNavbarOpen = createSelector(
-  [getIsEmbedded, getEmbedOptions, state => state.app.isNavbarOpen],
-  (isEmbedded, embedOptions, isNavbarOpen) => {
+  [
+    getIsEmbedded,
+    getEmbedOptions,
+    getIsAppBarVisible,
+    state => state.app.isNavbarOpen,
+  ],
+  (isEmbedded, embedOptions, isAppBarVisible, isNavbarOpen) => {
     // in an embedded instance, when the app bar is hidden, but the nav bar is not
     // we need to force the sidebar to be open or else it will be totally inaccessible
-    if (
-      isEmbedded &&
-      embedOptions.side_nav === true &&
-      embedOptions.top_nav === false
-    ) {
+    if (isEmbedded && embedOptions.side_nav === true && !isAppBarVisible) {
       return true;
     }
 
