@@ -150,13 +150,31 @@
           (is (integer? field-id))
           (is (= "latitude" (-> (db/select-one-field :name Field :id field-id)
                               u/lower-case-en)))
-          (is (= {:show_mini_bar true
-                  :column_title "Parallel"} col-val))
-          (is (= "Venue Category" col-name))
-          (is (true? col-enabled))
-          (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
-          (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
-                                   u/lower-case-en))))))
+        (is (= {:show_mini_bar true
+                :column_title "Parallel"} col-val))
+        (is (= "Venue Category" col-name))
+        (is (true? col-enabled))
+        (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
+        (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
+                                 u/lower-case-en)))))))
+
+(defn- test-pivot-card [card card-name]
+  (when (= "Pivot Table Card" card-name)
+    (testing "Visualization settings for a Card were persisted correctly"
+      (let [vs      (:visualization_settings card)
+            pivot   (:pivot_table.column_split vs)
+            vecs    (concat (:columns pivot) (:rows pivot))]
+        (is (some? vecs))
+        (doseq [[_ field-id _] vecs]
+          (is (integer? field-id) "fieldRef within pivot table was properly serialized and loaded"))))))
+
+(defmethod assert-loaded-entity Card
+  [{card-name :name :as card} {:keys [query-results collections]}]
+  (testing (format "Card: %s" card-name)
+    (query-res-match query-results card)
+    (collection-names-match collections card)
+    (test-loaded-card card card-name)
+    (test-pivot-card card card-name)
     card))
 
 (defn- collection-parent-name [collection]
@@ -331,7 +349,8 @@
                                                                 card-id-temporal-unit
                                                                 card-id-with-native-snippet
                                                                 card-id-temporal-unit
-                                                                card-join-card-id])
+                                                                card-join-card-id
+                                                                card-id-pivot-table])
                            :collections   (gather-collections [card-id
                                                                card-arch-id
                                                                card-id-root
@@ -345,7 +364,8 @@
                                                                card-id-temporal-unit
                                                                card-id-with-native-snippet
                                                                card-id-temporal-unit
-                                                               card-join-card-id])
+                                                               card-join-card-id
+                                                               card-id-pivot-table])
                            :entities      [[Database           (db/select-one Database :id db-id)]
                                            [Table              (db/select-one Table :id table-id)]
                                            [Table              (db/select-one Table :id table-id-categories)]
@@ -391,7 +411,8 @@
                                            [Collection         (db/select-one Collection :id snippet-nested-collection-id)]
                                            [NativeQuerySnippet (db/select-one NativeQuerySnippet :id nested-snippet-id)]
                                            [Card               (db/select-one Card :id card-id-with-native-snippet)]
-                                           [Card               (db/select-one Card :id card-join-card-id)]]})]
+                                           [Card               (db/select-one Card :id card-join-card-id)]
+                                           [Card               (t2/select-one Card :id card-id-pivot-table)]]})]
         (with-world-cleanup
           (v1-load dump-dir {:on-error :continue :mode :skip})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
