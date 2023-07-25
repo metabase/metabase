@@ -90,7 +90,7 @@
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level nil :name "New name"})
           (is (= "New name" (t2/select-one-fn :name :model/Collection id))))))))
 
-(deftest content-management-legacy-does-not-work-for-official-questions-test
+(deftest moderation-review-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:name "A question"}
      :model/Card {model-id :id} {:name "A question" :dataset true}]

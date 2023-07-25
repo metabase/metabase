@@ -5,7 +5,7 @@
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
-  snippet collections feature flag. EE implementation returns `nil`, so as to not filter out snippet collections."
+  snippet-collections feature flag. EE implementation returns `nil`, so as to not filter out snippet collections."
   :feature :snippet-collections
   [])
 
