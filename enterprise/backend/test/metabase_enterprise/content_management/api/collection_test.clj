@@ -33,13 +33,6 @@
         (is (= "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
                                                                         :color           "#000000"
-                                                                        :authority_level "official"})))))
-
-    (testing "fails to add an official collection if has :content-management feature"
-      (premium-features-test/with-premium-features #{:content-management}
-        (is (= "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
-                                                                        :color           "#000000"
                                                                         :authority_level "official"})))))))
 
 (deftest update-collection-authority-happy-path-test
@@ -78,13 +71,6 @@
         (t2.with-temp/with-temp
           [:model/Collection {id :id} {:authority_level nil}]
           (is (= "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))
-
-    (testing "fails to update if has :content-management feature"
-      (premium-features-test/with-premium-features #{:content-management}
-        (t2.with-temp/with-temp
-          [:model/Collection {id :id} {:authority_level nil}]
-          (is (= "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))))
 
 
@@ -104,7 +90,7 @@
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level nil :name "New name"})
           (is (= "New name" (t2/select-one-fn :name :model/Collection id))))))))
 
-(deftest content-management-legacy-does-not-work-for-official-questions-test
+(deftest moderation-review-test
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {:name "A question"}
      :model/Card {model-id :id} {:name "A question" :dataset true}]

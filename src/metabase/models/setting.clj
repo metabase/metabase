@@ -170,7 +170,6 @@
      custom-formatting
      custom-geojson
      custom-geojson-enabled
-     enable-content-management?
      enable-embedding
      enable-nested-queries
      enable-sandboxes?

@@ -351,11 +351,6 @@
   "Can we password login?"
   :disable-password-login)
 
-;; TODO: remove this once all its uses have been switched to new granular features
-(define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
-  "Should we enable knobs and levers for more complex orgs?"
-  :advanced-config)
-
 (define-premium-feature ^{:added "0.41.0"} enable-dashboard-subscription-filters?
   "Should we enable filters for dashboard subscriptions?"
   :dashboard-subscription-filters)
@@ -368,10 +363,6 @@
 (define-premium-feature ^{:added "0.41.0"} enable-content-verification?
   "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
   :content-verification)
-
-(define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable official collections (and more in the future, like workflows, forking, etc.)?"
-  :content-management)
 
 (define-premium-feature ^{:added "0.41.0"} enable-official-collections?
   "Should we enable Official Collections?"
