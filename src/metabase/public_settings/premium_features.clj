@@ -304,7 +304,7 @@
   :audit-app)
 
 (define-premium-feature ^{:added "0.41.0"} enable-email-allow-list?
-  "Should we enable allow-lists for email domains?"
+  "Should we enable restrict email domains for subscription recipients?"
   :email-allow-list)
 
 (define-premium-feature ^{:added "0.41.0"} enable-cache-granular-controls?
@@ -348,7 +348,7 @@
   :session-timeout-config)
 
 (define-premium-feature can-disable-password-login?
-  "Can we password login?"
+  "Can we disable login by password?"
   :disable-password-login)
 
 ;; TODO: remove this once all its uses have been switched to new granular features
