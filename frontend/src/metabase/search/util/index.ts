@@ -9,7 +9,7 @@ export type SearchAwareLocation = Location<{ q?: string } & SearchFilterType>;
 
 export function isSearchPageLocation(location: SearchAwareLocation) {
   const components = location.pathname.split("/");
-  return components[components.length - 1];
+  return components[components.length - 1] === "search";
 }
 
 export function getSearchTextFromLocation(location: SearchAwareLocation) {

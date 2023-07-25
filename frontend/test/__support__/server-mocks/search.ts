@@ -2,32 +2,42 @@ import fetchMock from "fetch-mock";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
-  const availableModels = items.map(({ model }) => model);
-
   fetchMock.get("path:/api/search", uri => {
     const url = new URL(uri);
-    const models = url.searchParams.getAll("models");
+    const urlModels = [...new Set(url.searchParams.getAll("models"))];
     const limit = Number(url.searchParams.get("limit"));
     const offset = Number(url.searchParams.get("offset"));
     const table_db_id = url.searchParams.get("table_db_id") || null;
     const queryText = url.searchParams.get("q");
 
-    let matchedItems = items;
-
-    if (models && models.length > 0) {
-      matchedItems = matchedItems.filter(({ model }) => models.includes(model));
-    }
-
+    let availableModelItems = items;
     if (queryText) {
-      matchedItems = matchedItems.filter(({ name }) =>
-        name.includes(queryText),
+      const searchString = queryText.toLowerCase();
+
+      availableModelItems = availableModelItems.filter(({ name }) =>
+        name.toLowerCase().includes(searchString),
       );
     }
 
+    let matchedItems = [...availableModelItems];
+    if (urlModels && urlModels.length > 0) {
+      matchedItems = matchedItems.filter(({ model }) =>
+        urlModels.includes(model),
+      );
+    }
+
+    // available_models: all possible types in a user's database (or in this case, the test data), AFTER the text query filter
+    const availableModels = [
+      ...new Set(availableModelItems.map(({ model }) => model)),
+    ];
+
+    // models: the types that are actually present in the data
+    const models = [...new Set(matchedItems.map(({ model }) => model))];
+
     return {
-      data: matchedItems,
+      data: matchedItems.slice(offset, offset + limit),
       total: matchedItems.length,
-      models, // this should reflect what is in the query param
+      models,
       available_models: availableModels,
       limit,
       offset,

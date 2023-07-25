@@ -85,6 +85,7 @@ export const TypeSearchSidebar = ({
 
   return (
     <Flex
+      data-testid="type-sidebar"
       gap={"sm"}
       align={"flex-start"}
       justify={"center"}
@@ -93,6 +94,7 @@ export const TypeSearchSidebar = ({
       {searchModels.map(({ name, icon, filter }) => {
         return (
           <TypeSidebarButton
+            data-testid="type-sidebar-item"
             key={name}
             onClick={() => onSelectType(filter)}
             icon={icon}

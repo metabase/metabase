@@ -126,6 +126,7 @@ const mainConfig = {
     html: false,
     json: true,
   },
+  watchForFileChanges: false,
   retries: {
     runMode: 4,
     openMode: 0,

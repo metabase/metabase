@@ -133,7 +133,7 @@ export function SearchResult({
     >
       <ResultLinkContent>
         <ItemIcon item={result} type={result.model} active={active} />
-        <div>
+        <div data-testid="result-link-text-container">
           <TitleWrapper>
             <Title active={active} data-testid="search-result-item-name">
               {result.name}
@@ -151,7 +151,13 @@ export function SearchResult({
           )}
           <Score scores={result.scores} />
         </div>
-        {loading && <ResultSpinner size={24} borderWidth={3} />}
+        {loading && (
+          <ResultSpinner
+            data-testid="search-result-item-loading-spinner"
+            size={24}
+            borderWidth={3}
+          />
+        )}
       </ResultLinkContent>
       {compact || <Context context={result.context} />}
     </ResultContainer>

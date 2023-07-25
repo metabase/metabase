@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import { jt, t } from "ttag";
 
+import _ from "underscore";
 import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
@@ -18,16 +19,16 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/util";
 import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
+import { PAGE_SIZE } from "metabase/search/containers/constants";
 import {
   SearchBody,
   SearchControls,
   SearchEmptyState,
   SearchHeader,
   SearchMain,
+  SearchResultWrapper,
   SearchRoot,
 } from "./SearchApp.styled";
-
-const PAGE_SIZE = 50;
 
 export default function SearchApp({ location }) {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
@@ -50,7 +51,7 @@ export default function SearchApp({ location }) {
   const query = useMemo(
     () => ({
       q: searchText,
-      ...searchFilters,
+      ..._.omit(searchFilters, "type"),
       models: selectedSidebarType ?? searchFilters.type,
       limit: PAGE_SIZE,
       offset: PAGE_SIZE * page,
@@ -71,27 +72,39 @@ export default function SearchApp({ location }) {
         </SearchHeader>
       )}
       <Search.ListLoader query={query} wrapped>
-        {({ list, metadata }) =>
-          list && list.length > 0 ? (
+        {({ list, metadata }) => (
+          <SearchResultWrapper data-testid="search-result-wrapper">
             <SearchBody>
-              <SearchMain>
-                <SearchResultSection items={list} />
-                <PaginationControls
-                  showTotal
-                  pageSize={PAGE_SIZE}
-                  page={page}
-                  itemsLength={list.length}
-                  total={metadata.total}
-                  onNextPage={handleNextPage}
-                  onPreviousPage={handlePreviousPage}
-                />
-              </SearchMain>
-              {searchFilters.type || metadata.available_models ? (
+              {list && list.length > 0 ? (
+                <SearchMain>
+                  <SearchResultSection items={list} />
+                  <PaginationControls
+                    showTotal
+                    pageSize={PAGE_SIZE}
+                    page={page}
+                    itemsLength={list.length}
+                    total={metadata.total}
+                    onNextPage={handleNextPage}
+                    onPreviousPage={handlePreviousPage}
+                  />
+                </SearchMain>
+              ) : (
+                <SearchEmptyState>
+                  <Card>
+                    <EmptyState
+                      title={t`Didn't find anything`}
+                      message={t`There weren't any results for your search.`}
+                      illustrationElement={<img src={NoResults} />}
+                    />
+                  </Card>
+                </SearchEmptyState>
+              )}
+              {searchFilters?.type || metadata.available_models ? (
                 <SearchControls>
                   <TypeSearchSidebar
                     availableModels={metadata.available_models.filter(
                       filter =>
-                        !searchFilters.type ||
+                        !searchFilters?.type ||
                         searchFilters.type.includes(filter),
                     )}
                     selectedType={selectedSidebarType}
@@ -100,18 +113,8 @@ export default function SearchApp({ location }) {
                 </SearchControls>
               ) : null}
             </SearchBody>
-          ) : (
-            <SearchEmptyState>
-              <Card>
-                <EmptyState
-                  title={t`Didn't find anything`}
-                  message={t`There weren't any results for your search.`}
-                  illustrationElement={<img src={NoResults} />}
-                />
-              </Card>
-            </SearchEmptyState>
-          )
-        }
+          </SearchResultWrapper>
+        )}
       </Search.ListLoader>
     </SearchRoot>
   );
