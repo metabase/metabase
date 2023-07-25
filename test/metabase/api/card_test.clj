@@ -972,13 +972,13 @@
           (is (some? (create-card! :crowberto 200))))
         (testing "non-admin should get an error"
           (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-            (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
-                          :query          (s/eq (mt/obj->json->obj query))
-                          :required-perms [perms/PathSchema]
-                          :actual-perms   [perms/PathSchema]
-                          :trace          [s/Any]
-                          s/Keyword       s/Any}
-                         (create-card! :rasta 403)))))))))
+            (is (malli= [:map
+                         [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
+                         [:query          [:= {} (mt/obj->json->obj query)]]
+                         [:required-perms [:sequential perms/PathSchema]]
+                         [:actual-perms   [:sequential perms/PathSchema]]
+                         [:trace          [:sequential :any]]]
+                        (create-card! :rasta 403)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
@@ -1499,13 +1499,13 @@
 
             (testing "should *not* be allowed to update query"
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-                (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
-                              :query          (s/eq (mt/obj->json->obj (mt/mbql-query users)))
-                              :required-perms [perms/PathSchema]
-                              :actual-perms   [perms/PathSchema]
-                              :trace          [s/Any]
-                              s/Keyword       s/Any}
-                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
+                (is (malli= [:map
+                             [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
+                             [:query          [:= {} (mt/obj->json->obj (mt/mbql-query users))]]
+                             [:required-perms [:sequential perms/PathSchema]]
+                             [:actual-perms   [:sequential perms/PathSchema]]
+                             [:trace          [:sequential :any]]]
+                            (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
                 (is (= (mt/mbql-query checkins)
                        (t2/select-one-fn :dataset_query :model/Card :id card-id)))))

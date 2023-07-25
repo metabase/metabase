@@ -131,7 +131,7 @@
     (assoc bindings name {:entity     (tf.materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
-(def ^:private Tableset [(mi/InstanceOf Table)])
+(def ^:private Tableset [(mi/InstanceOf:Schema Table)])
 
 (s/defn ^:private find-tables-with-domain-entity :- Tableset
   [tableset :- Tableset, domain-entity-spec :- DomainEntitySpec]

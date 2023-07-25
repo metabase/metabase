@@ -119,7 +119,7 @@
       flatten
       set))
 
-(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf:Schema User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap
   [{:keys [first-name last-name email groups]} :- i/UserInfo

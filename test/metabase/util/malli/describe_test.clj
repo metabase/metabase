@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [metabase.util.malli.describe :as umd]))
 
-(deftest descriptor-test
+(deftest ^:parallel descriptor-test
   (testing "vector"
     (is (= "vector" (umd/describe vector?)))
     (is (= "vector of integer" (umd/describe [:vector :int]))))

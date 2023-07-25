@@ -107,7 +107,7 @@
   [_ table-id]
   (t2/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(s/defn ^:private cards-with-ids :- (s/maybe [(mi/InstanceOf Card)])
+(s/defn ^:private cards-with-ids :- (s/maybe [(mi/InstanceOf:Schema Card)])
   "Return unarchived Cards with `card-ids`.
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
   [card-ids :- [su/IntGreaterThanZero]]
@@ -922,8 +922,8 @@ saved later when it is ready."
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/collections"
-  "Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with
-  COLLECTION_ID, or remove them from any Collections by passing a `null` COLLECTION_ID."
+  "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
+  `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [:as {{:keys [card_ids collection_id]} :body}]
   {card_ids [su/IntGreaterThanZero], collection_id (s/maybe su/IntGreaterThanZero)}
   (move-cards-to-collection! collection_id card_ids)

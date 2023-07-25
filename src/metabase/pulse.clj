@@ -210,7 +210,7 @@
 
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- (mi/InstanceOf Card)]
+  [card :- (mi/InstanceOf:Schema Card)]
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 

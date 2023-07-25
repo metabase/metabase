@@ -74,7 +74,7 @@
                           (ldap-group-membership-filter))]
       (assoc user-info :attributes (syncable-user-attributes result)))))
 
-(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf:Schema User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   :feature :sso
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo

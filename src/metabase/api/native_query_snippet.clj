@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
+(s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf:Schema NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]
   (-> (api/read-check (t2/select-one NativeQuerySnippet :id id))
       (t2/hydrate :creator)))
