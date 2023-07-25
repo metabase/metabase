@@ -427,10 +427,11 @@
                            (opts "includeExpressions")
                            (assoc :include-expressions? (.-includeExpressions? js-options))
                            (opts "includeImplicitlyJoinable")
-                           (assoc :include-implicitly-joinable? (.-includeImplicitlyJoinable js-options)))))]
-    (to-array (lib.metadata.calculation/visible-columns a-query stage-number
-                                                        (lib.util/query-stage a-query stage-number)
-                                                        options))))
+                           (assoc :include-implicitly-joinable? (.-includeImplicitlyJoinable js-options)))))
+        stage            (lib.util/query-stage a-query stage-number)
+        visible-columns  (lib.metadata.calculation/visible-columns a-query stage-number stage options)
+        returned-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+    (to-array (lib.equality/mark-selected-columns visible-columns returned-columns))))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
