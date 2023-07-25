@@ -2,11 +2,12 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text } from "metabase/ui";
+import { Icon } from "metabase/core/components/Icon";
 
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
-import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
+import { NotebookCellAdd, NotebookCellItem } from "../../NotebookCell";
 
 import { useJoin } from "./use-join";
 import { useJoinCondition } from "./use-join-condition";
@@ -18,7 +19,12 @@ import { JoinConditionOperatorPicker } from "./JoinConditionOperatorPicker";
 import { JoinStrategyPicker } from "./JoinStrategyPicker";
 import { JoinTablePicker } from "./JoinTablePicker";
 
-import { ConditionNotebookCell } from "./JoinStep.styled";
+import {
+  ConditionNotebookCell,
+  ConditionUnionLabel,
+  TablesNotebookCell,
+  RemoveConditionButton,
+} from "./JoinStep.styled";
 
 export function JoinStep({
   topLevelQuery: query,
@@ -109,6 +115,8 @@ export function JoinStep({
     }
   };
 
+  const handleNewConditionClick = () => setIsAddingNewCondition(true);
+
   const renderJoinCondition = (
     condition?: Lib.JoinConditionClause,
     index?: number,
@@ -119,32 +127,52 @@ export function JoinStep({
 
     const isEditing = condition && typeof index === "number";
     const key = isEditing ? `join-condition-${index}` : "new-join-condition";
+    const isSingleCondition = conditions.length === 0;
 
     return (
-      <JoinCondition
-        key={key}
-        query={query}
-        stageIndex={stageIndex}
-        condition={condition}
-        join={join}
-        table={table}
-        color={color}
-        readOnly={readOnly}
-        onChange={nextCondition => {
-          if (isEditing) {
-            handleUpdateCondition(index, nextCondition);
-          } else {
-            handleAddCondition(nextCondition);
-          }
-        }}
-        onChangeLHSColumn={setSelectedLHSColumn}
-      />
+      <Flex key={key} mr="6px" align="center" data-testid={key}>
+        <JoinCondition
+          query={query}
+          stageIndex={stageIndex}
+          condition={condition}
+          join={join}
+          table={table}
+          color={color}
+          readOnly={readOnly}
+          onChange={nextCondition => {
+            if (isEditing) {
+              handleUpdateCondition(index, nextCondition);
+            } else {
+              handleAddCondition(nextCondition);
+            }
+          }}
+          onChangeLHSColumn={setSelectedLHSColumn}
+        />
+        {isEditing && !readOnly && !isAddingNewCondition && (
+          <NotebookCellAdd
+            color={color}
+            onClick={handleNewConditionClick}
+            aria-label={t`Add condition`}
+          />
+        )}
+        {isEditing && !readOnly && isAddingNewCondition && (
+          <ConditionUnionLabel>{t`and`}</ConditionUnionLabel>
+        )}
+        {!isSingleCondition && !isEditing && !readOnly && isAddingNewCondition && (
+          <RemoveConditionButton
+            onClick={() => setIsAddingNewCondition(false)}
+            aria-label={t`Remove condition`}
+          >
+            <Icon name="close" size={12} />
+          </RemoveConditionButton>
+        )}
+      </Flex>
     );
   };
 
   return (
-    <Flex align="center" miw="100%" gap="1rem">
-      <NotebookCell className="flex-full" color={color}>
+    <Flex miw="100%" gap="1rem">
+      <TablesNotebookCell color={color}>
         <Flex direction="row" gap={6}>
           <NotebookCellItem color={color} aria-label={t`Left table`}>
             {lhsDisplayName}
@@ -168,10 +196,10 @@ export function JoinStep({
             onChangeFields={handleSelectedColumnsChange}
           />
         </Flex>
-      </NotebookCell>
+      </TablesNotebookCell>
       {!!table && (
         <>
-          <Box>
+          <Box mt="1.5rem">
             <Text color="brand" weight="bold">{t`on`}</Text>
           </Box>
           <ConditionNotebookCell color={color}>

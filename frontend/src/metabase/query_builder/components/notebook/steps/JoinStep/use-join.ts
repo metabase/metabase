@@ -119,14 +119,17 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
       const nextConditions = [...conditions, condition];
       _setConditions(nextConditions);
 
-      if (table) {
+      if (join) {
+        const nextJoin = Lib.withJoinConditions(join, nextConditions);
+        return Lib.replaceClause(query, stageIndex, join, nextJoin);
+      } else if (table) {
         let nextJoin = Lib.joinClause(table, nextConditions);
         nextJoin = Lib.withJoinFields(nextJoin, selectedColumns);
         nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
         return Lib.join(query, stageIndex, nextJoin);
       }
     },
-    [query, stageIndex, table, strategy, selectedColumns, conditions],
+    [query, stageIndex, join, table, strategy, selectedColumns, conditions],
   );
 
   const updateCondition = useCallback(
