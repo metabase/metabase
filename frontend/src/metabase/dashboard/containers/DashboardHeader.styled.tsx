@@ -39,7 +39,6 @@ export const DashboardHeaderButton = styled(Button)<{
         display: none;
       `}
   }
-  }
 `;
 
 DashboardHeaderButton.defaultProps = {
