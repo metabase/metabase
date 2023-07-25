@@ -1,6 +1,7 @@
 import { restore } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { WAIT_TIME } from "metabase/components/ExplicitSize";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -60,9 +61,7 @@ describe("issue 29304", () => {
 
         cy.wait("@getDashboard");
         cy.wait("@getDashcardQuery");
-        // The timeout necessary to make sure the dashcard is rendered.
-        const DASHCARD_FIRST_RENDER_TIMEOUT = 400;
-        cy.tick(DASHCARD_FIRST_RENDER_TIMEOUT);
+        cy.tick(WAIT_TIME);
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(147, 2);
         });
@@ -81,9 +80,7 @@ describe("issue 29304", () => {
 
         cy.wait("@getDashboard");
         cy.wait("@getDashcardQuery");
-        // The timeout necessary to make sure the dashcard is rendered.
-        const DASHCARD_FIRST_RENDER_TIMEOUT = 400;
-        cy.tick(DASHCARD_FIRST_RENDER_TIMEOUT);
+        cy.tick(WAIT_TIME);
         cy.findByTestId("scalar-value").then(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(80, 2);
         });
