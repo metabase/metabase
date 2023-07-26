@@ -11,11 +11,10 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.config :as search-config :refer [SearchableModel SearchContext]]
+   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
-   [metabase.search.util :as search-util]
+   [metabase.search.util :as search.util]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -114,7 +113,7 @@
 
       ;; This is a column reference, need to add the table alias to the column
       maybe-aliased-col
-      (search-config/column-with-model-alias model maybe-aliased-col)
+      (search.config/column-with-model-alias model maybe-aliased-col)
 
       ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
       ;; correct type, e.g.
@@ -132,47 +131,22 @@
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-search-columns`."
   [model :- SearchableModel]
-  (let [entity-columns                (search-config/columns-for-model model)
+  (let [entity-columns                (search.config/columns-for-model model)
         column-alias->honeysql-clause (m/index-by ->column-alias entity-columns)
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
 (mu/defn ^:private from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
   [model :- SearchableModel]
-  (let [{:keys [db-model alias]} (get search-config/model-to-db-model model)]
+  (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
-
-(defn- wildcard-match
-  [s]
-  (str "%" s "%"))
-
-(defn- search-string-clause
-  [model query searchable-columns]
-  (when query
-    (into [:or]
-          (for [column searchable-columns
-                token (search-util/tokenize (search-util/normalize query))]
-            (if (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
-              [:= 0 1]
-
-              [:like
-               [:lower column]
-               (wildcard-match token)])))))
-
-(mu/defn ^:private base-where-clause-for-model :- [:maybe [:fn (fn [x] (and (seq x) (#{:and :inline := :or} (first x))))]]
-  [model          :- SearchableModel
-   search-context :- SearchContext]
-  (search-string-clause model (:search-string search-context)
-                        (map #(search-config/column-with-model-alias model %)
-                             (search-config/searchable-columns-for-model model))))
 
 (mu/defn ^:private base-query-for-model :- [:map {:closed true} [:select :any] [:from :any] [:where :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
   [model :- SearchableModel context :- SearchContext]
   (-> {:select (select-clause-for-model model)
-        :from   (from-clause-for-model model)
-        :where  (base-where-clause-for-model model context)}
+       :from   (from-clause-for-model model)}
       (search.filter/build-filters model context)))
 
 (mu/defn add-collection-join-and-where-clauses
@@ -321,7 +295,7 @@
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
-  (let [match             (wildcard-match (search-util/normalize query))
+  (let [match             (search.util/wildcard-match (search-util/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
@@ -396,9 +370,9 @@
                                        (u/pprint-to-str search-query)
                                        (mdb.query/format-sql (first (mdb.query/compile search-query))))
         to-toucan-instance (fn [row]
-                             (let [model (-> row :model search-config/model-to-db-model :db-model)]
+                             (let [model (-> row :model search.config/model-to-db-model :db-model)]
                                (t2.instance/instance model row)))
-        reducible-results  (mdb.query/reducible-query search-query :max-rows search-config/*db-max-results*)
+        reducible-results  (mdb.query/reducible-query search-query :max-rows search.config/*db-max-results*)
         xf                 (comp
                             (map t2.realize/realize)
                             (map to-toucan-instance)
@@ -410,7 +384,7 @@
                             (map #(update % :pk_ref json/parse-string))
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
-        total-results      (scoring/top-results reducible-results search-config/max-filtered-results xf)]
+        total-results      (scoring/top-results reducible-results search.config/max-filtered-results xf)]
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
@@ -464,7 +438,7 @@
                                     :archived-string archived-string
                                     :table-db-id     table-db-id
                                     :created-by      created_by
-                                    :models          search-config/all-models})))
+                                    :models          search.config/all-models})))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
@@ -484,7 +458,7 @@
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         models-set (cond
-                    (nil? models)    search-config/all-models
+                    (nil? models)    search.config/all-models
                     (string? models) #{models}
                     :else            (set models))
         results    (search (search-context

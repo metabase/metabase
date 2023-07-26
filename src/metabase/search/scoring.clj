@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [java-time :as t]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.search.config :as search-config]
+   [metabase.search.config :as search.config]
    [metabase.search.util :as search-util]
    [metabase.util :as u]))
 
@@ -18,7 +18,7 @@
 (defn- tokens->string
   [tokens abbreviate?]
   (let [->string (partial str/join " ")
-        context  search-config/surrounding-match-context]
+        context  search.config/surrounding-match-context]
     (if (or (not abbreviate?)
             (<= (count tokens) (* 2 context)))
       (->string tokens)
@@ -47,12 +47,12 @@
   the text match, if there is one. If there is no match, the score is 0."
   [weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column      (search-config/searchable-columns-for-model (:model search-result))
+  (let [scores (for [column      (search.config/searchable-columns-for-model (:model search-result))
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers
                      :let        [matched-text (-> search-result
                                                    (get column)
-                                                   (search-config/column->string (:model search-result) column))
+                                                   (search.config/column->string (:model search-result) column))
                                   match-tokens (some-> matched-text search-util/normalize search-util/tokenize)
                                   raw-score (scorer query-tokens match-tokens)]
                      :when       (and matched-text (pos? raw-score))]
@@ -137,7 +137,7 @@
    {:scorer prefix-scorer :name "prefix" :weight 1}])
 
 (def ^:private model->sort-position
-  (zipmap (reverse search-config/models-search-order) (range)))
+  (zipmap (reverse search.config/models-search-order) (range)))
 
 (defn- model-score
   [{:keys [model]}]
@@ -172,13 +172,13 @@
   [{:keys [model dashboardcard_count]}]
   (if (= model "card")
     (min (/ dashboardcard_count
-            search-config/dashboard-count-ceiling)
+            search.config/dashboard-count-ceiling)
          1)
     0))
 
 (defn- recency-score
   [{:keys [updated_at]}]
-  (let [stale-time search-config/stale-time-in-days
+  (let [stale-time search.config/stale-time-in-days
         days-ago (if updated_at
                    (t/time-between updated_at
                                    (t/offset-date-time)
@@ -201,7 +201,7 @@
                            name)
          :context        (when (and match-context-thunk
                                     (empty?
-                                     (remove matching-columns search-config/displayed-columns)))
+                                     (remove matching-columns search.config/displayed-columns)))
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name

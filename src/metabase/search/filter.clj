@@ -11,8 +11,11 @@
   that supports the filter should define its own method for the filter."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.util :as search.util]
    [metabase.util.malli :as mu]))
 
 (def ^:private true-clause [:inline [:= 1 1]])
@@ -53,46 +56,71 @@
      [:= (search.config/column-with-model-alias model :active) true]
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
 
+(defn- search-string-clause
+  [model query searchable-columns]
+  (when query
+    (into [:or]
+          (for [column searchable-columns
+                token (search.util/tokenize (search.util/normalize query))]
+            (if (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
+              [:= 0 1]
+
+              [:like
+               [:lower column]
+               (search.util/wildcard-match token)])))))
+
+(mu/defn ^:private search-string-clause-for-model
+  [model          :- SearchableModel
+   search-context :- SearchContext]
+  (search-string-clause model (:search-string search-context)
+                        (map #(search.config/column-with-model-alias model %)
+                             (search.config/searchable-columns-for-model model))))
+
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti ^:private optional-filter-clause
+(defmulti ^:private optional-filter-query
   "Clause for optional filters.
   Dispath with an array of [filter model-name]."
-  {:arglists '([model fitler filter-value])}
-  (fn [filter model _filter-value]
+  {:arglists '([model fitler query filter-value])}
+  (fn [filter model _query _filter-value]
     [filter model]))
 
-(defmethod optional-filter-clause :default
-  [filter model _creator-id]
+(defmethod optional-filter-query :default
+  [filter model _query _creator-id]
   (throw (ex-info (format "%s filter for %s is not supported" filter model) {:filter filter :model model})))
 
 ;; Created by filters
-(defmethod optional-filter-clause [:created-by "card"]
-  [_filter model creator-id]
+(defn- default-created-by-fitler-clause
+  [model creator-id]
   [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
-(defmethod optional-filter-clause [:created-by "dataset"]
-  [_filter model creator-id]
-  [:= (search.config/column-with-model-alias model :creator_id) creator-id])
+(defmethod optional-filter-query [:created-by "card"]
+  [_filter model query creator-id]
+  (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
 
-(defmethod optional-filter-clause [:created-by "dashboard"]
-  [_filter model creator-id]
-  [:= (search.config/column-with-model-alias model :creator_id) creator-id])
+(defmethod optional-filter-query [:created-by "dataset"]
+  [_filter model query creator-id]
+  (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
 
-(defmethod optional-filter-clause [:created-by "action"]
-  [_filter model creator-id]
-  [:= (search.config/column-with-model-alias model :creator_id) creator-id])
+(defmethod optional-filter-query [:created-by "dashboard"]
+  [_filter model query creator-id]
+  (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
 
-(defn ^:private feature->supported-models
+(defmethod optional-filter-query [:created-by "action"]
+  [_filter model query creator-id]
+  (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
+
+(defn- feature->supported-models
   "Return A map of filter to its support models.
 
   E.g: {:created-by #{\"card\" \"dataset\" \"dashboard\" \"action\"}}
 
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
-  (->> (dissoc (methods optional-filter-clause) :default)
+  (->> (dissoc (methods optional-filter-query) :default)
        keys
        (reduce (fn [acc [filter model]]
                  (update acc filter set/union #{model}))
@@ -110,22 +138,21 @@
   (cond-> models
     (some? created-by) (set/intersection (:created-by (feature->supported-models)))))
 
-(defn- build-optional-filters
-  [model {:keys [created-by] :as _search-context}]
-  (cond-> []
-    (int? created-by) (conj (optional-filter-clause :created-by model created-by))))
-
-(mu/defn build-filters
+(mu/defn build-filters :- map?
   "Build the search filters for a model."
   [honeysql-query :- :any
    model          :- SearchableModel
    search-context :- SearchContext]
-  (let [{:keys [archived?]} search-context
-        archived-filter  (archived-clause model archived?)
-        optional-filters (build-optional-filters model search-context)]
+  (let [{:keys [archived?
+                created-by
+                search-string]} search-context]
     (cond-> honeysql-query
-      (seq archived-filter)
-      (sql.helpers/where archived-filter)
+      (not (str/blank? search-string))
+      (sql.helpers/where (search-string-clause-for-model model search-context))
 
-      (seq optional-filters)
-      (sql.helpers/where optional-filters))))
+      (some? archived?)
+      (sql.helpers/where (archived-clause model archived?))
+
+      ;; build optional filters
+      (int? created-by)
+      (#(optional-filter-query :created-by model % created-by)))))

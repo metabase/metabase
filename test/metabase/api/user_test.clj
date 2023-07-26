@@ -218,13 +218,13 @@
                     :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}
-                  {:email                  "trashbird@metabase.com"
-                    :first_name             "Trash"
-                    :last_name              "Bird"
-                    :is_active              false
-                    :group_ids              #{(u/the-id (perms-group/all-users))}
-                    :personal_collection_id true
-                    :common_name            "Trash Bird"}]
+                   {:email                  "trashbird@metabase.com"
+                     :first_name             "Trash"
+                     :last_name              "Bird"
+                     :is_active              false
+                     :group_ids              #{(u/the-id (perms-group/all-users))}
+                     :personal_collection_id true
+                     :common_name            "Trash Bird"}]
                   (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
              (->> ((mt/user-http-request :crowberto :get 200 "user", :include_deactivated true) :data)
