@@ -36,7 +36,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       await ActionsApi.execute({
         id: actionId,
         parameters: {
-          id: objectId,
+          id: typeof objectId === "string" ? parseInt(objectId, 10) : objectId,
         },
       });
 
