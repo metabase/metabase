@@ -517,15 +517,13 @@
 
   (testing "Sandboxing inhibits searching indexes"
     (binding [api/*current-user-id* (mt/user->id :rasta)]
-      (is (= [:and
-              [:or [:like [:lower :model-index-value.name] "%foo%"]]
-              [:inline [:= 1 1]]]
+      (is (= [:or [:like [:lower :model-index-value.name] "%foo%"]]
              (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                          :search-string "foo"
                                                                          :models             search-config/all-models
                                                                          :current-user-perms #{"/"}})))
       (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-        (is (= [:and [:or [:= 0 1]] [:inline [:= 1 1]]]
+        (is (= [:or [:= 0 1]]
                (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
                                                                            :search-string "foo"
                                                                            :models             search-config/all-models

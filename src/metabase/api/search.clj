@@ -159,25 +159,21 @@
                [:lower column]
                (wildcard-match token)])))))
 
-
-
-(mu/defn ^:private base-where-clause-for-model :- [:fn (fn [x] (and (seq x) (#{:and :inline :=} (first x))))]
+(mu/defn ^:private base-where-clause-for-model :- [:maybe [:fn (fn [x] (and (seq x) (#{:and :inline := :or} (first x))))]]
   [model          :- SearchableModel
    search-context :- SearchContext]
-  (let [{:keys [search-string]} search-context
-        filters       (search.filter/build-filters model search-context)
-        search-clause (search-string-clause model search-string
-                                            (map #(search-config/column-with-model-alias model %)
-                                                 (search-config/searchable-columns-for-model model)))]
-    (into [:and] (filter seq (conj filters search-clause)))))
+  (search-string-clause model (:search-string search-context)
+                        (map #(search-config/column-with-model-alias model %)
+                             (search-config/searchable-columns-for-model model))))
 
 (mu/defn ^:private base-query-for-model :- [:map {:closed true} [:select :any] [:from :any] [:where :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
   [model :- SearchableModel context :- SearchContext]
-  {:select (select-clause-for-model model)
-   :from   (from-clause-for-model model)
-   :where  (base-where-clause-for-model model context)})
+  (-> {:select (select-clause-for-model model)
+        :from   (from-clause-for-model model)
+        :where  (base-where-clause-for-model model context)}
+      (search.filter/build-filters model context)))
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
@@ -263,6 +259,8 @@
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
+  (def model model)
+  (def search-ctx search-ctx)
   (base-query-for-model model search-ctx))
 
 (defmethod search-query-for-model "dashboard"
@@ -430,7 +428,7 @@
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private search-context :- SearchContext
+(mu/defn ^:private search-context
   [{:keys [archived-string
            created-by
            limit

@@ -11,6 +11,7 @@
   that supports the filter should define its own method for the filter."
   (:require
    [clojure.set :as set]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.util.malli :as mu]))
 
@@ -21,7 +22,7 @@
 ;;                                         Required Filters                                         ;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti ^:private archived-clause
+(defmulti archived-clause
   "Clause to filter by the archived status of the entity."
   {:arglists '([model archived?])}
   (fn [model _] model))
@@ -116,9 +117,15 @@
 
 (mu/defn build-filters
   "Build the search filters for a model."
-  [model          :- SearchableModel
+  [honeysql-query :- :any
+   model          :- SearchableModel
    search-context :- SearchContext]
   (let [{:keys [archived?]} search-context
-        archived-filter   (archived-clause model archived?)
-        optional-filters  (build-optional-filters model search-context)]
-    (filter seq (conj optional-filters archived-filter))))
+        archived-filter  (archived-clause model archived?)
+        optional-filters (build-optional-filters model search-context)]
+    (cond-> honeysql-query
+      (seq archived-filter)
+      (sql.helpers/where archived-filter)
+
+      (seq optional-filters)
+      (sql.helpers/where optional-filters))))
