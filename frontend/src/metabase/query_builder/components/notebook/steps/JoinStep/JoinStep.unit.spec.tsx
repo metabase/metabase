@@ -280,7 +280,6 @@ describe("Notebook Editor > Join Step", () => {
     const leftColumn = screen.getByLabelText("Left column");
     userEvent.click(within(leftColumn).getByLabelText("Remove"));
 
-    // TODO Figure out join assertion
     expect(leftColumn).toHaveTextContent("Pick a column…");
     expect(screen.getByLabelText("Right column")).toHaveTextContent("ID");
   });
@@ -308,7 +307,6 @@ describe("Notebook Editor > Join Step", () => {
     const rightColumn = screen.getByLabelText("Right column");
     userEvent.click(within(rightColumn).getByLabelText("Remove"));
 
-    // TODO Figure out join assertion
     expect(rightColumn).toHaveTextContent("Pick a column…");
     expect(screen.getByLabelText("Left column")).toHaveTextContent(
       "Product ID",
