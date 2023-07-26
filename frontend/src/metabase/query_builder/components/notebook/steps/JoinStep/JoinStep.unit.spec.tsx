@@ -634,8 +634,7 @@ describe("Notebook Editor > Join Step", () => {
       expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
 
       userEvent.click(screen.getByLabelText("Right column"));
-      await screen.findByLabelText("grid");
-      const [, rhsColumnPicker] = screen.getAllByLabelText("grid");
+      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
       userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       expect(screen.getByLabelText("Add condition")).toBeInTheDocument();
@@ -660,8 +659,7 @@ describe("Notebook Editor > Join Step", () => {
       userEvent.click(
         within(conditionContainer).getByLabelText("Right column"),
       );
-      await screen.findByLabelText("grid");
-      const [, rhsColumnPicker] = screen.getAllByLabelText("grid");
+      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
       userEvent.click(within(rhsColumnPicker).getByText("Created At"));
 
       const { conditions } = getRecentJoin();
