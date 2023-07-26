@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text } from "metabase/ui";
@@ -32,12 +32,17 @@ export function JoinStep({
   color,
   readOnly,
   sourceQuestion,
-  updateQuery,
+  updateQuery: _updateQuery,
 }: NotebookStepUiComponentProps) {
   const { stageIndex, itemIndex } = step;
 
   const joins = Lib.joins(query, stageIndex);
   const join = typeof itemIndex === "number" ? joins[itemIndex] : undefined;
+
+  const updateQuery = useCallback(
+    (nextQuery: Lib.Query) => _updateQuery(nextQuery, { closeStep: false }),
+    [_updateQuery],
+  );
 
   const {
     strategy,
