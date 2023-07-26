@@ -7,7 +7,7 @@ import { GenerateButton, SecretKeyWidgetRoot } from "./SecretKeyWidget.styled";
 interface SecretKeyWidgetProps {
   onChange: (token: string) => void;
   setting: any;
-  confirmation?: {
+  confirmation: {
     header: string;
     dialog: string;
   };
@@ -16,10 +16,7 @@ interface SecretKeyWidgetProps {
 const SecretKeyWidget = ({
   onChange,
   setting,
-  confirmation = {
-    header: t`Regenerate embedding key?`,
-    dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
-  },
+  confirmation,
   ...rest
 }: SecretKeyWidgetProps) => {
   const generateToken = async () => {
