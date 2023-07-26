@@ -64,9 +64,7 @@ export function JoinTablePicker({
         selectedTableId={tableId}
         setSourceTableFn={handleTableChange}
         triggerElement={
-          <PickerButton>
-            {tableInfo?.displayName || t`Pick a table…`}
-          </PickerButton>
+          <PickerButton>{tableInfo?.displayName || t`Pick data…`}</PickerButton>
         }
       />
     </NotebookCellItem>
