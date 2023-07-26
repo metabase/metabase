@@ -343,14 +343,14 @@ export function ObjectDetailView({
 
   const dispatch = useDispatch();
 
-  const handleActionSuccess = () => {
+  const handleActionSuccess = useCallback(() => {
     dispatch(runQuestionQuery());
-  };
+  }, [dispatch]);
 
-  const handleDeleteSuccess = () => {
+  const handleDeleteSuccess = useCallback(() => {
     handleActionSuccess();
     closeObjectDetail();
-  };
+  }, [closeObjectDetail, handleActionSuccess]);
 
   if (!data) {
     return null;

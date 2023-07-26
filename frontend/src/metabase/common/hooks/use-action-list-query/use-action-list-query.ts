@@ -15,5 +15,6 @@ export const useActionListQuery = (
     getLoading: Actions.selectors.getLoading,
     getLoaded: Actions.selectors.getLoaded,
     getError: Actions.selectors.getError,
+    getListMetadata: Actions.selectors.getListMetadata,
   });
 };

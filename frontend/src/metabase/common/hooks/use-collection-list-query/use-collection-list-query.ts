@@ -16,5 +16,6 @@ export const useCollectionListQuery = (
     getList: Collections.selectors.getList,
     getLoaded: Collections.selectors.getLoaded,
     getLoading: Collections.selectors.getLoading,
+    getListMetadata: Collections.selectors.getListMetadata,
   });
 };
