@@ -335,9 +335,9 @@ export function ObjectDetailView({
 
   const dispatch = useDispatch();
 
-  const handleActionSuccess = () => {
+  const handleActionSuccess = useCallback(() => {
     dispatch(runQuestionQuery());
-  };
+  }, [dispatch]);
 
   if (!data) {
     return null;
