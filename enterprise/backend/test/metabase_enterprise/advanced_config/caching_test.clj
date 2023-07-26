@@ -1,13 +1,17 @@
 (ns metabase-enterprise.advanced-config.caching-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card Dashboard Database]]
+   [java-time :as t]
+   [metabase.models :refer [Card Dashboard Database PersistedInfo TaskHistory]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor.card :as qp.card]
+   [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest query-cache-ttl-hierarchy-test
   (premium-features-test/with-premium-features #{:cache-granular-controls}
@@ -33,3 +37,140 @@
                         Dashboard [dash {:cache_ttl 1338}]
                         Card [card {:database_id (u/the-id db)}]]
           (is (= (* 3600 1338) (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)})))))))))
+
+(deftest model-caching-granular-controls-test
+  (mt/with-model-cleanup [TaskHistory]
+    (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))] ; need an "old enough" state change
+      (testing "with :cache-granular-controls enabled, don't refresh any tables in an 'off' or 'deletable' state"
+        (premium-features-test/with-premium-features #{:cache-granular-controls}
+          (t2.with-temp/with-temp
+            [Database db {:options {:persist-models-enabled true}}
+             Card     creating  {:dataset true :database_id (u/the-id db)}
+             Card     deletable {:dataset true :database_id (u/the-id db)}
+             Card     off       {:dataset true :database_id (u/the-id db)}
+             PersistedInfo pcreating  {:card_id (u/the-id creating)
+                                       :database_id (u/the-id db)
+                                       :state "creating"
+                                       :state_change_at two-hours-ago}
+             PersistedInfo pdeletable {:card_id (u/the-id deletable)
+                                       :database_id (u/the-id db)
+                                       :state "deletable"
+                                       :state_change_at two-hours-ago}
+             PersistedInfo poff       {:card_id (u/the-id off)
+                                       :database_id (u/the-id db)
+                                       :state "off"
+                                       :state_change_at two-hours-ago}]
+            (testing "Calls refresh on each persisted-info row"
+              (let [card-ids (atom #{})
+                    test-refresher (reify task.persist-refresh/Refresher
+                                     (refresh! [_ _database _definition card]
+                                       (swap! card-ids conj (:id card))
+                                       {:state :success})
+                                     (unpersist! [_ _database _persisted-info]))]
+                (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+                (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
+                  (is (= #{(u/the-id creating)} @card-ids)))
+                (is (partial= {:task "persist-refresh"
+                               :task_details {:success 1 :error 0}}
+                              (t2/select-one TaskHistory
+                                             :db_id (u/the-id db)
+                                             :task "persist-refresh"
+                                             {:order-by [[:id :desc]]}))))))))
+      (testing "with :cache-granular-controls disabled, refresh tables in an 'off' state, but not 'deletable'"
+        (premium-features-test/with-premium-features #{}
+          (t2.with-temp/with-temp
+            [Database db {:options {:persist-models-enabled true}}
+             Card     deletable {:dataset true :database_id (u/the-id db)}
+             Card     off       {:dataset true :database_id (u/the-id db)}
+             PersistedInfo pdeletable {:card_id (u/the-id deletable)
+                                       :database_id (u/the-id db)
+                                       :state "deletable"
+                                       :state_change_at two-hours-ago}
+             PersistedInfo poff       {:card_id (u/the-id off)
+                                       :database_id (u/the-id db)
+                                       :state "off"
+                                       :state_change_at two-hours-ago}]
+            (testing "Calls refresh on each persisted-info row"
+              (let [card-ids (atom #{})
+                    test-refresher (reify task.persist-refresh/Refresher
+                                     (refresh! [_ _database _definition card]
+                                       (swap! card-ids conj (:id card))
+                                       {:state :success})
+                                     (unpersist! [_ _database _persisted-info]))]
+                (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+                (is (= #{(u/the-id off)} @card-ids))
+                (is (partial= {:task "persist-refresh"
+                               :task_details {:success 1 :error 0}}
+                              (t2/select-one TaskHistory
+                                             :db_id (u/the-id db)
+                                             :task "persist-refresh"
+                                             {:order-by [[:id :desc]]}))))))))
+      (testing "with :cache-granular-controls enabled, deletes any tables in a deletable or off state"
+        (premium-features-test/with-premium-features #{:cache-granular-controls}
+          (t2.with-temp/with-temp
+            [Database db {:options {:persist-models-enabled true}}
+             Card     deletable {:dataset true :database_id (u/the-id db)}
+             Card     off       {:dataset true :database_id (u/the-id db)}
+             PersistedInfo pdeletable {:card_id (u/the-id deletable)
+                                       :database_id (u/the-id db)
+                                       :state "deletable"
+                                       :state_change_at two-hours-ago}
+             PersistedInfo poff {:card_id (u/the-id off)
+                                 :database_id (u/the-id db)
+                                 :state "off"
+                                 :state_change_at two-hours-ago}]
+            (let [persisted-infos [pdeletable poff]
+                  called-on (atom #{})
+                  test-refresher (reify task.persist-refresh/Refresher
+                                   (refresh! [_ _ _ _]
+                                     (is false "refresh! called on a model that should not be refreshed"))
+                                   (unpersist! [_ _database persisted-info]
+                                     (swap! called-on conj (u/the-id persisted-info))))]
+              (testing "Query finds deletabable, and off persisted infos"
+                (let [queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
+                  (doseq [p persisted-infos]
+                    (is (contains? queued-for-deletion (u/the-id p))))))
+              ;; we manually pass in the deleteable ones to not catch others in a running instance
+              (testing "Both deletables are pruned by prune-deletables!"
+                (#'task.persist-refresh/prune-deletables! test-refresher persisted-infos)
+                (doseq [p persisted-infos]
+                  (is (contains? @called-on (u/the-id p))))
+                (is (partial= {:task "unpersist-tables"
+                               :task_details {:success 2 :error 0, :skipped 0}}
+                              (t2/select-one TaskHistory
+                                             :task "unpersist-tables"
+                                             {:order-by [[:id :desc]]}))))))))
+      (testing "with :cache-granular-controls disabled, deletes any tables in a deletable state, but not off state"
+        (premium-features-test/with-premium-features #{}
+          (t2.with-temp/with-temp
+            [Database db {:options {:persist-models-enabled true}}
+             Card     deletable {:dataset true :database_id (u/the-id db)}
+             Card     off       {:dataset true :database_id (u/the-id db)}
+             PersistedInfo pdeletable {:card_id (u/the-id deletable)
+                                       :database_id (u/the-id db)
+                                       :state "deletable"
+                                       :state_change_at two-hours-ago}
+             PersistedInfo poff       {:card_id (u/the-id off)
+                                       :database_id (u/the-id db)
+                                       :state "off"
+                                       :state_change_at two-hours-ago}]
+            (let [called-on (atom #{})
+                  test-refresher (reify task.persist-refresh/Refresher
+                                   (refresh! [_ _ _ _]
+                                     (is false "refresh! called on a model that should not be refreshed"))
+                                   (unpersist! [_ _database persisted-info]
+                                     (swap! called-on conj (u/the-id persisted-info))))]
+              (let [queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
+                (testing "Query finds only state='deletabable' persisted info, and not state='off'"
+                  (is (contains? queued-for-deletion (u/the-id pdeletable)))
+                  (is (not (contains? queued-for-deletion (u/the-id poff))))))
+              ;; we manually pass in the deleteable ones to not catch others in a running instance
+              (testing "Only state='deletable' is pruned by prune-deletables!, and not state='off'"
+                (#'task.persist-refresh/prune-deletables! test-refresher [pdeletable poff])
+                (is (contains? @called-on (u/the-id pdeletable)))
+                (is (not (contains? @called-on (u/the-id poff))))
+                (is (partial= {:task "unpersist-tables"
+                               :task_details {:success 1 :error 0, :skipped 1}}
+                              (t2/select-one TaskHistory
+                                             :task "unpersist-tables"
+                                             {:order-by [[:id :desc]]})))))))))))
