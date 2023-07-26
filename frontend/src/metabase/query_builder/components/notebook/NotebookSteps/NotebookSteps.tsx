@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useEffectOnce } from "react-use";
 
 import * as Lib from "metabase-lib";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -53,6 +54,20 @@ function NotebookSteps({
     }
     return getQuestionSteps(question, openSteps);
   }, [question, openSteps]);
+
+  // TODO Reimplement in getInitialOpenSteps
+  useEffectOnce(() => {
+    if (steps.length > 0) {
+      const joinStepIds = steps
+        .filter(step => step.type === "join")
+        .map(step => step.id);
+      const openStepsEntries = joinStepIds.map(id => [id, true]);
+      setOpenSteps(openSteps => ({
+        ...openSteps,
+        ...Object.fromEntries(openStepsEntries),
+      }));
+    }
+  });
 
   const handleStepOpen = useCallback((id: string) => {
     setOpenSteps(openSteps => ({ ...openSteps, [id]: true }));
