@@ -46,7 +46,3 @@ export const SearchControls = styled.div`
     margin-left: 1rem;
   }
 `;
-
-export const SearchResultWrapper = styled.div`
-  display: contents;
-`;
