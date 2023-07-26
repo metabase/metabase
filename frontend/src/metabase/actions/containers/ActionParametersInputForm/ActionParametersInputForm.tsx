@@ -1,7 +1,9 @@
+import { Flex } from "@mantine/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import ActionForm from "metabase/actions/components/ActionForm";
 
@@ -11,9 +13,6 @@ import type {
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-
-import { SpinnerContainer } from "./ActionParametersInputForm.styled";
 
 export interface ActionParametersInputFormProps {
   action: WritebackAction;
@@ -105,9 +104,9 @@ function ActionParametersInputForm({
 
   if (isFetching) {
     return (
-      <SpinnerContainer>
+      <Flex align="center" justify="center">
         <LoadingSpinner />
-      </SpinnerContainer>
+      </Flex>
     );
   }
 
