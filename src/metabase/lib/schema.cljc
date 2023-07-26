@@ -88,7 +88,11 @@
     (matching-locations (dissoc stage :joins :lib/stage-metadata)
                         #(bad-ref-clause? :aggregation uuids %))))
 
-(defn ref-errors-for-stage [stage]
+(defn ref-errors-for-stage
+  "Return the locations and the clauses with dangling expression or aggregation references.
+  The return value is sequence of pairs (vectors) with the first element specifying the location
+  as a vector usable in [[get-in]] and the second element being the clause with dangling reference."
+  [stage]
   (concat (expression-ref-errors-for-stage stage)
           (aggregation-ref-errors-for-stage stage)))
 
