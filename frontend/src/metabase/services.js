@@ -248,7 +248,7 @@ export const PublicApi = {
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
-  prefetchValues: GET(
+  prefetchDashcardValues: GET(
     "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
@@ -576,7 +576,8 @@ export const ActionsApi = {
   create: POST("/api/action"),
   update: PUT("/api/action/:id"),
   execute: POST("/api/action/:id/execute"),
-  prefetchValues: GET(
+  prefetchValues: GET("/api/action/:id/execute"),
+  prefetchDashcardValues: GET(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
   executeDashcardAction: POST(

@@ -7,12 +7,15 @@ import {
   setupCardDataset,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders } from "__support__/ui";
+import { getNextId } from "__support__/utils";
 import {
   createMockCard,
   createMockDatabase,
   createMockImplicitQueryAction,
+  createMockQueryAction,
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
@@ -23,16 +26,15 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/Question";
-import type { ObjectDetailProps } from "./types";
 import {
-  ObjectDetailView,
-  ObjectDetailHeader,
   ObjectDetailBody,
+  ObjectDetailHeader,
+  ObjectDetailView,
 } from "./ObjectDetail";
+import type { ObjectDetailProps } from "./types";
 
 const MOCK_CARD = createMockCard({
   name: "Product",
@@ -80,24 +82,43 @@ const databaseWithEnabledActions = createMockDatabase({
 });
 
 const implicitCreateAction = createMockImplicitQueryAction({
-  id: 1,
+  id: getNextId(),
   database_id: databaseWithEnabledActions.id,
   name: "Create",
   kind: "row/create",
 });
 
 const implicitDeleteAction = createMockImplicitQueryAction({
-  id: 2,
+  id: getNextId(),
   database_id: databaseWithEnabledActions.id,
   name: "Delete",
   kind: "row/delete",
 });
 
 const implicitUpdateAction = createMockImplicitQueryAction({
-  id: 3,
+  id: getNextId(),
   database_id: databaseWithEnabledActions.id,
   name: "Update",
   kind: "row/update",
+});
+
+const implicitPublicUpdateAction = {
+  ...implicitUpdateAction,
+  id: getNextId(),
+  name: "Public Update",
+  public_uuid: "mock-uuid",
+};
+
+const implicitArchivedUpdateAction = {
+  ...implicitUpdateAction,
+  id: getNextId(),
+  name: "Archived Implicit Update",
+  archived: true,
+};
+
+const queryAction = createMockQueryAction({
+  id: getNextId(),
+  name: "Query action",
 });
 
 function setup(options?: Partial<ObjectDetailProps>) {
@@ -267,6 +288,9 @@ describe("Object Detail", () => {
       implicitCreateAction,
       implicitDeleteAction,
       implicitUpdateAction,
+      implicitPublicUpdateAction,
+      implicitArchivedUpdateAction,
+      queryAction,
     ]);
     setup({ question: mockDataset });
 
@@ -275,8 +299,24 @@ describe("Object Detail", () => {
     userEvent.click(actionsMenu);
 
     const popover = screen.getByTestId("popover");
-    expect(within(popover).getByText("Update")).toBeInTheDocument();
-    expect(within(popover).getByText("Delete")).toBeInTheDocument();
+    expect(
+      within(popover).queryByText(implicitCreateAction.name),
+    ).not.toBeInTheDocument();
+    expect(
+      within(popover).getByText(implicitUpdateAction.name),
+    ).toBeInTheDocument();
+    expect(
+      within(popover).getByText(implicitDeleteAction.name),
+    ).toBeInTheDocument();
+    expect(
+      within(popover).queryByText(implicitPublicUpdateAction.name),
+    ).not.toBeInTheDocument();
+    expect(
+      within(popover).queryByText(implicitArchivedUpdateAction.name),
+    ).not.toBeInTheDocument();
+    expect(
+      within(popover).queryByText(queryAction.name),
+    ).not.toBeInTheDocument();
   });
 
   it("does not render actions menu for non-model questions", async () => {
@@ -285,6 +325,9 @@ describe("Object Detail", () => {
       implicitCreateAction,
       implicitDeleteAction,
       implicitUpdateAction,
+      implicitPublicUpdateAction,
+      implicitArchivedUpdateAction,
+      queryAction,
     ]);
     setup({ question: mockQuestion });
 

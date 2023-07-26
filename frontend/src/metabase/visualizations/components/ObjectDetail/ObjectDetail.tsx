@@ -9,8 +9,10 @@ import type {
   ConcreteTableId,
   DatasetData,
   VisualizationSettings,
+  WritebackActionId,
 } from "metabase-types/api";
 
+import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
 import {
   useActionListQuery,
   useDatabaseListQuery,
@@ -19,6 +21,7 @@ import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Modal from "metabase/components/Modal";
 import { Flex } from "metabase/ui/components";
 
 import Tables from "metabase/entities/tables";
@@ -26,6 +29,7 @@ import {
   closeObjectDetail,
   followForeignKey,
   loadObjectDetailFKReferences,
+  runQuestionQuery,
   viewNextObjectDetail,
   viewPreviousObjectDetail,
 } from "metabase/query_builder/actions";
@@ -41,7 +45,8 @@ import {
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 
-import { MetabaseApi } from "metabase/services";
+import { useDispatch } from "metabase/lib/redux";
+import { ActionsApi, MetabaseApi } from "metabase/services";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
@@ -155,6 +160,11 @@ export function ObjectDetailView({
   const prevData = usePrevious(passedData);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
   const [data, setData] = useState<DatasetData>(passedData);
+  const [executeActionId, setExecuteActionId] = useState<WritebackActionId>();
+
+  const handleExecuteModalClose = () => {
+    setExecuteActionId(undefined);
+  };
 
   const pkIndex = useMemo(
     () => getSinglePKIndex(passedData?.cols),
@@ -306,9 +316,28 @@ export function ObjectDetailView({
         actions,
         databases,
         onDelete: () => "TODO: metabase#32323",
-        onUpdate: () => "TODO: metabase#32322",
+        onUpdate: action => setExecuteActionId(action.id),
       })
     : [];
+
+  const fetchInitialValues = useCallback(async () => {
+    if (typeof executeActionId !== "number") {
+      return {};
+    }
+
+    return ActionsApi.prefetchValues({
+      id: executeActionId,
+      parameters: JSON.stringify({ id: String(zoomedRowID) }),
+    });
+  }, [executeActionId, zoomedRowID]);
+
+  const initialValues = useMemo(() => ({ id: zoomedRowID }), [zoomedRowID]);
+
+  const dispatch = useDispatch();
+
+  const handleActionSuccess = useCallback(() => {
+    dispatch(runQuestionQuery());
+  }, [dispatch]);
 
   if (!data) {
     return null;
@@ -333,51 +362,67 @@ export function ObjectDetailView({
     showRelations && !_.isEmpty(tableForeignKeys) && hasPk;
 
   return (
-    <ObjectDetailContainer wide={hasRelationships} className={className}>
-      {maybeLoading ? (
-        <ErrorWrapper>
-          <LoadingSpinner />
-        </ErrorWrapper>
-      ) : hasNotFoundError ? (
-        <ErrorWrapper>
-          <NotFound message={t`We couldn't find that record`} />
-        </ErrorWrapper>
-      ) : (
-        <ObjectDetailWrapperDiv
-          className="ObjectDetail"
-          data-testid="object-detail"
-        >
-          {showHeader && (
-            <ObjectDetailHeader
-              actionItems={actionItems}
-              canZoom={Boolean(
-                canZoom && (canZoomNextRow || canZoomPreviousRow),
-              )}
+    <>
+      <ObjectDetailContainer wide={hasRelationships} className={className}>
+        {maybeLoading ? (
+          <ErrorWrapper>
+            <LoadingSpinner />
+          </ErrorWrapper>
+        ) : hasNotFoundError ? (
+          <ErrorWrapper>
+            <NotFound message={t`We couldn't find that record`} />
+          </ErrorWrapper>
+        ) : (
+          <ObjectDetailWrapperDiv
+            className="ObjectDetail"
+            data-testid="object-detail"
+          >
+            {showHeader && (
+              <ObjectDetailHeader
+                actionItems={actionItems}
+                canZoom={Boolean(
+                  canZoom && (canZoomNextRow || canZoomPreviousRow),
+                )}
+                objectName={objectName}
+                objectId={displayId}
+                canZoomPreviousRow={!!canZoomPreviousRow}
+                canZoomNextRow={canZoomNextRow}
+                showControls={showControls}
+                viewPreviousObjectDetail={viewPreviousObjectDetail}
+                viewNextObjectDetail={viewNextObjectDetail}
+                closeObjectDetail={closeObjectDetail}
+              />
+            )}
+            <ObjectDetailBody
+              data={data}
               objectName={objectName}
-              objectId={displayId}
-              canZoomPreviousRow={!!canZoomPreviousRow}
-              canZoomNextRow={canZoomNextRow}
-              showControls={showControls}
-              viewPreviousObjectDetail={viewPreviousObjectDetail}
-              viewNextObjectDetail={viewNextObjectDetail}
-              closeObjectDetail={closeObjectDetail}
+              zoomedRow={zoomedRow ?? []}
+              settings={settings}
+              hasRelationships={hasRelationships}
+              onVisualizationClick={onVisualizationClick}
+              visualizationIsClickable={visualizationIsClickable}
+              tableForeignKeys={tableForeignKeys}
+              tableForeignKeyReferences={tableForeignKeyReferences}
+              followForeignKey={onFollowForeignKey}
             />
-          )}
-          <ObjectDetailBody
-            data={data}
-            objectName={objectName}
-            zoomedRow={zoomedRow ?? []}
-            settings={settings}
-            hasRelationships={hasRelationships}
-            onVisualizationClick={onVisualizationClick}
-            visualizationIsClickable={visualizationIsClickable}
-            tableForeignKeys={tableForeignKeys}
-            tableForeignKeyReferences={tableForeignKeyReferences}
-            followForeignKey={onFollowForeignKey}
-          />
-        </ObjectDetailWrapperDiv>
-      )}
-    </ObjectDetailContainer>
+          </ObjectDetailWrapperDiv>
+        )}
+      </ObjectDetailContainer>
+
+      <Modal
+        isOpen={typeof executeActionId === "number"}
+        onClose={handleExecuteModalClose}
+      >
+        <ActionExecuteModal
+          actionId={executeActionId}
+          initialValues={initialValues}
+          fetchInitialValues={fetchInitialValues}
+          shouldPrefetch
+          onClose={handleExecuteModalClose}
+          onSuccess={handleActionSuccess}
+        />
+      </Modal>
+    </>
   );
 }
 
@@ -420,7 +465,7 @@ export function ObjectDetailHeader({
       </div>
 
       {showControls && (
-        <Flex align="center" gap="xs" p="md">
+        <Flex align="center" gap="0.5rem" p="1rem">
           {canZoom && (
             <>
               <Button
