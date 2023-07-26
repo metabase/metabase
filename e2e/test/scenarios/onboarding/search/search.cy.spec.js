@@ -271,6 +271,9 @@ describe("scenarios > search", () => {
           expect(request.query.models).to.be.undefined;
         });
 
+        // TODO: check if we should be checking for all available models
+        // rather than just checking if we need to check for >2 models
+        // (i.e. implying that we have no type filters applied)
         cy.findAllByTestId("type-sidebar-item").should("have.length.gt", 2);
       });
     });
