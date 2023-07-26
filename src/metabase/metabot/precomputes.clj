@@ -29,23 +29,6 @@
      :context       {:card model-contexts :table {}}
      :compa-summary {:card encoded-models :table {}}}))
 
-#_
-(defn cache-models
-  [endpoint]
-  (let [models (t2/select Card :archived false)
-        id->context (into {} (map (juxt :id model->context)) models)
-        title->id   (into {} (map (juxt :name :id)) models)
-        embeddings  (into {} (comp (map (fn [m]
-                                          [(:name m) (model->summary m)]))
-                                   (partition-all 100)
-                                   (map (fn [part]
-                                          (let [name->embed-str (into {} part)]
-                                            (bulk-embeddings endpoint name->embed-str)))))
-                          models)]
-    {:id->context id->context
-     :title->id title->id
-     :embeddings embeddings}))
-
 (extend-type AtomicPrecomputes
   Precomputes
   (embeddings

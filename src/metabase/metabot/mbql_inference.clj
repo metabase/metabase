@@ -7,7 +7,7 @@
     [metabase.models :as models]
     [toucan2.core :as t2]))
 
-(def pre-cache (precomputes/atomic-precomputes))
+(def pre-cache (delay (precomputes/atomic-precomputes)))
 
 (defn rank-data-by-prompt
   "Return the ranked datasets by the provided prompt.
@@ -28,7 +28,7 @@
 (defn infer-mbql
   "Generate mbql from a prompt."
   ([base-url prompt]
-   (let [embeddings (precomputes/embeddings pre-cache)
+   (let [embeddings (precomputes/embeddings @pre-cache)
          ;; This is what needs to be done at every step
          best           (rank-data-by-prompt base-url prompt embeddings 1)
          model          (t2/select-one models/Card :id (-> best first :object second))
