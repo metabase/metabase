@@ -8,37 +8,37 @@
 #?(:clj
    (t/deftest ^:parallel temporal-literal-test
      (t/testing "Make sure our schema validates temporal literal clauses correctly"
-       (doseq [[schema-var cases] {#'mbql.s/TemporalLiteral       [[true "00:00:00"]
-                                                                   [true "00:00:00Z"]
-                                                                   [true "00:00:00+00:00"]
-                                                                   [true "2022-01-01"]
-                                                                   [true "2022-01-01T00:00:00"]
-                                                                   [true "2022-01-01T00:00:00+00:00"]
-                                                                   [true "2022-01-01T00:00:00Z"]
-                                                                   [false "2022-01-01 00:00:00"]
-                                                                   [false "a string"]]
-                                   #'mbql.s/DateOrDatetimeLiteral [[false "00:00:00"]
-                                                                   [false "00:00:00Z"]
-                                                                   [false "00:00:00+00:00"]
-                                                                   [true "2022-01-01"]
-                                                                   [true "2022-01-01T00:00:00"]
-                                                                   [true "2022-01-01T00:00:00+00:00"]
-                                                                   [true "2022-01-01T00:00:00Z"]
-                                                                   [false "2022-01-01 00:00:00"]
-                                                                   [false "a string"]]
-                                   #'mbql.s/TimeLiteral           [[true "00:00:00"]
-                                                                   [true "00:00:00Z"]
-                                                                   [true "00:00:00+00:00"]
-                                                                   [false "2022-01-01"]
-                                                                   [false "2022-01-01T00:00:00"]
-                                                                   [false "2022-01-01T00:00:00+00:00"]
-                                                                   [false "2022-01-01T00:00:00Z"]
-                                                                   [false "2022-01-01 00:00:00"]
-                                                                   [false "a string"]]}
-               [expected clause] cases]
-         (t/testing (pr-str schema-var clause)
+       (doseq [[schema cases] {::mbql.s/literal.temporal         [[true "00:00:00"]
+                                                                  [true "00:00:00Z"]
+                                                                  [true "00:00:00+00:00"]
+                                                                  [true "2022-01-01"]
+                                                                  [true "2022-01-01T00:00:00"]
+                                                                  [true "2022-01-01T00:00:00+00:00"]
+                                                                  [true "2022-01-01T00:00:00Z"]
+                                                                  [false "2022-01-01 00:00:00"]
+                                                                  [false "a string"]]
+                               ::mbql.s/literal.date-or-datetime [[false "00:00:00"]
+                                                                  [false "00:00:00Z"]
+                                                                  [false "00:00:00+00:00"]
+                                                                  [true "2022-01-01"]
+                                                                  [true "2022-01-01T00:00:00"]
+                                                                  [true "2022-01-01T00:00:00+00:00"]
+                                                                  [true "2022-01-01T00:00:00Z"]
+                                                                  [false "2022-01-01 00:00:00"]
+                                                                  [false "a string"]]
+                               ::mbql.s/literal.time             [[true "00:00:00"]
+                                                                  [true "00:00:00Z"]
+                                                                  [true "00:00:00+00:00"]
+                                                                  [false "2022-01-01"]
+                                                                  [false "2022-01-01T00:00:00"]
+                                                                  [false "2022-01-01T00:00:00+00:00"]
+                                                                  [false "2022-01-01T00:00:00Z"]
+                                                                  [false "2022-01-01 00:00:00"]
+                                                                  [false "a string"]]}
+               [expected clause]  cases]
+         (t/testing (pr-str schema clause)
            (t/is (= expected
-                    (mc/validate @schema-var clause))))))))
+                    (mc/validate schema clause))))))))
 
 (t/deftest ^:parallel field-clause-test
   (t/testing "Make sure our schema validates `:field` clauses correctly"
