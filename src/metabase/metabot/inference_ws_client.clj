@@ -26,28 +26,18 @@
                         keyword?
                         string?]]]]]]]]]))
 
-(defn token-count
-  "Return the token count for a given string.
+(def embeddings-schema
+  (mc/schema
+    [:map-of :string :string]))
 
-  Token count is dependent on the tokenizer used in the backing service, but is
-   often some variant of what GPT uses. This function can be used to precompute
-   prompt, context, or other strings used in inference to ensure token budgets
-  are not exceeded."
-  ([endpoint input-string]
-   (let [request {:method       :post
-                  :url          (format "%s/tokenCount" endpoint)
-                  :body         (json/write-str {:input input-string})
-                  :as           :json
-                  :content-type :json}
-         {:keys [body status]} (http/request request)]
-     (when (= 200 status)
-       (:token_count body))))
-  ([input-string]
-   (token-count
-     (metabot-settings/metabot-inference-ws-url)
-     input-string)))
+(def embeddings-return-schema
+  (mc/schema
+    [:map-of :string [:vector float?]]))
 
-(defn bulk-embeddings
+(mc/validate embeddings-schema {"A" "esafs"})
+(mc/validate embeddings-return-schema {"A" [1.0]})
+
+(defn ^:dynamic bulk-embeddings
   "Convert the input map of {obj-str encoding} to a map of {obj-str embedding (a vector of floats)}."
   ([endpoint obj-strs->encodings]
    (let [request {:method       :post
@@ -71,7 +61,7 @@
                      x))
                  mbql))
 
-(defn infer
+(defn ^:dynamic infer
   "Infer LLM output from a provided prompt and context.
 
   The prompt is the user prompt and the context is a machine-generated
