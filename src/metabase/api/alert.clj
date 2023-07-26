@@ -27,7 +27,7 @@
 (set! *warn-on-reflection* true)
 
 (when config/ee-available?
- (classloader/require 'metabase-enterprise.advanced-permissions.common))
+  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"

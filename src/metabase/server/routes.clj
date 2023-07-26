@@ -20,7 +20,7 @@
    [ring.util.response :as response]))
 
 (when config/ee-available?
- (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
+  (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
 
 (defn- redirect-including-query-string
   "Like `response/redirect`, but passes along query string URL params as well. This is important because the public and

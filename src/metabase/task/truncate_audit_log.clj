@@ -23,7 +23,7 @@
 
 ;; Load EE implementation if available
 (when config/ee-available?
- (classloader/require 'metabase-enterprise.task.truncate-audit-log))
+  (classloader/require 'metabase-enterprise.task.truncate-audit-log))
 
 (define-multi-setting-impl truncate-audit-log.i/audit-max-retention-days :oss
   :getter (fn []

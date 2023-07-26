@@ -37,8 +37,8 @@
 (set! *warn-on-reflection* true)
 
 (when config/ee-available?
- (classloader/require 'metabase-enterprise.sandbox.api.util
-                      'metabase-enterprise.advanced-permissions.common))
+  (classloader/require 'metabase-enterprise.sandbox.api.util
+                       'metabase-enterprise.advanced-permissions.common))
 
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user

@@ -49,9 +49,9 @@
   in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE code is
   present. This feature is only enabled if we have a valid Enterprise Edition™ token."
   (let [dlay (delay
-               (when config/ee-available?
-                 (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
-                 (resolve 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions)))]
+              (when config/ee-available?
+                (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
+                (resolve 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions)))]
     (fn [query]
       (when-let [f @dlay]
         (f query)))))

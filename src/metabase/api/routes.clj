@@ -53,7 +53,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (when config/ee-available?
- (classloader/require 'metabase-enterprise.api.routes))
+  (classloader/require 'metabase-enterprise.api.routes))
 
 ;; EE routes defined in [[metabase-enterprise.api.routes/routes]] always get the first chance to handle a request, if
 ;; they exist. If they don't exist, this handler returns `nil` which means Compojure will try the next handler.

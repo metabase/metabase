@@ -414,8 +414,8 @@
   (or api/*is-superuser?*
       (do
         (when config/ee-available?
-         (classloader/require 'metabase-enterprise.advanced-permissions.common
-                              'metabase.public-settings.premium-features))
+          (classloader/require 'metabase-enterprise.advanced-permissions.common
+                               'metabase.public-settings.premium-features))
         (if-let [current-user-has-application-permissions?
                  (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]

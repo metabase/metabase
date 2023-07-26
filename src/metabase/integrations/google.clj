@@ -20,7 +20,7 @@
 
 ;; Load EE implementation if available
 (when config/ee-available?
- (classloader/require 'metabase-enterprise.enhancements.integrations.google))
+  (classloader/require 'metabase-enterprise.enhancements.integrations.google))
 
 (def ^:private non-existant-account-message
   (deferred-tru "You'll need an administrator to create a Metabase account before you can use Google to log in."))

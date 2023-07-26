@@ -62,7 +62,7 @@
 
   ([group-or-id require-superuser?]
    (when config/ee-available?
-    (classloader/require 'metabase-enterprise.advanced-permissions.common))
+     (classloader/require 'metabase-enterprise.advanced-permissions.common))
    (if-let [f (and (premium-features/enable-advanced-permissions?)
                    (resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-manager-of-group?))]
      (api/check-403 (or api/*is-superuser?* (f group-or-id)))

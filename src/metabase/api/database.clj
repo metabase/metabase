@@ -207,8 +207,8 @@
   [dbs]
   (let [filtered-dbs
         (if-let [f (when config/ee-available?
-                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
+                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
           (f dbs)
           dbs)]
     (map
@@ -1120,8 +1120,8 @@
                              {:order-by [[:display_name :asc]]}))]
      (if include_editable_data_model
        (if-let [f (when config/ee-available?
-                   (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                   (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
+                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
          (f tables)
          tables)
        (filter mi/can-read? tables)))))

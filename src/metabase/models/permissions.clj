@@ -578,8 +578,8 @@
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
   [& path-components]
   (let [f (when config/ee-available?
-           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
+            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
       (apply f path-components)
       "/")))
@@ -590,8 +590,8 @@
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
   [db-id]
   (let [f (when config/ee-available?
-           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
+            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
       (f db-id)
       "/")))
