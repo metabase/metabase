@@ -447,9 +447,7 @@ describe("Notebook Editor > Join Step", () => {
         ),
       );
 
-      userEvent.click(screen.getByLabelText("Right column"));
-      await screen.findByLabelText("grid");
-      const [, rhsColumnPicker] = screen.getAllByLabelText("grid");
+      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
       userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { query, fields } = getRecentJoin();
@@ -491,9 +489,7 @@ describe("Notebook Editor > Join Step", () => {
         ),
       );
 
-      userEvent.click(screen.getByLabelText("Right column"));
-      await screen.findByLabelText("grid");
-      const [, rhsColumnPicker] = screen.getAllByLabelText("grid");
+      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
       userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { fields } = getRecentJoin();
