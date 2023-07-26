@@ -6,7 +6,8 @@
    [metabase.query-processor.middleware.resolve-source-table
     :as qp.resolve-source-table]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- resolve-source-tables [query]
   (qp.resolve-source-table/resolve-source-tables query))
@@ -33,11 +34,11 @@
 
 (deftest validate-database-test
   (testing "If the Table does not belong to the current Database, does it throw an Exception?"
-    (mt/with-temp* [Database [{database-id :id}]
-                    Table    [{table-id :id}    {:db_id database-id}]]
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {table-id :id}    {:db_id database-id}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Table does not exist, or belongs to a different Database"
+           #"\QTable does not exist, or belongs to a different Database\E"
            (resolve-and-return-store-contents
             {:database (mt/id)
              :type     :query
@@ -47,7 +48,7 @@
   (testing "Should throw an Exception if there's a `:source-table` in the query that IS NOT a positive int"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Invalid :source-table 'ABC': should be resolved to a Table ID by now"
+         #"\QInvalid :source-table 'ABC': should be resolved to a Table ID by now\E"
          (resolve-and-return-store-contents
 
           {:database (mt/id)
@@ -58,7 +59,7 @@
     ;; useful error message
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Output of query->source-table-ids does not match schema"
+         #"\Qvalue must be an integer greater than zero., received: 0\E"
          (resolve-and-return-store-contents
 
           {:database (mt/id)

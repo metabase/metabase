@@ -99,17 +99,23 @@
 ;;     :type         :dimension,
 ;;     :dimension    [:field 4 nil]
 ;;     :widget-type  :date/all-options}
-(mr/def ::field-filter
+(defn field-filter-schema
+  "Create a schema for a template tag definition. This is abstracted out into a function because the version
+  in [[metabase.mbql.schema]] is exactly the same other than using a slightly different schema for field refs."
+  [field-ref-schema]
   [:merge
    [:ref ::value.common]
    [:map
     [:type        [:= :dimension]]
-    [:dimension   [:ref :mbql.clause/field]]
+    [:dimension   field-ref-schema]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
     [:widget-type [:ref ::widget-type]]
     ;; optional map to be appended to filter clause
     [:options {:optional true} :map]]])
+
+(mr/def ::field-filter
+  (field-filter-schema [:ref :mbql.clause/field]))
 
 ;; Example:
 ;;
@@ -167,20 +173,30 @@
    [:map
     [:type [:ref ::raw-value.type]]]])
 
-(mr/def ::template-tag
+(defn template-tag-schema
+  "Create a schema for a template tag definition. This is abstracted out into a function because the version
+  in [[metabase.mbql.schema]] is exactly the same other than using a slightly different schema for field filters."
+  [field-filter-schem]
   [:and
    [:map
     [:type [:ref ::type]]]
    [:multi {:dispatch :type}
-    [:dimension   [:ref ::field-filter]]
+    [:dimension   field-filter-schem]
     [:snippet     [:ref ::snippet]]
     [:card        [:ref ::source-query]]
     ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
 
-(mr/def ::template-tag-map
+(mr/def ::template-tag
+  (template-tag-schema [:ref ::field-filter]))
+
+(defn template-tag-map-schema
+  "Create the schema for a template tag map of template tag name -> definition. This is abstracted out into a function
+  because the version in [[metabase.mbql.schema]] is exactly the same other than using a slightly different template
+  tag schema."
+  [template-tag-schem]
   [:and
-   [:map-of ::common/non-blank-string [:ref ::template-tag]]
+   [:map-of ::common/non-blank-string template-tag-schem]
    ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
    [:fn
     {:error/message "keys in template tag map must match the :name of their values"}
@@ -188,3 +204,6 @@
       (every? (fn [[tag-name tag-definition]]
                 (= tag-name (:name tag-definition)))
               m))]])
+
+(mr/def ::template-tag-map
+  (template-tag-map-schema [:ref ::template-tag]))

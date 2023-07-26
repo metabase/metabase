@@ -1,13 +1,15 @@
 (ns metabase.mbql.schema-test
   (:require
-   [clojure.test :as t]
+   [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.mbql.schema :as mbql.s]))
+   [metabase.mbql.schema :as mbql.s]
+   [clojure.string :as str]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]))
 
 #?(:clj
-   (t/deftest ^:parallel temporal-literal-test
-     (t/testing "Make sure our schema validates temporal literal clauses correctly"
+   (deftest ^:parallel temporal-literal-test
+     (testing "Make sure our schema validates temporal literal clauses correctly"
        (doseq [[schema cases] {::mbql.s/literal.temporal         [[true "00:00:00"]
                                                                   [true "00:00:00Z"]
                                                                   [true "00:00:00+00:00"]
@@ -36,12 +38,12 @@
                                                                   [false "2022-01-01 00:00:00"]
                                                                   [false "a string"]]}
                [expected clause]  cases]
-         (t/testing (pr-str schema clause)
-           (t/is (= expected
-                    (mc/validate schema clause))))))))
+         (testing (pr-str schema clause)
+           (is (= expected
+                  (mc/validate schema clause))))))))
 
-(t/deftest ^:parallel field-clause-test
-  (t/testing "Make sure our schema validates `:field` clauses correctly"
+(deftest ^:parallel field-clause-test
+  (testing "Make sure our schema validates `:field` clauses correctly"
     (doseq [[clause expected] {[:field 1 nil]                                                          true
                                [:field 1 {}]                                                           true
                                [:field 1 {:x true}]                                                    true
@@ -61,12 +63,12 @@
                                [:field 1 {:binning {:strategy :num-bins, :num-bins -1}}]               false
                                [:field 1 {:binning {:strategy :default}}]                              true
                                [:field 1 {:binning {:strategy :fake}}]                                 false}]
-      (t/testing (pr-str clause)
-        (t/is (= expected
-                 (mc/validate mbql.s/field clause)))))))
+      (testing (pr-str clause)
+        (is (= expected
+               (mc/validate mbql.s/field clause)))))))
 
-(t/deftest ^:parallel validate-template-tag-names-test
-  (t/testing "template tags with mismatched keys/`:names` in definition should be disallowed\n"
+(deftest ^:parallel validate-template-tag-names-test
+  (testing "template tags with mismatched keys/`:names` in definition should be disallowed\n"
     (let [correct-query {:database 1
                          :type     :native
                          :native   {:query         "SELECT * FROM table WHERE id = {{foo}}"
@@ -75,13 +77,45 @@
                                                            :display-name "foo"
                                                            :type         :text}}}}
           bad-query     (assoc-in correct-query [:native :template-tags "foo" :name] "filter")]
-      (t/testing (str "correct-query " (pr-str correct-query))
-        (t/is (not (me/humanize (mc/explain mbql.s/Query correct-query))))
-        (t/is (= correct-query
-                 (mbql.s/validate-query correct-query))))
-      (t/testing (str "bad-query " (pr-str bad-query))
-        (t/is (me/humanize (mc/explain mbql.s/Query bad-query)))
-        (t/is (thrown-with-msg?
-               #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-               #"keys in template tag map must match the :name of their values"
-               (mbql.s/validate-query bad-query)))))))
+      (testing (str "correct-query " (pr-str correct-query))
+        (is (not (me/humanize (mc/explain mbql.s/Query correct-query))))
+        (is (= correct-query
+               (mbql.s/validate-query correct-query))))
+      (testing (str "bad-query " (pr-str bad-query))
+        (is (me/humanize (mc/explain mbql.s/Query bad-query)))
+        (is (thrown-with-msg?
+             #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
+             #"keys in template tag map must match the :name of their values"
+             (mbql.s/validate-query bad-query)))))))
+
+(deftest ^:parallel aggregation-reference-test
+  (are [schema] (nil? (me/humanize (mc/explain schema [:aggregation 0])))
+    mbql.s/aggregation
+    mbql.s/FieldOrAggregationReference))
+
+(deftest ^:parallel native-query-test
+  (let [parameter-dimension    [:dimension [:template-tag "date_range"]]
+        template-tag-dimension [:field 2 nil]]
+    (is (nil? (me/humanize (mc/explain mbql.s/dimension parameter-dimension))))
+    (is (nil? (me/humanize (mc/explain mbql.s/field template-tag-dimension))))
+    (let [parameter    {:type   :date/range
+                        :name   "created_at"
+                        :target parameter-dimension
+                        :value  "past1weeks"}
+          template-tag {:name         "date_range"
+                        :display-name "Date Range"
+                        :type         :dimension
+                        :widget-type  :date/all-options
+                        :dimension    template-tag-dimension}]
+      (is (nil? (me/humanize (mc/explain ::mbql.s/parameter parameter))))
+      (is (nil? (me/humanize (mc/explain ::mbql.s/template-tag-definition template-tag))))
+      (let [query {:database 1
+                   :type     :native
+                   :native   {:query         (str/join \newline  ["SELECT dayname(\"TIMESTAMP\") as \"day\""
+                                                                  "FROM checkins"
+                                                                  "[[WHERE {{date_range}}]]"
+                                                                  "ORDER BY \"TIMESTAMP\" ASC"
+                                                                  " LIMIT 1"])
+                              :template-tags {"date_range" template-tag}
+                              :parameters    [parameter]}}]
+        (is (nil? (me/humanize (mc/explain mbql.s/Query query))))))))

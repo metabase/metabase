@@ -11,7 +11,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [clojure.string :as str]))
 
 (defn- resolve-card-id-source-tables [query]
   (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))

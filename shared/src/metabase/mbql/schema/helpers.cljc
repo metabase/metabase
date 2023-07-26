@@ -60,13 +60,6 @@
    (for [[tag schema] tags+schemas]
      [tag schema])))
 
-(def FieldSemanticOrRelationType
-  "Schema for a `:Semantic/*` (or `:Relation/*`, until we fix this) or one of their descendents in the Metabase
-  Hierarchical Type System (MHTS)."
-  [:or
-   [:ref ::lib.schema.common/semantic-type]
-   [:ref ::lib.schema.common/relation-type]])
-
 (def KeywordOrString
   "Schema for any keyword or string."
   [:or :keyword :string])

@@ -45,6 +45,11 @@
                      (str "Not a valid relation type: " (pr-str value)))}
    relation-type?])
 
+(mr/def ::semantic-or-relation-type
+  [:or
+   [:ref ::semantic-type]
+   [:ref ::relation-type]])
+
 (defn- base-type? [x]
   (and (isa? x :type/*)
        (not (semantic-type? x))
@@ -63,7 +68,8 @@
    ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
    [:base-type      {:optional true} [:maybe ::base-type]]
    [:effective-type {:optional true} [:maybe ::base-type]]
-   [:semantic-type  {:optional true} [:maybe ::semantic-type]]
+   ;; these two different types are currently both stored under one key, but maybe one day we can fix this.
+   [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
    [:database-type  {:optional true} [:maybe ::non-blank-string]]
    [:name           {:optional true} [:maybe ::non-blank-string]]
    [:display-name   {:optional true} [:maybe ::non-blank-string]]])
@@ -72,5 +78,5 @@
   [:map
    [:lib/type [:= :lib/external-op]]
    [:operator [:or :string :keyword]]
-   [:options {:optional true} ::options]
-   [:args [:sequential :any]]])
+   [:args     [:sequential :any]]
+   [:options {:optional true} ::options]])

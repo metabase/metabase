@@ -1,5 +1,7 @@
 (ns metabase.mbql.schema
-  "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
+  "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!
+
+  Pro tip: "
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   (:require
    [clojure.core :as core]
@@ -174,7 +176,7 @@
   [:map
    [:database_type {:optional true} [:maybe [:ref ::lib.schema.common/non-blank-string]]]
    [:base_type     {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
-   [:semantic_type {:optional true} [:maybe helpers/FieldSemanticOrRelationType]]
+   [:semantic_type {:optional true} [:maybe [:ref ::lib.schema.common/semantic-or-relation-type]]]
    [:unit          {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
    [:name          {:optional true} [:maybe [:ref ::lib.schema.common/non-blank-string]]]])
 
@@ -334,8 +336,8 @@
 ;;    {:aggregation [[:count]]
 ;;     :order-by    [[:asc [:aggregation 0]]]} ;; refers to the 0th aggregation, `:count`
 ;;
-;; Currently aggregate [:ref ::field-or-expression references can only be used inside order-by clauses. In the future once we support SQL
-;; `HAVING` we can allow them in filter clauses too
+;; Currently aggregate [:ref ::field-or-expression references can only be used inside order-by clauses. In the future
+;; once we support SQL `HAVING` we can allow them in filter clauses too
 ;;
 ;; TODO - shouldn't we allow composing aggregations in expressions? e.g.
 ;;
@@ -405,7 +407,7 @@
                   :else                            :field))}
    [:number             number?]
    [:numeric-expression [:ref ::expression.numeric]]
-   [:aggregation        [:ref ::aggregation]]
+   [:aggregation        [:ref ::aggregation-definition]]
    [:value              value]
    [:field              [:ref ::field-or-expression]]])
 
@@ -417,7 +419,7 @@
                   (is-clause? :value x)             :value
                   (is-clause? datetime-functions x) :datetime-expression
                   :else                             :else))}
-   [:aggregation         [:ref ::aggregation]]
+   [:aggregation         [:ref ::aggregation-definition]]
    [:value               value]
    [:datetime-expression [:ref ::expression.datetime]]
    [:else                [:or [:ref ::literal.date-or-datetime] [:ref ::field-or-expression]]]])
@@ -863,7 +865,7 @@
 ;;
 ;;    [:+ [:sum [:field 10 nil]] [:sum [:field 20 nil]]]
 
-(mr/def ::aggregation.unnamed
+(mr/def ::aggregation-definition.unnamed
   [:multi
    {:dispatch (fn [x]
                 (if (is-clause? numeric-functions x)
@@ -884,17 +886,17 @@
    [:display-name {:optional true} [:ref ::lib.schema.common/non-blank-string]]])
 
 (defclause aggregation-options
-  aggregation [:ref ::aggregation.unnamed]
+  aggregation [:ref ::aggregation-definition.unnamed]
   options     [:ref ::aggregation-options.options])
 
-(mr/def ::aggregation
+(mr/def ::aggregation-definition
   [:multi
    {:dispatch (fn [x]
                 (if (is-clause? :aggregation-options x)
                   :aggregation-options
                   :unnamed-aggregation))}
    [:aggregation-options aggregation-options]
-   [:unnamed-aggregation [:ref ::aggregation.unnamed]]])
+   [:unnamed-aggregation [:ref ::aggregation-definition.unnamed]]])
 
 ;; order-by is just a series of `[<direction> <field>]` clauses like
 ;;
@@ -908,9 +910,18 @@
 (mr/def ::order-by
   (one-of asc desc))
 
+(mr/def ::template-tag.field-filter
+  (lib.schema.template-tag/field-filter-schema field))
+
+(mr/def ::template-tag-definition
+  (lib.schema.template-tag/template-tag-schema [:ref ::template-tag.field-filter]))
+
+(mr/def ::template-tag-map
+  (lib.schema.template-tag/template-tag-map-schema [:ref ::template-tag-definition]))
+
 (def ^:private NativeQuery:Common
   [:map
-   [:template-tags {:optional true} [:ref ::lib.schema.template-tag/template-tag-map]]
+   [:template-tags {:optional true} [:ref ::template-tag-map]]
    ;; collection (table) this query should run against. Needed for MongoDB
    [:collection    {:optional true} [:maybe [:ref ::lib.schema.common/non-blank-string]]]])
 
@@ -945,7 +956,7 @@
    ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
    ;; able to remove this as a requirement
    [:display_name [:ref ::lib.schema.common/non-blank-string]]
-   [:semantic_type {:optional true} [:maybe helpers/FieldSemanticOrRelationType]]
+   [:semantic_type {:optional true} [:maybe [:ref ::lib.schema.common/semantic-or-relation-type]]]
    ;; you'll need to provide this in order to use BINNING
    [:fingerprint   {:optional true} [:maybe :map]]])
 
@@ -1044,7 +1055,7 @@
    [:map
     [:source-query    {:optional true} [:ref ::query.source]]
     [:source-table    {:optional true} [:ref ::source-table]]
-    [:aggregation     {:optional true} (helpers/non-empty [:sequential [:ref ::aggregation]])]
+    [:aggregation     {:optional true} (helpers/non-empty [:sequential [:ref ::aggregation-definition]])]
     [:breakout        {:optional true} (helpers/non-empty [:sequential [:ref ::field-or-expression]])]
     [:expressions     {:optional true} [:map-of [:ref ::lib.schema.common/non-blank-string] [:ref ::field-or-expression-def]]]
     [:fields          {:optional true} [:ref ::fields]]
@@ -1323,7 +1334,7 @@
 
 (def Aggregation
   "Schema for anything that is a valid `:aggregation` clause."
-  ::aggregation)
+  ::aggregation-definition)
 
 (def Filter
   "Schema for a valid MBQL `:filter` clause."
@@ -1405,6 +1416,11 @@
   `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the
   actual DB for that source query.)"
   ::database-id)
+
+(def TemplateTag
+  "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
+  `:type` (see comments above)."
+  ::template-tag-definition)
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."

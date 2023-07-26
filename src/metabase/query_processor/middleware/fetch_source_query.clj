@@ -54,7 +54,7 @@
   [:map
    [:source-query    mbql.s/SourceQuery]
    [:database        mbql.s/DatabaseID]
-   [:source-metadata [:sequential mbql.s/SourceQueryMetadata]]
+   [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
    [:source-query/dataset? {:optional true} :boolean]
    [:persisted-info/native {:optional true} :string]])
 
@@ -62,7 +62,7 @@
   [:and
    [:map
     [:database        mbql.s/DatabaseID]
-    [:source-metadata [:sequential mbql.s/SourceQueryMetadata]]
+    [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
     [:source-query    mbql.s/SourceQuery]
     [:source-card-id  ms/PositiveInt]]
    [:fn

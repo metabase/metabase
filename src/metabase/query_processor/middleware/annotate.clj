@@ -43,7 +43,7 @@
    [:source       [:enum :aggregation :fields :breakout :native]]
    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
    ;; Added by this middleware as one of the last steps.
-   [:field_ref {:optional true}  mbql.s/FieldOrAggregationReference]])
+   [:field_ref {:optional true} mbql.s/FieldOrAggregationReference]])
 
 ;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
@@ -66,7 +66,7 @@
 
 (mu/defn ^:private check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
-  [cols :- [:sequential [:map-of :any :any]] rows]
+  [cols :- [:maybe [:sequential [:map-of :any :any]]] rows]
   (when (seq rows)
     (let [expected-count (count cols)
           actual-count   (count (first rows))]
@@ -486,7 +486,7 @@
 
 (def ^:private ColsWithUniqueNames
   [:and
-   [:sequential Col]
+   [:maybe [:sequential Col]]
    [:fn
     {:error/message ":cols with unique names"}
     #(su/empty-or-distinct? (map :name %))]])
@@ -542,7 +542,7 @@
   "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
-  [query {cols-returned-by-driver :cols, :as result}]
+  [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
   (deduplicate-cols-names
    (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 

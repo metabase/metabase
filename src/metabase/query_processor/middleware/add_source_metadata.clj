@@ -44,7 +44,7 @@
          {:source-query source-query}))
       nil)))
 
-(mu/defn mbql-source-query->metadata :- [:sequential mbql.s/SourceQueryMetadata]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
@@ -63,8 +63,10 @@
       nil)))
 
 (mu/defn ^:private add-source-metadata :- [:map
-                                           [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
-  [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
+                                           [:source-metadata
+                                            {:optional true}
+                                            [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
+  [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                      native-source-query->metadata
                      mbql-source-query->metadata) source-query)]
