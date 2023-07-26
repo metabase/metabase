@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { DATA_BUCKET } from "metabase/containers/DataPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { useSelector } from "metabase/lib/redux";
@@ -15,6 +16,7 @@ interface JoinTablePickerProps {
   query: Lib.Query;
   stageIndex: number;
   table?: Lib.CardMetadata | Lib.TableMetadata;
+  isStartedFromModel?: boolean;
   readOnly?: boolean;
   color: string;
   onChangeTable: (joinable: Lib.Joinable) => void;
@@ -25,6 +27,7 @@ export function JoinTablePicker({
   query,
   stageIndex,
   table,
+  isStartedFromModel,
   readOnly = false,
   color,
   onChangeTable,
@@ -41,6 +44,16 @@ export function JoinTablePicker({
     const database = metadata.database(databaseId);
     return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
   }, [databaseId, metadata]);
+
+  const selectedDataBucketId = useMemo(() => {
+    if (tableId) {
+      return undefined;
+    }
+    if (isStartedFromModel) {
+      return DATA_BUCKET.DATASETS;
+    }
+    return undefined;
+  }, [tableId, isStartedFromModel]);
 
   const handleTableChange = (tableId: number | string) =>
     onChangeTable(Lib.tableOrCardMetadata(query, tableId));
@@ -60,6 +73,7 @@ export function JoinTablePicker({
         isInitiallyOpen={!table}
         databases={databases}
         tableFilter={tableFilter}
+        selectedDataBucketId={selectedDataBucketId}
         selectedDatabaseId={databaseId}
         selectedTableId={tableId}
         setSourceTableFn={handleTableChange}

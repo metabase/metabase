@@ -26,6 +26,7 @@ export function JoinStep({
   step,
   color,
   readOnly,
+  sourceQuestion,
   updateQuery,
 }: NotebookStepUiComponentProps) {
   const { stageIndex, itemIndex } = step;
@@ -50,6 +51,8 @@ export function JoinStep({
     stageIndex,
     join || table,
   );
+
+  const isStartedFromModel = Boolean(sourceQuestion?.isDataset?.());
 
   const handleStrategyChange = (nextStrategy: Lib.JoinStrategy) => {
     setStrategy(nextStrategy);
@@ -133,6 +136,7 @@ export function JoinStep({
             stageIndex={stageIndex}
             table={table}
             color={color}
+            isStartedFromModel={isStartedFromModel}
             readOnly={readOnly}
             onChangeTable={handleTableChange}
             onChangeFields={_.noop}
