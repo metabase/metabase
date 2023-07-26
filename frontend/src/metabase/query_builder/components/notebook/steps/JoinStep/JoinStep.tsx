@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,7 +11,10 @@ import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 
 import { useJoin } from "./use-join";
 import { useJoinCondition } from "./use-join-condition";
-import { JoinConditionColumnPicker } from "./JoinConditionColumnPicker";
+import {
+  JoinConditionColumnPicker,
+  JoinConditionColumnPickerRef,
+} from "./JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "./JoinConditionOperatorPicker";
 import { JoinStrategyPicker } from "./JoinStrategyPicker";
 import { JoinTablePicker } from "./JoinTablePicker";
@@ -184,6 +187,8 @@ function JoinCondition({
     setRHSColumn,
   } = useJoinCondition(query, stageIndex, table, join, condition);
 
+  const rhsColumnPicker = useRef<JoinConditionColumnPickerRef>(null);
+
   const lhsColumnGroup = Lib.groupColumns(lhsColumns);
   const rhsColumnGroup = Lib.groupColumns(rhsColumns);
 
@@ -198,6 +203,8 @@ function JoinCondition({
     const nextCondition = setLHSColumn(lhsColumn);
     if (nextCondition) {
       onChange(nextCondition);
+    } else if (!rhsColumn) {
+      rhsColumnPicker.current?.open?.();
     }
   };
 
@@ -243,6 +250,7 @@ function JoinCondition({
         color={color}
         onSelect={handleRHSColumnChange}
         onRemove={handleRHSColumnRemove}
+        ref={rhsColumnPicker}
       />
     </Flex>
   );

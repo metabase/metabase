@@ -3,7 +3,9 @@ import { t } from "ttag";
 
 import { Flex, Text } from "metabase/ui";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper/IconButtonWrapper";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import TippyPopoverWithTrigger, {
+  TippyPopoverWithTriggerRef,
+} from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import {
   QueryColumnPickerProps,
   ColumnListItem,
@@ -31,17 +33,25 @@ function checkIsColumnSelected(item: ColumnListItem) {
   return !!item.selected;
 }
 
-export function JoinConditionColumnPicker({
-  query,
-  stageIndex,
-  column,
-  label,
-  isInitiallyVisible = false,
-  readOnly = false,
-  color,
-  onRemove,
-  ...props
-}: JoinConditionColumnPickerProps) {
+export type JoinConditionColumnPickerRef = TippyPopoverWithTriggerRef;
+
+export const JoinConditionColumnPicker = forwardRef<
+  JoinConditionColumnPickerRef,
+  JoinConditionColumnPickerProps
+>(function JoinConditionColumnPicker(
+  {
+    query,
+    stageIndex,
+    column,
+    label,
+    isInitiallyVisible = false,
+    readOnly = false,
+    color,
+    onRemove,
+    ...props
+  },
+  ref,
+) {
   const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
 
   return (
@@ -69,9 +79,10 @@ export function JoinConditionColumnPicker({
           onClose={closePopover}
         />
       )}
+      ref={ref}
     />
   );
-}
+});
 
 interface ColumnNotebookCellItemProps {
   tableName?: string;
