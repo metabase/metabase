@@ -40,6 +40,7 @@ import { Setup } from "metabase/setup/components/Setup";
 
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
+import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 
@@ -238,6 +239,7 @@ export const getRoutes = store => (
     />
 
     {/* MISC */}
+    <Route path="/unsubscribe" component={UnsubscribePage} />
     <Route path="/unauthorized" component={Unauthorized} />
     <Route path="/*" component={NotFoundFallbackPage} />
   </Route>

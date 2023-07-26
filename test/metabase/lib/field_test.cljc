@@ -417,7 +417,7 @@
 
 (deftest ^:parallel available-binning-strategies-expressions-test
   (testing "There should be no binning strategies for expressions as they are not supported (#31367)"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (let [query (-> lib.tu/venues-query
                     (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
       (is (empty? (->> (lib.metadata.calculation/returned-columns query)
                        (m/find-first (comp #{"myadd"} :name))
@@ -488,7 +488,7 @@
 
 (deftest ^:parallel implicitly-joinable-field-display-name-test
   (testing "Should be able to calculate a display name for an implicitly joinable Field"
-    (let [query           (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (let [query           lib.tu/venues-query
           categories-name (m/find-first #(= (:id %) (meta/id :categories :name))
                                         (lib/orderable-columns query))]
       (are [style expected] (= expected
@@ -582,7 +582,7 @@
               (lib.metadata.calculation/returned-columns query))))))
 
 (deftest ^:parallel with-fields-test
-  (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query           (-> lib.tu/venues-query
                             (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
                             (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)]))
         fields-metadata (fn [query]
@@ -612,7 +612,7 @@
               (is (not (has-fields? query'))))))))))
 
 (deftest ^:parallel with-fields-plus-expression-test
-  (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query           (-> lib.tu/venues-query
                             (lib/with-fields [(meta/field-metadata :venues :id)])
                             (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))
         fields-metadata (fn [query]
@@ -632,7 +632,7 @@
              {:lib/desired-column-alias "LATITUDE", :selected? true}
              {:lib/desired-column-alias "LONGITUDE", :selected? true}
              {:lib/desired-column-alias "PRICE", :selected? true}]
-            (lib/fieldable-columns (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
+            (lib/fieldable-columns lib.tu/venues-query)))))
 
 (deftest ^:parallel fieldable-columns-query-with-fields-test
   (testing "query with :fields"
@@ -642,7 +642,7 @@
              {:lib/desired-column-alias "LATITUDE", :selected? false}
              {:lib/desired-column-alias "LONGITUDE", :selected? false}
              {:lib/desired-column-alias "PRICE", :selected? false}]
-            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+            (-> lib.tu/venues-query
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
                 lib/fieldable-columns)))))
@@ -690,7 +690,7 @@
               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
 
 (deftest ^:parallel ref-to-joined-column-from-previous-stage-test
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query (-> lib.tu/venues-query
                   (lib/join (-> (lib/join-clause
                                  (meta/table-metadata :categories)
                                  [(lib/=
