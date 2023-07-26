@@ -85,6 +85,7 @@ jobs:
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
       TZ: US/Pacific # to make node match the instance tz
+      DEBUG: cypress:server:util:process_profiler
     strategy:
       fail-fast: false
       matrix:
