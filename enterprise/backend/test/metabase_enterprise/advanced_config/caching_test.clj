@@ -48,15 +48,15 @@
              Card     creating  {:dataset true :database_id (u/the-id db)}
              Card     deletable {:dataset true :database_id (u/the-id db)}
              Card     off       {:dataset true :database_id (u/the-id db)}
-             PersistedInfo pcreating  {:card_id (u/the-id creating)
+             PersistedInfo _pcreating  {:card_id (u/the-id creating)
                                        :database_id (u/the-id db)
                                        :state "creating"
                                        :state_change_at two-hours-ago}
-             PersistedInfo pdeletable {:card_id (u/the-id deletable)
+             PersistedInfo _pdeletable {:card_id (u/the-id deletable)
                                        :database_id (u/the-id db)
                                        :state "deletable"
                                        :state_change_at two-hours-ago}
-             PersistedInfo poff       {:card_id (u/the-id off)
+             PersistedInfo _poff       {:card_id (u/the-id off)
                                        :database_id (u/the-id db)
                                        :state "off"
                                        :state_change_at two-hours-ago}]
@@ -82,11 +82,11 @@
             [Database db {:options {:persist-models-enabled true}}
              Card     deletable {:dataset true :database_id (u/the-id db)}
              Card     off       {:dataset true :database_id (u/the-id db)}
-             PersistedInfo pdeletable {:card_id (u/the-id deletable)
+             PersistedInfo _pdeletable {:card_id (u/the-id deletable)
                                        :database_id (u/the-id db)
                                        :state "deletable"
                                        :state_change_at two-hours-ago}
-             PersistedInfo poff       {:card_id (u/the-id off)
+             PersistedInfo _poff       {:card_id (u/the-id off)
                                        :database_id (u/the-id db)
                                        :state "off"
                                        :state_change_at two-hours-ago}]
