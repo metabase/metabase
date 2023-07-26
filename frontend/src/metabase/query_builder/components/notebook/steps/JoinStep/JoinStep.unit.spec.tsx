@@ -190,18 +190,28 @@ describe("Notebook Editor > Join Step", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should open the LHS table picker after right table is selected", async () => {
+  it("should open the LHS column picker after right table is selected and the RHS picker after it", async () => {
     setup();
 
     userEvent.click(screen.getByLabelText("Right table"));
     const tablePicker = await screen.findByTestId("popover");
     userEvent.click(await within(tablePicker).findByText("Reviews"));
 
-    const columnPicker = await screen.findByLabelText("grid");
+    const lhsColumnPicker = await screen.findByLabelText("grid");
 
-    expect(within(columnPicker).getByText("Order")).toBeInTheDocument();
-    expect(within(columnPicker).getByText("Product ID")).toBeInTheDocument();
-    expect(within(columnPicker).queryByText(/Review/i)).not.toBeInTheDocument();
+    expect(within(lhsColumnPicker).getByText("Order")).toBeInTheDocument();
+    expect(within(lhsColumnPicker).getByText("Product ID")).toBeInTheDocument();
+    expect(
+      within(lhsColumnPicker).queryByText(/Review/i),
+    ).not.toBeInTheDocument();
+
+    userEvent.click(within(lhsColumnPicker).getByText("Total"));
+
+    await screen.findAllByLabelText("grid");
+    const [, rhsColumnPicker] = screen.getAllByLabelText("grid");
+
+    expect(within(rhsColumnPicker).getByText("Reviewer")).toBeInTheDocument();
+    expect(within(rhsColumnPicker).getByText("Body")).toBeInTheDocument();
   });
 
   it("should highlight selected LHS column", async () => {
