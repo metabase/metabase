@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.constraints-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.test :as mt]))
 
@@ -16,7 +17,7 @@
   (testing "if it is *truthy* add the constraints"
     (is (= {:middleware  {:add-default-userland-constraints? true},
             :constraints {:max-results           @#'qp.constraints/max-results
-                          :max-results-bare-rows @#'qp.constraints/default-max-results-bare-rows}}
+                          :max-results-bare-rows @#'qp.constraints/max-results-bare-rows}}
            (add-default-userland-constraints
             {:middleware {:add-default-userland-constraints? true}})))))
 
@@ -51,3 +52,20 @@
            (add-default-userland-constraints
             {:constraints {:max-results 5, :max-results-bare-rows 10}
              :middleware  {:add-default-userland-constraints? true}})))))
+
+(deftest load-constraints-settings-from-config-test
+  (testing "loading user set constraint settings from config"
+    (mt/with-temporary-setting-values [max-results 10 max-results-bare-rows 5]
+      (is (= {:constraints {:max-results (setting/get :max-results)
+                            :max-results-bare-rows (setting/get :max-results-bare-rows)}}
+             (add-default-userland-constraints
+              {:constraints {:max-results 10
+                             :max-results-bare-rows 5}}))))))
+
+(deftest default-constraints-settings-test
+  (testing "if no user set constraint settings are found, use the default values"
+     (is (= {:constraints {:max-results (setting/get :max-results)
+                         :max-results-bare-rows (setting/get :max-results-bare-rows)}}
+          (add-default-userland-constraints
+           {:constraints {:max-results 10000
+                          :max-results-bare-rows 2000}})))))
