@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import Input from "metabase/core/components/Input";
-import SearchResults from "metabase/nav/components/Search/SearchResults/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type {
@@ -16,6 +15,7 @@ import Search from "metabase/entities/search";
 import { isWithinIframe } from "metabase/lib/dom";
 
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
+import SearchResults from "metabase/search/components/SearchResults/SearchResults";
 import {
   EntityDisplay,
   UrlLinkDisplay,

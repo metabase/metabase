@@ -1,11 +1,11 @@
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { waitFor, within, renderWithProviders, screen } from "__support__/ui";
-import { SearchFilterModal } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModal";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { SearchModelType } from "metabase-types/api";
-import { SearchFilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
+import { SearchFilterType } from "metabase/search/components/SearchFilterModal/types";
+import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
 
 const TestSearchFilterModal = ({
   initialFilters = {},

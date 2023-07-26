@@ -1,7 +1,6 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import SearchBar from "metabase/nav/components/Search/SearchBar/SearchBar";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { waitFor, renderWithProviders, screen, within } from "__support__/ui";
 import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
@@ -16,6 +15,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import { CollectionItem, RecentItem } from "metabase-types/api";
+import SearchBar from "metabase/search/components/SearchBar/SearchBar";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Jeff Winger",
@@ -68,45 +68,61 @@ const setup = ({
   return { history };
 };
 
+const getSearchBar = () => {
+  return screen.getByPlaceholderText("Search…");
+};
+
 describe("SearchBar", () => {
   describe("typing a search query", () => {
     it("should change URL when user types a query and hits `Enter`", async () => {
       const { history } = setup();
 
-      userEvent.type(screen.getByPlaceholderText("Search…"), "er{enter}");
+      userEvent.type(getSearchBar(), "er{enter}");
 
       const location = history?.getCurrentLocation();
       expect(location?.pathname).toEqual("search");
       expect(location?.search).toEqual("?q=er");
     });
-    it("should render 'No Results Found' when the query has no results", () => {
-      expect(true).toBe(false);
+    it("should render 'No Results Found' when the query has no results", async () => {
+      setup({ searchResultItems: [] });
+      const searchBar = getSearchBar();
+      userEvent.click(searchBar);
+      userEvent.type(searchBar, "er");
+      await waitFor(() =>
+        expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
+      );
+
+      expect(
+        within(screen.getByTestId("search-bar-results-container")).getByText(
+          "Didn't find anything",
+        ),
+      ).toBeInTheDocument();
     });
   });
   describe("focusing on search bar", () => {
     it("should render `Recent Searches` list when clicking the search bar", async () => {
       setup();
-      screen.getByPlaceholderText("Search…").click();
+      getSearchBar().click();
       expect(await screen.findByText("Bojack Horseman")).toBeInTheDocument();
     });
 
     it("should render `Nothing here` and a folder icon if there are no recently viewed items", async () => {
       setup({ recentViewsItems: [] });
-      screen.getByPlaceholderText("Search…").click();
+      getSearchBar().click();
       expect(await screen.findByText("Nothing here")).toBeInTheDocument();
     });
   });
   describe("keyboard navigation", () => {
     it("should focus on the filter bar when the user tabs from the search bar", () => {
       setup();
-      screen.getByPlaceholderText("Search…").click();
+      getSearchBar().click();
       userEvent.tab();
       expect(screen.getByTestId("search-bar-filter-button")).toHaveFocus();
     });
     it("should allow navigation through the search results with the keyboard", async () => {
       setup();
-      screen.getByPlaceholderText("Search…").click();
-      userEvent.type(screen.getByPlaceholderText("Search…"), "er");
+      getSearchBar().click();
+      userEvent.type(getSearchBar(), "er");
 
       const resultItems = await screen.findAllByTestId("search-result-item");
       expect(resultItems.length).toBe(2);
@@ -140,7 +156,7 @@ describe("SearchBar", () => {
         initialRoute: "/search?q=foo&type=card",
       });
 
-      expect(screen.getByPlaceholderText("Search…")).toHaveValue("foo");
+      expect(getSearchBar()).toHaveValue("foo");
 
       expect(
         screen.getByTestId("highlighted-search-bar-filter-button"),
@@ -152,7 +168,7 @@ describe("SearchBar", () => {
         initialRoute: "/collection/root?q=foo&type=card&type=dashboard",
       });
 
-      expect(screen.getByPlaceholderText("Search…")).toBeEmpty();
+      expect(getSearchBar()).toHaveValue("");
 
       expect(
         screen.getByTestId("search-bar-filter-button"),

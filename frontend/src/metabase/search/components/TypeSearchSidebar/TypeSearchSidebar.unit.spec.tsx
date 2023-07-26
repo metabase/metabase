@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar";
-import { render, screen, within } from "__support__/ui";
 import { SearchModelType } from "metabase-types/api";
 import { IconName } from "metabase/core/components/Icon";
+import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
+import { screen, render, within } from "__support__/ui";
 
 type TypeSearchSidebarSetupProps = {
   initSelectedType?: SearchModelType | "app" | null;

@@ -3,7 +3,7 @@ import _ from "underscore";
 import {
   SearchFilterKeys,
   SearchFilterType,
-} from "metabase/nav/components/Search/SearchFilterModal/types";
+} from "metabase/search/components/SearchFilterModal/types";
 
 export type SearchAwareLocation = Location<{ q?: string } & SearchFilterType>;
 

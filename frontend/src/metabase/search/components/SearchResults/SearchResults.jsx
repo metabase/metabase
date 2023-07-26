@@ -7,9 +7,9 @@ import _ from "underscore";
 
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import Search from "metabase/entities/search";
-import { SearchResult } from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
+import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { EmptyStateContainer } from "./SearchResults.styled";
 
 const propTypes = {

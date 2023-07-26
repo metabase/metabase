@@ -7,8 +7,8 @@ import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
 import type { SearchScore, SearchModelType } from "metabase-types/api";
 
-import type { WrappedResult } from "./types";
-
+import { WrappedResult } from "metabase/search/components/types";
+import { InfoText } from "metabase/search/components/InfoText/InfoText";
 import {
   IconWrapper,
   ResultButton,
@@ -21,7 +21,6 @@ import {
   ResultSpinner,
   ResultLinkContent,
 } from "./SearchResult.styled";
-import { InfoText } from "./InfoText";
 
 const DEFAULT_ICON_SIZE = 20;
 

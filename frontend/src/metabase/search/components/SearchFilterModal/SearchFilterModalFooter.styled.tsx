@@ -10,4 +10,4 @@ export const CloseAllFiltersButton = styled(Button)`
   &:hover {
     background: none;
   }
-`
+`;

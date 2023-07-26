@@ -14,11 +14,15 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
-import SearchResults from "metabase/nav/components/Search/SearchResults/SearchResults";
-import RecentsList from "metabase/nav/components/Search/RecentsList/RecentsList";
-import { SearchFilterModal } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModal";
 import { getSetting } from "metabase/selectors/settings";
-import { getFiltersFromLocation } from "metabase/search/util";
+import {
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+  isSearchPageLocation,
+} from "metabase/search/util";
+import RecentsList from "metabase/search/components/RecentsList/RecentsList";
+import SearchResults from "metabase/search/components/SearchResults/SearchResults";
+import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
 import {
   SearchInputContainer,
   SearchIcon,
@@ -44,18 +48,6 @@ type OwnProps = {
 };
 
 type Props = RouterProps & OwnProps;
-
-function isSearchPageLocation(location: Location) {
-  const components = location.pathname.split("/");
-  return components[components.length - 1];
-}
-
-function getSearchTextFromLocation(location: SearchAwareLocation) {
-  if (isSearchPageLocation(location)) {
-    return location.query.q || "";
-  }
-  return "";
-}
 
 function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const isTypeaheadEnabled = useSelector(state =>

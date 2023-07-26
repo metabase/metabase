@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
-import { SearchResult } from "metabase/search/components/SearchResult";
+import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import Search from "metabase/entities/search";
 

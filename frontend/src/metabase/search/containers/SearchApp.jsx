@@ -8,7 +8,6 @@ import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
-import { SearchResult } from "metabase/search/components/SearchResult";
 import Subhead from "metabase/components/type/Subhead";
 
 import NoResults from "assets/img/no_results.svg";
@@ -20,6 +19,7 @@ import {
 } from "metabase/search/util";
 import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
+import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import {
   SearchBody,
   SearchControls,

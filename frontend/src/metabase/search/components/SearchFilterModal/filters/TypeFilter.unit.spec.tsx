@@ -1,10 +1,10 @@
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { TypeFilter } from "metabase/nav/components/Search/SearchFilterModal/filters/TypeFilter";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { SearchModelType } from "metabase-types/api";
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import { createMockCollectionItem, createMockSearchResult } from "metabase-types/api/mocks";
+import { createMockSearchResult } from "metabase-types/api/mocks";
+import { TypeFilter } from "metabase/search/components/SearchFilterModal/filters/TypeFilter";
 
 type TypeFilterSetupProps = {
   availableModels?: SearchModelType[];

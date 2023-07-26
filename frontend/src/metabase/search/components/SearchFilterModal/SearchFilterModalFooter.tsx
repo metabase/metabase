@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { Flex, Group } from "metabase/ui";
-import { CloseAllFiltersButton } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModalFooter.styled";
+import { CloseAllFiltersButton } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter.styled";
 
 type SearchFilterModalFooterProps = {
   onApply: () => void;
@@ -21,7 +21,9 @@ export const SearchFilterModalFooter = ({
       align={"center"}
       style={{ width: "100%" }}
     >
-      <CloseAllFiltersButton onClick={onClear}>{t`Clear all filters`}</CloseAllFiltersButton>
+      <CloseAllFiltersButton
+        onClick={onClear}
+      >{t`Clear all filters`}</CloseAllFiltersButton>
       <Group>
         <Button onClick={onCancel}>{t`Cancel`}</Button>
         <Button primary onClick={onApply}>{t`Apply all filters`}</Button>

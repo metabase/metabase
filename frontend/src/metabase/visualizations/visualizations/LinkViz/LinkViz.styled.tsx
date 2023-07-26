@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import { Icon } from "metabase/core/components/Icon";
-import RecentsList from "metabase/nav/components/Search/RecentsList/RecentsList";
+import RecentsList from "metabase/search/components/RecentsList/RecentsList";
 
 export const DisplayLinkCardWrapper = styled.div<{ fade?: boolean }>`
   padding: 0 0.5rem;

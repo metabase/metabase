@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import { useEffect, useMemo, useState } from "react";
 import Modal from "metabase/components/Modal";
-import { SearchFilterModalFooter } from "metabase/nav/components/Search/SearchFilterModal/SearchFilterModalFooter";
-import { SearchFilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
+import { SearchFilterType } from "metabase/search/components/SearchFilterModal/types";
+import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter";
 import { TypeFilter } from "./filters/TypeFilter";
 
 export const SearchFilterModal = ({

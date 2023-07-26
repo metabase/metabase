@@ -13,7 +13,7 @@ import {
 import { getIcon, renderWithProviders, queryIcon } from "__support__/ui";
 
 import { InitialSyncStatus } from "metabase-types/api";
-import type { WrappedResult } from "./types";
+import { WrappedResult } from "metabase/search/components/types";
 import { SearchResult } from "./SearchResult";
 
 const createWrappedSearchResult = (

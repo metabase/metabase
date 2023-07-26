@@ -1,10 +1,10 @@
 import { t } from "ttag";
 import { getTranslatedEntityName } from "metabase/nav/utils";
 import { Checkbox, Flex } from "metabase/ui";
-import { SearchFilter } from "metabase/nav/components/Search/SearchFilterModal/filters/SearchFilter";
 import { SearchModelType } from "metabase-types/api";
 import { useSearchListQuery } from "metabase/common/hooks";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { SearchFilter } from "metabase/search/components/SearchFilterModal/filters/SearchFilter";
 
 const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
