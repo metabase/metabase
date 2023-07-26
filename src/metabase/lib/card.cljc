@@ -4,6 +4,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -20,14 +21,18 @@
   (cond-> card-metadata
     (not display-name) (assoc :display-name (u.humanization/name->human-readable-name :simple card-name))))
 
+(mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
+  "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
+  [card-id :- ::lib.schema.id/card]
+  (i18n/tru "Saved Question {0}" (pr-str card-id)))
+
 (defmethod lib.metadata.calculation/describe-top-level-key-method :source-card
   [query stage-number _k]
   (let [{:keys [source-card]} (lib.util/query-stage query stage-number)]
     (when source-card
       (or (when-let [card-metadata (lib.metadata/card query source-card)]
             (lib.metadata.calculation/display-name query stage-number card-metadata :long))
-          ;; If for some reason the metadata is unavailable. This is better than returning nothing I guess
-          (i18n/tru "Saved Question {0}" (pr-str source-card))))))
+          (fallback-display-name source-card)))))
 
 (mu/defn ^:private infer-returned-columns
   [metadata-providerable :- lib.metadata/MetadataProviderable

@@ -15,5 +15,6 @@ export const useRecentItemListQuery = (
     getLoading: RecentItems.selectors.getLoading,
     getLoaded: RecentItems.selectors.getLoaded,
     getError: RecentItems.selectors.getError,
+    getListMetadata: RecentItems.selectors.getListMetadata,
   });
 };
