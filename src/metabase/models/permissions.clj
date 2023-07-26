@@ -516,15 +516,14 @@
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/")))
 
-;; TODO -- consider renaming this to `table-sandboxed-query-path`  since that terminology is used more frequently
-(mu/defn table-segmented-query-path :- PathSchema
+(mu/defn table-sandboxed-query-path :- PathSchema
   "Return the permissions path for *segmented* query access for a Table. Segmented access means running queries against
   the Table will automatically replace the Table with a GTAP-specified question as the new source of the query,
   obstensibly limiting access to the results."
   ([table-or-id]
    (if (integer? table-or-id)
      (recur (t2/select-one ['Table :db_id :schema :id] :id table-or-id))
-     (table-segmented-query-path (:db_id table-or-id) (:schema table-or-id) table-or-id)))
+     (table-sandboxed-query-path (:db_id table-or-id) (:schema table-or-id) table-or-id)))
 
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/segmented/")))
@@ -1249,7 +1248,7 @@
    new-query-perms :- [:enum :all :segmented :none]]
   (case new-query-perms
     :all       (grant-permissions! group-id (table-query-path           db-id schema table-id))
-    :segmented (grant-permissions! group-id (table-segmented-query-path db-id schema table-id))
+    :segmented (grant-permissions! group-id (table-sandboxed-query-path db-id schema table-id))
     :none      (revoke-data-perms! group-id (table-query-path           db-id schema table-id))))
 
 (mu/defn ^:private update-table-data-access-permissions!

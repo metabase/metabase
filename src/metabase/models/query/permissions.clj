@@ -37,7 +37,7 @@
 ;;                    table-query-path
 ;;
 ;; `segmented-perms-set` follows the same graph as above, but instead of `table-query-path`, it returns
-;; `table-segmented-query-path`. `perms-set` will require full access to the tables, `segmented-perms-set` will only
+;; `table-sandboxed-query-path`. `perms-set` will require full access to the tables, `segmented-perms-set` will only
 ;; require segmented access
 
 (mu/defn query->source-table-ids :- [:set [:or [:= ::native] ms/PositiveInt]]
@@ -90,7 +90,7 @@
         native-perms-fn     (or native-perms-fn perms/adhoc-native-query-path)
         table-perms-fn      (or table-perms-fn
                                 (if segmented-perms?
-                                  perms/table-segmented-query-path
+                                  perms/table-sandboxed-query-path
                                   perms/table-query-path))]
     (set (for [table-or-id tables-or-ids]
            (if (= ::native table-or-id)

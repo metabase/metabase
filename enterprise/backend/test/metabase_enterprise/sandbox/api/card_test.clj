@@ -21,7 +21,7 @@
                                                        :group_id (u/the-id group)}]]
           (mt/with-db db
             (perms/revoke-data-perms! (perms-group/all-users) db)
-            (perms/grant-permissions! group (perms/table-segmented-query-path table))
+            (perms/grant-permissions! group (perms/table-sandboxed-query-path table))
             (perms/grant-collection-readwrite-permissions! group collection)
             (is (some? (mt/user-http-request :rasta :post 200 "card"
                         (assoc (api.card-test/card-with-name-and-query card-name (api.card-test/mbql-count-query db table))
@@ -39,7 +39,7 @@
                                                           :collection_id (u/the-id collection)}]]
           (mt/with-db db
             (perms/revoke-data-perms! (perms-group/all-users) db)
-            (perms/grant-permissions! group (perms/table-segmented-query-path table))
+            (perms/grant-permissions! group (perms/table-sandboxed-query-path table))
             (perms/grant-collection-readwrite-permissions! group collection)
             (is (= "Another Name"
                    (:name (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))

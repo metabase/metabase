@@ -607,7 +607,7 @@
              (test-data-graph group))))
 
     (t2.with-temp/with-temp [PermissionsGroup group]
-      (perms/grant-permissions! group (perms/table-segmented-query-path (t2/select-one Table :id (mt/id :venues))))
+      (perms/grant-permissions! group (perms/table-sandboxed-query-path (t2/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:query :segmented}}
              (test-data-graph group))))
 
