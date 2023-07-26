@@ -75,19 +75,19 @@
        (take 10)
        (apply str)))
 
-(defn refreshable-states
+;; Without the :cache-granular-controls feature flag, any models with state="off" should be treated as if they were
+;; in state="creating" (i.e. they should be refreshable, and not prunable).
+(defenterprise refreshable-states
   "States of `persisted_info` records which can be refreshed."
+  metabase-enterprise.advanced-config.caching
   []
-  (if (premium-features/enable-cache-granular-controls?)
-    #{"creating" "persisted" "error"}
-    #{"creating" "persisted" "error" "off"}))
+  #{"creating" "persisted" "error" "off"})
 
-(defn prunable-states
-  "States of `persisted_info` records which can be pruned"
+(defenterprise prunable-states
+  "States of `persisted_info` records which can be pruned."
+  metabase-enterprise.advanced-config.caching
   []
-  (if (premium-features/enable-cache-granular-controls?)
-    #{"deletable" "off"}
-    #{"deletable"}))
+  #{"deletable"})
 
 (mi/define-batched-hydration-method persisted?
   :persisted
