@@ -4,7 +4,7 @@
    [java-time :as t]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
-   [metabase.search.util :as search-util]
+   [metabase.search.util :as search.util]
    [metabase.util :as u]))
 
 (defn- matches?
@@ -53,7 +53,7 @@
                      :let        [matched-text (-> search-result
                                                    (get column)
                                                    (search.config/column->string (:model search-result) column))
-                                  match-tokens (some-> matched-text search-util/normalize search-util/tokenize)
+                                  match-tokens (some-> matched-text search.util/normalize search.util/tokenize)
                                   raw-score (scorer query-tokens match-tokens)]
                      :when       (and matched-text (pos? raw-score))]
                  {:score               raw-score
@@ -68,7 +68,7 @@
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
-  (/ (search-util/largest-common-subseq-length
+  (/ (search.util/largest-common-subseq-length
       matches?
       ;; See comment on largest-common-subseq-length re. its cache. This is a little conservative, but better to under- than over-estimate
       (take 30 query-tokens)
@@ -148,7 +148,7 @@
   [raw-search-string result]
   (if (seq raw-search-string)
     (text-scores-with match-based-scorers
-                      (search-util/tokenize (search-util/normalize raw-search-string))
+                      (search.util/tokenize (search.util/normalize raw-search-string))
                       result)
     [{:score 0 :weight 0}]))
 

@@ -293,7 +293,7 @@
 (defn order-clause
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
-  (let [match             (search.util/wildcard-match (search-util/normalize query))
+  (let [match             (search.util/wildcard-match (search.util/normalize query))
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
