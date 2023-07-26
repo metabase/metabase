@@ -1,7 +1,10 @@
 import { t } from "ttag";
 import { useEffect, useMemo, useState } from "react";
 import Modal from "metabase/components/Modal";
-import { SearchFilterType } from "metabase/search/components/SearchFilterModal/types";
+import {
+  SearchFilterComponent,
+  SearchFilterType,
+} from "metabase/search/components/SearchFilterModal/types";
 import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter";
 import { TypeFilter } from "./filters/TypeFilter";
 
@@ -36,7 +39,9 @@ export const SearchFilterModal = ({
     setIsOpen(false);
   };
 
-  const availableFilters = useMemo(() => {
+  const availableFilters: {
+    type: SearchFilterComponent<"type">;
+  } = useMemo(() => {
     return {
       type: TypeFilter,
     };

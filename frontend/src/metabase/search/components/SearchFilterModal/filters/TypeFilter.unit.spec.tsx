@@ -6,12 +6,6 @@ import { setupSearchEndpoints } from "__support__/server-mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { TypeFilter } from "metabase/search/components/SearchFilterModal/filters/TypeFilter";
 
-type TypeFilterSetupProps = {
-  availableModels?: SearchModelType[];
-  initialValue?: SearchModelType[];
-  onChangeFilters?: (value: SearchModelType[]) => void;
-};
-
 const TEST_TYPES: SearchModelType[] = [
   "action",
   "app",
@@ -36,11 +30,14 @@ const TEST_TYPE_SUBSET: SearchModelType[] = [
 
 const TestTypeFilterComponent = ({
   initialValue = [],
-  onChangeFilters = jest.fn(),
-}: TypeFilterSetupProps) => {
-  const [value, setValue] = useState<SearchModelType[]>(initialValue);
+  onChangeFilters,
+}: {
+  initialValue?: SearchModelType[];
+  onChangeFilters: (value: SearchModelType[]) => void;
+}) => {
+  const [value, setValue] = useState<string[]>(initialValue);
 
-  const onChange = (value: SearchModelType[]) => {
+  const onChange = (value: string[]) => {
     setValue(value);
     onChangeFilters(value);
   };
@@ -51,9 +48,9 @@ const TestTypeFilterComponent = ({
 const setup = async ({
   availableModels = TEST_TYPES,
   initialValue = [],
-}: TypeFilterSetupProps = {}) => {
+} = {}) => {
   setupSearchEndpoints(
-    availableModels.map((type, index) =>
+    availableModels.map((type: string, index: number) =>
       createMockSearchResult({ model: type, id: index + 1 }),
     ),
   );
