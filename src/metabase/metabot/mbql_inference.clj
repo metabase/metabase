@@ -1,13 +1,15 @@
 (ns metabase.metabot.mbql-inference
   (:require
-    [metabase.metabot.inference-ws-client :as inference-ws-client]
-    [metabase.metabot.precomputes :as precomputes]
-    [metabase.metabot.settings :as metabot-settings]
-    [metabase.metabot.util :as metabot-util]
-    [metabase.models :as models]
-    [toucan2.core :as t2]))
+   [metabase.metabot.inference-ws-client :as inference-ws-client]
+   [metabase.metabot.precomputes :as precomputes]
+   [metabase.metabot.settings :as metabot-settings]
+   [metabase.metabot.util :as metabot-util]
+   [metabase.models :as models]
+   [toucan2.core :as t2]))
 
 (def pre-cache (delay (precomputes/atomic-precomputes)))
+
+(defn ^:dynamic precomputes [] @pre-cache)
 
 (defn rank-data-by-prompt
   "Return the ranked datasets by the provided prompt.
@@ -28,11 +30,11 @@
 (defn infer-mbql
   "Generate mbql from a prompt."
   ([base-url prompt]
-   (let [embeddings (precomputes/embeddings @pre-cache)
+   (let [embeddings (precomputes/embeddings (precomputes))
          ;; This is what needs to be done at every step
-         best           (rank-data-by-prompt base-url prompt embeddings 1)
-         model          (t2/select-one models/Card :id (-> best first :object second))
-         context        (metabot-util/model->context model)]
+         best       (rank-data-by-prompt base-url prompt embeddings 1)
+         model      (t2/select-one models/Card :id (-> best first :object second))
+         context    (metabot-util/model->context model)]
      (inference-ws-client/infer base-url
                                 {:prompt  prompt
                                  :context [context]})))
@@ -41,5 +43,5 @@
 
 (comment
   (infer-mbql
-    "http://localhost:4000"
-    "Show data where tax is greater than zero"))
+   "http://localhost:4000"
+   "Show data where tax is greater than zero"))

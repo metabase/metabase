@@ -1,7 +1,9 @@
 (ns metabase.metabot.inference-ws-client-test
-  (:require [clojure.test :refer :all])
-  (:require [malli.core :as mc]
-            [metabase.metabot.inference-ws-client :as inference-ws-client]))
+  (:require
+   [clojure.test :refer :all]
+   [malli.core :as mc]
+   [metabase.metabot.inference-ws-client :as inference-ws-client]
+   [metabase.metabot.schema :as metabot-schema]))
 
 (deftest bulk-embeddings-test
   (with-redefs [inference-ws-client/bulk-embeddings
@@ -28,11 +30,11 @@
       (with-redefs [inference-ws-client/infer
                     (fn
                       ([_base-url args]
-                       (if (mc/validate inference-ws-client/inference-schema args)
+                       (if (mc/validate metabot-schema/inference-schema args)
                          expected
                          "INVALID ARGUMENTS!"))
                       ([args]
-                       (if (mc/validate inference-ws-client/inference-schema args)
+                       (if (mc/validate metabot-schema/inference-schema args)
                          expected
                          "INVALID ARGUMENTS!")))]
         (let [prompt  "Show data where tax is greater than zero"
@@ -53,16 +55,16 @@
                                              :context [context]})))
           (is (= expected
                  (inference-ws-client/infer
-                   "http://example.com"
-                   {:prompt  prompt
-                    :context [context]})))
+                  "http://example.com"
+                  {:prompt  prompt
+                   :context [context]})))
           (is (= "INVALID ARGUMENTS!"
                  (inference-ws-client/infer {:prompt  prompt
                                              :context context})))
           (is (= "INVALID ARGUMENTS!"
                  (inference-ws-client/infer
-                   "http://example.com"
-                   {:prompt  prompt
-                    :context context}))))))))
+                  "http://example.com"
+                  {:prompt  prompt
+                   :context context}))))))))
 
 
