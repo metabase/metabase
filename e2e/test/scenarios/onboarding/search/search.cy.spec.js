@@ -206,7 +206,6 @@ describe("scenarios > search", () => {
         });
         getSearchBar().click().type("orders{enter}");
 
-        cy.findByTestId("search-result-wrapper").should("exist");
         cy.findByTestId("search-app").within(() => {
           cy.findByText('Results for "orders"').should("exist");
         });

@@ -27,7 +27,6 @@ import {
   SearchEmptyState,
   SearchHeader,
   SearchMain,
-  SearchResultWrapper,
   SearchRoot,
 } from "./SearchApp.styled";
 
@@ -73,33 +72,21 @@ export default function SearchApp({ location }) {
         </SearchHeader>
       )}
       <Search.ListLoader query={query} wrapped>
-        {({ list, metadata }) => (
-          <SearchResultWrapper data-testid="search-result-wrapper">
+        {({ list, metadata }) =>
+          list && list.length > 0 ? (
             <SearchBody>
-              {list && list.length > 0 ? (
-                <SearchMain>
-                  <SearchResultSection items={list} />
-                  <PaginationControls
-                    showTotal
-                    pageSize={PAGE_SIZE}
-                    page={page}
-                    itemsLength={list.length}
-                    total={metadata.total}
-                    onNextPage={handleNextPage}
-                    onPreviousPage={handlePreviousPage}
-                  />
-                </SearchMain>
-              ) : (
-                <SearchEmptyState>
-                  <Card>
-                    <EmptyState
-                      title={t`Didn't find anything`}
-                      message={t`There weren't any results for your search.`}
-                      illustrationElement={<img src={NoResults} />}
-                    />
-                  </Card>
-                </SearchEmptyState>
-              )}
+              <SearchMain>
+                <SearchResultSection items={list} />
+                <PaginationControls
+                  showTotal
+                  pageSize={PAGE_SIZE}
+                  page={page}
+                  itemsLength={list.length}
+                  total={metadata.total}
+                  onNextPage={handleNextPage}
+                  onPreviousPage={handlePreviousPage}
+                />
+              </SearchMain>
               {searchFilters?.type || metadata.available_models ? (
                 <SearchControls>
                   <TypeSearchSidebar
@@ -114,8 +101,18 @@ export default function SearchApp({ location }) {
                 </SearchControls>
               ) : null}
             </SearchBody>
-          </SearchResultWrapper>
-        )}
+          ) : (
+            <SearchEmptyState>
+              <Card>
+                <EmptyState
+                  title={t`Didn't find anything`}
+                  message={t`There weren't any results for your search.`}
+                  illustrationElement={<img src={NoResults} />}
+                />
+              </Card>
+            </SearchEmptyState>
+          )
+        }
       </Search.ListLoader>
     </SearchRoot>
   );
