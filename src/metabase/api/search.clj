@@ -233,8 +233,6 @@
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
-  (def model model)
-  (def search-ctx search-ctx)
   (base-query-for-model model search-ctx))
 
 (defmethod search-query-for-model "dashboard"

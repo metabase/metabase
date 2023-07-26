@@ -25,7 +25,7 @@
 ;;                                         Required Filters                                         ;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti archived-clause
+(defmulti ^:private archived-clause
   "Clause to filter by the archived status of the entity."
   {:arglists '([model archived?])}
   (fn [model _] model))
