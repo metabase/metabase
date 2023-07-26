@@ -297,7 +297,9 @@ describe("Notebook Editor > Join Step", () => {
 
     const [condition] = getRecentJoin().conditions;
     expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("Created At: Month");
+    expect(condition.rhsColumn.longDisplayName).toBe(
+      "Products → Created At: Month",
+    );
   });
 
   it("should clear selected RHS column", () => {
