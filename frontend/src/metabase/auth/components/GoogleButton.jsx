@@ -44,7 +44,6 @@ export default class GoogleButton extends Component {
           onError={() => {
             console.log('Login Failed');
           }}
-          width="366"
         />
         {errorMessage && (
           <div className="bg-error p1 rounded text-white text-bold mt3">
