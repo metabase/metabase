@@ -2,10 +2,7 @@
   (:require
    [metabase.metabot.inference-ws-client :as inference-ws-client]
    [metabase.metabot.precomputes :as precomputes]
-   [metabase.metabot.settings :as metabot-settings]
-   [metabase.metabot.util :as metabot-util]
-   [metabase.models :as models]
-   [toucan2.core :as t2]))
+   [metabase.metabot.settings :as metabot-settings]))
 
 (def pre-cache (delay (precomputes/atomic-precomputes)))
 
@@ -30,11 +27,10 @@
 (defn infer-mbql
   "Generate mbql from a prompt."
   ([base-url prompt]
-   (let [embeddings (precomputes/embeddings (precomputes))
-         ;; This is what needs to be done at every step
-         best       (rank-data-by-prompt base-url prompt embeddings 1)
-         model      (t2/select-one models/Card :id (-> best first :object second))
-         context    (metabot-util/model->context model)]
+   (let [p          (precomputes)
+         embeddings (precomputes/embeddings p)
+         [{:keys [object]}] (rank-data-by-prompt base-url prompt embeddings 1)
+         context    (apply precomputes/context p object)]
      (inference-ws-client/infer base-url
                                 {:prompt  prompt
                                  :context [context]})))

@@ -5,6 +5,7 @@
    [metabase.metabot.mbql-inference :as mbql-inference]
    [metabase.metabot.metabot-test-models :as mtm]
    [metabase.metabot.precomputes :as precomputes]
+   [metabase.metabot.util :as metabot-util]
    [metabase.test :as mt]
    [metabase.models :as models]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -53,7 +54,13 @@
                                                                  (embeddings [_]
                                                                    {[:table (:id model)]       [0 1 0 0]
                                                                     [:table (inc (:id model))] [1 0 0 0]
-                                                                    [:table (dec (:id model))] [0 0 0 1]})))
+                                                                    [:table (dec (:id model))] [0 0 0 1]})
+                                                                 (context [_ entity-type entity-id]
+                                                                   (get-in
+                                                                    {:table
+                                                                     {(:id model)
+                                                                      (metabot-util/model->context model)}}
+                                                                    [entity-type entity-id]))))
                           inference-ws-client/bulk-embeddings (fn [url objects-to-embed]
                                                                 {:pre [(= url url)
                                                                        (= {test-prompt test-prompt} objects-to-embed)]}
