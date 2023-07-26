@@ -11,6 +11,9 @@ import type {
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+
+import { SpinnerContainer } from "./ActionParametersInputForm.styled";
 
 export interface ActionParametersInputFormProps {
   action: WritebackAction;
@@ -36,6 +39,7 @@ function ActionParametersInputForm({
   const [prefetchedValues, setPrefetchedValues] =
     useState<ParametersForActionExecution>({});
 
+  const [isFetching, setIsFetching] = useState(false);
   const hasPrefetchedValues = Object.keys(prefetchedValues).length > 0;
 
   const values = useMemo(
@@ -61,11 +65,14 @@ function ActionParametersInputForm({
     }
 
     try {
+      setIsFetching(true);
       const fetchedValues = await fetchInitialValues();
       setPrefetchedValues(fetchedValues);
     } catch (error) {
       // do not show user this error
       console.error(error);
+    } finally {
+      setIsFetching(false);
     }
   }, [fetchInitialValues]);
 
@@ -95,6 +102,14 @@ function ActionParametersInputForm({
     },
     [prefetchValues, shouldPrefetch, onSubmit, onSubmitSuccess],
   );
+
+  if (isFetching) {
+    return (
+      <SpinnerContainer>
+        <LoadingSpinner />
+      </SpinnerContainer>
+    );
+  }
 
   if (shouldPrefetch && !hasPrefetchedValues) {
     return <EmptyState message={t`Choose a record to update`} />;
