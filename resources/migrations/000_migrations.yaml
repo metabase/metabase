@@ -15923,6 +15923,16 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v47.00-051
+      author: noahmoss
+      comment: Added 0.47.0 - unique constraint for connection impersonations
+      changes:
+        - addUniqueConstraint:
+            tableName: connection_impersonations
+            columnNames: group_id, db_id
+            constraintName: conn_impersonation_unique_group_id_db_id
+
+  - changeSet:
       id: v48.00-003
       author: qnkhuat
       comment: Added 0.48.0 - drop computation_job_result table
@@ -15972,15 +15982,6 @@ databaseChangeLog:
             columns:
               column:
                 name: action_id
-  - changeSet:
-      id: v47.00-051
-      author: noahmoss
-      comment: Added 0.47.0 - unique constraint for connection impersonations
-      changes:
-        - addUniqueConstraint:
-            tableName: connection_impersonations
-            columnNames: group_id, db_id
-            constraintName: conn_impersonation_unique_group_id_db_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
