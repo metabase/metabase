@@ -81,14 +81,14 @@
 ;;                                         Optional filters                                        ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defmulti ^:private optional-filter-query
-  "Clause for optional filters.
+(defmulti ^:private build-optional-filter-query
+  "Build the query to filter by `filter`.
   Dispath with an array of [filter model-name]."
   {:arglists '([model fitler query filter-value])}
   (fn [filter model _query _filter-value]
     [filter model]))
 
-(defmethod optional-filter-query :default
+(defmethod build-optional-filter-query :default
   [filter model _query _creator-id]
   (throw (ex-info (format "%s filter for %s is not supported" filter model) {:filter filter :model model})))
 
@@ -97,19 +97,19 @@
   [model creator-id]
   [:= (search.config/column-with-model-alias model :creator_id) creator-id])
 
-(defmethod optional-filter-query [:created-by "card"]
+(defmethod build-optional-filter-query [:created-by "card"]
   [_filter model query creator-id]
   (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
 
-(defmethod optional-filter-query [:created-by "dataset"]
+(defmethod build-optional-filter-query [:created-by "dataset"]
   [_filter model query creator-id]
   (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
 
-(defmethod optional-filter-query [:created-by "dashboard"]
+(defmethod build-optional-filter-query [:created-by "dashboard"]
   [_filter model query creator-id]
   (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
 
-(defmethod optional-filter-query [:created-by "action"]
+(defmethod build-optional-filter-query [:created-by "action"]
   [_filter model query creator-id]
   (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
 
@@ -120,7 +120,7 @@
 
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
-  (->> (dissoc (methods optional-filter-query) :default)
+  (->> (dissoc (methods build-optional-filter-query) :default)
        keys
        (reduce (fn [acc [filter model]]
                  (update acc filter set/union #{model}))
@@ -155,4 +155,4 @@
 
       ;; build optional filters
       (int? created-by)
-      (#(optional-filter-query :created-by model % created-by)))))
+      (#(build-optional-filter-query :created-by model % created-by)))))

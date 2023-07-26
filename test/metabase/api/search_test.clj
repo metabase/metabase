@@ -512,21 +512,7 @@
                                  :model_id      (:id model)
                                  :model_name    (:name model)}}
                       (into {} (comp relevant (map (juxt :name normalize)))
-                            (search! "rom"))))))))))
-
-  #_(testing "Sandboxing inhibits searching indexes"
-      (binding [api/*current-user-id* (mt/user->id :rasta)]
-        (is (= [:or [:like [:lower :model-index-value.name] "%foo%"]]
-               (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
-                                                                           :search-string "foo"
-                                                                           :models             search-config/all-models
-                                                                           :current-user-perms #{"/"}})))
-        (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-          (is (= [:or [:= 0 1]]
-                 (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
-                                                                             :search-string "foo"
-                                                                             :models             search-config/all-models
-                                                                             :current-user-perms #{"/"}})))))))
+                            (search! "rom")))))))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
