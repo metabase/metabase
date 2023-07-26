@@ -353,6 +353,29 @@ describe("collection permissions", () => {
               cy.signIn(user);
             });
 
+            it("should not show write access options on an empty, read-only collection", () => {
+              cy.request("GET", "/api/collection").then(xhr => {
+                // We need to obtain the ID programatically
+                const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+                  collection => collection.slug === "third_collection",
+                );
+
+                // read-only, empty collection
+                cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
+                cy.findByTestId("collection-empty-state")
+                  .findByText("Create a new…")
+                  .should("not.exist");
+              });
+
+              // writable, empty collection
+              cy.findByTestId("main-navbar-root")
+                .findByText("Your personal collection")
+                .click();
+              cy.findByTestId("collection-empty-state")
+                .findByText("Create a new…")
+                .should("exist");
+            });
+
             it("should not show pins or a helper text (metabase#20043)", () => {
               cy.visit("/collection/root");
 
