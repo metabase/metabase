@@ -37,7 +37,8 @@
                      :db_id     (mt/id)
                      :attribute "New Attribute Name"}]
                    (t2/select :model/ConnectionImpersonation
-                              :group_id (u/the-id group)))))))))))
+                              :group_id (u/the-id group))))
+              (is (= 1 (t2/count :model/ConnectionImpersonation :group_id (u/the-id group)))))))))))
 
 (deftest fetch-impersonation-policy-test
   (testing "GET /api/ee/advanced-permissions/impersonation"

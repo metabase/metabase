@@ -29,7 +29,7 @@
              {}
              impersonations))))
 
-(defenterprise upsert-impersonations!
+(defenterprise insert-impersonations!
   "Create new Connection Impersonation records. Deletes any existing Connection Impersonation records for the same
   group and database before creating new ones."
   :feature :advanced-permissions
