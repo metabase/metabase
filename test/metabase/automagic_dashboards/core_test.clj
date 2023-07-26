@@ -9,8 +9,9 @@
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.rules :as rules]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.models :refer [Card Collection Database Field Metric Table Segment]]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models
+    :refer [Card Collection Database Field Metric Segment Table]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]

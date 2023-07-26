@@ -9,6 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]

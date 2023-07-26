@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models :refer [Card Collection Dimension Field]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]

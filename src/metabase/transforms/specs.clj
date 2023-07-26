@@ -35,7 +35,7 @@
 
 (def ^:private TransformName s/Str)
 
-(def ^:private Step
+(def Step
   "Transform step"
   {(s/required-key :source)      Source
    (s/required-key :name)        Source
