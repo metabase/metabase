@@ -245,7 +245,7 @@ describe("Notebook Editor > Join Step", () => {
     expect(within(popover).getByText("People")).toBeInTheDocument();
     expect(within(popover).getByText("Reviews")).toBeInTheDocument();
     expect(screen.getByLabelText("Right table")).toHaveTextContent(
-      "Pick a table…",
+      "Pick data…",
     );
   });
 
