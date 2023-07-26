@@ -650,7 +650,7 @@
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with a query. If the query is using
-  the [[metabase.mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  the [[metabase.lib.schema.id/saved-questions-virtual-database-id]] (used in some situations for queries with a
   `:source-card`)
 
     {:database -1337}

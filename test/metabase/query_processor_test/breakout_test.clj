@@ -211,7 +211,7 @@
                  (select-keys [:status :class :error])))))))
 
 (defn- nested-venues-query [card-or-card-id]
-  {:database mbql.s/saved-questions-virtual-database-id
+  {:database lib.schema.id/saved-questions-virtual-database-id
    :type     :query
    :query    {:source-table (str "card__" (u/the-id card-or-card-id))
               :aggregation  [[:count]]

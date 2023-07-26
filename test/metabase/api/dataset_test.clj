@@ -13,7 +13,7 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -198,7 +198,7 @@
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/generate-string
-                                                           {:database mbql.s/saved-questions-virtual-database-id
+                                                           {:database lib.schema.id/saved-questions-virtual-database-id
                                                             :type     :query
                                                             :query    {:source-table (str "card__" (u/the-id card))}}))]
                   (is (some? result))

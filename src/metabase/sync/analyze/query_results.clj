@@ -4,6 +4,7 @@
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
   (:require
+   [malli.core :as mc]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
@@ -40,7 +41,7 @@
    (s/optional-key :field_ref)          (s/cond-pre
                                           mbql.s/FieldOrAggregationReference
                                           (s/pred
-                                            (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
+                                            (comp (mc/validator mbql.s/FieldOrAggregationReference)
                                                   mbql.normalize/normalize-tokens)
                                             "Field or aggregation reference as it comes in to the API"))
    ;; the timezone in which the column was converted to using `:convert-timezone` expression

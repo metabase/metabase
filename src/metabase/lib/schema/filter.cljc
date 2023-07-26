@@ -4,6 +4,7 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.id :as id]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
@@ -97,7 +98,7 @@
   [:tuple
    [:= :segment]
    ::common/options
-   [:or ::common/int-greater-than-zero ::common/non-blank-string]])
+   [:or ::id/segment ::common/non-blank-string]])
 
 (mr/def ::operator
   [:map

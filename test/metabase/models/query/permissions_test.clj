@@ -160,7 +160,7 @@
 ;;; ------------------------------------------- MBQL w/ nested MBQL query --------------------------------------------
 
 (defn- query-with-source-card [card]
-  {:database mbql.s/saved-questions-virtual-database-id, :type "query", :query {:source-table (str "card__" (u/the-id card))}})
+  {:database lib.schema.id/saved-questions-virtual-database-id, :type "query", :query {:source-table (str "card__" (u/the-id card))}})
 
 (deftest nested-query-test
   (testing "if source card is *not* in a Collection, we require Root Collection read perms"

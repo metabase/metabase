@@ -9,13 +9,13 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.password :as u.password]
-   [schema.core :as s]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
+;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
 (defn InstanceOf
   "Helper for creating a schema to check whether something is an instance of `model`.
 
@@ -24,8 +24,17 @@
       ...)"
   [model]
   (mu/with-api-error-message
-   [:fn #(models.dispatch/instance-of? model %)]
-   (deferred-tru "value must be an instance of {0}" (name model))))
+    [:fn
+     {:error/message (format "value must be an instance of %s" (name model))}
+     #(models.dispatch/instance-of? model %)]
+    (deferred-tru "value must be an instance of {0}" (name model))))
+
+(defn InstanceOfClass
+  "Helper for creating schemas to check whether something is an instance of a given class."
+  [^Class klass]
+  [:fn
+   {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+   (partial instance? klass)])
 
 (defn maps-with-unique-key
   "Given a schema of a sequence of maps, returns as chema that do an additional unique check on key `k`."
@@ -151,7 +160,7 @@
   "Schema for a valid Field for API usage."
   (mu/with-api-error-message
     [:fn (fn [k]
-           ((comp (complement (s/checker mbql.s/Field))
+           ((comp (mc/validator mbql.s/Field)
                   mbql.normalize/normalize-tokens) k))]
     (deferred-tru "value must an array with :field id-or-name and an options map")))
 

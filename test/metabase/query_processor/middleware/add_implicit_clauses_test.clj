@@ -119,13 +119,12 @@
            (mt/mbql-query checkins
              {:aggregation [[:count]]
               :breakout    [!month.$date]}))]
-      (is (schema= {:fields   (s/eq [[:field (mt/id :checkins :date) nil]
-                                     [:field "count" {:base-type :type/BigInteger}]])
-                    s/Keyword s/Any}
-                   (#'qp.add-implicit-clauses/add-implicit-fields
-                    (:query (mt/mbql-query checkins
-                              {:source-query    source-query
-                               :source-metadata source-metadata}))))))))
+      (is (=? {:fields [[:field (mt/id :checkins :date) nil]
+                        [:field "count" {:base-type :type/BigInteger}]]}
+              (#'qp.add-implicit-clauses/add-implicit-fields
+               (:query (mt/mbql-query checkins
+                         {:source-query    source-query
+                          :source-metadata source-metadata}))))))))
 
 (deftest joined-field-test
   (testing "When adding implicit `:fields` clauses, should include `join-alias` clauses for joined fields (#14745)"

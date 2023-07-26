@@ -27,7 +27,9 @@
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.tools.identity-query :as t2.identity-query]
-   [toucan2.util :as t2.u])
+   [toucan2.util :as t2.u]
+   [malli.core :as mc]
+   [malli.error :as me])
   (:import
    (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
    (java.sql Blob)
@@ -304,12 +306,19 @@
    :out identity})
 
 (def ^:private MetricSegmentDefinition
-  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
-   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
-   schema/Keyword                     schema/Any})
+  [:map
+   [:filter      {:optional true} [:maybe mbql.s/Filter]]
+   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
 
 (def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (schema/validator MetricSegmentDefinition))
+  (let [explainer (mc/explainer MetricSegmentDefinition)]
+    (fn [definition]
+      (if-let [error (explainer definition)]
+        (let [humanized (me/humanize error)]
+          (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
+                          {:error     error
+                           :humanized humanized})))
+        definition))))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]

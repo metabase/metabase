@@ -1,8 +1,9 @@
 (ns metabase.mbql.schema-test
   (:require
    [clojure.test :as t]
-   [metabase.mbql.schema :as mbql.s]
-   [schema.core :as s]))
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.mbql.schema :as mbql.s]))
 
 #?(:clj
    (t/deftest ^:parallel temporal-literal-test
@@ -37,7 +38,7 @@
                [expected clause] cases]
          (t/testing (pr-str schema-var clause)
            (t/is (= expected
-                    (not (s/check @schema-var clause)))))))))
+                    (mc/validate @schema-var clause))))))))
 
 (t/deftest ^:parallel field-clause-test
   (t/testing "Make sure our schema validates `:field` clauses correctly"
@@ -62,7 +63,7 @@
                                [:field 1 {:binning {:strategy :fake}}]                                 false}]
       (t/testing (pr-str clause)
         (t/is (= expected
-                 (not (s/check mbql.s/field clause))))))))
+                 (mc/validate mbql.s/field clause)))))))
 
 (t/deftest ^:parallel validate-template-tag-names-test
   (t/testing "template tags with mismatched keys/`:names` in definition should be disallowed\n"
@@ -75,9 +76,11 @@
                                                            :type         :text}}}}
           bad-query     (assoc-in correct-query [:native :template-tags "foo" :name] "filter")]
       (t/testing (str "correct-query " (pr-str correct-query))
+        (t/is (not (me/humanize (mc/explain mbql.s/Query correct-query))))
         (t/is (= correct-query
                  (mbql.s/validate-query correct-query))))
       (t/testing (str "bad-query " (pr-str bad-query))
+        (t/is (me/humanize (mc/explain mbql.s/Query bad-query)))
         (t/is (thrown-with-msg?
                #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
                #"keys in template tag map must match the :name of their values"

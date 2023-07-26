@@ -184,7 +184,7 @@
                                            :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
                                                                       :source-table (str "card__" source-id)}
                                                            :type     :query
-                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
+                                                           :database lib.schema.id/saved-questions-virtual-database-id}}]]
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -205,7 +205,7 @@
                                            :dataset_query {:query    {:filter       [:> [:field "PRICE" {:base-type "type/Number"}] 10]
                                                                       :source-table (str "card__" source-id)}
                                                            :type     :query
-                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
+                                                           :database lib.schema.id/saved-questions-virtual-database-id}}]]
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)

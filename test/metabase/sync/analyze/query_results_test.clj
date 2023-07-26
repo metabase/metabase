@@ -50,7 +50,7 @@
          :metadata)))
 
 (defn- query-for-card [card]
-  {:database mbql.s/saved-questions-virtual-database-id
+  {:database lib.schema.id/saved-questions-virtual-database-id
    :type     :query
    :query    {:source-table (str "card__" (u/the-id card))}})
 

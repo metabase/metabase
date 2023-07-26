@@ -18,7 +18,7 @@
 (mr/def ::int-greater-than-or-equal-to-zero
   [:int {:min 0}])
 
-(mr/def ::int-greater-than-zero
+(mr/def ::positive-int
   [:int {:min 1}])
 
 (mr/def ::uuid
@@ -26,8 +26,7 @@
   [:string {:min 36, :max 36}])
 
 (defn- semantic-type? [x]
-  (or (isa? x :Semantic/*)
-      (isa? x :Relation/*)))
+  (isa? x :Semantic/*))
 
 (mr/def ::semantic-type
   [:fn
@@ -36,9 +35,20 @@
                      (str "Not a valid semantic type: " (pr-str value)))}
    semantic-type?])
 
+(defn- relation-type? [x]
+  (isa? x :Relation/*))
+
+(mr/def ::relation-type
+  [:fn
+   {:error/message "valid relation type"
+    :error/fn      (fn [{:keys [value]} _]
+                     (str "Not a valid relation type: " (pr-str value)))}
+   relation-type?])
+
 (defn- base-type? [x]
   (and (isa? x :type/*)
-       (not (semantic-type? x))))
+       (not (semantic-type? x))
+       (not (relation-type? x))))
 
 (mr/def ::base-type
   [:fn

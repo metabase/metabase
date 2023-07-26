@@ -31,4 +31,5 @@
 (defn resolve-schema
   "For REPL/test usage: get the definition of a registered schema from the registry."
   [k]
+  {:pre [(keyword? k)]}
   (mr/schema registry k))

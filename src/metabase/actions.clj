@@ -2,6 +2,8 @@
   "Code related to the new writeback Actions."
   (:require
    [clojure.spec.alpha :as s]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -12,7 +14,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [schema.core :as schema]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -202,13 +203,10 @@
   preserving case and `snake_keys` in the request body is important)."
   ([query]
    (let [query (mbql.normalize/normalize (assoc query :type :query))]
-     (try
-       (schema/validate mbql.s/Query query)
-       (catch Exception e
-         (throw (ex-info
-                 (ex-message e)
-                 {:exception-data (ex-data e)
-                  :status-code    400}))))
+     (when-let [error (me/humanize (mc/explain mbql.s/Query query))]
+       (throw (ex-info
+               (i18n/tru "Invalid query: {0}" (pr-str error))
+               {:status-code 400})))
      query))
 
   ([query & {:keys [exclude]}]

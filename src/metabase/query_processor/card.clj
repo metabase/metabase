@@ -4,6 +4,8 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -12,7 +14,9 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -22,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -110,21 +115,21 @@
                     (not= widget-type :none))
                [param-name widget-type]
 
-               (contains? mbql.s/raw-value-template-tag-types tag-type)
+               (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                [param-name tag-type])))
       (filter some?))
      (get-in query [:native :template-tags]))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
-  (when-let [allowed-template-tag-types (get-in mbql.s/parameter-types [parameter-type :allowed-for])]
+  (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]
     (contains? allowed-template-tag-types widget-type)))
 
 (defn- allowed-parameter-types-for-template-tag-widget-type [widget-type]
-  (into #{} (for [[parameter-type {:keys [allowed-for]}] mbql.s/parameter-types
+  (into #{} (for [[parameter-type {:keys [allowed-for]}] lib.schema.parameter/types
                   :when                                  (contains? allowed-for widget-type)]
               parameter-type)))
 
-(s/defn check-allowed-parameter-value-type
+(mu/defn check-allowed-parameter-value-type
   "If a parameter (i.e., a template tag or Dashboard parameter) is specified with `widget-type` (e.g.
   `:date/all-options`), make sure a user is allowed to pass in parameters with value type `parameter-value-type` (e.g.
   `:date/range`) for it when running the query, otherwise throw an Exception.
@@ -134,7 +139,9 @@
 
   Background: some more-specific parameter types aren't allowed for certain types of parameters.
   See [[metabase.mbql.schema/parameter-types]] for details."
-  [parameter-name widget-type :- mbql.s/WidgetType parameter-value-type :- mbql.s/ParameterType]
+  [parameter-name
+   widget-type          :- ::lib.schema.template-tag/widget-type
+   parameter-value-type :- ::lib.schema.parameter/type]
   (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
     (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
       (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.activity-feed :as events.activity-feed]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
    [metabase.test :as mt]
@@ -43,7 +43,7 @@
                                                     :type     :query
                                                     :query    {:source-table (mt/id :venues)}}}]
                       Card [card-2 {:name          "My Cool NESTED Card"
-                                    :dataset_query {:database mbql.s/saved-questions-virtual-database-id
+                                    :dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
                                                     :type     :query
                                                     :query    {:source-table (str "card__" (u/the-id card-1))}}}]]
         (mt/with-model-cleanup [Activity]
