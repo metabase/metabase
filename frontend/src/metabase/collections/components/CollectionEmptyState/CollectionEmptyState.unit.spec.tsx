@@ -1,12 +1,35 @@
 import { screen, renderWithProviders } from "__support__/ui";
 import type { Collection } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
+import {
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
+
+console.warn = jest.fn();
+console.error = jest.fn();
+
+const TEST_DATABASE = createMockDatabase();
+
+const TEST_COLLECTION = createMockCollection();
+const TEST_COLLECTION_ITEM = createMockCollectionItem({
+  collection: TEST_COLLECTION,
+  model: "dataset",
+});
 
 async function setup({
   collection,
 }: { collection?: Partial<Collection> } = {}) {
   const mockCollection = createMockCollection(collection);
+
+  setupDatabasesEndpoints([TEST_DATABASE]);
+  setupSearchEndpoints([TEST_COLLECTION_ITEM]);
 
   renderWithProviders(<CollectionEmptyState collection={mockCollection} />);
 }
