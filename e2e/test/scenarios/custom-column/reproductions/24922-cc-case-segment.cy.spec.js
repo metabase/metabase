@@ -28,7 +28,7 @@ describe("issue 24922", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("POST", "/api/segment", segmentDetails);
+    cy.createSegment(segmentDetails);
   });
 
   it("should allow segments in case custom expressions (metabase#24922)", () => {

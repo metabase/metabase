@@ -112,8 +112,8 @@ it("should configure data model settings", () => {
     },
   };
 
-  cy.request("POST", "/api/metric", metric);
-  cy.request("POST", "/api/segment", segment);
+  cy.createMetric(metric);
+  cy.createSegment(segment);
 
   cy.visit("/admin/datamodel/segments");
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

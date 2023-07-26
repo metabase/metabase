@@ -32,11 +32,9 @@ describe("issue 31697", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("POST", "/api/segment", segmentDetails).then(
-      ({ body: segment }) => {
-        cy.createQuestion(getQuestionDetails(segment), { wrapId: true });
-      },
-    );
+    cy.createSegment(segmentDetails).then(({ body: segment }) => {
+      cy.createQuestion(getQuestionDetails(segment), { wrapId: true });
+    });
     cy.intercept("GET", "/api/automagic-dashboards/**").as("xrayDashboard");
   });
 

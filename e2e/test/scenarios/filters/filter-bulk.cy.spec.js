@@ -187,7 +187,7 @@ describe("scenarios > filters > bulk filtering", () => {
     const SEGMENT_2_NAME = "Discounted Orders";
 
     beforeEach(() => {
-      cy.request("POST", "/api/segment", {
+      cy.createSegment({
         name: SEGMENT_1_NAME,
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
@@ -198,7 +198,7 @@ describe("scenarios > filters > bulk filtering", () => {
         },
       });
 
-      cy.request("POST", "/api/segment", {
+      cy.createSegment({
         name: SEGMENT_2_NAME,
         description: "All orders with a discount",
         table_id: ORDERS_ID,

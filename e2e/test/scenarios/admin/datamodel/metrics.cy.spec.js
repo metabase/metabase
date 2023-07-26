@@ -18,7 +18,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
   });
 
   it("should be possible to sort by metric (metabase#8283)", () => {
-    cy.request("POST", "/api/metric", {
+    cy.createMetric({
       name: "Revenue",
       description: "Sum of orders subtotal",
       table_id: ORDERS_ID,
@@ -123,7 +123,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
   describe("with metrics", () => {
     beforeEach(() => {
       // CREATE METRIC
-      cy.request("POST", "/api/metric", {
+      cy.createMetric({
         definition: {
           aggregation: ["count"],
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
@@ -206,7 +206,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
   describe("custom metrics", () => {
     it("should save the metric using custom expressions (metabase#13022)", () => {
-      cy.request("POST", "/api/metric", {
+      cy.createMetric({
         name: "13022_Metric",
         desription: "desc",
         table_id: ORDERS_ID,

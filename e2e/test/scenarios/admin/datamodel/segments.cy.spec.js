@@ -56,7 +56,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     beforeEach(() => {
       // Create a segment through API
-      cy.request("POST", "/api/segment", {
+      cy.createSegment({
         name: SEGMENT_NAME,
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,

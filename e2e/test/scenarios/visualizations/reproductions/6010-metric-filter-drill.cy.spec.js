@@ -28,7 +28,7 @@ describe("issue 6010", () => {
 });
 
 const createMetric = () => {
-  return cy.request("POST", "/api/metric", {
+  return cy.createMetric({
     name: "Metric",
     description: "Metric with a filter",
     table_id: ORDERS_ID,

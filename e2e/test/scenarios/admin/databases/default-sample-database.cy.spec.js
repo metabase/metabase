@@ -122,7 +122,7 @@ describe("scenarios > admin > databases > sample database", () => {
     // model
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
     // Create a segment through API
-    cy.request("POST", "/api/segment", {
+    cy.createSegment({
       name: "Small orders",
       description: "All orders with a total under $100.",
       table_id: ORDERS_ID,
@@ -132,8 +132,9 @@ describe("scenarios > admin > databases > sample database", () => {
         filter: ["<", ["field", ORDERS.TOTAL, null], 100],
       },
     });
+
     // metric
-    cy.request("POST", "/api/metric", {
+    cy.createMetric({
       name: "Revenue",
       description: "Sum of orders subtotal",
       table_id: ORDERS_ID,
