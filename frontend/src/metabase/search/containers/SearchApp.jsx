@@ -65,7 +65,7 @@ export default function SearchApp({ location }) {
   };
 
   return (
-    <SearchRoot>
+    <SearchRoot data-testid="search-app">
       {searchText && (
         <SearchHeader>
           <Subhead>{jt`Results for "${searchText}"`}</Subhead>

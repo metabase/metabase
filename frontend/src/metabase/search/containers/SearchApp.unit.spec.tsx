@@ -19,6 +19,19 @@ jest.mock("metabase/search/containers/constants", () => ({
   PAGE_SIZE: 3,
 }));
 
+const TRANSLATED_SIDEBAR_NAMES: Record<string, string> = {
+  "All results": "All results",
+  collection: "Collections",
+  dashboard: "Dashboards",
+  database: "Databases",
+  dataset: "Models",
+  metric: "Metrics",
+  pulse: "Pulses",
+  segment: "Segments",
+  table: "Raw Tables",
+  card: "Questions",
+};
+
 const TEST_ITEMS: Partial<SearchResult>[] = [
   { name: "Card", model: "card" },
   { name: "Collection", model: "collection" },
@@ -183,6 +196,12 @@ describe("SearchApp", () => {
           name,
         );
         expect(screen.getAllByTestId("type-sidebar-item")).toHaveLength(2);
+        expect(screen.getByTestId("type-sidebar")).toHaveTextContent(
+          "All items",
+        );
+        expect(screen.getByTestId("type-sidebar")).toHaveTextContent(
+          TRANSLATED_SIDEBAR_NAMES[model],
+        );
       },
     );
   });
