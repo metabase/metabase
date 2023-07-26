@@ -565,8 +565,12 @@
   [{model-name :name model-id :id :keys [result_metadata]}]
   {:table_name model-name
    :table_id   model-id
-   :fields     (for [{field-id :id field-name :display_name field_type :base_type} result_metadata]
-                 {:field_id field-id :field_name field-name :field_type field_type})})
+   ;; todo: aggregations may behave differently (ie referenced by position not name)
+   :fields     (for [{col-name :name field-name :display_name :as field} result_metadata
+                     :let [typee (or (:effective_type field) (:base_type field))]]
+                 {:clause [:field col-name {:base-type (str (namespace typee) "/" (name typee))}]
+                  :field_name field-name
+                  :field_type typee})})
 
 (defn model->summary
   "Create a summary description appropriate for embedding.
@@ -581,5 +585,3 @@
     (if (seq model-description)
       (format "%s: %s: %s" model-name model-description fields-str)
       (format "%s: %s" model-name fields-str))))
-
-

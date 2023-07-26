@@ -2,28 +2,29 @@
   (:require
     [clj-http.client :as http]
     [clojure.data.json :as json]
-    [malli.core :as m]
+    [clojure.walk :as walk]
+    [malli.core :as mc]
     [metabase.metabot.settings :as metabot-settings]))
 
 (def inference-schema
   "The schema used to validate LLM infer input"
-  (m/schema
-    [:map
-     [:prompt string?]
-     [:context
-      [:sequential
-       [:map
-        [:table_name string?]
-        [:table_id integer?]
-        [:fields
-         [:sequential
-          [:map
-           ;; TODO - Investigate this
-           [:field_id [:maybe integer?]]
-           [:field_name string?]
-           [:field_type [:or
-                         keyword?
-                         string?]]]]]]]]]))
+  (mc/schema
+   [:map
+    [:prompt string?]
+    [:context
+     [:sequential
+      [:map
+       [:table_name string?]
+       [:table_id integer?]
+       [:fields
+        [:sequential
+         [:map
+          ;; TODO - Investigate this
+          [:clause vector?]
+          [:field_name string?]
+          [:field_type [:or
+                        keyword?
+                        string?]]]]]]]]]))
 
 (defn token-count
   "Return the token count for a given string.
@@ -61,6 +62,15 @@
      (metabot-settings/metabot-inference-ws-url)
      obj-strs->encoddings)))
 
+(defn keywordize-types
+  [mbql]
+  (walk/postwalk (fn [x]
+                   (if (and (instance? clojure.lang.MapEntry x)
+                            (= (key x) :base-type))
+                     [(key x) (keyword (val x))]
+                     x))
+                 mbql))
+
 (defn infer
   "Infer LLM output from a provided prompt and context.
 
@@ -72,7 +82,7 @@
   it will select and join as desired from the provided datasets to provide the
   final answer."
   ([endpoint {:keys [prompt context] :as args}]
-   {:pre [prompt context (m/validate inference-schema args)]}
+   {:pre [prompt context (mc/validate inference-schema args)]}
    (let [request {:method           :post
                   :url              (format "%s/infer" endpoint)
                   :body             (json/write-str {:prompt prompt :context context})
@@ -81,8 +91,8 @@
                   :throw-exceptions false}
          {:keys [body status]} (http/request request)]
      (when (= 200 status)
-       body)))
+       (keywordize-types body))))
   ([prompt-data]
    (infer
-     (metabot-settings/metabot-inference-ws-url)
-     prompt-data)))
+    (metabot-settings/metabot-inference-ws-url)
+    prompt-data)))
