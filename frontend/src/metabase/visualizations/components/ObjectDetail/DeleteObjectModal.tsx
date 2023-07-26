@@ -40,7 +40,12 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       onClose();
       onSuccess();
     } catch (error) {
-      const message = getActionErrorMessage(error);
+      let message = getActionErrorMessage(error);
+
+      if (message.includes("Referential integrity constraint violation")) {
+        message = t`Sorry, the row you're trying to delete is referenced by other rows.`;
+      }
+
       dispatch(addUndo({ icon: "warning", toastColor: "error", message }));
     }
   };
