@@ -16,11 +16,7 @@ function setup() {
   const setValue = jest.fn();
 
   renderWithProviders(
-    <ParameterWidget
-      // parameters={[parameter]}
-      parameter={parameter}
-      setValue={setValue}
-    />,
+    <ParameterWidget parameter={parameter} setValue={setValue} />,
   );
 
   return { setValue };
