@@ -54,6 +54,8 @@ const defaultConfig = {
       //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
+        // exposes window.gc() function that will manually force garbage collection
+        launchOptions.args.push("--js-flags=--expose-gc");
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"
