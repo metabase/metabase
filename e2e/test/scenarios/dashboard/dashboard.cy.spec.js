@@ -822,7 +822,9 @@ describeWithSnowplow("scenarios > dashboard", () => {
 
     saveDashboard();
 
-    cy.findByTestId("entity-view-display-link").findByText(/orders in/i);
+    cy.findByTestId("entity-view-display-link").findByText(
+      /orders in a dashboard/i,
+    );
 
     expectGoodSnowplowEvent({
       event: "new_link_card_created",
