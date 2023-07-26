@@ -26,11 +26,6 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
 }) => {
   const dispatch = useDispatch();
 
-  const disabled =
-    typeof actionId === "undefined" ||
-    typeof objectId === "undefined" ||
-    objectId === null;
-
   const handleSubmit = async () => {
     try {
       await ActionsApi.execute({
@@ -58,7 +53,11 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button
           key="delete"
           danger
-          disabled={disabled}
+          disabled={
+            typeof actionId === "undefined" ||
+            typeof objectId === "undefined" ||
+            objectId === null
+          }
           onClick={handleSubmit}
         >{t`Delete forever`}</Button>,
       ]}
