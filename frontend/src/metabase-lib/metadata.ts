@@ -33,8 +33,6 @@ export function metadataProvider(
   databaseId: DatabaseId,
   metadata: Metadata,
 ): MetadataProvider {
-  // eslint-disable-next-line no-console
-  console.log("Initializing new metadata provider for metadata", metadata);
   return ML.metadataProvider(databaseId, metadata);
 }
 
