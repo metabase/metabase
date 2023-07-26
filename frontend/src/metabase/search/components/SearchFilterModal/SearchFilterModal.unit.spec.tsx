@@ -3,35 +3,32 @@ import userEvent from "@testing-library/user-event";
 import { waitFor, within, renderWithProviders, screen } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks";
-import { SearchModelType } from "metabase-types/api";
-import { SearchFilterType } from "metabase/search/components/SearchFilterModal/types";
 import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
+import { SearchModelType } from "metabase-types/api";
+import { SearchFilters } from "metabase/search/util/filter-types";
 
 const TestSearchFilterModal = ({
   initialFilters = {},
-  onChangeFilters = jest.fn(),
+  onChangeFilters,
 }: {
-  initialFilters?: SearchFilterType;
-  onChangeFilters?: (filters: SearchFilterType) => void;
+  initialFilters?: SearchFilters;
+  onChangeFilters: jest.Mock;
 }) => {
-  const [filters, setFilters] = useState<SearchFilterType>(initialFilters);
+  const [filters, setFilters] = useState(initialFilters);
 
-  const onChange = (newFilters: SearchFilterType) => {
-    setFilters(newFilters);
-    onChangeFilters(newFilters);
-  };
+  onChangeFilters.mockImplementation(newFilters => setFilters(newFilters));
 
   return (
     <SearchFilterModal
       isOpen={true}
       setIsOpen={jest.fn()}
       value={filters}
-      onChangeFilters={onChange}
+      onChangeFilters={onChangeFilters}
     />
   );
 };
 
-const TEST_TYPES: SearchModelType[] = [
+const TEST_TYPES: Array<SearchModelType> = [
   "dashboard",
   "collection",
   "database",
@@ -42,16 +39,13 @@ const TEST_TYPES: SearchModelType[] = [
   "metric",
 ];
 
-const TEST_INITIAL_FILTERS: SearchFilterType = {
+const TEST_INITIAL_FILTERS: SearchFilters = {
   type: TEST_TYPES,
 };
 
 const setup = async ({
   initialFilters = {},
   availableModelTypes = TEST_TYPES,
-}: {
-  initialFilters?: SearchFilterType;
-  availableModelTypes?: SearchModelType[];
 } = {}) => {
   const onChangeFilters = jest.fn();
 
@@ -77,40 +71,39 @@ const setup = async ({
 };
 
 describe("SearchFilterModal", () => {
-  // TODO: Write keyboard navigation tests.
-
-  describe("Filter display", () => {
-    it("should populate selected filters when `value` is passed in", async () => {
-      await setup({
-        initialFilters: TEST_INITIAL_FILTERS,
-      });
-
-      const typeFilter = screen.getByTestId("type-search-filter");
-      within(typeFilter)
-        .getAllByRole("checkbox")
-        .forEach(checkbox => {
-          expect(checkbox).toBeChecked();
-        });
+  it("should populate selected filters when `value` is passed in", async () => {
+    await setup({
+      initialFilters: TEST_INITIAL_FILTERS,
     });
+
+    const typeFilter = screen.getByTestId("type-search-filter");
+    within(typeFilter)
+      .getAllByRole("checkbox")
+      .forEach(checkbox => {
+        expect(checkbox).toBeChecked();
+      });
   });
 
-  describe("Apply All Filters", () => {
-    it("Should return all selected filters when `Apply all filters` is clicked", async () => {
-      const { onChangeFilters } = await setup({
-        initialFilters: TEST_INITIAL_FILTERS,
-      });
-
-      userEvent.click(screen.getByText("Apply all filters"));
-      expect(onChangeFilters).toHaveBeenCalledWith(TEST_INITIAL_FILTERS);
+  it("should return all selected filters when `Apply all filters` is clicked", async () => {
+    const { onChangeFilters } = await setup({
+      initialFilters: TEST_INITIAL_FILTERS,
     });
+
+    userEvent.click(screen.getByText("Apply all filters"));
+    expect(onChangeFilters).toHaveBeenCalledWith(TEST_INITIAL_FILTERS);
   });
 
-  describe("Clear All Filters", () => {
-    it("Should clear all selections when `Clear all filters` is clicked", async () => {
-      const { onChangeFilters } = await setup();
+  it("should clear all selections when `Clear all filters` is clicked", async () => {
+    const { onChangeFilters } = await setup();
 
-      userEvent.click(screen.getByText("Clear all filters"));
-      expect(onChangeFilters).toHaveBeenCalledWith({});
-    });
+    userEvent.click(screen.getByText("Clear all filters"));
+    expect(onChangeFilters).toHaveBeenCalledWith({});
+  });
+
+  it("should not change filters when `Cancel` is clicked", async () => {
+    const { onChangeFilters } = await setup();
+
+    userEvent.click(screen.getByText("Cancel"));
+    expect(onChangeFilters).not.toHaveBeenCalled();
   });
 });

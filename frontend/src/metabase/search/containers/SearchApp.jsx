@@ -16,10 +16,11 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
-} from "metabase/search/util";
+} from "metabase/search/util/util";
 import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
+import { SearchFilterKeys } from "metabase/search/util/filter-types";
 import {
   SearchBody,
   SearchControls,
@@ -51,8 +52,8 @@ export default function SearchApp({ location }) {
   const query = useMemo(
     () => ({
       q: searchText,
-      ..._.omit(searchFilters, "type"),
-      models: selectedSidebarType ?? searchFilters.type,
+      ..._.omit(searchFilters, SearchFilterKeys.Type),
+      models: selectedSidebarType ?? searchFilters[SearchFilterKeys.Type],
       limit: PAGE_SIZE,
       offset: PAGE_SIZE * page,
     }),

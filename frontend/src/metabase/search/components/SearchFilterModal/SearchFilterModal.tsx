@@ -1,11 +1,13 @@
 import { t } from "ttag";
 import { useEffect, useMemo, useState } from "react";
 import Modal from "metabase/components/Modal";
-import {
-  SearchFilterComponent,
-  SearchFilterType,
-} from "metabase/search/components/SearchFilterModal/types";
 import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter";
+import {
+  FilterType,
+  SearchFilterComponent,
+  SearchFilterKeys,
+  SearchFilters,
+} from "metabase/search/util/filter-types";
 import { TypeFilter } from "./filters/TypeFilter";
 
 export const SearchFilterModal = ({
@@ -16,10 +18,10 @@ export const SearchFilterModal = ({
 }: {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  value: SearchFilterType;
-  onChangeFilters: (filters: SearchFilterType) => void;
+  value: SearchFilters;
+  onChangeFilters: (filters: SearchFilters) => void;
 }) => {
-  const [output, setOutput] = useState<SearchFilterType>(value);
+  const [output, setOutput] = useState<SearchFilters>(value);
 
   useEffect(() => {
     setOutput(value);
@@ -39,29 +41,33 @@ export const SearchFilterModal = ({
     setIsOpen(false);
   };
 
-  const availableFilters: {
-    type: SearchFilterComponent<"type">;
-  } = useMemo(() => {
-    return {
-      type: TypeFilter,
-    };
+  const filterMap: Record<FilterType, SearchFilterComponent> = {
+    type: TypeFilter,
+  };
+
+  const availableFilters: FilterType[] = useMemo(() => {
+    return [SearchFilterKeys.Type];
   }, []);
 
   return isOpen ? (
     <Modal isOpen={isOpen} onClose={closeModal} title={t`Filter by`}>
-      {Object.entries(availableFilters).map(([key, Filter]) => (
-        <Filter
-          key={key}
-          data-testid={`${key}-search-filter`}
-          value={output[key]}
-          onChange={val =>
-            setOutput({
-              ...output,
-              [key]: val,
-            })
-          }
-        />
-      ))}
+      {availableFilters.map(key => {
+        const Filter = filterMap[key];
+        return (
+          <Filter
+            key={key}
+            data-testid={`${key}-search-filter`}
+            value={output[key]}
+            onChange={val =>
+              setOutput({
+                ...output,
+                [key]: val,
+              })
+            }
+          />
+        );
+      })}
+
       <SearchFilterModalFooter
         onApply={applyFilters}
         onCancel={closeModal}

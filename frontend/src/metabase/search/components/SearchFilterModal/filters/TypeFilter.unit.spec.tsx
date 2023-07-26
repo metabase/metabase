@@ -1,12 +1,13 @@
+/* eslint-disable react/prop-types */
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { SearchModelType } from "metabase-types/api";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { TypeFilter } from "metabase/search/components/SearchFilterModal/filters/TypeFilter";
+import { SearchModelType } from "metabase-types/api";
 
-const TEST_TYPES: SearchModelType[] = [
+const TEST_TYPES: Array<SearchModelType> = [
   "action",
   "app",
   "card",
@@ -21,7 +22,7 @@ const TEST_TYPES: SearchModelType[] = [
   "metric",
 ];
 
-const TEST_TYPE_SUBSET: SearchModelType[] = [
+const TEST_TYPE_SUBSET: Array<SearchModelType> = [
   "app",
   "dashboard",
   "collection",
@@ -35,9 +36,9 @@ const TestTypeFilterComponent = ({
   initialValue?: SearchModelType[];
   onChangeFilters: (value: SearchModelType[]) => void;
 }) => {
-  const [value, setValue] = useState<string[]>(initialValue);
+  const [value, setValue] = useState<SearchModelType[]>(initialValue);
 
-  const onChange = (value: string[]) => {
+  const onChange = (value: SearchModelType[]) => {
     setValue(value);
     onChangeFilters(value);
   };
@@ -48,9 +49,12 @@ const TestTypeFilterComponent = ({
 const setup = async ({
   availableModels = TEST_TYPES,
   initialValue = [],
+}: {
+  availableModels?: SearchModelType[];
+  initialValue?: SearchModelType[];
 } = {}) => {
   setupSearchEndpoints(
-    availableModels.map((type: string, index: number) =>
+    availableModels.map((type, index) =>
       createMockSearchResult({ model: type, id: index + 1 }),
     ),
   );

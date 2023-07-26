@@ -1,14 +1,15 @@
+/* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { Flex } from "@mantine/core";
-import { SearchModelType } from "metabase-types/api";
 import { IconName } from "metabase/core/components/Icon";
 import { TypeSidebarButton } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar.styled";
+import { SearchModelType } from "metabase-types/api";
 
-const SEARCH_FILTERS: Array<{
+const SEARCH_FILTERS: {
   name: string;
-  filter: SearchModelType | "app";
   icon: IconName;
-}> = [
+  filter: SearchModelType;
+}[] = [
   {
     name: t`Apps`,
     filter: "app",
@@ -66,15 +67,11 @@ export const TypeSearchSidebar = ({
   selectedType = null,
   onSelectType,
 }: {
-  availableModels: Array<SearchModelType | "app">;
-  selectedType: SearchModelType | "app" | null;
-  onSelectType: (type: SearchModelType | "app" | null) => void;
+  availableModels: SearchModelType[];
+  selectedType: SearchModelType | null;
+  onSelectType: (type: SearchModelType | null) => void;
 }) => {
-  const searchModels: {
-    name: string;
-    filter: SearchModelType | "app" | null;
-    icon: IconName;
-  }[] = [
+  const searchModels = [
     {
       name: t`All items`,
       icon: "search",

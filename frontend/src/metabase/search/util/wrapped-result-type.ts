@@ -1,5 +1,5 @@
-import type { IconName } from "metabase/core/components/Icon";
-import type { SearchResult, Collection } from "metabase-types/api";
+import { Collection, SearchResult } from "metabase-types/api";
+import { IconName } from "metabase/core/components/Icon";
 
 export interface WrappedResult extends SearchResult {
   getUrl: () => string;

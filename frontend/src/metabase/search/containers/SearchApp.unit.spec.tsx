@@ -11,8 +11,9 @@ import {
   createMockDatabase,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
-import { SearchFilterType } from "metabase/nav/components/Search/SearchFilterModal/types";
 import { SearchResult } from "metabase-types/api";
+
+import { SearchFilters } from "metabase/search/util/filter-types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({
@@ -44,7 +45,7 @@ const TEST_ITEMS: Partial<SearchResult>[] = [
   { name: "Metric", model: "metric" },
 ];
 
-const TEST_SEARCH_RESULTS = TEST_ITEMS.map((metadata, index) =>
+const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
   createMockSearchResult({ ...metadata, id: index + 1 }),
 );
 
@@ -55,8 +56,8 @@ const setup = async ({
   searchFilters = {},
   searchItems = TEST_SEARCH_RESULTS,
 }: {
-  searchText: string;
-  searchFilters?: SearchFilterType;
+  searchText?: string;
+  searchFilters?: SearchFilters;
   searchItems?: SearchResult[];
 }) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
@@ -67,7 +68,6 @@ const setup = async ({
     ...searchFilters,
     q: searchText,
   };
-
   const searchParams = querystring.stringify(params);
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 

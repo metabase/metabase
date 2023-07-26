@@ -2,7 +2,7 @@ import { MouseEvent, useEffect, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { withRouter } from "react-router";
-import { Location, LocationDescriptorObject } from "history";
+import { LocationDescriptorObject } from "history";
 
 import { usePrevious } from "react-use";
 import { Icon } from "metabase/core/components/Icon";
@@ -19,10 +19,11 @@ import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
   isSearchPageLocation,
-} from "metabase/search/util";
+} from "metabase/search/util/util";
 import RecentsList from "metabase/search/components/RecentsList/RecentsList";
 import SearchResults from "metabase/search/components/SearchResults/SearchResults";
 import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
+import { SearchAwareLocation } from "metabase/search/util/search-location-type";
 import {
   SearchInputContainer,
   SearchIcon,
@@ -35,8 +36,6 @@ import {
 } from "./SearchBar.styled";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
-
-type SearchAwareLocation = Location<{ q?: string }>;
 
 type RouterProps = {
   location: SearchAwareLocation;

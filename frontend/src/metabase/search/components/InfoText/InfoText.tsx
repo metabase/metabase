@@ -12,8 +12,8 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getTranslatedEntityName } from "metabase/nav/utils";
 
 import type { Collection } from "metabase-types/api";
-import { WrappedResult } from "metabase/search/components/types";
 import { CollectionBadge } from "metabase/search/components/CollectionBadge/CollectionBadge";
+import { WrappedResult } from "metabase/search/util/wrapped-result-type";
 import type TableType from "metabase-lib/metadata/Table";
 
 export function InfoText({ result }: { result: WrappedResult }) {

@@ -2,20 +2,22 @@
 import { t } from "ttag";
 import { getTranslatedEntityName } from "metabase/nav/utils";
 import { Checkbox, Flex } from "metabase/ui";
-import { SearchModelType } from "metabase-types/api";
 import { useSearchListQuery } from "metabase/common/hooks";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { SearchFilter } from "metabase/search/components/SearchFilterModal/filters/SearchFilter";
-import { SearchFilterComponent } from "metabase/search/components/SearchFilterModal/types";
 
-const SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
+import { SearchFilterComponent } from "metabase/search/util/filter-types";
+
+const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
 export const TypeFilter: SearchFilterComponent<"type"> = ({
   value = [],
   onChange,
   "data-testid": dataTestId,
 }) => {
-  const { metadata, isLoading } = useSearchListQuery({ query: SEARCH_QUERY });
+  const { metadata, isLoading } = useSearchListQuery({
+    query: EMPTY_SEARCH_QUERY,
+  });
 
   const availableModels = (metadata && metadata.available_models) ?? [];
   return isLoading ? (
@@ -32,7 +34,7 @@ export const TypeFilter: SearchFilterComponent<"type"> = ({
           </Flex>
         )}
       >
-        {availableModels.map((model: SearchModelType) => (
+        {availableModels.map(model => (
           <Checkbox
             key={model}
             value={model}

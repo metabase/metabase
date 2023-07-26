@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Grid, Title } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Icon } from "metabase/core/components/Icon";
@@ -14,7 +15,7 @@ export const SearchFilter = ({
   tooltip?: string;
   isLoading?: boolean;
   "data-testid"?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) => {
   return (
     <Grid data-testid={dataTestId}>

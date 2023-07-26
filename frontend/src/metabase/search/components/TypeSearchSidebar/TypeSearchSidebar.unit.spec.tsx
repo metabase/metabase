@@ -1,18 +1,18 @@
 import { useState } from "react";
-import { SearchModelType } from "metabase-types/api";
 import { IconName } from "metabase/core/components/Icon";
 import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
 import { screen, render, within } from "__support__/ui";
+import { SearchModelType } from "metabase-types/api";
 
 type TypeSearchSidebarSetupProps = {
-  initSelectedType?: SearchModelType | "app" | null;
+  initSelectedType?: SearchModelType | null;
 };
 
-const TEST_TYPES: Array<{
+const TEST_TYPES: {
   name: string;
-  filter: SearchModelType | "app";
   icon: IconName;
-}> = [
+  filter: SearchModelType;
+}[] = [
   {
     name: "Apps",
     filter: "app",
@@ -76,9 +76,7 @@ const TEST_ALL_TYPES = [TEST_ALL_ITEMS_TYPE, ...TEST_TYPES];
 const TestTypeSearchSidebarComponent = ({
   initSelectedType = null,
 }: TypeSearchSidebarSetupProps) => {
-  const [selectedType, onSelectType] = useState<SearchModelType | "app" | null>(
-    initSelectedType,
-  );
+  const [selectedType, onSelectType] = useState(initSelectedType);
 
   return (
     <div>
