@@ -1,72 +1,19 @@
 (ns metabase.lib.schema.template-tag
-  "NOTE: docstring below was copied over from the old Schema version of [[metabase.mbql.schema]] without adjusting it to
-  make a ton of sense here. So don't take it literally. TODO -- rework docstring
-
-  The next few clauses are used for parameter `:target`... this maps the parameter to an actual template tag in a
-  native query or Field for MBQL queries.
-
-  examples:
-
-    {:target [:dimension [:template-tag \"my_tag\"]]}
-    {:target [:dimension [:template-tag {:id \"my_tag_id\"}]]}
-    {:target [:variable [:template-tag \"another_tag\"]]}
-    {:target [:variable [:template-tag {:id \"another_tag_id\"}]]}
-    {:target [:dimension [:field 100 nil]]}
-    {:target [:field 100 nil]}
-
-  I'm not 100% clear on which situations we'll get which version. But I think the following is generally true:
-
-  * Things are wrapped in `:dimension` when we're dealing with Field filter template tags
-  * Raw value template tags wrap things in `:variable` instead
-  * Dashboard parameters are passed in with plain Field clause targets.
-
-  One more thing to note: apparently `:expression`... is allowed below as well. I'm not sure how this is actually
-  supposed to work, but we have test #18747 that attempts to set it. I'm not convinced this should actually be
-  allowed.
-
-  Template tags are used to specify {{placeholders}} in native queries that are replaced with some sort of value when
-  the query itself runs. There are four basic types of template tag for native queries:
-
-  1. Field filters, which are used like
-
-         SELECT * FROM table WHERE {{field_filter}}
-
-    These reference specific Fields and are replaced with entire conditions, e.g. `some_field > 1000`
-
-  2. Raw values, which are used like
-
-         SELECT * FROM table WHERE my_field = {{x}}
-
-    These are replaced with raw values.
-
-  3. Native query snippets, which might be used like
-
-         SELECT * FROM ({{snippet: orders}}) source
-
-     These are replaced with `NativeQuerySnippet`s from the application database.
-
-  4. Source query Card IDs, which are used like
-
-         SELECT * FROM ({{#123}}) source
-
-    These are replaced with the query from the Card with that ID.
-
-  Field filters and raw values usually have their value specified by `:parameters` (see [[Parameters]] below)."
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
-   [metabase.lib.schema.parameter :as parameter]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.util.malli.registry :as mr]))
 
-;; Schema for valid values of `:widget-type` for a field filter template tag.
+;; Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]].
 (mr/def ::widget-type
   (into
    [:enum
     ;; this will be a nicer error message than Malli trying to list every single possible allowed type.
     {:error/message "Valid template tag :widget-type"}
     :none]
-   (keys parameter/types)))
+   (keys mbql.s/parameter-types)))
 
 ;; Schema for valid values of template tag `:type`.
 (mr/def ::type
@@ -99,23 +46,17 @@
 ;;     :type         :dimension,
 ;;     :dimension    [:field 4 nil]
 ;;     :widget-type  :date/all-options}
-(defn field-filter-schema
-  "Create a schema for a template tag definition. This is abstracted out into a function because the version
-  in [[metabase.mbql.schema]] is exactly the same other than using a slightly different schema for field refs."
-  [field-ref-schema]
+(mr/def ::field-filter
   [:merge
    [:ref ::value.common]
    [:map
     [:type        [:= :dimension]]
-    [:dimension   field-ref-schema]
+    [:dimension   [:ref :mbql.clause/field]]
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
     [:widget-type [:ref ::widget-type]]
     ;; optional map to be appended to filter clause
     [:options {:optional true} :map]]])
-
-(mr/def ::field-filter
-  (field-filter-schema [:ref :mbql.clause/field]))
 
 ;; Example:
 ;;
@@ -149,13 +90,9 @@
     [:type    [:= :card]]
     [:card-id ::id/card]]])
 
-(def raw-value-template-tag-types
-  "Set of valid values of `:type` for raw value template tags."
-  #{:number :text :date :boolean})
-
 ;; Valid values of `:type` for raw value template tags.
 (mr/def ::raw-value.type
-  (into [:enum] raw-value-template-tag-types))
+  (into [:enum] mbql.s/raw-value-template-tag-types))
 
 ;; Example:
 ;;
@@ -173,30 +110,20 @@
    [:map
     [:type [:ref ::raw-value.type]]]])
 
-(defn template-tag-schema
-  "Create a schema for a template tag definition. This is abstracted out into a function because the version
-  in [[metabase.mbql.schema]] is exactly the same other than using a slightly different schema for field filters."
-  [field-filter-schem]
+(mr/def ::template-tag
   [:and
    [:map
     [:type [:ref ::type]]]
    [:multi {:dispatch :type}
-    [:dimension   field-filter-schem]
+    [:dimension   [:ref ::field-filter]]
     [:snippet     [:ref ::snippet]]
     [:card        [:ref ::source-query]]
     ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
 
-(mr/def ::template-tag
-  (template-tag-schema [:ref ::field-filter]))
-
-(defn template-tag-map-schema
-  "Create the schema for a template tag map of template tag name -> definition. This is abstracted out into a function
-  because the version in [[metabase.mbql.schema]] is exactly the same other than using a slightly different template
-  tag schema."
-  [template-tag-schem]
+(mr/def ::template-tag-map
   [:and
-   [:map-of ::common/non-blank-string template-tag-schem]
+   [:map-of ::common/non-blank-string [:ref ::template-tag]]
    ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
    [:fn
     {:error/message "keys in template tag map must match the :name of their values"}
@@ -204,6 +131,3 @@
       (every? (fn [[tag-name tag-definition]]
                 (= tag-name (:name tag-definition)))
               m))]])
-
-(mr/def ::template-tag-map
-  (template-tag-map-schema [:ref ::template-tag]))

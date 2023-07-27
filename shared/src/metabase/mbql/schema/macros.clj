@@ -41,7 +41,7 @@
                                                      [(keyword arg) `'~schema])
                                                    (partition 2 arg-names-and-schemas)))
                         :doc         (format "Schema for a valid %s clause." clause-name))
-         [:ref ~clause-registry-name]))))
+         ~clause-registry-name))))
 
 (defmacro one-of
   "Define a schema that accepts one of several different MBQL clauses.
@@ -50,4 +50,6 @@
   [& clauses]
   `(metabase.mbql.schema.helpers/one-of*
     ~@(for [clause clauses]
-        [`(or (:clause-name (meta (resolve '~clause))) '~clause) clause])))
+        [`(or (:clause-name (meta (resolve '~clause)))
+              '~clause)
+         clause])))

@@ -632,7 +632,33 @@
   :liquibase
   {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.4.6"}}
    :extra-paths ["dev/src"]
-   :main-opts   ["-m" "dev.liquibase"]}}}
+   :main-opts   ["-m" "dev.liquibase"]}
+
+  ;; the following aliases are convenience for running tests against certain parts of the codebase.
+  ;;
+  ;;   clj -X:dev:ee:ee-dev:test:test/mbql
+
+  ;; run tests against MLv2. Very fast since this is almost all ^:parallel
+  :test/mlv2
+  {:exec-args {:only ["test/metabase/lib"]}}
+
+  ;; test the Query Processor
+  :test/qp
+  {:exec-args {:only ["test/metadata/driver"
+                      "test/metabase/query_processor"
+                      "test/metabase/query_processor_test"
+                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.mbql` code, and the QP
+  :test/mbql
+  {:exec-args {:only ["shared/test/mbql"
+                      "test/metabase/lib"
+                      "test/metadata/driver"
+                      "test/metabase/query_processor"
+                      "test/metabase/query_processor_test"
+                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}}}
+
+
 
   ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.

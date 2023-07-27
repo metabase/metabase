@@ -182,15 +182,21 @@
   #_:unit [:ref ::temporal-bucketing/unit.time.interval])
 
 (mr/def ::temporal-extract.unit
-  [:or
-   [:ref ::temporal-bucketing/unit.date-time.extract]
-   [:enum
-    :week-of-year-iso
-    :week-of-year-us
-    :week-of-year-instance]])
+  [:enum
+   :year-of-era
+   :quarter-of-year
+   :month-of-year
+   :week-of-year-iso
+   :week-of-year-us
+   :week-of-year-instance
+   :day-of-month
+   :day-of-week
+   :hour-of-day
+   :minute-of-hour
+   :second-of-minute])
 
 (mr/def ::temporal-extract.week-mode
-  [:enum {:error/message "valid week extraction mode"} :iso :us :instance])
+  [:enum :iso :us :instance])
 
 ;;; TODO -- this should make sure unit agrees with the type of expression we're extracting from.
 (mbql-clause/define-catn-mbql-clause :temporal-extract :- :type/Integer

@@ -1,46 +1,44 @@
 (ns metabase.mbql.schema-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.mbql.schema :as mbql.s]
-   [clojure.string :as str]
-   [metabase.lib.schema.template-tag :as lib.schema.template-tag]))
+   [metabase.mbql.schema :as mbql.s]))
 
-#?(:clj
-   (deftest ^:parallel temporal-literal-test
-     (testing "Make sure our schema validates temporal literal clauses correctly"
-       (doseq [[schema cases] {::mbql.s/literal.temporal         [[true "00:00:00"]
-                                                                  [true "00:00:00Z"]
-                                                                  [true "00:00:00+00:00"]
-                                                                  [true "2022-01-01"]
-                                                                  [true "2022-01-01T00:00:00"]
-                                                                  [true "2022-01-01T00:00:00+00:00"]
-                                                                  [true "2022-01-01T00:00:00Z"]
-                                                                  [false "2022-01-01 00:00:00"]
-                                                                  [false "a string"]]
-                               ::mbql.s/literal.date-or-datetime [[false "00:00:00"]
-                                                                  [false "00:00:00Z"]
-                                                                  [false "00:00:00+00:00"]
-                                                                  [true "2022-01-01"]
-                                                                  [true "2022-01-01T00:00:00"]
-                                                                  [true "2022-01-01T00:00:00+00:00"]
-                                                                  [true "2022-01-01T00:00:00Z"]
-                                                                  [false "2022-01-01 00:00:00"]
-                                                                  [false "a string"]]
-                               ::mbql.s/literal.time             [[true "00:00:00"]
-                                                                  [true "00:00:00Z"]
-                                                                  [true "00:00:00+00:00"]
-                                                                  [false "2022-01-01"]
-                                                                  [false "2022-01-01T00:00:00"]
-                                                                  [false "2022-01-01T00:00:00+00:00"]
-                                                                  [false "2022-01-01T00:00:00Z"]
-                                                                  [false "2022-01-01 00:00:00"]
-                                                                  [false "a string"]]}
-               [expected clause]  cases]
-         (testing (pr-str schema clause)
-           (is (= expected
-                  (mc/validate schema clause))))))))
+(deftest ^:parallel temporal-literal-test
+  (testing "Make sure our schema validates temporal literal clauses correctly"
+    (doseq [[schema-var cases] {#'mbql.s/TemporalLiteral       [[true "00:00:00"]
+                                                                [true "00:00:00Z"]
+                                                                [true "00:00:00+00:00"]
+                                                                [true "2022-01-01"]
+                                                                [true "2022-01-01T00:00:00"]
+                                                                [true "2022-01-01T00:00:00+00:00"]
+                                                                [true "2022-01-01T00:00:00Z"]
+                                                                [false "2022-01-01 00:00:00"]
+                                                                [false "a string"]]
+                                #'mbql.s/DateOrDatetimeLiteral [[false "00:00:00"]
+                                                                [false "00:00:00Z"]
+                                                                [false "00:00:00+00:00"]
+                                                                [true "2022-01-01"]
+                                                                [true "2022-01-01T00:00:00"]
+                                                                [true "2022-01-01T00:00:00+00:00"]
+                                                                [true "2022-01-01T00:00:00Z"]
+                                                                [false "2022-01-01 00:00:00"]
+                                                                [false "a string"]]
+                                #'mbql.s/TimeLiteral           [[true "00:00:00"]
+                                                                [true "00:00:00Z"]
+                                                                [true "00:00:00+00:00"]
+                                                                [false "2022-01-01"]
+                                                                [false "2022-01-01T00:00:00"]
+                                                                [false "2022-01-01T00:00:00+00:00"]
+                                                                [false "2022-01-01T00:00:00Z"]
+                                                                [false "2022-01-01 00:00:00"]
+                                                                [false "a string"]]}
+            [expected clause] cases]
+      (testing (pr-str schema-var clause)
+        (is (= expected
+               (mc/validate @schema-var clause)))))))
 
 (deftest ^:parallel field-clause-test
   (testing "Make sure our schema validates `:field` clauses correctly"
@@ -107,8 +105,8 @@
                         :type         :dimension
                         :widget-type  :date/all-options
                         :dimension    template-tag-dimension}]
-      (is (nil? (me/humanize (mc/explain ::mbql.s/parameter parameter))))
-      (is (nil? (me/humanize (mc/explain ::mbql.s/template-tag-definition template-tag))))
+      (is (nil? (me/humanize (mc/explain mbql.s/Parameter parameter))))
+      (is (nil? (me/humanize (mc/explain mbql.s/TemplateTag template-tag))))
       (let [query {:database 1
                    :type     :native
                    :native   {:query         (str/join \newline  ["SELECT dayname(\"TIMESTAMP\") as \"day\""

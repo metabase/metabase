@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [distinct])
   (:require
    [clojure.string :as str]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.types]
    [metabase.util.malli.registry :as mr]))
 
@@ -10,15 +9,20 @@
 
 ;;; --------------------------------------------------- defclause ----------------------------------------------------
 
+(defn- wrap-clause-arg-schema [arg-schema]
+  [:schema (if (qualified-keyword? arg-schema)
+             [:ref arg-schema]
+             arg-schema)])
+
 (defn- clause-arg-schema [arg-schema]
   ;; for things like optional schemas
   (if-not (vector? arg-schema)
-    [:schema arg-schema]
+    (wrap-clause-arg-schema arg-schema)
     (let [[option arg-schema :as vector-arg-schema] arg-schema]
       (case option
-        :optional [:? [:maybe [:schema arg-schema]]]
-        :rest     [:* [:schema arg-schema]]
-        [:schema vector-arg-schema]))))
+        :optional [:? [:maybe (wrap-clause-arg-schema arg-schema)]]
+        :rest     [:* (wrap-clause-arg-schema arg-schema)]
+        (wrap-clause-arg-schema vector-arg-schema)))))
 
 (defn clause
   "Impl of [[metabase.mbql.schema.macros/defclause]] macro. Creates a Malli schema."
@@ -58,7 +62,9 @@
    [:multi {:dispatch      clause-tag
             :error/message (str "Must be a valid instance of one of these clauses: " (str/join ", " (map first tags+schemas)))}]
    (for [[tag schema] tags+schemas]
-     [tag schema])))
+     [tag (if (qualified-keyword? schema)
+            [:ref schema]
+            schema)])))
 
 (def KeywordOrString
   "Schema for any keyword or string."

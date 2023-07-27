@@ -46,12 +46,12 @@
 ;;; left joins will support the `:left-join` feature.
 ;;;
 ;;; When `:strategy` is not specified, `:left-join` is the default strategy.
-(def join-strategies
-  "Valid values of the `:strategy` key in a join map."
-  #{:left-join :right-join :inner-join :full-join})
-
 (mr/def ::strategy
-  (into [:enum] join-strategies))
+  [:enum
+   :left-join
+   :right-join
+   :inner-join
+   :full-join])
 
 (mr/def ::join
   [:map

@@ -2,8 +2,8 @@
   (:require
    [medley.core :as m]
    [metabase.domain-entities.specs :refer [FieldType MBQL]]
-   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.schema :as su]
@@ -27,10 +27,12 @@
 
 (def ^:private Limit su/IntGreaterThanZero)
 
-(def ^:private JoinStrategy (apply s/enum lib.schema.join/join-strategies))
+(def ^:private JoinStrategy
+  (apply s/enum mbql.s/join-strategies))
 
 (def ^:private Joins [{(s/required-key :source)    Source
                        (s/required-key :condition) MBQL
+
                        (s/optional-key :strategy)  JoinStrategy}])
 
 (def ^:private TransformName s/Str)

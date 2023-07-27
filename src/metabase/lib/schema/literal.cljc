@@ -6,8 +6,7 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.malli.registry :as mr]
-   #?@(:clj ([metabase.lib.schema.literal.jvm]))
-   [malli.error :as me]))
+   #?@(:clj ([metabase.lib.schema.literal.jvm]))))
 
 (defmethod expression/type-of-method :dispatch-type/nil
   [_nil]
@@ -108,7 +107,6 @@
 
 (mr/def ::string.time
   [:or
-   {:error/message "time string literal"}
    [:re
     {:error/message "local time string literal"}
     local-time-regex]
@@ -118,7 +116,6 @@
 
 (mr/def ::string.datetime
   [:or
-   {:error/message "date time string literal"}
    [:re
     {:error/message "local date time string literal"}
     local-datetime-regex]
@@ -143,8 +140,8 @@
 (mr/def ::time
   #?(:clj [:or
            ::string.time
-           [:schema {:error/message "instance of java.time.LocalTime"}  :time/local-time]
-           [:schema {:error/message "instance of java.time.OffsetTime"} :time/offset-time]]
+           :time/local-time
+           :time/offset-time]
      :cljs ::string.time))
 
 (mr/def ::datetime
@@ -185,8 +182,6 @@
 ;;; usage they basically always have `:base-type`; in MLv2 we're trying to use `:effective-type` everywhere instead;
 ;;; These clauses are useless/pointless without type information anyway, so let's enforce this rule going forward.
 ;;; Conversion can take care of `:base-type` <=> `:effective-type` as needed.
-;;;
-;;; TODO -- this is missing a lot of the stuff from [[metabase.mbql.schema/ValueTypeInfo]]
 (mr/def ::value.options
   [:merge
    [:ref ::common/options]
