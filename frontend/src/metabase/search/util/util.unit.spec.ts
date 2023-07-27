@@ -62,7 +62,9 @@ describe("getFiltersFromLocation", () => {
   it("should return an empty object when on a non-search page", () => {
     const location = {
       pathname: "/collection/root",
-      query: {},
+      query: {
+        [SearchFilterKeys.Type]: ["app", "database"],
+      },
     };
     expect(getFiltersFromLocation(location as SearchAwareLocation)).toEqual({});
   });
