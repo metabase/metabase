@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   ParametersForActionExecution,
   WritebackActionId,
@@ -35,7 +37,8 @@ const ActionExecuteModal = ({
   }
 
   if (!action) {
-    throw new Error("action is not defined");
+    // TypeScript check - this should never happen
+    return <LoadingAndErrorWrapper error={t`Failed to load action details`} />;
   }
 
   const handleSubmit = (parameters: ParametersForActionExecution) => {
