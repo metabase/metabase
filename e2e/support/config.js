@@ -5,6 +5,7 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 
+const isCI = process.env["CI"];
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
@@ -51,8 +52,8 @@ const defaultConfig = {
      ********************************************************************/
 
     on("before:browser:launch", (browser = {}, launchOptions) => {
-      //  Open dev tools in Chrome by default
-      if (browser.name === "chrome" || browser.name === "chromium") {
+      //  Open dev tools in Chrome by default, but only for local runs
+      if (!isCI && (browser.name === "chrome" || browser.name === "chromium")) {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
       }
 
