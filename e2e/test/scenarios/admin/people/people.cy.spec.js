@@ -131,6 +131,7 @@ describe("scenarios > admin > people", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(FULL_NAME);
+      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
     });
 
     it("should allow admin to create new users without first name or last name (metabase#22754)", () => {
@@ -198,6 +199,9 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Deactivate user").click();
         clickButton("Deactivate");
         cy.findByText(FULL_NAME).should("not.exist");
+        cy.location().should(loc =>
+          expect(loc.pathname).to.eq("/admin/people"),
+        );
 
         cy.log("It should load inactive users");
         cy.findByText("Deactivated").click();
@@ -205,6 +209,9 @@ describe("scenarios > admin > people", () => {
         cy.icon("refresh").click();
         cy.findByText(`Reactivate ${FULL_NAME}?`);
         clickButton("Reactivate");
+        cy.location().should(loc =>
+          expect(loc.pathname).to.eq("/admin/people"),
+        );
       });
     });
 
@@ -221,6 +228,7 @@ describe("scenarios > admin > people", () => {
       clickButton("Update");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NEW_FULL_NAME);
+      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
     });
 
     it("should reset user password without SMTP set up", () => {
@@ -236,6 +244,7 @@ describe("scenarios > admin > people", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
+      cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
     });
 
     it(
