@@ -3,10 +3,15 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel calculate-names-even-without-metadata-test
   (testing "Even if metadata is missing, we should still be able to calculate reasonable display names"
@@ -97,4 +102,34 @@
                     lib/visible-columns)))))
   (testing "nil has no visible columns (#31366)"
     (is (empty? (-> lib.tu/venues-query
-                    (lib/visible-columns nil))))))
+                    (lib/visible-columns nil)))))
+
+  (testing "multiple aggregations"
+    (lib.metadata.calculation/visible-columns
+      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          (lib/aggregate (lib/count))
+          (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))))))
+
+(deftest ^:parallel source-cards-test
+  (testing "with :source-card"
+    (let [query {:lib/type     :mbql/query
+                 :lib/metadata lib.tu/metadata-provider-with-mock-cards
+                 :database     (meta/id)
+                 :stages       [{:lib/type :mbql.stage/mbql
+                                 :source-card (:id (lib.tu/mock-cards :orders))}]}
+          own-fields (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :orders))]
+                       (-> field
+                           (assoc :lib/source :source/card)
+                           (dissoc :id :table-id)))]
+      (testing "implicitly joinable columns"
+        (testing "are included by visible-columns"
+          (is (=? (->> (concat own-fields
+                               (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :people))]
+                                 (assoc field :lib/source :source/implicitly-joinable))
+                               (for [field (lib.metadata/fields lib.tu/metadata-provider-with-mock-cards (meta/id :products))]
+                                 (assoc field :lib/source :source/implicitly-joinable)))
+                       (sort-by (juxt :name :id)))
+                  (sort-by (juxt :name :id) (lib.metadata.calculation/visible-columns query)))))
+        (testing "are not included by returned-columns"
+          (is (=? (sort-by (juxt :name :id) own-fields)
+                  (sort-by (juxt :name :id) (lib.metadata.calculation/returned-columns query)))))))))

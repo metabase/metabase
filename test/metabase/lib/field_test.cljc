@@ -1194,13 +1194,13 @@
                     fields-of))))
 
       (testing "removing and adding each field"
-        (is (=? [sum created-at]
+        (is (=? [created-at sum]
                 (-> query
                     (lib/remove-field -1 (first columns))
                     (lib/add-field    -1 (first columns))
                     (lib.util/query-stage -1)
                     :fields)))
-        (is (=? [created-at sum]
+        (is (=? [sum created-at]
                 (-> query
                     (lib/remove-field -1 (second columns))
                     (lib/add-field    -1 (second columns))

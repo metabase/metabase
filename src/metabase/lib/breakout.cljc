@@ -70,17 +70,12 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [cols                      (let [stage (lib.util/query-stage query stage-number)]
-                                     (lib.metadata.calculation/visible-columns query stage-number stage))
-         col-index->breakout-index (into {}
-                                         (map-indexed
-                                          (fn [breakout-index breakout-ref]
-                                            (when-let [col-index (lib.equality/index-of-closest-matching-metadata breakout-ref cols)]
-                                              [col-index breakout-index])))
-                                         (breakouts query stage-number))]
+   (let [cols (let [stage (lib.util/query-stage query stage-number)]
+                (lib.metadata.calculation/visible-columns query stage-number stage))]
      (when (seq cols)
-       (mapv (fn [[i col]]
-               (let [pos (col-index->breakout-index i)]
-                 (cond-> col
-                   pos (assoc :breakout-position pos))))
-             (m/indexed cols))))))
+       (let [matching (lib.equality/find-closest-matches-for-refs
+                        query stage-number (breakouts query stage-number) cols)]
+         (mapv #(let [pos (matching %)]
+                  (cond-> %
+                    pos (assoc :breakout-position pos)))
+               cols))))))

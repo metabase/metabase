@@ -8,15 +8,19 @@
    :exclude
    [filter])
   (:require
+   [goog.object :as gobj]
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -473,6 +477,86 @@
   [a-query stage-number legacy-ref columns]
   ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
   (lib.core/find-column-for-legacy-ref a-query stage-number legacy-ref columns))
+
+(def ^:private visible-columns-defaults
+  {:include-joined?              true
+   :include-expressions?         true
+   :include-implicitly-joinable? true})
+
+;; TODO: Added as an expedient to fix metabase/metabase#32373. Due to the interaction with viz-settings, this issue
+;; was difficult to fix entirely within MLv2. Once viz-settings are ported, this function should not be needed, and the
+;; FE logic using it should be ported to MLv2 behind more meaningful names.
+(defn ^:export visible-columns
+  "Return a sequence of column metadatas for columns visible at the given stage of the query. Takes a map of options
+  which defines the set of columns to return. All the options default to *true*, ie. everything is returned by default.
+  ```
+  {
+    includeJoined: true,
+    includeExpressions true,
+    includeImplicitlyJoinable true,
+  }
+  ```"
+  [a-query stage-number ^js js-options]
+  (let [^js js-options (or js-options #js {})
+        options        {:include-joined?              (gobj/get js-options "includeJoined" true)
+                        :include-expressions?         (gobj/get js-options "includeExpressions" true)
+                        :include-implicitly-joinable? (gobj/get js-options "includeImplicitlyJoinable" true)}
+        stage          (lib.util/query-stage a-query stage-number)
+        vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage options)
+        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+    (js/console.log "opts" options "vis" vis-columns "ret" ret-columns)
+    (to-array (lib.equality/mark-selected-columns vis-columns ret-columns))))
+
+(defn ^:export legacy-field-ref
+  "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
+  [column]
+  (-> column
+      lib.core/ref
+      convert/->legacy-MBQL
+      (update 2 update-vals #(if (qualified-keyword? %)
+                               (u/qualified-name %)
+                               %))
+      clj->js))
+
+(defn- legacy-ref->pMBQL [legacy-ref]
+  (-> legacy-ref
+      (js->clj :keywordize-keys true)
+      (update 0 keyword)
+      convert/->pMBQL))
+
+(defn- ->column-or-ref [column]
+  (if-let [^js legacy-column (when (object? column) column)]
+    (if (.-field_ref legacy-column)
+      ;; Prefer the attached field_ref if provided.
+      (legacy-ref->pMBQL (.-field_ref legacy-column))
+      ;; Fall back to converting like metadata.
+      (js.metadata/parse-column legacy-column))
+    ;; It's already a :metadata/column map
+    column))
+
+(defn ^:export find-column-indexes-from-legacy-refs
+  "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
+  corresponding index into the list of columns.
+
+  Returns a parallel list to the refs, with the corresponding index, or -1 if no matching column is found."
+  [a-query stage-number legacy-columns legacy-refs]
+  ;; Set up this query stage's `:aggregation` list as the context for [[convert/->pMBQL]] to convert legacy
+  ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
+  (convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+    (let [columns       (mapv ->column-or-ref legacy-columns)
+          field-refs    (map legacy-ref->pMBQL legacy-refs)
+          matches       (lib.equality/find-closest-matches-for-refs a-query stage-number field-refs columns)
+          ;; matches is a map of columns to the corresponding index in field-refs.
+          ;; We want to return a parallel list to field-refs, giving the index of the matching column (or -1).
+          ;; First, map each column to its index (in the column list).
+          column->index (into {} (for [index (range (count columns))]
+                                  [(nth columns index) index]))
+          ;; And use that to map each match's ref-index to its column-index.
+          by-index      (into {} (for [[column ref-index] matches]
+                                   [ref-index (column->index column)]))]
+      (->> (range (count legacy-refs))
+           (map #(by-index % -1))
+           to-array))))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."

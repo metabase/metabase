@@ -10,6 +10,7 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
@@ -86,7 +87,7 @@
      (assoc breakout
             :lib/source               :source/breakouts
             :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
-            :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query breakout))))))
+            :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query breakout))))))
 
 (mu/defn ^:private aggregations-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
@@ -118,7 +119,7 @@
        (assoc metadata
               :lib/source               source
               :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
-              :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query metadata)))))))
+              :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query metadata)))))))
 
 (mu/defn ^:private summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
@@ -161,21 +162,10 @@
   [query          :- ::lib.schema/query
    stage-number   :- :int
    card-id        :- [:maybe ::lib.schema.id/card]
-   unique-name-fn :- fn?]
+   options        :- lib.metadata.calculation/VisibleColumnsOptions]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (->> (lib.metadata.calculation/visible-columns
-            query stage-number card {:unique-name-fn               unique-name-fn
-                                     :include-implicitly-joinable? false})
-           ;; Questions should not have implicitly joinable columns (#30950).
-           ;; :include-implicitly-joinable? false in the call above makes sure
-           ;; no implicitly joinable columns show up in the list, but this is
-           ;; not enough. If the returned columns contain :fk-target-field-id
-           ;; fields, then [[metabase.lib.metadata.calculation/visible-columns-method]]
-           ;; for :metabase.lib.stage/stage would add the implicitly joinable
-           ;; columns. Dissocing these fields prevents that.
-           (mapv #(dissoc % :fk-target-field-id))
-           not-empty))))
+      (not-empty (lib.metadata.calculation/visible-columns query stage-number card options)))))
 
 (mu/defn ^:private expressions-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query           :- ::lib.schema/query
@@ -189,41 +179,6 @@
                   :lib/source-column-alias  (:name expression)
                   :lib/desired-column-alias (unique-name-fn (:name expression)))
            (u/assoc-default :effective-type (or base-type :type/*)))))))
-
-(defn- implicitly-joinable-columns
-  "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
-  have appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field. (I think we only include
-  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
-  check here.)
-
-  This does not include columns from any Tables that are already explicitly joined, and does not include multiple
-  versions of a column when there are multiple pathways to it (i.e. if there is more than one FK to a Table). This
-  behavior matches how things currently work in MLv1, at least for order by; we can adjust as needed in the future if
-  it turns out we do need that stuff.
-
-  Does not include columns that would be implicitly joinable via multiple hops."
-  [query stage-number column-metadatas unique-name-fn]
-  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
-    (into []
-          (comp (filter :fk-target-field-id)
-                (m/distinct-by :fk-target-field-id)
-                (map (fn [{source-field-id :id, :keys [fk-target-field-id]}]
-                       (-> (lib.metadata/field query fk-target-field-id)
-                           (assoc ::source-field-id source-field-id))))
-                (remove #(contains? existing-table-ids (:table-id %)))
-                (m/distinct-by :table-id)
-                (mapcat (fn [{:keys [table-id], ::keys [source-field-id]}]
-                          (let [table-metadata (lib.metadata/table query table-id)
-                                options        {:unique-name-fn               unique-name-fn
-                                                :include-implicitly-joinable? false}]
-                            (for [field (lib.metadata.calculation/visible-columns-method query stage-number table-metadata options)
-                                  :let  [field (assoc field
-                                                      :fk-field-id              source-field-id
-                                                      :lib/source               :source/implicitly-joinable
-                                                      :lib/source-column-alias  (:name field))]]
-                              (assoc field :lib/desired-column-alias (unique-name-fn
-                                                                      (lib.field/desired-alias query field))))))))
-          column-metadatas)))
 
 ;;; Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
 ;;;
@@ -266,7 +221,7 @@
            (lib.metadata.calculation/visible-columns query stage-number table-metadata options)))
        ;; 1c. Metadata associated with a saved Question
        (when source-card
-         (saved-question-metadata query stage-number source-card unique-name-fn))
+         (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
        ;; 1d: `:lib/stage-metadata` for the (presumably native) query
        (for [col (:columns (:lib/stage-metadata this-stage))]
          (assoc col
@@ -322,7 +277,7 @@
            existing-columns
            ;; add implicitly joinable columns if desired
            (when include-implicitly-joinable?
-             (implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
+             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          (mark-selected-breakouts query stage-number))))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has

@@ -596,6 +596,14 @@ describe("scenarios > visualizations > table column settings", () => {
         additionalColumns().within(() => showColumn(columnName));
         cy.wait("@dataset");
         visibleColumns().findByText(columnLongName).should("exist");
+
+        // Scrolling the table does not work consistently for this query. The columns are wider than it estimates, so
+        // the first attempt to scroll to the right edge doesn't actually reach it.
+        // Three attempts with brief pauses seems to work consistently.
+        scrollVisualization();
+        cy.wait(60);
+        scrollVisualization();
+        cy.wait(60);
         scrollVisualization();
         visualization().findByText(columnLongName).should("exist");
       });

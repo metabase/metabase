@@ -1,8 +1,10 @@
 (ns metabase.lib.metadata.calculation
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -522,3 +524,38 @@
   (if-let [table-id (lib.util/source-table-id query)]
     (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
     []))
+
+(defn implicitly-joinable-columns
+  "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
+  have appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field. (I think we only include
+  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
+  check here.)
+
+  This does not include columns from any Tables that are already explicitly joined, and does not include multiple
+  versions of a column when there are multiple pathways to it (i.e. if there is more than one FK to a Table). This
+  behavior matches how things currently work in MLv1, at least for order by; we can adjust as needed in the future if
+  it turns out we do need that stuff.
+
+  Does not include columns that would be implicitly joinable via multiple hops."
+  [query stage-number column-metadatas unique-name-fn]
+  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
+    (into []
+          (comp (filter :fk-target-field-id)
+                (m/distinct-by :fk-target-field-id)
+                (map (fn [{source-field-id :id, :keys [fk-target-field-id]}]
+                       (-> (lib.metadata/field query fk-target-field-id)
+                           (assoc ::source-field-id source-field-id))))
+                (remove #(contains? existing-table-ids (:table-id %)))
+                (m/distinct-by :table-id)
+                (mapcat (fn [{:keys [table-id], ::keys [source-field-id]}]
+                          (let [table-metadata (lib.metadata/table query table-id)
+                                options        {:unique-name-fn               unique-name-fn
+                                                :include-implicitly-joinable? false}]
+                            (for [field (visible-columns-method query stage-number table-metadata options)
+                                  :let  [field (assoc field
+                                                      :fk-field-id              source-field-id
+                                                      :lib/source               :source/implicitly-joinable
+                                                      :lib/source-column-alias  (:name field))]]
+                              (assoc field :lib/desired-column-alias (unique-name-fn
+                                                                      (lib.join.util/desired-alias query field))))))))
+          column-metadatas)))

@@ -193,15 +193,70 @@
       (testing (str \newline (u/pprint-to-str (list `lib.equality/= (list 'quote x) (list 'quote y))))
         (is (lib.equality/= x y))))))
 
-(deftest ^:parallel find-closest-matching-ref-test
-  (are [a-ref refs expected] (= expected
-                                (lib.equality/find-closest-matching-ref a-ref refs))
+(deftest ^:parallel find-closest-matches-for-refs-test
+  (are [needles haystack expected] (= expected
+                                      (lib.equality/find-closest-matches-for-refs needles haystack))
     ;; strict matching
-    [:field {} 1]
+    [[:field {} 3]
+     [:field {} 1]]
     [[:field {} 1]
      [:field {} 2]
      [:field {} 3]]
-    [:field {} 1]
+    {[:field {} 3] 0
+     [:field {} 1] 1}
+
+    [[:field {:base-type :type/Integer} 1]]
+    [[:field {:base-type :type/Number} 1]
+     [:field {:base-type :type/Integer} 1]]
+    {[:field {:base-type :type/Integer} 1] 0}
+
+    [[:field {:join-alias "J"} 1]]
+    [[:field {:join-alias "I"} 1]
+     [:field {:join-alias "J"} 1]]
+    {[:field {:join-alias "J"} 1] 0}
+
+    ;; if no strict match, should ignore type info and return first match
+    ;; note that the key of the returned map is the *original* haystack value
+    [[:field {:base-type :type/Float} 1]]
+    [[:field {:base-type :type/Number} 1]
+     [:field {:base-type :type/Integer} 1]]
+    {[:field {:base-type :type/Number} 1] 0}
+
+    ;; if no exact match, ignore :join-alias
+    [[:field {} 1]]
+    [[:field {:join-alias "J"} 1]
+     [:field {:join-alias "J"} 2]]
+    {[:field {:join-alias "J"} 1] 0}
+
+    ;; ignore binning altogether if we need to.
+    [:field {:base-type :type/Float
+             :binning   {:strategy :bin-width, :bin-width 20}
+             :lib/uuid  "ead5b63d-a326-4fab-bacb-69e1b08f807d"}
+     "People__LONGITUDE"]
+    [[:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
+              :base-type      :type/Float
+              :effective-type :type/Float}
+      "People__LONGITUDE"]]
+    {[:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
+             :base-type      :type/Float
+             :effective-type :type/Float}
+     "People__LONGITUDE"] 0}
+
+    ;; failed to match - ran out of transformations
+    [[:field {} 1]]
+    [[:field {:join-alias "J"} 2]
+     [:field {:join-alias "J"} 3]]
+    {}))
+
+(deftest ^:parallel find-closest-matching-ref-test
+  (are [needle haystack expected] (= expected
+                                     (lib.equality/find-closest-matching-ref needle haystack))
+    ;; strict matching
+    [:field {} 3]
+    [[:field {} 1]
+     [:field {} 2]
+     [:field {} 3]]
+    [:field {} 3]
 
     [:field {:base-type :type/Integer} 1]
     [[:field {:base-type :type/Number} 1]
@@ -214,6 +269,7 @@
     [:field {:join-alias "J"} 1]
 
     ;; if no strict match, should ignore type info and return first match
+    ;; note that the key of the returned map is the *original* haystack value
     [:field {:base-type :type/Float} 1]
     [[:field {:base-type :type/Number} 1]
      [:field {:base-type :type/Integer} 1]]
@@ -225,25 +281,44 @@
      [:field {:join-alias "J"} 2]]
     [:field {:join-alias "J"} 1]
 
-    ;; ignore binning altogether if we need to.
-    [:field {:base-type :type/Float
-             :binning   {:strategy :bin-width, :bin-width 20}
-             :lib/uuid  "ead5b63d-a326-4fab-bacb-69e1b08f807d"}
-     "People__LONGITUDE"]
-    [[:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
-              :base-type      :type/Float
-              :effective-type :type/Float}
-      "People__LONGITUDE"]]
-    [:field {:lib/uuid       "6fc44b58-694d-4b43-82cd-9e52c633a38c"
-             :base-type      :type/Float
-             :effective-type :type/Float}
-     "People__LONGITUDE"]))
+    ;; failed to match - ran out of transformations
+    [:field {} 1]
+    [[:field {:join-alias "J"} 2]
+     [:field {:join-alias "J"} 3]]
+    nil))
 
-(deftest ^:parallel find-closest-matching-ref-3-arity-test
+(deftest ^:parallel find-closest-matches-for-refs-4-arity-test
+  (is (= {[:field {} "CATEGORY"] 0
+          [:field {} "ID"]       1}
+         (lib.equality/find-closest-matches-for-refs
+          (lib/query meta/metadata-provider (meta/table-metadata :products))
+          -1
+          [[:field {} (meta/id :products :category)]
+           [:field {} "ID"]
+           [:field {} "NAME"]]
+          [[:field {} "ID"]
+           [:field {} "CATEGORY"]]))))
+
+(deftest ^:parallel find-closest-matching-ref-4-arity-test
   (is (= [:field {} "CATEGORY"]
          (lib.equality/find-closest-matching-ref
-          meta/metadata-provider
+          (lib/query meta/metadata-provider (meta/table-metadata :products))
+          -1
           [:field {} (meta/id :products :category)]
+          [[:field {} "ID"]
+           [:field {} "CATEGORY"]])))
+  (is (= nil
+         (lib.equality/find-closest-matching-ref
+          (lib/query meta/metadata-provider (meta/table-metadata :products))
+          -1
+           [:field {} (meta/id :products :title)]
+           [[:field {} "ID"]
+            [:field {} "CATEGORY"]])))
+  (is (= [:field {} "ID"]
+         (lib.equality/find-closest-matching-ref
+          (lib/query meta/metadata-provider (meta/table-metadata :products))
+          -1
+          [:field {} "ID"]
           [[:field {} "ID"]
            [:field {} "CATEGORY"]]))))
 
@@ -280,8 +355,8 @@
              (mapv #(select-keys % [:name :selected?])
                    (lib.equality/mark-selected-columns cols selected)))))))
 
-(deftest ^:parallel index-of-closest-matching-metadata-test
-  (testing "index-of-closest-matching-metadata should find metadatas based on matching ID (#31482) (#33453)"
+(deftest ^:parallel closest-matching-metadata-test
+  (testing "closest-matching-metadata should find metadatas based on matching ID (#31482) (#33453)"
     (let [query (lib/append-stage lib.tu/query-with-join)
           cols  (lib/returned-columns query)
           refs  (map lib.ref/ref cols)
@@ -297,8 +372,8 @@
               refs))
       (testing "find-closest-matching-ref actually finds the wrong ref here! This is venues.name, not categories.name!!!"
         (is (=? [:field {} "NAME"]
-                (lib.equality/find-closest-matching-ref query a-ref refs))))
-      (testing "... index-of-closest-matching-metadata finds the correct metadata, categories.name!!!"
+                (lib.equality/find-closest-matching-ref query -1 a-ref refs))))
+      (testing "... closest-matching-metadata finds the correct metadata, categories.name!!!"
         (is (= 7
                (lib.equality/index-of-closest-matching-metadata a-ref cols)))))))
 
