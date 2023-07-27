@@ -2523,12 +2523,13 @@
 (deftest refresh-persistence
   (testing "Can schedule refreshes for models"
     (with-persistence-setup db
-      (mt/with-temp* [:model/Card   [unmodeled {:dataset false :database_id (u/the-id db)}]
-                      :model/Card   [archived  {:dataset true :archived true :database_id (u/the-id db)}]
-                      :model/Card   [model     {:dataset true :database_id (u/the-id db)}]
-                      PersistedInfo [pmodel     {:card_id (u/the-id model) :database_id (u/the-id db)}]
-                      PersistedInfo [punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
-                      PersistedInfo [parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]]
+      (t2.with-temp/with-temp
+        [:model/Card          model      {:dataset true :database_id (u/the-id db)}
+         :model/Card          notmodel   {:dataset false :database_id (u/the-id db)}
+         :model/Card          archived   {:dataset true :archived true :database_id (u/the-id db)}
+         :model/PersistedInfo pmodel     {:card_id (u/the-id model) :database_id (u/the-id db)}
+         :model/PersistedInfo pnotmodel  {:card_id (u/the-id notmodel) :database_id (u/the-id db)}
+         :model/PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]
         (testing "Can refresh models"
           (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
           (is (contains? (task.persist-refresh/job-info-for-individual-refresh)
@@ -2537,20 +2538,19 @@
         (testing "Won't refresh archived models"
           (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
           (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
-                              (u/the-id punmodeled)))
+                              (u/the-id pnotmodel)))
               "Scheduled refresh of archived model"))
         (testing "Won't refresh cards no longer models"
-          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id unmodeled)))
+          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id notmodel)))
           (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
 
 (deftest unpersist-persist-model-test
   (with-persistence-setup db
-    (t2.with-temp/with-temp [:model/Card model    {:database_id (u/the-id db), :dataset true}
-                             :model/Card notmodel {:database_id (u/the-id db), :dataset false}
-                             :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}
-                             :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
+    (t2.with-temp/with-temp
+      [:model/Card          model     {:database_id (u/the-id db), :dataset true}
+       :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Can't unpersist models without :cache-granular-controls feature flag enabled"
         (premium-features-test/with-premium-features #{}
           (mt/user-http-request :crowberto :post 402 (format "card/%d/unpersist" (u/the-id model)))
@@ -2570,7 +2570,10 @@
         (premium-features-test/with-premium-features #{:cache-granular-controls}
           (mt/user-http-request :crowberto :post 204 (format "card/%d/persist" (u/the-id model)))
           (is (= "creating"
-                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
+                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
+    (t2.with-temp/with-temp
+      [:model/Card          notmodel  {:database_id (u/the-id db), :dataset false}
+       :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
       (premium-features-test/with-premium-features #{:cache-granular-controls}
         (testing "Allows unpersisting non-model cards"
           (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel)))
