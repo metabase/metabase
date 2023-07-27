@@ -16,24 +16,23 @@ beforeEach(() => {
 });
 
 function appendStyleIfNotExists(logConfig) {
-  const headHTML = Cypress.$(window.top.document.head);
-  const allStyles = Array.from(Cypress.$(window.top.document.styleSheets));
+  const doc = window.top.document;
+  const headHTML = doc.head;
+  const customStyle = doc.getElementById("customLogStyle");
+  const bgColor = "#7f43c9";
 
-  const getCustomStyle = allStyles.filter(s => s.ownerNode.dataset.customLog);
-  const customStyleExists = getCustomStyle.length > 0;
-
-  if (!customStyleExists) {
+  if (!customStyle) {
     const style = document.createElement("style");
 
     style.textContent = `
-      .command-name-${logConfig.name} .command-pin-target{
-        color: #ffffff !important;
-        background-color: #7f43c9 !important;
-        font-weight: bold !important;
-      }
+    .command-name-${logConfig.name} .command-pin-target{
+      color: #ffffff !important;
+      background-color: ${bgColor} !important;
+      font-weight: bold !important;
+    }
     `;
     style.type = "text/css";
-    style.dataset.customLog = true;
+    style.id = "customLogStyle";
 
     headHTML.append(style);
   }
