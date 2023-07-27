@@ -163,7 +163,7 @@
    :fingerprint         nil
    :base-type           :type/BigInteger
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:categories :name]
   [_table-name _field-name]
@@ -200,7 +200,7 @@
                          :average-length 8.333333333333334}}}
    :base-type           :type/Text
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod table-metadata :categories
   [_table-name]
@@ -253,7 +253,7 @@
    :fingerprint         nil
    :base-type           :type/BigInteger
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:checkins :date]
   [_table-name _field-name]
@@ -285,7 +285,7 @@
                          :type   #:type{:DateTime {:earliest "2013-01-03", :latest "2015-12-29"}}}
    :base-type           :type/Date
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:checkins :user-id]
   [_table-name _field-name]
@@ -316,7 +316,7 @@
    :fingerprint         {:global {:distinct-count 15, :nil% 0.0}}
    :base-type           :type/Integer
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:checkins :venue-id]
   [_table-name _field-name]
@@ -347,7 +347,7 @@
    :fingerprint         {:global {:distinct-count 100, :nil% 0.0}}
    :base-type           :type/Integer
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod table-metadata :checkins
   [_table-name]
@@ -402,7 +402,7 @@
    :fingerprint         nil
    :base-type           :type/BigInteger
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:users :name]
   [_table-name _field-name]
@@ -439,7 +439,7 @@
                                          :average-length 13.266666666666667}}}
    :base-type           :type/Text
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:users :last-login]
   [_table-name _field-name]
@@ -471,7 +471,7 @@
                          :type   #:type{:DateTime {:earliest "2014-01-01T08:30:00Z", :latest "2014-12-05T15:15:00Z"}}}
    :base-type           :type/DateTime
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:users :password]
   [_table-name _field-name]
@@ -508,7 +508,7 @@
                                          :average-length 36.0}}}
    :base-type           :type/Text
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod table-metadata :users
   [_table-name]
@@ -563,7 +563,7 @@
    :fingerprint         nil
    :base-type           :type/BigInteger
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:venues :name]
   [_table-name _field-name]
@@ -600,7 +600,7 @@
                                          :average-length 15.63}}}
    :base-type           :type/Text
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:venues :category-id]
   [_table-name _field-name]
@@ -631,7 +631,7 @@
    :fingerprint         {:global {:distinct-count 28, :nil% 0.0}}
    :base-type           :type/Integer
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:venues :latitude]
   [_table-name _field-name]
@@ -669,7 +669,7 @@
                                          :avg 35.505891999999996}}}
    :base-type           :type/Float
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:venues :longitude]
   [_table-name _field-name]
@@ -709,7 +709,7 @@
             :avg -115.99848699999998}}}
    :base-type           :type/Float
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod field-metadata [:venues :price]
   [_table-name _field-name]
@@ -747,7 +747,7 @@
                                          :avg 2.03}}}
    :base-type           :type/Integer
    :points-of-interest  nil
-   :lib/type            :metadata/field})
+   :lib/type            :metadata/column})
 
 (defmethod table-metadata :venues
   [_table-name]
@@ -804,7 +804,7 @@
     :fingerprint                nil
     :base-type                  :type/BigInteger
     :points-of-interest         nil
-    :lib/type                   :metadata/field})
+    :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:products :rating]
   [_table-name _field-name]
@@ -841,7 +841,7 @@
                                                        :avg 3.4715}}}
    :base-type                  :type/Float
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
  (defmethod field-metadata [:products :category]
    [_table-name _field-name]
@@ -877,7 +877,7 @@
                                                       :average-length 6.375}}}
     :base-type                  :type/Text
     :points-of-interest         nil
-    :lib/type                   :metadata/field})
+    :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:products :price]
   [_table-name _field-name]
@@ -914,7 +914,7 @@
                                                        :avg 55.746399999999994}}}
    :base-type                  :type/Float
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
  (defmethod field-metadata [:products :title]
    [_table-name _field-name]
@@ -950,7 +950,7 @@
                                                       :average-length 21.495}}}
     :base-type                  :type/Text
     :points-of-interest         nil
-    :lib/type                   :metadata/field})
+    :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:products :created-at]
   [_table-name _field-name]
@@ -983,7 +983,7 @@
                                                          :latest   "2019-04-15T13:34:19.931Z"}}}
    :base-type                  :type/DateTimeWithLocalTZ
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:products :vendor]
   [_table-name _field-name]
@@ -1019,7 +1019,7 @@
                                                      :average-length 20.6}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:products :ean]
   [_table-name _field-name]
@@ -1055,7 +1055,7 @@
                                                      :average-length 13.0}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod table-metadata :products
   [_table-name]
@@ -1112,7 +1112,7 @@
    :fingerprint                nil
    :base-type                  :type/BigInteger
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:orders :subtotal]
   [_table-name _field-name]
@@ -1150,7 +1150,7 @@
                                           :avg 77.012717}}}
    :base-type                  :type/Float
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:orders :total]
   [_table-name _field-name]
@@ -1188,7 +1188,7 @@
                                           :avg 80.35850400000001}}}
    :base-type                  :type/Float
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:orders :tax]
   [_table-name _field-name]
@@ -1226,7 +1226,7 @@
                                           :avg 3.8722100000000004}}}
    :base-type                  :type/Float
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:orders :discount]
   [_table-name _field-name]
@@ -1263,7 +1263,7 @@
                                                        :avg 5.161009803921569}}}
    :base-type                  :type/Float
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:orders :quantity]
   [_table-name _field-name]
@@ -1300,7 +1300,7 @@
                                                        :avg 3.7015}}}
    :base-type                  :type/Integer
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:orders :created-at]
   [_table-name _field-name]
@@ -1333,7 +1333,7 @@
                                                          :latest   "2020-04-19T14:07:15.657Z"}}}
    :base-type                  :type/DateTimeWithLocalTZ
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:orders :product-id]
   [_table-name _field-name]
@@ -1364,7 +1364,7 @@
    :fingerprint                {:global {:distinct-count 200, :nil% 0.0}}
    :base-type                  :type/Integer
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:orders :user-id]
   [_table-name _field-name]
@@ -1395,7 +1395,7 @@
    :fingerprint                {:global {:distinct-count 929, :nil% 0.0}}
    :base-type                  :type/Integer
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod table-metadata :orders
   [_table-name]
@@ -1453,7 +1453,7 @@
    :fingerprint                nil
    :base-type                  :type/BigInteger
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :state]
   [_table-name _field-name]
@@ -1489,7 +1489,7 @@
                                                      :average-length 2.0}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :city]
   [_table-name _field-name]
@@ -1525,7 +1525,7 @@
                                                      :average-length 8.284}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :address]
   [_table-name _field-name]
@@ -1561,7 +1561,7 @@
                                                      :average-length 20.85}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :name]
   [_table-name _field-name]
@@ -1597,7 +1597,7 @@
                                                      :average-length 13.532}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :source]
   [_table-name _field-name]
@@ -1633,7 +1633,7 @@
                                                      :average-length 7.4084}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :zip]
   [_table-name _field-name]
@@ -1669,7 +1669,7 @@
                                                      :average-length 5.0}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :latitude]
   [_table-name _field-name]
@@ -1706,7 +1706,7 @@
                                                        :avg 39.87934670484002}}}
    :base-type                  :type/Float
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :password]
   [_table-name _field-name]
@@ -1742,7 +1742,7 @@
                                                      :average-length 36.0}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :birth-date]
   [_table-name _field-name]
@@ -1775,7 +1775,7 @@
     :type   {:type/DateTime {:earliest "1958-04-26", :latest "2000-04-03"}}}
    :base-type                  :type/Date
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :longitude]
   [_table-name _field-name]
@@ -1812,7 +1812,7 @@
                                                        :avg -95.18741780363999}}}
    :base-type                  :type/Float
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :email]
   [_table-name _field-name]
@@ -1848,7 +1848,7 @@
                                                      :average-length 24.1824}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:people :created-at]
   [_table-name _field-name]
@@ -1881,7 +1881,7 @@
                                                          :latest   "2019-04-19T14:06:27.3Z"}}}
    :base-type                  :type/DateTimeWithLocalTZ
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod table-metadata :people
   [_table-name]
@@ -1943,7 +1943,7 @@
    :fingerprint                nil
    :base-type                  :type/BigInteger
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:reviews :created-at]
   [_table-name _field-name]
@@ -1976,7 +1976,7 @@
                                                          :latest   "2020-04-19T14:15:25.677Z"}}}
    :base-type                  :type/DateTimeWithLocalTZ
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:reviews :rating]
   [_table-name _field-name]
@@ -2013,7 +2013,7 @@
                                                        :avg 3.987410071942446}}}
    :base-type                  :type/Integer
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:reviews :reviewer]
   [_table-name _field-name]
@@ -2049,7 +2049,7 @@
                                                      :average-length 9.972122302158274}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:reviews :body]
   [_table-name _field-name]
@@ -2085,7 +2085,7 @@
                                                      :average-length 177.41996402877697}}}
    :base-type                  :type/Text
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod field-metadata [:reviews :product-id]
   [_table-name _field-name]
@@ -2116,7 +2116,7 @@
    :fingerprint                {:global {:distinct-count 176, :nil% 0.0}}
    :base-type                  :type/Integer
    :points-of-interest         nil
-   :lib/type                   :metadata/field})
+   :lib/type                   :metadata/column})
 
 (defmethod table-metadata :reviews
   [_table-name]
@@ -2208,14 +2208,14 @@
   different because this is pre-massaged into the MLv2 shape (it has `:lib/type` and uses `kebab-case` keys), to make
   it easier to use in tests. It should not make a difference because transformation to the MLv2 shape is idempotent...
   and at some point we'll probably update the backend to store stuff in this shape anyway."
-  [{:lib/type       :metadata/field
+  [{:lib/type       :metadata/column
     :display-name   "ID"
     :name           "ID"
     :base-type      :type/BigInteger
     :effective-type :type/BigInteger
     :semantic-type  :type/PK
     :fingerprint    nil}
-   {:lib/type       :metadata/field
+   {:lib/type       :metadata/column
     :display-name   "NAME"              ; TODO -- these display names are icky
     :name           "NAME"
     :base-type      :type/Text
@@ -2227,7 +2227,7 @@
                                           :percent-email  0.0
                                           :percent-state  0.0
                                           :average-length 15.63}}}}
-   {:lib/type       :metadata/field
+   {:lib/type       :metadata/column
     :display-name   "CATEGORY_ID"
     :name           "CATEGORY_ID"
     :base-type      :type/Integer
@@ -2241,7 +2241,7 @@
                                :max 74.0
                                :sd  23.058108414099443
                                :avg 29.98}}}}
-   {:lib/type       :metadata/field
+   {:lib/type       :metadata/column
     :display-name   "LATITUDE"
     :name           "LATITUDE"
     :base-type      :type/Float
@@ -2255,7 +2255,7 @@
                             :max 40.7794
                             :sd  3.4346725397190827
                             :avg 35.505891999999996}}}}
-   {:lib/type       :metadata/field
+   {:lib/type       :metadata/column
     :display-name   "LONGITUDE"
     :name           "LONGITUDE"
     :base-type      :type/Float
@@ -2269,7 +2269,7 @@
                                :max -73.9533
                                :sd  14.162810671348238
                                :avg -115.99848699999998}}}}
-   {:lib/type       :metadata/field
+   {:lib/type       :metadata/column
     :display-name   "PRICE"
     :name           "PRICE"
     :base-type      :type/Integer

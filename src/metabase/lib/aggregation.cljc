@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -20,7 +21,7 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
-  "Given `:metadata/field` column metadata for an aggregation, construct an `:aggregation` reference."
+  "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
                  :effective-type ((some-fn :effective-type :base-type) metadata)}
@@ -223,12 +224,25 @@
   [aggregation-clause]
   aggregation-clause)
 
+(def ^:private Aggregatable
+  "Schema for something you can pass to [[aggregate]] to add to a query as an aggregation."
+  [:or
+   ::lib.schema.aggregation/aggregation
+   ::lib.schema.common/external-op
+   lib.metadata/MetricMetadata])
+
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
-  ([query an-aggregate-clause]
-   (aggregate query -1 an-aggregate-clause))
-  ([query stage-number an-aggregate-clause]
-   (lib.util/add-summary-clause query stage-number :aggregation an-aggregate-clause)))
+  ([query aggregatable]
+   (aggregate query -1 aggregatable))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    aggregatable :- Aggregatable]
+   ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
+   (if (= (lib.dispatch/dispatch-value aggregatable) :metadata/metric)
+     (recur query stage-number (lib.ref/ref aggregatable))
+     (lib.util/add-summary-clause query stage-number :aggregation aggregatable))))
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
   "Get the aggregations in a given stage of a query."
@@ -309,28 +323,21 @@
                   (map #(assoc % :lib/type :mbql.aggregation/operator)))
             lib.schema.aggregation/aggregation-operators)))))
 
-;;; TODO -- this should probably return a plain aggregation clause rather than an external op form; people can convert
-;;; to external op as needed using [[metabase.lib.common/external-op]]. See
-;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1686941960566759
-(mu/defn aggregation-clause :- ::lib.schema.common/external-op
+(mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation
   "Returns a standalone aggregation clause for an `aggregation-operator` and
   a `column`.
   For aggregations requiring an argument `column` is mandatory, otherwise
   it is optional."
   ([aggregation-operator :- ::lib.schema.aggregation/operator]
    (if-not (:requires-column? aggregation-operator)
-     {:lib/type :lib/external-op
-      :operator (:short aggregation-operator)
-      :args     []}
+     (lib.options/ensure-uuid [(:short aggregation-operator) {}])
      (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
                                       (:short aggregation-operator))
                      {:aggregation-operator aggregation-operator}))))
 
   ([aggregation-operator :- ::lib.schema.aggregation/operator
     column]
-   {:lib/type :lib/external-op
-    :operator (:short aggregation-operator)
-    :args     [column]}))
+   (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
 
 (def ^:private SelectedOperatorWithColumns
   [:merge

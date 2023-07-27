@@ -94,17 +94,19 @@
 (defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-ref-id]
   (let [stage (lib.util/query-stage query stage-number)
         to-remove (mapcat
-                    (fn [location]
-                      (when-let [clauses (get-in stage location)]
-                        (->> clauses
-                             (keep #(mbql.match/match-one %
-                                      [target-op _ target-ref-id] [location %])))))
-                    (stage-paths query stage-number))]
+                   (fn [location]
+                     (when-let [clauses (get-in stage location)]
+                       ;; :fields in a join can be just :all or :none (#31858)
+                       (when (seqable? clauses)
+                         (->> clauses
+                              (keep #(mbql.match/match-one %
+                                       [target-op _ target-ref-id] [location %]))))))
+                   (stage-paths query stage-number))]
     (reduce
-      (fn [query [location target-clause]]
-        (remove-replace-location query stage-number unmodified-query-for-stage location target-clause lib.util/remove-clause))
-      query
-      to-remove)))
+     (fn [query [location target-clause]]
+       (remove-replace-location query stage-number unmodified-query-for-stage location target-clause lib.util/remove-clause))
+     query
+     to-remove)))
 
 (defn- remove-stage-references
   [query previous-stage-number unmodified-query-for-stage target-uuid]

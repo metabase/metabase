@@ -4,6 +4,11 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
+import {
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
+  MOBILE_DEFAULT_CARD_HEIGHT,
+} from "metabase/visualizations/shared/utils/sizes";
+
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -172,13 +177,19 @@ export function DashCardCardParameterMapper({
     ]);
 
   const headerContent = useMemo(() => {
-    if (!isVirtual && !(isNative && isDisabled)) {
-      return t`Column to filter on`;
-    } else if (dashcard.size_y !== 1 || isMobile) {
-      return t`Variable to map to`;
-    } else {
-      return null;
+    const layoutHeight = isMobile
+      ? MOBILE_HEIGHT_BY_DISPLAY_TYPE[dashcard.card.display] ||
+        MOBILE_DEFAULT_CARD_HEIGHT
+      : dashcard.size_y;
+
+    if (layoutHeight > 2) {
+      if (!isVirtual && !(isNative && isDisabled)) {
+        return t`Column to filter on`;
+      } else {
+        return t`Variable to map to`;
+      }
     }
+    return null;
   }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
   const mappingInfoText =
@@ -189,7 +200,7 @@ export function DashCardCardParameterMapper({
     }[virtualCardType] ?? "";
 
   return (
-    <Container>
+    <Container isSmall={!isMobile && dashcard.size_y < 2}>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
       {isVirtual && isDisabled ? (
         showVirtualDashCardInfoText(dashcard, isMobile) ? (

@@ -218,10 +218,8 @@ describe("scenarios > embedding > full app", () => {
           url: "/question/" + ORDERS_QUESTION_ID,
           qs: { side_nav: false, logo: false, breadcrumbs: false },
         });
-        cy.findAllByRole("banner")
-          .should("have.length", 1)
-          .findByText("Connect to your database to get the most from Metabase.")
-          .should("exist");
+        cy.findByDisplayValue("Orders");
+        cy.findByTestId("app-bar").should("not.exist");
         cy.findByTestId("main-logo").should("not.exist");
         cy.icon("sidebar_closed").should("not.exist");
         cy.button("Toggle sidebar").should("not.exist");
@@ -239,10 +237,8 @@ describe("scenarios > embedding > full app", () => {
           url: "/question/" + ORDERS_QUESTION_ID,
           qs: { side_nav: false, logo: false, breadcrumbs: false },
         });
-        cy.findAllByRole("banner")
-          .should("have.length", 1)
-          .findByText("Connect to your database to get the most from Metabase.")
-          .should("exist");
+        cy.findByDisplayValue("Orders");
+        cy.findByTestId("app-bar").should("not.exist");
         cy.findByTestId("main-logo").should("not.exist");
         cy.icon("sidebar_closed").should("not.exist");
         cy.button("Toggle sidebar").should("not.exist");

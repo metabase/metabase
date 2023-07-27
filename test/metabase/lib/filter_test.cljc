@@ -12,15 +12,13 @@
           (apply f args))))
 
 (deftest ^:parallel general-filter-clause-test
-  (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        q3                          (lib/query meta/metadata-provider (meta/table-metadata :checkins))
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
-        venues-name-metadata        (lib.metadata/field q1 nil "VENUES" "NAME")
-        venues-latitude-metadata    (lib.metadata/field q1 nil "VENUES" "LATITUDE")
-        venues-longitude-metadata   (lib.metadata/field q1 nil "VENUES" "LONGITUDE")
+  (let [q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
+        venues-category-id-metadata (meta/field-metadata :venues :category-id)
+        venues-name-metadata        (meta/field-metadata :venues :name)
+        venues-latitude-metadata    (meta/field-metadata :venues :latitude)
+        venues-longitude-metadata   (meta/field-metadata :venues :longitude)
         categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
-        checkins-date-metadata      (lib.metadata/field q3 nil "CHECKINS" "DATE")]
+        checkins-date-metadata      (meta/field-metadata :checkins :date)]
     (testing "comparisons"
       (doseq [[op f] [[:=  lib/=]
                       [:!= lib/!=]
@@ -109,7 +107,7 @@
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
         q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
-        venues-category-id-metadata (lib.metadata/field q1 nil "VENUES" "CATEGORY_ID")
+        venues-category-id-metadata (meta/field-metadata :venues :category-id)
         original-filter
         [:between
          {:lib/uuid string?}
@@ -145,7 +143,7 @@
 
 (deftest ^:parallel add-filter-test
   (let [simple-query         (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        venues-name-metadata (lib.metadata/field simple-query nil "VENUES" "NAME")
+        venues-name-metadata (meta/field-metadata :venues :name)
         first-filter         [:between
                               {:lib/uuid string?}
                               [:field
@@ -276,16 +274,22 @@
     (is (=? [[:= {} [:field {} (meta/id :users :id)] 515]]
             (-> query
                 (lib/filter new-filter)
-                lib/filters)))))
+                lib/filters))))
+  (testing "standalone clause"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          [id-col] (lib/filterable-columns query)
+          [eq-op] (lib/filterable-column-operators id-col)]
+      (is (=? [:= {} [:field {} (meta/id :venues :id)] 123]
+              (lib/filter-clause eq-op id-col 123))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
     (let [query           (lib/query meta/metadata-provider (meta/table-metadata :users))
           [first-col]     (lib/filterable-columns query)
           query           (lib/filter query (lib/filter-clause
-                                             (first (lib/filterable-column-operators first-col))
-                                             first-col
-                                             515))
+                                              (first (lib/filterable-column-operators first-col))
+                                              first-col
+                                              515))
           [filter-clause] (lib/filters query)
           external-op     (lib/external-op filter-clause)]
       (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :users :id)] 515]]}]}

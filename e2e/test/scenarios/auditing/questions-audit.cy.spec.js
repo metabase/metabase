@@ -1,5 +1,10 @@
 import _ from "underscore";
-import { restore, describeEE, visitQuestion } from "e2e/support/helpers";
+import {
+  restore,
+  describeEE,
+  visitQuestion,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import {
   ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
@@ -10,6 +15,7 @@ describeEE("audit > auditing > questions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   describe("table", () => {

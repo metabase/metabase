@@ -174,7 +174,12 @@
       ;; otherwise if `:base-type` is specified, we can return that.
       (:base-type options)
       ;; if none of the special cases are true, fall back to [[type-of-method]].
-      (type-of-method query stage-number x)))))
+      (let [calculated-type (type-of-method query stage-number x)]
+        ;; if calculated type is not a true type but a placeholder like `:metabase.lib.schema.expression/type.unknown`
+        ;; or a union of types then fall back to `:type/*`, an actual type.
+        (if (isa? calculated-type :type/*)
+          calculated-type
+          :type/*))))))
 
 (defmethod type-of-method :default
   [_query _stage-number expr]
@@ -204,7 +209,7 @@
 (defmethod metadata-method :default
   [query stage-number x]
   (try
-    {:lib/type     :metadata/field
+    {:lib/type     :metadata/column
      ;; TODO -- effective-type
      :base-type    (type-of query stage-number x)
      :name         (column-name query stage-number x)
@@ -223,7 +228,7 @@
 
 (mu/defn metadata
   "Calculate appropriate metadata for something. What this looks like depends on what we're calculating metadata for.
-  If it's a reference or expression of some sort, this should return a single `:metadata/field` map (i.e., something
+  If it's a reference or expression of some sort, this should return a single `:metadata/column` map (i.e., something
   satisfying the [[metabase.lib.metadata/ColumnMetadata]] schema. If it's something like a stage of a query or a join
   definition, it should return a sequence of metadata maps for all the columns 'returned' at that stage of the query,
   and include the `:lib/source` of where they came from."
@@ -358,7 +363,7 @@
 (defmethod display-info-method :metadata/table
   [query stage-number table]
   (merge (default-display-info query stage-number table)
-         {:is-source-table (= (lib.util/source-table query) (:id table))}))
+         {:is-source-table (= (lib.util/source-table-id query) (:id table))}))
 
 (def ColumnsWithUniqueAliases
   "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used

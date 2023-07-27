@@ -5,6 +5,7 @@ import {
   describeEE,
   openNativeEditor,
   rightSidebar,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS } from "e2e/support/cypress_data";
@@ -14,6 +15,8 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 describeEE("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   ["admin", "normal"].forEach(user => {

@@ -31,6 +31,7 @@ export interface Dashboard {
     timestamp: string;
   };
   auto_apply_filters: boolean;
+  archived: boolean;
 }
 
 export type DashCardId = number;
@@ -54,7 +55,7 @@ export type BaseDashboardOrderedCard = {
   updated_at: string;
 };
 
-export type VirtualCardDisplay = "text" | "action" | "link";
+export type VirtualCardDisplay = "text" | "action" | "link" | "heading";
 
 export type VirtualCard = Partial<Card> & {
   display: VirtualCardDisplay;

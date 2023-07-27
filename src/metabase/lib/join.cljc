@@ -58,7 +58,7 @@
     :field
     (lib.options/update-options field-or-joinable u/assoc-dissoc :join-alias join-alias)
 
-    :metadata/field
+    :metadata/column
     (u/assoc-dissoc field-or-joinable ::join-alias join-alias)
 
     :mbql/join
@@ -69,7 +69,7 @@
   [field-or-joinable :- FieldOrPartialJoin]
   (case (lib.dispatch/dispatch-value field-or-joinable)
     :field          (:join-alias (lib.options/options field-or-joinable))
-    :metadata/field (::join-alias field-or-joinable)
+    :metadata/column (::join-alias field-or-joinable)
     :mbql/join      (:alias field-or-joinable)))
 
 (mu/defn resolve-join :- ::lib.schema.join/join
@@ -582,5 +582,4 @@
     joinable]
    (when-let [pk-col (pk-column query stage-number joinable)]
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
-       (lib.common/->op-arg
-        (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col))))))
+       (lib.filter/filter-clause (equals-join-condition-operator-definition) fk-col pk-col)))))
