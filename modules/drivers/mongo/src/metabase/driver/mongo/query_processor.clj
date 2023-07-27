@@ -976,7 +976,7 @@
   (or (get-in field [2 ::add/desired-alias])
       (->lvalue field)))
 
-(mu/defn ^:private breakouts-and-ags->projected-fields :- [:tuple ms/NonBlankString :any]
+(mu/defn ^:private breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ms/NonBlankString :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
   [breakout-fields aggregations]
