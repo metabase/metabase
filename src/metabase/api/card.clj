@@ -83,6 +83,11 @@
   [_]
   (t2/select Card, :archived false, {:order-by [[:%lower.name :asc]]}))
 
+;; return Cards that are models (dataset)
+(defmethod cards-for-filter-option* :model
+  [_]
+  (t2/select Card, :dataset true, :archived false, {:order-by [[:%lower.name :asc]]}))
+
 ;; return Cards created by the current user
 (defmethod cards-for-filter-option* :mine
   [_]
@@ -166,7 +171,7 @@
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, 'model', :using_model
   and `archived`. See corresponditng implementation functions above for the specific behavior of each filter
   option. :card_index:"
   [f model_id]

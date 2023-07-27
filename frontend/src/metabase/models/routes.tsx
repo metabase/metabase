@@ -3,7 +3,7 @@ import { Route } from "metabase/hoc/Title";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage/ModelDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
-import { ModelListView } from "metabase/models/containers/ModelListView/ModelListView";
+import ModelListView from "metabase/models/containers/ModelListView/ModelListView";
 
 export const getRoutes = () => (
   <>

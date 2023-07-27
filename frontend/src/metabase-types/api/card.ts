@@ -150,6 +150,7 @@ export type CardFilterOption =
   | "table"
   | "recent"
   | "popular"
+  | "model"
   | "using_model"
   | "archived";
 
