@@ -32,7 +32,7 @@ describe(
 
       cy.visit(embeddingPage);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Full-app embedding").click();
+      cy.findByText("Interactive embedding").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(

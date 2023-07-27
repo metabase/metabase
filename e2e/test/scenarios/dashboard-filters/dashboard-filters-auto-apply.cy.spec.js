@@ -491,7 +491,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       });
     });
 
-    describe("full-app embeddings", () => {
+    describe("Interactive embeddings", () => {
       beforeEach(() => {
         cy.signInAsNormalUser();
       });
@@ -499,7 +499,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
         createDashboard({
           dashboardDetails: {
-            name: "Full-app embedding dashboard",
+            name: "Interactive embedding dashboard",
             auto_apply_filters: false,
           },
         });
@@ -509,10 +509,10 @@ describe("scenarios > dashboards > filters > auto apply", () => {
             qs: { side_nav: false, logo: false },
           });
         });
-        cy.findByDisplayValue("Full-app embedding dashboard").should(
+        cy.findByDisplayValue("Interactive embedding dashboard").should(
           "be.visible",
         );
-        // Ensure that we're viewing the dashboard in full-app embedding mode, since `logo` is a full-app embedding parameter.
+        // Ensure that we're viewing the dashboard in Interactive embedding mode, since `logo` is a Interactive embedding parameter.
         cy.findByTestId("main-logo").should("not.exist");
 
         dashboardParametersContainer().button("Apply").should("not.exist");

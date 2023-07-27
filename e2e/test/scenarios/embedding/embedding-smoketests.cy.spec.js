@@ -150,28 +150,28 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.go("back");
       cy.location("pathname").should("eq", embeddingPage);
 
-      cy.log("The second section: 'Full-app embedding'");
-      cy.findByTestId("-full-app-embedding-setting").within(() => {
-        const fullAppEmbeddingPath =
-          "/admin/settings/embedding-in-other-applications/full-app";
+      cy.log("The second section: 'Interactive embedding'");
+      cy.findByTestId("-interactive-embedding-setting").within(() => {
+        const interactiveEmbeddingPath =
+          "/admin/settings/embedding-in-other-applications/interactive-embedding";
 
         cy.findByRole("link")
           .should("have.attr", "href")
-          .and("eq", fullAppEmbeddingPath);
+          .and("eq", interactiveEmbeddingPath);
 
         cy.findByText(/Paid/i);
-        cy.findByText("Full-app embedding");
+        cy.findByText("Interactive embedding");
         cy.findByText(
-          "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder.",
+          "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO - down to the row- or column-level - so people only see what they need to.",
         );
         cy.findByText("More details").click();
-        cy.location("pathname").should("eq", fullAppEmbeddingPath);
+        cy.location("pathname").should("eq", interactiveEmbeddingPath);
       });
 
-      cy.log("Full-app embedding page");
+      cy.log("Interactive embedding page");
       mainPage().within(() => {
         cy.findByText(/Embedding the entire Metabase app/i);
-        // Full app embedding is only available for specific premium tokens
+        // Interactive embedding is only available for specific premium tokens
         cy.contains(
           "With some of our paid plans, you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
         );

@@ -104,7 +104,7 @@ describe("issue 29304", () => {
   });
 });
 
-// Use full-app embedding to test because `ExplicitSize` checks for `isCypressActive`,
+// Use Interactive embedding to test because `ExplicitSize` checks for `isCypressActive`,
 // which checks `window.Cypress`, and will disable the refresh mode on Cypress test.
 // If we test by simply visiting the dashboard, the refresh mode will be disabled,
 // and we won't be able to reproduce the problem.

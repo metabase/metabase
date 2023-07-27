@@ -80,7 +80,7 @@ describeEE("database prompt banner", () => {
   describe("embeddings", () => {
     // Public and signed embeds are tested in `PublicQuestion.unit.spec.tsx`
 
-    describe("full-app embeddings", () => {
+    describe("Interactive embeddings", () => {
       it("should render database prompt banner when logged in as an admin, an instance is on a paid plan, only have a single sample dataset, and is not white labeling", () => {
         visitFullAppEmbeddingUrl({
           url: "/",
@@ -89,7 +89,7 @@ describeEE("database prompt banner", () => {
 
         cy.findByRole("link", { name: "Metabase tips" }).should("exist");
 
-        // Test that we're in full-app embedding since parameters are working.
+        // Test that we're in Interactive embedding since parameters are working.
         appBar().should("not.exist");
 
         cy.findAllByRole("banner")
@@ -112,7 +112,7 @@ describeEE("database prompt banner", () => {
 
         cy.findByRole("link", { name: "Metabase tips" }).should("exist");
 
-        // Test that we're in full-app embedding since parameters are working.
+        // Test that we're in Interactive embedding since parameters are working.
         appBar().should("not.exist");
 
         // Since there wouldn't be a database prompt banner, we can assert that there is no banner at all
