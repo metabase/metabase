@@ -194,6 +194,21 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
+  describe("models link", () => {
+    it("should render", async () => {
+      await setup();
+      const link = screen.getByRole("link", { name: /Models/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/models");
+    });
+
+    it("should be highlighted if selected", async () => {
+      await setup({ pathname: "/models" });
+      const link = screen.getByRole("listitem", { name: /Models/i });
+      expect(link).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
   describe("browse data link", () => {
     it("should render", async () => {
       await setup();

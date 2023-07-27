@@ -101,6 +101,14 @@ function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+            <PaddedSidebarLink
+              isSelected={nonEntityItem?.url === "/models"}
+              icon="model"
+              onClick={onItemSelect}
+              url="/models"
+            >
+              {t`Models`}
+            </PaddedSidebarLink>
           </ul>
         </SidebarSection>
 
