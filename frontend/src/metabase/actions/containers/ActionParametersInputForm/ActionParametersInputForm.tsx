@@ -1,5 +1,6 @@
 import { Flex } from "@mantine/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
@@ -24,6 +25,7 @@ export interface ActionParametersInputFormProps {
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
 }
+const NO_VALUES = {};
 
 function ActionParametersInputForm({
   action,
@@ -35,10 +37,20 @@ function ActionParametersInputForm({
   onSubmit,
   onSubmitSuccess,
 }: ActionParametersInputFormProps) {
-  const [prefetchedValues, setPrefetchedValues] =
-    useState<ParametersForActionExecution>({});
+  const [
+    { error, loading: isFetching, value: prefetchedInitialValues = NO_VALUES },
+    prefetchValues,
+  ] = useAsyncFn(async () => fetchInitialValues?.(), [fetchInitialValues]);
 
-  const [isFetching, setIsFetching] = useState(false);
+  useEffect(() => {
+    if (error) {
+      // do not show user this error
+      console.error(error);
+    }
+  }, [error]);
+
+  const prefetchedValues = isFetching ? NO_VALUES : prefetchedInitialValues;
+
   const hasPrefetchedValues = Object.keys(prefetchedValues).length > 0;
 
   const values = useMemo(
@@ -58,29 +70,11 @@ function ActionParametersInputForm({
       .concat(hiddenFieldIds);
   }, [mappedParameters, action.visualization_settings?.fields]);
 
-  const prefetchValues = useCallback(async () => {
-    if (!fetchInitialValues) {
-      return;
-    }
-
-    try {
-      setIsFetching(true);
-      const fetchedValues = await fetchInitialValues();
-      setPrefetchedValues(fetchedValues);
-    } catch (error) {
-      // do not show user this error
-      console.error(error);
-    } finally {
-      setIsFetching(false);
-    }
-  }, [fetchInitialValues]);
-
   useEffect(() => {
-    if (shouldPrefetch && !hasPrefetchedValues) {
-      setPrefetchedValues({});
+    if (shouldPrefetch && !hasPrefetchedValues && fetchInitialValues) {
       prefetchValues();
     }
-  }, [shouldPrefetch, hasPrefetchedValues, prefetchValues]);
+  }, [shouldPrefetch, hasPrefetchedValues, fetchInitialValues, prefetchValues]);
 
   const handleSubmit = useCallback(
     async (parameters, actions) => {
