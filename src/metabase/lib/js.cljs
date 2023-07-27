@@ -11,11 +11,14 @@
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -426,6 +429,67 @@
     itself should be removed from the query."
   [a-query stage-number column]
   (lib.core/remove-field a-query stage-number column))
+
+(def ^:private visible-columns-defaults
+  {:include-joined?              true
+   :include-expressions?         true
+   :include-implicitly-joinable? true})
+
+
+;; TODO: Added as an expedient to fix metabase/metabase#32373. Due to the interaction with viz-settings, this issue
+;; was difficult to fix entirely within MLv2. Once viz-settings are ported, this function should not be needed, and the
+;; FE logic using it should be ported to MLv2 behind more meaningful names.
+(defn ^:export visible-columns
+  "Return a sequence of column metadatas for columns visible at the given stage of the query. Takes a map of options
+  which defines the set of columns to return. All the options default to *true*, ie. everything is returned by default.
+  ```
+  {
+    include_joined: true,
+    include_expressions true,
+    include_implicitly_joinable: true,
+  }
+  ```"
+  [a-query stage-number ^js js-options]
+  (let [options     (merge visible-columns-defaults
+                           (when-let [opts (some-> js-options js-keys set)]
+                             (cond-> {}
+                               (opts "includeJoined")
+                               (assoc :include-joined? (.-includeJoined js-options))
+                               (opts "includeExpressions")
+                               (assoc :include-expressions? (.-includeExpressions? js-options))
+                               (opts "includeImplicitlyJoinable")
+                               (assoc :include-implicitly-joinable? (.-includeImplicitlyJoinable js-options)))))
+        stage            (lib.util/query-stage a-query stage-number)
+        vis-columns (lib.metadata.calculation/visible-columns a-query stage-number stage options)
+        ret-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+    (to-array (lib.equality/mark-selected-columns vis-columns ret-columns))))
+
+(defn ^:export legacy-field-ref
+  "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
+  [column]
+  (-> column
+      lib.core/ref
+      convert/->legacy-MBQL
+      (update 2 update-vals #(if (qualified-keyword? %)
+                               (u/qualified-name %)
+                               %))
+      clj->js))
+
+(defn ^:export find-column-index-from-legacy-ref
+  "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`), search through it for a field matching the
+  given legacy field ref. Returns the index, or -1 if no matching column is found."
+  [a-query _stage-number legacy-columns legacy-ref]
+  (let [columns   (map #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
+        field-ref (-> legacy-ref
+                      (js->clj :keywordize-keys true)
+                      (update 0 keyword)
+                      convert/->pMBQL)]
+    (or (->> columns
+             (keep-indexed #(when (lib.equality/find-closest-matching-ref a-query field-ref
+                                                                          [(lib.core/ref %2)])
+                              %1))
+             first)
+        -1)))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
