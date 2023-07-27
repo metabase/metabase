@@ -26,16 +26,14 @@ export function visitEmbeddedPage(
   };
 
   const stringifiedPayload = JSON.stringify(payloadWithExpiration);
-
-  const embeddableObject = getEmbeddableObject(payload);
-
-  const filters = getFilterValues(setFilters);
-  const hiddenFilters = getHiddenFilters(hideFilters);
-  // Style is hard coded for now because we're not concerned with testing its properties
-  const style = "#bordered=true&titled=true";
   const signTransaction = `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`;
 
   cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
+    const embeddableObject = getEmbeddableObject(payload);
+    const filters = getFilterValues(setFilters);
+    const hiddenFilters = getHiddenFilters(hideFilters);
+    // Style is hard coded for now because we're not concerned with testing its properties
+    const style = "#bordered=true&titled=true";
     const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
     const embeddableUrl = urlRoot + filters + style + hiddenFilters;
 
