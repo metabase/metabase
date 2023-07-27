@@ -26,6 +26,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
@@ -86,7 +87,6 @@
       (s/constrained query-has-resolved-database-id?
                      "Query where source-query virtual `:database` has been replaced with actual Database ID")))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Resolving card__id -> source query                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -106,21 +106,22 @@
 (defn- source-query
   "Get the query to be run from the card"
   [{dataset-query :dataset_query card-id :id :as card}]
-  (let [{mbql-query                                      :query
+  (let [{db-id                                           :database
+         mbql-query                                      :query
          {template-tags :template-tags :as native-query} :native} dataset-query]
     (or
      mbql-query
      ;; rename `:query` to `:native` because source queries have a slightly different shape
      (when-some [native-query (set/rename-keys native-query {:query :native})]
-       (let [collection (:collection native-query)]
+       (let [mongo? (= (driver.u/database->driver db-id) :mongo)]
          (cond-> native-query
                  ;; MongoDB native  queries consist of a collection and a pipelne (query)
-                 collection
-                 (update :native (fn [pipeline] {:collection collection
+                 mongo?
+                 (update :native (fn [pipeline] {:collection (:collection native-query)
                                                  :query      pipeline}))
 
                  ;; trim trailing comments from SQL, but not other types of native queries
-                 (and (nil? collection)
+                 (and (not mongo?)
                       (string? (:native native-query)))
                  (update :native (partial trim-sql-query card-id))
 
@@ -170,7 +171,6 @@
   [source-table-str :- mbql.s/source-table-card-id-regex]
   (when-let [[_ card-id-str] (re-find #"^card__(\d+)$" source-table-str)]
     (Integer/parseInt card-id-str)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Logic for traversing the query                                         |
@@ -290,7 +290,7 @@
       extract-resolved-card-id))
 
 (s/defn resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZero)
-                                                    :query   FullyResolvedQuery}
+                                           :query   FullyResolvedQuery}
   "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query

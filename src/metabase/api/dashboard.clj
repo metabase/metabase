@@ -44,9 +44,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -723,7 +721,7 @@
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
-             (u/prog1 (str (UUID/randomUUID))
+             (u/prog1 (str (random-uuid))
                (t2/update! :model/Dashboard dashboard-id
                            {:public_uuid       <>
                             :made_public_by_id api/*current-user-id*})))})
@@ -957,15 +955,17 @@
 
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute"
+
+(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [dashboard-id dashcard-id parameters]
-  {dashboard-id su/IntGreaterThanZero
-   dashcard-id su/IntGreaterThanZero
-   parameters su/JSONString}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   parameters   ms/JSONString}
   (api/read-check :model/Dashboard dashboard-id)
-  (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
+  (actions.execution/fetch-values
+   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
+   (json/parse-string parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"

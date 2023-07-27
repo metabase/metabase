@@ -4,9 +4,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +32,7 @@
   (or (when-let [mb-setup-token (env/env :mb-setup-token)]
         (setting/set-value-of-type! :string :setup-token mb-setup-token))
       (t2/select-one-fn :value Setting :key "setup-token")
-      (setting/set-value-of-type! :string :setup-token (str (UUID/randomUUID)))))
+      (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))
 
 (defsetting has-user-setup
   "A value that is true iff the metabase instance has one or more users registered."

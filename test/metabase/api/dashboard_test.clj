@@ -11,16 +11,17 @@
    [metabase.api.common :as api]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.pivots :as api.pivots]
+   [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Action
             Card
             Collection
-            Database
             Dashboard
             DashboardCard
             DashboardCardSeries
+            Database
             Field
             FieldValues
             PermissionsGroup
@@ -39,7 +40,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor :as qp]
@@ -52,9 +52,7 @@
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -2212,7 +2210,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- shared-dashboard []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 ;;; -------------------------------------- POST /api/dashboard/:id/public_link ---------------------------------------
@@ -3588,13 +3586,8 @@
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
 
-(defn- ee-features-enabled? []
-  (u/ignore-exceptions
-    (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-    (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
-
 (deftest dashcard-action-execution-granular-auth-test
-  (when (ee-features-enabled?)
+  (when config/ee-available?
     (mt/with-temp-copy-of-db
       (mt/with-actions-test-data-and-actions-enabled
         (mt/with-actions [{:keys [action-id model-id]} {}]

@@ -50,8 +50,13 @@
   (testing "Returns nil for superuser, even if they are in a group with an impersonation policy defined"
     (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                 :attributes     {"impersonation_attr" "impersonation_role"}}
-      (is (= "impersonation_role"
-             (@#'impersonation/connection-impersonation-role (mt/db)))))))
+      (mw.session/as-admin
+       (is (nil? (@#'impersonation/connection-impersonation-role (mt/db)))))))
+
+  (testing "Does not throw an exception if passed a nil `database-or-id`"
+    (advanced-perms.api.tu/with-impersonations {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                :attributes     {"impersonation_attr" "impersonation_role"}}
+      (is (nil? (@#'impersonation/connection-impersonation-role nil))))))
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres

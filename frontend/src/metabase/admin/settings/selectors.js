@@ -13,6 +13,9 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
+
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+
 import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
@@ -120,8 +123,8 @@ const SECTIONS = {
         ],
         getProps: setting => ({
           value: setting.value,
-          collectionFilter: collection =>
-            collection.personal_owner_id === null || collection.id === "root",
+          collectionFilter: (collection, index, allCollections) =>
+            !isPersonalCollectionOrChild(collection, allCollections),
         }),
         onChanged: (oldVal, newVal) => {
           if (newVal && !oldVal) {
@@ -471,6 +474,7 @@ const SECTIONS = {
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
+        key: "-standalone-embeds",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Standalone embeds`,
@@ -478,6 +482,7 @@ const SECTIONS = {
         embedType: "standalone",
       },
       {
+        key: "-full-app-embedding",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Full-app embedding`,

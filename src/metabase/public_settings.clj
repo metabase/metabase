@@ -19,9 +19,7 @@
     :refer [available-locales-with-names deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,7 +52,7 @@
   ((resolve 'metabase.api.ldap/ldap-enabled)))
 
 (defn- ee-sso-configured? []
-  (u/ignore-exceptions
+  (when config/ee-available?
     (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
     (varr)))
@@ -112,7 +110,7 @@
 (defmethod setting/get-value-of-type ::uuid-nonce
   [_ setting]
   (or (setting/get-value-of-type :string setting)
-      (let [value (str (UUID/randomUUID))]
+      (let [value (str (random-uuid))]
         (setting/set-value-of-type! :string setting value)
         value)))
 
@@ -201,6 +199,10 @@
     (application-name-for-setting-descriptions))
   :default    "en"
   :visibility :public
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :string :site-locale)]
+                  (when (i18n/available-locale? value)
+                    value)))
   :setter     (fn [new-value]
                 (when new-value
                   (when-not (i18n/available-locale? new-value)

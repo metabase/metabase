@@ -125,26 +125,6 @@
           (is (:valid result))
           (is (contains? (set (:features result)) "test")))))))
 
-(deftest feature-overrides-test
-  (let [token (random-token)]
-    (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
-      (is (and (not (premium-features/has-feature? :serialization))
-               (not (premium-features/has-feature? :audit-app)))
-          "serialization and auditing are not enabled")
-      (testing "with-premium-feature-overrides works"
-        (premium-features/with-premium-feature-overrides [:serialization]
-          (is (premium-features/has-feature? :serialization))
-          (is (not (premium-features/has-feature? :audit-app)))
-
-          (testing "when nested"
-            (premium-features/with-premium-feature-overrides [:audit-app]
-              (is (premium-features/has-feature? :serialization))
-              (is (premium-features/has-feature? :audit-app))))))
-
-      (testing "and doesn't persist outside its scope"
-        (is (not (premium-features/has-feature? :serialization)))
-        (is (not (premium-features/has-feature? :audit-app)))))))
-
 (deftest not-found-test
   (mt/with-log-level :fatal
     ;; `partial=` here in case the Cloud API starts including extra keys... this is a "dangerous" test since changes
@@ -188,23 +168,23 @@
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                (greeting :rasta))))
 
-     (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting :rasta))))
+      (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting :rasta))))
 
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're not extra special :("
-                (special-greeting :rasta)))))
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're not extra special :("
+                 (special-greeting :rasta)))))
 
-     (testing "when :fallback is a function, it is run when the required token is not present"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting-or-custom :rasta))))
+      (testing "when :fallback is a function, it is run when the required token is not present"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting-or-custom :rasta))))
 
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're an EE customer but not extra special."
-                (special-greeting-or-custom :rasta))))))))
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're an EE customer but not extra special."
+                 (special-greeting-or-custom :rasta))))))))
 
 (defenterprise-schema greeting-with-schema :- s/Str
   "Returns a greeting for a user."

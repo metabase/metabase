@@ -423,6 +423,10 @@
   "Schema for a permissions path with a valid format."
   (s/pred valid-path-format? "Valid permissions path"))
 
+(def PathMalliSchema
+  "Malli Schema for a permissions path with a valid format."
+  [:fn {:error/message "Valid permissions path"} valid-path-format?])
+
 (defn- assert-not-admin-group
   "Check to make sure the `:group_id` for `permissions` entry isn't the admin group."
   [{:keys [group_id]}]
@@ -573,9 +577,9 @@
   If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the data model
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
   [& path-components]
-  (let [f (u/ignore-exceptions
-           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
+  (let [f (when config/ee-available?
+            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
       (apply f path-components)
       "/")))
@@ -585,9 +589,9 @@
   If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the DB details
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
   [db-id]
-  (let [f (u/ignore-exceptions
-           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
+  (let [f (when config/ee-available?
+            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
       (f db-id)
       "/")))
@@ -1355,7 +1359,7 @@
 
 (defn- update-feature-level-permission!
   [group-id db-id new-perms perm-type]
-  (if-let [update-fn (u/ignore-exceptions
+  (if-let [update-fn (when config/ee-available?
                        (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
                        (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
                                         (str "update-db-" (name perm-type) "-permissions!"))))]
