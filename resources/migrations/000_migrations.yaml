@@ -15931,6 +15931,10 @@ databaseChangeLog:
             tableName: connection_impersonations
             columnNames: group_id, db_id
             constraintName: conn_impersonation_unique_group_id_db_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: connection_impersonations
+            constraintName: conn_impersonation_unique_group_id_db_id
 
   - changeSet:
       id: v48.00-003
