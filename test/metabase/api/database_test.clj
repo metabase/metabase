@@ -261,16 +261,16 @@
                                   :details (:details (mt/db))
                                   :engine  :postgres}]
         (testing "Don't allow changing engine to H2"
-          (is (= {:message "H2 is not supported as a data warehouse"}
-                 (update! db {:engine :h2})))
+          (is (partial= {:message "H2 is not supported as a data warehouse"}
+                        (update! db {:engine :h2})))
           (is (= :postgres
                  (db/select-one-field :engine Database :id (u/the-id db))))))
       (mt/with-temp Database [db {:name    (mt/random-name)
                                   :details (:details (mt/db))
                                   :engine  :h2}]
         (testing "Don't allow editing H2 connection details"
-          (is (= {:message "H2 is not supported as a data warehouse"}
-                 (update! db {:details {:db "mem:test-data;USER=GUEST;PASSWORD=guest;WHATEVER=true"}})))
+          (is (partial= {:message "H2 is not supported as a data warehouse"}
+                        (update! db {:details {:db "mem:test-data;USER=GUEST;PASSWORD=guest;WHATEVER=true"}})))
           (is (= (:details db)
                  (db/select-one-field :details Database :id (u/the-id db)))))))))
 

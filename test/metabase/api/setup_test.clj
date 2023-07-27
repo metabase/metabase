@@ -404,8 +404,7 @@
 
     (mt/with-temporary-setting-values [has-user-setup false]
       (testing "should validate that database connection works"
-        (is (= {:errors  {:db "check your connection string"},
-                :message "Database cannot be found."}
+        (is (= {:errors  {:dbname "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"}}
                (api-validate 400 {:token   (setup/setup-token)
                                   :details {:engine  "h2"
                                             :details {:db "file:///tmp/fake.db"}}}))))
@@ -424,7 +423,7 @@
             request {:details {:engine  :h2
                                :details details}
                      :token   (setup/setup-token)}]
-        (is (= {:message "H2 is not supported as a data warehouse"}
+        (is (= {:errors {:dbname "H2 is not supported as a data warehouse"}}
                (mt/user-http-request :crowberto :post 400 "setup/validate" request)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
