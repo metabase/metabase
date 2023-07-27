@@ -18,8 +18,8 @@ const FULL_APP_EMBEDDING_URL =
   "/admin/settings/embedding-in-other-applications/full-app";
 
 describe("SettingsEditor", () => {
-  describe("full-app embedding", () => {
-    it("should allow to configure the origin for full-app embedding", async () => {
+  describe("Interactive embedding", () => {
+    it("should allow to configure the origin for Interactive embedding", async () => {
       setupPremium({
         settings: [
           createMockSettingDefinition({ key: "enable-embedding" }),
@@ -29,7 +29,9 @@ describe("SettingsEditor", () => {
         initialRoute: FULL_APP_EMBEDDING_URL,
       });
 
-      expect(await screen.findByText("Full-app embedding")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Interactive embedding"),
+      ).toBeInTheDocument();
       expect(screen.getByText("Authorized origins")).toBeInTheDocument();
       expect(
         screen.queryByText(/some of our paid plans/),

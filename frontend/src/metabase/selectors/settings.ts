@@ -26,6 +26,10 @@ export const getLearnUrl = (path = "") => {
   return `https://www.metabase.com/learn/${path}`;
 };
 
+export const getWebsiteUrl = (path = "") => {
+  return `https://www.metabase.com/${path}`;
+};
+
 interface UpgradeUrlOpts {
   utm_media: string;
 }

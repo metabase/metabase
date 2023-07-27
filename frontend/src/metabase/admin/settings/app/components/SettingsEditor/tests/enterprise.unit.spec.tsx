@@ -13,7 +13,7 @@ const FULL_APP_EMBEDDING_URL =
   "/admin/settings/embedding-in-other-applications/full-app";
 
 describe("SettingsEditor", () => {
-  describe("full-app embedding", () => {
+  describe("Interactive embedding", () => {
     it("should show info about full app embedding", async () => {
       setupEnterprise({
         settings: [
@@ -24,7 +24,9 @@ describe("SettingsEditor", () => {
         initialRoute: FULL_APP_EMBEDDING_URL,
       });
 
-      expect(await screen.findByText("Full-app embedding")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Interactive embedding"),
+      ).toBeInTheDocument();
       expect(screen.getByText(/some of our paid plans/)).toBeInTheDocument();
       expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
     });

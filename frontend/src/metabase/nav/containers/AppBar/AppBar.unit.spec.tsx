@@ -15,7 +15,7 @@ import AppBar from "./AppBar";
 describe("AppBar", () => {
   const matchMediaSpy = jest.spyOn(window, "matchMedia");
 
-  describe("full-app embedding", () => {
+  describe("Interactive embedding", () => {
     beforeEach(async () => {
       mockEmbedding();
     });
