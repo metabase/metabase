@@ -4,12 +4,11 @@ import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
  * Programatically generate token and visit the embedded page for question or dashboard
  *
  * @param {object} payload
- * @param {{setFilters: string, hideFilters:string}}
+ * @param {{setFilters: object, hideFilters:string}}
  *
  * @example
  * visitEmbeddedPage(payload, {
- *   // We divide filter values with an ampersand
- *   setFilters: "id=92&source=Organic",
+ *   setFilters: { id:92, source: "Organic" },
  *   // We divide multiple hidden filters with coma.
  *   // Make sure there are no spaces in between!
  *   hideFilters: "created_at,state"
@@ -17,7 +16,7 @@ import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
  */
 export function visitEmbeddedPage(
   payload,
-  { setFilters = "", hideFilters = "" } = {},
+  { setFilters = {}, hideFilters = "" } = {},
 ) {
   const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
   const payloadWithExpiration = {
@@ -30,28 +29,22 @@ export function visitEmbeddedPage(
 
   cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
     const embeddableObject = getEmbeddableObject(payload);
-    const filters = getFilterValues(setFilters);
     const hiddenFilters = getHiddenFilters(hideFilters);
     // Style is hard coded for now because we're not concerned with testing its properties
-    const style = "#bordered=true&titled=true";
+    const style = "bordered=true&titled=true";
     const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
-    const embeddableUrl = urlRoot + filters + style + hiddenFilters;
 
     // Always visit embedded page logged out
     cy.signOut();
 
-    cy.visit(embeddableUrl);
+    cy.visit({
+      url: urlRoot,
+      qs: setFilters,
+      onBeforeLoad: window => {
+        window.location.hash = style + hiddenFilters;
+      },
+    });
   });
-
-  /**
-   * Construct the string that sets value to certain filters
-   *
-   * @param {string} filters
-   * @returns string
-   */
-  function getFilterValues(filters) {
-    return filters && "?" + filters;
-  }
 
   /**
    * Construct the string that hides certain filters
