@@ -1,10 +1,6 @@
-import { Flex } from "@mantine/core";
+import type { FormikHelpers } from "formik";
 import { useCallback, useEffect, useMemo } from "react";
 import { useAsyncFn } from "react-use";
-import { t } from "ttag";
-
-import EmptyState from "metabase/components/EmptyState";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import ActionForm from "metabase/actions/components/ActionForm";
 
@@ -15,50 +11,65 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-const NO_VALUES: ParametersForActionExecution = {};
-
 export interface ActionParametersInputFormProps {
   action: WritebackAction;
   mappedParameters?: WritebackParameter[];
   initialValues?: ParametersForActionExecution;
-  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
-  shouldPrefetch?: boolean;
+  prefetchesInitialValues?: boolean;
   onSubmit: OnSubmitActionForm;
-  onSubmitSuccess?: () => void;
+  onSubmitSuccess?: (
+    actions: FormikHelpers<ParametersForActionExecution>,
+  ) => void;
   onCancel?: () => void;
 }
+
+const NO_VALUES: ParametersForActionExecution = {};
+
+export const useActionInitialValues = ({
+  fetchInitialValues,
+  initialValues: initialValuesProp,
+  shouldPrefetch,
+}: {
+  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
+  initialValues?: ParametersForActionExecution;
+  shouldPrefetch?: boolean;
+}) => {
+  const [
+    { error, loading: isLoading, value: prefetchedInitialValues = NO_VALUES },
+    prefetchValues,
+  ] = useAsyncFn(async () => fetchInitialValues?.(), [fetchInitialValues]);
+
+  const hasPrefetchedValues = Object.keys(prefetchedInitialValues).length > 0;
+
+  const initialValues = useMemo(
+    () => ({ ...prefetchedInitialValues, ...initialValuesProp }),
+    [prefetchedInitialValues, initialValuesProp],
+  );
+
+  useEffect(() => {
+    if (shouldPrefetch && fetchInitialValues) {
+      prefetchValues();
+    }
+  }, [shouldPrefetch, fetchInitialValues, prefetchValues]);
+
+  return {
+    error,
+    hasPrefetchedValues,
+    initialValues,
+    isLoading: Boolean(isLoading && fetchInitialValues && shouldPrefetch),
+    prefetchValues,
+  };
+};
 
 function ActionParametersInputForm({
   action,
   mappedParameters = [],
   initialValues = {},
-  fetchInitialValues,
-  shouldPrefetch,
+  prefetchesInitialValues,
   onCancel,
   onSubmit,
   onSubmitSuccess,
 }: ActionParametersInputFormProps) {
-  const [
-    { error, loading: isFetching, value: prefetchedInitialValues = NO_VALUES },
-    prefetchValues,
-  ] = useAsyncFn(async () => fetchInitialValues?.(), [fetchInitialValues]);
-
-  useEffect(() => {
-    if (error) {
-      // do not show user this error
-      console.error(error);
-    }
-  }, [error]);
-
-  const prefetchedValues = isFetching ? NO_VALUES : prefetchedInitialValues;
-
-  const hasPrefetchedValues = Object.keys(prefetchedValues).length > 0;
-
-  const values = useMemo(
-    () => ({ ...prefetchedValues, ...initialValues }),
-    [prefetchedValues, initialValues],
-  );
-
   const hiddenFields = useMemo(() => {
     const hiddenFieldIds = Object.values(
       action.visualization_settings?.fields ?? {},
@@ -71,49 +82,35 @@ function ActionParametersInputForm({
       .concat(hiddenFieldIds);
   }, [mappedParameters, action.visualization_settings?.fields]);
 
-  useEffect(() => {
-    if (shouldPrefetch && fetchInitialValues) {
-      prefetchValues();
-    }
-  }, [shouldPrefetch, fetchInitialValues, prefetchValues]);
-
   const handleSubmit = useCallback(
     async (parameters, actions) => {
       actions.setSubmitting(true);
       const { success, error } = await onSubmit(parameters);
       if (success) {
         actions.setErrors({});
-        onSubmitSuccess?.();
+        onSubmitSuccess?.(actions);
 
-        if (shouldPrefetch) {
-          prefetchValues();
-        } else {
-          actions.resetForm();
-        }
+        // if (shouldPrefetch) {
+        //   prefetchValues();
+        // } else {
+        //   actions.resetForm();
+        // }
       } else {
         throw new Error(error);
       }
     },
-    [prefetchValues, shouldPrefetch, onSubmit, onSubmitSuccess],
+    [onSubmit, onSubmitSuccess],
   );
 
-  if (isFetching) {
-    return (
-      <Flex align="center" justify="center">
-        <LoadingSpinner />
-      </Flex>
-    );
-  }
-
-  if (shouldPrefetch && !hasPrefetchedValues) {
-    return <EmptyState message={t`Choose a record to update`} />;
-  }
+  // if (shouldPrefetch && !hasPrefetchedValues) {
+  //   return <EmptyState message={t`Choose a record to update`} />;
+  // }
 
   return (
     <ActionForm
       action={action}
-      initialValues={values}
-      prefetchesInitialValues={Boolean(fetchInitialValues)}
+      initialValues={initialValues}
+      prefetchesInitialValues={prefetchesInitialValues}
       hiddenFields={hiddenFields}
       onSubmit={handleSubmit}
       onClose={onCancel}
