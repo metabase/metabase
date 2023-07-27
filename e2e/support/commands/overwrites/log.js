@@ -5,7 +5,7 @@ Cypress.Commands.overwrite("log", (originalFn, text) => {
     message: "",
   };
 
-  appendStyleIfItDoesntExists(logConfig);
+  appendStyleIfNotExists(logConfig);
   Cypress.log(logConfig);
   window.logCalls++;
 });
@@ -15,7 +15,7 @@ beforeEach(() => {
   window.logCalls = 1;
 });
 
-function appendStyleIfItDoesntExists(logConfig) {
+function appendStyleIfNotExists(logConfig) {
   const headHTML = Cypress.$(window.top.document.head);
   const allStyles = Array.from(Cypress.$(window.top.document.styleSheets));
 
