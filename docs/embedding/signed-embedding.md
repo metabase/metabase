@@ -30,7 +30,7 @@ your_metabase_embedding_url/your_signed_jwt?filter=true
 
 The signed JWT is generated using your [Metabase secret key](#regenerating-the-secret-key). It tells Metabase that the request for filtered data can be trusted, so it's safe to display the results at the new embedding URL.
 
-If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/questions/drill-through) and [self-service querying](../questions/query-builder/introduction.md), see [Interactive embedding](./full-app-embedding.md).
+If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/questions/drill-through) and [self-service querying](../questions/query-builder/introduction.md), see [Interactive embedding](./interactive-embedding.md).
 
 ## Enabling the embedding feature in Metabase
 

@@ -139,10 +139,10 @@
    :anti_csrf_token  test-anti-csrf-token
    :type             :full-app-embed})
 
-(deftest set-full-app-embedding-session-cookie-test
+(deftest set-interactive-embedding-session-cookie-test
   (with-redefs [env/env (assoc env/env :max-session-age "1")]
     (mt/with-temporary-setting-values [session-timeout nil]
-      (testing "test that we can set a full-app-embedding session cookie"
+      (testing "test that we can set a interactive-embedding session cookie"
         (is (= {:body    {}
                 :status  200
                 :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
@@ -156,7 +156,7 @@
                                                {}
                                                test-full-app-embed-session
                                                (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
-      (testing "test that we can set a full-app-embedding session cookie with SameSite=None over HTTPS"
+      (testing "test that we can set a interactive-embedding session cookie with SameSite=None over HTTPS"
         (is (= {:body    {}
                 :status  200
                 :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"

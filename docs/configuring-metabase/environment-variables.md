@@ -424,7 +424,7 @@ Default: `null`
 
 URL of origin allowed to embed the full Metabase application.
 
-Related to [MB_SESSION_COOKIE_SAMESITE](#mb_session_cookie_samesite). Read more about [FullApp Embedding](../embedding/full-app-embedding.md).
+Related to [MB_SESSION_COOKIE_SAMESITE](#mb_session_cookie_samesite). Read more about [interactive embedding](../embedding/interactive-embedding.md).
 
 ### `MB_EMBEDDING_SECRET_KEY`
 
@@ -1194,7 +1194,7 @@ When using FullApp embedding, and the embedding website is hosted under a domain
 
 Setting the variable to `"none"` requires you to use HTTPS, otherwise browsers will reject the request.
 
-Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [FullApp Embedding](../embedding/full-app-embedding.md).
+Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [FullApp Embedding](../embedding/interactive-embedding.md).
 
 Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
 

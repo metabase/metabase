@@ -8,7 +8,7 @@ title: Embedding overview
 
 What is embedding, and how does it work?
 
-## [Interactive embedding](./full-app-embedding.md)
+## [Interactive embedding](./interactive-embedding.md)
 
 The solution to self-service customer analytics: embed the full Metabase app in your app. Interactive embedding integrates with your data permissions to let people slice and dice data on their own using Metabase's query builder.
 
