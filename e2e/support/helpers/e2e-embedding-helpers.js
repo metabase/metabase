@@ -29,16 +29,15 @@ export function visitEmbeddedPage(
 
   const embeddableObject = getEmbeddableObject(payload);
 
-  const urlRoot = `/embed/${embeddableObject}/`;
   const filters = getFilterValues(setFilters);
   const hiddenFilters = getHiddenFilters(hideFilters);
   // Style is hard coded for now because we're not concerned with testing its properties
   const style = "#bordered=true&titled=true";
+  const signTransaction = `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`;
 
-  cy.exec(
-    `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`,
-  ).then(({ stdout: token }) => {
-    const embeddableUrl = urlRoot + token + filters + style + hiddenFilters;
+  cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
+    const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
+    const embeddableUrl = urlRoot + filters + style + hiddenFilters;
 
     // Always visit embedded page logged out
     cy.signOut();
