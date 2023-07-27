@@ -39,9 +39,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       openldap:
-        image: osixia/openldap:1.5.0
+        image: bitnami/openldap:2.6.4
         ports:
-          - "389:389"
+          - 389:389
+        env:
+          LDAP_ADMIN_PASSWORD: adminpass
+          LDAP_USERS: user01@example.org,user02@example.org
+          LDAP_PASSWORDS: 123456,123465
+          LDAP_ROOT: dc=example,dc=org
+          LDAP_PORT_NUMBER: 389
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
