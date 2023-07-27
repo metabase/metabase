@@ -38,7 +38,9 @@ describe("getSearchTextFromLocation", () => {
   it("should return an empty string when not on the search page", () => {
     const location = {
       pathname: "/collection/root",
-      query: {},
+      query: {
+        q: "test",
+      },
     };
     expect(getSearchTextFromLocation(location as SearchAwareLocation)).toBe("");
   });
