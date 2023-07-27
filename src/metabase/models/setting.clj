@@ -81,6 +81,7 @@
    [environ.core :as env]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
@@ -412,9 +413,9 @@
   []
   (or api/*is-superuser?*
       (do
-        (u/ignore-exceptions
-         (classloader/require 'metabase-enterprise.advanced-permissions.common
-                              'metabase.public-settings.premium-features))
+        (when config/ee-available?
+          (classloader/require 'metabase-enterprise.advanced-permissions.common
+                               'metabase.public-settings.premium-features))
         (if-let [current-user-has-application-permissions?
                  (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]

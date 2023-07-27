@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [inflections.core :as inflections]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
@@ -193,7 +194,7 @@
    (when source-table
      (:display-name (lib.metadata/table query source-table)))
    (when source-card
-     (i18n/tru "Question {0}" source-card))
+     (lib.card/fallback-display-name source-card))
    (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
@@ -730,10 +731,15 @@
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
    (sort-join-condition-columns
-    (let [joinable (if (join? join-or-joinable)
+    (let [joinable   (if (join? join-or-joinable)
                      (joined-thing query join-or-joinable)
-                     join-or-joinable)]
+                     join-or-joinable)
+          join-alias (when (join? join-or-joinable)
+                       (current-join-alias join-or-joinable))]
       (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
+           (map (fn [col]
+                  (cond-> (assoc col :lib/source :source/joins)
+                    join-alias (with-join-alias join-alias))))
            (mark-selected-column query rhs-column-or-nil))))))
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
