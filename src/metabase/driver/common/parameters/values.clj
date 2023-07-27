@@ -248,7 +248,7 @@
   [s :- :string]
   (.parse (NumberFormat/getInstance) ^String s))
 
-(mu/defn ^:private value->number :- [:or number? [number?]]
+(mu/defn ^:private value->number :- [:or number? [:sequential {:min 1} number?]]
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat
   undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the old parameter
   code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has long been

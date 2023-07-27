@@ -1770,9 +1770,12 @@
   [s]
   (mc/validate ::lib.schema.literal/string.datetime s))
 
+(def ^{:arglists '([query])} valid-query?
+  "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
+  (mc/validator Query))
+
 (def ^{:arglists '([query])} validate-query
-  "Compiled schema validator for an [outer] Metabase query. (Pre-compling a validator is more efficient; use this
-  instead of calling `(s/validate Query query)` or similar.)"
+  "Validator for an outer query; throw an Exception explaining why the query is invalid if it is."
   (let [explainer (mc/explainer Query)]
     (fn [query]
       (if-let [error (explainer query)]

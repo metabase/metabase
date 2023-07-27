@@ -6,6 +6,8 @@
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -27,9 +29,7 @@
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.tools.identity-query :as t2.identity-query]
-   [toucan2.util :as t2.u]
-   [malli.core :as mc]
-   [malli.error :as me])
+   [toucan2.util :as t2.u])
   (:import
    (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
    (java.sql Blob)

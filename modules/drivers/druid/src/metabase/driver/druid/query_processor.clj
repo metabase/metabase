@@ -16,8 +16,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 

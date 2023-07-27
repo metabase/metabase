@@ -24,13 +24,13 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [monger.operators :refer [$add $addToSet $and $avg $cond
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
                              $group $gt $gte $hour $limit $lookup $lt $lte $match $max $min $minute $mod $month
                              $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
-                             $sum $toLower $unwind $year]]
-   [metabase.util.malli :as mu])
+                             $sum $toLower $unwind $year]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))

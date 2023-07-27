@@ -16,7 +16,7 @@
   [clause]
   (mbql.u/match-one clause [:field id _] id))
 
-(mu/defn collect-field-references :- [:sequential mbql.s/field]
+(mu/defn collect-field-references :- [:maybe [:sequential mbql.s/field]]
   "Collect all `:field` references from a given form."
   [form]
   (mbql.u/match form :field &match))

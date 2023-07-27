@@ -4,6 +4,12 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.48.0
+
+- The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
+  [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
+  want to update your code to use Malli instead.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
@@ -11,8 +17,8 @@ title: Driver interface changelog
   An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
-- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports 
-  uploading CSV files to tables in the database. To support the uploads feature, implement the following new 
+- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports
+  uploading CSV files to tables in the database. To support the uploads feature, implement the following new
   multimethods: `metabase.driver/create-table!` (creates a table), `metabase.driver/drop-table!` (drops
   a table), and `metabase.driver/insert-into!` (inserts values into a table).
 

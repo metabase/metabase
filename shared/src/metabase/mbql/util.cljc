@@ -340,40 +340,7 @@
   Throws an Exception when it encounters a unresolved source query (i.e., the `:source-table \"card__id\"`
   form), because it cannot return an accurate result for a query that has not yet been preprocessed."
   {:arglists '([outer-query])}
-  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- :map]
-  (cond
-    ;; for native queries, there's no source table to resolve
-    (not= query-type :query)
-    nil
-
-    ;; for MBQL queries with a *native* source query, it's the same story
-    (and (nil? source-table-id) source-query (:native source-query))
-    nil
-
-    ;; for MBQL queries with an MBQL source query, recurse on the source query and try again
-    (and (nil? source-table-id) source-query)
-    (recur (assoc query :query source-query))
-
-    ;; if ID is a `card__id` form that can only mean we haven't preprocessed the query and resolved the source query.
-    ;; This is almost certainly an accident, so throw an Exception so we can make the proper fixes
-    ((every-pred string? (partial re-matches mbql.s/source-table-card-id-regex)) source-table-id)
-    (throw
-     (ex-info
-      (i18n/tru "Error: query''s source query has not been resolved. You probably need to `preprocess` the query first.")
-      {}))
-
-    ;; otherwise resolve the source Table
-    :else
-    source-table-id))
-
-(mu/defn query->source-table-id :- [:maybe ::lib.schema.common/positive-int]
-  "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
-  `nil`, returns `nil`.
-
-  Throws an Exception when it encounters a unresolved source query (i.e., the `:source-table \"card__id\"`
-  form), because it cannot return an accurate result for a query that has not yet been preprocessed."
-  {:arglists '([outer-query])}
-  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- :any]
+  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe :map]]
   (cond
     ;; for native queries, there's no source table to resolve
     (not= query-type :query)
