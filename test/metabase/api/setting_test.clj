@@ -1,5 +1,6 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
+            [metabase.driver.h2 :as h2]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.setting-test :as models.setting-test]
             [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -7,6 +8,8 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util.i18n :refer [deferred-tru]]
             [schema.core :as s]))
+
+(comment h2/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -84,6 +87,13 @@
 
       (test-api-setting-integer! 42)
       (is (= 42 (fetch-setting :test-api-setting-integer 200))))))
+
+(deftest ^:parallel engines-mark-h2-superseded-test
+  (testing "GET /api/setting/:key"
+    (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
+      (is (partial= {:driver-name   "H2"
+                     :superseded-by "deprecated"}
+                    (:h2 (fetch-setting :engines 200)))))))
 
 (deftest fetch-calculated-settings-test
   (testing "GET /api/setting"

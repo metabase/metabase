@@ -83,7 +83,7 @@
 (deftest geocode-ip-addresses-test
   (are [ip-addresses expected] (schema= expected (request.u/geocode-ip-addresses ip-addresses))
     ["8.8.8.8"]
-    {(s/required-key "8.8.8.8") {:description (s/eq "United States")
+    {(s/required-key "8.8.8.8") {:description #"United States"
                                  :timezone    (s/eq (t/zone-id "America/Chicago"))}}
 
     ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list

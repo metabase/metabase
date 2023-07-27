@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase.db.connection :as mdb.connection]
+   [metabase.driver.h2 :as h2]
    [metabase.models :refer [Database Table]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
@@ -10,7 +11,8 @@
    [toucan.db :as db]))
 
 (use-fixtures :each (fn [thunk]
-                      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
+                      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
+                                h2/*allow-testing-h2-connections*         true]
                         (premium-features-test/with-premium-features #{:advanced-config}
                           (thunk)))))
 
