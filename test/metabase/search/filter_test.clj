@@ -106,4 +106,3 @@
                       base-search-query
                       "indexed-entity"
                       (merge default-search-ctx {:search-string "foo"}))))))))
-
