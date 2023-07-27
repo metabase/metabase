@@ -26,12 +26,12 @@ export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
       );
     }
 
-    // available_models: all possible types in a user's database (or in this case, the test data), AFTER the text query filter
+    // available_models: all possible entity types within the test data after the text query filter
     const availableModels = [
       ...new Set(availableModelItems.map(({ model }) => model)),
     ];
 
-    // models: the types that are actually present in the data
+    // models: the types that are actually present in the search response
     const models = [...new Set(matchedItems.map(({ model }) => model))];
 
     return {
