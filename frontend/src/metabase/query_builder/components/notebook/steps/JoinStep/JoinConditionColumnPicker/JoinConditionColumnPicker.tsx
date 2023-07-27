@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, RefObject } from "react";
 import { t } from "ttag";
 
 import { Flex, Text } from "metabase/ui";
@@ -26,6 +26,7 @@ interface JoinConditionColumnPickerProps
   isInitiallyVisible?: boolean;
   readOnly?: boolean;
   color: string;
+  popoverRef?: RefObject<TippyPopoverWithTriggerRef>;
   onRemove: () => void;
 }
 
@@ -35,23 +36,18 @@ function checkIsColumnSelected(item: ColumnListItem) {
 
 export type JoinConditionColumnPickerRef = TippyPopoverWithTriggerRef;
 
-export const JoinConditionColumnPicker = forwardRef<
-  JoinConditionColumnPickerRef,
-  JoinConditionColumnPickerProps
->(function JoinConditionColumnPicker(
-  {
-    query,
-    stageIndex,
-    column,
-    label,
-    isInitiallyVisible = false,
-    readOnly = false,
-    color,
-    onRemove,
-    ...props
-  },
-  ref,
-) {
+export function JoinConditionColumnPicker({
+  query,
+  stageIndex,
+  column,
+  label,
+  isInitiallyVisible = false,
+  readOnly = false,
+  color,
+  popoverRef,
+  onRemove,
+  ...props
+}: JoinConditionColumnPickerProps) {
   const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
 
   return (
@@ -79,10 +75,10 @@ export const JoinConditionColumnPicker = forwardRef<
           onClose={closePopover}
         />
       )}
-      ref={ref}
+      popoverRef={popoverRef}
     />
   );
-});
+}
 
 interface ColumnNotebookCellItemProps {
   tableName?: string;

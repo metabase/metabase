@@ -1,31 +1,30 @@
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { useCallback, useImperativeHandle, useState, RefObject } from "react";
 
 import ControlledPopoverWithTrigger, {
   ControlledPopoverWithTriggerProps,
 } from "./ControlledPopoverWithTrigger";
-
-export type TippyPopoverWithTriggerProps = {
-  isInitiallyVisible?: boolean;
-} & Omit<ControlledPopoverWithTriggerProps, "visible" | "onClose" | "onOpen">;
 
 export type TippyPopoverWithTriggerRef = {
   open: () => void;
   close: () => void;
 };
 
-const UncontrolledPopoverWithTrigger = forwardRef<
-  TippyPopoverWithTriggerRef,
-  TippyPopoverWithTriggerProps
->(function UncontrolledPopoverWithTrigger(
-  { isInitiallyVisible, ...props },
-  ref,
-) {
+export type TippyPopoverWithTriggerProps = {
+  isInitiallyVisible?: boolean;
+  popoverRef?: RefObject<TippyPopoverWithTriggerRef>;
+} & Omit<ControlledPopoverWithTriggerProps, "visible" | "onClose" | "onOpen">;
+
+function UncontrolledPopoverWithTrigger({
+  isInitiallyVisible,
+  popoverRef,
+  ...props
+}: TippyPopoverWithTriggerProps) {
   const [visible, setVisible] = useState(isInitiallyVisible || false);
 
   const onOpen = useCallback(() => setVisible(true), []);
   const onClose = useCallback(() => setVisible(false), []);
 
-  useImperativeHandle(ref, () => ({
+  useImperativeHandle(popoverRef, () => ({
     open: onOpen,
     close: onClose,
   }));
@@ -38,7 +37,7 @@ const UncontrolledPopoverWithTrigger = forwardRef<
       onClose={onClose}
     />
   );
-});
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default UncontrolledPopoverWithTrigger;
