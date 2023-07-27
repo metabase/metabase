@@ -12,7 +12,7 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
-import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
+import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import {
   useActionListQuery,
   useDatabaseListQuery,

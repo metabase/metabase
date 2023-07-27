@@ -8,9 +8,9 @@ import { useActionQuery } from "metabase/common/hooks/use-action-query";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
-import ActionParametersInputForm from "../ActionParametersInputForm";
 
-import { executeAction } from "../../actions";
+import { executeAction } from "../actions";
+import ActionParametersInputForm from "./ActionParametersInputForm";
 
 interface ActionExecuteModalProps {
   actionId: WritebackActionId;
@@ -21,7 +21,7 @@ interface ActionExecuteModalProps {
   onSuccess?: () => void;
 }
 
-const ActionExecuteModal = ({
+export const ActionExecuteModal = ({
   actionId,
   initialValues,
   fetchInitialValues,
@@ -64,6 +64,3 @@ const ActionExecuteModal = ({
     </ModalContent>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ActionExecuteModal;
