@@ -127,7 +127,7 @@
                   (is (some? session)))))))))))
 
 
-;;; ------------------------------------- tests for full-app embedding sessions --------------------------------------
+;;; ------------------------------------- tests for Interactive embedding sessions --------------------------------------
 
 (def ^:private embedded-session-cookie @#'mw.session/metabase-embedded-session-cookie)
 (def ^:private anti-csrf-token-header @#'mw.session/anti-csrf-token-header)
