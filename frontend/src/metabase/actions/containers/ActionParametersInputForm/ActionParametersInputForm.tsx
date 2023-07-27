@@ -15,6 +15,8 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
+const NO_VALUES: ParametersForActionExecution = {};
+
 export interface ActionParametersInputFormProps {
   action: WritebackAction;
   mappedParameters?: WritebackParameter[];
@@ -25,7 +27,6 @@ export interface ActionParametersInputFormProps {
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
 }
-const NO_VALUES = {};
 
 function ActionParametersInputForm({
   action,
