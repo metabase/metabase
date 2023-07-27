@@ -18,7 +18,8 @@ beforeEach(() => {
 function appendStyleIfNotExists(logConfig) {
   const doc = window.top.document;
   const headHTML = doc.head;
-  const customStyle = doc.getElementById("customLogStyle");
+  const styleId = "customLogStyle";
+  const customStyle = doc.getElementById(styleId);
   const bgColor = "#7f43c9";
 
   if (!customStyle) {
@@ -32,7 +33,7 @@ function appendStyleIfNotExists(logConfig) {
     }
     `;
     style.type = "text/css";
-    style.id = "customLogStyle";
+    style.id = styleId;
 
     headHTML.append(style);
   }
