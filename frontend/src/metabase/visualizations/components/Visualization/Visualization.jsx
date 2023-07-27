@@ -538,7 +538,7 @@ Visualization.defaultProps = defaultProps;
 export default _.compose(
   ExplicitSize({
     selector: ".CardVisualization",
-    refreshMode: props => (props.isVisible ? "throttle" : "debounce"),
+    refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
   connect(mapStateToProps),
   memoizeClass("_getQuestionForCardCached"),
