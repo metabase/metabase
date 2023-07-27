@@ -3,7 +3,6 @@ import {
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
-  modal,
   resetSnowplow,
   restore,
 } from "e2e/support/helpers";
@@ -187,7 +186,7 @@ describe("scenarios > search", () => {
       it("should not render full page search unless search text is present and user clicks 'Enter'", () => {
         cy.visit("/");
         cy.findByTestId("search-bar-filter-button").click();
-        modal().within(() => {
+        getSearchModalContainer().within(() => {
           cy.findByText("Question").click();
           cy.findByText("Apply all filters").click();
         });
@@ -200,7 +199,7 @@ describe("scenarios > search", () => {
       it("should render full page search when search text is present and user clicks 'Enter'", () => {
         cy.visit("/");
         cy.findByTestId("search-bar-filter-button").click();
-        modal().within(() => {
+        getSearchModalContainer().within(() => {
           cy.findByText("Question").click();
           cy.findByText("Apply all filters").click();
         });
@@ -225,7 +224,7 @@ describe("scenarios > search", () => {
 
             cy.findByTestId("search-bar-filter-button").click();
 
-            modal().within(() => {
+            getSearchModalContainer().within(() => {
               cy.findByText(label).click();
               cy.findByText("Apply all filters").click();
             });
@@ -258,22 +257,26 @@ describe("scenarios > search", () => {
         cy.findAllByTestId("search-result-item-name");
         cy.findByTestId("highlighted-search-bar-filter-button").click();
 
-        modal().within(() => {
+        getSearchModalContainer().within(() => {
           cy.findByText("Clear all filters").click();
         });
 
-        cy.intercept("GET", "/api/search*").as("search");
-
         getSearchBar().clear().type("e{enter}");
 
-        cy.wait("@search").then(({ request }) => {
+        cy.intercept("GET", "/api/search*").as("search");
+        cy.wait("@search").then(({ request, response }) => {
           expect(request.query.models).to.be.undefined;
+          // we've inserted one of each entity type, so we should have
+          // each type in the available_models
+          expect(response.body?.available_models ?? []).to.include.members(
+            typeFilters.map(({ filterName }) => filterName),
+          );
         });
 
-        // TODO: check if we should be checking for all available models
-        // rather than just checking if we need to check for >2 models
-        // (i.e. implying that we have no type filters applied)
-        cy.findAllByTestId("type-sidebar-item").should("have.length.gt", 2);
+        cy.findAllByTestId("type-sidebar-item").should(
+          "have.length",
+          typeFilters.length + 1,
+        );
       });
     });
   });
@@ -311,4 +314,8 @@ function getProductsSearchResults() {
 
 function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
+}
+
+function getSearchModalContainer() {
+  return cy.findByTestId("search-filter-modal-container");
 }

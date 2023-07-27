@@ -19,7 +19,7 @@ export const SearchFilter = ({
 }) => {
   return (
     <Grid data-testid={dataTestId}>
-      <Grid.Col span={2}>
+      <Grid.Col span={2} p={0}>
         <Title order={5}>{title}</Title>
         {tooltip && (
           <Tooltip tooltip={tooltip}>
@@ -27,7 +27,7 @@ export const SearchFilter = ({
           </Tooltip>
         )}
       </Grid.Col>
-      <Grid.Col style={{ height: "100%" }} span="auto">
+      <Grid.Col p={0} span="auto">
         {isLoading ? <LoadingSpinner /> : children}
       </Grid.Col>
     </Grid>

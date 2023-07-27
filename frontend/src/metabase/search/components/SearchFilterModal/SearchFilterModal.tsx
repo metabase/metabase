@@ -8,7 +8,14 @@ import {
   SearchFilterKeys,
   SearchFilters,
 } from "metabase/search/util/filter-types";
+import Button from "metabase/core/components/Button";
+import { Title, Flex } from "metabase/ui";
 import { TypeFilter } from "./filters/TypeFilter";
+import { SearchFilterWrapper } from "./SearchFilterModal.styled";
+
+const filterMap: Record<FilterType, SearchFilterComponent> = {
+  [SearchFilterKeys.Type]: TypeFilter,
+};
 
 export const SearchFilterModal = ({
   isOpen,
@@ -41,38 +48,42 @@ export const SearchFilterModal = ({
     setIsOpen(false);
   };
 
-  const filterMap: Record<FilterType, SearchFilterComponent> = {
-    type: TypeFilter,
-  };
-
+  // we can use this field to control which filters are available
+  // - we can enable the 'verified' filter here
   const availableFilters: FilterType[] = useMemo(() => {
     return [SearchFilterKeys.Type];
   }, []);
 
   return isOpen ? (
-    <Modal isOpen={isOpen} onClose={closeModal} title={t`Filter by`}>
-      {availableFilters.map(key => {
-        const Filter = filterMap[key];
-        return (
-          <Filter
-            key={key}
-            data-testid={`${key}-search-filter`}
-            value={output[key]}
-            onChange={val =>
-              setOutput({
-                ...output,
-                [key]: val,
-              })
-            }
-          />
-        );
-      })}
+    <Modal isOpen={isOpen} onClose={closeModal}>
+      <SearchFilterWrapper data-testid="search-filter-modal-container">
+        <Flex direction="row" justify="space-between" align="center">
+          <Title order={4}>{t`Filter by`}</Title>
+          <Button onlyIcon onClick={() => setIsOpen(false)} icon="close" />
+        </Flex>
+        {availableFilters.map(key => {
+          const Filter = filterMap[key];
+          return (
+            <Filter
+              key={key}
+              data-testid={`${key}-search-filter`}
+              value={output[key]}
+              onChange={val =>
+                setOutput({
+                  ...output,
+                  [key]: val,
+                })
+              }
+            />
+          );
+        })}
 
-      <SearchFilterModalFooter
-        onApply={applyFilters}
-        onCancel={closeModal}
-        onClear={clearFilters}
-      />
+        <SearchFilterModalFooter
+          onApply={applyFilters}
+          onCancel={closeModal}
+          onClear={clearFilters}
+        />
+      </SearchFilterWrapper>
     </Modal>
   ) : null;
 };

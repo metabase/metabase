@@ -15,12 +15,7 @@ export const SearchFilterModalFooter = ({
   onClear,
 }: SearchFilterModalFooterProps) => {
   return (
-    <Flex
-      direction={"row"}
-      justify={"space-between"}
-      align={"center"}
-      style={{ width: "100%" }}
-    >
+    <Flex direction={"row"} justify={"space-between"} align={"center"}>
       <CloseAllFiltersButton
         onClick={onClear}
       >{t`Clear all filters`}</CloseAllFiltersButton>
