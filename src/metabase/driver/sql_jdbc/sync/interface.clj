@@ -81,11 +81,16 @@
   in the default `:sql-jdbc` implementation of [[metabase.driver/db-default-timezone]].
 
   This exists so we can reuse this code with the application database without having to create a new Connection pool
-  for the application DB."
-  {:arglists '([driver jdbc-spec])}
+  for the application DB.
+
+  DEPRECATED: you can implement [[metabase.driver/db-default-timezone]] directly;
+  use [[metabase.driver.sql-jdbc.execute/do-with-connection-with-options]] to get a `java.sql.Connection` for a
+  Database."
+  {:arglists '([driver jdbc-spec]), :deprecated "0.48.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod db-default-timezone :sql-jdbc
   [_driver _jdbc-spec]
   nil)

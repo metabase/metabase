@@ -76,20 +76,6 @@
                              :schema (:dest-table-schema fk)}
           :dest-column-name (:dest-column-name fk)})))
 
-;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
-;; Redshift is always in UTC and doesn't return it's timezone
-(defmethod driver.common/current-db-time-date-formatters :redshift
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-
-(defmethod driver.common/current-db-time-native-query :redshift
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
-
-(defmethod driver/current-db-time :redshift
-  [& args]
-  (apply driver.common/current-db-time args))
-
 (defmethod driver/db-start-of-week :redshift
   [_]
   :sunday)

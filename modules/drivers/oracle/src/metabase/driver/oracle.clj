@@ -506,16 +506,15 @@
   [driver query context respond]
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context (partial remove-rownum-column respond)))
 
-(defmethod driver.common/current-db-time-date-formatters :oracle
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-
-(defmethod driver.common/current-db-time-native-query :oracle
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF3 TZD') FROM DUAL")
-
-(defmethod driver/current-db-time :oracle [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :oracle
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^Connection conn]
+     (with-open [stmt (.prepareStatement conn "SELECT DBTIMEZONE FROM dual")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
 
 ;; don't redef if already definied -- test extensions override this impl
 (when-not (get (methods sql-jdbc.sync/excluded-schemas) :oracle)

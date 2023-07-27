@@ -168,22 +168,11 @@
 ;;; |                                Middleware & Boring Recursive Application Stuff                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ^:deprecated maybe-resolve-source-table
-  "Resolve the `source-table` of any `source-query` inside a join.
-
-  TODO - this is no longer needed. `resolve-source-tables` middleware handles all table resolution."
-  [{:keys [source-table], :as query}]
-  (qp.store/fetch-and-store-tables! [source-table])
-  query)
-
 (defn- resolve-joins-in-mbql-query-all-levels
-  [{:keys [joins source-query source-table], :as query}]
+  [{:keys [joins source-query], :as query}]
   (cond-> query
     (seq joins)
     resolve-joins-in-mbql-query
-
-    source-table
-    maybe-resolve-source-table
 
     source-query
     (update :source-query resolve-joins-in-mbql-query-all-levels)))

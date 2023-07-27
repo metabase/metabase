@@ -4,6 +4,16 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.48.0
+
+- `metabase.driver/current-db-time`, deprecated in 0.34, and related methods and helper functions, have been removed.
+  Implement `metabase.driver/db-default-timezone` instead.
+
+- `metabase.driver.sql-jdbc.sync.interface/db-default-timezone`, a helper for writing
+  `metabase.driver/db-default-timezone` implementations for JDBC-based drivers, has been deprecated, and will be
+  removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
+  `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
@@ -11,8 +21,8 @@ title: Driver interface changelog
   An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
-- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports 
-  uploading CSV files to tables in the database. To support the uploads feature, implement the following new 
+- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports
+  uploading CSV files to tables in the database. To support the uploads feature, implement the following new
   multimethods: `metabase.driver/create-table!` (creates a table), `metabase.driver/drop-table!` (drops
   a table), and `metabase.driver/insert-into!` (inserts values into a table).
 
