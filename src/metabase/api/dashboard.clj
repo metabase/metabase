@@ -820,7 +820,7 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
-(mu/defn chain-filter
+(mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
 
   Used to query for values that populate chained filter dropdowns and text search boxes."
@@ -846,8 +846,8 @@
                           field-ids)
              values (distinct (mapcat :values results))
              has_more_values (boolean (some true? (map :has_more_values results)))]
-         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-         {:values          (if (sequential? (first values))
+         ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
+         {:values          (if (= (count (first values)) 2)
                              (sort-by second values)
                              (sort values))
           :has_more_values has_more_values})

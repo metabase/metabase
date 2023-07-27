@@ -246,7 +246,7 @@
                                    (rest s)))))))))
 
 (defn fixup-human-readable-values
-  "Field values and human readable values are lists that are zipped together. If the field values have changes, the
+  "Field values and human readable values are lists that are zipped together. If the field values have changed, the
   human readable values will need to change too. This function reconstructs the `human_readable_values` to reflect
   `new-values`. If a new field value is found, a string version of that is used"
   [{old-values :values, old-hrv :human_readable_values} new-values]

@@ -31,7 +31,7 @@
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.
   ;; (postprocess-field-values (t2/select-one FieldValues :id 1) (Field 1))
-  ;; => {:values          [1 2 3 4]
+  ;; => {:values          [[1] [2] [3] [4]]
          :field_id        1
          :has_more_values boolean}"
   [field-values field]
@@ -82,10 +82,10 @@
             ;; let's make sure we respect that limit here.
             ;; For a more detailed docs on this limt check out [[field-values/distinct-values]]
             limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
-       {:values          limited-values
-        :has_more_values (or (> (count values)
-                                (count limited-values))
-                             has_more_values)}))
+        {:values          limited-values
+         :has_more_values (or (> (count values)
+                                 (count limited-values))
+                              has_more_values)}))
 
     (field-values/distinct-values field)))
 
@@ -108,19 +108,21 @@
   list of values and human_readable_values of the full FieldValues of the same field."
   [fv-type field hash-key constraints]
   (when-let [{:keys [values has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
-    (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
+    (let [;; each value in `values` is a 1-tuple, so unwrap the raw for storage
+          unwrapped-values      (map first values)
+          ;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
           human-readable-values (field-values/fixup-human-readable-values
                                   (t2/select-one FieldValues
                                                  :field_id (:id field)
                                                  :type :full)
-                                  values)]
+                                  unwrapped-values)]
       (first (t2/insert-returning-instances! FieldValues
                                              :field_id (:id field)
                                              :type fv-type
                                              :hash_key hash-key
                                              :has_more_values has_more_values
                                              :human_readable_values human-readable-values
-                                             :values values)))))
+                                             :values unwrapped-values)))))
 
 (defn get-or-create-advanced-field-values!
   "Fetch an Advanced FieldValues with type `fv-type` for a `field`, creating them if needed.

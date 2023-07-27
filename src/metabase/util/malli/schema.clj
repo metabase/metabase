@@ -273,7 +273,7 @@
     2. <value-of-remapped-field> (must be a string)"
   [:tuple :any :string])
 
-(def NotRemappedFieldValue
+(def NonRemappedFieldValue
   "Has one component: <value-of-field>"
   [:tuple :any])
 
@@ -281,7 +281,7 @@
   "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
   [:or
    [:sequential RemappedFieldValue]
-   [:sequential NotRemappedFieldValue]])
+   [:sequential NonRemappedFieldValue]])
 
 (def FieldValuesResult
   "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."

@@ -244,7 +244,7 @@
 
 (declare search-values)
 
-(defn field->values
+(mu/defn field->values :- ms/FieldValuesResult
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
   [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
@@ -257,7 +257,7 @@
      :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
-(defn search-values-from-field-id
+(mu/defn search-values-from-field-id :- ms/FieldValuesResult
   "Search for values of a field given by `field-id` that contain `query`."
   [field-id query]
   (let [field        (api/read-check (t2/select-one Field :id field-id))
@@ -393,12 +393,12 @@
                                [:field (u/the-id search-field) nil]])
               :limit        limit}})
 
-(mu/defn search-values :- [:maybe ms/FieldValues]
-  "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return like
+(mu/defn search-values :- [:maybe ms/FieldValuesList]
+  "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return pairs like
 
       [<value-of-field> <matching-value-of-search-field>].
 
-   If `search-field` and `field` are the same, simply return 1-vectors like
+   If `search-field` and `field` are the same, simply return 1-tuples like
 
       [<matching-value-of-field>].
 
