@@ -18,6 +18,7 @@ const propTypes = {
   onEntitySelect: PropTypes.func,
   forceEntitySelect: PropTypes.bool,
   searchText: PropTypes.string,
+  searchFilters: PropTypes.object,
 };
 
 const SearchResults = ({
@@ -84,7 +85,8 @@ export default _.compose(
     query: (_state, props) => ({
       q: props.searchText,
       limit: DEFAULT_SEARCH_LIMIT,
-      models: props.models,
+      ...props.searchFilters,
+      models: props.searchFilters.type,
     }),
   }),
 )(SearchResults);

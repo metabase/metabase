@@ -80,7 +80,7 @@ function RecentsList({ list, loading, onChangeLocation, onClick, className }) {
 
   return (
     <Root className={className}>
-      <Header>{t`Recently viewed`}</Header>
+      <Header data-testid="recents-list-header">{t`Recently viewed`}</Header>
       <LoadingAndErrorWrapper loading={loading} noWrapper>
         <Fragment>
           {hasRecents && (

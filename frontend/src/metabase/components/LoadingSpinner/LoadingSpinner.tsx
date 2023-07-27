@@ -7,10 +7,19 @@ interface Props {
   className?: string;
   size?: number;
   borderWidth?: number;
+  "data-testid"?: string;
 }
 
-const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }: Props) => (
-  <SpinnerRoot className={className} data-testid="loading-spinner">
+const LoadingSpinner = ({
+  className,
+  size = 32,
+  borderWidth = 4,
+  ...rest
+}: Props) => (
+  <SpinnerRoot
+    className={className}
+    data-testid={rest["data-testid"] ?? "loading-spinner"}
+  >
     {isReducedMotionPreferred() ? (
       <Icon name="hourglass" size="24" />
     ) : (
