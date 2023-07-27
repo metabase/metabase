@@ -15,6 +15,7 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Enterprise Edition releases
 
+- [v1.46.6.2](https://github.com/metabase/metabase/releases/tag/v1.46.6.2)
 - [v1.46.6.1](https://github.com/metabase/metabase/releases/tag/v1.46.6.1)
 - [v1.46.6](https://github.com/metabase/metabase/releases/tag/v1.46.6)
 - [v1.46.5](https://github.com/metabase/metabase/releases/tag/v1.46.5)
@@ -23,6 +24,7 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 - [v1.46.2](https://github.com/metabase/metabase/releases/tag/v1.46.2)
 - [v1.46.1](https://github.com/metabase/metabase/releases/tag/v1.46.1)
 - [v1.46.0](https://github.com/metabase/metabase/releases/tag/v1.46.0)
+- [v1.45.4.2](https://github.com/metabase/metabase/releases/tag/v1.45.4.2)
 - [v1.45.4.1](https://github.com/metabase/metabase/releases/tag/v1.45.4.1)
 - [v1.45.4](https://github.com/metabase/metabase/releases/tag/v1.45.4)
 - [v1.45.3.1](https://github.com/metabase/metabase/releases/tag/v1.45.3.1)
@@ -111,6 +113,7 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Open Source Edition releases
 
+- [v0.46.6.2](https://github.com/metabase/metabase/releases/tag/v0.46.6.2)
 - [v0.46.6.1](https://github.com/metabase/metabase/releases/tag/v0.46.6.1)
 - [v0.46.6](https://github.com/metabase/metabase/releases/tag/v0.46.6)
 - [v0.46.5](https://github.com/metabase/metabase/releases/tag/v0.46.5)
@@ -119,6 +122,7 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 - [v0.46.2](https://github.com/metabase/metabase/releases/tag/v0.46.2)
 - [v0.46.1](https://github.com/metabase/metabase/releases/tag/v0.46.1)
 - [v0.46.0](https://github.com/metabase/metabase/releases/tag/v0.46.0)
+- [v0.45.4.2](https://github.com/metabase/metabase/releases/tag/v0.45.4.2)
 - [v0.45.4.1](https://github.com/metabase/metabase/releases/tag/v0.45.4.1)
 - [v0.45.4](https://github.com/metabase/metabase/releases/tag/v0.45.4)
 - [v0.45.3.1](https://github.com/metabase/metabase/releases/tag/v0.45.3.1)

@@ -416,10 +416,15 @@
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
 
-  If you are changing the LHS of a condition for an existing join, pass in that existing join as
-  `existing-join-or-nil` so we can filter out the columns added by it (it doesn't make sense to present the columns
-  added by a join as options for its own LHS). Otherwise pass `nil` when building a new join. See #32005 for more
-  info.
+  If you are changing the LHS of a condition for an existing join, pass in that existing join as `join-or-joinable` so
+  we can filter out the columns added by it (it doesn't make sense to present the columns added by a join as options
+  for its own LHS) or added by later joins (joins can only depend on things from previous joins). Otherwise you can
+  either pass in `nil` or something joinable (Table or Card metadata) we're joining against when building a new
+  join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
+  of [[join-condition-rhs-columns]].) See #32005 for more info.
+
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
 
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
@@ -427,21 +432,24 @@
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  [a-query stage-number existing-join-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-lhs-columns a-query stage-number existing-join-or-nil rhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-rhs-columns
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
-  is the one that belongs to the thing being joined, `joinable`, which can be something like a
+  is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
   Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
-  another query, etc. -- anything you can pass to [[join-clause]].
+  another query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
-  If the lhs-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
+  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
+
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  [a-query stage-number joinable lhs-column-or-nil]
-  (to-array (lib.core/join-condition-rhs-columns a-query stage-number joinable lhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-operators
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
