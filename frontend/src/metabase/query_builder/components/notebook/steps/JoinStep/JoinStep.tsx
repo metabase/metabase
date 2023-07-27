@@ -252,9 +252,9 @@ function JoinCondition({
         label={t`Right column`}
         readOnly={readOnly}
         color={color}
+        popoverRef={rhsColumnPicker}
         onSelect={handleRHSColumnChange}
         onRemove={handleRHSColumnRemove}
-        ref={rhsColumnPicker}
       />
     </Flex>
   );
