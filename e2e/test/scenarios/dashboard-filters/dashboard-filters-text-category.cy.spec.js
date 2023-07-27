@@ -47,7 +47,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     );
   });
 
-  it("should reset filter state when all values are unselected", () => {
+  it("should reset filter state when all values are unselected (metabase#25533)", () => {
     const filterType = "Is";
     const filterValue = "Organic";
 
