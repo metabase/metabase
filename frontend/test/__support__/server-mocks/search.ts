@@ -2,10 +2,11 @@ import fetchMock from "fetch-mock";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
+  console.log(items);
   fetchMock.get("path:/api/search", uri => {
     const url = new URL(uri);
     const models = url.searchParams.getAll("models");
-    const limit = Number(url.searchParams.get("limit"));
+    const limit = Number(url.searchParams.get("limit")) || 50;
     const offset = Number(url.searchParams.get("offset"));
     const table_db_id = url.searchParams.get("table_db_id") || null;
     const queryText = url.searchParams.get("q")?.toLowerCase();
@@ -22,6 +23,16 @@ export function setupSearchEndpoints(items: (CollectionItem | SearchResult)[]) {
     matchedItems = matchedItems.filter(
       ({ model }) => !models.length || models.includes(model),
     );
+
+    console.log(matchedItems, {
+      data: matchedItems.slice(offset, offset + limit),
+      total: matchedItems.length,
+      models,
+      available_models: availableModels,
+      limit,
+      offset,
+      table_db_id,
+    });
 
     return {
       data: matchedItems.slice(offset, offset + limit),
