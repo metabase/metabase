@@ -364,8 +364,8 @@
                                                          (meta/id :venues :category-id)]
                                                         [:field
                                                          {:join-alias "Categories"}
-                                                         (meta/id :categories :id)]]],
-                                          :strategy :right-join,
+                                                         (meta/id :categories :id)]]]
+                                          :strategy :right-join
                                           :alias "Categories"}]}]}
                       (-> lib.tu/venues-query
                           (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
@@ -618,7 +618,7 @@
                  {:lib/desired-column-alias "LATITUDE"}
                  {:lib/desired-column-alias "LONGITUDE"}
                  {:lib/desired-column-alias "PRICE"}]
-                (lib/join-condition-lhs-columns query nil rhs)))))))
+                (lib/join-condition-lhs-columns query nil nil rhs)))))))
 
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
   (testing "Include columns from previous join(s)"
@@ -633,9 +633,9 @@
                    {:lib/desired-column-alias "LONGITUDE"}
                    {:lib/desired-column-alias "PRICE"}
                    {:lib/desired-column-alias "Cat__NAME"}]
-                  (lib/join-condition-lhs-columns query nil rhs)))
-          (is (= (lib/join-condition-lhs-columns query nil rhs)
-                 (lib/join-condition-lhs-columns query -1 nil rhs))))))))
+                  (lib/join-condition-lhs-columns query nil nil rhs)))
+          (is (= (lib/join-condition-lhs-columns query nil nil rhs)
+                 (lib/join-condition-lhs-columns query -1 nil nil rhs))))))))
 
 (deftest ^:parallel join-condition-lhs-columns-exclude-columns-from-existing-join-test
   (testing "Ignore columns added by a join or any subsequent joins (#32005)"
@@ -652,7 +652,7 @@
                :alias    "C3"}
               join-3))
       (are [join expected] (= expected
-                              (map :lib/desired-column-alias (lib/join-condition-lhs-columns query join nil)))
+                              (map :lib/desired-column-alias (lib/join-condition-lhs-columns query join nil nil)))
         nil
         ["ID" "Cat__ID" "C2__ID" "C3__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME" "C3__NAME"]
 
@@ -665,7 +665,84 @@
         join-3
         ["ID" "Cat__ID" "C2__ID" "CATEGORY_ID" "NAME" "LATITUDE" "LONGITUDE" "PRICE" "Cat__NAME" "C2__NAME"]))))
 
-(deftest ^:parallel join-condition-rhs-columns-test
+(def ^:private join-for-query-with-join
+  (first (lib/joins lib.tu/query-with-join)))
+
+(def ^:private condition-for-query-with-join
+  (first (lib/join-conditions join-for-query-with-join)))
+
+(def ^:private lhs-for-query-with-join
+  (first (:args (lib/external-op condition-for-query-with-join))))
+
+(def ^:private rhs-for-query-with-join
+  (second (:args (lib/external-op condition-for-query-with-join))))
+
+(deftest ^:parallel condition-for-query-with-join-test
+  (is (=? [:= {}
+           [:field {} (meta/id :venues :category-id)]
+           [:field {} (meta/id :categories :id)]]
+          condition-for-query-with-join))
+  (is (=? [:field {} (meta/id :venues :category-id)]
+          lhs-for-query-with-join))
+  (is (=? [:field {} (meta/id :categories :id)]
+          rhs-for-query-with-join)))
+
+(deftest ^:parallel join-condition-lhs-columns-mark-selected-test
+  (testing "#32438"
+    (is (=? [{:long-display-name "ID"}
+             {:long-display-name "Category ID", :selected true}
+             {:long-display-name "Name"}
+             {:long-display-name "Latitude"}
+             {:long-display-name "Longitude"}
+             {:long-display-name "Price"}]
+            (map (partial lib/display-info lib.tu/query-with-join)
+                 (lib/join-condition-lhs-columns lib.tu/query-with-join
+                                                 join-for-query-with-join
+                                                 lhs-for-query-with-join
+                                                 rhs-for-query-with-join))))))
+
+(deftest ^:parallel join-condition-rhs-columns-join-table-test
+  (testing "RHS columns when building a join against a Table"
+    (doseq [query [lib.tu/venues-query
+                   lib.tu/query-with-join]]
+      (let [cols (lib/join-condition-rhs-columns query (meta/table-metadata :categories) nil nil)]
+        (is (=? [{:display-name "ID", :lib/source :source/joins, :table-id (meta/id :categories)}
+                 {:display-name "Name", :lib/source :source/joins, :table-id (meta/id :categories)}]
+                cols))
+        (is (=? [{:display-name "ID", :is-from-join true}
+                 {:display-name "Name", :is-from-join true}]
+                (for [col cols]
+                  (lib/display-info query col))))))))
+
+(deftest ^:parallel join-condition-rhs-columns-join-card-test
+  (testing "RHS columns when building a join against"
+    (doseq [query            [lib.tu/venues-query
+                              lib.tu/query-with-join]
+            [card-type card] {"Native" lib.tu/categories-native-card
+                              "MBQL"   lib.tu/categories-mbql-card}]
+      (testing (str "a " card-type " Card")
+        (let [cols (lib/join-condition-rhs-columns query card nil nil)]
+          (is (=? [{:display-name "ID", :lib/source :source/joins, :lib/card-id 1}
+                   {:display-name "Name", :lib/source :source/joins, :lib/card-id 1}]
+                  cols))
+          (is (=? [{:display-name "ID", :is-from-join true}
+                   {:display-name "Name", :is-from-join true}]
+                  (for [col cols]
+                    (lib/display-info query col)))))))))
+
+(deftest ^:parallel join-condition-rhs-columns-existing-join-test
+  (testing "RHS columns for existing join"
+    (let [cols (lib/join-condition-rhs-columns lib.tu/query-with-join join-for-query-with-join nil nil)]
+      (is (=? [{:display-name "ID",   :lib/source :source/joins, ::lib.join/join-alias "Cat"}
+               {:display-name "Name", :lib/source :source/joins, ::lib.join/join-alias "Cat"}]
+              cols))
+      (testing `lib/display-info
+        (is (=? [{:display-name "ID", :is-from-join true}
+                 {:display-name "Name", :is-from-join true}]
+                (for [col cols]
+                  (lib/display-info lib.tu/query-with-join col))))))))
+
+(deftest ^:parallel join-condition-rhs-columns-test-2
   (let [query lib.tu/venues-query]
     (doseq [lhs          [nil (lib.metadata/field query (meta/id :venues :id))]
             joined-thing [(meta/table-metadata :venues)
@@ -678,8 +755,17 @@
                  {:lib/desired-column-alias "LATITUDE"}
                  {:lib/desired-column-alias "LONGITUDE"}
                  {:lib/desired-column-alias "PRICE"}]
-                (map #(select-keys % [:lib/desired-column-alias])
-                     (lib/join-condition-rhs-columns query joined-thing lhs))))))))
+                (lib/join-condition-rhs-columns query joined-thing lhs nil)))))))
+
+(deftest ^:parallel join-condition-rhs-columns-mark-selected-test
+  (testing "#32438"
+    (is (=? [{:display-name "ID", :selected true}
+             {:display-name "Name"}]
+            (map (partial lib/display-info lib.tu/query-with-join)
+                 (lib/join-condition-rhs-columns lib.tu/query-with-join
+                                                 join-for-query-with-join
+                                                 lhs-for-query-with-join
+                                                 rhs-for-query-with-join))))))
 
 (deftest ^:parallel join-condition-operators-test
   ;; just make sure that this doesn't barf and returns the expected output given any combination of LHS or RHS fields
