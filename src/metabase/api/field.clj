@@ -393,12 +393,7 @@
                                [:field (u/the-id search-field) nil]])
               :limit        limit}})
 
-(def ^:private FieldValueMatches
-  [:or
-   [:vector [:tuple :any :any]] ; if searched field != filtered field: [<value-of-field> <matching-value-of-search-field>]
-   [:vector [:tuple :any]]])    ; if searched field == filtered field: [<value-of-field>]
-
-(mu/defn search-values :- [:maybe FieldValueMatches]
+(mu/defn search-values :- [:maybe ms/FieldValues]
   "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return like
 
       [<value-of-field> <matching-value-of-search-field>].
@@ -422,7 +417,6 @@
     search-field
     value        :- [:maybe ms/NonBlankString]
     maybe-limit  :- [:maybe ms/PositiveInt]]
-   (sc.api/spy)
    (try
      (let [field   (follow-fks field)
            limit   (or maybe-limit default-max-field-search-limit)
