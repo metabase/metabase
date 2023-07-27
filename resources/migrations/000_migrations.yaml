@@ -5750,7 +5750,7 @@ databaseChangeLog:
                   defaultValueBoolean: true
 
 
-  # To fix EE full-app embedding without compromising security. Full-app embed sessions cannot have `SameSite` attributes in their cookies.
+  # To fix EE Interactive embedding without compromising security. Full-app embed sessions cannot have `SameSite` attributes in their cookies.
   - changeSet:
       id: 104
       author: camsaul
