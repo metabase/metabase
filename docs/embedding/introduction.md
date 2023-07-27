@@ -12,15 +12,15 @@ You can embed Metabase tables, charts, and dashboards—even Metabase's query bu
 
 There are three ways to embed Metabase in your app:
 
-- [Full-app embedding](#full-app-embedding)
+- [Interactive embedding](#full-app-embedding)
 - [Signed embedding](#signed-embedding)
 - [Public links and embeds](#public-links-and-embeds)
 
-## Full-app embedding
+## Interactive embedding
 
-Full-app embedding is the only kind of embedding that [integrates with SSO and data permissions](./full-app-embedding.md) to enable true self-service access to the underlying data.
+Interactive embedding is the only kind of embedding that [integrates with SSO and data permissions](./full-app-embedding.md) to enable true self-service access to the underlying data.
 
-**When to use full-app embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With full-app embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
+**When to use Interactive embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With Interactive embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
 
 ## Signed embedding
 

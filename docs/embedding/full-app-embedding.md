@@ -1,24 +1,24 @@
 ---
-title: Full-app embedding
+title: Interactive embedding
 redirect_from:
   - /docs/latest/enterprise-guide/full-app-embedding
 ---
 
-# Full-app embedding
+# Interactive embedding
 
-{% include plans-blockquote.html feature="Full-app embedding" %}
+{% include plans-blockquote.html feature="Interactive embedding" %}
 
-**Full-app embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics).
+**Interactive embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics).
 
-Full-app embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
+Interactive embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/questions/drill-through) into your data.
 
-## Full-app embedding demo
+## Interactive embedding demo
 
-To get a feel for what you can do with full-app embedding, check out our [full-app embedding demo](https://www.metabase.com/embedding-demo).
+To get a feel for what you can do with Interactive embedding, check out our [Interactive embedding demo](https://www.metabase.com/embedding-demo).
 
 To see the query builder in action, click on **Reports** > **+ New** > **Question**.
 
-## Prerequisites for full-app embedding
+## Prerequisites for Interactive embedding
 
 1. Make sure you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid plan](https://store.metabase.com/checkout/login-details).
 2. Organize people into Metabase [groups](../people-and-groups/start.md).
@@ -27,11 +27,11 @@ To see the query builder in action, click on **Reports** > **+ New** > **Questio
 
 If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics) situation, check out our recommendations for [Configuring permissions for different customer schemas](https://www.metabase.com/learn/permissions/multi-tenant-permissions).
 
-## Enabling full-app embedding in Metabase
+## Enabling Interactive embedding in Metabase
 
 1. Go to **Settings** > **Admin settings** > **Embedding**.
 2. Click **Enable**.
-3. Click **Full-app embedding**.
+3. Click **Interactive embedding**.
 4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
 
 ## Setting up embedding on your website
@@ -104,7 +104,7 @@ Note that `SameSite=None` is incompatible with most Safari and iOS browser versi
 
 ## Securing full-app embeds
 
-Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Full-app embedding with SSO](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds#full-app-embedding-with-sso).
+Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Interactive embedding with SSO](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds#full-app-embedding-with-sso).
 
 To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
 
