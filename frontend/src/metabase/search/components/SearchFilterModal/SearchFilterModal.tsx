@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Modal from "metabase/components/Modal";
 import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter";
 import {
-  FilterType,
+  FilterTypeKeys,
   SearchFilterComponent,
   SearchFilterKeys,
   SearchFilters,
@@ -13,7 +13,7 @@ import { Title, Flex } from "metabase/ui";
 import { TypeFilter } from "./filters/TypeFilter";
 import { SearchFilterWrapper } from "./SearchFilterModal.styled";
 
-const filterMap: Record<FilterType, SearchFilterComponent> = {
+const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
   [SearchFilterKeys.Type]: TypeFilter,
 };
 
@@ -50,7 +50,7 @@ export const SearchFilterModal = ({
 
   // we can use this field to control which filters are available
   // - we can enable the 'verified' filter here
-  const availableFilters: FilterType[] = useMemo(() => {
+  const availableFilters: FilterTypeKeys[] = useMemo(() => {
     return [SearchFilterKeys.Type];
   }, []);
 

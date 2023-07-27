@@ -7,18 +7,17 @@ export const SearchFilterKeys = {
 
 export type TypeFilterProps = SearchModelType[];
 
-export type SearchFilterType = {
+type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
 };
 
-export type SearchFilters = Partial<SearchFilterType>;
+export type FilterTypeKeys = keyof SearchFilterPropTypes;
+export type SearchFilters = Partial<SearchFilterPropTypes>;
 
-export type FilterType = keyof SearchFilterType;
-
-export type SearchFilterComponent<T extends FilterType = any> = FC<
+export type SearchFilterComponent<T extends FilterTypeKeys = any> = FC<
   {
-    value?: SearchFilterType[T];
-    onChange: (value: SearchFilterType[T]) => void;
+    value?: SearchFilterPropTypes[T];
+    onChange: (value: SearchFilterPropTypes[T]) => void;
     "data-testid"?: string;
   } & Record<string, unknown>
 >;

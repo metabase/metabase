@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { Flex } from "@mantine/core";
 import { IconName } from "metabase/core/components/Icon";
