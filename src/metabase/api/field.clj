@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -392,7 +393,12 @@
                                [:field (u/the-id search-field) nil]])
               :limit        limit}})
 
-(s/defn search-values
+(def ^:private FieldValueMatches
+  [:or
+   [:vector [:tuple :any :any]] ; if searched field != filtered field: [<value-of-field> <matching-value-of-search-field>]
+   [:vector [:tuple :any]]])    ; if searched field == filtered field: [<value-of-field>]
+
+(mu/defn search-values :- [:maybe FieldValueMatches]
   "Search for values of `search-field` that contain `value` (up to `limit`, if specified), and return like
 
       [<value-of-field> <matching-value-of-search-field>].
@@ -412,7 +418,11 @@
    (search-values field search-field nil nil))
   ([field search-field value]
    (search-values field search-field value nil))
-  ([field search-field value maybe-limit]
+  ([field
+    search-field
+    value        :- [:maybe ms/NonBlankString]
+    maybe-limit  :- [:maybe ms/PositiveInt]]
+   (sc.api/spy)
    (try
      (let [field   (follow-fks field)
            limit   (or maybe-limit default-max-field-search-limit)

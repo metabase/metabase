@@ -1110,8 +1110,7 @@ saved later when it is ready."
     param-key :- ms/NonBlankString
     query     :- [:maybe ms/NonBlankString]]
    (let [param (get (m/index-by :id (or (seq (:parameters card))
-                                        ;; some older cards or cards in e2e just use the template tags on native
-                                        ;; queries
+                                        ;; some older cards or cards in e2e just use the template tags on native queries
                                         (card/template-tag-parameters card)))
                     param-key)]
      (when-not param
