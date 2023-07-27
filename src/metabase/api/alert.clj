@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.models.card :refer [Card]]
@@ -25,8 +26,8 @@
 
 (set! *warn-on-reflection* true)
 
-(u/ignore-exceptions
- (classloader/require 'metabase-enterprise.advanced-permissions.common))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
