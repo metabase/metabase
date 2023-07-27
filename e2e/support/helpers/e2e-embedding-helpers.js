@@ -1,7 +1,5 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 
-const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
-
 /**
  * Programatically generate token and visit the embedded page for question or dashboard
  *
@@ -21,6 +19,7 @@ export function visitEmbeddedPage(
   payload,
   { setFilters = "", hideFilters = "" } = {},
 ) {
+  const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
   const payloadWithExpiration = {
     ...payload,
     exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
@@ -46,36 +45,36 @@ export function visitEmbeddedPage(
 
     cy.visit(embeddableUrl);
   });
-}
 
-/**
- * Construct the string that sets value to certain filters
- *
- * @param {string} filters
- * @returns string
- */
-function getFilterValues(filters) {
-  return filters && "?" + filters;
-}
+  /**
+   * Construct the string that sets value to certain filters
+   *
+   * @param {string} filters
+   * @returns string
+   */
+  function getFilterValues(filters) {
+    return filters && "?" + filters;
+  }
 
-/**
- * Construct the string that hides certain filters
- *
- * @param {string} filters
- * @returns string
- */
-function getHiddenFilters(filters) {
-  return filters && "&hide_parameters=" + filters;
-}
+  /**
+   * Construct the string that hides certain filters
+   *
+   * @param {string} filters
+   * @returns string
+   */
+  function getHiddenFilters(filters) {
+    return filters && "&hide_parameters=" + filters;
+  }
 
-/**
- * Extract the embeddable object type from the payload
- *
- * @param {object} payload
- * @returns ("question"|"dashboard")
- */
-function getEmbeddableObject(payload) {
-  return Object.keys(payload.resource)[0];
+  /**
+   * Extract the embeddable object type from the payload
+   *
+   * @param {object} payload
+   * @returns ("question"|"dashboard")
+   */
+  function getEmbeddableObject(payload) {
+    return Object.keys(payload.resource)[0];
+  }
 }
 
 /**
