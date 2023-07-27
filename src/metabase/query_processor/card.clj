@@ -27,8 +27,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -163,10 +162,11 @@
      [:template-tag tag-name]
      (name tag-name))))
 
-(s/defn ^:private validate-card-parameters
+(mu/defn ^:private validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
-  [card-id :- su/IntGreaterThanZero parameters :- mbql.s/ParameterList]
+  [card-id    :- ms/PositiveInt
+   parameters :- mbql.s/ParameterList]
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
       (doseq [request-parameter parameters
