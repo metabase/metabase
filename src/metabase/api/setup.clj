@@ -87,7 +87,7 @@
     (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
       (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
         (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
-    (when-let [error (api.database/test-database-connection driver details)]
+    (when-let [error (database-api/test-database-connection driver details)]
       (throw (ex-info (:message error (tru "Cannot connect to Database")) (assoc error :status-code 400))))
     (db/insert! Database
       (merge

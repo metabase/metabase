@@ -387,7 +387,7 @@
 
 (defn- api-validate [expected-status-code request-body]
   (with-redefs [h2/*allow-testing-h2-connections* true]
-    (client/client :post expected-status-code "setup/validate" request-body)))
+    (http/client :post expected-status-code "setup/validate" request-body)))
 
 (deftest validate-setup-test
   (testing "POST /api/setup/validate"

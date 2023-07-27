@@ -805,7 +805,7 @@
 
 (defn- test-connection-details [engine details]
   (with-redefs [h2/*allow-testing-h2-connections* true]
-    (#'api.database/test-connection-details engine details)))
+    (#'database-api/test-connection-details engine details)))
 
 (deftest validate-database-test
   (testing "POST /api/database/validate"
