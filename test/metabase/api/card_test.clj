@@ -26,7 +26,6 @@
             Database
             Field
             ModerationReview
-            PersistedInfo
             Pulse
             PulseCard
             PulseChannel

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.advanced-config.caching-test
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.models :refer [Card Dashboard Database PersistedInfo TaskHistory]]

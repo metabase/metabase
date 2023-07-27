@@ -530,6 +530,7 @@
  :hooks
  {:analyze-call
   {clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
+   metabase-enterprise.advanced-config.caching-test/with-temp-persist-models                                                 hooks.common/with-ignored-first-arg
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*
