@@ -72,10 +72,10 @@ function ActionParametersInputForm({
   }, [mappedParameters, action.visualization_settings?.fields]);
 
   useEffect(() => {
-    if (shouldPrefetch && !hasPrefetchedValues && fetchInitialValues) {
+    if (shouldPrefetch && fetchInitialValues) {
       prefetchValues();
     }
-  }, [shouldPrefetch, hasPrefetchedValues, fetchInitialValues, prefetchValues]);
+  }, [shouldPrefetch, fetchInitialValues, prefetchValues]);
 
   const handleSubmit = useCallback(
     async (parameters, actions) => {
