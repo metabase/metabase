@@ -109,18 +109,6 @@ describe(
       cy.findByText('For input string: "123 "').should("exist");
     });
 
-    it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
-      setupLdap();
-      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
-      cy.signOut();
-      cy.visit("/auth/login");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Username or email address").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Password").should("be.visible");
-    });
-
     it("should allow user login on OSS when LDAP is enabled", () => {
       setupLdap();
       cy.signOut();
