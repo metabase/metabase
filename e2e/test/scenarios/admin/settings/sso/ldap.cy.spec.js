@@ -3,9 +3,10 @@ import {
   modal,
   popover,
   restore,
-  setTokenFeatures,
+  describeEE,
   setupLdap,
   typeAndBlurUsingLabel,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import {
@@ -23,6 +24,7 @@ describe(
       cy.intercept("PUT", "/api/setting").as("updateSettings");
       cy.intercept("PUT", "/api/setting/*").as("updateSetting");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
+      cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
     it("should setup ldap (metabase#16173)", () => {
@@ -108,6 +110,35 @@ describe(
       cy.findByText('For input string: "123 "').should("exist");
     });
 
+<<<<<<< HEAD
+=======
+    it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
+      setupLdap();
+      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
+      cy.signOut();
+      cy.visit("/auth/login");
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Username or email address").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Password").should("be.visible");
+    });
+
+    it("should allow user login on OSS when LDAP is enabled", () => {
+      setupLdap();
+      cy.signOut();
+      cy.visit("/auth/login");
+      cy.findByLabelText("Username or email address").type(
+        "user01@example.org",
+      );
+      cy.findByLabelText("Password").type("123456");
+      cy.button("Sign in").click();
+      cy.findByTestId("main-navbar-root").within(() => {
+        cy.findByText("Home").should("exist");
+      });
+    });
+
+>>>>>>> master
     describe("Group Mappings Widget", () => {
       beforeEach(() => {
         cy.intercept("GET", "/api/setting").as("getSettings");
@@ -131,6 +162,7 @@ describe(
   },
 );
 
+<<<<<<< HEAD
 describeEE(
   "scenarios > admin > settings > SSO > LDAP",
   { tags: "@external" },
@@ -154,6 +186,45 @@ describeEE(
     });
   },
 );
+=======
+describeEE("LDAP EE", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("should allow user login on EE when LDAP is enabled", () => {
+    setupLdap();
+    cy.signOut();
+    cy.visit("/auth/login");
+    cy.findByLabelText("Username or email address").type("user01@example.org");
+    cy.findByLabelText("Password").type("123456");
+    cy.button("Sign in").click();
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByText("Home").should("exist");
+    });
+
+    cy.signOut();
+    cy.signInAsAdmin();
+
+    // Check that attributes are synced
+    cy.visit("/admin/people");
+    cy.get(".ContentTable").within(() => {
+      cy.findByText("Bar1 Bar1")
+        .closest("tr")
+        .within(() => {
+          cy.icon("ellipsis").click();
+        });
+    });
+    popover().within(() => {
+      cy.findByText("Edit user").click();
+    });
+    cy.findByDisplayValue("uid").should("exist");
+    cy.findByDisplayValue("homedirectory").should("exist");
+  });
+});
+>>>>>>> master
 
 const getLdapCard = () => {
   return cy.findByText("LDAP").parent().parent();
@@ -167,6 +238,6 @@ const enterLdapSettings = () => {
   typeAndBlurUsingLabel("LDAP Host", "localhost");
   typeAndBlurUsingLabel("LDAP Port", "389");
   typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
-  typeAndBlurUsingLabel("Password", "admin");
-  typeAndBlurUsingLabel("User search base", "dc=example,dc=org");
+  typeAndBlurUsingLabel("Password", "adminpass");
+  typeAndBlurUsingLabel("User search base", "ou=users,dc=example,dc=org");
 };

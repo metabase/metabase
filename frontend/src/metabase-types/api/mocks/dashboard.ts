@@ -23,6 +23,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
     timestamp: "2018-01-01",
   },
   auto_apply_filters: true,
+  archived: false,
   ...opts,
 });
 

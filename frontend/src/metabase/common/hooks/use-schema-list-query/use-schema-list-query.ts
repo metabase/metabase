@@ -16,5 +16,6 @@ export const useSchemaListQuery = (
     getLoading: Schemas.selectors.getLoading,
     getLoaded: Schemas.selectors.getLoaded,
     getError: Schemas.selectors.getError,
+    getListMetadata: Schemas.selectors.getListMetadata,
   });
 };
