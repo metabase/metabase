@@ -1,5 +1,6 @@
 import { popover, restore, visitQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -32,7 +33,7 @@ describe("issue 31697", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createSegment(segmentDetails).then(({ body: segment }) => {
+    createSegment(segmentDetails).then(({ body: segment }) => {
       cy.createQuestion(getQuestionDetails(segment), { wrapId: true });
     });
     cy.intercept("GET", "/api/automagic-dashboards/**").as("xrayDashboard");

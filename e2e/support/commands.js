@@ -6,10 +6,8 @@ import "./commands/api/question";
 import "./commands/api/dashboard";
 import "./commands/api/dashboardCard";
 import "./commands/api/collection";
-import "./commands/api/metric";
 import "./commands/api/moderation";
 import "./commands/api/pulse";
-import "./commands/api/segment";
 import "./commands/api/timeline";
 import "./commands/api/user";
 
