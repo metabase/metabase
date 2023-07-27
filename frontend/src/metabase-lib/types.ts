@@ -30,6 +30,9 @@ export type AggregationOperator = unknown & {
 declare const BreakoutClause: unique symbol;
 export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
 
+declare const ExpressionClause: unique symbol;
+export type ExpressionClause = unknown & { _opaque: typeof ExpressionClause };
+
 declare const OrderByClause: unique symbol;
 export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
@@ -41,6 +44,7 @@ export type FilterClause = unknown & { _opaque: typeof FilterClause };
 export type Clause =
   | AggregationClause
   | BreakoutClause
+  | ExpressionClause
   | FilterClause
   | OrderByClause;
 

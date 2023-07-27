@@ -53,7 +53,7 @@ describe("getClickHoverObject", () => {
 
     const obj = getClickHoverObject(d, otherArgs);
 
-    expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
+    expect(getFormattedTooltips(obj)).toEqual(["April 2016", "2"]);
   });
 
   it("should show the correct tooltip for months", () => {
@@ -78,7 +78,7 @@ describe("getClickHoverObject", () => {
 
     const obj = getClickHoverObject(d, otherArgs);
 
-    expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
+    expect(getFormattedTooltips(obj)).toEqual(["April 2016", "2"]);
   });
 
   describe("event/element target", () => {

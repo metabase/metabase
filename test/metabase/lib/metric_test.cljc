@@ -146,7 +146,7 @@
 
 (deftest ^:parallel ga-metric-metadata-test
   (testing "Make sure we can calculate metadata for FAKE Google Analytics metric clauses"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (let [query (-> lib.tu/venues-query
                     (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} "ga:totalEvents"]))]
       (is (=? [{:base-type                :type/*
                 :display-name             "[Unknown Metric]"
