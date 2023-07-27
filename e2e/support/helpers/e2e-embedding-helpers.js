@@ -1,24 +1,23 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 
 /**
- * Programatically generate token and visit the embedded page for question or dashboard
+ * Programatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {object} payload
- * @param {{setFilters: object, hideFilters:string}}
+ * @param {{setFilters: object, setStyle: object, hideFilters: string[]}}
  *
  * @example
  * visitEmbeddedPage(payload, {
- *   setFilters: { id:92, source: "Organic" },
- *   // We divide multiple hidden filters with coma.
- *   // Make sure there are no spaces in between!
- *   hideFilters: "created_at,state"
+ *   setFilters: {id: 92, source: "Organic"},
+ *   hideFilters: ["id", "source"]
  * });
  */
 export function visitEmbeddedPage(
   payload,
-  { setFilters = {}, hideFilters = "" } = {},
+  { setFilters = {}, hideFilters = [], pageStyle = {} } = {},
 ) {
   const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
+
   const payloadWithExpiration = {
     ...payload,
     exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
@@ -30,9 +29,8 @@ export function visitEmbeddedPage(
   cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
     const embeddableObject = getEmbeddableObject(payload);
     const hiddenFilters = getHiddenFilters(hideFilters);
-    // Style is hard coded for now because we're not concerned with testing its properties
-    const style = "bordered=true&titled=true";
     const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
+    const urlHash = getHash(pageStyle, hiddenFilters);
 
     // Always visit embedded page logged out
     cy.signOut();
@@ -41,7 +39,9 @@ export function visitEmbeddedPage(
       url: urlRoot,
       qs: setFilters,
       onBeforeLoad: window => {
-        window.location.hash = style + hiddenFilters;
+        if (urlHash) {
+          window.location.hash = urlHash;
+        }
       },
     });
   });
@@ -49,11 +49,22 @@ export function visitEmbeddedPage(
   /**
    * Construct the string that hides certain filters
    *
-   * @param {string} filters
-   * @returns string
+   * @param {string[]} filters
+   * @returns object
    */
   function getHiddenFilters(filters) {
-    return filters && "&hide_parameters=" + filters;
+    return filters.length > 0 ? { hide_parameters: filters.join(",") } : {};
+  }
+
+  /**
+   *
+   * @param {object} pageStyle
+   * @param {object} hiddenFilters
+   *
+   * @returns string
+   */
+  function getHash(pageStyle, hiddenFilters) {
+    return new URLSearchParams({ ...pageStyle, ...hiddenFilters }).toString();
   }
 
   /**
