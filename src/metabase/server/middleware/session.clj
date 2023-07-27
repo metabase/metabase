@@ -95,7 +95,7 @@
   (merge
    {:path "/"}
    (when (request.u/https? request)
-     ;; SameSite=None is required for cross-domain full-app embedding. This is safe because
+     ;; SameSite=None is required for cross-domain Interactive embedding. This is safe because
      ;; security is provided via anti-CSRF token. Note that most browsers will only accept
      ;; SameSite=None with secure cookies, thus we are setting it only over HTTPS to prevent
      ;; the cookie from being rejected in case of same-domain embedding.
