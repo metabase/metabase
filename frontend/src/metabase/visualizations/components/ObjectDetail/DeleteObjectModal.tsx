@@ -26,17 +26,12 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
 }) => {
   const dispatch = useDispatch();
 
-  const disabled =
-    typeof actionId === "undefined" ||
-    typeof objectId === "undefined" ||
-    objectId === null;
-
   const handleSubmit = async () => {
     try {
       await ActionsApi.execute({
         id: actionId,
         parameters: {
-          id: objectId,
+          id: typeof objectId === "string" ? parseInt(objectId, 10) : objectId,
         },
       });
 
@@ -45,7 +40,12 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       onClose();
       onSuccess();
     } catch (error) {
-      const message = getActionErrorMessage(error);
+      let message = getActionErrorMessage(error);
+
+      if (message.includes("Referential integrity constraint violation")) {
+        message = t`Sorry, the row you're trying to delete is referenced by other rows.`;
+      }
+
       dispatch(addUndo({ icon: "warning", toastColor: "error", message }));
     }
   };
@@ -59,7 +59,11 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button
           key="delete"
           danger
-          disabled={disabled}
+          disabled={
+            typeof actionId === "undefined" ||
+            typeof objectId === "undefined" ||
+            objectId === null
+          }
           onClick={handleSubmit}
         >{t`Delete forever`}</Button>,
       ]}
