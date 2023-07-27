@@ -11,14 +11,11 @@ import {
   addOrUpdateDashboardCard,
   addTextBox,
   setTokenFeatures,
-<<<<<<< HEAD
   main,
-=======
   emailSubscriptionRecipients,
   openEmailPage,
   setupSubscriptionWithRecipient,
   openPulseSubscription,
->>>>>>> master
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
