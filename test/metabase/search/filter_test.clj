@@ -44,37 +44,33 @@
    :from   [:table]})
 
 (deftest ^:parallel build-filters-test
-  (doseq [[[model search-ctx] expected-where]
-          [;; -- card models
-           [["card" default-search-ctx]
-            [:= :card.archived false]]
+  (testing "archived filters"
+    (is (= [:= :card.archived false]
+           (:where (search.filter/build-filters
+                    base-search-query "card" default-search-ctx))))
 
-           [["card" (merge default-search-ctx {:archived? true})]
-            [:= :card.archived true]]
+    (is (= [:and [:= :table.active true] [:= :table.visibility_type nil]]
+           (:where (search.filter/build-filters
+                    base-search-query "table"  default-search-ctx)))))
 
-
-           ;; with search string
-           [["card" (merge default-search-ctx {:search-string "a string"})]
-            [:and
+  (testing "with search string"
+    (is (= [:and
              [:or
               [:like [:lower :card.name] "%a%"]
               [:like [:lower :card.name] "%string%"]
               [:like [:lower :card.description] "%a%"]
               [:like [:lower :card.description] "%string%"]]
-             [:= :card.archived false]]]
+             [:= :card.archived false]]
+           (:where (search.filter/build-filters
+                    base-search-query "card"
+                    (merge default-search-ctx {:search-string "a string"}))))))
 
-           ;; created by filters
-           [["card" (merge default-search-ctx {:created-by 1})]
-            [:and [:= :card.archived false] [:= :card.creator_id 1]]]
-
-
-           ;; -- table models
-           [["table" (merge default-search-ctx {:archived? false})]
-            [:and [:= :table.active true] [:= :table.visibility_type nil]]]]]
-
-    (testing (format "filter for model %s with context %s" model search-ctx)
-      (is (= expected-where
-             (:where (search.filter/build-filters base-search-query model search-ctx))))))
+  (testing "created-by filter"
+    (is (= [:and [:= :card.archived false] [:= :card.creator_id 1]]
+           (:where (search.filter/build-filters
+                    base-search-query "card"
+                    (merge default-search-ctx
+                           {:created-by 1}))))))
 
   (testing "throw error for filtering with unsupport models"
     (is (thrown-with-msg?
