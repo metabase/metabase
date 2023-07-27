@@ -1,11 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
-import Question from "metabase/entities/questions";
+import Questions from "metabase/entities/questions";
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Grid } from "@mantine/core";
-import { useState } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import UserAvatar from "metabase/components/UserAvatar";
 
@@ -23,7 +22,7 @@ function ModelListView(props) {
         {list.map(l => {
           return (
             <Grid.Col span={4} key={l._card.id}>
-              <Link to={Urls.question({ card: l._card })}>
+              <Link to={Urls.question(l._card)}>
                 <Card
                   style={{
                     minHeight: 320,
@@ -71,6 +70,6 @@ function ModelListView(props) {
 }
 
 // esline-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(Question.loadList({ query: () => ({ f: "model" }) }))(
+export default _.compose(Questions.loadList({ query: () => ({ f: "model" }) }))(
   ModelListView,
 );
