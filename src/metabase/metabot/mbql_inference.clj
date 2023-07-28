@@ -1,8 +1,7 @@
 (ns metabase.metabot.mbql-inference
   (:require
-   [metabase.metabot.inference-ws-client :as inference-ws-client]
    [metabase.metabot.precomputes :as precomputes]
-   [metabase.metabot.settings :as metabot-settings]))
+   [metabase.metabot.task-api :as task-api]))
 
 (def pre-cache (delay (precomputes/atomic-precomputes)))
 
@@ -15,29 +14,28 @@
    to the embedding representing this dataset. Note that values need not be a
    direct embedding of the keys. The keys can be anything and should be the
    desired output type to be used when doing rank selection on the dataset."
-  ([endpoint prompt dataset->embeddings]
-   (letfn [(dot [u v] (reduce + (map * u v)))]
-     (let [prompt-embedding (get (inference-ws-client/bulk-embeddings endpoint {prompt prompt}) prompt)]
-       (->> dataset->embeddings
-            (map (fn [[k e]] {:object k :cosine-similarity (dot prompt-embedding e)}))
-            (sort-by (comp - :cosine-similarity))))))
-  ([endpoint prompt dataset->embeddings top-n]
-   (take top-n (rank-data-by-prompt endpoint prompt dataset->embeddings))))
+  [embedder prompt dataset->embeddings]
+  (letfn [(dot [u v] (reduce + (map * u v)))]
+    (let [prompt-embedding (task-api/single embedder prompt)]
+      (->> dataset->embeddings
+           (map (fn [[k e]] {:object k :cosine-similarity (dot prompt-embedding e)}))
+           (sort-by (comp - :cosine-similarity))))))
 
 (defn infer-mbql
   "Generate mbql from a prompt."
-  ([base-url prompt]
-   (let [p          (precomputes)
-         embeddings (precomputes/embeddings p)
-         [{:keys [object]}] (rank-data-by-prompt base-url prompt embeddings 1)
-         context    (apply precomputes/context p object)]
-     (inference-ws-client/infer base-url
-                                {:prompt  prompt
-                                 :context [context]})))
-  ([prompt]
-   (infer-mbql (metabot-settings/metabot-inference-ws-url) prompt)))
+  [{:keys [embedder inferencer]} prompt]
+  (let [p          (precomputes)
+        embeddings (precomputes/embeddings p)
+        [{:keys [object]}] (rank-data-by-prompt embedder prompt embeddings)
+        context    (apply precomputes/context p object)]
+    (task-api/infer inferencer {:prompt prompt :context [context]})))
 
 (comment
-  (infer-mbql
-   "http://localhost:4000"
-   "Show data where tax is greater than zero"))
+  (require '[metabase.metabot.task-impl :as task-impl])
+  (let [base-url   "http://localhost:4000"
+        inferencer (task-impl/fine-tune-mbql-inferencer base-url)
+        embedder   (task-impl/fine-tune-embedder base-url)]
+    (infer-mbql
+     {:embedder   embedder
+      :inferencer inferencer}
+     "Show data where tax is greater than zero")))

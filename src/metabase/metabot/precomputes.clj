@@ -1,9 +1,10 @@
 (ns metabase.metabot.precomputes
   (:require
-    [metabase.metabot.inference-ws-client :as inference-ws-client]
-    [metabase.metabot.util :as metabot-util]
-    [metabase.models :as models]
-    [toucan2.core :as t2]))
+   [metabase.metabot.task-api :as task-api]
+   [metabase.metabot.task-impl :as task-impl]
+   [metabase.metabot.util :as metabot-util]
+   [metabase.models :as models]
+   [toucan2.core :as t2]))
 
 (defprotocol Precomputes
   (embeddings [this] [this entity-type entity-id])
@@ -14,17 +15,18 @@
 (defrecord AtomicPrecomputes [store])
 
 (defn all-precomputes []
-  (let [models         (t2/select models/Card :dataset true :archived false)
+  (let [embedder       (task-impl/fine-tune-embedder)
+        models         (t2/select models/Card :dataset true :archived false)
         encoded-models (zipmap
-                         (map :id models)
-                         (map metabot-util/model->summary models))
+                        (map :id models)
+                        (map metabot-util/model->summary models))
         model-contexts (zipmap
-                         (map :id models)
-                         (map metabot-util/model->context models))
+                        (map :id models)
+                        (map metabot-util/model->context models))
         ;; TODO -- partition-all X and then this...
-        embeddings      (update-keys
-                         (inference-ws-client/bulk-embeddings encoded-models)
-                         parse-long)]
+        embeddings     (update-keys
+                        (task-api/bulk embedder encoded-models)
+                        parse-long)]
     {:embeddings    {:card embeddings :table {}}
      :context       {:card model-contexts :table {}}
      :compa-summary {:card encoded-models :table {}}}))
@@ -36,10 +38,10 @@
      (let [{:keys [embeddings]} @store
            {:keys [card table]} embeddings]
        (into
-         {}
-         (concat
-           (map (fn [[id embedding]] [[:card id] embedding]) card)
-           (map (fn [[id embedding]] [[:table id] embedding]) table)))))
+        {}
+        (concat
+         (map (fn [[id embedding]] [[:card id] embedding]) card)
+         (map (fn [[id embedding]] [[:table id] embedding]) table)))))
     ([{:keys [store]} entity-type entity-id]
      (get-in @store [:embeddings entity-type entity-id])))
   (compa-summary [{:keys [store]} entity-type entity-id]
