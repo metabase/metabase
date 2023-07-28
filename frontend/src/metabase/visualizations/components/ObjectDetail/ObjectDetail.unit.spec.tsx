@@ -368,7 +368,7 @@ describe("Object Detail", () => {
   it("should not render actions menu for models based on database without actions enabled", () => {
     setupDatabasesEndpoints([databaseWithActionsDisabled]);
     setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
-    setup({ question: mockQuestion });
+    setup({ question: mockDataset });
 
     const actionsMenu = screen.queryByTestId("actions-menu");
     expect(actionsMenu).not.toBeInTheDocument();
