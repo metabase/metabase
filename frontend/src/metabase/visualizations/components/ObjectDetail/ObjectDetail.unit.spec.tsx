@@ -57,6 +57,11 @@ const databaseWithEnabledActions = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
 
+const databaseWithDisabledActions = createMockDatabase({
+  id: getNextId(),
+  settings: { "database-enable-actions": false },
+});
+
 const metadata = createMockMetadata({
   databases: [
     createSampleDatabase({
@@ -145,6 +150,11 @@ const actions = [
   implicitArchivedDeleteAction,
   queryAction,
 ];
+
+const actionsFromDatabaseWithDisabledActions = actions.map(action => ({
+  ...action,
+  database_id: databaseWithDisabledActions.id,
+}));
 
 function setup(options?: Partial<ObjectDetailProps>) {
   const state = createMockState({
@@ -355,7 +365,16 @@ describe("Object Detail", () => {
     });
   });
 
-  it("does not render actions menu for non-model questions", () => {
+  it("should not render actions menu for models based on database without enabled actions", () => {
+    setupDatabasesEndpoints([databaseWithDisabledActions]);
+    setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
+    setup({ question: mockQuestion });
+
+    const actionsMenu = screen.queryByTestId("actions-menu");
+    expect(actionsMenu).not.toBeInTheDocument();
+  });
+
+  it("should not render actions menu for non-model questions", () => {
     setupDatabasesEndpoints([databaseWithEnabledActions]);
     setupActionsEndpoints(actions);
     setup({ question: mockQuestion });
@@ -364,7 +383,7 @@ describe("Object Detail", () => {
     expect(actionsMenu).not.toBeInTheDocument();
   });
 
-  it("shows update object modal on update action click", async () => {
+  it("should show update object modal on update action click", async () => {
     setupDatabasesEndpoints([databaseWithEnabledActions]);
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
@@ -385,7 +404,7 @@ describe("Object Detail", () => {
     );
   });
 
-  it("shows delete object modal on delete action click", async () => {
+  it("should show delete object modal on delete action click", async () => {
     setupDatabasesEndpoints([databaseWithEnabledActions]);
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
