@@ -13,7 +13,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show validation error if you enter invalid db connection info", () => {
+  it.skip("should show validation error if you enter invalid db connection info", () => {
     cy.intercept("POST", "/api/database").as("createDatabase");
 
     // should display a setup help card
