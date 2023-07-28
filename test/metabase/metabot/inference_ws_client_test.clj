@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]
-   [metabase.metabot.inference-ws-client :as inference-ws-client]
+   [metabase.metabot.fine-tune.inference-ws-client :as inference-ws-client]
    [metabase.metabot.schema :as metabot-schema]))
 
 (deftest bulk-embeddings-test

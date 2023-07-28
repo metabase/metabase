@@ -5,7 +5,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.lib.native :as lib-native]
    [metabase.metabot-test :as metabot-test]
-   [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.openai.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database Table]]

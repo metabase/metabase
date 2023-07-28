@@ -1,7 +1,7 @@
 (ns metabase.metabot.metabot-client-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.client :as metabot-client]))
+   [metabase.metabot.openai.client :as metabot-client]))
 
 (deftest invoke-metabot-test
   (testing "A simple test showing the expected input and output of invoke-metabot"

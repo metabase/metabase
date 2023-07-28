@@ -2,14 +2,14 @@
   "The core metabot namespace. Consists primarily of functions named infer-X,
   where X is the thing we want to extract from the bot response."
   (:require
-    [cheshire.core :as json]
-    [metabase.lib.native :as lib-native]
-    [metabase.metabot.client :as metabot-client]
-    [metabase.metabot.settings :as metabot-settings]
-    [metabase.metabot.util :as metabot-util]
-    [metabase.models :refer [Table]]
-    [metabase.util.log :as log]
-    [toucan2.core :as t2]))
+   [cheshire.core :as json]
+   [metabase.lib.native :as lib-native]
+   [metabase.metabot.openai.client :as metabot-client]
+   [metabase.metabot.settings :as metabot-settings]
+   [metabase.metabot.util :as metabot-util]
+   [metabase.models :refer [Table]]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."
@@ -23,10 +23,10 @@
       ;; More interesting SQL merits a more interesting display
       (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
         {:template                (metabot-util/find-result
-                                    (fn [message]
-                                      (metabot-util/response->viz
-                                        (json/parse-string message keyword)))
-                                    (metabot-client/invoke-metabot prompt))
+                                   (fn [message]
+                                     (metabot-util/response->viz
+                                      (json/parse-string message keyword)))
+                                   (metabot-client/invoke-metabot prompt))
          :prompt_template_version (format "%s:%s" prompt_template version)}))
     (log/warn "Metabot is not enabled")))
 
@@ -38,8 +38,8 @@
     (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)
           {:keys [database_id inner_query]} model]
       (if-some [bot-sql (metabot-util/find-result
-                          metabot-util/extract-sql
-                          (metabot-client/invoke-metabot prompt))]
+                         metabot-util/extract-sql
+                         (metabot-client/invoke-metabot prompt))]
         (let [final-sql     (metabot-util/bot-sql->final-sql model bot-sql)
               _             (log/infof "Inferred sql for model '%s' with prompt '%s':\n%s"
                                        (:id model)
@@ -54,9 +54,9 @@
                              :visualization_settings {}}]
           {:card                     dataset
            :prompt_template_versions (vec
-                                       (conj
-                                         (:prompt_template_versions model)
-                                         (format "%s:%s" prompt_template version)))
+                                      (conj
+                                       (:prompt_template_versions model)
+                                       (format "%s:%s" prompt_template version)))
            :bot-sql                  bot-sql})
         (log/infof "No sql inferred for model '%s' with prompt '%s'." (:id model) user_prompt)))
     (log/warn "Metabot is not enabled")))
@@ -70,9 +70,9 @@
                       (map (fn [{:keys [create_table_ddl] :as model}]
                              (let [{:keys [prompt embedding tokens]} (metabot-client/create-embedding create_table_ddl)]
                                (assoc model
-                                 :prompt prompt
-                                 :embedding embedding
-                                 :tokens tokens)))))]
+                                      :prompt prompt
+                                      :embedding embedding
+                                      :tokens tokens)))))]
       (if-some [{best-mode-name :name
                  best-model-id  :id
                  :as            model} (metabot-util/best-prompt-object models user_prompt)]
@@ -92,12 +92,12 @@
           ids->models   (zipmap (map :id models) models)
           candidates    (set (keys ids->models))
           best-model-id (metabot-util/find-result
-                          (fn [message]
-                            (some->> message
-                                     (re-seq #"\d+")
-                                     (map parse-long)
-                                     (some candidates)))
-                          (metabot-client/invoke-metabot prompt))]
+                         (fn [message]
+                           (some->> message
+                                    (re-seq #"\d+")
+                                    (map parse-long)
+                                    (some candidates)))
+                         (metabot-client/invoke-metabot prompt))]
       (if-some [model (ids->models best-model-id)]
         (do
           (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s'."
@@ -122,11 +122,11 @@
           context        (assoc-in context [:database :create_database_ddl] ddl)
           {:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
       (if-some [sql (metabot-util/find-result
-                      metabot-util/extract-sql
-                      (metabot-client/invoke-metabot prompt))]
+                     metabot-util/extract-sql
+                     (metabot-client/invoke-metabot prompt))]
         {:sql                      sql
          :prompt_template_versions (conj
-                                     (vec prompt_template_versions)
-                                     (format "%s:%s" prompt_template version))}
+                                    (vec prompt_template_versions)
+                                    (format "%s:%s" prompt_template version))}
         (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))

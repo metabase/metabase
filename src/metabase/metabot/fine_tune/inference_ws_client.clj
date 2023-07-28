@@ -1,4 +1,4 @@
-(ns metabase.metabot.inference-ws-client
+(ns metabase.metabot.fine-tune.inference-ws-client
   (:require
    [clj-http.client :as http]
    [clojure.data.json :as json]

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.db.query :as mdb.query]
    [metabase.metabot :as metabot]
-   [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.openai.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
    [metabase.test :as mt]
@@ -56,11 +56,11 @@
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
       (mt/dataset sample-dataset
         (t2.with-temp/with-temp
-          [Card model {:dataset_query
-                       {:database (mt/id)
-                        :type     :query
-                        :query    {:source-table (mt/id :orders)}}
-                       :dataset true}]
+         [Card model {:dataset_query
+                      {:database (mt/id)
+                       :type     :query
+                       :query    {:source-table (mt/id :orders)}}
+                      :dataset true}]
           (let [bot-sql (format "SELECT * FROM %s" (:name model))]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (test-bot-endpoint-single-message bot-sql)
                           metabot-client/*create-embedding-endpoint*       simple-embedding-stub
@@ -82,24 +82,24 @@
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
       (mt/dataset sample-dataset
         (t2.with-temp/with-temp
-          [Card orders-model {:name    "Orders Model"
+         [Card orders-model {:name    "Orders Model"
+                             :dataset_query
+                             {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (mt/id :orders)}}
+                             :dataset true}
+          Card _people-model {:name    "People Model"
                               :dataset_query
                               {:database (mt/id)
                                :type     :query
-                               :query    {:source-table (mt/id :orders)}}
+                               :query    {:source-table (mt/id :people)}}
                               :dataset true}
-           Card _people-model {:name    "People Model"
-                               :dataset_query
-                               {:database (mt/id)
-                                :type     :query
-                                :query    {:source-table (mt/id :people)}}
-                               :dataset true}
-           Card _products-model {:name    "Products Model"
-                                 :dataset_query
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table (mt/id :products)}}
-                                 :dataset true}]
+          Card _products-model {:name    "Products Model"
+                                :dataset_query
+                                {:database (mt/id)
+                                 :type     :query
+                                 :query    {:source-table (mt/id :products)}}
+                                :dataset true}]
           (let [user_prompt        "Show me all of my orders data"
                 db                 (t2/select-one Database :id (mt/id))
                 {:keys [models] :as denormalized-db} (metabot-util/denormalize-database db)

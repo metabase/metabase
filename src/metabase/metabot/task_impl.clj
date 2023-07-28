@@ -1,6 +1,6 @@
 (ns metabase.metabot.task-impl
   (:require
-   [metabase.metabot.inference-ws-client :as inference-ws-client]
+   [metabase.metabot.fine-tune.inference-ws-client :as inference-ws-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.task-api :as task-api]
    [metabase.metabot.util :as metabot-util]

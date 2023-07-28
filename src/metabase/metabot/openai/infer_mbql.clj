@@ -8,7 +8,7 @@
             [malli.generator :as mg]
             [malli.json-schema :as mjs]
             [malli.transform :as mtx]
-            [metabase.metabot.client :as metabot-client]
+            [metabase.metabot.openai.client :as metabot-client]
             [metabase.metabot.task-api :as task-api]
             [metabase.metabot.util :as metabot-util]
             [metabase.models :as models]

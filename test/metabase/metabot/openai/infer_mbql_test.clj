@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.metabot.test-models :as test-models]
-   [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.openai.client :as metabot-client]
    [metabase.metabot.openai.infer-mbql :as infer-mbql]
    [metabase.models :refer [Card]]
    [metabase.test :as mt]))
