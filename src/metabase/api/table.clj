@@ -5,6 +5,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
+            [metabase.driver.h2 :as h2]
             [metabase.driver.util :as driver.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
@@ -72,7 +73,10 @@
     (sync.concurrent/submit-task
      (fn []
        (let [database (table/database (first newly-unhidden))]
-         (if (driver.u/can-connect-with-details? (:engine database) (:details database))
+         ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+         ;; purposes of creating a new H2 database.
+         (if (binding [h2/*allow-testing-h2-connections* true]
+               (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
              (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
              (sync/sync-table! table))

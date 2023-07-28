@@ -51,11 +51,11 @@
 
 (deftest only-connect-to-existing-dbs-test
   (testing "Make sure we *cannot* connect to a non-existent database by default"
-    (is (= ::exception-thrown
-           (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
-                (catch org.h2.jdbc.JdbcSQLException e
-                  (and (re-matches #"Database .+ not found .+" (.getMessage e))
-                       ::exception-thrown)))))))
+    (binding [h2/*allow-testing-h2-connections* true]
+      (is (thrown-with-msg?
+           org.h2.jdbc.JdbcSQLException
+           #"Database .+ not found .+"
+           (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")}))))))
 
 (deftest ^:parallel only-connect-when-non-malicious-properties
   (testing "Reject connection strings with malicious properties"
@@ -63,7 +63,8 @@
                         (System/getProperty "user.dir")
                         "/toucan_sightings.db"
                         ";TRACE_LEVEL_SYSTEM_OUT=1\\;CREATE TRIGGER IAMPWNED BEFORE SELECT ON INFORMATION_SCHEMA.TABLES AS $$//javascript\nnew java.net.URL('http://localhost:3000/api/health').openConnection().getContentLength()\n$$--=x\\;")
-          result (try (driver/can-connect? :h2 {:db conn-str})
+          result (try (binding [h2/*allow-testing-h2-connections* true]
+                        (driver/can-connect? :h2 {:db conn-str}))
                       ::did-not-throw
                       (catch Exception e e))]
       (is (instance? clojure.lang.ExceptionInfo result))
