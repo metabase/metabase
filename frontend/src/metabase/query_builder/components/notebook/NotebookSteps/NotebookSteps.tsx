@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { useEffectOnce } from "react-use";
 
 import * as Lib from "metabase-lib";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -27,12 +26,24 @@ interface NotebookStepsProps {
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   const isNew = !readOnly && !question.table();
-  return isNew
-    ? {
-        "0:filter": true,
-        "0:summarize": true,
-      }
-    : {};
+
+  if (isNew) {
+    return {
+      "0:filter": true,
+      "0:summarize": true,
+    };
+  }
+
+  // We need to keep join steps open at all time for MLv1-MLv2 compat
+  // This should be reworked once all notebook clauses are using MLv2
+  // Learn more: ...
+  // TODO add PR link
+
+  const steps = getQuestionSteps(question, {});
+  const joinSteps = steps.filter(step => step.type === "join");
+  const openStepsEntries = joinSteps.map(step => [step.id, true]);
+
+  return Object.fromEntries(openStepsEntries);
 }
 
 function NotebookSteps({
@@ -54,20 +65,6 @@ function NotebookSteps({
     }
     return getQuestionSteps(question, openSteps);
   }, [question, openSteps]);
-
-  // TODO Reimplement in getInitialOpenSteps
-  useEffectOnce(() => {
-    if (steps.length > 0) {
-      const joinStepIds = steps
-        .filter(step => step.type === "join")
-        .map(step => step.id);
-      const openStepsEntries = joinStepIds.map(id => [id, true]);
-      setOpenSteps(openSteps => ({
-        ...openSteps,
-        ...Object.fromEntries(openStepsEntries),
-      }));
-    }
-  });
 
   const handleStepOpen = useCallback((id: string) => {
     setOpenSteps(openSteps => ({ ...openSteps, [id]: true }));
