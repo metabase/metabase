@@ -399,6 +399,15 @@ describe("Object Detail", () => {
     expect(actionsMenu).toBeUndefined();
   });
 
+  it(`should not render actions menu when "showControls" is "false"`, async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDataset, showControls: false });
+
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
+  });
+
   it("should render actions menu when user has write permission", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
