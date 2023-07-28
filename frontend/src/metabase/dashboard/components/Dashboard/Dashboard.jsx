@@ -27,7 +27,7 @@ import {
 } from "./Dashboard.styled";
 import {
   DashboardEmptyState,
-  TabEmptyState,
+  DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
@@ -234,6 +234,55 @@ class Dashboard extends Component {
     this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
   };
 
+  renderContent = () => {
+    const { dashboard, selectedTabId, isNightMode, isFullscreen } = this.props;
+
+    const canWrite = dashboard?.can_write ?? false;
+
+    const dashboardHasCards = dashboard?.ordered_cards.length > 0 ?? false;
+
+    const tabHasCards =
+      dashboard?.ordered_cards.filter(
+        c =>
+          selectedTabId !== undefined && c.dashboard_tab_id === selectedTabId,
+      ).length > 0 ?? false;
+
+    const shouldRenderAsNightMode = isNightMode && isFullscreen;
+
+    if (!dashboardHasCards && !canWrite) {
+      return (
+        <DashboardEmptyStateWithoutAddPrompt
+          isNightMode={shouldRenderAsNightMode}
+        />
+      );
+    }
+    if (!dashboardHasCards) {
+      return (
+        <DashboardEmptyState
+          dashboard={dashboard}
+          isNightMode={shouldRenderAsNightMode}
+          addQuestion={this.onAddQuestion}
+          closeNavbar={this.props.closeNavbar}
+        />
+      );
+    }
+    if (dashboardHasCards && !tabHasCards) {
+      return (
+        <DashboardEmptyStateWithoutAddPrompt
+          isNightMode={shouldRenderAsNightMode}
+        />
+      );
+    }
+    return (
+      <DashboardGrid
+        {...this.props}
+        dashboard={this.props.dashboard}
+        isNightMode={shouldRenderAsNightMode}
+        onEditingChange={this.setEditing}
+      />
+    );
+  };
+
   render() {
     const {
       addParameter,
@@ -254,18 +303,12 @@ class Dashboard extends Component {
       isHeaderVisible,
       embedOptions,
       isAutoApplyFilters,
-      selectedTabId,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
-    const dashboardHasCards = dashboard?.ordered_cards.length > 0 ?? false;
-    const tabHasCards =
-      dashboard?.ordered_cards.filter(
-        c =>
-          selectedTabId !== undefined && c.dashboard_tab_id === selectedTabId,
-      ).length > 0 ?? false;
+
     const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
@@ -354,23 +397,7 @@ class Dashboard extends Component {
                   addMarginTop={cardsContainerShouldHaveMarginTop}
                   id="Dashboard-Cards-Container"
                 >
-                  {dashboardHasCards && tabHasCards ? (
-                    <DashboardGrid
-                      {...this.props}
-                      dashboard={this.props.dashboard}
-                      isNightMode={shouldRenderAsNightMode}
-                      onEditingChange={this.setEditing}
-                    />
-                  ) : dashboardHasCards ? (
-                    <TabEmptyState isNightMode={shouldRenderAsNightMode} />
-                  ) : (
-                    <DashboardEmptyState
-                      dashboard={dashboard}
-                      isNightMode={shouldRenderAsNightMode}
-                      addQuestion={this.onAddQuestion}
-                      closeNavbar={this.props.closeNavbar}
-                    />
-                  )}
+                  {this.renderContent()}
                 </CardsContainer>
               </ParametersAndCardsContainer>
 
