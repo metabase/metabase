@@ -1,11 +1,14 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
+            [metabase.driver.h2 :as h2]
             [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3
                                                   test-user-local-allowed-setting test-user-local-only-setting]]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [schema.core :as s]))
+
+(comment h2/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -58,6 +61,13 @@
     (testing "Check that non-superusers cannot fetch a single setting if it is not user-local"
       (is (= "You don't have permissions to do that."
              (fetch-setting :rasta :test-setting-2 403))))))
+
+(deftest ^:parallel engines-mark-h2-superseded-test
+  (testing "GET /api/setting/:key"
+    (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
+      (is (partial= {:driver-name   "H2"
+                     :superseded-by "deprecated"}
+                    (:h2 (fetch-setting :engines 200)))))))
 
 (deftest fetch-calculated-settings-test
   (testing "GET /api/setting"

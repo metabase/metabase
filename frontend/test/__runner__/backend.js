@@ -65,6 +65,8 @@ const BackendResource = createSharedResource("BackendResource", {
             MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
             MB_ENABLE_TEST_ENDPOINTS: "true",
+            MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE:
+              "true",
             MB_PREMIUM_EMBEDDING_TOKEN:
               (process.env["MB_EDITION"] === "ee" &&
                 process.env["ENTERPRISE_TOKEN"]) ||
@@ -140,10 +142,10 @@ function createSharedResource(
   resourceName,
   {
     defaultOptions,
-    getKey = options => JSON.stringify(options),
-    create = options => ({}),
-    start = resource => {},
-    stop = resource => {},
+    getKey = (options) => JSON.stringify(options),
+    create = (options) => ({}),
+    start = (resource) => {},
+    stop = (resource) => {},
   },
 ) {
   const entriesByKey = new Map();
@@ -153,7 +155,7 @@ function createSharedResource(
     if (entriesByKey.has(entry.key)) {
       entriesByKey.delete(entry.key);
       entriesByResource.delete(entry.resource);
-      const p = stop(entry.resource).then(null, err =>
+      const p = stop(entry.resource).then(null, (err) =>
         console.log("Error stopping resource", resourceName, entry.key, err),
       );
       return p;

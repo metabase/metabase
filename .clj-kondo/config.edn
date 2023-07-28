@@ -1,6 +1,6 @@
 {:config-paths ["macros"]
  :linters {:unresolved-symbol
-           {:exclude [schema= re=
+           {:exclude [schema= re= partial=
                       (metabase.util/prog1 [<>])
                       (metabase.mbql.util/match-one)
                       (metabase.mbql.util/match)
