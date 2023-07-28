@@ -25,7 +25,7 @@ import { createMockActionParameter } from "metabase-types/api/mocks";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 
 const PG_DB_ID = 2;
-const PG_SCOREBOARD_TABLE_ID = 9;
+const PG_ORDERS_TABLE_ID = 9;
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 
 const SAMPLE_ORDERS_MODEL = {
@@ -34,7 +34,7 @@ const SAMPLE_ORDERS_MODEL = {
   display: "table",
   database: PG_DB_ID,
   query: {
-    "source-table": PG_SCOREBOARD_TABLE_ID,
+    "source-table": PG_ORDERS_TABLE_ID,
   },
 };
 
