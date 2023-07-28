@@ -335,14 +335,13 @@ describe("Object Detail", () => {
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
 
-    const actionsMenu = await screen.findByTestId("actions-menu");
-    expect(actionsMenu).toBeInTheDocument();
-    userEvent.click(actionsMenu);
-
     expect(
       screen.queryByTestId("action-execute-modal"),
     ).not.toBeInTheDocument();
 
+    const actionsMenu = await screen.findByTestId("actions-menu");
+    expect(actionsMenu).toBeInTheDocument();
+    userEvent.click(actionsMenu);
     const popover = screen.getByTestId("popover");
     within(popover).getByText(implicitUpdateAction.name).click();
 
