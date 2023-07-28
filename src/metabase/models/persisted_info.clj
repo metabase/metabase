@@ -75,10 +75,12 @@
        (take 10)
        (apply str)))
 
-;; Without the :cache-granular-controls feature flag, any models with state="off" should be treated as if they were
-;; in state="creating" (i.e. they should be refreshable, and not prunable).
 (defenterprise refreshable-states
-  "States of `persisted_info` records which can be refreshed."
+  "States of `persisted_info` records which can be refreshed.
+
+   Without the :cache-granular-controls feature flag, any models with state=off should be treated as if they were
+   in state=creating (i.e. they should be refreshable, and not prunable). This situation is only possible if the
+   instance previously had the :cache-granular-controls feature flag, then downgraded to not have it."
   metabase-enterprise.advanced-config.caching
   []
   #{"creating" "persisted" "error" "off"})
