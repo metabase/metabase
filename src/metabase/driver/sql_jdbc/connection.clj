@@ -35,7 +35,7 @@
   WANT A CONNECTION SPEC FOR RUNNING QUERIES USE [[db->pooled-connection-spec]] INSTEAD WHICH WILL RETURN A *POOLED*
   CONNECTION SPEC."
   {:arglists '([driver details-map])}
-  driver/dispatch-on-initialized-driver
+  driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
 
 
