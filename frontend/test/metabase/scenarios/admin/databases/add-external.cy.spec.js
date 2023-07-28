@@ -1,4 +1,9 @@
-import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
+import {
+  popover,
+  restore,
+  typeAndBlurUsingLabel,
+  isEE,
+} from "__support__/e2e/helpers";
 
 describe("admin > database > add > external databases", () => {
   beforeEach(() => {
@@ -11,6 +16,13 @@ describe("admin > database > add > external databases", () => {
   it("should add Postgres database and redirect to listing (metabase#17450)", () => {
     cy.visit("/admin/databases/create");
     cy.contains("Database type").closest(".Form-field").find("a").click();
+    popover().within(() => {
+      if (isEE) {
+        // EE should ship with Oracle and Vertica as options
+        cy.findByText("Oracle");
+        cy.findByText("Vertica");
+      }
+    });
     cy.contains("PostgreSQL").click({ force: true });
 
     cy.findByText("Show advanced options").click();
