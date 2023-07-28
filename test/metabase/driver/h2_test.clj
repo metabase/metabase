@@ -86,7 +86,28 @@
       (is (instance? clojure.lang.ExceptionInfo result))
       (is (partial= {:cause "Malicious keys detected"
                      :data {:keys ["TRACE_LEVEL_SYSTEM_OUT"]}}
-                    (Throwable->map result))))))
+                    (Throwable->map result)))))
+  (testing "Reject connection details which lie about their driver"
+    (let [conn "mem:fake-h2-db"
+          f (fn f [details]
+              (try (driver/can-connect? :postgres details)
+                   ::did-not-throw
+                   (catch Exception e e)))]
+      (testing "connection-uri"
+        (let [result (f {:connection-uri conn})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"connection-uri"}} (ex-data result)))))
+      (testing "subprotocol"
+        (let [result (f {:db conn, :subprotocol "h2"})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"subprotocol"}} (ex-data result)))))
+      (testing "subprotocol"
+        (let [result (f {:db conn, :classname "org.h2.Driver"})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :h2
