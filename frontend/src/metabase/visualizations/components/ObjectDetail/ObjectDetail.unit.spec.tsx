@@ -345,8 +345,32 @@ describe("Object Detail", () => {
     const popover = screen.getByTestId("popover");
     within(popover).getByText(implicitUpdateAction.name).click();
 
-    expect(
-      await screen.findByTestId("action-execute-modal"),
-    ).toBeInTheDocument();
+    const modal = await screen.findByTestId("action-execute-modal");
+    expect(modal).toBeInTheDocument();
+
+    expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
+      "Update",
+    );
+  });
+
+  it("shows delete object modal on delete action click", async () => {
+    setupDatabasesEndpoints([databaseWithEnabledActions]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDataset });
+
+    expect(screen.queryByTestId("delete-object-modal")).not.toBeInTheDocument();
+
+    const actionsMenu = await screen.findByTestId("actions-menu");
+    expect(actionsMenu).toBeInTheDocument();
+    userEvent.click(actionsMenu);
+    const popover = screen.getByTestId("popover");
+    within(popover).getByText(implicitDeleteAction.name).click();
+
+    const modal = await screen.findByTestId("delete-object-modal");
+    expect(modal).toBeInTheDocument();
+
+    expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
+      "Are you sure you want to delete this row?",
+    );
   });
 });
