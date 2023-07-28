@@ -121,6 +121,15 @@ const queryAction = createMockQueryAction({
   name: "Query action",
 });
 
+const actions = [
+  implicitCreateAction,
+  implicitDeleteAction,
+  implicitUpdateAction,
+  implicitPublicUpdateAction,
+  implicitArchivedUpdateAction,
+  queryAction,
+];
+
 function setup(options?: Partial<ObjectDetailProps>) {
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -284,14 +293,7 @@ describe("Object Detail", () => {
 
   it("renders actions menu", async () => {
     setupDatabasesEndpoints([databaseWithEnabledActions]);
-    setupActionsEndpoints([
-      implicitCreateAction,
-      implicitDeleteAction,
-      implicitUpdateAction,
-      implicitPublicUpdateAction,
-      implicitArchivedUpdateAction,
-      queryAction,
-    ]);
+    setupActionsEndpoints(actions);
     setup({ question: mockDataset });
 
     const actionsMenu = await screen.findByTestId("actions-menu");
@@ -321,14 +323,7 @@ describe("Object Detail", () => {
 
   it("does not render actions menu for non-model questions", async () => {
     setupDatabasesEndpoints([databaseWithEnabledActions]);
-    setupActionsEndpoints([
-      implicitCreateAction,
-      implicitDeleteAction,
-      implicitUpdateAction,
-      implicitPublicUpdateAction,
-      implicitArchivedUpdateAction,
-      queryAction,
-    ]);
+    setupActionsEndpoints(actions);
     setup({ question: mockQuestion });
 
     const actionsMenu = screen.queryByTestId("actions-menu");
