@@ -499,7 +499,7 @@ const SECTIONS = {
               Enterprise
             </ExternalLink>
           )}
-           feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO - down to the row- or column-level - so people only see what they need to.`,
+           feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO—down to the row- or column-level—so people only see what they need to.`,
         embedType: "full-app",
       },
     ],
