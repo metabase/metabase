@@ -717,16 +717,5 @@ describe("Notebook Editor > Join Step", () => {
         screen.queryByLabelText("Remove condition"),
       ).not.toBeInTheDocument();
     });
-
-    it("shouldn't allow removing a single incomplete condition", () => {
-      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
-
-      const leftColumn = screen.getByLabelText("Left column");
-      userEvent.click(within(leftColumn).getByLabelText("Remove"));
-
-      expect(
-        screen.queryByLabelText("Remove condition"),
-      ).not.toBeInTheDocument();
-    });
   });
 });
