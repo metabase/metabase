@@ -1,19 +1,16 @@
-(ns metabase.metabot.infer-mbql
+(ns metabase.metabot.openai.infer-mbql
   (:require [cheshire.core :as json]
             [clojure.pprint :as pp]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [malli.core :as m]
             [malli.core :as mc]
             [malli.error :as me]
             [malli.generator :as mg]
             [malli.json-schema :as mjs]
-            [malli.provider :as mp]
             [malli.transform :as mtx]
             [metabase.metabot.client :as metabot-client]
             [metabase.metabot.util :as metabot-util]
             [metabase.query-processor :as qp]
-            [metabase.util :as u]
             [toucan2.core :as t2]))
 
 (defn schema

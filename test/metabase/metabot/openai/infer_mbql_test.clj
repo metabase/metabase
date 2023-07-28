@@ -1,11 +1,11 @@
-(ns metabase.metabot.infer-mbql-test
+(ns metabase.metabot.openai.infer-mbql-test
   (:require
     [cheshire.core :as json]
     [clojure.test :refer :all]
     [metabase.metabot.test-models :as test-models]
     [metabase.metabot.client :as metabot-client]
-    [metabase.metabot.infer-mbql :as infer-mbql]
-    [metabase.models :refer [Card Database Field Table]]
+    [metabase.metabot.openai.infer-mbql :as infer-mbql]
+    [metabase.models :refer [Card]]
     [metabase.test :as mt]))
 
 (defn- mock-llm-endpoint [metabot-response usage]

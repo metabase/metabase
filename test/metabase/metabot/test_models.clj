@@ -51,7 +51,7 @@
                 :order-by     [[:asc
                                 [:field
                                  (mt/id :orders :total)
-                                 {:base-type :type/Float :effective-type "type/Float"}]]]}}
+                                 {:base-type :type/Float :effective-type :type/Float}]]]}}
     :dataset true})
 
 (defn- real-response->test-response
