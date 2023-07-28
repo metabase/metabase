@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+
 import {
   screen,
   renderWithProviders,
@@ -7,6 +8,7 @@ import {
 } from "__support__/ui";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -14,7 +16,6 @@ import {
   createMockDashboard,
   createMockDatabase,
   createMockTable,
-  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 import {
@@ -31,7 +32,6 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { callMockEvent } from "__support__/events";
 
-const TEST_DASHBOARD = createMockDashboard();
 const TEST_COLLECTION = createMockCollection();
 
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
@@ -47,22 +47,27 @@ const TEST_CARD = createMockCard();
 
 const TEST_TABLE = createMockTable();
 
-async function setup({ user = createMockUser() }) {
+async function setup({ dashboard }: { dashboard?: Partial<Dashboard> } = {}) {
+  const mockDashboard = createMockDashboard(dashboard);
+
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
-  setupDashboardEndpoints(createMockDashboard(TEST_DASHBOARD));
+  setupDashboardEndpoints(mockDashboard);
   setupCollectionsEndpoints({ collections: [] });
-  setupCollectionItemsEndpoint({ collection: TEST_COLLECTION });
+  setupCollectionItemsEndpoint({
+    collection: TEST_COLLECTION,
+    collectionItems: [],
+  });
   setupSearchEndpoints([TEST_COLLECTION_ITEM]);
   setupCardsEndpoints([TEST_CARD]);
-  setupTableEndpoints([TEST_TABLE]);
+  setupTableEndpoints(TEST_TABLE);
 
   setupBookmarksEndpoints([]);
   setupActionsEndpoints([]);
 
-  window.HTMLElement.prototype.scrollIntoView = function () {};
+  window.HTMLElement.prototype.scrollIntoView = () => null;
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const DashboardAppContainer = props => {
+  const DashboardAppContainer = (props: any) => {
     return (
       <main>
         <link rel="icon" />
@@ -74,8 +79,7 @@ async function setup({ user = createMockUser() }) {
   renderWithProviders(
     <Route path="/dashboard/:slug" component={DashboardAppContainer} />,
     {
-      initialRoute: `/dashboard/${TEST_DASHBOARD.id}`,
-      currentUser: user,
+      initialRoute: `/dashboard/${mockDashboard.id}`,
       withRouter: true,
       storeInitialState: {
         dashboard: createMockDashboardState(),
@@ -104,7 +108,7 @@ describe("DashboardApp", function () {
     });
 
     it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
-      const { mockEventListener } = await setup({});
+      const { mockEventListener } = await setup();
 
       userEvent.click(screen.getByLabelText("Edit dashboard"));
       userEvent.click(screen.getByTestId("dashboard-name-heading"));
@@ -119,13 +123,29 @@ describe("DashboardApp", function () {
     });
 
     it("should not have a beforeunload event when the dashboard is unedited", async function () {
-      const { mockEventListener } = await setup({});
+      const { mockEventListener } = await setup();
 
       userEvent.click(screen.getByLabelText("Edit dashboard"));
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
+    });
+  });
+
+  describe("empty dashboard", () => {
+    it("should prompt the user to add a question if they have write access", async () => {
+      await setup();
+
+      expect(screen.getByText(/add a saved question/i)).toBeInTheDocument();
+    });
+
+    it("should should show an empty state without the 'add a question' prompt if the user lacks write access", async () => {
+      await setup({ dashboard: { can_write: false } });
+
+      expect(
+        screen.getByText(/there's nothing here, yet./i),
+      ).toBeInTheDocument();
     });
   });
 });

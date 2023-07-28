@@ -18,7 +18,7 @@ const EN_DASH = `–`;
 type DEFAULT_DATE_FORMATS_TYPE = { [key: string]: string };
 const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
   year: "YYYY",
-  quarter: "[Q]Q - YYYY",
+  quarter: "[Q]Q YYYY",
   "minute-of-hour": "m",
   "day-of-week": "dddd",
   "day-of-month": "D",
@@ -44,14 +44,14 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
     quarter: "YYYY - [Q]Q",
   },
   "MMMM D, YYYY": {
-    month: "MMMM, YYYY",
+    month: "MMMM YYYY",
   },
   "D MMMM, YYYY": {
-    month: "MMMM, YYYY",
+    month: "MMMM YYYY",
   },
   "dddd, MMMM D, YYYY": {
     week: "MMMM D, YYYY",
-    month: "MMMM, YYYY",
+    month: "MMMM YYYY",
   },
 };
 

@@ -285,7 +285,7 @@
                 (lib/filter new-filter)
                 lib/filters))))
   (testing "standalone clause"
-    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (let [query lib.tu/venues-query
           [id-col] (lib/filterable-columns query)
           [eq-op] (lib/filterable-column-operators id-col)
           filter-clause (lib/filter-clause eq-op id-col 123)]

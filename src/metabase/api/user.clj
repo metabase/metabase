@@ -186,9 +186,7 @@
                       (vec (cons User (user-visible-columns)))
                       (cond-> clauses
                         (some? group_id) (sql.helpers/order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
-                        true             (sql.helpers/order-by
-                                          [:%lower.last_name :asc] [:%lower.first_name :asc])))
-
+                        true             (sql.helpers/order-by [:%lower.first_name :asc] [:%lower.last_name :asc])))
                ;; For admins also include the IDs of Users' Personal Collections
                api/*is-superuser?*
                (t2/hydrate :personal_collection_id)

@@ -45,6 +45,10 @@ export const ContentSection = styled.div`
     font-size: 1rem;
     line-height: 1.4rem;
     margin-left: -0.3rem;
+
+    h1 {
+      line-height: 1em;
+    }
   }
 
   ${FormField.Root}:last-child {

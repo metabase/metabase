@@ -4,7 +4,6 @@ import { HTMLAttributes } from "react";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Link, { LinkProps } from "metabase/core/components/Link";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 interface RawMaybeLinkProps {
   to?: string;
@@ -41,10 +40,8 @@ export const MaybeLink = styled(RawMaybeLink)`
   }
 `;
 
-export const BadgeIcon = styled(Icon, {
-  shouldForwardProp: shouldForwardNonTransientProp,
-})<{ $hasMargin: boolean }>`
-  margin-right: ${props => (props.$hasMargin ? "5px" : 0)};
+export const BadgeIcon = styled(Icon)<{ hasMargin: boolean }>`
+  margin-right: ${props => (props.hasMargin ? "5px" : 0)};
 `;
 
 export const BadgeText = styled.span<{ isSingleLine: boolean }>`

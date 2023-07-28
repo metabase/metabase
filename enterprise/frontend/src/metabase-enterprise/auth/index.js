@@ -236,6 +236,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
     providers = [SSO_PROVIDER, ...providers];
   }
   if (
+    hasPremiumFeature("disable_password_login") &&
     !MetabaseSettings.isPasswordLoginEnabled() &&
     !MetabaseSettings.isLdapEnabled()
   ) {
@@ -244,12 +245,14 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   return providers;
 });
 
-PLUGIN_IS_PASSWORD_USER.push(
-  user =>
-    !user.google_auth &&
-    !user.ldap_auth &&
-    MetabaseSettings.isPasswordLoginEnabled(),
-);
+if (hasPremiumFeature("disable_password_login")) {
+  PLUGIN_IS_PASSWORD_USER.push(
+    user =>
+      !user.google_auth &&
+      !user.ldap_auth &&
+      MetabaseSettings.isPasswordLoginEnabled(),
+  );
+}
 
 if (hasPremiumFeature("sso_ldap")) {
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>

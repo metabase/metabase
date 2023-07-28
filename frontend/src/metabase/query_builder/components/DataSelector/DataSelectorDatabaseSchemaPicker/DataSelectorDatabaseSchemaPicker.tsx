@@ -92,7 +92,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     return true;
   };
 
-  const showSpinner = ({ active }: { active?: boolean }) => !active;
+  const showSpinner = ({ active }: { active?: boolean }) => active === false;
 
   const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
     icon && <Icon className="Icon text-default" name={icon} size={18} />;
