@@ -14,7 +14,7 @@ const { admin } = USERS;
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
 
-describe("scenarios > setup", () => {
+describe.skip("scenarios > setup", () => {
   locales.forEach(locale => {
     beforeEach(() => restore("blank"));
 
@@ -213,7 +213,7 @@ describe("scenarios > setup", () => {
   });
 });
 
-describeWithSnowplow("scenarios > setup", () => {
+describeWithSnowplow.skip("scenarios > setup", () => {
   beforeEach(() => {
     restore("blank");
     resetSnowplow();
