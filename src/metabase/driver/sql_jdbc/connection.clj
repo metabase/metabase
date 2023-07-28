@@ -24,7 +24,7 @@
   but you probably shouldn't be *USE* this method directly! If you want a pooled connection spec (which you almost
   certainly do), use [[db->pooled-connection-spec]] instead."
   {:arglists '([driver details-map])}
-  driver/dispatch-on-initialized-driver
+  driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
 
 
