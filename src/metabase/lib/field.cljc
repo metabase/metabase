@@ -223,19 +223,19 @@
                                       ;;    Products → Products → Category
                                       (not (str/includes? field-display-name " → ")))
                              (or
-                               (when fk-field-id
+                              (when fk-field-id
                                  ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
                                  ;; "ID" dropped instead.
                                  ;; This is very intentional: one table might have several FKs to one foreign table, each with different
                                  ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
                                  ;; See #30109 for more details.
-                                 (if-let [field (lib.metadata/field query fk-field-id)]
-                                   (-> (lib.metadata.calculation/display-info query stage-number field)
-                                       :display-name
-                                       lib.util/strip-id)
-                                   (let [table (table-metadata query table-id)]
-                                     (lib.metadata.calculation/display-name query stage-number table style))))
-                               (or join-alias (lib.join/current-join-alias field-metadata))))
+                                (if-let [field (lib.metadata/field query fk-field-id)]
+                                  (-> (lib.metadata.calculation/display-info query stage-number field)
+                                      :display-name
+                                      lib.util/strip-id)
+                                  (let [table (table-metadata query table-id)]
+                                    (lib.metadata.calculation/display-name query stage-number table style))))
+                              (or join-alias (lib.join/current-join-alias field-metadata))))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
@@ -550,7 +550,7 @@
                                                        (map lib.ref/ref))
                                               (lib.metadata.calculation/returned-columns query stage-number stage))))))
 
-(defn- append-field [query stage-number column]
+(defn- include-field [query stage-number column]
   (let [stage      (lib.util/query-stage query stage-number)
         populated  (if (:fields stage)
                      query
@@ -562,10 +562,10 @@
       (lib.util/update-query-stage populated stage-number update :fields conj column-ref))))
 
 (defn- add-field-to-join [query stage-number column]
-  (let [field-ref    (lib.ref/ref column)
+  (let [column-ref    (lib.ref/ref column)
         [join field] (first (for [join  (lib.join/joins query stage-number)
                                   field (lib.join/joinable-columns query stage-number join)
-                                  :when (lib.equality/find-closest-matching-ref query field-ref
+                                  :when (lib.equality/find-closest-matching-ref query column-ref
                                                                                 [(lib.ref/ref field)])]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
@@ -581,6 +581,9 @@
                                            [column]
                                            (conj join-fields column)))))))
 
+(def ^:private native-query-fields-edit-error
+  (i18n/tru "Fields cannot be adjusted on native queries. Either edit the native query, or save this question and edit the fields in a GUI question based on this one."))
+
 (mu/defn add-field :- ::lib.schema/query
   "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
@@ -594,37 +597,39 @@
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [stage (lib.util/query-stage query stage-number)]
     (case (:lib/source column)
-      :source/table-defaults      (if (contains? stage :fields)
-                                    (append-field query stage-number column)
-                                    ;; If :fields key is not set on the query, it's implicitly :all, so nothing to add.
-                                    query)
+      (:source/table-defaults
+       :source/card
+       :source/previous-stage
+       :source/aggregations
+       :source/breakouts)         (cond-> query
+                                    (contains? stage :fields) (include-field stage-number column))
       :source/joins               (add-field-to-join query stage-number column)
-      :source/implicitly-joinable (append-field query stage-number column)
+      :source/implicitly-joinable (include-field query stage-number column)
+      :source/native              (throw (ex-info native-query-fields-edit-error {:query query :stage stage-number}))
       ;; Default case - for columns from a card, from a native query, from a custom expression - these are always
       ;; returned and cannot be selected off and on.
       query)))
 
-(defn- remove-top-field
+(defn- exclude-field
   "This is called only for fields that plausibly need removing. If the stage has no `:fields`, this will populate it.
   It shouldn't happen that we can't find the target field, but if that does happen, this will return the original query
   unchanged. (In particular, if `:fields` did not exist before it will still be omitted.)"
   [query stage-number column]
-  (let [populated  (if (:fields (lib.util/query-stage query stage-number))
-                     query
-                     (populate-fields-for-stage query stage-number))
-        old-fields (:fields (lib.util/query-stage populated stage-number))
+  (let [old-fields (cond-> query
+                     (not (:fields (lib.util/query-stage query stage-number))) (populate-fields-for-stage stage-number)
+                     true                                                      (lib.util/query-stage stage-number)
+                     true                                                      :fields)
         column-ref (lib.ref/ref column)
         index      (first (keep-indexed (fn [index field]
                                           (when (lib.equality/find-closest-matching-ref query column-ref [field])
                                             index))
                                         old-fields))
-        fields'    (when index
+        new-fields (when index
                      (let [[pre [_ & post]] (split-at index old-fields)]
                        (vec (concat pre post))))]
-    ;; It's still possible
-    (if index
-      (lib.util/update-query-stage populated stage-number assoc :fields fields')
-      query)))
+    ;; If we couldn't find the field, return the original query unchanged too.
+    (cond-> query
+      new-fields (lib.util/update-query-stage stage-number assoc :fields new-fields))))
 
 (defn- remove-field-from-join [query stage-number column]
   (let [field-ref    (lib.ref/ref column)
@@ -638,10 +643,10 @@
                           (map lib.ref/ref (lib.metadata.calculation/returned-columns query stage-number join))
                           join-fields)
             removed     (remove #(lib.equality/find-closest-matching-ref query field-ref [%]) join-fields)]
-        (if (= (count join-fields) (count removed))
+        (cond-> query
           ;; Return the query unchanged if we didn't find anything.
-          query
-          (lib.remove-replace/replace-join query stage-number join (lib.join/with-join-fields join removed)))))))
+          (= (count join-fields) (count removed))
+          (lib.remove-replace/replace-join stage-number join (lib.join/with-join-fields join removed)))))))
 
 (mu/defn remove-field :- ::lib.schema/query
   "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
@@ -657,15 +662,20 @@
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [stage (lib.util/query-stage query stage-number)]
     (case (:lib/source column)
-      :source/table-defaults      (remove-top-field query stage-number column)
-      :source/implicitly-joinable (if (:fields stage)
-                                    (remove-top-field query stage-number column)
-                                    ;; Nothing to do if the `:fields` is missing; it can't contain an implict join.
-                                    query)
+      (:source/table-defaults
+       :source/breakouts
+       :source/aggregations
+       :source/card
+       :source/previous-stage)    (exclude-field query stage-number column)
+      :source/implicitly-joinable (cond-> query
+                                    ;; If there are fields, exclude this column from it.
+                                    ;; If :fields is implied, then there can't be any implicitly joined fields in it.
+                                    (:fields stage) (exclude-field stage-number column))
       :source/joins               (remove-field-from-join query stage-number column)
       :source/expressions         (throw (ex-info (i18n/tru "Custom expressions cannot be de-selected. Delete the expression instead.")
                                                   {:query      query
                                                    :stage      stage-number
                                                    :expression column}))
+      :source/native              (throw (ex-info native-query-fields-edit-error {:query query :stage stage-number}))
       ;; Default case: do nothing and return the query unchaged.
       query)))

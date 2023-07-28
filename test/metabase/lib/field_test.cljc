@@ -186,8 +186,8 @@
                          [{:lib/type    :mbql.stage/mbql
                            :source-card 1
                            :breakout    [[:field
-                                           {:join-alias (symbol "nil #_\"key is not present.\"")}
-                                           "CATEGORY"]]}]}
+                                          {:join-alias (symbol "nil #_\"key is not present.\"")}
+                                          "CATEGORY"]]}]}
                         query'))
                 (is (=? [{:name              "CATEGORY"
                           :display-name      (if (:result-metadata card-def)
@@ -313,7 +313,7 @@
           (testing "Bucketing with any of the options should work"
             (doseq [expected-option expected-options]
               (is (= {:lib/type :option/temporal-bucketing
-                     :unit      (:unit expected-option)}
+                      :unit      (:unit expected-option)}
                      (lib/temporal-bucket (lib/with-temporal-bucket x expected-option))))))
           (let [bucketed (lib/with-temporal-bucket x selected-unit)
                 query2   (lib/breakout (:query temporal-bucketing-mock-metadata) bucketed)]
@@ -819,7 +819,18 @@
                   (-> query
                       (lib.util/update-query-stage -1 update-in [:joins 0] lib/with-join-fields (take 3 returned))
                       (#'lib.field/populate-fields-for-stage -1)
-                      fields-of))))))))
+                      fields-of)))))))
+
+  (testing "sourced from another card"
+    (let [query   lib.tu/query-with-source-card]
+      (testing "starts with no :fields"
+        (is (nil? (-> query (lib.util/query-stage -1) :fields))))
+      (testing "populates correctly"
+        (is (=? [[:field {} "USER_ID"]
+                 [:field {} "count"]]
+                (-> query
+                    (#'lib.field/populate-fields-for-stage -1)
+                    fields-of)))))))
 
 (deftest ^:parallel add-field-tests
   (testing "simple table query"
@@ -829,13 +840,15 @@
           created-at  (first (filter #(= (:name %) "CREATED_AT") own-columns))
           subset      (map lib/ref (take 4 own-columns))
           field-query (lib/with-fields query -1 subset)]
+      ;; sanity check that the query is constructed properly.
+      (is (=? (sorted-fields subset)
+              (fields-of field-query)))
+      (let [subset-ids (set (map last subset))]
+        (is (not (subset-ids (:id created-at)))))
       (testing "does nothing with implicit :all"
         (is (nil? (-> query
                       (lib/add-field -1 created-at)
                       (lib/fields -1)))))
-      ;; sanity check that the query is constructed properly.
-      (is (=? (sorted-fields subset)
-              (fields-of field-query)))
       (testing "adds the column to the :fields list if missing"
         (is (=? (sorted-fields (conj subset [:field {} (:id created-at)]))
                 (-> field-query
@@ -909,9 +922,9 @@
 
       (testing "join :fields list"
         (let [join-fields-query (lib.util/update-query-stage
-                                  query -1
-                                  update-in [:joins 0]
-                                  lib/with-join-fields (map lib/ref (take 4 join-columns)))]
+                                 query -1
+                                 update-in [:joins 0]
+                                 lib/with-join-fields (map lib/ref (take 4 join-columns)))]
           (testing "returns those plus all the main table fields"
             (is (=? (->> (concat table-columns
                                  (take 4 join-columns))
@@ -922,19 +935,19 @@
                          (map lib/ref)
                          sorted-fields))))
           (testing "properly adds a join field"
-              (is (=? (->> (concat table-columns
-                                   (take 4 join-columns)
-                                   [(nth join-columns 6)])
-                           (map lib/ref)
-                           (map #(lib.options/update-options % dissoc :lib/uuid))
-                           sorted-fields)
-                      (->> (lib/add-field join-fields-query -1 (nth join-columns 6))
-                           lib.metadata.calculation/returned-columns
-                           (map lib/ref)
-                           sorted-fields))))
+            (is (=? (->> (concat table-columns
+                                 (take 4 join-columns)
+                                 [(nth join-columns 6)])
+                         (map lib/ref)
+                         (map #(lib.options/update-options % dissoc :lib/uuid))
+                         sorted-fields)
+                    (->> (lib/add-field join-fields-query -1 (nth join-columns 6))
+                         lib.metadata.calculation/returned-columns
+                         (map lib/ref)
+                         sorted-fields))))
           (testing "does nothing if the join field is already selected"
-              (is (=? join-fields-query
-                      (lib/add-field join-fields-query -1 (nth join-columns 3)))))))))
+            (is (=? join-fields-query
+                    (lib/add-field join-fields-query -1 (nth join-columns 3)))))))))
 
   (testing "adding implicit join fields"
     (let [query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -1018,7 +1031,7 @@
                            (remove :id)
                            first)]
       (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Custom expressions cannot be de-selected."
-                              (lib/remove-field query -1 expr-column)))))
+                            (lib/remove-field query -1 expr-column)))))
   (testing "single join"
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
@@ -1067,9 +1080,9 @@
 
       (testing "join with :fields list"
         (let [join-fields-query (lib.util/update-query-stage
-                                  query -1
-                                  update-in [:joins 0]
-                                  lib/with-join-fields (map lib/ref (take 4 join-columns)))]
+                                 query -1
+                                 update-in [:joins 0]
+                                 lib/with-join-fields (map lib/ref (take 4 join-columns)))]
           (testing ":all fills in the :fields list and removes the field"
             (is (=? (->> (concat table-columns
                                  (rest (take 4 join-columns)))
@@ -1107,3 +1120,141 @@
       (is (not= query
                 (lib/remove-field implied-query -1 (first implicit-columns)))
           "even though the :fields list is now the default again, it's still an explicit list"))))
+
+(deftest ^:parallel add-remove-fields-source-card-test
+  (testing "query with a source card"
+    (let [query   lib.tu/query-with-source-card
+          columns (lib.metadata.calculation/visible-columns query)]
+      (testing "allows removing each of the fields"
+        (is (=? [[:field {} "USER_ID"]]
+                (-> query
+                    (lib/remove-field -1 (second columns))
+                    fields-of)))
+        (is (=? [[:field {} "count"]]
+                (-> query
+                    (lib/remove-field -1 (first columns))
+                    fields-of))))
+      (testing "allows adding back the removed field"
+        (is (=? [[:field {} "USER_ID"]
+                 [:field {} "count"]]
+                (-> query
+                    (lib/remove-field -1 (second columns))
+                    (lib/add-field    -1 (second columns))
+                    fields-of)))
+        (is (=? [[:field {} "USER_ID"]
+                 [:field {} "count"]]
+                (-> query
+                    (lib/remove-field -1 (first columns))
+                    (lib/add-field    -1 (first columns))
+                    fields-of)))))))
+
+(deftest ^:parallel add-remove-fields-multi-stage-test
+  (testing "multi-stage query"
+    ;; Our query takes is monthly sales subtotals, with a blank second stage for starters.
+    (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate -1 (lib/sum (meta/field-metadata :orders :subtotal)))
+                     (lib/breakout -1 (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                     lib/append-stage)
+          stage1 (lib.util/query-stage query 1)
+          [created-at sum] (lib.metadata.calculation/visible-columns query 1 stage1)]
+      (testing "populating :fields"
+        (is (nil? (:fields stage1)))
+        (is (=? [[:field {} "CREATED_AT"]
+                 [:field {} "sum"]]
+                (-> query
+                    (#'lib.field/populate-fields-for-stage 1)
+                    fields-of))))
+
+      (testing "removing each field"
+        (is (=? [[:field {} "CREATED_AT"]]
+                (-> query
+                    (lib/remove-field 1 sum)
+                    fields-of)))
+        (is (=? [[:field {} "sum"]]
+                (-> query
+                    (lib/remove-field 1 created-at)
+                    fields-of))))
+
+      (testing "removing and adding each field"
+        (is (=? [[:field {} "CREATED_AT"]
+                 [:field {} "sum"]]
+                (-> query
+                    (lib/remove-field 1 sum)
+                    (lib/add-field    1 sum)
+                    fields-of)))
+        (is (=? [[:field {} "CREATED_AT"]
+                 [:field {} "sum"]]
+                (-> query
+                    (lib/remove-field 1 created-at)
+                    (lib/add-field    1 created-at)
+                    fields-of)))))))
+
+(deftest ^:parallel add-remove-fields-native-query-test
+  (testing "native query"
+    (let [native-query   lib.tu/native-query
+          native-columns (lib.metadata.calculation/visible-columns native-query)]
+      (testing "throws when editing fields directly"
+        (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Fields cannot be adjusted on native queries"
+                              (lib/add-field native-query -1 (first native-columns))))
+        (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Fields cannot be adjusted on native queries"
+                              (lib/remove-field native-query -1 (first native-columns)))))
+      (testing "with MBQL stage"
+        (let [query   (lib/append-stage native-query)
+              stage1  (lib.util/query-stage query 1)
+              columns (lib.metadata.calculation/visible-columns query 1 stage1)]
+          (testing "removing each field"
+            (is (=? [[:field {} "sum"]]
+                    (-> query
+                        (lib/remove-field 1 (first columns))
+                        fields-of)))
+            (is (=? [[:field {} "abc"]]
+                    (-> query
+                        (lib/remove-field 1 (second columns))
+                        fields-of))))
+
+          (testing "removing and adding each field"
+            (is (=? [[:field {} "abc"]
+                     [:field {} "sum"]]
+                    (-> query
+                        (lib/remove-field 1 (first columns))
+                        (lib/add-field    1 (first columns))
+                        fields-of)))
+            (is (=? [[:field {} "abc"]
+                     [:field {} "sum"]]
+                    (-> query
+                        (lib/remove-field 1 (second columns))
+                        (lib/add-field    1 (second columns))
+                        fields-of)))))))))
+
+(deftest ^:parallel add-remove-fields-aggregation-breakout-test
+  (testing "aggregations and breakouts"
+    (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/aggregate -1 (lib/sum (meta/field-metadata :orders :subtotal)))
+                         (lib/breakout -1 (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
+          stage      (lib.util/query-stage query -1)
+          columns    (lib.metadata.calculation/returned-columns query)
+          created-at [:field {} (meta/id :orders :created-at)]
+          sum        [:aggregation {} (-> stage :aggregation first lib.options/uuid)]]
+      (testing "removing each field"
+        (is (=? [sum]
+                (-> query
+                    (lib/remove-field -1 (first columns))
+                    fields-of)))
+        (is (=? [created-at]
+                (-> query
+                    (lib/remove-field -1 (second columns))
+                    fields-of))))
+
+      (testing "removing and adding each field"
+        (is (=? [sum created-at]
+                (-> query
+                    (lib/remove-field -1 (first columns))
+                    (lib/add-field    -1 (first columns))
+                    (lib.util/query-stage -1)
+                    :fields)))
+        (is (=? [created-at sum]
+                (-> query
+                    (lib/remove-field -1 (second columns))
+                    (lib/add-field    -1 (second columns))
+                    (lib.util/query-stage -1)
+                    :fields)))))))
