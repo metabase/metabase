@@ -7,7 +7,7 @@ import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
 import type { SearchScore, SearchModelType } from "metabase-types/api";
 
-import type { WrappedResult } from "metabase/search/util/wrapped-result-type";
+import { WrappedResult } from "metabase/search/types";
 import {
   IconWrapper,
   ResultButton,

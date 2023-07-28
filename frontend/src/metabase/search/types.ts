@@ -1,5 +1,18 @@
+import { Location } from "history";
 import { FC } from "react";
-import { SearchModelType } from "metabase-types/api";
+import { Collection, SearchModelType, SearchResult } from "metabase-types/api";
+import { IconName } from "metabase/core/components/Icon";
+
+export interface WrappedResult extends SearchResult {
+  getUrl: () => string;
+  getIcon: () => {
+    name: IconName;
+    size?: number;
+    width?: number;
+    height?: number;
+  };
+  getCollection: () => Partial<Collection>;
+}
 
 export const SearchFilterKeys = {
   Type: "type",
@@ -12,6 +25,7 @@ type SearchFilterPropTypes = {
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
+
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 
 export type SearchFilterComponent<T extends FilterTypeKeys = any> = FC<
@@ -21,3 +35,5 @@ export type SearchFilterComponent<T extends FilterTypeKeys = any> = FC<
     "data-testid"?: string;
   } & Record<string, unknown>
 >;
+
+export type SearchAwareLocation = Location<{ q?: string } & SearchFilters>;

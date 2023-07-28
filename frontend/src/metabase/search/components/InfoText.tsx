@@ -12,7 +12,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getTranslatedEntityName } from "metabase/nav/utils";
 
 import type { Collection } from "metabase-types/api";
-import type { WrappedResult } from "metabase/search/util/wrapped-result-type";
+import { WrappedResult } from "metabase/search/types";
 import type TableType from "metabase-lib/metadata/Table";
 
 import { CollectionBadge } from "./CollectionBadge";

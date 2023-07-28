@@ -2,9 +2,9 @@ import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
   isSearchPageLocation,
-} from "metabase/search/util/util";
-import { SearchFilterKeys } from "metabase/search/util/filter-types";
-import { SearchAwareLocation } from "metabase/search/util/search-location-type";
+} from "metabase/search/utils";
+
+import { SearchAwareLocation, SearchFilterKeys } from "metabase/search/types";
 
 describe("isSearchPageLocation", () => {
   it('should return true when the last component of pathname is "search"', () => {

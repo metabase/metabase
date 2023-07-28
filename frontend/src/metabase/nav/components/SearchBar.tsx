@@ -15,7 +15,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { useDispatch } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
-import { getSearchTextFromLocation } from "metabase/search/util/util";
+import { getSearchTextFromLocation } from "metabase/search/utils";
 import SearchResults from "./SearchResults";
 import RecentsList from "./RecentsList";
 import {
