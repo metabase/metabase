@@ -373,7 +373,7 @@ describe("Object Detail", () => {
       screen.queryByTestId("action-execute-modal"),
     ).not.toBeInTheDocument();
 
-    const action = await findActionInActionMenu(implicitPublicUpdateAction);
+    const action = await findActionInActionMenu(implicitUpdateAction);
     expect(action).toBeInTheDocument();
     action?.click();
 
@@ -392,7 +392,7 @@ describe("Object Detail", () => {
 
     expect(screen.queryByTestId("delete-object-modal")).not.toBeInTheDocument();
 
-    const action = await findActionInActionMenu(implicitPublicUpdateAction);
+    const action = await findActionInActionMenu(implicitDeleteAction);
     expect(action).toBeInTheDocument();
     action?.click();
 
