@@ -211,27 +211,27 @@ describe("getStackedTooltipModel", () => {
     ordered_cards: [],
   };
   const cols = [StringColumn(), NumberColumn()];
-  const getMockSerie = ({ card, rows, hasBreakout }) => {
+  const getMockSeries = ({ card, rows, hasBreakout }) => {
     const _breakoutColumn = hasBreakout ? StringColumn() : undefined;
     return {
       data: { cols, rows, _breakoutColumn },
       card: { ...card, _breakoutColumn },
     };
   };
-  const getMockSeries = hasBreakout => [
-    getMockSerie({
+  const getMockMultipleSeries = hasBreakout => [
+    getMockSeries({
       card: { id: 1, name: "Series 1" },
       rows: [["foo", 100]],
       hasBreakout,
     }),
-    getMockSerie({ card: { id: 2, name: "Series 2" }, rows: [["foo", 200]] }),
+    getMockSeries({ card: { id: 2, name: "Series 2" }, rows: [["foo", 200]] }),
   ];
 
   const hoveredIndex = 0;
   const xValue = "foo";
 
   it("sets tooltip model rows", () => {
-    const series = getMockSeries();
+    const series = getMockMultipleSeries();
     const datas = getDatas({ series, settings });
     const { bodyRows, headerRows, headerTitle } = getStackedTooltipModel(
       series,
@@ -265,10 +265,10 @@ describe("getStackedTooltipModel", () => {
     const cardB = { id: 2, name: "Series 2" };
     const hasBreakout = true;
     const series = [
-      getMockSerie({ card: cardA, rows: [["foo", 100]], hasBreakout }),
-      getMockSerie({ card: cardA, rows: [["foo", 200]], hasBreakout }),
-      getMockSerie({ card: cardB, rows: [["foo", 300]], hasBreakout }),
-      getMockSerie({ card: cardB, rows: [["foo", 400]], hasBreakout }),
+      getMockSeries({ card: cardA, rows: [["foo", 100]], hasBreakout }),
+      getMockSeries({ card: cardA, rows: [["foo", 200]], hasBreakout }),
+      getMockSeries({ card: cardB, rows: [["foo", 300]], hasBreakout }),
+      getMockSeries({ card: cardB, rows: [["foo", 400]], hasBreakout }),
     ];
     const datas = getDatas({ series, settings });
     const { bodyRows, headerRows, showTotal, showPercentages } =
@@ -290,10 +290,10 @@ describe("getStackedTooltipModel", () => {
     const cardB = { id: 2, name: "Series 2" };
     const hasBreakout = true;
     const series = [
-      getMockSerie({ card: cardA, rows: [["foo", 100]], hasBreakout }),
-      getMockSerie({ card: cardA, rows: [["foo", 200]], hasBreakout }),
-      getMockSerie({ card: cardB, rows: [["foo", 300]] }),
-      getMockSerie({ card: cardB, rows: [["foo", 400]] }),
+      getMockSeries({ card: cardA, rows: [["foo", 100]], hasBreakout }),
+      getMockSeries({ card: cardA, rows: [["foo", 200]], hasBreakout }),
+      getMockSeries({ card: cardB, rows: [["foo", 300]] }),
+      getMockSeries({ card: cardB, rows: [["foo", 400]] }),
     ];
     const datas = getDatas({ series, settings });
     const { bodyRows, headerRows, showTotal, showPercentages } =
