@@ -155,7 +155,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         const interactiveEmbeddingPath =
           "/admin/settings/embedding-in-other-applications/interactive-embedding";
 
-        cy.findByRole("link")
+        cy.findAllByRole("link")
           .should("have.attr", "href")
           .and("eq", interactiveEmbeddingPath);
 
