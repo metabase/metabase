@@ -43,6 +43,9 @@ describe("Actions in object detail view", () => {
     cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
       "prefetchValues",
     );
+
+    resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
+    restore("postgres-writable");
   });
 
   describe("In dashboard", () => {
@@ -93,13 +96,13 @@ describe("Actions in object detail view", () => {
 
   describe("In modal", () => {
     beforeEach(() => {
-      resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
-      restore("postgres-writable");
-
-      cy.signInAsAdmin();
-      resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: WRITABLE_TEST_TABLE });
-      cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
-      cy.signOut();
+      asAdmin(() => {
+        resyncDatabase({
+          dbId: WRITABLE_DB_ID,
+          tableName: WRITABLE_TEST_TABLE,
+        });
+        cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
+      });
     });
 
     it("should be able to run update and delete actions", () => {
