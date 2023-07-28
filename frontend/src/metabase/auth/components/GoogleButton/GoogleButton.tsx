@@ -3,7 +3,11 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import { TextLink } from "../AuthButton/AuthButton.styled";
 
-import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
+import {
+  AuthError,
+  AuthErrorContainer,
+  GoogleButtonRoot,
+} from "./GoogleButton.styled";
 import { GoogleLogin } from "metabase/oauth";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -35,7 +39,7 @@ const GoogleButton = ({ isCard, redirectUrl, onLogin }: GoogleButtonProps) => {
   }, []);
 
   return (
-    <div>
+    <GoogleButtonRoot>
       {isCard ? (
         <GoogleLogin
           useOneTap
@@ -48,7 +52,6 @@ const GoogleButton = ({ isCard, redirectUrl, onLogin }: GoogleButtonProps) => {
             )
           }
           locale={siteLocale}
-          width="366"
         />
       ) : (
         <TextLink to={"#"} onClick={() => null}>
@@ -63,7 +66,7 @@ const GoogleButton = ({ isCard, redirectUrl, onLogin }: GoogleButtonProps) => {
           ))}
         </AuthErrorContainer>
       )}
-    </div>
+    </GoogleButtonRoot>
   );
 };
 
