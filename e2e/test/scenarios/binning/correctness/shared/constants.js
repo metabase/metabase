@@ -20,11 +20,11 @@ export const TIME_OPTIONS = {
   },
   Month: {
     selected: "by month",
-    representativeValues: ["April, 2022", "May, 2022"],
+    representativeValues: ["April 2022", "May 2022"],
   },
   Quarter: {
     selected: "by quarter",
-    representativeValues: ["Q2 - 2022", "Q1 - 2023", "Q1 - 2024", "Q1 - 2025"],
+    representativeValues: ["Q2 2022", "Q1 2023", "Q1 2024", "Q1 2025"],
   },
   Year: {
     selected: "by year",

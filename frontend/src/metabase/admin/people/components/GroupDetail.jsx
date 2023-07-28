@@ -15,7 +15,7 @@ import Alert from "metabase/components/Alert";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 import { getUser } from "metabase/selectors/user";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
-import { getGroupMembersips, getMembershipsByUser } from "../selectors";
+import { getGroupMemberships, getMembershipsByUser } from "../selectors";
 import {
   createMembership,
   deleteMembership,
@@ -47,7 +47,7 @@ const GroupDescription = ({ group }) =>
   ) : null;
 
 const mapStateToProps = (state, props) => ({
-  groupMemberships: getGroupMembersips(state, props),
+  groupMemberships: getGroupMemberships(state, props),
   membershipsByUser: getMembershipsByUser(state),
   currentUser: getUser(state),
 });

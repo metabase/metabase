@@ -776,6 +776,18 @@ describe("scenarios > dashboard", () => {
     closeNavigationSidebar();
     cy.get("header").findByText(NEW_COLLECTION);
   });
+
+  it("should not allow edit on small screens", () => {
+    cy.viewport(480, 800);
+
+    visitDashboard(1);
+
+    cy.icon("pencil").should("not.be.visible");
+
+    cy.viewport(660, 800);
+
+    cy.icon("pencil").should("be.visible");
+  });
 });
 
 describeWithSnowplow("scenarios > dashboard", () => {

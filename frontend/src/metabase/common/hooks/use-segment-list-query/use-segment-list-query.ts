@@ -15,5 +15,6 @@ export const useSegmentListQuery = (
     getLoading: Segments.selectors.getLoading,
     getLoaded: Segments.selectors.getLoaded,
     getError: Segments.selectors.getError,
+    getListMetadata: Segments.selectors.getListMetadata,
   });
 };

@@ -13,6 +13,9 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
+
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+
 import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
@@ -120,8 +123,8 @@ const SECTIONS = {
         ],
         getProps: setting => ({
           value: setting.value,
-          collectionFilter: collection =>
-            collection.personal_owner_id === null || collection.id === "root",
+          collectionFilter: (collection, index, allCollections) =>
+            !isPersonalCollectionOrChild(collection, allCollections),
         }),
         onChanged: (oldVal, newVal) => {
           if (newVal && !oldVal) {
@@ -512,6 +515,12 @@ const SECTIONS = {
         description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
         widget: SecretKeyWidget,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+        props: {
+          confirmation: {
+            header: t`Regenerate embedding key?`,
+            dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
+          },
+        },
       },
       {
         key: "-embedded-dashboards",

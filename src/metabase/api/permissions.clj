@@ -53,8 +53,8 @@
   (throw (ex-info (tru "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature.")
                   {:status-code 402})))
 
-(defenterprise upsert-impersonations!
-  "OSS implementation of `upsert-impersonations!`. Errors since this is an enterprise feature."
+(defenterprise insert-impersonations!
+  "OSS implementation of `insert-impersonations!`. Errors since this is an enterprise feature."
   metabase-enterprise.advanced-permissions.models.connection-impersonation
   [_impersonations]
   (throw (ex-info (tru "Connection impersonation is an Enterprise feature. Please upgrade to a paid plan to use this feature.")
@@ -97,7 +97,7 @@
                                      (upsert-sandboxes! sandbox-updates))
             impersonation-updates  (:impersonations graph)
             impersonations         (when impersonation-updates
-                                     (upsert-impersonations! impersonation-updates))]
+                                     (insert-impersonations! impersonation-updates))]
         (merge
          (perms/data-perms-graph)
          (when sandboxes {:sandboxes sandboxes})

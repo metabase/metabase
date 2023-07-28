@@ -80,7 +80,7 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
-      // Created At: Q2, 2023
+      // Created At: Q2 2023
       filterWidget().contains("Created At").click();
       cy.findByTestId("select-button").click();
       popover().last().contains("2023").click();
@@ -105,7 +105,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // Let's try to remove one filter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2, 2023")
+      cy.findByText("Q2 2023")
         .closest("fieldset")
         .within(() => {
           cy.icon("close").click();
@@ -192,7 +192,7 @@ describe("scenarios > embedding > native questions", () => {
         filterWidget()
           .should("have.length", 4)
           .and("contain", "OR")
-          .and("contain", "Q2, 2025");
+          .and("contain", "Q2 2025");
         // Why do we use input field in one filter widget but a simple `span` in the other one?
         cy.findByDisplayValue("Organic");
 
