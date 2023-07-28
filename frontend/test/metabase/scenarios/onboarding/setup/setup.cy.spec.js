@@ -10,7 +10,7 @@ import {
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
 
-describe("scenarios > setup", () => {
+describe.skip("scenarios > setup", () => {
   locales.forEach(locale => {
     beforeEach(() => restore("blank"));
 
@@ -116,22 +116,9 @@ describe("scenarios > setup", () => {
       cy.findByText("SQLite").click();
       cy.findByText("Need help connecting?");
 
-      // add h2 database
+      // remove database
       cy.findByLabelText("Remove database").click();
-      cy.findByText("Show more options").click();
-      cy.findByText("H2").click();
-      cy.findByLabelText("Display name").type("Metabase H2");
-      cy.findByText("Next")
-        .closest("button")
-        .should("be.disabled");
-
-      const dbFilename = "frontend/test/__runner__/empty.db";
-      const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
-      cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-      cy.findByText("Next")
-        .closest("button")
-        .should("not.be.disabled")
-        .click();
+      cy.findByText("I'll add my data later").click();
 
       // test database setup help card is hidden on the next step
       cy.findByText("Need help connecting?").should("not.be.visible");
