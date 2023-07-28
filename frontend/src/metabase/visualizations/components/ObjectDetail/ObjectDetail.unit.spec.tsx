@@ -329,4 +329,25 @@ describe("Object Detail", () => {
     const actionsMenu = screen.queryByTestId("actions-menu");
     expect(actionsMenu).not.toBeInTheDocument();
   });
+
+  it("shows update object modal on update action click", async () => {
+    setupDatabasesEndpoints([databaseWithEnabledActions]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDataset });
+
+    const actionsMenu = await screen.findByTestId("actions-menu");
+    expect(actionsMenu).toBeInTheDocument();
+    userEvent.click(actionsMenu);
+
+    expect(
+      screen.queryByTestId("action-execute-modal"),
+    ).not.toBeInTheDocument();
+
+    const popover = screen.getByTestId("popover");
+    within(popover).getByText(implicitUpdateAction.name).click();
+
+    expect(
+      await screen.findByTestId("action-execute-modal"),
+    ).toBeInTheDocument();
+  });
 });
