@@ -374,11 +374,9 @@ describe("Object Detail", () => {
       screen.queryByTestId("action-execute-modal"),
     ).not.toBeInTheDocument();
 
-    const actionsMenu = await screen.findByTestId("actions-menu");
-    expect(actionsMenu).toBeInTheDocument();
-    userEvent.click(actionsMenu);
-    const popover = screen.getByTestId("popover");
-    within(popover).getByText(implicitUpdateAction.name).click();
+    const action = await findActionInActionMenu(implicitPublicUpdateAction);
+    expect(action).toBeInTheDocument();
+    action?.click();
 
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();
@@ -395,11 +393,9 @@ describe("Object Detail", () => {
 
     expect(screen.queryByTestId("delete-object-modal")).not.toBeInTheDocument();
 
-    const actionsMenu = await screen.findByTestId("actions-menu");
-    expect(actionsMenu).toBeInTheDocument();
-    userEvent.click(actionsMenu);
-    const popover = screen.getByTestId("popover");
-    within(popover).getByText(implicitDeleteAction.name).click();
+    const action = await findActionInActionMenu(implicitPublicUpdateAction);
+    expect(action).toBeInTheDocument();
+    action?.click();
 
     const modal = await screen.findByTestId("delete-object-modal");
     expect(modal).toBeInTheDocument();
