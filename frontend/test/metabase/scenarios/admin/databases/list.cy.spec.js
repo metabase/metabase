@@ -109,6 +109,7 @@ describe("scenarios > admin > databases > list", () => {
         res.body.data = res.body.data.map(database => ({
           ...database,
           engine: "presto",
+          is_sample: false,
         }));
       });
     });
