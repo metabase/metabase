@@ -24,7 +24,8 @@ describe("admin > database > add", () => {
     cy.findByLabelText("Database type").click();
   });
 
-  it("should add a new database", () => {
+  // Skipping as we are removing H2
+  it.skip("should add a new database", () => {
     popover().within(() => {
       if (isEE) {
         // EE should ship with Oracle and Vertica as options
@@ -56,6 +57,14 @@ describe("admin > database > add", () => {
 
   describe("external databases", { tags: "@external" }, () => {
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
+      popover().within(() => {
+        if (isEE) {
+          // EE should ship with Oracle and Vertica as options
+          cy.findByText("Oracle");
+          cy.findByText("Vertica");
+        }
+      });
+
       cy.contains("PostgreSQL").click({ force: true });
 
       cy.findByText("Show advanced options").click();
