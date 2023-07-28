@@ -548,11 +548,16 @@
   (assert (even? (count options)))
   (let [{:as options} options]
     (if-let [v->human-readable (human-readable-remapping-map field-id)]
+      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
+      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
+      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
       (-> (unremapped-chain-filter field-id constraints options)
           (update :values add-human-readable-values v->human-readable))
       (if (use-cached-field-values? field-id)
         (cached-field-values field-id constraints options)
         (if-let [remapped-field-id (remapped-field-id field-id)]
+          ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
+          ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
           (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id field-id))
           (unremapped-chain-filter field-id constraints options))))))
 
@@ -654,6 +659,8 @@
         (if (search-cached-field-values? field-id constraints)
           (cached-field-values-search field-id query constraints options)
           (if-let [remapped-field-id (remapped-field-id field-id)]
+            ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
+            ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
             (unremapped-chain-filter-search remapped-field-id constraints query (assoc options :original-field-id field-id))
             (unremapped-chain-filter-search field-id constraints query options)))))))
 
