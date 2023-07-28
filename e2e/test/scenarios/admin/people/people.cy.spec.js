@@ -247,6 +247,21 @@ describe("scenarios > admin > people", () => {
       cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
     });
 
+    it("should not offer to reset passwords when password login is disabled", () => {
+      cy.request("PUT", "/api/google/settings", {
+        "google-auth-auto-create-accounts-domain": null,
+        "google-auth-client-id": "example1.apps.googleusercontent.com",
+        "google-auth-enabled": true,
+      });
+
+      cy.request("PUT", "/api/setting", {
+        "enable-password-login": false,
+      });
+      cy.visit("/admin/people");
+      showUserOptions(normalUserName);
+      popover().findByText("Reset password").should("not.exist");
+    });
+
     it(
       "should reset user password with SMTP set up",
       { tags: "@external" },

@@ -477,7 +477,6 @@
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
   metabase.actions.test-util/with-actions                                              clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
-  metabase.api.dashboard-test/let-url                                                  clojure.core/let
   metabase.api.search-test/do-test-users                                               clojure.core/let
   metabase.async.api-response-test/with-response                                       clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                     clojure.core/let
@@ -511,6 +510,7 @@
   metabase.test.data.interface/defdataset                                              clojure.core/def
   metabase.test.data.interface/defdataset-edn                                          clojure.core/def
   metabase.test/defdataset                                                             clojure.core/def
+  metabase.test/let-url                                                                clojure.core/let
   metabase.test/with-actions                                                           clojure.core/let
   metabase.test/with-open-channels                                                     clojure.core/let
   metabase.test/with-single-admin-user                                                 clojure.core/fn

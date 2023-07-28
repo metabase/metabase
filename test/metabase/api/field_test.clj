@@ -754,13 +754,13 @@
 (deftest search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
-      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :venues :name))
                                       (t2/select-one Field :id (mt/id :venues :name))
                                       "Red"
                                       nil))))
     (tqpt/test-timeseries-drivers
-      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :checkins :venue_name))
                                       (t2/select-one Field :id (mt/id :checkins :venue_name))
                                       "Red"

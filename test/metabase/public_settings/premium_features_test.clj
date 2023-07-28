@@ -165,23 +165,23 @@
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                (greeting :rasta))))
 
-     (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting :rasta))))
+      (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting :rasta))))
 
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're not extra special :("
-                (special-greeting :rasta)))))
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're not extra special :("
+                 (special-greeting :rasta)))))
 
-     (testing "when :fallback is a function, it is run when the required token is not present"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting-or-custom :rasta))))
+      (testing "when :fallback is a function, it is run when the required token is not present"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting-or-custom :rasta))))
 
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're an EE customer but not extra special."
-                (special-greeting-or-custom :rasta))))))))
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're an EE customer but not extra special."
+                 (special-greeting-or-custom :rasta))))))))
 
 (defenterprise-schema greeting-with-schema :- s/Str
   "Returns a greeting for a user."

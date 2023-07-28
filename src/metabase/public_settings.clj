@@ -52,7 +52,7 @@
   ((resolve 'metabase.api.ldap/ldap-enabled)))
 
 (defn- ee-sso-configured? []
-  (u/ignore-exceptions
+  (when config/ee-available?
     (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
   (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
     (varr)))

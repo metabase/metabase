@@ -4,19 +4,23 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.permissions :as api.permissions]
+   [metabase.config :as config]
    [metabase.models
-    :refer [Database Permissions PermissionsGroup PermissionsGroupMembership Table User]]
+    :refer [Database
+            Permissions
+            PermissionsGroup
+            PermissionsGroupMembership
+            Table
+            User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   #_{:clj-kondo/ignore [:unused-namespace]}
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -256,10 +260,6 @@
       (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
              (mt/user-http-request :crowberto :put 402 "permissions/graph"
                                    (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))
-(defn- ee-features-enabled? []
-  (u/ignore-exceptions
-   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
 
 (deftest update-execution-perms-graph-test
   (mt/with-model-cleanup [Permissions]
@@ -278,7 +278,7 @@
              :crowberto :put 402 "permissions/execution/graph"
              (assoc-in (perms/execution-perms-graph) [:groups group-id] :all)))))
 
-      (when (ee-features-enabled?)
+      (when config/ee-available?
         (testing "with :advanced-permissions feature flag"
           (premium-features-test/with-premium-features #{:advanced-permissions}
             (testing "for All Users"
@@ -310,7 +310,7 @@
              :crowberto :put 402 "permissions/execution/graph"
              (assoc-in (perms/execution-perms-graph) [:groups group-id db-id] :all))))
 
-        (when (ee-features-enabled?)
+        (when config/ee-available?
           (testing "with :advanced-permissions feature flag"
             (premium-features-test/with-premium-features #{:advanced-permissions}
               (testing "for All Users"
