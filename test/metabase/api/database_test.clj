@@ -336,8 +336,8 @@
               update! (fn [expected-status-code]
                         (api-update-database! expected-status-code db-id updates))]
           (testing "Should check that connection details are valid on save"
-            (is (= {:message "Assert failed: (:db details)"}
-                   (update! 400))))
+            (is (=? {:errors {:db "check your connection string"}}
+                    (update! 400))))
           (testing "If connection details are valid, we should be able to update the Database"
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
