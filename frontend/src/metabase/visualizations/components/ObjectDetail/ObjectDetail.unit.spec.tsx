@@ -110,10 +110,24 @@ const implicitPublicUpdateAction = {
   public_uuid: "mock-uuid",
 };
 
+const implicitPublicDeleteAction = {
+  ...implicitDeleteAction,
+  id: getNextId(),
+  name: "Public Delete",
+  public_uuid: "mock-uuid",
+};
+
 const implicitArchivedUpdateAction = {
   ...implicitUpdateAction,
   id: getNextId(),
   name: "Archived Implicit Update",
+  archived: true,
+};
+
+const implicitArchivedDeleteAction = {
+  ...implicitDeleteAction,
+  id: getNextId(),
+  name: "Archived Implicit Delete",
   archived: true,
 };
 
@@ -127,7 +141,9 @@ const actions = [
   implicitDeleteAction,
   implicitUpdateAction,
   implicitPublicUpdateAction,
+  implicitPublicDeleteAction,
   implicitArchivedUpdateAction,
+  implicitArchivedDeleteAction,
   queryAction,
 ];
 
@@ -319,8 +335,18 @@ describe("Object Detail", () => {
       expect(action).not.toBeInTheDocument();
     });
 
+    it("should not show implicit public delete action", async () => {
+      const action = await findActionInActionMenu(implicitPublicDeleteAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
     it("should not show implicit archived update action", async () => {
       const action = await findActionInActionMenu(implicitArchivedUpdateAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
+    it("should not show implicit archived delete action", async () => {
+      const action = await findActionInActionMenu(implicitArchivedDeleteAction);
       expect(action).not.toBeInTheDocument();
     });
 
