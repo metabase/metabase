@@ -57,14 +57,14 @@ export function useJoinCondition(
     }
   };
 
-  const setLHSColumn = (lhsColumn?: Lib.ColumnMetadata) => {
+  const setLHSColumn = (lhsColumn: Lib.ColumnMetadata) => {
     _setLHSColumn(lhsColumn);
     if (operator && lhsColumn && rhsColumn) {
       return Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
     }
   };
 
-  const setRHSColumn = (rhsColumn?: Lib.ColumnMetadata) => {
+  const setRHSColumn = (rhsColumn: Lib.ColumnMetadata) => {
     _setRHSColumn(rhsColumn);
     if (operator && lhsColumn && rhsColumn) {
       return Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
