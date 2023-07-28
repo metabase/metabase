@@ -52,12 +52,15 @@ const mockQuestion = new Question(
   }),
 );
 
-const ACTIONS_ENABLED_DB_ID = 1;
+const databaseWithEnabledActions = createMockDatabase({
+  id: getNextId(),
+  settings: { "database-enable-actions": true },
+});
 
 const metadata = createMockMetadata({
   databases: [
     createSampleDatabase({
-      id: ACTIONS_ENABLED_DB_ID,
+      id: databaseWithEnabledActions.id,
       settings: { "database-enable-actions": true },
     }),
   ],
@@ -69,7 +72,7 @@ const mockDataset = new Question(
     dataset: true,
     dataset_query: {
       type: "query",
-      database: ACTIONS_ENABLED_DB_ID,
+      database: databaseWithEnabledActions.id,
       query: {
         "source-table": PEOPLE_ID,
       },
@@ -77,10 +80,6 @@ const mockDataset = new Question(
   }),
   metadata,
 );
-
-const databaseWithEnabledActions = createMockDatabase({
-  settings: { "database-enable-actions": true },
-});
 
 const implicitCreateAction = createMockImplicitQueryAction({
   id: getNextId(),
