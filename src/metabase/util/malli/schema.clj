@@ -287,8 +287,7 @@
   "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
   [:map
    [:has_more_values :boolean]
-   [:values FieldValuesList]
-   [:field-id {:optional true} PositiveInt]])
+   [:values FieldValuesList]])
 
 #_(def ParameterSource
       (mc/schema
