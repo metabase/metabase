@@ -2,7 +2,6 @@ import { forwardRef, RefObject } from "react";
 import { t } from "ttag";
 
 import { Flex, Text } from "metabase/ui";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper/IconButtonWrapper";
 import TippyPopoverWithTrigger, {
   TippyPopoverWithTriggerRef,
 } from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -16,7 +15,6 @@ import * as Lib from "metabase-lib";
 import {
   JoinConditionCellItem,
   StyledQueryColumnPicker,
-  RemoveIcon,
 } from "./JoinConditionColumnPicker.styled";
 
 interface JoinConditionColumnPickerProps
@@ -27,7 +25,6 @@ interface JoinConditionColumnPickerProps
   readOnly?: boolean;
   color: string;
   popoverRef?: RefObject<TippyPopoverWithTriggerRef>;
-  onRemove: () => void;
 }
 
 function checkIsColumnSelected(item: ColumnListItem) {
@@ -45,7 +42,6 @@ export function JoinConditionColumnPicker({
   readOnly = false,
   color,
   popoverRef,
-  onRemove,
   ...props
 }: JoinConditionColumnPickerProps) {
   const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
@@ -62,7 +58,6 @@ export function JoinConditionColumnPicker({
           readOnly={readOnly}
           color={color}
           onClick={onClick}
-          onRemove={onRemove}
         />
       )}
       popoverContent={({ closePopover }) => (
@@ -87,46 +82,23 @@ interface ColumnNotebookCellItemProps {
   inactive: boolean;
   readOnly?: boolean;
   onClick: () => void;
-  onRemove: () => void;
 }
 
 const ColumnNotebookCellItem = forwardRef<
   HTMLDivElement,
   ColumnNotebookCellItemProps
->(function ColumnNotebookCellItem(
-  { tableName, columnName, readOnly, onRemove, ...props },
-  ref,
-) {
-  const canRemove = Boolean(columnName && !readOnly);
-
-  const handleRemoveClick = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    onRemove();
-  };
-
+>(function ColumnNotebookCellItem({ tableName, columnName, ...props }, ref) {
   return (
     <JoinConditionCellItem {...props} ref={ref}>
-      <Flex align="center">
-        <Flex direction="column" gap="2px">
-          {!!tableName && (
-            <Text display="block" size={11} lh={1} color="white" opacity={0.65}>
-              {tableName}
-            </Text>
-          )}
-          <Text display="block" lh={1}>
-            {columnName || t`Pick a column…`}
+      <Flex direction="column" gap="2px">
+        {!!tableName && (
+          <Text display="block" size={11} lh={1} color="white" opacity={0.65}>
+            {tableName}
           </Text>
-        </Flex>
-        {canRemove && (
-          <Flex align="center" ml="12px">
-            <IconButtonWrapper
-              onClick={handleRemoveClick}
-              aria-label={t`Remove`}
-            >
-              <RemoveIcon name="close" />
-            </IconButtonWrapper>
-          </Flex>
         )}
+        <Text display="block" lh={1}>
+          {columnName || t`Pick a column…`}
+        </Text>
       </Flex>
     </JoinConditionCellItem>
   );

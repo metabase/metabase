@@ -203,7 +203,7 @@ function JoinCondition({
     }
   };
 
-  const handleLHSColumnChange = (lhsColumn?: Lib.ColumnMetadata) => {
+  const handleLHSColumnChange = (lhsColumn: Lib.ColumnMetadata) => {
     const nextCondition = setLHSColumn(lhsColumn);
     if (nextCondition) {
       onChange(nextCondition);
@@ -212,16 +212,12 @@ function JoinCondition({
     }
   };
 
-  const handleLHSColumnRemove = () => handleLHSColumnChange(undefined);
-
-  const handleRHSColumnChange = (rhsColumn?: Lib.ColumnMetadata) => {
+  const handleRHSColumnChange = (rhsColumn: Lib.ColumnMetadata) => {
     const nextCondition = setRHSColumn(rhsColumn);
     if (nextCondition) {
       onChange(nextCondition);
     }
   };
-
-  const handleRHSColumnRemove = () => handleRHSColumnChange(undefined);
 
   return (
     <Flex gap="6px" align="center">
@@ -235,7 +231,6 @@ function JoinCondition({
         readOnly={readOnly}
         color={color}
         onSelect={handleLHSColumnChange}
-        onRemove={handleLHSColumnRemove}
       />
       <JoinConditionOperatorPicker
         query={query}
@@ -254,7 +249,6 @@ function JoinCondition({
         color={color}
         popoverRef={rhsColumnPicker}
         onSelect={handleRHSColumnChange}
-        onRemove={handleRHSColumnRemove}
       />
     </Flex>
   );

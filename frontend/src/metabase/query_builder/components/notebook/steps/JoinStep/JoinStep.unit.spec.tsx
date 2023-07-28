@@ -274,16 +274,6 @@ describe("Notebook Editor > Join Step", () => {
     expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
   });
 
-  it("should clear selected LHS column", () => {
-    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
-
-    const leftColumn = screen.getByLabelText("Left column");
-    userEvent.click(within(leftColumn).getByLabelText("Remove"));
-
-    expect(leftColumn).toHaveTextContent("Pick a column…");
-    expect(screen.getByLabelText("Right column")).toHaveTextContent("ID");
-  });
-
   it("should change RHS column", async () => {
     const query = getJoinedQuery();
     const { getRecentJoin } = setup(
@@ -298,18 +288,6 @@ describe("Notebook Editor > Join Step", () => {
     expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
     expect(condition.rhsColumn.longDisplayName).toBe(
       "Products → Created At: Month",
-    );
-  });
-
-  it("should clear selected RHS column", () => {
-    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
-
-    const rightColumn = screen.getByLabelText("Right column");
-    userEvent.click(within(rightColumn).getByLabelText("Remove"));
-
-    expect(rightColumn).toHaveTextContent("Pick a column…");
-    expect(screen.getByLabelText("Left column")).toHaveTextContent(
-      "Product ID",
     );
   });
 
