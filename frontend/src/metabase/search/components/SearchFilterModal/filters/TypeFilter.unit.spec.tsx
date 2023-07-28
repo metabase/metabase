@@ -6,9 +6,21 @@ import { createMockSearchResult } from "metabase-types/api/mocks";
 import { TypeFilter } from "metabase/search/components/SearchFilterModal/filters/TypeFilter";
 import { SearchModelType } from "metabase-types/api";
 
+const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
+  action: "Action",
+  card: "Question",
+  dataset: "Model",
+  dashboard: "Dashboard",
+  table: "Table",
+  database: "Database",
+  collection: "Collection",
+  segment: "Segment",
+  metric: "Metric",
+  pulse: "Pulse",
+};
+
 const TEST_TYPES: Array<SearchModelType> = [
   "action",
-  "app",
   "card",
   "collection",
   "dashboard",
@@ -22,7 +34,6 @@ const TEST_TYPES: Array<SearchModelType> = [
 ];
 
 const TEST_TYPE_SUBSET: Array<SearchModelType> = [
-  "app",
   "dashboard",
   "collection",
   "database",
@@ -83,6 +94,15 @@ const getCheckboxes = () => {
 };
 
 describe("TypeFilter", () => {
+  it("should display `Type` and all type labels", async () => {
+    await setup();
+    expect(screen.getByText("Type")).toBeInTheDocument();
+    for (const entityType of TEST_TYPES) {
+      console.log(entityType);
+      expect(TRANSLATED_NAME_BY_MODEL_TYPE[entityType]).toBeInTheDocument();
+    }
+  });
+
   it("should only display available types", async () => {
     await setup({ availableModels: TEST_TYPE_SUBSET });
 
@@ -95,12 +115,28 @@ describe("TypeFilter", () => {
     });
   });
 
+  it("should populate the filter with initial values", async () => {
+    await setup({ initialValue: TEST_TYPE_SUBSET });
+
+    const options = getCheckboxes();
+
+    expect(options.length).toEqual(TEST_TYPES.length);
+
+    const checkedOptions = options.filter(option => option.checked);
+
+    expect(checkedOptions.length).toEqual(TEST_TYPE_SUBSET.length);
+    for (const checkedOption of checkedOptions) {
+      expect(TEST_TYPE_SUBSET).toContain(checkedOption.value);
+    }
+  });
+
   it("should allow selecting multiple types", async () => {
     const { onChangeFilters } = await setup();
     const options = getCheckboxes();
 
-    for (const option of options) {
-      userEvent.click(option);
+    for (let i = 0; i < options.length; i++) {
+      userEvent.click(options[i]);
+      expect(onChangeFilters).toHaveReturnedTimes(i + 1);
     }
 
     expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPES.length);
@@ -118,20 +154,5 @@ describe("TypeFilter", () => {
 
     expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPE_SUBSET.length);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
-  });
-
-  it("should populate the filter with initial values", async () => {
-    await setup({ initialValue: TEST_TYPE_SUBSET });
-
-    const options = getCheckboxes();
-
-    expect(options.length).toEqual(TEST_TYPES.length);
-
-    const checkedOptions = options.filter(option => option.checked);
-
-    expect(checkedOptions.length).toEqual(TEST_TYPE_SUBSET.length);
-    for (const checkedOption of checkedOptions) {
-      expect(TEST_TYPE_SUBSET).toContain(checkedOption.value);
-    }
   });
 });
