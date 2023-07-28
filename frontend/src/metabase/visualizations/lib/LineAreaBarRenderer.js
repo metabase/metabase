@@ -30,7 +30,10 @@ import {
 } from "./apply_axis";
 
 import { setupTooltips } from "./apply_tooltips";
-import { getTrendDataPointsFromInsight } from "./trends";
+import {
+  getNormalizedStackedTrendDatas,
+  getTrendDataPointsFromInsight,
+} from "./trends";
 
 import fillMissingValuesInDatas from "./fill_data";
 import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
@@ -673,19 +676,13 @@ function findSeriesIndexForColumnName(series, colName) {
 const TREND_LINE_POINT_SPACING = 25;
 
 function getTrendDatasFromInsights(insights, { xDomain, settings, parent }) {
-  const numPoints = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
+  const xCount = Math.round(parent.width() / TREND_LINE_POINT_SPACING);
   const trendDatas = insights.map(insight =>
-    getTrendDataPointsFromInsight(insight, xDomain, numPoints),
+    getTrendDataPointsFromInsight(insight, xDomain, xCount),
   );
-  if (!isNormalized(settings)) {
-    return trendDatas;
-  }
-  const sums = _.range(numPoints).map(i =>
-    trendDatas.reduce((sum, trendData) => sum + trendData[i][1], 0),
-  );
-  return trendDatas.map(trendData =>
-    trendData.map(([x, y], i) => [x, y / sums[i]]),
-  );
+  return !isNormalized(settings)
+    ? trendDatas
+    : getNormalizedStackedTrendDatas(trendDatas);
 }
 
 function addTrendlineChart(
