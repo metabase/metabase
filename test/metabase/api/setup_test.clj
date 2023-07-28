@@ -362,27 +362,31 @@
 
 (deftest validate-setup-test
   (testing "POST /api/setup/validate"
+
     (testing "Should validate token"
-      (is (= {:errors {:token "Token does not match the setup token."}}
-             (http/client :post 400 "setup/validate" {})))
-      (is (= {:errors {:token "Token does not match the setup token."}}
-             (http/client :post 400 "setup/validate" {:token "foobar"})))
+      (mt/with-temporary-setting-values [has-user-setup false]
+        (is (= {:errors {:token "Token does not match the setup token."}}
+               (http/client :post 400 "setup/validate" {})))
+        (is (= {:errors {:token "Token does not match the setup token."}}
+               (http/client :post 400 "setup/validate" {:token "foobar"}))))
       ;; make sure we have a valid setup token
       (setup/create-token!)
       (is (= {:errors {:engine "value must be a valid database engine."}}
              (http/client :post 400 "setup/validate" {:token (setup/setup-token)}))))
 
-    (testing "should validate that database connection works"
-      (is (= {:errors {:dbname "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"}}
-             (http/client :post 400 "setup/validate" {:token   (setup/setup-token)
-                                                      :details {:engine  "h2"
-                                                                :details {:db "file:///tmp/fake.db"}}}))))
+    (mt/with-temporary-setting-values [has-user-setup false]
+      (testing "should validate that database connection works"
+        (is (= {:errors {:db "check your connection string"},
+                :message "Database cannot be found."}
+               (http/client :post 400 "setup/validate" {:token   (setup/setup-token)}
+                                                    :details {:engine  "h2"
+                                                              :details {:db "file:///tmp/fake.db"}}))))
 
-    (testing "should return 204 no content if everything is valid"
-      (is (= nil
-             (http/client :post 204 "setup/validate" {:token   (setup/setup-token)
-                                                      :details {:engine  "h2"
-                                                                :details (:details (mt/db))}}))))))
+      (testing "should return 204 no content if everything is valid"
+        (is (= nil
+               (http/client :post 204 "setup/validate" {:token   (setup/setup-token)}
+                                                    :details {:engine  "h2"
+                                                              :details (:details (mt/db))})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

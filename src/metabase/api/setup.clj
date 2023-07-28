@@ -172,6 +172,9 @@
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
    engine DBEngineString}
+  (when (setup/has-user-setup)
+    (throw (ex-info (tru "Instance already initialized")
+                    {:status-code 400})))
   (let [engine           (keyword engine)
         invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
                                                              {:errors {field m}}
