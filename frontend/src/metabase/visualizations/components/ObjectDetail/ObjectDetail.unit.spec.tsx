@@ -11,6 +11,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -291,34 +292,42 @@ describe("Object Detail", () => {
     expect(await screen.findByText(/we're a little lost/i)).toBeInTheDocument();
   });
 
-  it("renders actions menu", async () => {
-    setupDatabasesEndpoints([databaseWithEnabledActions]);
-    setupActionsEndpoints(actions);
-    setup({ question: mockDataset });
+  describe("renders actions menu", () => {
+    beforeEach(async () => {
+      setupDatabasesEndpoints([databaseWithEnabledActions]);
+      setupActionsEndpoints(actions);
+      setup({ question: mockDataset });
+    });
 
-    const actionsMenu = await screen.findByTestId("actions-menu");
-    expect(actionsMenu).toBeInTheDocument();
-    userEvent.click(actionsMenu);
+    it("should not show implicit create action", async () => {
+      const action = await findActionInActionMenu(implicitCreateAction);
+      expect(action).not.toBeInTheDocument();
+    });
 
-    const popover = screen.getByTestId("popover");
-    expect(
-      within(popover).queryByText(implicitCreateAction.name),
-    ).not.toBeInTheDocument();
-    expect(
-      within(popover).getByText(implicitUpdateAction.name),
-    ).toBeInTheDocument();
-    expect(
-      within(popover).getByText(implicitDeleteAction.name),
-    ).toBeInTheDocument();
-    expect(
-      within(popover).queryByText(implicitPublicUpdateAction.name),
-    ).not.toBeInTheDocument();
-    expect(
-      within(popover).queryByText(implicitArchivedUpdateAction.name),
-    ).not.toBeInTheDocument();
-    expect(
-      within(popover).queryByText(queryAction.name),
-    ).not.toBeInTheDocument();
+    it("should show implicit update action", async () => {
+      const action = await findActionInActionMenu(implicitUpdateAction);
+      expect(action).toBeInTheDocument();
+    });
+
+    it("should show implicit delete action", async () => {
+      const action = await findActionInActionMenu(implicitDeleteAction);
+      expect(action).toBeInTheDocument();
+    });
+
+    it("should not show implicit public update action", async () => {
+      const action = await findActionInActionMenu(implicitPublicUpdateAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
+    it("should not show implicit archived update action", async () => {
+      const action = await findActionInActionMenu(implicitArchivedUpdateAction);
+      expect(action).not.toBeInTheDocument();
+    });
+
+    it("should not show query action", async () => {
+      const action = await findActionInActionMenu(queryAction);
+      expect(action).not.toBeInTheDocument();
+    });
   });
 
   it("does not render actions menu for non-model questions", async () => {
@@ -374,3 +383,11 @@ describe("Object Detail", () => {
     );
   });
 });
+
+async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
+  const actionsMenu = await screen.findByTestId("actions-menu");
+  userEvent.click(actionsMenu);
+  const popover = await screen.findByTestId("popover");
+  const action = within(popover).queryByText(name);
+  return action;
+}
