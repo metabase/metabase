@@ -21,9 +21,6 @@ describe("admin > database > add", () => {
     // should display a setup help card
     cy.findByText("Need help connecting?");
 
-    //Close banner
-    cy.findByRole("status").findByLabelText("close icon").click();
-
     cy.findByLabelText("Database type").click();
   });
 

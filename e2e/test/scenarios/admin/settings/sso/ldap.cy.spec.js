@@ -111,9 +111,6 @@ describe(
       it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
         cy.visit("/admin/settings/authentication/ldap");
 
-        // Close Banner
-        cy.findByRole("status").findByLabelText("close icon").click();
-
         // Create mapping, then delete it along with its groups
         createMapping("cn=People1");
         addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
