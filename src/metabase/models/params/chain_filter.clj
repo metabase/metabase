@@ -518,12 +518,14 @@
 
 (defn- remapped-field-id-query [field-id]
   {:select [[:ids.id :id]]
-   :from   [[{::union [{:select [[:dimension.human_readable_field_id :id]]
+   :from   [[{::union [;; Explicit FK Field->Field remapping
+                       {:select [[:dimension.human_readable_field_id :id]]
                         :from   [[:dimension :dimension]]
                         :where  [:and
                                  [:= :dimension.field_id field-id]
                                  [:not= :dimension.human_readable_field_id nil]]
                         :limit  1}
+                       ;; Implicit PK Field-> [Name] Field remapping
                        {:select    [[:dest.id :id]]
                         :from      [[:metabase_field :source]]
                         :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
@@ -537,7 +539,7 @@
    :limit  1})
 
 ;; TODO -- add some caching here?
-(mu/defn ^:private remapped-field-id :- [:maybe ms/PositiveInt]
+(mu/defn remapped-field-id :- [:maybe ms/PositiveInt]
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- [:maybe ms/PositiveInt]]
