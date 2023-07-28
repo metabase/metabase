@@ -5,7 +5,7 @@
    [metabase.metabot.metabot-test-models :as mtm]
    [metabase.metabot.precomputes :as precomputes]
    [metabase.metabot.task-api :as task-api]
-   [metabase.metabot.task-impl :as task-impl]
+   [metabase.metabot.inference-ws.task-impl :as task-impl]
    [metabase.metabot.util :as metabot-util]
    [metabase.test :as mt]
    [metabase.models :as models]
@@ -48,7 +48,7 @@
                 embedder          (reify task-api/Embedder
                                     (single [_ _]
                                       [0 1 0 0]))
-                context-generator (task-impl/seq-of-objects-context-generator)]
+                context-generator (task-impl/inference-ws-context-generator)]
             (t2.with-temp/with-temp
              [models/Card model {:name          test-model-name
                                  :table_id      (mt/id :orders)

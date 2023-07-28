@@ -1,7 +1,7 @@
 (ns metabase.metabot.precomputes
   (:require
    [metabase.metabot.task-api :as task-api]
-   [metabase.metabot.task-impl :as task-impl]
+   [metabase.metabot.inference-ws.task-impl :as task-impl]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :as models]
    [toucan2.core :as t2]))
@@ -14,7 +14,7 @@
 (defrecord AtomicPrecomputes [store])
 
 (defn all-precomputes []
-  (let [embedder       (task-impl/fine-tune-embedder)
+  (let [embedder       (task-impl/inference-ws-embedder)
         models         (t2/select models/Card :dataset true :archived false)
         encoded-models (zipmap
                         (map :id models)

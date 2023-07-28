@@ -7,7 +7,7 @@
    [metabase.metabot.feedback :as metabot-feedback]
    [metabase.metabot.mbql-inference :as mbql-inference]
    [metabase.metabot.util :as metabot-util]
-   [metabase.metabot.task-impl :as task-impl]
+   [metabase.metabot.inference-ws.task-impl :as task-impl]
    [metabase.models :refer [Card Database]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
@@ -171,9 +171,9 @@
   [prompt]
   {prompt su/NonBlankString}
   (log/infof "Metabot generating mbql for prompt: %s" prompt)
-  (let [inferencer        (task-impl/fine-tune-mbql-inferencer)
-        embedder          (task-impl/fine-tune-embedder)
-        context-generator (task-impl/seq-of-objects-context-generator)]
+  (let [inferencer        (task-impl/inference-ws-mbql-inferencer)
+        embedder          (task-impl/inference-ws-embedder)
+        context-generator (task-impl/inference-ws-context-generator)]
     (mbql-inference/infer-mbql
      {:embedder          embedder
       :inferencer        inferencer

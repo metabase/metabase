@@ -31,22 +31,22 @@
     (task-api/infer inferencer {:prompt prompt :context context})))
 
 (comment
-  (require '[metabase.metabot.task-impl :as task-impl])
+  (require '[metabase.metabot.inference-ws.task-impl :as inference-ws-task-impl])
   (let [base-url   "http://localhost:4000"
-        inferencer (task-impl/fine-tune-mbql-inferencer base-url)
-        embedder   (task-impl/fine-tune-embedder base-url)
-        context-generator (task-impl/seq-of-objects-context-generator)]
+        inferencer (inference-ws-task-impl/inference-ws-mbql-inferencer base-url)
+        embedder   (inference-ws-task-impl/inference-ws-embedder base-url)
+        context-generator (inference-ws-task-impl/inference-ws-context-generator)]
     (infer-mbql
      {:embedder          embedder
       :inferencer        inferencer
       :context-generator context-generator}
      "Show data where tax is greater than zero"))
 
-  (require '[metabase.metabot.openai.infer-mbql :as openai-mbql])
-  (let [inferencer openai-mbql/openai-mbql-inferencer
-        context-generator openai-mbql/openai-infer-mbql-context-generator
+  (require '[metabase.metabot.openai.task-impl :as openai-task-impl])
+  (let [inferencer openai-task-impl/openai-mbql-inferencer
+        context-generator openai-task-impl/openai-infer-mbql-context-generator
         base-url   "http://localhost:4000"
-        embedder   (task-impl/fine-tune-embedder base-url)]
+        embedder   (inference-ws-task-impl/inference-ws-embedder base-url)]
     (infer-mbql
      {:embedder          embedder
       :inferencer        inferencer

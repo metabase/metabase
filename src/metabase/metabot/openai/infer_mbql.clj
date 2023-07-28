@@ -9,9 +9,7 @@
             [malli.json-schema :as mjs]
             [malli.transform :as mtx]
             [metabase.metabot.openai.client :as metabot-client]
-            [metabase.metabot.task-api :as task-api]
             [metabase.metabot.util :as metabot-util]
-            [metabase.models :as models]
             [metabase.query-processor :as qp]
             [toucan2.core :as t2]))
 
@@ -317,24 +315,6 @@
                         "```"
                         "Question:"]])]
     (get-in (metabot-client/invoke-metabot prompt) [:choices 0 :message :content])))
-
-(def openai-infer-mbql-context-generator
-  (reify task-api/ContextGenerator
-    (context [_ {:keys [context-entities prompt]}]
-      (let [[[_ id]] context-entities
-            model (t2/select-one models/Card :id id)]
-        {:model       (update model :result_metadata #(mapv metabot-util/add-field-values %))
-         :schema      (schema model)
-         :user_prompt prompt}))))
-
-(def openai-mbql-inferencer
-  (reify task-api/MBQLInferencer
-    (infer [_ {:keys [context]}]
-      (let [mbql (-> context
-                     generate-prompt
-                     metabot-client/invoke-metabot
-                     parse-result)]
-        {:mbql (dissoc mbql :llm/usage)}))))
 
 (comment
   (def model-id 1)

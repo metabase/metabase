@@ -1,6 +1,6 @@
-(ns metabase.metabot.task-impl
+(ns metabase.metabot.inference-ws.task-impl
   (:require
-   [metabase.metabot.fine-tune.inference-ws-client :as inference-ws-client]
+   [metabase.metabot.inference-ws.client :as inference-ws-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.task-api :as task-api]
    [metabase.metabot.util :as metabot-util]
@@ -23,17 +23,17 @@
   (infer [{:keys [base-url]} request]
     (inference-ws-client/infer base-url request)))
 
-(defn fine-tune-embedder
+(defn inference-ws-embedder
   ([base-url]
    (->MBFineTuneEmbedder base-url))
-  ([] (fine-tune-embedder (metabot-settings/metabot-inference-ws-url))))
+  ([] (inference-ws-embedder (metabot-settings/metabot-inference-ws-url))))
 
-(defn fine-tune-mbql-inferencer
+(defn inference-ws-mbql-inferencer
   ([base-url]
    (->MBFineTuneMBQLInferencer base-url))
-  ([] (fine-tune-mbql-inferencer (metabot-settings/metabot-inference-ws-url))))
+  ([] (inference-ws-mbql-inferencer (metabot-settings/metabot-inference-ws-url))))
 
-(defn seq-of-objects-context-generator []
+(defn inference-ws-context-generator []
   (reify task-api/ContextGenerator
     (context [_ {:keys [context-entities]}]
       (for [[entity-type entity-id] context-entities
