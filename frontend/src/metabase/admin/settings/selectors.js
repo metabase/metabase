@@ -488,7 +488,11 @@ const SECTIONS = {
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Interactive embedding`,
         embedDescription: jt`With this
-           ${(<ExternalLink href={getWebsiteUrl("pro")}>Pro</ExternalLink>)}
+           ${(
+             <ExternalLink href={getWebsiteUrl("product/pro")}>
+               Pro
+             </ExternalLink>
+           )}
           /
           ${(
             <ExternalLink href={getWebsiteUrl("sales")}>
