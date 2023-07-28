@@ -132,7 +132,7 @@ describe("scenarios > setup", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Need help connecting?");
 
-      // add h2 database
+      // remove database
       cy.findByLabelText("Remove database").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show more options").click();
@@ -150,6 +150,8 @@ describe("scenarios > setup", () => {
         .closest("button")
         .should("not.be.disabled")
         .click();
+
+      cy.findByText("I'll add my data later").click();
 
       // test database setup help card is hidden on the next step
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
