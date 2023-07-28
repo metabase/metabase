@@ -422,24 +422,24 @@ describe("scenarios > question > joined questions", () => {
 
     // Test join dimension infers parent dimension's temporal unit
 
-    cy.findByTestId("parent-dimension").click();
+    cy.findByLabelText("Left column").click();
     selectFromDropdown("by month", { force: true });
     selectFromDropdown("Week");
 
-    cy.findByTestId("join-dimension").click();
+    cy.findByLabelText("Right column").click();
     selectFromDropdown("Created At");
 
-    assertDimensionName("parent", "Created At: Week");
-    assertDimensionName("join", "Created At: Week");
+    assertColumnName("left", "Created At: Week");
+    assertColumnName("right", "Created At: Week");
 
     // Test changing a temporal unit on one dimension would update a second one
 
-    cy.findByTestId("join-dimension").click();
+    cy.findByLabelText("Right column").click();
     selectFromDropdown("by week", { force: true });
     selectFromDropdown("Day");
 
-    assertDimensionName("parent", "Created At: Day");
-    assertDimensionName("join", "Created At: Day");
+    assertColumnName("left", "Created At: Day");
+    assertColumnName("right", "Created At: Day");
 
     summarize({ mode: "notebook" });
     selectFromDropdown("Count of rows");
@@ -467,7 +467,7 @@ describe("scenarios > question > joined questions", () => {
     selectFromDropdown("Count");
 
     cy.findByTestId("step-join-1-0")
-      .findByTestId("parent-dimension")
+      .findByLabelText("Left table")
       .findByText("Previous results");
   });
 });
@@ -478,7 +478,7 @@ function joinTable(table) {
 }
 
 function selectJoinType(strategy) {
-  cy.icon("join_left_outer").first().click();
+  cy.findByLabelText("Change join type").click();
   popover().findByText(strategy).click();
 }
 
@@ -486,8 +486,7 @@ function selectFromDropdown(option, clickOpts) {
   popover().last().findByText(option).click(clickOpts);
 }
 
-function assertDimensionName(type, name) {
-  cy.findByTestId(`${type}-dimension`).within(() => {
-    cy.findByText(name);
-  });
+function assertColumnName(side, name) {
+  const label = side === "left" ? "Left column" : "Right column";
+  cy.findByLabelText(label).findByText(name).should("exist");
 }
