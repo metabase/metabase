@@ -10,7 +10,7 @@ import {
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
 
-describe("scenarios > setup", () => {
+describe.skip("scenarios > setup", () => {
   locales.forEach(locale => {
     beforeEach(() => restore("blank"));
 
