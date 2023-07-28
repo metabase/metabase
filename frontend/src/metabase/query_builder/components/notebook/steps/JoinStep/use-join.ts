@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useMemo } from "react";
 import { usePrevious } from "react-use";
 import * as Lib from "metabase-lib";
 
@@ -14,15 +14,24 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   const [conditions, _setConditions] = useState<Lib.JoinConditionClause[]>(
     join ? Lib.joinConditions(join) : [],
   );
-  const [selectedColumns, _setSelectedColumns] = useState(
-    getInitiallySelectedColumns(query, stageIndex, join),
-  );
 
-  const columns = join
-    ? Lib.joinableColumns(query, stageIndex, join)
-    : table
-    ? Lib.joinableColumns(query, stageIndex, table)
-    : [];
+  // This state is only used until a join is created
+  // After that, we use `displayInfo(query, stageIndex, column).selected` to determine if a column is selected
+  // We use "all" instead of `joinableColumns(query, stageIndex, table)`
+  // to avoid race-conditions when the table metadata is not yet loaded
+  const [selectedColumns, _setSelectedColumns] = useState<
+    Lib.ColumnMetadata[] | "all"
+  >(join ? [] : "all");
+
+  const columns = useMemo(() => {
+    if (join) {
+      return Lib.joinableColumns(query, stageIndex, join);
+    }
+    if (table) {
+      return Lib.joinableColumns(query, stageIndex, table);
+    }
+    return [];
+  }, [query, stageIndex, join, table]);
 
   useEffect(() => {
     if (join && previousJoin !== join) {
@@ -30,6 +39,9 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
       _setTable(Lib.joinedThing(query, join));
       _setConditions(Lib.joinConditions(join));
     }
+
+    // Reset selected columns once a join is created,
+    // because we can now use `displayInfo(query, stageIndex, column).selected`
     if (!previousJoin && join) {
       _setSelectedColumns([]);
     }
@@ -39,9 +51,10 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     if (join) {
       return !!Lib.displayInfo(query, stageIndex, column).selected;
     }
-    return selectedColumns.some(selectedColumn =>
-      Lib.isSameColumn(query, stageIndex, selectedColumn, column),
-    );
+    if (selectedColumns === "all") {
+      return true;
+    }
+    return selectedColumns.some(selectedColumn => column === selectedColumn);
   };
 
   const setSelectedColumns = (nextSelectedColumns: Lib.JoinFields) => {
@@ -93,9 +106,8 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
         nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
         return Lib.join(query, stageIndex, nextJoin);
       } else {
-        const columns = Lib.joinableColumns(query, stageIndex, nextTable);
         _setTable(nextTable);
-        _setSelectedColumns(columns);
+        _setSelectedColumns("all");
         _setConditions([]);
       }
     },
@@ -153,18 +165,4 @@ function getDefaultJoinStrategy(query: Lib.Query, stageIndex: number) {
     strategy => Lib.displayInfo(query, stageIndex, strategy).default,
   );
   return defaultStrategy || strategies[0];
-}
-
-function getInitiallySelectedColumns(
-  query: Lib.Query,
-  stageIndex: number,
-  join?: Lib.Join,
-) {
-  if (!join) {
-    return [];
-  }
-  const columns = Lib.joinableColumns(query, stageIndex, join);
-  return columns.filter(
-    column => Lib.displayInfo(query, stageIndex, column).selected,
-  );
 }
