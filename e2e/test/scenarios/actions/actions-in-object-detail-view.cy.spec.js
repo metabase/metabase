@@ -15,6 +15,10 @@ import {
 const PG_DB_ID = 2;
 const PG_SCOREBOARD_TABLE_ID = 9;
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
+const FIRST_SCORE_ROW_ID = 11;
+const SECOND_SCORE_ROW_ID = 12;
+const UPDATED_SCORE = 987654321;
+const UPDATED_SCORE_FORMATTED = "987,654,321";
 
 const SCORES_MODEL = {
   name: "Scores model",
@@ -30,11 +34,6 @@ const DASHBOARD = {
   name: "Test dashboard",
   database: PG_DB_ID,
 };
-
-const FIRST_SCORE_ROW_ID = 11;
-const SECOND_SCORE_ROW_ID = 12;
-const UPDATED_SCORE = 987654321;
-const UPDATED_SCORE_FORMATTED = "987,654,321";
 
 describe("scenarios > actions > actions-in-object-detail-view", () => {
   beforeEach(() => {
