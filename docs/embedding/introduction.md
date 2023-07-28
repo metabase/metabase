@@ -20,7 +20,7 @@ There are three ways to embed Metabase in your app:
 
 Interactive embedding is the only kind of embedding that [integrates with SSO and data permissions](./interactive-embedding.md) to enable true self-service access to the underlying data.
 
-**When to use Interactive embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With Interactive embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
+**When to use Interactive embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-Interactive-embedding). With Interactive embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
 
 ## Signed embedding
 
@@ -36,7 +36,7 @@ If you'd like to share your data with the good people of the internet, you can c
 
 ## Comparison of embedding types
 
-| Action                                                                                                   | [Full-app](./interactive-embedding.md) | [Signed](./signed-embedding.md) | [Public](../questions/sharing/public-links.md) |
+| Action                                                                                                   | [Interactive](./interactive-embedding.md) | [Signed](./signed-embedding.md) | [Public](../questions/sharing/public-links.md) |
 |----------------------------------------------------------------------------------------------------------|-------------------------------------|---------------------------------|------------------------------------------------|
 | Display charts and dashboards                                                                            | ✅                                  | ✅                              | ✅                                             |
 | Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                  | ✅                              | ✅                                             |

@@ -33,5 +33,5 @@
 
 (t2/define-after-insert :model/Session
   [{anti-csrf-token :anti_csrf_token, :as session}]
-  (let [session-type (if anti-csrf-token :full-app-embed :normal)]
+  (let [session-type (if anti-csrf-token :interactive-embed :normal)]
     (assoc session :type session-type)))

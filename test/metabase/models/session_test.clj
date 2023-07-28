@@ -31,5 +31,5 @@
         (is (=? {:id              "092797dd-a82a-4748-b393-697d7bb9ab65"
                  :user_id         (mt/user->id :trashbird)
                  :anti_csrf_token "315c1279c6f9f873bf1face7afeee420"
-                 :type            :full-app-embed}
+                 :type            :interactive-embed}
                 (new-session)))))))

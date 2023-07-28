@@ -33,7 +33,7 @@
 
 ;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
 ;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly
-;; cookie and thus can't be viewed by FE code. If the session is a full-app embedded session, then the cookie is
+;; cookie and thus can't be viewed by FE code. If the session is an interactive embedded session, then the cookie is
 ;; `metabase.EMBEDDED_SESSION` instead.
 ;;
 ;; If that cookie is isn't present, we look for the `metabase.SESSION_ID`, which is the old session cookie set in
@@ -90,7 +90,7 @@
    (when (request.u/https? request)
      {:secure true})))
 
-(defmethod default-session-cookie-attributes :full-app-embed
+(defmethod default-session-cookie-attributes :interactive-embed
   [_ request]
   (merge
    {:path "/"}
@@ -126,7 +126,7 @@
   (case session-type
     :normal
     metabase-session-cookie
-    :full-app-embed
+    :interactive-embed
     metabase-embedded-session-cookie))
 
 (defn- use-permanent-cookies?
@@ -163,7 +163,7 @@
             "https://www.chromestatus.com/feature/5633521622188032")))
     (-> response
         wrap-body-if-needed
-        (cond-> (= session-type :full-app-embed)
+        (cond-> (= session-type :interactive-embed)
           (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))
         (set-session-timeout-cookie request session-type request-time)
         (response/set-cookie (session-cookie-name session-type) (str session-uuid) cookie-options))))
@@ -185,7 +185,7 @@
   [_ {:keys [cookies headers], :as request}]
   (when-let [session (get-in cookies [metabase-embedded-session-cookie :value])]
     (when-let [anti-csrf-token (get headers anti-csrf-token-header)]
-      (assoc request :metabase-session-id session, :anti-csrf-token anti-csrf-token :metabase-session-type :full-app-embed))))
+      (assoc request :metabase-session-id session, :anti-csrf-token anti-csrf-token :metabase-session-type :interactive-embed))))
 
 (defmethod wrap-session-id-with-strategy :normal-cookie
   [_ {:keys [cookies], :as request}]
@@ -243,7 +243,7 @@
                               [:> :session.created_at oldest-allowed])
                             [:= :session.anti_csrf_token (case session-type
                                                            :normal         nil
-                                                           :full-app-embed [:raw "?"])]]
+                                                           :interactive-embed [:raw "?"])]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -260,7 +260,7 @@
   (when (and session-id (init-status/complete?))
     (let [sql    (session-with-id-query (mdb/db-type)
                                         (config/config-int :max-session-age)
-                                        (if (seq anti-csrf-token) :full-app-embed :normal)
+                                        (if (seq anti-csrf-token) :interactive-embed :normal)
                                         (premium-features/enable-advanced-permissions?))
           params (concat [session-id]
                          (when (seq anti-csrf-token)

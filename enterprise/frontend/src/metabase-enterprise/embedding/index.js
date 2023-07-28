@@ -6,7 +6,7 @@ import {
 } from "metabase/plugins";
 import { EmbeddingAppOriginDescription } from "./components/EmbeddingAppOriginDescription";
 
-const SLUG = "embedding-in-other-applications/full-app";
+const SLUG = "embedding-in-other-applications/Interactive";
 
 if (hasPremiumFeature("embedding")) {
   PLUGIN_EMBEDDING.isEnabled = () => true;

@@ -134,15 +134,15 @@
 
 (def ^:private test-anti-csrf-token "84482ddf1bb178186ed9e1c0b1e05a2d")
 
-(def ^:private test-full-app-embed-session
+(def ^:private test-Interactive-embed-session
   {:id               test-uuid
    :anti_csrf_token  test-anti-csrf-token
-   :type             :full-app-embed})
+   :type             :interactive-embed})
 
 (deftest set-interactive-embedding-session-cookie-test
   (with-redefs [env/env (assoc env/env :max-session-age "1")]
     (mt/with-temporary-setting-values [session-timeout nil]
-      (testing "test that we can set a interactive-embedding session cookie"
+      (testing "test that we can set an interactive-embedding session cookie"
         (is (= {:body    {}
                 :status  200
                 :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
@@ -154,9 +154,9 @@
                 :headers {anti-csrf-token-header test-anti-csrf-token}}
                (mw.session/set-session-cookies {}
                                                {}
-                                               test-full-app-embed-session
+                                               test-Interactive-embed-session
                                                (t/zoned-date-time "2022-07-06T02:00Z[UTC]")))))
-      (testing "test that we can set a interactive-embedding session cookie with SameSite=None over HTTPS"
+      (testing "test that we can set an interactive-embedding session cookie with SameSite=None over HTTPS"
         (is (= {:body    {}
                 :status  200
                 :cookies {embedded-session-cookie {:value     "092797dd-a82a-4748-b393-697d7bb9ab65"
@@ -172,7 +172,7 @@
                 :headers {anti-csrf-token-header test-anti-csrf-token}}
                (mw.session/set-session-cookies {:headers {"x-forwarded-protocol" "https"}}
                                                {}
-                                               test-full-app-embed-session
+                                               test-Interactive-embed-session
                                                (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))))))))
 
 
@@ -271,7 +271,7 @@
       (finally
         (t2/delete! Session :id (str test-uuid)))))
 
-  (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
+  (testing "Interactive-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
       (t2/insert! Session {:id              (str test-uuid)
                            :user_id         (mt/user->id :lucky)
@@ -521,7 +521,7 @@
           (let [request {:cookies               {embedded-session-cookie {:value "8df268ab-00c0-4b40-9413-d66b966b696a"}
                                                  session-timeout-cookie  {:value "alive"}}
                          :metabase-session-id   session-id
-                         :metabase-session-type :full-app-embed}]
+                         :metabase-session-type :interactive-embed}]
             (is (= {:body    "some body",
                     :cookies {session-timeout-cookie {:value     "alive"
                                                       :path      "/"

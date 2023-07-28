@@ -56,7 +56,7 @@
 
 ;; separate map for EE stuff so merge conflicts aren't annoying.
 (def ^:private ee-app-defaults
-  {:embed-max-session-age      "1440"   ; how long a FULL APP EMBED session is valid for. One day, by default
+  {:embed-max-session-age      "1440"   ; how long an INTERACTIVE EMBED session is valid for. One day, by default
    :mb-session-cookie-samesite "lax"})
 
 (alter-var-root #'app-defaults merge ee-app-defaults)

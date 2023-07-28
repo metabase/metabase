@@ -512,7 +512,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
         cy.findByDisplayValue("Interactive embedding dashboard").should(
           "be.visible",
         );
-        // Ensure that we're viewing the dashboard in Interactive embedding mode, since `logo` is a Interactive embedding parameter.
+        // Ensure that we're viewing the dashboard in Interactive embedding mode, since `logo` is an interactive embedding parameter.
         cy.findByTestId("main-logo").should("not.exist");
 
         dashboardParametersContainer().button("Apply").should("not.exist");

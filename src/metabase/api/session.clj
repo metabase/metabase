@@ -53,7 +53,7 @@
    :last_login s/Any
    s/Keyword   s/Any})
 
-(s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
+(s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :interactive-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (random-uuid)
         session      (first (t2/insert-returning-instances! Session
@@ -67,7 +67,7 @@
       (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
     (assoc session :id session-uuid)))
 
-(s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
+(s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :interactive-embed), s/Keyword s/Any}
   [session-type user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
   (when-not (public-settings/enable-password-login)
@@ -138,7 +138,7 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(s/defn ^:private login :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}
+(s/defn ^:private login :- {:id UUID, :type (s/enum :normal :interactive-embed), s/Keyword s/Any}
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
   [username :- su/NonBlankString password :- su/NonBlankString device-info :- request.u/DeviceInfo]

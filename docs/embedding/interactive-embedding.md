@@ -43,13 +43,13 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
 2. Optional: Depending on the way your web app is set up, set [environment variables](../configuring-metabase/environment-variables.md) to:
    - [Add your license token](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
    - [Embed Metabase in a different domain](#embedding-metabase-in-a-different-domain).
-   - [Secure your full-app embed](#securing-full-app-embeds).
+   - [Secure your Interactive embed](#securing-Interactive-embeds).
 3. Optional: Enable communication to and from the embedded Metabase using supported [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) messages:
    - [From Metabase](#supported-postmessage-messages-from-embedded-metabase)
    - [To Metabase](#supported-postmessage-messages-to-embedded-metabase)
 4. Optional: Set parameters to [show or hide Metabase UI components](#showing-or-hiding-metabase-ui-components).
 
-Once you're ready to roll out your full-app embed, make sure that people **allow** browser cookies from Metabase, otherwise they won't be able to log in.
+Once you're ready to roll out your Interactive embed, make sure that people **allow** browser cookies from Metabase, otherwise they won't be able to log in.
 
 ### Pointing an iframe to a Metabase URL
 
@@ -89,7 +89,7 @@ https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1%3Ffi
 
 To make sure that your embedded Metabase works in all browsers, put Metabase and the embedding app in the same top-level domain (TLD). The TLD is indicated by the last part of a web address, like `.com` or `.org`.
 
-Note that your full-app embed must be compatible with Safari to run on _any_ browser in iOS (such as Chrome on iOS).
+Note that your Interactive embed must be compatible with Safari to run on _any_ browser in iOS (such as Chrome on iOS).
 
 ## Embedding Metabase in a different domain
 
@@ -99,11 +99,11 @@ If you want to embed Metabase in another domain (say, if Metabase is hosted at `
 
 `MB_SESSION_COOKIE_SAMESITE=None`
 
-If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite). 
+If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 Note that `SameSite=None` is incompatible with most Safari and iOS browser versions (including any browser that runs on iOS, such as Chrome on iOS).
 
-## Securing full-app embeds
+## Securing Interactive embeds
 
 Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Interactive embedding with SSO](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds#interactive-embedding-with-sso).
 
@@ -153,7 +153,7 @@ To change an embedding URL, send a "location" message from your app to Metabase:
 
 ## Showing or hiding Metabase UI components
 
-To change the interface of your full-app embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
+To change the interface of your Interactive embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
 
 For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
 
@@ -243,7 +243,7 @@ Shown by default. To hide the top navigation bar:
 
 ## Reference app
 
-To build a sample full-app embed, see our [reference app on GitHub](https://github.com/metabase/sso-examples/tree/master/app-embed-example).
+To build a sample Interactive embed, see our [reference app on GitHub](https://github.com/metabase/sso-examples/tree/master/app-embed-example).
 
 ## Further reading
 

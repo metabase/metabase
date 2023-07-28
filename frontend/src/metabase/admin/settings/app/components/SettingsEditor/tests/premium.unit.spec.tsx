@@ -15,7 +15,7 @@ const setupPremium = (opts?: SetupOpts) => {
 };
 
 const FULL_APP_EMBEDDING_URL =
-  "/admin/settings/embedding-in-other-applications/full-app";
+  "/admin/settings/embedding-in-other-applications/Interactive";
 
 describe("SettingsEditor", () => {
   describe("Interactive embedding", () => {

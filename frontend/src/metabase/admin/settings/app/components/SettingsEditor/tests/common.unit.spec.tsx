@@ -6,11 +6,11 @@ import { screen } from "__support__/ui";
 import { setup } from "./setup";
 
 const FULL_APP_EMBEDDING_URL =
-  "/admin/settings/embedding-in-other-applications/full-app";
+  "/admin/settings/embedding-in-other-applications/Interactive";
 
 describe("SettingsEditor", () => {
   describe("Interactive embedding", () => {
-    it("should show info about full app embedding", async () => {
+    it("should show info about Interactive embedding", async () => {
       setup({
         settings: [createMockSettingDefinition({ key: "enable-embedding" })],
         settingValues: createMockSettings({ "enable-embedding": true }),

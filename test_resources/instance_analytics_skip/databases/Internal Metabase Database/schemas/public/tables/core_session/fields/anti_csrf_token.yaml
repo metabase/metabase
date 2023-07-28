@@ -1,4 +1,4 @@
-description: Anti-CSRF token for full-app embed sessions.
+description: Anti-CSRF token for Interactive embed sessions.
 database_type: text
 semantic_type: null
 table_id:

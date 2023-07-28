@@ -269,7 +269,7 @@
         ~@(mapcat identity options)))))
 
 (define-premium-feature hide-embed-branding?
-  "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
+  "Logo Removal and Interactive Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
   :embedding
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike

@@ -13,7 +13,7 @@ interface EmbeddingOptionProps {
   setting: {
     embedName: string;
     embedDescription: string;
-    embedType: "standalone" | "full-app";
+    embedType: "standalone" | "Interactive";
   };
 }
 
@@ -24,7 +24,7 @@ export default function EmbeddingOption({ setting }: EmbeddingOptionProps) {
       to={`/admin/settings/embedding-in-other-applications/${setting.embedType}`}
     >
       <StyledCard compact>
-        {setting.embedType === "full-app" && <Label>{t`Paid`}</Label>}
+        {setting.embedType === "Interactive" && <Label>{t`Paid`}</Label>}
         <Header>{setting.embedName}</Header>
         <Description>{setting.embedDescription}</Description>
         <div>

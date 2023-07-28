@@ -5750,7 +5750,7 @@ databaseChangeLog:
                   defaultValueBoolean: true
 
 
-  # To fix EE Interactive embedding without compromising security. Full-app embed sessions cannot have `SameSite` attributes in their cookies.
+  # To fix EE Interactive embedding without compromising security. Interactive embed sessions cannot have `SameSite` attributes in their cookies.
   - changeSet:
       id: 104
       author: camsaul
@@ -5762,7 +5762,7 @@ databaseChangeLog:
               - column:
                   name: anti_csrf_token
                   type: text
-                  remarks: 'Anti-CSRF token for full-app embed sessions.'
+                  remarks: 'Anti-CSRF token for Interactive embed sessions.'
 
 #
 # Change `metabase_field.database_type` to `text` to accomodate more exotic field types (enums in Clickhouse, rows in Presto, ...)
