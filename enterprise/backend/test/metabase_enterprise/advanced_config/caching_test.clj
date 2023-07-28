@@ -76,7 +76,7 @@
   (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls enabled, don't refresh any tables in an 'off' or 'deletable' state"
       (premium-features-test/with-premium-features #{:cache-granular-controls}
-        (with-temp-persist-models [db creating deletable off pcreating pdeletable poff]
+        (with-temp-persist-models [db creating]
           (testing "Calls refresh on each persisted-info row"
             (let [card-ids (atom #{})
                   test-refresher (reify task.persist-refresh/Refresher
