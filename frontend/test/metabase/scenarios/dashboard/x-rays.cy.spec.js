@@ -93,10 +93,15 @@ describe("scenarios > x-rays", () => {
       cy.intercept("POST", "/api/dataset").as("postDataset");
 
       cy.button("Done").click();
+
+      cy.wait(500); // FIXME: Flaky test, remove wait
+
       cy.get(".bar")
         .first()
+        .should("be.visible")
         .click({ force: true });
-      cy.findByText(action).click();
+
+      cy.findByTextEnsureVisible(action).click({ force: true });
 
       cy.wait("@xray").then(xhr => {
         for (let c = 0; c < XRAY_DATASETS; ++c) {
