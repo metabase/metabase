@@ -52,12 +52,12 @@ const mockQuestion = new Question(
   }),
 );
 
-const databaseWithEnabledActions = createMockDatabase({
+const databaseWithActionsEnabled = createMockDatabase({
   id: getNextId(),
   settings: { "database-enable-actions": true },
 });
 
-const databaseWithDisabledActions = createMockDatabase({
+const databaseWithActionsDisabled = createMockDatabase({
   id: getNextId(),
   settings: { "database-enable-actions": false },
 });
@@ -65,7 +65,7 @@ const databaseWithDisabledActions = createMockDatabase({
 const metadata = createMockMetadata({
   databases: [
     createSampleDatabase({
-      id: databaseWithEnabledActions.id,
+      id: databaseWithActionsEnabled.id,
       settings: { "database-enable-actions": true },
     }),
   ],
@@ -77,7 +77,7 @@ const mockDataset = new Question(
     dataset: true,
     dataset_query: {
       type: "query",
-      database: databaseWithEnabledActions.id,
+      database: databaseWithActionsEnabled.id,
       query: {
         "source-table": PEOPLE_ID,
       },
@@ -88,21 +88,21 @@ const mockDataset = new Question(
 
 const implicitCreateAction = createMockImplicitQueryAction({
   id: getNextId(),
-  database_id: databaseWithEnabledActions.id,
+  database_id: databaseWithActionsEnabled.id,
   name: "Create",
   kind: "row/create",
 });
 
 const implicitDeleteAction = createMockImplicitQueryAction({
   id: getNextId(),
-  database_id: databaseWithEnabledActions.id,
+  database_id: databaseWithActionsEnabled.id,
   name: "Delete",
   kind: "row/delete",
 });
 
 const implicitUpdateAction = createMockImplicitQueryAction({
   id: getNextId(),
-  database_id: databaseWithEnabledActions.id,
+  database_id: databaseWithActionsEnabled.id,
   name: "Update",
   kind: "row/update",
 });
@@ -153,7 +153,7 @@ const actions = [
 
 const actionsFromDatabaseWithDisabledActions = actions.map(action => ({
   ...action,
-  database_id: databaseWithDisabledActions.id,
+  database_id: databaseWithActionsDisabled.id,
 }));
 
 function setup(options?: Partial<ObjectDetailProps>) {
@@ -319,7 +319,7 @@ describe("Object Detail", () => {
 
   describe("renders actions menu", () => {
     beforeEach(() => {
-      setupDatabasesEndpoints([databaseWithEnabledActions]);
+      setupDatabasesEndpoints([databaseWithActionsEnabled]);
       setupActionsEndpoints(actions);
       setup({ question: mockDataset });
     });
@@ -365,8 +365,8 @@ describe("Object Detail", () => {
     });
   });
 
-  it("should not render actions menu for models based on database without enabled actions", () => {
-    setupDatabasesEndpoints([databaseWithDisabledActions]);
+  it("should not render actions menu for models based on database without actions enabled", () => {
+    setupDatabasesEndpoints([databaseWithActionsDisabled]);
     setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
     setup({ question: mockQuestion });
 
@@ -375,7 +375,7 @@ describe("Object Detail", () => {
   });
 
   it("should not render actions menu for non-model questions", () => {
-    setupDatabasesEndpoints([databaseWithEnabledActions]);
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockQuestion });
 
@@ -384,7 +384,7 @@ describe("Object Detail", () => {
   });
 
   it("should show update object modal on update action click", async () => {
-    setupDatabasesEndpoints([databaseWithEnabledActions]);
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
 
@@ -405,7 +405,7 @@ describe("Object Detail", () => {
   });
 
   it("should show delete object modal on delete action click", async () => {
-    setupDatabasesEndpoints([databaseWithEnabledActions]);
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
 
