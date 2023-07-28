@@ -84,11 +84,9 @@ describe("Actions in object detail view", () => {
         cy.get("@dashboardId").then(dashboardId => {
           visitDashboard(dashboardId);
         });
-      });
 
-      asNormalUser(() => {
-        cy.get("@dashboardId").then(dashboardId => {
-          visitDashboard(dashboardId);
+        cy.findByTestId("dashcard").within(() => {
+          assertActionsDropdownNotExists();
         });
       });
     });
@@ -303,12 +301,12 @@ function openDeleteObjectModal() {
 }
 
 function assertActionsDropdownExists() {
-  cy.log("actions dropdown should be shown in object details modal");
+  cy.log("actions dropdown should be shown in object detail view");
   cy.findByTestId("actions-menu").should("exist");
 }
 
 function assertActionsDropdownNotExists() {
-  cy.log("actions dropdown should not be shown in object details modal");
+  cy.log("actions dropdown should not be shown in object detail view");
   cy.findByTestId("actions-menu").should("not.exist");
 }
 
