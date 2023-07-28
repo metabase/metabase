@@ -1,4 +1,4 @@
-import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
 import {
   FormLabelContent,
   FormLabelDescription,
@@ -29,4 +29,5 @@ const FormLabel = forwardRef(function FormLabel(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormLabel;

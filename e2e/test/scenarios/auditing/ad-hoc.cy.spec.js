@@ -3,6 +3,7 @@ import {
   describeEE,
   openNativeEditor,
   openOrdersTable,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 describeEE("audit > ad-hoc", () => {
@@ -21,11 +22,13 @@ describeEE("audit > ad-hoc", () => {
 
       // Sign in as admin to be able to access audit logs in tests
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("should appear in audit log (metabase#16845 metabase-enterprise#486)", () => {
       cy.visit("/admin/audit/members/log");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Native")
         .parent()
         .parent()
@@ -37,6 +40,7 @@ describeEE("audit > ad-hoc", () => {
       cy.url().should("include", "/admin/audit/query/");
 
       cy.get(".PageTitle").contains("Query");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Open in Metabase");
       cy.get(".ace_content").contains("SELECT 123");
     });
@@ -52,16 +56,17 @@ describeEE("audit > ad-hoc", () => {
       cy.signInAsNormalUser();
       openOrdersTable();
 
-      cy.button("Visualize").click();
       cy.wait("@dataset");
 
       // Sign in as admin to be able to access audit logs in tests
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
-    it("should appear in audit log #29456", () => {
+    it("should appear in audit log (metabase#29456)", () => {
       cy.visit("/admin/audit/members/log");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("GUI")
         .parent()
         .parent()
@@ -73,7 +78,12 @@ describeEE("audit > ad-hoc", () => {
       cy.url().should("include", "/admin/audit/query/");
 
       cy.get(".PageTitle").contains("Query");
-      cy.findByText("Open in Metabase").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Open in Metabase")
+        .should("have.attr", "href")
+        .then(href => {
+          expect(href.startsWith("/question#")).to.be.true;
+        });
 
       cy.findByTestId("read-only-notebook").within(() => {
         cy.findByTestId("data-step-cell").within(() => {

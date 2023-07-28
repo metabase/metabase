@@ -28,7 +28,7 @@ describe("issue 18747", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 8,
             },
           ],
@@ -43,8 +43,10 @@ describe("issue 18747", () => {
     addNumberParameterToDashboard();
     mapParameterToCustomColumn();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
     // wait for saving to finish
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     addValueToParameterFilter();

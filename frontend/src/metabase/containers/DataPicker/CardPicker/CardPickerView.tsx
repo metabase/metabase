@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import SelectList from "metabase/components/SelectList";
@@ -6,10 +6,10 @@ import SelectList from "metabase/components/SelectList";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
-import type { Collection } from "metabase-types/api";
+import type { CollectionId, TableId } from "metabase-types/api";
 import type Table from "metabase-lib/metadata/Table";
 
-import type { DataPickerSelectedItem, VirtualTable } from "../types";
+import type { DataPickerSelectedItem } from "../types";
 
 import EmptyState from "../EmptyState";
 import LoadingState from "../LoadingState";
@@ -21,12 +21,12 @@ type TargetModel = "model" | "question";
 
 interface CardPickerViewProps {
   collectionTree: ITreeNodeItem[];
-  virtualTables?: VirtualTable[];
+  virtualTables?: Table[];
   selectedItems: DataPickerSelectedItem[];
   targetModel: TargetModel;
   isLoading: boolean;
-  onSelectCollection: (id: Collection["id"]) => void;
-  onSelectedVirtualTable: (id: Table["id"]) => void;
+  onSelectCollection: (id: CollectionId) => void;
+  onSelectedVirtualTable: (id: TableId) => void;
   onBack?: () => void;
 }
 
@@ -49,7 +49,7 @@ function TableSelectListItem({
   isSelected,
   onSelect,
 }: {
-  table: VirtualTable;
+  table: Table;
   targetModel: "model" | "question";
   isSelected: boolean;
   onSelect: (id: Table["id"]) => void;
@@ -104,7 +104,7 @@ function CardPickerView({
   );
 
   const renderVirtualTable = useCallback(
-    (table: VirtualTable) => (
+    (table: Table) => (
       <TableSelectListItem
         key={table.id}
         table={table}
@@ -138,4 +138,5 @@ function CardPickerView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CardPickerView;

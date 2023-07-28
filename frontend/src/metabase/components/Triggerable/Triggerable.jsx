@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, cloneElement, Children, Component } from "react";
 
 import cx from "classnames";
 import styled from "@emotion/styled";
@@ -9,9 +9,12 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 const Trigger = styled.a``;
 
-// higher order component that takes a component which takes props "isOpen" and optionally "onClose"
-// and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
-
+/**
+ * higher order component that takes a component which takes props "isOpen" and optionally "onClose"
+ * and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
+ *
+ * @deprecated HOCs are deprecated - use Modal + useState
+ */
 const Triggerable = ComposedComponent =>
   class extends Component {
     static displayName =
@@ -29,7 +32,7 @@ const Triggerable = ComposedComponent =>
       this._startCheckObscured = this._startCheckObscured.bind(this);
       this._stopCheckObscured = this._stopCheckObscured.bind(this);
       this.onClose = this.onClose.bind(this);
-      this.trigger = React.createRef();
+      this.trigger = createRef();
     }
 
     static defaultProps = {
@@ -119,7 +122,7 @@ const Triggerable = ComposedComponent =>
       let { triggerElement } = this.props;
       if (triggerElement && triggerElement.type === Tooltip) {
         // Disables tooltip when open:
-        triggerElement = React.cloneElement(triggerElement, {
+        triggerElement = cloneElement(triggerElement, {
           isEnabled: triggerElement.props.isEnabled && !isOpen,
         });
       }
@@ -129,12 +132,12 @@ const Triggerable = ComposedComponent =>
         // if children is a render prop, pass onClose to it
         children = children({ onClose: this.onClose });
       } else if (
-        React.Children.count(children) === 1 &&
-        React.Children.only(children).props.onClose === undefined &&
-        typeof React.Children.only(children).type !== "string"
+        Children.count(children) === 1 &&
+        Children.only(children).props.onClose === undefined &&
+        typeof Children.only(children).type !== "string"
       ) {
         // if we have a single child which isn't an HTML element and doesn't have an onClose prop go ahead and inject it directly
-        children = React.cloneElement(children, { onClose: this.onClose });
+        children = cloneElement(children, { onClose: this.onClose });
       }
 
       return (

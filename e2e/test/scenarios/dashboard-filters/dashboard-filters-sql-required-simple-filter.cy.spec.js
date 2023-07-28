@@ -79,6 +79,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
 
     // SQL question defaults
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo");
 
     // The empty filter widget
@@ -89,10 +90,12 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?text=");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo");
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Required Filters Dashboard").click();
 
     cy.location("search").should("eq", "?text=Bar");

@@ -40,6 +40,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     cy.findByTestId("viz-settings-button").click();
     openSeriesSettings("Count");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
   });
@@ -97,6 +98,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
@@ -146,7 +148,7 @@ describe("scenarios > visualizations > line chart", () => {
         type: "native",
         native: {
           query:
-            "SELECT '2020-03-01'::date as date, 'cat1' as category, 23 as \"value\"\nUNION ALL\nSELECT '2020-03-01'::date, '', 44\nUNION ALL\nSELECT  '2020-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2020-03-02'::date as date, 'cat1' as category, 20 as \"value\"\nUNION ALL\nSELECT '2020-03-02'::date, '', 50\nUNION ALL\nSELECT  '2020-03-02'::date, 'cat3', 58",
+            "SELECT '2026-03-01'::date as date, 'cat1' as category, 23 as \"value\"\nUNION ALL\nSELECT '2026-03-01'::date, '', 44\nUNION ALL\nSELECT  '2026-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2026-03-02'::date as date, 'cat1' as category, 20 as \"value\"\nUNION ALL\nSELECT '2026-03-02'::date, '', 50\nUNION ALL\nSELECT  '2026-03-02'::date, 'cat3', 58",
           "template-tags": {},
         },
         database: SAMPLE_DB_ID,
@@ -340,13 +342,13 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries(0);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
             });
           });
@@ -389,13 +391,13 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries(0);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
             popover().within(() => {
-              testPairedTooltipValues("Created At", "2016");
+              testPairedTooltipValues("Created At", "2022");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "2,829.03");
             });
           });
@@ -421,7 +423,7 @@ describe("scenarios > visualizations > line chart", () => {
         dashboard_id: dashboardId,
         card_id: firstCardId,
         card: {
-          size_x: 18,
+          size_x: 24,
           size_y: 12,
           series: [
             {
@@ -494,6 +496,7 @@ describe("scenarios > visualizations > line chart", () => {
         },
         display: "line",
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey");
     });
 

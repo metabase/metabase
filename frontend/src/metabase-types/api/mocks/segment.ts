@@ -8,5 +8,6 @@ export const createMockSegment = (opts?: Partial<Segment>): Segment => ({
   table_id: 1,
   archived: false,
   definition: createMockStructuredQuery(),
+  definition_description: "",
   ...opts,
 });

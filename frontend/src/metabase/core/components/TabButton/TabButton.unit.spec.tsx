@@ -1,12 +1,15 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getIcon } from "__support__/ui";
 
-import TabRow from "../TabRow";
-import TabButton, { TabButtonProps } from "./TabButton";
+import { TabRow } from "../TabRow";
+import {
+  TabButton,
+  RenameableTabButtonProps,
+  INPUT_WRAPPER_TEST_ID,
+} from "./TabButton";
 
-function setup(props?: Omit<TabButtonProps, "label">) {
+function setup(props?: Partial<RenameableTabButtonProps<string>>) {
   const action = jest.fn();
   const onRename = jest.fn();
   const value = "some_value";
@@ -62,6 +65,20 @@ describe("TabButton", () => {
 
     userEvent.click(getIcon("chevrondown"));
     (await screen.findByRole("option", { name: "Rename" })).click();
+
+    const newLabel = "A new label";
+    const inputEl = screen.getByRole("textbox");
+    userEvent.type(inputEl, newLabel);
+    fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+
+    expect(onRename).toHaveBeenCalledWith(newLabel);
+    expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
+  });
+
+  it("should allow the user to rename via double click", async () => {
+    const { onRename } = setup();
+
+    userEvent.dblClick(screen.getByTestId(INPUT_WRAPPER_TEST_ID));
 
     const newLabel = "A new label";
     const inputEl = screen.getByRole("textbox");

@@ -1,4 +1,5 @@
-import React, { useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
+import * as React from "react";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SelectList from "metabase/components/SelectList";
 
@@ -118,4 +119,5 @@ const AutocompleteInput = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AutocompleteInput;

@@ -57,7 +57,7 @@ function cleanValue(value: Partial<DataPickerValue>): DataPickerValue {
 
 type HookResult = [DataPickerValue, (value: DataPickerValue) => void];
 
-function useDataPickerValue(
+export function useDataPickerValue(
   initialValue: Partial<DataPickerValue> = {},
 ): HookResult {
   const [value, _setValue] = useState<DataPickerValue>(
@@ -70,5 +70,3 @@ function useDataPickerValue(
 
   return [value, setValue];
 }
-
-export default useDataPickerValue;

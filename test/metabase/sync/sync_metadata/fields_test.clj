@@ -12,7 +12,6 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (defn- with-test-db-before-and-after-altering
@@ -93,7 +92,7 @@
            (with-test-db-before-and-after-altering
             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
             (fn [database]
-              (let [table (hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
+              (let [table (t2/hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
                 (set (map :name (:fields table))))))))))
 
 (deftest dont-splice-inactive-columns-into-queries-test

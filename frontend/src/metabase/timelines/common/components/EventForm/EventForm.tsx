@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import { getTimelineIcons, getTimelineName } from "metabase/lib/timelines";
@@ -121,4 +121,5 @@ const EventForm = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EventForm;

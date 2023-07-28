@@ -4,24 +4,24 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.middleware.annotate :as annotate]))
 
-(defn- ag-name [ag-clause]
-  (driver/escape-alias driver/*driver* (annotate/aggregation-name ag-clause)))
+(defn- ag-name [inner-query ag-clause]
+  (driver/escape-alias driver/*driver* (annotate/aggregation-name inner-query ag-clause)))
 
-(defn- pre-alias-and-uniquify [aggregations]
+(defn- pre-alias-and-uniquify [inner-query aggregations]
   (mapv
    (fn [original-ag updated-ag]
      (if (= original-ag updated-ag)
        original-ag
        (with-meta updated-ag {:auto-generated? true})))
    aggregations
-   (mbql.u/pre-alias-and-uniquify-aggregations ag-name aggregations)))
+   (mbql.u/pre-alias-and-uniquify-aggregations (partial ag-name inner-query) aggregations)))
 
 (defn pre-alias-aggregations-in-inner-query
   "Make sure all aggregations have aliases, and all aliases are unique, in an 'inner' MBQL query."
   [{:keys [aggregation source-query joins], :as inner-query}]
   (cond-> inner-query
     (seq aggregation)
-    (update :aggregation pre-alias-and-uniquify)
+    (update :aggregation (partial pre-alias-and-uniquify inner-query))
 
     source-query
     (update :source-query pre-alias-aggregations-in-inner-query)

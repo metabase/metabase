@@ -6,7 +6,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- instance-of [^Class klass]
+(defn instance-of
+  "Convenience for defining a Malli schema for an instance of a particular Class."
+  [^Class klass]
   [:fn {:error/message (str "instance of " (.getName klass))}
    #(instance? klass %)])
 
@@ -15,44 +17,44 @@
    (instance-of java.math.BigInteger)
    (instance-of clojure.lang.BigInt)])
 
-(defmethod expression/type-of* java.math.BigInteger
+(defmethod expression/type-of-method java.math.BigInteger
   [_n]
   :type/BigInteger)
 
-(defmethod expression/type-of* clojure.lang.BigInt
+(defmethod expression/type-of-method clojure.lang.BigInt
   [_n]
   :type/BigInteger)
 
 (mr/def ::big-decimal
   (instance-of java.math.BigDecimal))
 
-(defmethod expression/type-of* java.math.BigDecimal
+(defmethod expression/type-of-method java.math.BigDecimal
   [_n]
   :type/Decimal)
 
 (mr/def ::float
   (instance-of Float))
 
-(defmethod expression/type-of* java.time.LocalDate
+(defmethod expression/type-of-method java.time.LocalDate
   [_t]
   :type/DateTime)
 
-(defmethod expression/type-of* java.time.LocalTime
+(defmethod expression/type-of-method java.time.LocalTime
   [_t]
   :type/Time)
 
-(defmethod expression/type-of* java.time.OffsetTime
+(defmethod expression/type-of-method java.time.OffsetTime
   [_t]
   :type/TimeWithTZ)
 
-(defmethod expression/type-of* java.time.LocalDateTime
+(defmethod expression/type-of-method java.time.LocalDateTime
   [_t]
   :type/DateTime)
 
-(defmethod expression/type-of* java.time.OffsetDateTime
+(defmethod expression/type-of-method java.time.OffsetDateTime
   [_t]
   :type/DateTimeWithZoneOffset)
 
-(defmethod expression/type-of* java.time.ZonedDateTime
+(defmethod expression/type-of-method java.time.ZonedDateTime
   [_t]
   :type/DateTimeWithZoneID)

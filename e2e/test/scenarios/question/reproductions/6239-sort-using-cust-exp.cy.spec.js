@@ -14,6 +14,7 @@ describe("issue 6239", () => {
     openOrdersTable({ mode: "notebook" });
 
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
     cy.get(".ace_text-input").type("CountIf([Total] > 0)").blur();
@@ -21,11 +22,13 @@ describe("issue 6239", () => {
     cy.findByPlaceholderText("Something nice and descriptive").type("CE");
     cy.button("Done").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().contains("Created At").first().click();
   });
 
   it("should be possible to sort by using custom expression (metabase#6239)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sort").click();
     popover().contains(/^CE$/).click();
 

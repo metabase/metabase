@@ -1,5 +1,4 @@
 /* istanbul ignore file */
-import React from "react";
 import fetchMock from "fetch-mock";
 
 import {
@@ -12,7 +11,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import type { WritebackAction } from "metabase-types/api";
+import type { Card, WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -33,6 +32,7 @@ export type SetupOpts = {
   hasActionsEnabled?: boolean;
   isAdmin?: boolean;
   isPublicSharingEnabled?: boolean;
+  model?: Card | null;
 };
 
 export async function setup({
@@ -41,17 +41,21 @@ export async function setup({
   hasActionsEnabled = true,
   isAdmin = false,
   isPublicSharingEnabled = false,
+  model,
 }: SetupOpts = {}) {
-  const model = createMockCard({
-    dataset: true,
-    can_write: canWrite,
-  });
+  if (model === undefined) {
+    model = createMockCard({
+      dataset: true,
+      can_write: canWrite,
+    });
+  }
+
   const database = createMockDatabase({
     settings: { "database-enable-actions": hasActionsEnabled },
   });
 
   setupDatabasesEndpoints([database]);
-  setupCardsEndpoints([model]);
+  setupCardsEndpoints(model ? [model] : []);
 
   if (action) {
     fetchMock.get(`path:/api/action/${action.id}`, action);
@@ -62,7 +66,11 @@ export async function setup({
   }
 
   renderWithProviders(
-    <ActionCreator actionId={action?.id} modelId={model.id} />,
+    <ActionCreator
+      actionId={action?.id}
+      modelId={model?.id}
+      databaseId={database.id}
+    />,
     {
       storeInitialState: createMockState({
         currentUser: createMockUser({

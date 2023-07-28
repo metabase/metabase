@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "outDir": "build",
     "paths": {
       "*": [
         "./frontend/src/*",

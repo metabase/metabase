@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -16,7 +16,7 @@ const mapDispatchToProps = {
   delete: PLUGIN_GROUP_MANAGERS.deleteGroup ?? Group.actions.delete,
 };
 
-class GroupsListingApp extends React.Component {
+class GroupsListingApp extends Component {
   render() {
     return <GroupsListing {...this.props} />;
   }

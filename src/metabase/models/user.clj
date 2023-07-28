@@ -21,17 +21,33 @@
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as schema]
-   [toucan.models :as models]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]
+   [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel User :core_user)
+(def User
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/User)
+
+(methodical/defmethod t2/table-name :model/User [_model] :core_user)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :author]  [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :creator] [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :user]    [_original-model _k] :model/User)
+
+(doto :model/User
+  (derive :metabase/model)
+  (derive :hook/updated-at-timestamped?))
+
+(t2/deftransforms :model/User
+  {:login_attributes mi/transform-json-no-keywordization
+   :settings         mi/transform-encrypted-json
+   :sso_source       mi/transform-keyword})
 
 (def ^:private insert-default-values
   {:date_joined  :%now
@@ -50,7 +66,8 @@
       {:password_salt salt
        :password      (u.password/hash-bcrypt (str salt password))})))
 
-(defn- pre-insert [{:keys [email password reset_token locale], :as user}]
+(t2/define-before-insert :model/User
+  [{:keys [email password reset_token locale], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
@@ -69,26 +86,34 @@
    (when locale
      {:locale (i18n/normalized-locale-string locale)})))
 
-(defn- post-insert [{user-id :id, superuser? :is_superuser, :as user}]
+(t2/define-after-insert :model/User
+  [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
-    ;; add the newly created user to the magic perms groups
-    (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
-      (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
-      (t2/insert! PermissionsGroupMembership
-        :user_id  user-id
-        :group_id (:id (perms-group/all-users))))
+    ;; add the newly created user to the magic perms groups.
+    (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
     (when superuser?
-      (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
-      (t2/insert! PermissionsGroupMembership
-        :user_id  user-id
-        :group_id (:id (perms-group/admin))))))
+      (log/info (trs "Adding User {0} to All Users permissions group..." user-id)))
+    (let [groups (filter some? [(perms-group/all-users)
+                                (when superuser? (perms-group/admin))])]
+      (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
+        ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
+        ;; for [[metabase.models.permissions-group-membership]]... we don't want it recursively trying to update
+        ;; the user
+        (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
+                    (for [group groups]
+                      {:user_id  user-id
+                       :group_id (u/the-id group)}))))))
 
-(defn- pre-update
-  [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
+(t2/define-before-update :model/User
+  [{:keys [id] :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (let [in-admin-group?  (t2/exists? PermissionsGroupMembership
-                           :group_id (:id (perms-group/admin))
-                           :user_id  id)]
+  (let [{reset-token :reset_token
+         superuser? :is_superuser
+         active? :is_active
+         :keys [email locale]}    (t2/changes user)
+        in-admin-group?           (t2/exists? PermissionsGroupMembership
+                                              :group_id (:id (perms-group/admin))
+                                              :user_id  id)]
     ;; Do not let the last admin archive themselves
     (when (and in-admin-group?
                (false? active?))
@@ -97,7 +122,7 @@
       (cond
         (and superuser?
              (not in-admin-group?))
-        (t2/insert! PermissionsGroupMembership
+        (t2/insert! (t2/table-name PermissionsGroupMembership)
                     :group_id (u/the-id (perms-group/admin))
                     :user_id  id)
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
@@ -105,22 +130,22 @@
         (and (not superuser?)
              in-admin-group?)
         (t2/delete! (t2/table-name PermissionsGroupMembership)
-          :group_id (u/the-id (perms-group/admin))
-          :user_id  id))))
-  ;; make sure email and locale are valid if set
-  (when email
-    (assert (u/email? email)))
-  (when locale
-    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
-  ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
-  (when (false? active?)
-    (t2/delete! 'PulseChannelRecipient :user_id id))
-  ;; If we're setting the reset_token then encrypt it before it goes into the DB
-  (cond-> user
-    true        (merge (hashed-password-values user))
-    reset-token (update :reset_token u.password/hash-bcrypt)
-    locale      (update :locale i18n/normalized-locale-string)
-    email       (update :email u/lower-case-en)))
+                    :group_id (u/the-id (perms-group/admin))
+                    :user_id  id)))
+    ;; make sure email and locale are valid if set
+    (when email
+      (assert (u/email? email)))
+    (when locale
+      (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
+    ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
+    (when (false? active?)
+      (t2/delete! 'PulseChannelRecipient :user_id id))
+    ;; If we're setting the reset_token then encrypt it before it goes into the DB
+    (cond-> user
+      true        (merge (hashed-password-values (t2/changes user)))
+      reset-token (update :reset_token u.password/hash-bcrypt)
+      locale      (update :locale i18n/normalized-locale-string)
+      email       (update :email u/lower-case-en))))
 
 (defn add-common-name
   "Add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`."
@@ -131,7 +156,8 @@
     (cond-> user
       common-name (assoc :common_name common-name))))
 
-(defn- post-select [user]
+(t2/define-after-select :model/User
+  [user]
   (add-common-name user))
 
 (def ^:private default-user-columns
@@ -153,18 +179,7 @@
   "Sequence of columns Group Managers can see when fetching a list of Users.."
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
-(mi/define-methods
- User
- {:default-fields (constantly default-user-columns)
-  :hydration-keys (constantly [:author :creator :user])
-  :properties     (constantly {::mi/updated-at-timestamped? true})
-  :pre-insert     pre-insert
-  :post-insert    post-insert
-  :pre-update     pre-update
-  :post-select    post-select
-  :types          (constantly {:login_attributes :json-no-keywordization
-                               :settings         :encrypted-json
-                               :sso_source       :keyword})})
+(t2.default-fields/define-default-fields :model/User default-user-columns)
 
 (defmethod serdes/hash-fields User
   [_user]
@@ -300,7 +315,7 @@
 (schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (UUID/randomUUID)))))))
+  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -355,7 +370,7 @@
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (u/prog1 (str user-id \_ (UUID/randomUUID))
+  (u/prog1 (str user-id \_ (random-uuid))
     (t2/update! User user-id
                 {:reset_token     <>
                  :reset_triggered (System/currentTimeMillis)})))

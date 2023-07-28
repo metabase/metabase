@@ -14,7 +14,7 @@ For users to unsubscribe themselves from the given alert.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/alert/`
 
@@ -32,7 +32,7 @@ Fetch an alert by ID.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/alert/question/:id`
 

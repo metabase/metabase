@@ -1,5 +1,5 @@
-import React from "react";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+
 import { Root } from "./ImplicitActionIcon.styled";
 
 interface ImplicitActionIconProps {
@@ -17,4 +17,5 @@ function ImplicitActionIcon({ size = 14 }: ImplicitActionIconProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ImplicitActionIcon;

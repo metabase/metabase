@@ -33,6 +33,7 @@ describe("issue 26091", () => {
       cy.findByText("Raw Data").click();
       cy.findByText("Orders").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().within(() => {
       cy.findByLabelText("Name").clear().type("New model");

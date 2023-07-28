@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import { useState, forwardRef } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -130,7 +130,7 @@ describe("Tooltip", () => {
 
   it("should support using a reference element instead of a child target element", () => {
     function ReferenceTooltipTest() {
-      const [eventTarget, setEventTarget] = React.useState();
+      const [eventTarget, setEventTarget] = useState();
       return (
         <div>
           <Tooltip reference={eventTarget} tooltip="reference tooltip" isOpen />

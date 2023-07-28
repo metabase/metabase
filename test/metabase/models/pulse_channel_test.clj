@@ -10,8 +10,8 @@
    [metabase.models.user :refer [User]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -139,7 +139,7 @@
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
     (-> (t2/select-one PulseChannel :id new-channel-id)
-        (hydrate :recipients)
+        (t2/hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
         (update :entity_id boolean)
@@ -149,14 +149,14 @@
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
   (-> (t2/select-one PulseChannel :id id)
-      (hydrate :recipients)
+      (t2/hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
       (m/dissoc-in [:details :emails])))
 
 ;; create-pulse-channel!
 (deftest create-pulse-channel!-test
-  (mt/with-temp Pulse [{:keys [id]}]
+  (t2.with-temp/with-temp [Pulse {:keys [id]}]
     (mt/with-model-cleanup [Pulse]
       (testing "disabled"
         (is (= {:enabled        false
@@ -220,9 +220,9 @@
                                  {:id (mt/user->id :crowberto)}]})))))))
 
 (deftest update-pulse-channel!-test
-  (mt/with-temp Pulse [{pulse-id :id}]
+  (t2.with-temp/with-temp [Pulse {pulse-id :id}]
     (testing "simple starting case where we modify the schedule hour and add a recipient"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type   :email
@@ -240,7 +240,7 @@
                  :recipients    [{:email "foo@bar.com"}]})))))
 
     (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type  :email
@@ -260,7 +260,7 @@
                  :recipients     [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
 
     (testing "weekly schedule should have a day in it, show that we can get full users"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
                 :entity_id      true
                 :channel_type   :email
@@ -279,7 +279,7 @@
                  :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
 
     (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
         (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
         (is (= {:enabled       true
                 :entity_id     true
@@ -299,7 +299,7 @@
                  :recipients    [{:id (mt/user->id :crowberto)}]})))))
 
     (testing "custom details for channels that need it"
-      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
+      (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled       true
                 :entity_id     true
                 :channel_type  :email
@@ -440,7 +440,7 @@
                  :first_name  "Rasta"
                  :last_name   "Toucan"
                  :common_name "Rasta Toucan"}]))
-             (:recipients (hydrate channel :recipients)))))))
+             (:recipients (t2/hydrate channel :recipients)))))))
 
 (deftest validate-email-domains-check-user-ids-match-emails
   (testing `pulse-channel/validate-email-domains

@@ -5,13 +5,14 @@
    [metabase.models :refer [TaskHistory]]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features-test :as premium-features-test]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest task-test
   (testing "/api/task/*"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
-      (mt/with-temp TaskHistory [task]
+      (t2.with-temp/with-temp [TaskHistory task]
         (letfn [(get-tasks [user status]
                   (testing (format "get task with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :get status "task")))

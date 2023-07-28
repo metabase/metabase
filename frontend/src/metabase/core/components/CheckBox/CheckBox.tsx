@@ -1,4 +1,4 @@
-import React, {
+import {
   ChangeEvent,
   FocusEvent,
   forwardRef,
@@ -137,6 +137,7 @@ function CheckboxTooltip({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(CheckBox, {
   Label: CheckBoxLabel,
 });

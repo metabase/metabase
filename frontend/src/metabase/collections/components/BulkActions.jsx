@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { memo } from "react";
 import { t, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import { Motion, spring } from "react-motion";
 import Modal from "metabase/components/Modal";
 
-import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
@@ -105,4 +105,4 @@ function BulkActions({
   );
 }
 
-export default React.memo(BulkActions);
+export default memo(BulkActions);

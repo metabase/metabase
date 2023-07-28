@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -16,4 +15,5 @@ function SnippetCollectionName({ id }: { id: CollectionId }) {
   return <SnippetCollections.Name id={id} />;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SnippetCollectionName;

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -14,11 +14,7 @@ import type Schema from "metabase-lib/metadata/Schema";
 
 import { getCollectionVirtualSchemaId } from "metabase-lib/metadata/utils/saved-questions";
 
-import type {
-  DataPickerProps,
-  DataPickerSelectedItem,
-  VirtualTable,
-} from "../types";
+import type { DataPickerProps, DataPickerSelectedItem } from "../types";
 import useSelectedTables from "../useSelectedTables";
 
 import { buildCollectionTree } from "./utils";
@@ -43,7 +39,7 @@ interface CollectionsLoaderProps {
 }
 
 interface SchemaLoaderProps {
-  schema?: Schema & { tables: VirtualTable[] };
+  schema?: Schema;
 }
 
 type CardPickerProps = CardPickerOwnProps &
@@ -145,6 +141,7 @@ function CardPickerContainer({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Collections.load({
     id: "root",

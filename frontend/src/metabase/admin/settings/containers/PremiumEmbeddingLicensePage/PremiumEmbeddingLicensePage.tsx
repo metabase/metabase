@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment-timezone";
@@ -123,6 +123,7 @@ const PremiumEmbeddingLicensePage = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

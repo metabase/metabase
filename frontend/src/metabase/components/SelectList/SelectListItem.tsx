@@ -1,7 +1,7 @@
-import React from "react";
+import * as React from "react";
 import _ from "underscore";
 
-import type { IconProps } from "metabase/components/Icon";
+import type { IconProps } from "metabase/core/components/Icon";
 
 import {
   BaseSelectListItem,

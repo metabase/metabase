@@ -1,6 +1,7 @@
 import {
   DateTimeFieldFingerprint,
   Field,
+  FieldDimension,
   FieldFingerprint,
   FieldGlobalFingerprint,
   FieldValues,
@@ -26,9 +27,12 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
   preview_display: true,
   position: 1,
   nfc_path: null,
+  json_unfolding: null,
+  coercion_strategy: null,
   fingerprint: null,
 
   has_field_values: "list",
+  has_more_values: false,
 
   last_analyzed: new Date().toISOString(),
   created_at: new Date().toISOString(),
@@ -88,5 +92,13 @@ export const createMockDateTimeFieldFingerprint = (
 ): DateTimeFieldFingerprint => ({
   earliest: "2000-01-01",
   latest: "2020-01-01",
+  ...opts,
+});
+
+export const createMockFieldDimension = (
+  opts?: Partial<FieldDimension>,
+): FieldDimension => ({
+  type: "internal",
+  name: "mock_field",
   ...opts,
 });

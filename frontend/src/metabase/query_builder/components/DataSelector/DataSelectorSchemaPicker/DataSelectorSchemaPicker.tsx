@@ -1,11 +1,9 @@
-import React from "react";
+import { Icon } from "metabase/core/components/Icon";
 
-import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-
+import { SchemaId } from "metabase-types/api";
+import Schema from "metabase-lib/metadata/Schema";
 import { DataSelectorSchemaPickerContainer as Container } from "./DataSelectorSchemaPicker.styled";
-
-type Schema = { id?: number; displayName: () => string };
 
 type DataSelectorSchemaPickerProps = {
   hasBackButton: boolean;
@@ -14,7 +12,7 @@ type DataSelectorSchemaPickerProps = {
   hasNextStep: boolean;
   isLoading: boolean;
   schemas: Schema[];
-  selectedSchemaId: number;
+  selectedSchemaId: SchemaId;
   onBack: () => void;
   onChangeSchema: (item: { schema: Schema }) => void;
 };
@@ -56,4 +54,5 @@ const DataSelectorSchemaPicker = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorSchemaPicker;

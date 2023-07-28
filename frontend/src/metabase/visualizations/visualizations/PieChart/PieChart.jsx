@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import cx from "classnames";
 import d3 from "d3";
 import _ from "underscore";
@@ -23,6 +23,10 @@ import { formatValue } from "metabase/lib/formatting";
 
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import ChartWithLegend from "../../components/ChartWithLegend";
 import styles from "./PieChart.css";
 
@@ -46,17 +50,17 @@ export default class PieChart extends Component {
 
     this.state = { width: 0, height: 0 };
 
-    this.chartContainer = React.createRef();
-    this.chartDetail = React.createRef();
-    this.chartGroup = React.createRef();
+    this.chartContainer = createRef();
+    this.chartDetail = createRef();
+    this.chartGroup = createRef();
   }
 
   static uiName = t`Pie`;
   static identifier = "pie";
   static iconName = "pie";
 
-  static minSize = { width: 4, height: 4 };
-  static defaultSize = { width: 4, height: 4 };
+  static minSize = getMinSize("pie");
+  static defaultSize = getDefaultSize("pie");
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;
@@ -404,7 +408,11 @@ export default class PieChart extends Component {
       slices.push(otherSlice);
     }
 
-    const side = Math.min(Math.min(width, height) - SIDE_PADDING, MAX_PIE_SIZE);
+    const side = Math.max(
+      Math.min(Math.min(width, height) - SIDE_PADDING, MAX_PIE_SIZE),
+      0,
+    );
+
     const outerRadius = side / 2;
     const labelFontSize = Math.max(
       MAX_LABEL_FONT_SIZE * (side / MAX_PIE_SIZE),

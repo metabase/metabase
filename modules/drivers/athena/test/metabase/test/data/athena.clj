@@ -7,6 +7,7 @@
    [metabase.driver.athena :as athena]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
@@ -22,7 +23,7 @@
 (sql-jdbc.tx/add-test-extensions! :athena)
 
 ;; during unit tests don't treat athena as having FK support
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:athena :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -211,10 +212,14 @@
 (defn- existing-databases
   "Set of databases that already exist in our S3 bucket, so we don't try to create them a second time."
   []
-  (jdbc/with-db-connection [conn (server-connection-spec)]
-    (let [dbs (into #{} (map :database_name) (jdbc/query conn ["SHOW DATABASES;"]))]
-      (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
-      dbs)))
+  (sql-jdbc.execute/do-with-connection-with-options
+   :athena
+   (server-connection-spec)
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [dbs (into #{} (map :database_name) (jdbc/query {:connection conn} ["SHOW DATABASES;"]))]
+       (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
+       dbs))))
 
 (def ^:private ^:dynamic *allow-database-creation*
   "Whether to allow database creation. This is normally disabled to prevent people from accidentally loading duplicate

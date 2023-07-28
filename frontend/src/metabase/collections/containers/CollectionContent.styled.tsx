@@ -1,14 +1,16 @@
 import styled from "@emotion/styled";
 
 export const CollectionRoot = styled.div`
-  padding-top: 1rem;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
   position: relative;
 `;
 
 export const CollectionMain = styled.div`
   margin: 0 auto;
-  width: 90%;
+  overflow-y: auto;
+  max-height: 100%;
+  padding: 1rem 5%;
 `;
 
 export interface CollectionTableProps {

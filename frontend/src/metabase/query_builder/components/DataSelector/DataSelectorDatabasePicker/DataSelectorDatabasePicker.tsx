@@ -1,11 +1,11 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 
-import type { Database } from "metabase-types/api/database";
+import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
 
-import type { Schema } from "../types";
 import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
 
@@ -95,4 +95,5 @@ const DataSelectorDatabasePicker = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorDatabasePicker;

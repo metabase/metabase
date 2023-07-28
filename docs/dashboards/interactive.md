@@ -50,7 +50,7 @@ If your dashboard has a filter, you'll also see an option to [update the filter]
 
 For questions composed using the query builder, the default click behavior is to open the **drill-through menu**, which presents people with the option to [drill through the data](https://www.metabase.com/learn/questions/drill-through):
 
-![Action menu](./images/action-menu.png)
+![Drill-through menu](./images/drill-through-menu.png)
 
 ## Custom destinations
 

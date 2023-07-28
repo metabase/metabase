@@ -13,8 +13,8 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,11 +48,12 @@
   "Wraps with-temp*, but binding `*allow-deleting-personal-collections*` to true so that temporary personal collections
   can still be deleted."
   [model-bindings & body]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   `(binding [collection/*allow-deleting-personal-collections* true]
-     (tt/with-temp* ~model-bindings ~@body)))
+     (mt/with-temp* ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
- (first (t2/insert-returning-instances! model (merge (tt/with-temp-defaults model) properties))))
+ (first (t2/insert-returning-instances! model (merge (t2.with-temp/with-temp-defaults model) properties))))
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix (mt/random-name))
@@ -421,7 +422,20 @@
                                                                                            nil]
                                                                                           [:field
                                                                                            ~'venues-pk-field-id
-                                                                                           {:join-alias "v"}]]}]}}}]]
+                                                                                           {:join-alias "v"}]]}]}}}]
+                   Card               [{~'card-id-pivot-table :id}
+                                       {:table_id ~'table-id
+                                        :name "Pivot Table Card"
+                                        :collection_id ~'collection-id
+                                        :dataset_query {:type :query
+                                                        :database ~'db-id
+                                                        :query {:source-table ~'table-id
+                                                                :aggregation [:sum [:field ~'latitude-field-id nil]]
+                                                                :breakout [[:field ~'category-field-id nil]]}}
+                                        :visualization_settings
+                                        {:pivot_table.column_split {:columns [["field" ~'latitude-field-id nil]]
+                                                                    :rows    [["field" ~'latitude-field-id nil]]
+                                                                    :values  [["aggregation" 0]]}}}]]
      (qp.store/with-store ~@body)))
 
 ;; Don't memoize as IDs change in each `with-world` context

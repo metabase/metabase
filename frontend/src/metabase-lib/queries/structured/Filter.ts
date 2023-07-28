@@ -2,12 +2,13 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import {
+import moment from "moment-timezone";
+import type {
   Filter as FilterObject,
   FieldFilter,
-  Field,
-} from "metabase-types/types/Query";
-import { FilterOperator } from "metabase-types/types/Metadata";
+  FieldReference,
+} from "metabase-types/api";
+import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { isExpression } from "metabase-lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
 import {
@@ -24,6 +25,7 @@ import {
   getFilterOptions,
   setFilterOptions,
 } from "metabase-lib/queries/utils/filter";
+import type { FilterOperator } from "../../deprecated-types";
 import Dimension from "../../Dimension";
 import StructuredQuery from "../StructuredQuery";
 import MBQLClause from "./MBQLClause";
@@ -33,6 +35,7 @@ interface FilterDisplayNameOpts {
   includeOperator?: boolean;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
@@ -60,6 +63,42 @@ export default class Filter extends MBQLClause {
     return this._query.removeFilter(this._index);
   }
 
+  betterDateLabel() {
+    const args = this.arguments();
+    if (!args.every(arg => typeof arg === "string")) {
+      return undefined;
+    }
+    const unit = this.dimension()?.temporalUnit();
+    const isSupportedDateRangeUnit = [
+      "day",
+      "week",
+      "month",
+      "quarter",
+      "year",
+    ].includes(unit);
+    const op = this.operatorName();
+    const betweenDates = op === "between" && isSupportedDateRangeUnit;
+    const equalsWeek = op === "=" && unit === "week";
+    if (betweenDates || equalsWeek) {
+      return formatDateTimeRangeWithUnit(args, unit, {
+        type: "tooltip",
+        date_resolution: unit === "week" ? "day" : unit,
+      });
+    }
+    const sliceFormat = {
+      // modified from DEFAULT_DATE_FORMATS in date.tsx to show extra context
+      "hour-of-day": "[hour] H",
+      "minute-of-hour": "[minute] m",
+      "day-of-month": "Do [day of month]",
+      "day-of-year": "DDDo [day of year]",
+      "week-of-year": "wo [week of year]",
+    }[unit];
+    const m = moment(args[0]);
+    if (op === "=" && sliceFormat && m.isValid()) {
+      return m.format(sliceFormat);
+    }
+  }
+
   /**
    * Returns the display name for the filter
    */
@@ -71,17 +110,18 @@ export default class Filter extends MBQLClause {
       const segment = this.segment();
       return segment ? segment.displayName() : t`Unknown Segment`;
     } else if (this.isStandard()) {
-      const dimension = this.dimension();
-      const operator = this.operator();
-      const dimensionName =
-        dimension && includeDimension && dimension.displayName();
-      const operatorName =
-        operator &&
-        includeOperator &&
-        !isStartingFrom(this) &&
-        operator.moreVerboseName;
-      const argumentNames = this.formattedArguments().join(" ");
-      return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
+      if (isStartingFrom(this)) {
+        includeOperator = false;
+      }
+      const betterDate = this.betterDateLabel();
+      const op = betterDate ? "=" : this.operatorName();
+      return [
+        includeDimension && this.dimension()?.displayName(),
+        includeOperator && this.operator(op)?.moreVerboseName,
+        betterDate ?? this.formattedArguments().join(" "),
+      ]
+        .map(s => s || "")
+        .join(" ");
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
     } else {
@@ -95,7 +135,7 @@ export default class Filter extends MBQLClause {
   isValid() {
     if (this.isStandard()) {
       // has an operator name and dimension or expression
-      const dimension = this.dimension();
+      const dimension = this.dimension().getMLv1CompatibleDimension();
 
       if (!dimension && isExpression(this[1])) {
         return true;
@@ -118,7 +158,7 @@ export default class Filter extends MBQLClause {
       if (operator) {
         const args = this.arguments();
 
-        // has the mininum number of arguments
+        // has the minimum number of arguments
         if (args.length < operator.fields.length) {
           return false;
         }
@@ -202,9 +242,9 @@ export default class Filter extends MBQLClause {
     return this[0];
   }
 
-  operator(): FilterOperator | null | undefined {
+  operator(opName = this.operatorName()): FilterOperator | null | undefined {
     const dimension = this.dimension();
-    return dimension ? dimension.filterOperator(this.operatorName()) : null;
+    return dimension ? dimension.filterOperator(opName) : null;
   }
 
   setOperator(operatorName: string) {
@@ -254,7 +294,7 @@ export default class Filter extends MBQLClause {
   }
 
   setDimension(
-    fieldRef: Field | null | undefined,
+    fieldRef: FieldReference | null | undefined,
     {
       useDefaultOperator = false,
     }: {

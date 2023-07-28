@@ -1,5 +1,3 @@
-import React from "react";
-
 import { getUrlProtocol } from "./url";
 import { OptionsType } from "./types";
 

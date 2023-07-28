@@ -1,4 +1,4 @@
-import React, { ReactElement } from "react";
+import { ReactElement } from "react";
 import { hideAll } from "tippy.js";
 
 import PropTypes from "prop-types";
@@ -82,4 +82,5 @@ function TableInfoPopover({
 
 TableInfoPopover.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableInfoPopover;

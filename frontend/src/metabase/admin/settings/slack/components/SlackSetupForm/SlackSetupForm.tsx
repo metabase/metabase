@@ -1,4 +1,3 @@
-import React from "react";
 import { SlackSettings } from "metabase-types/api";
 import SlackForm from "../SlackForm";
 
@@ -15,4 +14,5 @@ const SlackSetupForm = ({ onSubmit }: SlackSetupFormProps): JSX.Element => {
   return <SlackForm initialValues={DEFAULT_SETTINGS} onSubmit={onSubmit} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackSetupForm;

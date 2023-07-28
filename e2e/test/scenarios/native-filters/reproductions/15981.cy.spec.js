@@ -24,6 +24,7 @@ describe("issue 15981", () => {
     cy.get(".Visualization").contains("Rustic Paper Wallet");
 
     cy.icon("contract").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 51 rows");
     cy.icon("play").should("not.exist");
   });

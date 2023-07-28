@@ -1,8 +1,11 @@
-import type { DatasetData } from "metabase-types/types/Dataset";
-import type { SavedCard } from "metabase-types/types/Card";
-import type { DashboardOrderedCard, ForeignKey } from "metabase-types/api";
+import type {
+  Card,
+  DatasetData,
+  DashboardOrderedCard,
+} from "metabase-types/api";
 
 import type Table from "metabase-lib/metadata/Table";
+import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type Question from "metabase-lib/Question";
 
 export type ObjectId = number | string;
@@ -22,7 +25,7 @@ export type OnVisualizationClickType =
 export interface ObjectDetailProps {
   data: DatasetData;
   question?: Question;
-  card?: SavedCard;
+  card?: Card;
   dashcard?: DashboardOrderedCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal
   table?: Table | null;
@@ -50,3 +53,7 @@ export interface ObjectDetailProps {
   closeObjectDetail: () => void;
   className?: string;
 }
+
+export type ForeignKeyReferences = {
+  [key: number]: { status: number; value: number };
+};

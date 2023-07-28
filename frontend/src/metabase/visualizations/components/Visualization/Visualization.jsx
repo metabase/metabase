@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { PureComponent } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { assoc } from "icepick";
@@ -17,7 +17,7 @@ import {
 } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
-import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
+import { ConnectedChartClickActions } from "metabase/visualizations/components/ChartClickActions";
 
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
@@ -31,6 +31,7 @@ import { getMode } from "metabase/modes/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { isRegularClickAction } from "metabase/modes/types";
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
@@ -64,7 +65,7 @@ const mapStateToProps = state => ({
   fontFamily: getFont(state),
 });
 
-class Visualization extends React.PureComponent {
+class Visualization extends PureComponent {
   state = {
     hovered: null,
     clicked: null,
@@ -342,6 +343,7 @@ class Visualization extends React.PureComponent {
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
+    const regularClickActions = clickActions.filter(isRegularClickAction);
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -491,6 +493,7 @@ class Visualization extends React.PureComponent {
                 // NOTE: CardVisualization class used to target ExplicitSize HOC
                 className="CardVisualization flex-full flex-basis-none"
                 isPlaceholder={isPlaceholder}
+                isMobile={isMobile}
                 series={series}
                 settings={settings}
                 card={series[0].card} // convenience for single-series visualizations
@@ -515,9 +518,9 @@ class Visualization extends React.PureComponent {
           )}
           <ChartTooltip series={series} hovered={hovered} settings={settings} />
           {this.props.onChangeCardAndRun && (
-            <ChartClickActions
+            <ConnectedChartClickActions
               clicked={clicked}
-              clickActions={clickActions}
+              clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onClose={this.hideActions}
               series={series}
@@ -535,7 +538,7 @@ Visualization.defaultProps = defaultProps;
 export default _.compose(
   ExplicitSize({
     selector: ".CardVisualization",
-    refreshMode: props => (props.isVisible ? "throttle" : "debounce"),
+    refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
   connect(mapStateToProps),
   memoizeClass("_getQuestionForCardCached"),

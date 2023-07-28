@@ -15,9 +15,11 @@ describe("issue 9027", () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
 
     // Wait for the existing questions to load
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
 
     openNativeEditor({ fromCurrentPage: true });

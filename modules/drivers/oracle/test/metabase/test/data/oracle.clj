@@ -176,8 +176,6 @@
   [driver dbdef tabledef]
   (load-data/load-data-add-ids-chunked! driver dbdef tabledef))
 
-(defmethod tx/has-questionable-timezone-support? :oracle [_] true)
-
 ;; Oracle has weird syntax for inserting multiple rows, it looks like
 ;;
 ;; INSERT ALL

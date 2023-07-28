@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import _ from "underscore";
 
 import { connect } from "react-redux";
@@ -18,7 +18,7 @@ const mapDispatchToProps = {
   push,
 };
 
-class ArchiveCollectionModalInner extends React.Component {
+class ArchiveCollectionModalInner extends Component {
   archive = async () => {
     const { setCollectionArchived, params } = this.props;
     const id = Urls.extractCollectionId(params.slug);

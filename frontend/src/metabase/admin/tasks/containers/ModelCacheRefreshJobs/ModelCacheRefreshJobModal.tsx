@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
@@ -84,6 +84,7 @@ function ModelCacheRefreshJobModal({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   connect(null, mapDispatchToProps),
   PersistedModels.load({

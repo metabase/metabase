@@ -1,47 +1,61 @@
-import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = metadata.table(ORDERS_ID);
+const productsTable = metadata.table(PRODUCTS_ID);
 
 const EXAMPLE_JOIN = {
   alias: "join0",
-  "source-table": PRODUCTS.id,
+  "source-table": PRODUCTS_ID,
   condition: [
     "=",
-    ["field", ORDERS.PRODUCT_ID.id, null],
-    ["field", PRODUCTS.ID.id, { "join-alias": "join0" }],
+    ["field", ORDERS.PRODUCT_ID, null],
+    ["field", PRODUCTS.ID, { "join-alias": "join0" }],
   ],
 };
 
 describe("StructuredQuery nesting", () => {
   describe("parentDimension", () => {
     it("should return the correct dimension", () => {
-      const j = ORDERS.query().join(EXAMPLE_JOIN).joins()[0];
+      const j = ordersTable.query().join(EXAMPLE_JOIN).joins()[0];
       expect(j.parentDimensions()[0].mbql()).toEqual([
         "field",
-        ORDERS.PRODUCT_ID.id,
+        ORDERS.PRODUCT_ID,
         null,
       ]);
     });
   });
   describe("joinDimension", () => {
     it("should return the correct dimension", () => {
-      const j = ORDERS.query().join(EXAMPLE_JOIN).joins()[0];
+      const j = ordersTable.query().join(EXAMPLE_JOIN).joins()[0];
       expect(j.joinDimensions()[0].mbql()).toEqual([
         "field",
-        PRODUCTS.ID.id,
+        PRODUCTS.ID,
         { "join-alias": "join0" },
       ]);
     });
   });
   describe("parentDimensionOptions", () => {
     it("should return correct dimensions for a source-table", () => {
-      const j = ORDERS.query().join({ alias: "join0" }).joins()[0];
+      const j = ordersTable.query().join({ alias: "join0" }).joins()[0];
       const options = j.parentDimensionOptions();
-      expect(options.count).toBe(7);
-      expect(options.dimensions[0].mbql()).toEqual(["field", 1, null]);
+      expect(options.count).toBe(9);
+      expect(options.dimensions[0].mbql()).toEqual(["field", ORDERS.ID, null]);
     });
     it("should return correct dimensions for a source-query", () => {
-      const j = ORDERS.query().nest().join({ alias: "join0" }).joins()[0];
+      const j = ordersTable.query().nest().join({ alias: "join0" }).joins()[0];
       const options = j.parentDimensionOptions();
-      expect(options.count).toBe(7);
+      expect(options.count).toBe(9);
       expect(options.dimensions[0].mbql()).toEqual([
         "field",
         "ID",
@@ -51,41 +65,43 @@ describe("StructuredQuery nesting", () => {
   });
   describe("joinDimensionOptions", () => {
     it("should return correct dimensions with a source-table", () => {
-      const j = ORDERS.query()
-        .join({ alias: "join0", "source-table": ORDERS.id })
+      const j = ordersTable
+        .query()
+        .join({ alias: "join0", "source-table": ORDERS_ID })
         .joins()[0];
       const options = j.joinDimensionOptions();
-      expect(options.count).toBe(7);
+      expect(options.count).toBe(9);
       expect(options.dimensions[0].mbql()).toEqual([
         "field",
-        1,
+        ORDERS.ID,
         { "join-alias": "join0" },
       ]);
     });
     it("should return correct dimensions with a source-query", () => {
-      const j = ORDERS.query()
+      const j = ordersTable
+        .query()
         .join({
           alias: "join0",
-          "source-query": { "source-table": ORDERS.id },
+          "source-query": { "source-table": ORDERS_ID },
         })
         .joins()[0];
       const options = j.joinDimensionOptions();
-      expect(options.count).toBe(7);
+      expect(options.count).toBe(9);
       expect(options.dimensions[0].mbql()).toEqual([
         "field",
-        1,
+        ORDERS.ID,
         { "join-alias": "join0" },
       ]);
     });
   });
   describe("dimensionOptions", () => {
     it("should include joined table's fields", () => {
-      const q = PRODUCTS.query().join({
+      const q = productsTable.query().join({
         alias: "join0",
-        "source-table": ORDERS.id,
+        "source-table": ORDERS_ID,
       });
       const options = q.dimensionOptions();
-      expect(options.count).toEqual(15);
+      expect(options.count).toEqual(17);
     });
   });
 });

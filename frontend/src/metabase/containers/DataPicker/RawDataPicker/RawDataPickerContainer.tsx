@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo } from "react";
+/* eslint-disable react/prop-types */
+import { useCallback, useMemo } from "react";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -198,6 +199,7 @@ function RawDataPicker({
   return renderPicker({ isLoading: allLoading });
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Databases.loadList({
   loadingAndErrorWrapper: false,
   // We don't actually need the saved questions database here,

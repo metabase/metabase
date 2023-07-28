@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
@@ -47,4 +47,5 @@ function SnippetFormModal({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SnippetFormModal;

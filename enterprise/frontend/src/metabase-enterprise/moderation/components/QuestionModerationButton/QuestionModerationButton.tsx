@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -36,6 +36,7 @@ const mapDispatchToProps = {
   removeCardReview,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

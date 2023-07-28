@@ -13,6 +13,7 @@ export type ActionContextType = {
   formSettings: ActionFormSettings;
   canSave: boolean;
   isNew: boolean;
+  isDirty: boolean;
   ui: ActionCreatorUIProps;
   handleActionChange: (action: EditableActionParams) => void;
   handleFormSettingsChange: (formSettings: ActionFormSettings) => void;
@@ -24,6 +25,7 @@ export const ActionContext = createContext<ActionContextType>({
   formSettings: getDefaultFormSettings(),
   canSave: false,
   isNew: true,
+  isDirty: false,
   ui: {
     canRename: true,
     canChangeFieldSettings: true,

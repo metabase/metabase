@@ -48,9 +48,11 @@ describe("scenarios > dashboard > filters > location", () => {
 
   it(`should work when set as the default filter`, () => {
     setFilter("Location", "Is");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("City").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     addWidgetStringFilter("Abbeville");

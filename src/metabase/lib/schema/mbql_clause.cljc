@@ -85,10 +85,10 @@
 
   ([tag         :- simple-keyword?
     _arrow      :- [:= :-]
-    return-type :- [:fn {:error/message "valid base type"} #(isa? % :type/*)]
+    return-type :- ::expression/base-type
     schema]
    (define-mbql-clause tag schema)
-   (defmethod expression/type-of* tag
+   (defmethod expression/type-of-method tag
      [_clause]
      return-type)
    nil))

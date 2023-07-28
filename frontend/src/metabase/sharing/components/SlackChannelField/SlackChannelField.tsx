@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import AutocompleteInput from "metabase/core/components/AutocompleteInput";
@@ -74,4 +74,5 @@ const SlackChannelField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackChannelField;

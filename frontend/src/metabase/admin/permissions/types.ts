@@ -40,3 +40,31 @@ export type EntityId = DatabaseEntityId &
 export type DataPermission = "data" | "download" | "data-model" | "details";
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
+
+export type PermissionSectionConfig = {
+  permission: string;
+  type: string;
+  isDisabled: boolean;
+  disabledTooltip: string | null;
+  isHighlighted: boolean;
+  value: string;
+  warning: string | null;
+  options: {
+    label: string;
+    value: string;
+    icon: string;
+    iconColor: string;
+  }[];
+  actions: {
+    controlled: {
+      label: string;
+      icon: string;
+      iconColor: string;
+      actionCreator: (...args: unknown[]) => void;
+    }[];
+  };
+  postActions: {
+    controlled: null | ((...args: unknown[]) => void);
+  };
+  confirmations: unknown[];
+};

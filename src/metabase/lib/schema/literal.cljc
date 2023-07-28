@@ -8,14 +8,14 @@
    [metabase.util.malli.registry :as mr]
    #?@(:clj ([metabase.lib.schema.literal.jvm]))))
 
-(defmethod expression/type-of* :dispatch-type/nil
+(defmethod expression/type-of-method :dispatch-type/nil
   [_nil]
   :type/*)
 
 (mr/def ::boolean
   :boolean)
 
-(defmethod expression/type-of* :dispatch-type/boolean
+(defmethod expression/type-of-method :dispatch-type/boolean
   [_bool]
   :type/Boolean)
 
@@ -28,7 +28,7 @@
            :metabase.lib.schema.literal.jvm/big-integer]
      :cljs :int))
 
-(defmethod expression/type-of* :dispatch-type/integer
+(defmethod expression/type-of-method :dispatch-type/integer
   [_int]
   :type/Integer)
 
@@ -41,7 +41,7 @@
            :metabase.lib.schema.literal.jvm/big-decimal]
      :cljs :double))
 
-(defmethod expression/type-of* :dispatch-type/number
+(defmethod expression/type-of-method :dispatch-type/number
   [_non-integer-real]
   ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types]] =(
   :type/Float)
@@ -123,7 +123,7 @@
     {:error/message "offset date time string literal"}
     offset-datetime-regex]])
 
-(defmethod expression/type-of* :dispatch-type/string
+(defmethod expression/type-of-method :dispatch-type/string
   [s]
   (condp mc/validate s
     ::string.datetime #{:type/Text :type/DateTime}

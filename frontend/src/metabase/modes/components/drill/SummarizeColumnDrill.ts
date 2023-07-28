@@ -1,16 +1,16 @@
 import { t } from "ttag";
 
+import type {
+  ClickAction,
+  ClickActionProps,
+  ClickActionBase,
+  Drill,
+} from "metabase/modes/types";
+import type { Dispatch } from "metabase-types/store";
 import {
   summarizeColumnDrill,
   summarizeColumnDrillQuestion,
 } from "metabase-lib/queries/drills/summarize-column-drill";
-
-import type {
-  ClickAction,
-  ClickActionBase,
-  Drill,
-  DrillOptions,
-} from "../../types";
 
 type AggregationOperator = {
   short: string;
@@ -36,7 +36,7 @@ const ACTIONS: Record<string, Omit<ClickActionBase, "name">> = {
 
 function getAction(
   operator: AggregationOperator,
-  { question, clicked }: DrillOptions,
+  { question, clicked }: ClickActionProps,
 ): ClickAction {
   return {
     ...ACTIONS[operator.short],
@@ -47,13 +47,13 @@ function getAction(
         clicked,
         aggregationOperator: operator,
       }),
-    action: () => dispatch =>
+    action: () => (dispatch: Dispatch) =>
       // HACK: drill through closes sidebars, so open sidebar asynchronously
       setTimeout(() => dispatch({ type: "metabase/qb/EDIT_SUMMARY" })),
   };
 }
 
-const SummarizeColumnDrill: Drill = (opts: DrillOptions) => {
+const SummarizeColumnDrill: Drill = opts => {
   const { question, clicked } = opts;
 
   const drill = summarizeColumnDrill({ question, clicked });
@@ -64,8 +64,9 @@ const SummarizeColumnDrill: Drill = (opts: DrillOptions) => {
   const { aggregationOperators } = drill;
 
   return aggregationOperators
-    .filter(operator => operator)
+    .filter(Boolean)
     .map(operator => getAction(operator as AggregationOperator, opts));
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SummarizeColumnDrill;

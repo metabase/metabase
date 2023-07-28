@@ -4,7 +4,12 @@ title: Paid features
 
 # Paid features
 
-Some [Metabase plans](https://www.metabase.com/pricing) offer additional features to help organizations manage lots of people asking lots of questions. Much of the documentation for these features is grouped with relevant feature clusters, so this section is meant more as an index of all the cool tools you get on these paid plans.
+Some [Metabase plans](https://www.metabase.com/pricing) offer additional features to help organizations manage lots of people asking lots of questions. 
+
+- [Metabase Pro](https://www.metabase.com/product/pro)
+- [Metabase Enterprise Edition](https://www.metabase.com/product/enterprise)
+
+Much of the documentation for these features is grouped with relevant feature clusters, so this section is meant to be more of an index of all the cool tools you get on these paid plans.
 
 ## [List of premium features](./overview.md)
 

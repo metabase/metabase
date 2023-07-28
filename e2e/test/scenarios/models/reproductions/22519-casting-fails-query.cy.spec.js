@@ -24,7 +24,9 @@ describe.skip("issue 22519", () => {
 
     cy.visit(ratingDataModelUrl);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Don't cast").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("UNIX seconds → Datetime").click();
     cy.wait("@updateField");
   });
@@ -32,11 +34,13 @@ describe.skip("issue 22519", () => {
   it("model query should not fail when data model is using casting (metabase#22519)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("xavier");
 
     turnIntoModel();
 
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("xavier");
   });
 });

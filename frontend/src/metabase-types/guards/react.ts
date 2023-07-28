@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import * as ReactIs from "react-is";
 
 // checking to see if the `element` is in JSX.IntrinisicElements since they support refs

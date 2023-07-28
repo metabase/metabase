@@ -208,7 +208,7 @@
             :success-cases ["1"]}
            {:plumatic      su/BooleanString
             :malli         ms/BooleanString
-            :failed-cases  [:false :true true "f"]
+            :failed-cases  [:false :true true "f" "t"]
             :success-cases ["true" "false"]}
            {:plumatic      su/TemporalString
             :malli         ms/TemporalString

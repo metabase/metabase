@@ -25,6 +25,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -71,11 +72,12 @@
         (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
         (throw e)))))
 
-(defn v2-load
+(mu/defn v2-load
   "SerDes v2 load entry point.
 
    opts are passed to load-metabase"
-  [path opts]
+  [path
+   opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
   (plugins/load-plugins!)
   (mdb/setup-db!)
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
@@ -166,7 +168,7 @@
     (dump/dump path
                databases
                tables
-               (field/with-values fields)
+               (mapcat field/with-values (u/batches-of 32000 fields))
                metrics
                (select-segments-in-tables tables state)
                collections
@@ -179,29 +181,20 @@
   (dump/dump-dimensions path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 
-(defn- v2-extract
-  "Extract entities to store. Takes map of options.
-   :collections - optional seq of collection IDs"
-  [{:keys [collections] :as opts}]
-  (let [opts (cond-> opts
-               collections
-               (assoc :targets (for [c collections] ["Collection" c])))]
-    ;; if we have `:targets` (either because we created them from `:collections`, or because they were specified
-    ;; elsewhere) use [[v2.extract/extract-subtrees]]
-    (if (:targets opts)
-      (v2.extract/extract-subtrees opts)
-      (v2.extract/extract-metabase opts))))
-
 (defn v2-dump
   "Exports Metabase app data to directory at path"
-  [path opts]
+  [path {:keys [user-email collection-ids] :as opts}]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (mdb/setup-db!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (serdes/with-cache
-    (-> (v2-extract opts)
+    (-> (cond-> opts
+          (seq collection-ids) (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids))
+          user-email        (assoc :user-id (t2/select-one-pk User :email user-email :is_superuser true)))
+        v2.extract/extract
         (v2.storage/store! path)))
-  (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
+  (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦"))
+  ::v2-dump-complete)
 
 (defn seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them.

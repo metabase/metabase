@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import moment, { Moment } from "moment-timezone";
@@ -41,7 +41,7 @@ const SpecificDatePicker = ({
   onChange,
   onClear,
 }: SpecificDatePickerProps) => {
-  const [showCalendar, setShowCalendar] = React.useState(true);
+  const [showCalendar, setShowCalendar] = useState(true);
   const { hours, minutes, date } = getTimeComponent(value);
 
   const showTimeSelectors =
@@ -66,7 +66,7 @@ const SpecificDatePicker = ({
           value={date ? date.format(dateFormat) : ""}
           autoFocus={autoFocus}
           onFocus={onFocus}
-          onBlurChange={({ target: { value } }: any) => {
+          onBlurChange={({ target: { value } }) => {
             const date = moment(value, dateFormat);
             if (date.isValid()) {
               handleChange(date, hours, minutes);
@@ -112,4 +112,5 @@ const SpecificDatePicker = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SpecificDatePicker;

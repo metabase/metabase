@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback } from "react";
+import { ReactNode, useCallback } from "react";
 import { useField } from "formik";
 import { t } from "ttag";
 import SchedulePicker from "metabase/components/SchedulePicker";
@@ -47,4 +47,5 @@ const DatabaseSyncScheduleField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseSyncScheduleField;

@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 
 import { defer } from "metabase/lib/promise";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -37,7 +37,7 @@ const MOCK_QUERY = createMockStructuredDatasetQuery({
 function createMockMetadata(card?: Card) {
   const database = createSampleDatabase();
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [database],
       questions: card ? [card] : [],
     }),

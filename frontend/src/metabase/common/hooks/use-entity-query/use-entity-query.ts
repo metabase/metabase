@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useDeepCompareEffect } from "react-use";
 import type { Action } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { State } from "metabase-types/store";
@@ -27,7 +27,7 @@ export interface UseEntityOwnProps<TId, TItem> {
   requestType?: string;
 }
 
-export interface UseEntityQueryProps<TId, TQuery> {
+export interface UseEntityQueryProps<TId, TQuery = never> {
   id?: TId;
   query?: TQuery;
   reload?: boolean;
@@ -40,7 +40,7 @@ export interface UseEntityQueryResult<TItem> {
   error: unknown;
 }
 
-export const useEntityQuery = <TId, TItem, TQuery>(
+export const useEntityQuery = <TId, TItem, TQuery = never>(
   {
     id: entityId,
     query: entityQuery,
@@ -58,15 +58,18 @@ export const useEntityQuery = <TId, TItem, TQuery>(
   const options = { entityId, requestType };
   const data = useSelector(state => getObject(state, options));
   const isLoading = useSelector(state => getLoading(state, options));
+  const isActive = entityId != null && enabled;
+  const isLoadingOrDefault = isLoading ?? isActive;
   const error = useSelector(state => getError(state, options));
 
   const dispatch = useDispatch();
-  useEffect(() => {
-    if (entityId != null && enabled) {
+  useDeepCompareEffect(() => {
+    if (isActive) {
       const query = { ...entityQuery, id: entityId };
-      dispatch(fetch(query, { reload, requestType }));
+      const action = dispatch(fetch(query, { reload, requestType }));
+      Promise.resolve(action).catch(() => undefined);
     }
   }, [dispatch, fetch, entityId, entityQuery, enabled, reload, requestType]);
 
-  return { data, isLoading, error };
+  return { data, isLoading: isLoadingOrDefault, error };
 };

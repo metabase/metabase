@@ -3,7 +3,8 @@ import { color, lighten } from "metabase/lib/colors";
 import EntityMenu from "metabase/components/EntityMenu";
 
 export const CardMenuRoot = styled(EntityMenu)`
-  display: block;
+  display: flex;
+  align-items: center;
   margin: 0 0 0 0.5rem;
   cursor: pointer;
   color: ${lighten("text-light", 0.1)};

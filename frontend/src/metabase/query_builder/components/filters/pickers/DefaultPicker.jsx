@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+/* eslint-disable  react/jsx-key */
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
@@ -174,6 +174,7 @@ export default function DefaultPicker({
 
   return (
     <DefaultPickerContainer
+      data-testid="default-picker-container"
       limitHeight
       className={cx(className, "PopoverBody--marginBottom")}
     >

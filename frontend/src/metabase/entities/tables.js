@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { updateIn } from "icepick";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
@@ -93,10 +93,11 @@ const Tables = createEntity({
       ),
       withNormalize(TableSchema),
     )(
-      ({ id }, options = {}) =>
+      ({ id, ...params }, options = {}) =>
         (dispatch, getState) =>
           MetabaseApi.table_query_metadata({
             tableId: id,
+            ...params,
             ...options.params,
           }),
     ),

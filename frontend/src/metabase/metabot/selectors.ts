@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { getMetadata } from "metabase/selectors/metadata";
 import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";

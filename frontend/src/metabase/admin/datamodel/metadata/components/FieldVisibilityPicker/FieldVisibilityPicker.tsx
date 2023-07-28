@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
@@ -42,4 +42,5 @@ const getFieldId = (field: Field) => {
   return field.id;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FieldVisibilityPicker;

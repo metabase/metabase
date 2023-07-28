@@ -24,6 +24,7 @@ describe("scenarios > question > snippets", () => {
 
     // Add a snippet of that text
     cy.icon("snippet").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Create a snippet").click();
 
     modal().within(() => {
@@ -51,10 +52,12 @@ describe("scenarios > question > snippets", () => {
     openNativeEditor().type("select ");
     // 2. snippet
     cy.icon("snippet").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("stuff-snippet").click();
 
     // Open the snippet edit modal
     cy.icon("chevrondown").click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit").click();
 
     // Update the name and content
@@ -78,7 +81,7 @@ describe("scenarios > question > snippets", () => {
     cy.get(".ScalarValue").contains("2");
   });
 
-  it.skip("should update the snippet and apply it to the current query (metabase#15387)", () => {
+  it("should update the snippet and apply it to the current query (metabase#15387)", () => {
     // Create snippet 1
     cy.request("POST", "/api/native-query-snippet", {
       content: "ORDERS",
@@ -115,6 +118,7 @@ describe("scenarios > question > snippets", () => {
     });
 
     cy.get(".Visualization").as("results").findByText("37.65");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1

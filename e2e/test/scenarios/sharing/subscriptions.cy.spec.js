@@ -9,6 +9,12 @@ import {
   visitDashboard,
   sendEmailAndAssert,
   addOrUpdateDashboardCard,
+  addTextBox,
+  setTokenFeatures,
+  emailSubscriptionRecipients,
+  openEmailPage,
+  setupSubscriptionWithRecipient,
+  openPulseSubscription,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -24,6 +30,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       visitDashboard(DASHBOARD_ID);
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is looking empty.");
 
     cy.icon("share")
@@ -31,7 +38,8 @@ describe("scenarios > dashboard > subscriptions", () => {
       .should("have.attr", "aria-disabled", "true")
       .click();
 
-    cy.icon("subscription").should("not.exist");
+    cy.findByLabelText("subscriptions").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Share this dashboard with people *./i).should("not.exist");
   });
 
@@ -39,14 +47,9 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       visitDashboard(DASHBOARD_ID);
     });
-    cy.icon("pencil").click();
-    cy.icon("string").click();
-    cy.findByPlaceholderText(
-      "You can use Markdown here, and include variables {{like_this}}",
-    )
-      .click()
-      .type("Foo");
+    addTextBox("Foo");
     cy.button("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
     cy.icon("share").closest("a").click();
 
@@ -54,7 +57,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     // without a menu with sharing and dashboard subscription options.
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
-    cy.icon("subscription").should("not.exist");
+    cy.findByLabelText("subscriptions").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Share this dashboard with people *./i);
   });
 
@@ -76,13 +80,16 @@ describe("scenarios > dashboard > subscriptions", () => {
       it("should not enable subscriptions without the recipient (metabase#17657)", () => {
         openDashboardSubscriptions();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Email it").click();
 
         // Make sure no recipients have been assigned
         cy.findByPlaceholderText("Enter user names or email addresses");
 
         // Change the schedule to "Monthly"
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Hourly").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Monthly").click();
 
         sidebar().within(() => {
@@ -92,12 +99,14 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should allow creation of a new email subscription", () => {
         createEmailSubscription();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly");
       });
 
       it("should not render people dropdown outside of the borders of the screen (metabase#17186)", () => {
         openDashboardSubscriptions();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Email it").click();
         cy.findByPlaceholderText("Enter user names or email addresses").click();
 
@@ -119,7 +128,106 @@ describe("scenarios > dashboard > subscriptions", () => {
       beforeEach(createEmailSubscription);
       it("should show existing dashboard subscriptions", () => {
         openDashboardSubscriptions();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly");
+      });
+    });
+
+    describe("let non-users unsubscribe from subscriptions", () => {
+      it("should allow non-user to unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const dashboardName = "Orders in a dashboard";
+
+        visitDashboard(1);
+
+        setupSubscriptionWithRecipient(nonUserEmail);
+
+        emailSubscriptionRecipients();
+
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
+        });
+
+        openDashboardSubscriptions(1);
+        openPulseSubscription();
+
+        cy.findByLabelText("subscriptions sidebar")
+          .findByText(nonUserEmail)
+          .should("not.exist");
+      });
+
+      it("should allow non-user to undo-unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const dashboardName = "Orders in a dashboard";
+        visitDashboard(1);
+
+        setupSubscriptionWithRecipient(nonUserEmail);
+
+        emailSubscriptionRecipients();
+
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.intercept("/api/session/pulse/unsubscribe/undo").as("resubscribe");
+
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
+
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
+
+          cy.findByText("Undo").click();
+          cy.wait("@resubscribe");
+
+          cy.contains(
+            `Okay, ${nonUserEmail} is subscribed to the "${dashboardName}" alert again.`,
+          ).should("exist");
+        });
+
+        openDashboardSubscriptions(1);
+        openPulseSubscription();
+
+        cy.findByLabelText("subscriptions sidebar")
+          .findByText(nonUserEmail)
+          .should("exist");
+      });
+
+      it("should show 404 page when missing required parameters", () => {
+        const nonUserEmail = "non-user@example.com";
+
+        const params = {
+          hash: "459a8e9f8d9e",
+          email: nonUserEmail,
+        }; // missing pulse-id
+
+        cy.visit({
+          url: `/unsubscribe`,
+          qs: params,
+        });
+
+        cy.findByLabelText("error page").should("exist");
+      });
+
+      it("should show error message when server responds with an error", () => {
+        const nonUserEmail = "non-user@example.com";
+
+        const params = {
+          hash: "459a8e9f8d9e",
+          email: nonUserEmail,
+          "pulse-id": "f", // invalid pulse-id
+        };
+
+        cy.visit({
+          url: `/unsubscribe`,
+          qs: params,
+        });
+
+        cy.findByLabelText("error message").should("exist");
       });
     });
 
@@ -127,17 +235,23 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       // This is extremely fragile
       // TODO: update test once changes from `https://github.com/metabase/metabase/pull/14121` are merged into `master`
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Attach results")
         .parent()
         .parent()
         .next()
         .find("input") // Toggle
         .click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Questions to attach").click();
       clickButton("Done");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subscriptions");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Emailed hourly").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Delete this subscription").scrollIntoView();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Questions to attach");
       cy.findAllByRole("listitem")
         .contains("Orders") // yields the whole <li> element
@@ -148,15 +262,20 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     it("should not display 'null' day of the week (metabase#14405)", () => {
       assignRecipient();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("To:").click();
       cy.findAllByTestId("select-button").contains("Hourly").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Monthly").click();
       cy.findAllByTestId("select-button").contains("First").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("15th (Midpoint)").click();
       cy.findAllByTestId("select-button").contains("15th (Midpoint)").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First").click();
       clickButton("Done");
       // Implicit assertion (word mustn't contain string "null")
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Emailed monthly on the first (?!null)/);
     });
 
@@ -212,6 +331,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         );
       });
       // Click anywhere outside to close the popover
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("15705D").click();
       sendEmailAndAssert(email => {
         expect(email.html).not.to.include(
@@ -225,15 +345,13 @@ describe("scenarios > dashboard > subscriptions", () => {
       const TEXT_CARD = "FooBar";
 
       visitDashboard(1);
-      cy.icon("pencil").click();
-      cy.icon("string").click();
-      cy.findByPlaceholderText(
-        "You can use Markdown here, and include variables {{like_this}}",
-      ).type(TEXT_CARD);
+      addTextBox(TEXT_CARD);
       cy.button("Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You're editing this dashboard.").should("not.exist");
       assignRecipient();
       // Click outside popover to close it and at the same time check that the text card content is shown as expected
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(TEXT_CARD).click();
       sendEmailAndAssert(email => {
         expect(email.html).to.include(TEXT_CARD);
@@ -245,13 +363,16 @@ describe("scenarios > dashboard > subscriptions", () => {
     beforeEach(() => {
       mockSlackConfigured();
       openDashboardSubscriptions();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Send it to Slack").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Send this dashboard to Slack");
     });
 
     it("should not enable 'Done' button before channel is selected (metabase#14494)", () => {
       cy.findAllByRole("button", { name: "Done" }).should("be.disabled");
       cy.findByPlaceholderText("Pick a user or channel...").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("#work").click();
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
@@ -261,6 +382,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         "be.disabled",
       );
       cy.findByPlaceholderText("Pick a user or channel...").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("#work").click();
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
@@ -280,9 +402,11 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should have a list of the default parameters applied to the subscription", () => {
         assignRecipient();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text is Corbin Mertz");
         clickButton("Done");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text is Corbin Mertz");
       });
     });
@@ -290,15 +414,18 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describeEE("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
-      cy.visit(`/dashboard/1`);
+      setTokenFeatures("all");
       setupSMTP();
+      cy.visit(`/dashboard/1`);
     });
 
     describe("with no parameters", () => {
       it("should have no parameters section", () => {
         openDashboardSubscriptions();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Email it").click();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Set filter values for when this gets sent").should(
           "not.exist",
         );
@@ -314,6 +441,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text is Corbin Mertz");
       });
 
@@ -321,6 +449,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         assignRecipient();
         clickButton("Done");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly").click();
 
         cy.findAllByText("Corbin Mertz").last().click();
@@ -336,6 +465,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         clickButton("Done");
         cy.wait("@pulsePut");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Text is 2 selections and 1 more filter");
       });
     });
@@ -346,7 +476,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = 1) {
   // Orders in a dashboard
   visitDashboard(dashboard_id);
-  cy.icon("subscription").click();
+  cy.findByLabelText("subscriptions").click();
 }
 
 function assignRecipient({ user = admin, dashboard_id = 1 } = {}) {

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import PropTypes from "prop-types";
 import moment from "moment-timezone";
 
@@ -129,7 +129,7 @@ export function BaseTableItem({
                 name="info"
                 size={16}
                 tooltip={
-                  <Markdown disallowHeading unstyleLinks>
+                  <Markdown dark disallowHeading unstyleLinks>
                     {item.description}
                   </Markdown>
                 }

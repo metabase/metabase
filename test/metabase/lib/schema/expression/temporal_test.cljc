@@ -4,7 +4,8 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema]
-   [metabase.lib.schema.expression :as expression]))
+   [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.expression.temporal :as temporal]))
 
 (comment metabase.lib.schema/keep-me)
 
@@ -68,3 +69,64 @@
     [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} :current :day]
     [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} :current :minute]
     [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} :current]))
+
+(deftest ^:parallel timezone-id-test
+  (are [input error] (= error
+                        (me/humanize (mc/explain ::temporal/timezone-id input)))
+    "US/Pacific"  nil
+    "US/Specific" ["invalid timezone ID: \"US/Specific\""]
+    ""            ["should be at least 1 characters" "non-blank string" "invalid timezone ID: \"\""]
+    "  "          ["non-blank string" "invalid timezone ID: \"  \""]
+    nil           ["should be a string" "non-blank string" "invalid timezone ID: nil"]))
+
+(deftest ^:parallel convert-timezone-test
+  (are [clause error] (= error
+                         (me/humanize (mc/explain :mbql.clause/convert-timezone clause)))
+    ;; with both target and source timezone
+    [:convert-timezone
+     {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+     [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+     "Asia/Seoul"
+     "US/Pacific"]
+    nil
+
+    ;; with just the target timezone
+    [:convert-timezone
+     {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+     [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+     "Asia/Seoul"]
+    nil
+
+    ;; source cannot be nil
+    [:convert-timezone
+     {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+     [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+     "Asia/Seoul"
+     nil]
+    [nil nil nil nil ["should be a string" "non-blank string" "invalid timezone ID: nil" "Valid :convert-timezone clause"]]
+
+    ;; invalid timezone ID
+    [:convert-timezone
+     {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+     [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+     "US/Specific"]
+    [nil nil nil ["invalid timezone ID: \"US/Specific\""]]))
+
+(deftest ^:parallel get-week-test
+  (are [clause error] (= error
+                         (me/humanize (mc/explain :mbql.clause/get-week clause)))
+    ;; without mode
+    [:get-week {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-05-25"]
+    nil
+
+    ;; with mode
+    [:get-week {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-05-25" :iso]
+    nil
+
+    ;; invalid mode
+    [:get-week {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-05-25" :isolation]
+    [nil nil nil ["should be either :iso, :us or :instance" "Valid :get-week clause"]]
+
+    ;; mode is not allowed to be nil
+    [:get-week {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-05-25" nil]
+    [nil nil nil ["should be either :iso, :us or :instance" "Valid :get-week clause"]]))

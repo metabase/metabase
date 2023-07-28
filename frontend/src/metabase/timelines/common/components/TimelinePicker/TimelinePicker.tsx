@@ -1,7 +1,8 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { msgid, ngettext } from "ttag";
 import { getEventCount } from "metabase/lib/timelines";
 import { Timeline } from "metabase-types/api";
+import { IconName } from "metabase/core/components/Icon";
 import {
   CardAside,
   CardBody,
@@ -54,7 +55,7 @@ const TimelineCard = ({
   return (
     <CardRoot key={timeline.id} isSelected={isSelected} onClick={handleClick}>
       <CardIconContainer>
-        <CardIcon name={timeline.icon} />
+        <CardIcon name={timeline.icon as unknown as IconName} />
       </CardIconContainer>
       <CardBody>
         <CardTitle>{timeline.name}</CardTitle>
@@ -71,4 +72,5 @@ const TimelineCard = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TimelinePicker;

@@ -1,7 +1,7 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import cx from "classnames";
 import moment, { Moment } from "moment-timezone";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   getDayOfWeekOptions,
   getFirstDayOfWeekIndex,
@@ -32,6 +32,7 @@ type State = {
   current?: Moment;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Calendar extends Component<CalendarProps, State> {
   constructor(props: CalendarProps) {
     super(props);

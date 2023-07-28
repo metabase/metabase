@@ -1,17 +1,47 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Database, User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import DatabaseStatus from "./DatabaseStatus";
+
+interface SetupOpts {
+  user?: User;
+  databases?: Database[];
+}
+
+const setup = ({ user, databases }: SetupOpts = {}) => {
+  const state = createMockState({
+    entities: createMockEntitiesState({ databases }),
+  });
+  const metadata = getMetadata(state);
+
+  renderWithProviders(
+    <DatabaseStatus
+      user={user}
+      databases={databases?.map(({ id }) =>
+        checkNotNull(metadata.database(id)),
+      )}
+    />,
+    { storeInitialState: state },
+  );
+};
 
 describe("DatabaseStatus", () => {
   it("should toggle between small and large versions", () => {
-    const user = createMockUser({ id: 1 });
-    const databases = [
-      createMockDatabase({ creator_id: 1, initial_sync_status: "incomplete" }),
-    ];
+    setup({
+      user: createMockUser({ id: 1 }),
+      databases: [
+        createMockDatabase({
+          creator_id: 1,
+          initial_sync_status: "incomplete",
+        }),
+      ],
+    });
 
-    render(<DatabaseStatus user={user} databases={databases} />);
     expect(screen.getByText("Syncing…")).toBeInTheDocument();
 
     userEvent.click(screen.getByLabelText("chevrondown icon"));
@@ -22,18 +52,21 @@ describe("DatabaseStatus", () => {
   });
 
   it("should not render when data is not loaded", () => {
-    render(<DatabaseStatus />);
+    setup();
 
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
 
   it("should not render when databases are created by another user", () => {
-    const user = createMockUser({ id: 1 });
-    const databases = [
-      createMockDatabase({ creator_id: 2, initial_sync_status: "incomplete" }),
-    ];
-
-    render(<DatabaseStatus user={user} databases={databases} />);
+    setup({
+      user: createMockUser({ id: 1 }),
+      databases: [
+        createMockDatabase({
+          creator_id: 2,
+          initial_sync_status: "incomplete",
+        }),
+      ],
+    });
 
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });

@@ -1,8 +1,8 @@
-import React, { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
 import { color } from "metabase/lib/colors";

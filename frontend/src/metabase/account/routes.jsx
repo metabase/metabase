@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { IndexRedirect } from "react-router";
 import { Route } from "metabase/hoc/Title";

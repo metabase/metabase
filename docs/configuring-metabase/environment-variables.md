@@ -185,6 +185,18 @@ Since: v35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
 
+### `MB_AUDIT_MAX_RETENTION_DAYS`
+
+Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
+Type: integer<br>
+Default: 0 (Metabase keeps all rows)<br>
+
+Sets the maximum number of days Metabase preserves rows in the `query_execution` table in the application database. 
+
+Twice a day, Metabase will delete rows older than this threshold. 
+
+The minimum value is `30` days (Metabase will treat entered values of `1` to `29` the same as `30`). If set to `0`, Metabase will keep all rows.
+
 ### `MB_BREAKOUT_BIN_WIDTH`
 
 Type: double<br>

@@ -43,7 +43,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     // Drill-through
     cy.findAllByTestId("cell-data").get(".link").contains("0").realClick();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 0");
 
     const getVisualizationSettings = targetId => ({
@@ -100,7 +102,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
                 card_id,
                 row: 0,
                 col: 0,
-                size_x: 12,
+                size_x: 16,
                 size_y: 10,
                 visualization_settings: getVisualizationSettings(question1Id),
               },
@@ -115,9 +117,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     cy.findAllByTestId("cell-data").contains("5").first().click();
 
     // Make sure filter is set
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rating is equal to 5");
 
     // Make sure it's connected to the original question
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Started from 16334");
 
     // Make sure the original visualization didn't change
@@ -166,6 +170,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     cy.findByTestId("gauge-arc-1").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
   });
 
@@ -184,6 +189,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     cy.findByTestId("progress-bar").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
   });
 });
@@ -201,7 +207,7 @@ const getDashcardDetails = ({ id, card_id, target_id }) => ({
   card_id,
   row: 0,
   col: 0,
-  size_x: 12,
+  size_x: 16,
   size_y: 10,
   visualization_settings: {
     click_behavior: {

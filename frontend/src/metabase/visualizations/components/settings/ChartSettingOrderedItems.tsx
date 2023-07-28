@@ -1,4 +1,4 @@
-import React, { ReactElement } from "react";
+import { ReactElement } from "react";
 
 import type { SortableElementProps } from "react-sortable-hoc";
 import {
@@ -58,6 +58,7 @@ const SortableColumn = SortableElement(function SortableColumn<
       }
       color={item.color}
       draggable={!isDragDisabled}
+      role="listitem"
     />
   );
 }) as unknown as <T extends SortableItem>(

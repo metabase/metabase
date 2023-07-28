@@ -1,6 +1,8 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+import * as React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
+import { IconName } from "metabase/core/components/Icon";
 import {
   SegmentedList,
   SegmentedItem,
@@ -26,7 +28,7 @@ type SegmentedControlValue = string | number;
 export type SegmentedControlOption<Value extends SegmentedControlValue> = {
   name?: React.ReactNode;
   value: Value;
-  icon?: string;
+  icon?: IconName;
   iconSize?: number;
 
   // Expects a color alias, not a color code
@@ -63,7 +65,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
     option => option.value === value,
   );
   return (
-    <SegmentedList {...props}>
+    <SegmentedList {...props} role="radiogroup">
       {options.map((option, index) => {
         const isSelected = index === selectedOptionIndex;
         const id = `${name}-${option.value}`;
@@ -81,6 +83,8 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
             variant={variant}
             selectedColor={selectedColor}
             inactiveColor={inactiveColor}
+            role="radio"
+            aria-checked={isSelected}
           >
             <SegmentedItemLabel
               id={labelId}

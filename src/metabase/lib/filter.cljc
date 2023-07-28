@@ -1,21 +1,26 @@
 (ns metabase.lib.filter
   (:refer-clojure
    :exclude
-   [filter and or not = < <= > ->> >= not-empty case])
+   [filter and or not = < <= > >= not-empty case])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.schema]
-   [metabase.lib.schema.common :as schema.common]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.filter])))
-
-(comment metabase.lib.schema/keep-me)
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
@@ -154,10 +159,10 @@
     stage-number :- [:maybe :int]
     boolean-expression]
    (let [stage-number (clojure.core/or stage-number -1)
-         new-filter (lib.common/->op-arg query stage-number boolean-expression)]
+         new-filter (lib.common/->op-arg boolean-expression)]
      (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter))))
 
-(mu/defn filters :- [:maybe [:sequential ::schema.common/external-op]]
+(mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the current filters in stage with `stage-number` of `query`.
   If `stage-number` is omitted, the last stage is used. Logicaly, the
   filter attached to the query is the conjunction of the expressions
@@ -167,5 +172,73 @@
   ([query :- :metabase.lib.schema/query] (filters query nil))
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]]
-   (some->> (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))
-            (mapv lib.common/external-op))))
+   (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
+
+(def ^:private ColumnWithOperators
+  [:merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:operators {:optional true} [:sequential ::lib.schema.filter/operator]]]])
+
+(mu/defn filterable-column-operators :- [:maybe [:sequential ::lib.schema.filter/operator]]
+  "Returns the operators for which `filterable-column` is applicable."
+  [filterable-column :- ColumnWithOperators]
+  (:operators filterable-column))
+
+(mu/defn filterable-columns :- [:sequential ColumnWithOperators]
+  "Get column metadata for all the columns that can be filtered in
+  the stage number `stage-number` of the query `query`
+  If `stage-number` is omitted, the last stage is used.
+  The rules for determining which columns can be broken out by are as follows:
+
+  1. custom `:expressions` in this stage of the query
+
+  2. Fields 'exported' by the previous stage of the query, if there is one;
+     otherwise Fields from the current `:source-table`
+
+  3. Fields exported by explicit joins
+
+  4. Fields in Tables that are implicitly joinable."
+
+  ([query :- ::lib.schema/query]
+   (filterable-columns query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (let [stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         with-operators (fn [column]
+                          (when-let [operators (clojure.core/not-empty (lib.filter.operator/filter-operators column))]
+                            (assoc column :operators operators)))]
+     (clojure.core/not-empty
+       (into []
+             (keep with-operators)
+             columns)))))
+
+(mu/defn filter-clause :- ::lib.schema.expression/boolean
+  "Returns a standalone filter clause for a `filter-operator`,
+  a `column`, and arguments."
+  [filter-operator :- ::lib.schema.filter/operator
+   column :- lib.metadata/ColumnMetadata
+   & args]
+  (lib.options/ensure-uuid (into [(:short filter-operator) {} (lib.common/->op-arg column)]
+                                 (map lib.common/->op-arg args))))
+
+(mu/defn filter-operator :- ::lib.schema.filter/operator
+  "Return the filter operator of the boolean expression `filter-clause`
+  at `stage-number` in `query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([query a-filter-clause]
+   (filter-operator query -1 a-filter-clause))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (let [[op _ first-arg] a-filter-clause
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         ref->col (zipmap (map lib.ref/ref columns) columns)
+         col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))]
+     (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
+                                    (lib.filter.operator/filter-operators (ref->col col-ref)))
+                      (lib.filter.operator/operator-def op)))))

@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
@@ -37,4 +36,5 @@ function FilterStep({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FilterStep;

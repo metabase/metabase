@@ -6,6 +6,7 @@ import {
   sidebar,
   visitDashboard,
   clickSend,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -18,6 +19,7 @@ describeEE("issue 18669", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     setupSMTP();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
@@ -30,6 +32,7 @@ describeEE("issue 18669", { tags: "@external" }, () => {
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
     cy.icon("subscription").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")

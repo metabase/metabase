@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 import { t } from "ttag";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Search from "metabase/entities/search";
@@ -49,7 +49,7 @@ const SavedQuestionList = ({
           >
             {({ list }: { list: CollectionItem[] }) => {
               return (
-                <React.Fragment>
+                <Fragment>
                   {list.map(collectionItem => {
                     const { id, name, moderated_status } = collectionItem;
                     const virtualTableId = getQuestionVirtualTableId(id);
@@ -73,7 +73,7 @@ const SavedQuestionList = ({
                     );
                   })}
                   {list.length === 0 ? emptyState : null}
-                </React.Fragment>
+                </Fragment>
               );
             }}
           </Search.ListLoader>
@@ -84,4 +84,5 @@ const SavedQuestionList = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SavedQuestionList;

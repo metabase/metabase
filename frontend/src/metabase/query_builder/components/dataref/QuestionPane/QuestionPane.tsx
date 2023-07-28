@@ -1,5 +1,3 @@
-import React from "react";
-import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
@@ -11,12 +9,11 @@ import {
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { getQuestionFromCard } from "metabase/query_builder/selectors";
-import type { Card } from "metabase-types/api/card";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
 import Table from "metabase-lib/metadata/Table";
 import Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 import FieldList from "../FieldList";
 import { PaneContent } from "../Pane.styled";
 import {
@@ -32,14 +29,9 @@ interface QuestionPaneProps {
   onItemClick: (type: string, item: unknown) => void;
   onBack: () => void;
   onClose: () => void;
-  card: Card;
   question: Question;
   collection: Collection | null;
 }
-
-const mapStateToProps = (state: State, { card }: QuestionPaneProps) => ({
-  question: getQuestionFromCard(state, card),
-});
 
 const QuestionPane = ({
   onItemClick,
@@ -66,7 +58,7 @@ const QuestionPane = ({
         </QuestionPaneDescription>
         <QuestionPaneDetail>
           <QuestionPaneDetailLink
-            href={question.getUrl()}
+            href={ML_Urls.getUrl(question)}
             target="_blank"
             rel="noreferrer"
           >
@@ -109,14 +101,14 @@ const QuestionPane = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({
     id: (_state: State, props: QuestionPaneProps) => props.question.id,
-    entityAlias: "card",
   }),
   Collections.load({
-    id: (_state: State, props: QuestionPaneProps) => props.card.collection_id,
+    id: (_state: State, props: QuestionPaneProps) =>
+      props.question.collectionId(),
     loadingAndErrorWrapper: false,
   }),
-  connect(mapStateToProps),
 )(QuestionPane);

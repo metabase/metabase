@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -71,6 +70,7 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Databases.loadList({
   query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
 })(MetadataEditor);

@@ -60,9 +60,11 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
   it(`should work when set as the default filter and when that filter is removed (metabase#20493)`, () => {
     setFilter("Text or Category", "Is");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("Is").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     applyFilterByType("Is", "Gizmo");
@@ -81,6 +83,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     applyFilterByType("Is", "Doohickey");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 });

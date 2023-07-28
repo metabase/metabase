@@ -82,13 +82,13 @@ describe("issue 29517 - nested question based on native model with remapped valu
     // We can click on any circle; this index was chosen randomly
     cy.get("circle").eq(25).click({ force: true });
     popover()
-      .findByText(/^View these/)
+      .findByText(/^See these/)
       .click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").should(
       "contain",
-      "Created At is May, 2018",
+      "Created At is May 2024",
     );
     cy.findByTestId("view-footer").should("contain", "Showing 520 rows");
   });

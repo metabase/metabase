@@ -1,5 +1,3 @@
-import React from "react";
-
 interface MetadataSectionHeaderProps {
   title: string;
   description?: string;
@@ -15,4 +13,5 @@ export const MetadataSectionHeader = ({
   </div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetadataSectionHeader;

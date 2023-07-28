@@ -1,5 +1,3 @@
-import React from "react";
-
 import Button from "metabase/core/components/Button";
 
 import type { VisualizationSettings } from "metabase-types/api";
@@ -29,4 +27,5 @@ function ChartSettingsErrorButton({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsErrorButton;

@@ -1,4 +1,3 @@
-import React from "react";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import HelpCard from "metabase/components/HelpCard";
@@ -36,4 +35,5 @@ const DatabaseHelpCard = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseHelpCard;

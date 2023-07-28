@@ -1,5 +1,3 @@
-import React from "react";
-
 import OutlinedText from "metabase/static-viz/components/Text/OutlinedText";
 import type { Position, TextAnchor } from "./types";
 
@@ -12,6 +10,7 @@ interface GaugeLabelProps {
   textAnchor?: TextAnchor;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function GaugeLabel({
   fill,
   stroke,

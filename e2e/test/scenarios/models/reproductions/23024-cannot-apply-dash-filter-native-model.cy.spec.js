@@ -4,9 +4,10 @@ import {
   popover,
   restore,
   visitDashboard,
+  setModelMetadata,
+  getDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { setModelMetadata } from "../helpers/e2e-models-metadata-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -21,7 +22,8 @@ describe("issue 23024", () => {
     cy.createNativeQuestion(
       {
         native: {
-          query: `select * from products limit 5`,
+          query: `select *
+                  from products limit 5`,
         },
         dataset: true,
       },
@@ -51,14 +53,15 @@ describe("issue 23024", () => {
 
     cy.icon("filter").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Text or Category").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Is").click();
 
-    cy.findByText("Column to filter on")
-      .parent()
-      .within(() => {
-        cy.findByText("Select…").click();
-      });
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("Select…").click();
+    });
 
     popover().contains("Category");
   });

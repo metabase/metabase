@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { Link } from "react-router";
 import {
@@ -18,6 +17,7 @@ interface EmbeddingOptionProps {
   };
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function EmbeddingOption({ setting }: EmbeddingOptionProps) {
   return (
     <Link

@@ -1,4 +1,4 @@
-import React, { FocusEvent, useCallback, useMemo } from "react";
+import { FocusEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { FontFile } from "metabase-types/api";
@@ -105,4 +105,5 @@ const FontFileRow = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FontFilesWidget;

@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import * as React from "react";
 import _ from "underscore";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import { IconProps } from "metabase/components/Icon";
+import { IconName, IconProps } from "metabase/core/components/Icon";
 
 import {
   FullWidthLink,
@@ -18,7 +19,7 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: string | IconProps | React.ReactElement;
+  icon?: IconName | IconProps | React.ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: React.ReactNode;
@@ -103,6 +104,7 @@ function SidebarLink({
 
 export type { SidebarLinkProps };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SidebarLink, {
   NameContainers: [ItemName, TreeNode.NameContainer],
   Icon: SidebarIcon,

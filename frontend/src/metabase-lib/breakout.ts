@@ -1,28 +1,36 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { Clause, ColumnMetadata, Query } from "./types";
-
-const DEFAULT_STAGE_INDEX = -1;
+import type { BreakoutClause, ColumnMetadata, Query } from "./types";
+import { removeClause } from "./query";
 
 export function breakoutableColumns(
   query: Query,
-  stageIndex = DEFAULT_STAGE_INDEX,
+  stageIndex: number,
 ): ColumnMetadata[] {
   return ML.breakoutable_columns(query, stageIndex);
 }
 
-export function breakouts(
-  query: Query,
-  stageIndex = DEFAULT_STAGE_INDEX,
-): Clause[] {
+export function breakouts(query: Query, stageIndex: number): BreakoutClause[] {
   return ML.breakouts(query, stageIndex);
 }
 
-declare function BreakoutFn(query: Query, column: ColumnMetadata): Query;
-
-declare function BreakoutFn(
+export function breakout(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
-): Query;
+): Query {
+  return ML.breakout(query, stageIndex, column);
+}
 
-export const breakout: typeof BreakoutFn = ML.breakout;
+export function replaceBreakouts(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+) {
+  let nextQuery = query;
+
+  breakouts(query, stageIndex).forEach(clause => {
+    nextQuery = removeClause(nextQuery, stageIndex, clause);
+  });
+
+  return breakout(nextQuery, stageIndex, column);
+}

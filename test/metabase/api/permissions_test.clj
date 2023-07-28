@@ -4,19 +4,23 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.permissions :as api.permissions]
+   [metabase.config :as config]
    [metabase.models
-    :refer [Database Permissions PermissionsGroup PermissionsGroupMembership Table User]]
+    :refer [Database
+            Permissions
+            PermissionsGroup
+            PermissionsGroupMembership
+            Table
+            User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   #_{:clj-kondo/ignore [:unused-namespace]}
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -51,7 +55,7 @@
         (check-default-groups-returned id->group))
 
       (testing "should return empty groups"
-        (mt/with-temp PermissionsGroup [group]
+        (t2.with-temp/with-temp [PermissionsGroup group]
           (let [id->group (m/index-by :id (fetch-groups))]
             (check-default-groups-returned id->group)
             (testing "empty group should be returned"
@@ -61,7 +65,7 @@
                            (get id->group (:id group)))))))))
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 "permissions/group"))))))
+             (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
@@ -142,7 +146,7 @@
 (deftest fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
-      (mt/with-temp Database [{db-id :id}]
+      (t2.with-temp/with-temp [Database {db-id :id}]
         (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph")]
           (is (partial= {:groups {(u/the-id (perms-group/admin))
                                   {db-id {:data {:native "write" :schemas "all"}}}}}
@@ -154,7 +158,7 @@
 (deftest fetch-perms-graph-v2-test
   (testing "GET /api/permissions/graph-v2"
     (testing "make sure we can fetch the perms graph from the API"
-      (mt/with-temp Database [{db-id :id}]
+      (t2.with-temp/with-temp [Database {db-id :id}]
         (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph-v2")]
           (is (partial= {:groups {(u/the-id (perms-group/admin))
                                   {db-id {:data {:native "write" :schemas "all"}}}}}
@@ -167,7 +171,7 @@
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
       (let [db-id (mt/id :venues)]
-        (mt/with-temp PermissionsGroup [group]
+        (t2.with-temp/with-temp [PermissionsGroup group]
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
@@ -180,7 +184,7 @@
                  (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)])))))
 
       (testing "Table-specific perms"
-        (mt/with-temp PermissionsGroup [group]
+        (t2.with-temp/with-temp [PermissionsGroup group]
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
@@ -223,7 +227,7 @@
     (testing "permissions when group has no permissions"
       (mt/with-temp* [PermissionsGroup [group]]
         (mt/user-http-request :crowberto :put 200 "permissions/graph"
-         (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
+                              (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
         (is (empty? (t2/select Permissions :group_id (u/the-id group))))
         (is (= nil (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
         (is (= nil (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
@@ -256,10 +260,6 @@
       (is (= "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature."
              (mt/user-http-request :crowberto :put 402 "permissions/graph"
                                    (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))
-(defn- ee-features-enabled? []
-  (u/ignore-exceptions
-   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
 
 (deftest update-execution-perms-graph-test
   (mt/with-model-cleanup [Permissions]
@@ -278,7 +278,7 @@
              :crowberto :put 402 "permissions/execution/graph"
              (assoc-in (perms/execution-perms-graph) [:groups group-id] :all)))))
 
-      (when (ee-features-enabled?)
+      (when config/ee-available?
         (testing "with :advanced-permissions feature flag"
           (premium-features-test/with-premium-features #{:advanced-permissions}
             (testing "for All Users"
@@ -310,7 +310,7 @@
              :crowberto :put 402 "permissions/execution/graph"
              (assoc-in (perms/execution-perms-graph) [:groups group-id db-id] :all))))
 
-        (when (ee-features-enabled?)
+        (when config/ee-available?
           (testing "with :advanced-permissions feature flag"
             (premium-features-test/with-premium-features #{:advanced-permissions}
               (testing "for All Users"

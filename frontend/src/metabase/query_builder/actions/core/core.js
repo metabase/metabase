@@ -15,7 +15,10 @@ import { openUrl } from "metabase/redux/app";
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Revision from "metabase/entities/revisions";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
@@ -183,9 +186,10 @@ export const apiCreateQuestion = question => {
       : question;
 
     const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
     const questionToCreate = questionWithVizSettings
       .setQuery(question.query().clean())
-      .setResultsMetadata(resultsMetadata);
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
     const createdQuestion = await reduxCreateQuestion(
       questionToCreate,
       dispatch,
@@ -225,7 +229,18 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    rerunQuery = rerunQuery ?? getIsResultDirty(getState());
+    const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
+
+    if (question.isDataset()) {
+      resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
+        resultsMetadata.columns,
+      );
+    }
+
+    if (question.isStructured()) {
+      rerunQuery = rerunQuery ?? isResultDirty;
+    }
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -233,13 +248,12 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    const resultsMetadata = getResultsMetadata(getState());
     const questionToUpdate = questionWithVizSettings
       // Before we clean the query, we make sure question is not treated as a dataset
       // as calling table() method down the line would bring unwanted consequences
       // such as dropping joins (as joins are treated differently between pure questions and datasets)
       .setQuery(question.setDataset(false).query().clean())
-      .setResultsMetadata(resultsMetadata);
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
@@ -262,7 +276,16 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       updatedQuestion.type(),
     );
 
-    dispatch({ type: API_UPDATE_QUESTION, payload: updatedQuestion.card() });
+    await dispatch({
+      type: API_UPDATE_QUESTION,
+      payload: updatedQuestion.card(),
+    });
+
+    if (question.isDataset()) {
+      // this needs to happen after the question update completes in case we have changed the type
+      // of the primary key field in the same update
+      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+    }
 
     const metadataOptions = { reload: question.isDataset() };
     await dispatch(loadMetadataForCard(question.card(), metadataOptions));
@@ -277,16 +300,28 @@ export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => {
-    return { id: parameterId, value };
+    return { id: parameterId, value: normalizeValue(value) };
   },
 );
+
+function normalizeValue(value) {
+  if (value === "") {
+    return null;
+  }
+
+  if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+
+  return value;
+}
 
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   revision => {
     return async dispatch => {
-      await revision.revert();
+      await dispatch(Revision.objectActions.revert(revision));
       await dispatch(reloadCard());
     };
   },

@@ -15,7 +15,7 @@ To test your driver, you'll need to:
 
 - Move your plugin into the [`modules/drivers`](https://github.com/metabase/metabase/tree/master/modules/drivers) directory in the Metabase repository.
 - Add _test extensions_ to your driver.
-- Edit [`.circleci/config.yml`](https://github.com/metabase/metabase/blob/master/.circleci/config.yml) to tell CircleCI how to set up a Docker image for your database and run tests against it.
+- Edit [`.github/workflows/drivers.yml`](https://github.com/metabase/metabase/blob/master/.github/workflows/drivers.yml) to tell GitHub Actions how to set up a Docker image for your database and run tests against it.
 
 ## Add test extensions to your driver
 
@@ -196,51 +196,43 @@ This is actually a common problem, and luckily we have figured out how to work a
 
 # Setting up CI
 
-Once you have all the tests passing, you'll need to set up CircleCI to run those tests against your driver. You'll need to add a step to [`./circleci/config.yml`](https://github.com/metabase/metabase/blob/master/.circleci/config.yml) to run tests against your database, then add that step to the "workflows" at the bottom of the config file.
+Once you have all the tests passing, you'll need to set up GitHub Actions to run those tests against your driver. You'll need to add a new job to [`.github/workflows/drivers.yml`](https://github.com/metabase/metabase/blob/master/.github/workflows/drivers.yml) to run tests against your database.
 
 Here is an example configuration for PostgreSQL.
 
 ```yaml
-postgres-latest:
-  working_directory: /home/circleci/metabase/metabase/
-  docker:
-    - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      environment:
-        MB_DB_TYPE: postgres
-        MB_DB_PORT: 5432
-        MB_DB_HOST: localhost
-        MB_DB_DBNAME: metabase_test
-        MB_DB_USER: metabase_test
-        MB_POSTGRESQL_TEST_USER: metabase_test
-    - image: circleci/postgres:latest
-      environment:
-        POSTGRES_USER: metabase_test
-        POSTGRES_DB: metabase_test
+be-tests-postgres-latest-ee:
+  needs: files-changed
+  if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+  runs-on: ubuntu-22.04
+  timeout-minutes: 60
+  env:
+    CI: 'true'
+    DRIVERS: postgres
+    MB_DB_TYPE: postgres
+    MB_DB_PORT: 5432
+    MB_DB_HOST: localhost
+    MB_DB_DBNAME: circle_test
+    MB_DB_USER: circle_test
+    MB_POSTGRESQL_TEST_USER: circle_test
+    MB_POSTGRES_SSL_TEST_SSL: true
+    MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
+    MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
+  services:
+    postgres:
+      image: circleci/postgres:latest
+      ports:
+        - "5432:5432"
+      env:
+        POSTGRES_USER: circle_test
+        POSTGRES_DB: circle_test
         POSTGRES_HOST_AUTH_METHOD: trust
+  steps:
+  - uses: actions/checkout@v3
+  - name: Test Postgres driver (latest)
+    uses: ./.github/actions/test-driver
+    with:
+      junit-name: 'be-tests-postgres-latest-ee'
 ```
 
-and the steps:
-
-```
-       - test-driver:
-          name: be-tests-postgres-ee
-          description: "(9.6)"
-          requires:
-            - be-tests-java-8-ee
-          e: postgres-9-6
-          driver: postgres
-
-      - test-driver:
-          name: be-tests-postgres-latest-ee
-          description: "(Latest)"
-          requires:
-            - be-tests-java-8-ee
-          e: postgres-latest
-          driver: postgres
-          extra-env: >-
-            MB_POSTGRES_SSL_TEST_SSL=true
-            MB_POSTGRES_SSL_TEST_SSL_MODE=verify-full
-            MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH=/home/circleci/metabase/metabase/test-resources/certificates/us-east-2-bundle.pem
-```
-
-For more on what it is you're doing here and how all this works, see [CircleCI 2.0 Workflows](https://circleci.com/docs/2.0/workflows/).
+For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions).

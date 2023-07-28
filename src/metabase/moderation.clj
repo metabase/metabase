@@ -28,7 +28,7 @@
   cards. In the future could have dashboards here as well."
   [items]
   ;; no need to do work on empty items. Also, can have nil here due to text cards. I think this is a bug in toucan. To
-  ;; get here we are `(hydrate dashboard [:ordered_cards [:card :moderation_reviews] :series] ...)` But ordered_cards
+  ;; get here we are `(t2/hydrate dashboard [:ordered_cards [:card :moderation_reviews] :series] ...)` But ordered_cards
   ;; dont have to have cards. but the hydration will pass the nil card id into here.  NOTE: it is important that each
   ;; item that comes into this comes out. The nested hydration is positional, not by an id so everything that comes in
   ;; must go out in the same order

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -59,7 +59,7 @@ function CreateActionForm({
       onSubmit={onCreate}
     >
       {({ isValid }) => (
-        <Form disabled={!isValid}>
+        <Form disabled={!isValid} data-testid="create-action-form">
           <FormInput
             name="name"
             title={t`Name`}
@@ -86,4 +86,5 @@ function CreateActionForm({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CreateActionForm;

@@ -1,4 +1,3 @@
-import React from "react";
 import type { WritebackAction } from "metabase-types/api";
 
 import ImplicitActionContextProvider, {
@@ -30,4 +29,5 @@ function ActionContextProvider({ initialAction, ...props }: Props) {
   return <QueryActionContextProvider {...props} />;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionContextProvider;

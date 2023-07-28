@@ -74,6 +74,7 @@ describe("issue 20809", () => {
       expect(response.body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 });

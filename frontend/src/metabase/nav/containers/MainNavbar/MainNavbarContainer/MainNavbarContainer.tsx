@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { LocationDescriptor } from "history";
@@ -7,7 +7,7 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Bookmark, Collection, Database, User } from "metabase-types/api";
+import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
@@ -27,6 +27,7 @@ import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
+import Database from "metabase-lib/metadata/Database";
 
 import { MainNavbarProps, SelectedItem } from "../types";
 import NavbarLoadingView from "../NavbarLoadingView";
@@ -179,6 +180,7 @@ function MainNavbarContainer({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Bookmarks.loadList({
     loadingAndErrorWrapper: false,

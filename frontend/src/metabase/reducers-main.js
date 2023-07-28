@@ -8,7 +8,7 @@ import { PLUGIN_REDUCERS } from "metabase/plugins";
 import admin from "metabase/admin/admin";
 
 /* setup */
-import * as setup from "metabase/setup/reducers";
+import { reducer as setup } from "metabase/setup/reducers";
 
 /* dashboards */
 import dashboard from "metabase/dashboard/reducers";
@@ -16,14 +16,8 @@ import dashboard from "metabase/dashboard/reducers";
 /* parameters */
 import * as parameters from "metabase/parameters/reducers";
 
-/* home page */
-import * as home from "metabase/home/reducers";
-
 /* query builder */
 import * as qb from "metabase/query_builder/reducers";
-
-/* data reference */
-import reference from "metabase/reference/reference";
 
 /* revisions */
 import revisions from "metabase/redux/revisions";
@@ -46,13 +40,11 @@ export default {
   alert,
   dashboard,
   parameters: combineReducers(parameters),
-  home: combineReducers(home),
   metabot: combineReducers(metabot),
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),
-  reference,
   revisions,
-  setup: combineReducers(setup),
+  setup,
   admin,
   plugins: combineReducers(PLUGIN_REDUCERS),
 };

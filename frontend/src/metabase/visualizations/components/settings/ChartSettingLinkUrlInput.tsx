@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import * as React from "react";
 import AutocompleteInput from "metabase/core/components/AutocompleteInput";
 
 interface ChartSettingLinkUrlInputProps {
@@ -60,4 +61,5 @@ const ChartSettingLinkUrlInput = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingLinkUrlInput;

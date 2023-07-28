@@ -1,57 +1,49 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-import { metadata } from "__support__/sample_database_fixture";
-
-import Field from "metabase-lib/metadata/Field";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+import { createMockField } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  createSavedStructuredCard,
+} from "metabase-types/api/mocks/presets";
 import Filter from "metabase-lib/queries/structured/Filter";
-import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { InlineDatePicker } from "./InlineDatePicker";
 
-const dateField = new Field({
-  database_type: "test",
-  base_type: "type/DateTime",
-  semantic_type: "type/DateTime",
-  effective_type: "type/DateTime",
-  table_id: 8,
-  name: "date_field",
-  has_field_values: "none",
-  values: [],
-  dimensions: {},
-  dimension_options: [],
-  id: 138,
-  metadata,
-});
-
-metadata.fields[dateField.id] = dateField;
-
-const card = {
-  dataset_query: {
-    database: 5,
-    query: {
-      "source-table": 8,
-    },
-    type: "query",
-  },
-  display: "table",
-  visualization_settings: {},
-};
-
-const question = new Question(card, metadata);
-const dateDimension = dateField.dimension();
-const query = question.query();
-
-const newFilter = new Filter(
-  [null, ["field", dateField.id, null]],
-  null,
-  question.query(),
-);
+const DATE_FIELD_ID = 200;
 
 describe("InlineDatePicker", () => {
+  const card = createSavedStructuredCard();
+
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    fields: [
+      createMockField({
+        id: DATE_FIELD_ID,
+        base_type: "type/DateTime",
+        effective_type: "type/DateTime",
+        semantic_type: "type/DateTime",
+        has_field_values: "none",
+      }),
+    ],
+    questions: [card],
+  });
+
+  const question = checkNotNull(metadata.question(card.id));
+
+  const dateField = checkNotNull(metadata.field(DATE_FIELD_ID));
+  const dateDimension = dateField.dimension();
+
+  const query = question.query() as StructuredQuery;
+
+  const newFilter = new Filter(
+    [null, ["field", dateField.id, null]],
+    null,
+    query,
+  );
+
   it("renders an inline date picker with shortcut buttons", () => {
     const changeSpy = jest.fn();
 

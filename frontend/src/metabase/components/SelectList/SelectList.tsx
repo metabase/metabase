@@ -1,4 +1,5 @@
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
+import * as React from "react";
 
 import { BaseSelectListItem } from "./BaseSelectListItem";
 import { SelectListItem } from "./SelectListItem";
@@ -11,6 +12,7 @@ const SelectList = forwardRef<HTMLUListElement, SelectListProps>(
   },
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SelectList, {
   BaseItem: BaseSelectListItem,
   Item: SelectListItem,

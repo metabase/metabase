@@ -1,4 +1,3 @@
-import React from "react";
 import { Group } from "@visx/group";
 import { PositionScale } from "@visx/shape/lib/types";
 import { LineArea } from "metabase/static-viz/components/XYChart/shapes/LineArea";

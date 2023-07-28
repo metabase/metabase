@@ -1,8 +1,8 @@
 import { EntitiesState } from "metabase-types/store";
 
-export const createMockEntitiesState = (
-  opts?: Partial<EntitiesState>,
-): EntitiesState => ({
+// This is a helper for cases when entities state doesn't matter
+// Most likely, createMockEntitiesState from __support__/store would be a better choice
+export const createMockNormalizedEntitiesState = (): EntitiesState => ({
   actions: {},
   alerts: {},
   collections: {},
@@ -16,5 +16,6 @@ export const createMockEntitiesState = (
   snippets: {},
   users: {},
   questions: {},
-  ...opts,
+  modelIndexes: {},
+  indexedEntities: {},
 });

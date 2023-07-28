@@ -421,8 +421,7 @@
                 :pulse         true
                 :hidden-table  false
                 :collection    true
-                :metric        true
-                :segment       true}})
+                :model         true}})
 
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
@@ -455,11 +454,7 @@
                                :completed    true
                                :triggered    false
                                :is_next_step false}
-                              {:title        "Create metrics"
-                               :completed    true
-                               :triggered    false
-                               :is_next_step false}
-                              {:title        "Create segments"
+                              {:title        "Create a model"
                                :completed    true
                                :triggered    false
                                :is_next_step false}]}]

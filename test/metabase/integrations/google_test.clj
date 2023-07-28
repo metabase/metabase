@@ -8,7 +8,8 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -129,7 +130,7 @@
 (deftest google-auth-fetch-or-create-user!-test
   (with-redefs [premium-features/enable-sso? (constantly false)]
     (testing "test that an existing user can log in with Google auth even if the auto-create accounts domain is different from"
-      (mt/with-temp User [_ {:email "cam@sf-toucannery.com"}]
+      (t2.with-temp/with-temp [User _ {:email "cam@sf-toucannery.com"}]
         (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
           (testing "their account should return a UserInstance"
             (is (mi/instance-of? User

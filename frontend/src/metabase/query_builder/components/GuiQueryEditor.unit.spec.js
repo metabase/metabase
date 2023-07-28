@@ -1,13 +1,17 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
-
+import { createMockMetadata } from "__support__/metadata";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import {
-  SAMPLE_DATABASE,
+  createSampleDatabase,
   ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const getGuiQueryEditor = query => (
   <GuiQueryEditor
@@ -24,8 +28,8 @@ const getGuiQueryEditor = query => (
 describe("GuiQueryEditor", () => {
   it("should allow adding the first breakout", () => {
     const query = Question.create({
-      databaseId: SAMPLE_DATABASE.id,
-      tableId: ORDERS.id,
+      databaseId: SAMPLE_DB_ID,
+      tableId: ORDERS_ID,
       metadata,
     })
       .query()
@@ -41,13 +45,13 @@ describe("GuiQueryEditor", () => {
 
   it("should allow adding more than one breakout", () => {
     const query = Question.create({
-      databaseId: SAMPLE_DATABASE.id,
-      tableId: ORDERS.id,
+      databaseId: SAMPLE_DB_ID,
+      tableId: ORDERS_ID,
       metadata,
     })
       .query()
       .aggregate(["count"])
-      .breakout(["field", ORDERS.TOTAL.id, null]);
+      .breakout(["field", ORDERS.TOTAL, null]);
 
     render(getGuiQueryEditor(query));
     const ADD_ICONS = screen.getAllByRole("img", { name: /add/i });

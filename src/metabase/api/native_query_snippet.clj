@@ -12,7 +12,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -20,7 +19,7 @@
 (s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]
   (-> (api/read-check (t2/select-one NativeQuerySnippet :id id))
-      (hydrate :creator)))
+      (t2/hydrate :creator)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -30,7 +29,7 @@
   (let [snippets (t2/select NativeQuerySnippet
                             :archived (Boolean/parseBoolean archived)
                             {:order-by [[:%lower.name :asc]]})]
-    (hydrate (filter mi/can-read? snippets) :creator)))
+    (t2/hydrate (filter mi/can-read? snippets) :creator)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"

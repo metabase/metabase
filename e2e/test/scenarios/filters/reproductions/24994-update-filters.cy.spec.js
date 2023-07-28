@@ -49,12 +49,15 @@ describe("issue 24994", () => {
     // Three filters
     cy.findByTestId("filters-visibility-control").contains("3").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is 2 selections").click();
     assertFilterValueIsSelected("Gadget");
     assertFilterValueIsSelected("Gizmo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").click();
     assertFilterValueIsSelected("Doohickey");
     cy.button("Update filter").should("not.be.disabled").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is 3 selections");
   });
 });

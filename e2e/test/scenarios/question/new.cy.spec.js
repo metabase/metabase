@@ -8,10 +8,13 @@ import {
   getCollectionIdFromSlug,
   saveQuestion,
   getPersonalCollectionName,
+  visitCollection,
+  modal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -32,7 +35,9 @@ describe("scenarios > question > new", () => {
 
       startNewQuestion();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Pick your starting data");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sample3").isVisibleInPopover();
     });
 
@@ -60,11 +65,13 @@ describe("scenarios > question > new", () => {
         4,
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Saved question in Our analytics");
       cy.findAllByRole("link", { name: "Our analytics" })
         .should("have.attr", "href")
         .and("eq", "/collection/root");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Table in Sample Database");
       cy.findAllByRole("link", { name: "Sample Database" })
         .should("have.attr", "href")
@@ -75,6 +82,7 @@ describe("scenarios > question > new", () => {
       cy.findByPlaceholderText("Search for a table…");
       cy.findByTestId("input-reset-button").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
 
       // Search is now scoped to questions only
@@ -92,20 +100,27 @@ describe("scenarios > question > new", () => {
         // should display the collection tree on the left side
         .should("contain", "Our analytics");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").should("not.exist");
       visualize();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
       // should reopen saved question picker after returning back to editor mode
       cy.icon("notebook").click();
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
       // It is now possible to choose another saved question
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
       popover().contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products").click();
       cy.findByTestId("data-step-cell").contains("Products");
       visualize();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Rustic Paper Wallet");
     });
 
@@ -116,7 +131,7 @@ describe("scenarios > question > new", () => {
         parent_id: null,
       }).then(({ body: { id: COLLECTION_ID } }) => {
         // Move question #1 ("Orders") to newly created collection
-        cy.request("PUT", "/api/card/1", {
+        cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
           collection_id: COLLECTION_ID,
         });
         // Sanity check: make sure Orders is indeed inside new collection
@@ -136,7 +151,7 @@ describe("scenarios > question > new", () => {
     it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
       getCollectionIdFromSlug("second_collection", id => {
         // Move first question in a DB snapshot ("Orders") to a "Second collection"
-        cy.request("PUT", "/api/card/1", {
+        cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
           collection_id: id,
         });
       });
@@ -182,6 +197,7 @@ describe("scenarios > question > new", () => {
     cy.get(".QueryBuilder .Icon-notebook").click();
     cy.url().should("include", "question/notebook#");
     cy.get(".QueryBuilder .Icon-sql").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Convert this question to SQL").click();
     cy.url().should("include", "question#");
   });
@@ -237,7 +253,55 @@ describe("scenarios > question > new", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID is 1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
+  });
+
+  it("should suggest the currently viewed collection when saving question", () => {
+    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+      visitCollection(THIRD_COLLECTION_ID);
+    });
+
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
+
+    popover().findByText("Question").click();
+
+    popover().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("qb-header").within(() => {
+      cy.findByText("Save").click();
+    });
+    modal().within(() => {
+      cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
+  });
+
+  it("should be able to save a question to a collection created on the go", () => {
+    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+      visitCollection(THIRD_COLLECTION_ID);
+    });
+    cy.findByLabelText("Navigation bar").findByText("New").click();
+    popover().findByText("Question").click();
+    popover().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("qb-header").findByText("Save").click();
+    modal().findByTestId("select-button").click();
+    popover().findByText("New collection").click();
+
+    const NEW_COLLECTION = "Foo";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+    });
+    cy.get("header").findByText(NEW_COLLECTION);
   });
 });

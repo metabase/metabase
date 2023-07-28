@@ -1,10 +1,4 @@
-import React, {
-  ChangeEvent,
-  forwardRef,
-  ReactNode,
-  Ref,
-  useCallback,
-} from "react";
+import { ChangeEvent, forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import TextArea, { TextAreaProps } from "metabase/core/components/TextArea";
@@ -17,6 +11,7 @@ export interface FormTextAreaProps
   > {
   name: string;
   title?: string;
+  actions?: ReactNode;
   description?: ReactNode;
   nullable?: boolean;
   infoLabel?: string;
@@ -30,6 +25,7 @@ const FormTextArea = forwardRef(function FormTextArea(
     className,
     style,
     title,
+    actions,
     description,
     nullable,
     infoLabel,
@@ -55,6 +51,7 @@ const FormTextArea = forwardRef(function FormTextArea(
       className={className}
       style={style}
       title={title}
+      actions={actions}
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
@@ -76,6 +73,7 @@ const FormTextArea = forwardRef(function FormTextArea(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(FormTextArea, {
   Root: TextArea.Root,
 });

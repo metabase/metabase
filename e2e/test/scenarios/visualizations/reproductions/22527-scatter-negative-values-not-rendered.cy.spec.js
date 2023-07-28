@@ -28,6 +28,7 @@ describe.skip("issue 22527", () => {
       cy.findByTextEnsureVisible("Data").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Bubble size").parent().contains("Select a field").click();
 
     popover().contains(/size/i).click();

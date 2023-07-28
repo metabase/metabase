@@ -24,10 +24,13 @@ supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
 
     it(`can query ${database} database`, () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(dbName).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").click();
 
       visualize();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65");
     });
   });

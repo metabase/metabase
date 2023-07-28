@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import { t } from "ttag";
 
@@ -7,7 +7,7 @@ import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import FormMessage from "metabase/components/form/FormMessage";
 
-class ArchiveModal extends React.Component {
+class ArchiveModal extends Component {
   state = {
     error: null,
   };

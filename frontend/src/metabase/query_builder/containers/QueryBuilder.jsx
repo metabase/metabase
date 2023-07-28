@@ -1,11 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -35,6 +29,8 @@ import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useSelector } from "metabase/lib/redux";
 import View from "../components/view/View";
 
 import {
@@ -47,7 +43,6 @@ import {
   getQueryResults,
   getParameterValues,
   getIsDirty,
-  getIsNew,
   getIsObjectDetail,
   getTables,
   getTableForeignKeys,
@@ -90,8 +85,11 @@ import {
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
+  isResultsMetadataDirty,
+  getShouldShowUnsavedChangesWarning,
 } from "../selectors";
 import * as actions from "../actions";
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 
 const timelineProps = {
   query: { include: "events" },
@@ -142,7 +140,6 @@ const mapStateToProps = (state, props) => {
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
-    isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
@@ -159,6 +156,7 @@ const mapStateToProps = (state, props) => {
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
 
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
@@ -217,6 +215,7 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    closeQB,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -291,16 +290,22 @@ function QueryBuilder(props) {
 
   useMount(() => {
     initializeQB(location, params);
-  }, []);
+  });
 
-  useMount(() => {
+  useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
-  }, []);
+  });
+
+  const shouldShowUnsavedChangesWarning = useSelector(
+    getShouldShowUnsavedChangesWarning,
+  );
+  useBeforeUnload(shouldShowUnsavedChangesWarning);
 
   useUnmount(() => {
     cancelQuery();
     closeModal();
+    closeQB();
     clearTimeout(timeout.current);
   });
 
@@ -359,11 +364,11 @@ function QueryBuilder(props) {
   }, []);
 
   useLoadingTimer(isRunning, {
-    timer: 15000,
+    timer: VISUALIZATION_SLOW_TIMEOUT,
     onTimeout,
   });
 
-  const [requestPermission, showNotification] = useWebNotification();
+  const { requestPermission, showNotification } = useWebNotification();
 
   useEffect(() => {
     if (isLoadingComplete) {

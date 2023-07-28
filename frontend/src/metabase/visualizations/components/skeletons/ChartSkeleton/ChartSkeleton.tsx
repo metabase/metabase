@@ -1,71 +1,99 @@
-import React, { HTMLAttributes } from "react";
-import AreaSkeleton from "../AreaSkeleton";
-import BarSkeleton from "../BarSkeleton";
-import EmptySkeleton from "../EmptySkeleton";
-import FunnelSkeleton from "../FunnelSkeleton";
-import GaugeSkeleton from "../GaugeSkeleton";
-import LineSkeleton from "../LineSkeleton";
-import MapSkeleton from "../MapSkeleton";
-import PieSkeleton from "../PieSkeleton";
-import ProgressSkeleton from "../ProgressSkeleton";
-import RowSkeleton from "../RowSkeleton";
-import ScalarSkeleton from "../ScalarSkeleton";
-import ScatterSkeleton from "../ScatterSkeleton";
-import SkeletonCaption from "../SkeletonCaption";
-import SmartScalarSkeleton from "../SmartScalarSkeleton";
-import TableSkeleton from "../TableSkeleton";
-import WaterfallSkeleton from "../WaterfallSkeleton";
+import { HTMLAttributes } from "react";
+import AreaSkeleton from "metabase/visualizations/components/skeletons/AreaSkeleton";
+import FunnelSkeleton from "metabase/visualizations/components/skeletons/FunnelSkeleton";
+import LineSkeleton from "metabase/visualizations/components/skeletons/LineSkeleton";
+import GaugeSkeleton from "metabase/visualizations/components/skeletons/GaugeSkeleton";
+import MapSkeleton from "metabase/visualizations/components/skeletons/MapSkeleton";
+import BarSkeleton from "metabase/visualizations/components/skeletons/BarSkeleton";
+import TableSkeleton from "metabase/visualizations/components/skeletons/TableSkeleton";
+import PieSkeleton from "metabase/visualizations/components/skeletons/PieSkeleton";
+import ProgressSkeleton from "metabase/visualizations/components/skeletons/ProgressSkeleton";
+import RowSkeleton from "metabase/visualizations/components/skeletons/RowSkeleton";
+import ScatterSkeleton from "metabase/visualizations/components/skeletons/ScatterSkeleton";
+import WaterfallSkeleton from "metabase/visualizations/components/skeletons/WaterfallSkeleton";
+import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
+import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
+import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
+import { CardDisplayType } from "metabase-types/api";
 
-export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
+export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
+  display?: CardDisplayType;
   name?: string | null;
-  display?: string | null;
   description?: string | null;
-}
+  actionMenu?: JSX.Element | null;
+};
 
-const ChartSkeleton = ({
-  display,
-  ...props
-}: ChartSkeletonProps): JSX.Element => {
+const skeletonComponent: (display?: CardDisplayType) => JSX.Element | null = (
+  display?: CardDisplayType,
+) => {
   if (!display) {
-    return <EmptySkeleton {...props} />;
+    return null;
   }
 
   switch (display) {
     case "area":
-      return <AreaSkeleton {...props} />;
+      return <AreaSkeleton />;
     case "bar":
-      return <BarSkeleton {...props} />;
+      return <BarSkeleton />;
     case "funnel":
-      return <FunnelSkeleton {...props} />;
+      return <FunnelSkeleton />;
     case "gauge":
-      return <GaugeSkeleton {...props} />;
+      return <GaugeSkeleton />;
     case "line":
-      return <LineSkeleton {...props} />;
+      return <LineSkeleton />;
     case "map":
-      return <MapSkeleton {...props} />;
+      return <MapSkeleton />;
     case "object":
     case "pivot":
     case "table":
-      return <TableSkeleton {...props} />;
+      return <TableSkeleton />;
     case "pie":
-      return <PieSkeleton {...props} />;
+      return <PieSkeleton />;
     case "progress":
-      return <ProgressSkeleton {...props} />;
+      return <ProgressSkeleton />;
     case "row":
-      return <RowSkeleton {...props} />;
-    case "scalar":
-      return <ScalarSkeleton {...props} />;
+      return <RowSkeleton />;
     case "scatter":
-      return <ScatterSkeleton {...props} />;
-    case "smartscalar":
-      return <SmartScalarSkeleton {...props} />;
+      return <ScatterSkeleton />;
     case "waterfall":
-      return <WaterfallSkeleton {...props} />;
+      return <WaterfallSkeleton />;
     default:
-      return <TableSkeleton {...props} />;
+      return <TableSkeleton />;
   }
 };
 
+const ChartSkeleton = ({
+  actionMenu,
+  description,
+  display,
+  name,
+  className,
+}: ChartSkeletonProps) => {
+  if (display === "scalar" || display === "smartscalar") {
+    return (
+      <ScalarSkeleton
+        className={className}
+        scalarType={display}
+        name={name}
+        description={description}
+        actionMenu={actionMenu}
+      />
+    );
+  }
+
+  return (
+    <VisualizationSkeleton
+      className={className}
+      name={name}
+      description={description}
+      actionMenu={actionMenu}
+    >
+      {skeletonComponent(display)}
+    </VisualizationSkeleton>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(ChartSkeleton, {
   Title: SkeletonCaption.Title,
   Description: SkeletonCaption.Description,

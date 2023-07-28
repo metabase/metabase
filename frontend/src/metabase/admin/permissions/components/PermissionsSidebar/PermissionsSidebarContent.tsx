@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { memo } from "react";
+import { memo } from "react";
 
 import Text from "metabase/components/type/Text";
 

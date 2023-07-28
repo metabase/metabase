@@ -6,6 +6,7 @@ import {
   setupMetabaseCloud,
   isOSS,
   isEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -23,7 +24,9 @@ describe("scenarios > admin > settings", () => {
     () => {
       cy.onlyOn(isOSS);
       cy.visit("/admin/settings/setup");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Have your server maintained for you.");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Migrate to Metabase Cloud.");
       cy.findAllByRole("link", { name: "Learn more" })
         .should("have.attr", "href")
@@ -69,6 +72,7 @@ describe("scenarios > admin > settings", () => {
     // rather than aliasing it with .as()
     const emailInput = () =>
       cy
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         .contains("Email Address for Help Requests")
         .parent()
         .parent()
@@ -97,10 +101,13 @@ describe("scenarios > admin > settings", () => {
     cy.intercept("GET", "**/api/health", "ok").as("httpsCheck");
 
     // settings have loaded, but there's no redirect setting visible
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Site URL");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Redirect to HTTPS").should("not.exist");
 
     // switch site url to use https
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Site URL")
       .parent()
       .parent()
@@ -109,6 +116,7 @@ describe("scenarios > admin > settings", () => {
     popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
 
     restore(); // avoid leaving https site url
@@ -121,6 +129,7 @@ describe("scenarios > admin > settings", () => {
       req.reply({ forceNetworkError: true });
     }).as("httpsCheck");
     // switch site url to use https
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Site URL")
       .parent()
       .parent()
@@ -129,6 +138,7 @@ describe("scenarios > admin > settings", () => {
     popover().contains("https://").click({ force: true });
 
     cy.wait("@httpsCheck");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("It looks like HTTPS is not properly configured");
   });
 
@@ -141,11 +151,14 @@ describe("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("January 7, 2018").click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2018/1/7").click({ force: true });
     cy.wait("@saveFormatting");
     cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("HH:mm").should("be.checked");
@@ -155,11 +168,12 @@ describe("scenarios > admin > settings", () => {
     cy.findByTextEnsureVisible("Created At");
     cy.get(".cellData")
       .should("contain", "Created At")
-      .and("contain", "2019/2/11, 21:40");
+      .and("contain", "2025/2/11, 21:40");
 
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("5:24 PM (12-hour clock)").click();
     cy.wait("@saveFormatting");
     cy.findByDisplayValue("h:mm A").should("be.checked");
@@ -167,22 +181,25 @@ describe("scenarios > admin > settings", () => {
     openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get(".cellData").and("contain", "2019/2/11, 9:40 PM");
+    cy.get(".cellData").and("contain", "2025/2/11, 9:40 PM");
   });
 
   it("should search for and select a new timezone", () => {
     cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
 
     cy.visit("/admin/settings/localization");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Report Timezone")
       .closest("li")
       .findByTestId("report-timezone-select-button")
       .click();
 
     cy.findByPlaceholderText("Find...").type("Centr");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("US/Central").click({ force: true });
 
     cy.wait("@reportTimezone");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("US/Central");
   });
 
@@ -210,8 +227,11 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/general");
 
     cy.wait("@appSettings");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("We're a little lost...").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site name/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Site URL/i);
   });
 
@@ -219,7 +239,9 @@ describe("scenarios > admin > settings", () => {
     "should display the order of the settings items consistently between OSS/EE versions (metabase#15441)",
     { tags: "@OSS" },
     () => {
-      const lastItem = isEE ? "Appearance" : "Metabot";
+      isEE && setTokenFeatures("all");
+
+      const lastItem = isOSS ? "Caching" : "Appearance";
 
       cy.visit("/admin/settings/setup");
       cy.get(".AdminList .AdminList-item")
@@ -235,10 +257,14 @@ describe("scenarios > admin > settings", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Site Name");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Site URL").should("not.exist");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Updates").should("not.exist");
   });
 
@@ -247,6 +273,7 @@ describe("scenarios > admin > settings", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon").should("not.exist");
   });
@@ -255,6 +282,7 @@ describe("scenarios > admin > settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase on Slack");
       cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
       cy.findByLabelText("Public channel to store image files").type(
@@ -262,6 +290,7 @@ describe("scenarios > admin > settings", () => {
       );
       cy.button("Save changes").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(": invalid token");
     });
   });
@@ -277,6 +306,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   it("should show the store link when running Metabase OSS", () => {
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon");
   });
@@ -286,6 +316,7 @@ describeEE("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
@@ -293,13 +324,16 @@ describeEE("scenarios > admin > settings (EE)", () => {
     setupMetabaseCloud();
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Site Name");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Enterprise").should("not.exist");
   });
 
   it("should hide the store link when running Metabase EE", () => {
     cy.visit("/admin/settings/general");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon").should("not.exist");
   });

@@ -21,6 +21,7 @@ const userProps = {
   loadingAndErrorWrapper: false,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Users.load(userProps),
   connect(mapStateToProps),

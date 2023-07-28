@@ -14,6 +14,7 @@ describe("issue 21550", () => {
 
     cy.icon("snippet").click();
     cy.wait("@rootCollection");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Create a snippet").click();
 
     modal().within(() => {
@@ -25,6 +26,7 @@ describe("issue 21550", () => {
       cy.wait("@rootCollection");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("people").realHover();
     cy.get(".Icon-chevrondown").click({ force: true });
 

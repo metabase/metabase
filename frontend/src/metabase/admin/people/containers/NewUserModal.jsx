@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";

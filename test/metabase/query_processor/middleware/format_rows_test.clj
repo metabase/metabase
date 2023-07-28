@@ -11,7 +11,7 @@
 
 (driver/register! ::timezone-driver, :abstract? true)
 
-(defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
+(defmethod driver/database-supports? [::timezone-driver :set-timezone] [_driver _feature _db] true)
 
 ;; TIMEZONE FIXME
 (def ^:private dbs-exempt-from-format-rows-tests

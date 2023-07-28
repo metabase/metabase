@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import Button from "metabase/core/components/Button";
 import LogoIcon from "metabase/components/LogoIcon";
 import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";

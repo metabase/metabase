@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
@@ -149,4 +148,5 @@ const ProgressBar = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ProgressBar;

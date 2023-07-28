@@ -1,9 +1,7 @@
 (ns metabase.search.scoring
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [java-time :as t]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search-config]
    [metabase.search.util :as search-util]
@@ -209,7 +207,6 @@
                           :name            collection_name
                           :authority_level collection_authority_level}
          :scores          all-scores)
-        (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name
@@ -226,14 +223,14 @@
 
 (defenterprise score-result
   "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
-   separately. Should return a sequence of maps with
+  separately. Should return a sequence of maps with
 
     {:weight number,
      :score  number,
      :name   string}"
-   metabase-enterprise.search.scoring
-   [result]
-   (weights-and-scores result))
+  metabase-enterprise.search.scoring
+  [result]
+  (weights-and-scores result))
 
 (defn- sum-weights [weights]
   (reduce

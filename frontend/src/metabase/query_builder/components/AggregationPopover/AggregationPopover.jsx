@@ -1,17 +1,18 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
+import { Box } from "metabase/ui";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
-import ExpressionWidget from "../expressions/ExpressionWidget";
-import ExpressionWidgetHeader from "../expressions/ExpressionWidgetHeader";
-import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
+import { ExpressionWidget } from "../expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
+import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 
 import {
   AggregationItemList,
@@ -24,6 +25,9 @@ const CUSTOM_SECTION_NAME = t`Custom Expression`;
 
 const COMMON_AGGREGATIONS = new Set(["count"]);
 
+/**
+ * @deprecated use MLv2 + metabase/common/components/AggregationPicker
+ */
 export default class AggregationPopover extends Component {
   constructor(props, context) {
     super(props, context);
@@ -155,29 +159,24 @@ export default class AggregationPopover extends Component {
     return item.isSelected(AGGREGATION.getContent(aggregation));
   }
 
-  renderItemExtra(item, itemIndex) {
+  renderItemExtra(item) {
+    let content;
     if (item.aggregation?.description) {
-      return (
-        <div className="p1">
-          <Tooltip tooltip={item.aggregation.description}>
-            <span className="QuestionTooltipTarget" />
-          </Tooltip>
-        </div>
-      );
+      content = item.aggregation.description;
     } else if (item.metric) {
-      return this.renderMetricTooltip(item.metric);
+      content = <QueryDefinitionTooltip type="metric" object={item.metric} />;
+    } else {
+      content = null;
     }
-  }
-
-  renderMetricTooltip(metric) {
-    const content = <QueryDefinitionTooltip type="metric" object={metric} />;
 
     return (
-      <div className="p1">
-        <Tooltip tooltip={content}>
-          <span className="QuestionTooltipTarget" />
-        </Tooltip>
-      </div>
+      content && (
+        <Box p="0.5rem">
+          <Tooltip tooltip={content}>
+            <span className="QuestionTooltipTarget" />
+          </Tooltip>
+        </Box>
+      )
     );
   }
 
@@ -206,7 +205,7 @@ export default class AggregationPopover extends Component {
     if (metricItems.length > 0) {
       sections.push({
         name: COMMON_SECTION_NAME,
-        icon: "star_outline",
+        icon: "star",
         items: metricItems,
       });
     }

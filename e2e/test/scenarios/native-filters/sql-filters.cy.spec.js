@@ -96,7 +96,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       filterWidget().click();
       // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("15").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Update filter").click();
 
       SQLFilter.runQuery();
@@ -109,8 +111,11 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     it("when set as the default value for a required filter", () => {
       SQLFilter.toggleRequired();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Select a default value…").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("15").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Update filter").click();
 
       SQLFilter.runQuery();
@@ -143,6 +148,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     // resize window to mobile form factor
     cy.viewport(480, 800);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 active filter").click();
 
     cy.get("fieldset")

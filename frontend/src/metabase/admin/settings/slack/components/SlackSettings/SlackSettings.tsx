@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import SlackSetup from "../../containers/SlackSetup";
 import SlackStatus from "../../containers/SlackStatus";
 
@@ -31,4 +31,5 @@ const SlackSettings = ({
   return isApp ? <SlackStatus /> : <SlackSetup manifest={manifest} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackSettings;

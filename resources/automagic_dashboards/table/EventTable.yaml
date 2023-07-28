@@ -1,6 +1,6 @@
-title: A look at your [[this]] table
-transient_title: "A summary of the events in your [[this]] table"
-description: A look at your events over time and by several categories.
+title: A look at the [[this]] table
+transient_title: "A summary of events in [[this]]"
+description: A look at events over time and by several categories.
 metrics:
   - Count: ["count"]
 dimensions:

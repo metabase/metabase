@@ -8,8 +8,8 @@
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private toucannery-transactions-expected-fields-hierarchy
   {"ts"     nil
@@ -29,8 +29,8 @@
     (format-fields (get parent-id->children nil))))
 
 (deftest sync-fields-test
-  (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]
-                  Table    [table {:name "transactions", :db_id (u/the-id db)}]]
+  (t2.with-temp/with-temp [Database db    {:engine ::toucanery/toucanery}
+                           Table    table {:name "transactions", :db_id (u/the-id db)}]
     ;; do the initial sync
     (sync-fields/sync-fields-for-table! table)
     (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))]
@@ -40,8 +40,8 @@
 (deftest delete-nested-field-test
   (testing (str "If you delete a nested Field, and re-sync a Table, it should recreate the Field as it was before! It "
                 "should not create any duplicate Fields (#8950)")
-    (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]
-                    Table    [table {:name "transactions", :db_id (u/the-id db)}]]
+    (t2.with-temp/with-temp [Database db    {:engine ::toucanery/toucanery}
+                             Table    table {:name "transactions", :db_id (u/the-id db)}]
       ;; do the initial sync
       (sync-fields/sync-fields-for-table! table)
       (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))]
@@ -54,12 +54,13 @@
         (is (= toucannery-transactions-expected-fields-hierarchy
                (actual-fields-hierarchy transactions-table-id)))))))
 
-(deftest sync-db-metadata-test
-  ;; TODO: this uses the higher level `sync-metadata/sync-db-metadata!` entry but serves as a test for
-  ;; `sync-instances` and perhaps can be moved to use this entry. This is a bit more mecahnical for code org so I
-  ;; don't want to get into that in this change.
+;; TODO: this uses the higher level `sync-metadata/sync-db-metadata!` entry but serves as a test for
+;; `sync-instances` and perhaps can be moved to use this entry. This is a bit more mecahnical for code org so I
+;; don't want to get into that in this change.
+
+(deftest resync-nested-fields-test
   (testing "Make sure nested fields get resynced correctly if their parent field didnt' change"
-    (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
+    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field
@@ -72,10 +73,11 @@
         (sync-metadata/sync-db-metadata! db)
         ;; field should be added back
         (is (= #{"weight" "age"}
-               (t2/select-fn-set :name Field :table_id transactions-table-id, :parent_id details-field-id, :active true))))))
+               (t2/select-fn-set :name Field :table_id transactions-table-id, :parent_id details-field-id, :active true)))))))
 
+(deftest reactivate-field-test
   (testing "Syncing can reactivate a field"
-    (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
+    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field
@@ -87,10 +89,11 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated
-        (is (t2/select-fn-set :active Field :id age-field-id)))))
+        (is (t2/select-fn-set :active Field :id age-field-id))))))
 
+(deftest reactivate-nested-field-when-parent-is-reactivated-test
   (testing "Nested fields get reactivated if the parent field gets reactivated"
-    (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
+    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field
@@ -102,10 +105,11 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should be reactivated
-        (is (t2/select-fn-set :active Field :id age-field-id)))))
+        (is (t2/select-fn-set :active Field :id age-field-id))))))
 
+(deftest mark-nested-field-inactive-test
   (testing "Nested fields can be marked inactive"
-    (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
+    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; Add an entry for a `transactions.toucan.details.gender` field
@@ -123,10 +127,11 @@
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
-        (is (false? (t2/select-one-fn :active Field :id gender-field-id))))))
+        (is (false? (t2/select-one-fn :active Field :id gender-field-id)))))))
 
+(deftest mark-nested-field-children-inactive-test
   (testing "When a nested field is marked inactive so are its children"
-    (tt/with-temp* [Database [db {:engine ::toucanery/toucanery}]]
+    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; Add an entry for a `transactions.toucan.details.gender` field

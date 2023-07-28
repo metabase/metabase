@@ -14,6 +14,7 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -62,17 +63,23 @@ describe("scenarios > question > nested", () => {
     );
 
     openHeaderCellContextMenu("Count");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by Count: Auto binned");
     cy.get(".bar").should("have.length.of.at.least", 8);
 
     // Go back to the nested question and make sure Sum over time works
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested GUI").click();
 
     openHeaderCellContextMenu("Count");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum of Count");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("137");
 
     // Make sure it works for a SQL question
@@ -94,17 +101,23 @@ describe("scenarios > question > nested", () => {
     );
 
     openHeaderCellContextMenu("COUNT");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Count by COUNT: Auto binned");
     cy.get(".bar").should("have.length.of.at.least", 5);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested SQL").click();
 
     openHeaderCellContextMenu("COUNT");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum over time").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sum of COUNT");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("744");
   });
 
@@ -131,8 +144,9 @@ describe("scenarios > question > nested", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("10511");
-    cy.findAllByText("June, 2016");
+    cy.findAllByText("June 2022");
     cy.findAllByText("13");
   });
 
@@ -141,14 +155,20 @@ describe("scenarios > question > nested", () => {
 
     // add initial aggregation ("Average of Total by Order ID")
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Average of ...").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID").click();
 
     // add another aggregation ("Count by Average of Total")
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     cy.log("Reported failing on v0.34.3 - v0.37.0.2");
     popover()
@@ -170,33 +190,31 @@ describe("scenarios > question > nested", () => {
     };
 
     cy.log("Create a metric with a filter");
-    cy.request("POST", "/api/metric", metric).then(
-      ({ body: { id: metricId } }) => {
-        // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
-        const baseQuestionDetails = {
-          name: "12507",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["metric", metricId]],
-            breakout: [
-              ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
-            ],
-          },
-        };
+    createMetric(metric).then(({ body: { id: metricId } }) => {
+      // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
+      const baseQuestionDetails = {
+        name: "12507",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["metric", metricId]],
+          breakout: [
+            ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
+          ],
+        },
+      };
 
-        const nestedQuestionDetails = {
-          query: {
-            filter: [">", ["field", ORDERS.TOTAL, null], 50],
-          },
-        };
+      const nestedQuestionDetails = {
+        query: {
+          filter: [">", ["field", ORDERS.TOTAL, null], 50],
+        },
+      };
 
-        // Create new question which uses previously defined metric
-        createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
+      // Create new question which uses previously defined metric
+      createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
-        cy.log("Reported failing since v0.35.2");
-        cy.get(".cellData").contains(metric.name);
-      },
-    );
+      cy.log("Reported failing since v0.35.2");
+      cy.get(".cellData").contains(metric.name);
+    });
   });
 
   it("should handle remapped display values in a base QB question (metabase#10474)", () => {
@@ -263,12 +281,15 @@ describe("scenarios > question > nested", () => {
     createNestedQuestion({ baseQuestionDetails });
 
     // The column title
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Products → Category").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distribution").click();
     cy.wait("@dataset");
 
     summarize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Group by")
       .parent()
       .within(() => {
@@ -337,8 +358,8 @@ describe("scenarios > question > nested", () => {
         filter: [
           "between",
           ["field-id", ORDERS.CREATED_AT],
-          "2020-02-01",
-          "2020-02-29",
+          "2026-02-01",
+          "2026-02-29",
         ],
         value: "543",
       });
@@ -349,8 +370,8 @@ describe("scenarios > question > nested", () => {
         name: "15352-2",
         filter: [
           "and",
-          [">", ["field-id", ORDERS.CREATED_AT], "2020-01-31"],
-          ["<", ["field-id", ORDERS.CREATED_AT], "2020-03-01"],
+          [">", ["field-id", ORDERS.CREATED_AT], "2026-01-31"],
+          ["<", ["field-id", ORDERS.CREATED_AT], "2026-03-01"],
         ],
         value: "543",
       });
@@ -359,7 +380,7 @@ describe("scenarios > question > nested", () => {
     it("should work with 'on' date filter (metabase#15352-3)", () => {
       assertOnFilter({
         name: "15352-3",
-        filter: ["=", ["field-id", ORDERS.CREATED_AT], "2020-02-01"],
+        filter: ["=", ["field-id", ORDERS.CREATED_AT], "2026-02-01"],
         value: "17",
       });
     });
@@ -398,20 +419,31 @@ describe("scenarios > question > nested", () => {
           cy.spy(win.console, "warn").as("consoleWarn");
         },
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").should("be.visible").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("15725").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
     });
 
     it("Count of rows AND Sum of VAL by CAT (metabase#15725-1)", () => {
       cy.icon("add").last().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("VAL").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sum of VAL");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CAT").click();
 
       visualize();
@@ -420,17 +452,21 @@ describe("scenarios > question > nested", () => {
         "not.be.calledWith",
         "Removing invalid MBQL clause",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sum of VAL");
     });
 
     it("Count of rows by CAT + add sum of VAL later from the sidebar (metabase#15725-2)", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CAT").click();
 
       visualize();
 
       summarize();
       cy.findByTestId("add-aggregation-button").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();
       popover().findByText("VAL").click();
       cy.wait("@dataset").then(xhr => {
@@ -453,6 +489,7 @@ describe("scenarios > question > nested", () => {
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").click();
     cy.wait("@dataset");
 
@@ -482,7 +519,9 @@ describe("scenarios > question > nested", () => {
     });
     cy.findByTestId("apply-filters").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Synergistic Granite Chair");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rustic Paper Wallet").should("not.exist");
 
     function saveQuestion() {
@@ -513,7 +552,9 @@ describe("scenarios > question > nested", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summaries").click();
     cy.findByTestId("operator-select").click();
     popover().contains("Equal to").click();
@@ -521,12 +562,15 @@ describe("scenarios > question > nested", () => {
     cy.button("Apply Filters").click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count is equal to 5");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 100 rows");
 
     saveQuestion();
 
     reloadQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 100 rows");
 
     cy.icon("notebook").click();

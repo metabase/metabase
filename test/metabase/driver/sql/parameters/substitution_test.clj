@@ -37,7 +37,7 @@
                  {:field (t2/select-one Field :id (mt/id :people :state))
                   :value {:type :string/!=, :slug "state", :value ["OR"]}}))))))))
 
-(deftest ^:paralel card-with-params->replacement-snippet-test
+(deftest ^:parallel card-with-params->replacement-snippet-test
   (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"
     (is (= {:replacement-snippet     "(SELECT * FROM table WHERE x LIKE ?)"
             :prepared-statement-args ["G%"]}

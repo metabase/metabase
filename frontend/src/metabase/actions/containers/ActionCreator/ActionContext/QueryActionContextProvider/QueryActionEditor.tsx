@@ -1,5 +1,3 @@
-import React from "react";
-
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/constants";
 
@@ -32,4 +30,5 @@ function QueryActionEditor({
 
 export { ACE_ELEMENT_ID };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QueryActionEditor;

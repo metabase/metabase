@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import moment, { Moment } from "moment-timezone";
 import Calendar from "metabase/components/Calendar";
 import Filter from "metabase-lib/queries/structured/Filter";

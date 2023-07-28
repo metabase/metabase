@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
@@ -179,4 +179,5 @@ const getMenuItems = (
   return items;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TimelineDetailsModal;

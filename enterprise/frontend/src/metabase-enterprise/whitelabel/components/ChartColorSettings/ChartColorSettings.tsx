@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { color } from "metabase/lib/colors";
@@ -165,4 +165,5 @@ const ChartColorCell = memo(function ChartColorCell({
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartColorSettings;

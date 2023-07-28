@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useMemo, useState } from "react";
+import { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { assocIn, getIn, merge } from "icepick";
@@ -251,4 +251,5 @@ export {
   CustomFormSection as FormSection,
 } from "metabase/components/form/FormikCustomForm";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Form;

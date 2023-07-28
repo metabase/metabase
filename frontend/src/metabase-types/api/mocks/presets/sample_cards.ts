@@ -1,8 +1,23 @@
-import { Card, UnsavedCard } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  Card,
+  NativeDatasetQuery,
+  StructuredDatasetQuery,
+  UnsavedCard,
+} from "metabase-types/api";
+import {
+  createMockStructuredCard,
+  createMockNativeCard,
+} from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "./sample_database";
 
-export const createAdHocCard = (opts?: Partial<UnsavedCard>): UnsavedCard => ({
+type StructuredCard = Card<StructuredDatasetQuery>;
+type StructuredUnsavedCard = UnsavedCard<StructuredDatasetQuery>;
+type NativeCard = Card<NativeDatasetQuery>;
+type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
+
+export const createAdHocCard = (
+  opts?: Partial<StructuredUnsavedCard>,
+): StructuredUnsavedCard => ({
   display: "table",
   visualization_settings: {},
   dataset_query: {
@@ -16,8 +31,8 @@ export const createAdHocCard = (opts?: Partial<UnsavedCard>): UnsavedCard => ({
 });
 
 export const createAdHocNativeCard = (
-  opts?: Partial<UnsavedCard>,
-): UnsavedCard => ({
+  opts?: Partial<NativeUnsavedCard>,
+): NativeUnsavedCard => ({
   display: "table",
   visualization_settings: {},
   dataset_query: {
@@ -32,8 +47,8 @@ export const createAdHocNativeCard = (
 });
 
 export const createEmptyAdHocNativeCard = (
-  opts?: Partial<UnsavedCard>,
-): UnsavedCard => ({
+  opts?: Partial<NativeUnsavedCard>,
+): NativeUnsavedCard => ({
   display: "table",
   visualization_settings: {},
   dataset_query: {
@@ -47,8 +62,10 @@ export const createEmptyAdHocNativeCard = (
   ...opts,
 });
 
-export const createSavedStructuredCard = (opts?: Partial<Card>): Card => {
-  return createMockCard({
+export const createSavedStructuredCard = (
+  opts?: Partial<StructuredCard>,
+): StructuredCard => {
+  return createMockStructuredCard({
     display: "table",
     visualization_settings: {},
     dataset_query: {
@@ -62,8 +79,10 @@ export const createSavedStructuredCard = (opts?: Partial<Card>): Card => {
   });
 };
 
-export const createSavedNativeCard = (opts?: Partial<Card>): Card => {
-  return createMockCard({
+export const createSavedNativeCard = (
+  opts?: Partial<NativeCard>,
+): NativeCard => {
+  return createMockNativeCard({
     display: "table",
     visualization_settings: {},
     dataset_query: {
@@ -78,29 +97,37 @@ export const createSavedNativeCard = (opts?: Partial<Card>): Card => {
   });
 };
 
-export const createStructuredModelCard = (opts?: Partial<Card>): Card => {
+export const createStructuredModelCard = (
+  opts?: Partial<StructuredCard>,
+): StructuredCard => {
   return createSavedStructuredCard({
     dataset: true,
     ...opts,
   });
 };
 
-export const createNativeModelCard = (opts?: Partial<Card>): Card => {
+export const createNativeModelCard = (
+  opts?: Partial<NativeCard>,
+): NativeCard => {
   return createSavedNativeCard({
     dataset: true,
     ...opts,
   });
 };
 
-export const createComposedModelCard = (opts?: Partial<Card>): Card => {
+export const createComposedModelCard = ({
+  id = 1,
+  ...opts
+}: Partial<StructuredCard> = {}): StructuredCard => {
   return createStructuredModelCard({
     dataset_query: {
       database: SAMPLE_DB_ID,
       type: "query",
       query: {
-        "source-table": `card__${ORDERS_ID}`,
+        "source-table": `card__${id}`,
       },
     },
     ...opts,
+    id,
   });
 };

@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import {
   ColumnItemIcon,
   ColumnItemSpan,
@@ -34,16 +33,19 @@ const ColumnItem = ({
   onColorChange,
   draggable,
   className = "",
+  ...props
 }) => {
   return (
     <ColumnItemRoot
       className={className}
       onClick={onClick}
       isDraggable={draggable}
-      data-testid={`draggable-item-${title}`}
+      data-testid={draggable ? `draggable-item-${title}` : null}
+      {...props}
+      title={props.role ? title : null}
     >
       <ColumnItemContainer>
-        {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
+        {draggable && <ColumnItemDragHandle name="grabber" />}
         {onColorChange && color && (
           <ColumnItemColorPicker
             value={color}

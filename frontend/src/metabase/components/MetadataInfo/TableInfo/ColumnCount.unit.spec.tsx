@@ -1,32 +1,52 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
-
-import Table from "metabase-lib/metadata/Table";
-
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Table } from "metabase-types/api";
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import ColumnCount from "./ColumnCount";
 
-function setup(table: Table) {
-  return render(<ColumnCount table={table} />);
+interface SetupOpts {
+  table: Table;
+}
+
+function setup({ table }: SetupOpts) {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      tables: [table],
+    }),
+  });
+  const metadata = getMetadata(state);
+
+  renderWithProviders(
+    <ColumnCount table={checkNotNull(metadata.table(table.id))} />,
+  );
 }
 
 describe("ColumnCount", () => {
   it("should show a non-plural label for a table with a single field", () => {
-    const table = new Table({ fields: [{}] });
-    setup(table);
+    setup({
+      table: createMockTable({
+        fields: [createMockField()],
+      }),
+    });
 
     expect(screen.getByText("1 column")).toBeInTheDocument();
   });
 
   it("should show a plural label for a table with multiple fields", () => {
-    const table = new Table({ fields: [{}, {}] });
-    setup(table);
+    setup({
+      table: createMockTable({
+        fields: [createMockField(), createMockField()],
+      }),
+    });
 
     expect(screen.getByText("2 columns")).toBeInTheDocument();
   });
 
   it("should handle a scenario where a table has no fields property", () => {
-    const table = new Table({ id: 123, display_name: "Foo" });
-    setup(table);
+    setup({ table: createMockTable() });
 
     expect(screen.getByText("0 columns")).toBeInTheDocument();
   });

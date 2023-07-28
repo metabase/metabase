@@ -6,6 +6,7 @@ import {
   visitCollection,
 } from "e2e/support/helpers";
 import { USERS, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
 
@@ -76,6 +77,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.visit("/collection/root");
 
     pin(name);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Rows/);
     bookmarkPinnedItem(name);
   });
@@ -89,6 +91,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.visit("/collection/root");
 
     pin(name);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A dashboard");
     bookmarkPinnedItem(name);
   });
@@ -112,7 +115,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
   });
 
   it("can remove bookmark from item in sidebar", () => {
-    cy.visit("/collection/1");
+    cy.visit(`/collection/${ADMIN_PERSONAL_COLLECTION_ID}`);
 
     // Add bookmark
     cy.icon("bookmark").click();
@@ -125,7 +128,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
   });
 
   it("can toggle bookmark list visibility", () => {
-    cy.visit("/collection/1");
+    cy.visit(`/collection/${ADMIN_PERSONAL_COLLECTION_ID}`);
 
     // Add bookmark
     cy.icon("bookmark").click();

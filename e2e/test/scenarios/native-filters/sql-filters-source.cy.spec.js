@@ -11,6 +11,7 @@ import {
   visitEmbeddedPage,
   visitPublicQuestion,
   visitQuestion,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -90,6 +91,7 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.selectFilterValueFromList("Gadget", { addFilter: false });
       FieldFilter.selectFilterValueFromList("Gizmo");
       SQLFilter.runQuery("cardQuery");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 51 rows").should("exist");
 
       SQLFilter.toggleRequired();
@@ -345,6 +347,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
     cy.intercept("GET", "/api/card/*/params/*/values").as(
       "cardParameterValues",
@@ -383,6 +386,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     checkFilterValueNotInList("Doohickey");
     FieldFilter.selectFilterValueFromList("Gizmo");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Open Editor").click();
     cy.icon("variable").click();
     FieldFilter.openEntryForm(true);

@@ -1,20 +1,17 @@
-import React from "react";
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { renderWithProviders } from "__support__/ui";
-import {
-  MetabotEntityId,
-  MetabotEntityType,
-} from "metabase-types/store/metabot";
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Card, Database } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
   createMockField,
-  createMockStructuredDatasetQuery,
-  createMockStructuredQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
+import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 import {
   setupCardDataset,
   setupDatabaseEndpoints,
@@ -26,9 +23,8 @@ import {
   setupMetabotDatabaseEndpoint,
   setupMetabotModelEndpoint,
 } from "__support__/server-mocks/metabot";
-import Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
-import { getStructuredModel } from "metabase-lib/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
 import Metabot from "./Metabot";
 
 const PROMPT = "average orders total";
@@ -55,13 +51,15 @@ const ORDERS_DATABASE = createMockDatabase({
   tables: [ORDERS_TABLE],
 });
 
-const MODEL = getStructuredModel({
+const MODEL = createStructuredModelCard({
   id: 1,
+  name: "Q1",
   result_metadata: [FIELD],
-  dataset_query: createMockStructuredDatasetQuery({
+  dataset_query: {
     database: ORDERS_DATABASE_ID,
-    query: createMockStructuredQuery({ "source-table": ORDERS_TABLE_ID }),
-  }),
+    type: "query",
+    query: { "source-table": ORDERS_TABLE_ID },
+  },
 });
 
 const GENERATED_CARD = createMockCard({ id: undefined, display: "table" });
@@ -84,7 +82,7 @@ const setupMetabotDatabaseEndpoints = (couldGenerateCard = true) => {
 
 const setupMetabotModelEndpoints = (couldGenerateCard = true) => {
   if (couldGenerateCard) {
-    setupMetabotModelEndpoint(MODEL.id(), GENERATED_CARD, true);
+    setupMetabotModelEndpoint(MODEL.id, GENERATED_CARD, true);
     setupCardDataset(
       {
         row_count: 1,
@@ -93,7 +91,7 @@ const setupMetabotModelEndpoints = (couldGenerateCard = true) => {
       true,
     );
   } else {
-    setupBadRequestMetabotModelEndpoint(MODEL.id());
+    setupBadRequestMetabotModelEndpoint(MODEL.id);
   }
 };
 
@@ -101,7 +99,7 @@ interface SetupOpts {
   entityId?: MetabotEntityId;
   entityType: MetabotEntityType;
   initialPrompt?: string;
-  model?: Question;
+  model?: Card;
   database?: Database;
   databases?: Database[];
 }
@@ -111,17 +109,26 @@ const setup = ({
   entityType,
   initialPrompt,
   model,
-  database = new Database(ORDERS_DATABASE),
-  databases = [new Database(ORDERS_DATABASE)],
+  database = ORDERS_DATABASE,
+  databases = [ORDERS_DATABASE],
 }: SetupOpts) => {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      databases: databases,
+      questions: model ? [model] : [],
+    }),
+  });
+
+  const metadata = getMetadata(state);
+
   renderWithProviders(
     <Metabot
       entityId={entityId}
       entityType={entityType}
       initialPrompt={initialPrompt}
-      model={model}
-      database={database}
-      databases={databases}
+      model={model ? checkNotNull(metadata.question(model.id)) : undefined}
+      database={checkNotNull(metadata.database(database.id))}
+      databases={[checkNotNull(metadata.database(database.id))]}
     />,
   );
 };

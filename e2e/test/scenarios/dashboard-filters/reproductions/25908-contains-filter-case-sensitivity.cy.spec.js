@@ -45,7 +45,7 @@ describe("issue 25908", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 13,
+              size_x: 17,
               size_y: 8,
               series: [],
               visualization_settings: {},
@@ -69,10 +69,13 @@ describe("issue 25908", () => {
   });
 
   it("`contains` dashboard filter should respect case insensitivity on a title-drill-through (metabase#25908)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questionDetails.name).click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Title contains Li");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Showing ${CASE_INSENSITIVE_ROWS} rows`);
   });
 });

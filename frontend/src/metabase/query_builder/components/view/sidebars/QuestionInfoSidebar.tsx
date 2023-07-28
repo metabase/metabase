@@ -1,15 +1,13 @@
-import React from "react";
 import { t } from "ttag";
 
 import EditableText from "metabase/core/components/EditableText";
 
 import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 
-import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
-import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
+import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 
 import Question from "metabase-lib/Question";
 
@@ -33,10 +31,7 @@ export const QuestionInfoSidebar = ({
   const canWrite = question.canWrite();
   const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
-  const isCachingAvailable =
-    !isDataset &&
-    PLUGIN_CACHING.isEnabled() &&
-    MetabaseSettings.get("enable-query-caching");
+  const hasCacheSection = PLUGIN_CACHING.hasQuestionCacheSection(question);
 
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {
@@ -82,7 +77,7 @@ export const QuestionInfoSidebar = ({
         </ContentSection>
       )}
 
-      {isCachingAvailable && (
+      {hasCacheSection && (
         <ContentSection extraPadding>
           <PLUGIN_CACHING.QuestionCacheSection
             question={question}

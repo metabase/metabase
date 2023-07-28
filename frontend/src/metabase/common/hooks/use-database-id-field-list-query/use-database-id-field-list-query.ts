@@ -11,10 +11,11 @@ export const useDatabaseIdFieldListQuery = (
   props: UseEntityQueryProps<DatabaseId, DatabaseIdFieldListQuery>,
 ): UseEntityQueryResult<Field[]> => {
   return useEntityQuery(props, {
-    fetch: Databases.actions.fetchIdfields,
-    getObject: Databases.selectors.getIdfields,
+    fetch: Databases.actions.fetchIdFields,
+    getObject: state =>
+      Databases.selectors.getIdFields(state, { databaseId: props.id }),
     getLoading: Databases.selectors.getLoading,
     getError: Databases.selectors.getError,
-    requestType: "idfields",
+    requestType: "idFields",
   });
 };

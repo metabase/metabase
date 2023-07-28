@@ -54,8 +54,10 @@ describe("issue 19341", () => {
 
     // Test "Explore results" button is hidden for native questions
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(TEST_NATIVE_QUESTION_NAME).click();
     cy.wait("@cardQuery");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").should("not.exist");
   });
 });

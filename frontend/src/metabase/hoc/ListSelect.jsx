@@ -1,21 +1,25 @@
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 
 import _ from "underscore";
 
 const DEFAULT_KEY_FOR_ITEM = item => item.id;
 
-// Higher order component for managing selection of a list.
-//
-// Expects component to be provided a `list` prop (or prop named by `listProp`)
-// Injects `selected` and `deselected` arrays, a `selection` set, and various
-// methods to select or deselect individual or all items
-//
-// Composes with EntityListLoader, ListSearch, etc
+/**
+ * Higher order component for managing selection of a list.
+ *
+ * Expects component to be provided a `list` prop (or prop named by `listProp`)
+ * Injects `selected` and `deselected` arrays, a `selection` set, and various
+ * methods to select or deselect individual or all items
+ *
+ * Composes with EntityListLoader, ListSearch, etc
+ *
+ * @deprecated HOCs are deprecated
+ */
 const listSelect =
   ({ listProp = "list", keyForItem = DEFAULT_KEY_FOR_ITEM } = {}) =>
   ComposedComponent =>
-    class extends React.Component {
+    class extends Component {
       state = {
         selectionKeys: new Set(),
       };

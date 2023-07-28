@@ -1,4 +1,3 @@
-import React from "react";
 import { Pie } from "@visx/shape";
 import { Group } from "@visx/group";
 import { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
@@ -39,6 +38,7 @@ interface GaugeProps {
   getColor: ColorGetter;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function Gauge({
   value,
   valueFormatter,

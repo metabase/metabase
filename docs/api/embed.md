@@ -57,9 +57,9 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 *  **`token`** 
 
-*  **`field-id`** 
+*  **`field-id`** value must be an integer greater than zero.
 
-*  **`remapped-id`** 
+*  **`remapped-id`** value must be an integer greater than zero.
 
 *  **`value`** value must be a non-blank string.
 
@@ -71,13 +71,13 @@ Search for values of a Field that is referenced by an embedded Card.
 
 *  **`token`** 
 
-*  **`field-id`** 
+*  **`field-id`** value must be an integer greater than zero.
 
-*  **`search-field-id`** 
+*  **`search-field-id`** value must be an integer greater than zero.
 
 *  **`value`** value must be a non-blank string.
 
-*  **`limit`** value may be nil, or if non-nil, value must be a valid integer greater than zero.
+*  **`limit`** nullable value must be an integer greater than zero.
 
 ## `GET /api/embed/card/:token/field/:field-id/values`
 
@@ -87,7 +87,7 @@ Fetch FieldValues for a Field that is referenced by an embedded Card.
 
 *  **`token`** 
 
-*  **`field-id`**
+*  **`field-id`** value must be an integer greater than zero.
 
 ## `GET /api/embed/card/:token/params/:param-key/search/:prefix`
 
@@ -136,7 +136,7 @@ Like `GET /api/embed/card/query`, but returns the results as a file in the speci
 
 *  **`token`** 
 
-*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
+*  **`export-format`** enum of csv, api, xlsx, json
 
 *  **`query-params`**
 
@@ -161,9 +161,9 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 *  **`token`** 
 
-*  **`dashcard-id`** 
+*  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** 
+*  **`card-id`** value must be an integer greater than zero.
 
 *  **`&`** 
 
@@ -178,11 +178,11 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 *  **`token`** 
 
-*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
+*  **`export-format`** enum of csv, api, xlsx, json
 
-*  **`dashcard-id`** 
+*  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** 
+*  **`card-id`** value must be an integer greater than zero.
 
 *  **`query-params`**
 
@@ -195,9 +195,9 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 *  **`token`** 
 
-*  **`field-id`** 
+*  **`field-id`** value must be an integer greater than zero.
 
-*  **`remapped-id`** 
+*  **`remapped-id`** value must be an integer greater than zero.
 
 *  **`value`** value must be a non-blank string.
 
@@ -209,13 +209,13 @@ Search for values of a Field that is referenced by a Card in an embedded Dashboa
 
 *  **`token`** 
 
-*  **`field-id`** 
+*  **`field-id`** value must be an integer greater than zero.
 
-*  **`search-field-id`** 
+*  **`search-field-id`** value must be an integer greater than zero.
 
 *  **`value`** value must be a non-blank string.
 
-*  **`limit`** value may be nil, or if non-nil, value must be a valid integer greater than zero.
+*  **`limit`** nullable value must be an integer greater than zero.
 
 ## `GET /api/embed/dashboard/:token/field/:field-id/values`
 
@@ -225,7 +225,7 @@ Fetch FieldValues for a Field that is used as a param in an embedded Dashboard.
 
 *  **`token`** 
 
-*  **`field-id`**
+*  **`field-id`** value must be an integer greater than zero.
 
 ## `GET /api/embed/dashboard/:token/params/:param-key/search/:prefix`
 
@@ -279,9 +279,9 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 *  **`token`** 
 
-*  **`dashcard-id`** 
+*  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** 
+*  **`card-id`** value must be an integer greater than zero.
 
 *  **`&`** 
 

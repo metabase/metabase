@@ -24,7 +24,7 @@ const getAdminPaths: () => AdminPath[] = () => {
       key: "databases",
     },
     {
-      name: t`Data Model`,
+      name: t`Table Metadata`,
       path: "/admin/datamodel",
       key: "data-model",
     },
@@ -102,6 +102,7 @@ const isNoticeEnabled = handleActions(
   Settings.deprecationNoticeEnabled(),
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   isNoticeEnabled,
   paths,

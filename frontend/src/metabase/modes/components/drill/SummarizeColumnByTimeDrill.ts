@@ -1,9 +1,9 @@
 import { t } from "ttag";
+import { Drill } from "metabase/modes/types";
 import {
   summarizeColumnByTimeDrill,
   summarizeColumnByTimeDrillQuestion,
 } from "metabase-lib/queries/drills/summarize-column-by-time-drill";
-import type { Drill } from "../../types";
 
 const SummarizeColumnByTimeDrill: Drill = ({ question, clicked = {} }) => {
   if (!summarizeColumnByTimeDrill({ question, clicked })) {
@@ -22,4 +22,5 @@ const SummarizeColumnByTimeDrill: Drill = ({ question, clicked = {} }) => {
   ];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SummarizeColumnByTimeDrill;

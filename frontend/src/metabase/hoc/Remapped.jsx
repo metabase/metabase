@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -13,6 +13,9 @@ const mapDispatchToProps = {
   fetchRemapping,
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ComposedComponent =>
   connect(
     mapStateToProps,
@@ -40,7 +43,6 @@ export default ComposedComponent =>
       }
 
       render() {
-        // eslint-disable-next-line no-unused-vars
         const { metadata, fetchRemapping, ...props } = this.props;
         const field = metadata.field(props.column && props.column.id);
         const displayValue = field && field.remappedValue(props.value);

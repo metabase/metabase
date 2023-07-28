@@ -1,11 +1,20 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t, jt } from "ttag";
 import { getIn } from "icepick";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import ActiveStep from "../ActiveStep";
-import InactiveStep from "../InvactiveStep";
+import { selectStep, submitSetup, updateTracking } from "../../actions";
+import { PREFERENCES_STEP } from "../../constants";
+import {
+  getIsSetupCompleted,
+  getIsStepActive,
+  getIsStepCompleted,
+  getIsTrackingAllowed,
+} from "../../selectors";
+import { ActiveStep } from "../ActiveStep";
+import { InactiveStep } from "../InvactiveStep";
 import {
   StepDescription,
   StepToggleContainer,
@@ -15,30 +24,29 @@ import {
   StepToggle,
 } from "./PreferencesStep.styled";
 
-export interface PreferencesStepProps {
-  isTrackingAllowed: boolean;
-  isStepActive: boolean;
-  isStepCompleted: boolean;
-  isSetupCompleted: boolean;
-  onTrackingChange: (isTrackingAllowed: boolean) => void;
-  onStepSelect: () => void;
-  onStepSubmit: (isTrackingAllowed: boolean) => void;
-}
-
-const PreferencesStep = ({
-  isTrackingAllowed,
-  isStepActive,
-  isStepCompleted,
-  isSetupCompleted,
-  onTrackingChange,
-  onStepSelect,
-  onStepSubmit,
-}: PreferencesStepProps): JSX.Element => {
+export const PreferencesStep = (): JSX.Element => {
   const [errorMessage, setErrorMessage] = useState<string>();
+  const isTrackingAllowed = useSelector(getIsTrackingAllowed);
+  const isStepActive = useSelector(state =>
+    getIsStepActive(state, PREFERENCES_STEP),
+  );
+  const isStepCompleted = useSelector(state =>
+    getIsStepCompleted(state, PREFERENCES_STEP),
+  );
+  const isSetupCompleted = useSelector(getIsSetupCompleted);
+  const dispatch = useDispatch();
 
-  const handleSubmit = async () => {
+  const handleTrackingChange = (isTrackingAllowed: boolean) => {
+    dispatch(updateTracking(isTrackingAllowed));
+  };
+
+  const handleStepSelect = () => {
+    dispatch(selectStep(PREFERENCES_STEP));
+  };
+
+  const handleStepSubmit = async () => {
     try {
-      await onStepSubmit(isTrackingAllowed);
+      await dispatch(submitSetup()).unwrap();
     } catch (error) {
       setErrorMessage(getSubmitError(error));
       throw error;
@@ -52,7 +60,7 @@ const PreferencesStep = ({
         label={4}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
-        onStepSelect={onStepSelect}
+        onStepSelect={handleStepSelect}
       />
     );
   }
@@ -74,7 +82,7 @@ const PreferencesStep = ({
         <StepToggle
           value={isTrackingAllowed}
           autoFocus
-          onChange={onTrackingChange}
+          onChange={handleTrackingChange}
           aria-labelledby="anonymous-usage-events-label"
         />
         <StepToggleLabel id="anonymous-usage-events-label">
@@ -97,7 +105,7 @@ const PreferencesStep = ({
         successText={t`Success`}
         primary
         type="button"
-        actionFn={handleSubmit}
+        actionFn={handleStepSubmit}
       />
       {errorMessage && <StepError>{errorMessage}</StepError>}
     </ActiveStep>
@@ -129,5 +137,3 @@ const getSubmitError = (error: unknown): string => {
     return t`An error occurred`;
   }
 };
-
-export default PreferencesStep;

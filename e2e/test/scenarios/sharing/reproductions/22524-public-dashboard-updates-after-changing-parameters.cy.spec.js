@@ -38,6 +38,7 @@ describe("issue 22524", () => {
     editDashboard();
     setFilter("Text or Category", "Is");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("City").click();
 
@@ -47,6 +48,7 @@ describe("issue 22524", () => {
     cy.icon("share").click();
     cy.findByRole("switch").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Public link")
       .parent()
       .within(() => {
@@ -59,6 +61,7 @@ describe("issue 22524", () => {
     cy.findByPlaceholderText("Text").clear().type("Rye{enter}");
 
     // Check results
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2-7900 Cuerno Verde Road");
   });
 });

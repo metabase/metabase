@@ -1,1 +1,1 @@
-export { default } from "./ActiveStep";
+export * from "./ActiveStep";

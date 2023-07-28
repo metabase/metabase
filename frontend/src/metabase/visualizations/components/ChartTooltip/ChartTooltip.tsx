@@ -1,4 +1,4 @@
-import React, { MouseEvent, useMemo } from "react";
+import { MouseEvent, useMemo } from "react";
 import _ from "underscore";
 import { getEventTarget } from "metabase/lib/dom";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -69,4 +69,5 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
   ) : null;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartTooltip;

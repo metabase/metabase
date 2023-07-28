@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Toggle from "metabase/core/components/Toggle";
 import {
@@ -40,4 +40,5 @@ const ImageToggle = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ImageToggle;

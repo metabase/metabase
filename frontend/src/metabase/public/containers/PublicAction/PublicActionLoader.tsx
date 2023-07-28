@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 
 import { useMount } from "react-use";
@@ -70,4 +70,5 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(PublicActionLoader);

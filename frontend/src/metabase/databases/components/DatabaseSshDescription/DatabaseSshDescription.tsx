@@ -1,4 +1,3 @@
-import React from "react";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -15,4 +14,5 @@ const DatabaseSshDescription = (): JSX.Element => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseSshDescription;

@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { cloneElement, Children } from "react";
 import PropTypes from "prop-types";
 
 const SidebarLayout = ({ className, style, sidebar, children }) => (
@@ -7,7 +7,7 @@ const SidebarLayout = ({ className, style, sidebar, children }) => (
     className={className}
     style={{ ...style, display: "flex", flexDirection: "row" }}
   >
-    {React.cloneElement(
+    {cloneElement(
       sidebar,
       {
         style: { flexShrink: 0, alignSelf: "stretch" },
@@ -16,8 +16,8 @@ const SidebarLayout = ({ className, style, sidebar, children }) => (
       sidebar.props.children,
     )}
     {children &&
-      React.cloneElement(
-        React.Children.only(children),
+      cloneElement(
+        Children.only(children),
         {
           style: {
             flex: 1,
@@ -27,7 +27,7 @@ const SidebarLayout = ({ className, style, sidebar, children }) => (
             height: "100%",
           },
         },
-        React.Children.only(children).props.children,
+        Children.only(children).props.children,
       )}
   </div>
 );

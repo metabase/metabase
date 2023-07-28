@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import Table from "metabase-lib/metadata/Table";
@@ -38,4 +37,5 @@ const ConnectedTableList = ({
   </NodeListContainer>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ConnectedTableList;

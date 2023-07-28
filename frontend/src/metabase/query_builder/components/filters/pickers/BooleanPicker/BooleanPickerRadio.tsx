@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -45,4 +44,5 @@ function BooleanPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default BooleanPicker;

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { getIn } from "icepick";
 
 import _ from "underscore";
@@ -133,6 +132,7 @@ function getSettingWidget(
       newSettings[settingId] = null;
     }
     onChangeSettings(newSettings);
+    settingDef.onUpdate?.(value, extra);
   };
   if (settingDef.useRawSeries && object._raw) {
     extra.transformedSeries = object;

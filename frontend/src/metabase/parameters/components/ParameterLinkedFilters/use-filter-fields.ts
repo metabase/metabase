@@ -50,4 +50,5 @@ const getParameterMapping = (data: Record<FieldId, FieldId[]>) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default useFilterFields;

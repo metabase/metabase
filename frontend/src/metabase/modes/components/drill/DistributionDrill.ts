@@ -1,9 +1,9 @@
 import { t } from "ttag";
+import type { Drill } from "metabase/modes/types";
 import {
   distributionDrill,
   distributionDrillQuestion,
 } from "metabase-lib/queries/drills/distribution-drill";
-import type { Drill } from "../../types";
 
 const DistributionDrill: Drill = ({ question, clicked }) => {
   if (!distributionDrill({ question, clicked })) {
@@ -22,4 +22,5 @@ const DistributionDrill: Drill = ({ question, clicked }) => {
   ];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DistributionDrill;

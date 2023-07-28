@@ -1,5 +1,5 @@
 (ns metabase.util.malli
-  (:refer-clojure :exclude [defn])
+  (:refer-clojure :exclude [defn defmethod])
   (:require
    [clojure.core :as core]
    [malli.core :as mc]
@@ -13,6 +13,7 @@
               [malli.experimental :as mx]
               [malli.instrument :as minst]
               [metabase.util.i18n :as i18n]
+              [metabase.util.malli.defmethod :as mu.defmethod]
               [net.cgrand.macrovich :as macros]
               [ring.util.codec :as codec])))
   #?(:cljs (:require-macros [metabase.util.malli])))
@@ -47,26 +48,32 @@
   ;; TODO Should this be translated with more complete context? (tru "{0}, received: {1}" message (pr-str value))
   (str message ", " (tru "received") ": " (pr-str value)))
 
+(def ^:dynamic *enforce*
+  "Bind to false to skip enforcing instrumented function schemas."
+  true)
+
 (core/defn explain-fn-fail!
   "Used as reporting function to minst/instrument!"
   [type data]
-  (let [{:keys [input args output value]} data
-        humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
-                        output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))
-        link (cond input (->malli-io-link input args)
-                   output (->malli-io-link output value))]
-    (throw (ex-info
-            (pr-str humanized)
-            (cond-> {:type type :data data}
-              data (assoc :humanized humanized)
-              (and data link) (assoc :link link))))))
+  (when *enforce*
+    (let [{:keys [input args output value]} data
+          humanized (cond input  (me/humanize (mc/explain input args) {:wrap humanize-include-value})
+                          output (me/humanize (mc/explain output value) {:wrap humanize-include-value}))
+          link (cond input (->malli-io-link input args)
+                     output (->malli-io-link output value))]
+      (throw (ex-info
+               (pr-str humanized)
+               (cond-> {:type type :data data}
+                 data (assoc :humanized humanized)
+                 (and data link) (assoc :link link))))))
+  data)
 
 #?(:clj
    (clojure.core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]."
      [id]
-     (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
-                         :report  explain-fn-fail!}))
+     (with-out-str (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
+                                       :report  #'explain-fn-fail!})))
    :cljs
    (clojure.core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]. No-op for ClojureScript. Instrumentation currently only works in
@@ -154,3 +161,11 @@
                           :description description-message
                           ;; override generic description in :specific-errors key in API's response
                           :error/fn    (fn [_ _] specific-error-message))))
+
+#?(:clj
+   (defmacro defmethod
+     "Like [[schema.core/defmethod]], but for Malli."
+     [multifn dispatch-value & fn-tail]
+     `(.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
+                  ~dispatch-value
+                  ~(mu.defmethod/instrumented-fn-form fn-tail))))

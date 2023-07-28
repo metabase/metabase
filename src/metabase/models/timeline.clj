@@ -1,26 +1,37 @@
 (ns metabase.models.timeline
   (:require
    [java-time :as t]
-   [metabase.models.collection :as collection]
-   [metabase.models.interface :as mi]
+   [metabase.models.collection.root :as collection.root]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util.date-2 :as u.date]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel Timeline :timeline)
+(def Timeline
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Timeline)
 
-(derive Timeline ::perms/use-parent-collection-perms)
+(methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
+
+(doto :model/Timeline
+  (derive :metabase/model)
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 ;;;; schemas
 
+(def icons
+  "Valid Timeline and TimelineEvent icons"
+  ["star" "balloons" "mail" "warning" "bell" "cloud"])
+
 (def Icons
   "Timeline and TimelineEvent icon string Schema"
-  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
+  (apply s/enum icons))
 
 (def DefaultIcon
   "Timeline default icon"
@@ -28,36 +39,19 @@
 
 ;;;; functions
 
-(defn- root-collection
-  []
-  (-> (collection/root-collection-with-ui-details nil)
-      (hydrate :can_write)))
-
-(defn hydrate-root-collection
-  "Hydrate `:collection` on [[Timelines]] when the id is `nil`."
-  [{:keys [collection_id] :as timeline}]
-  (if (nil? collection_id)
-    (assoc timeline :collection (root-collection))
-    timeline))
-
 (defn timelines-for-collection
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [:timeline/events? :timeline/archived?] :as options}]
-  (cond-> (hydrate (t2/select Timeline
+  (cond-> (t2/hydrate (t2/select Timeline
                               :collection_id collection-id
                               :archived (boolean archived?))
                    :creator
                    [:collection :can_write])
-    (nil? collection-id) (->> (map hydrate-root-collection))
+    (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-(mi/define-methods
- Timeline
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id true})})
-
-(defmethod serdes/hash-fields Timeline
+(defmethod serdes/hash-fields :model/Timeline
   [_timeline]
   [:name (serdes/hydrated-hash :collection) :created_at])
 

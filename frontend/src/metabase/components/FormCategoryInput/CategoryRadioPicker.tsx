@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import { useMount } from "react-use";
 
@@ -63,6 +62,7 @@ function CategoryRadioPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<
   CategoryWidgetStateProps,
   CategoryWidgetDispatchProps,

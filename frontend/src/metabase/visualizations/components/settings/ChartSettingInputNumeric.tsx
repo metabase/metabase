@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import * as React from "react";
 import _ from "underscore";
 import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
 
@@ -37,4 +38,5 @@ const ChartSettingInputNumeric = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingInputNumeric;

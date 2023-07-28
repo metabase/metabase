@@ -1,13 +1,23 @@
-import React from "react";
 import { render, fireEvent, screen } from "@testing-library/react";
-import { ORDERS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+import {
+  ORDERS,
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import Filter from "metabase-lib/queries/structured/Filter";
 import ExcludeDatePicker from "./ExcludeDatePicker";
 
-const query = ORDERS.query();
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+const query = ordersTable.query();
 
 const filter = new Filter(
-  [null, ["field", ORDERS.CREATED_AT.id, null]],
+  [null, ["field", ORDERS.CREATED_AT, null]],
   null,
   query,
 );
@@ -27,7 +37,7 @@ describe("ExcludeDatePicker", () => {
 
     expect(commitMock).toHaveBeenCalledWith([
       "not-null",
-      ["field", ORDERS.CREATED_AT.id, null],
+      ["field", ORDERS.CREATED_AT, null],
     ]);
   });
 
@@ -45,7 +55,7 @@ describe("ExcludeDatePicker", () => {
 
     expect(commitMock).toHaveBeenCalledWith([
       "is-null",
-      ["field", ORDERS.CREATED_AT.id, null],
+      ["field", ORDERS.CREATED_AT, null],
     ]);
   });
 });

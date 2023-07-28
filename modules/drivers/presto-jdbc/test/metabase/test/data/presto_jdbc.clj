@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.connection-pool :as connection-pool]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -17,7 +16,7 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection DriverManager PreparedStatement)))
+   (java.sql Connection PreparedStatement)))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +25,7 @@
 (defmethod tx/sorts-nil-first? :presto-jdbc [_ _] false)
 
 ;; during unit tests don't treat presto as having FK support
-(defmethod driver/supports? [:presto-jdbc :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:presto-jdbc :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 (defmethod tx/aggregate-column-info :presto-jdbc
   ([driver ag-type]
@@ -117,29 +116,25 @@
   [_ dbdef tabledef]
   (load-data dbdef tabledef))
 
-(defn- jdbc-spec->connection
-  "This is to work around some weird interplay between clojure.java.jdbc caching behavior of connections based on URL,
-  combined with the fact that the Presto driver apparently closes the connection when it closes a prepare statement.
-  Therefore, create a fresh connection from the DriverManager."
-  ^Connection [jdbc-spec]
-  (DriverManager/getConnection (format "jdbc:%s:%s" (:subprotocol jdbc-spec) (:subname jdbc-spec))
-    (connection-pool/map->properties (select-keys jdbc-spec [:user :SSL]))))
-
 (defmethod load-data/do-insert! :presto-jdbc
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
-    (with-open [conn (jdbc-spec->connection spec)]
-      (doseq [[^String sql & params] statements]
-        (try
-          (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
-            (sql-jdbc.execute/set-parameters! driver stmt params)
-            (let [tbl-nm        ((comp last :components) (into {} table-identifier))
-                  rows-affected (.executeUpdate stmt)]
-              (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
-          (catch Throwable e
-            (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
-                     {:driver driver, :sql sql, :params params}
-                     e))))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     spec
+     {:write? true, :presto-jdbc/force-fresh? true}
+     (fn [^Connection conn]
+       (doseq [[^String sql & params] statements]
+         (try
+           (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
+             (sql-jdbc.execute/set-parameters! driver stmt params)
+             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
+                   rows-affected (.executeUpdate stmt)]
+               (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
+           (catch Throwable e
+             (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
+                             {:driver driver, :sql sql, :params params}
+                             e)))))))))
 
 (defmethod sql.tx/drop-db-if-exists-sql :presto-jdbc [_ _] nil)
 (defmethod sql.tx/create-db-sql         :presto-jdbc [_ _] nil)
@@ -168,7 +163,7 @@
   (testing "Make sure logic to strip out NOT NULL and PRIMARY KEY stuff works as expected"
     (let [db-def    (tx/get-dataset-definition defs/test-data)
           table-def (-> db-def :table-definitions second)]
-      (is (= "CREATE TABLE \"test_data\".\"default\".\"categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
+      (is (= "CREATE TABLE \"test_data\".\"default\".\"test_data_categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
              (sql.tx/create-table-sql :presto-jdbc db-def table-def))))))
 
 (defmethod ddl.i/format-name :presto-jdbc
@@ -179,6 +174,3 @@
 (defmethod sql.tx/add-fk-sql :presto-jdbc
   [_ _ _ _]
   nil)
-
-;; FIXME Presto actually has very good timezone support
-#_(defmethod tx/has-questionable-timezone-support? :presto-jdbc [_] true)

@@ -1145,7 +1145,9 @@
     :dimension   field
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
-    :widget-type (s/recursive #'WidgetType)}))
+    :widget-type (s/recursive #'WidgetType)
+    ;; optional map to be appended to filter clause
+    (s/optional-key :options) {s/Keyword s/Any}}))
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
@@ -1682,7 +1684,8 @@
 
 (def Context
   "Schema for `info.context`; used for informational purposes to record how a query was executed."
-  (s/enum :ad-hoc
+  (s/enum :action
+          :ad-hoc
           :collection
           :csv-download
           :dashboard
@@ -1706,6 +1709,7 @@
    ;; used for permissions checking or anything like that so don't try to be sneaky
    (s/optional-key :context)                   (s/maybe Context)
    (s/optional-key :executed-by)               (s/maybe helpers/IntGreaterThanZero)
+   (s/optional-key :action-id)                 (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :card-id)                   (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :card-name)                 (s/maybe helpers/NonBlankString)
    (s/optional-key :dashboard-id)              (s/maybe helpers/IntGreaterThanZero)
@@ -1718,7 +1722,7 @@
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
    (s/optional-key :query-hash)                (s/maybe #?(:clj (Class/forName "[B")
-                                            :cljs s/Any))})
+                                                           :cljs s/Any))})
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------

@@ -1,31 +1,19 @@
 {
   "teams": [
     {
-      "name": "App Viz",
-      "label": ".Team/Viz :bar_chart:",
-      "members": [
-        "alxnddr",
-        "iethree",
-        "npfitz",
-        "EmmadUsmani",
-        "JesseSDevaney"
-      ]
-    },
-    {
-      "name": "Query Builder",
-      "label": ".Team/QueryBuilder :abacus:",
+      "name": "Team 42",
+      "label": ".Team/42 :milky_way:",
       "members": [
         "ranquild",
         "WiNloSt",
         "deniskaber",
         "oisincoveney",
-        "uladzimirdev"
+        "uladzimirdev",
+        "tsmacdonald",
+        "qnkhuat",
+        "calherries",
+        "kamilmielnik"
       ]
-    },
-    {
-      "name": "App BE",
-      "label": ".Team/Backend :pancakes:",
-      "members": ["dpsutton", "tsmacdonald", "qnkhuat", "calherries"]
     },
     {
       "name": "Query Processor",
@@ -40,9 +28,20 @@
       ]
     },
     {
-      "name": "Fun Police",
-      "label": ".Team/FunPolice :police_officer:",
-      "members": ["noahmoss", "escherize", "adam-james-v"]
+      "name": "Pixel Police",
+      "label": ".Team/PixelPolice :police_officer:",
+      "members": [
+        "noahmoss",
+        "escherize",
+        "adam-james-v",
+        "qwef",
+        "alxnddr",
+        "iethree",
+        "npfitz",
+        "EmmadUsmani",
+        "JesseSDevaney",
+        "shaunlebron"
+      ]
     }
   ]
 }

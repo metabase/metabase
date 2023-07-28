@@ -26,7 +26,8 @@
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -72,7 +73,7 @@
 
 (defn- do-with-pulses-in-a-collection [grant-collection-perms-fn! pulses-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp Collection [collection]
+    (t2.with-temp/with-temp [Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       ;; use db/execute! instead of t2/update! so the updated_at field doesn't get automatically updated!
       (when (seq pulses-or-ids)
@@ -267,7 +268,7 @@
                                     :description "Info"
                                     :display     :table}]]
         (api.card-test/with-cards-in-readable-collection [card-1 card-2]
-          (mt/with-temp Collection [collection]
+          (t2.with-temp/with-temp [Collection collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-model-cleanup [Pulse]
               (is (= (merge
@@ -305,7 +306,7 @@
       (mt/with-temp* [Card [card-1]
                       Card [card-2]]
         (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp Collection [collection]
+          (t2.with-temp/with-temp [Collection collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-model-cleanup [Pulse]
               (api.card-test/with-cards-in-readable-collection [card-1 card-2]
@@ -501,7 +502,7 @@
 (deftest change-collection-test
   (testing "Can we change the Collection a Pulse is in (assuming we have the permissions to do so)?"
     (pulse-test/with-pulse-in-collection [_db collection pulse]
-      (mt/with-temp Collection [new-collection]
+      (t2.with-temp/with-temp [Collection new-collection]
         ;; grant Permissions for both new and old collections
         (doseq [coll [collection new-collection]]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
@@ -513,7 +514,7 @@
 
     (testing "...but if we don't have the Permissions for the old collection, we should get an Exception"
       (pulse-test/with-pulse-in-collection [_db _collection pulse]
-        (mt/with-temp Collection [new-collection]
+        (t2.with-temp/with-temp [Collection new-collection]
           ;; grant Permissions for only the *new* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
           ;; now make an API call to move collections. Should fail
@@ -522,7 +523,7 @@
 
     (testing "...and if we don't have the Permissions for the new collection, we should get an Exception"
       (pulse-test/with-pulse-in-collection [_db collection pulse]
-        (mt/with-temp Collection [new-collection]
+        (t2.with-temp/with-temp [Collection new-collection]
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           ;; now make an API call to move collections. Should fail
@@ -851,7 +852,7 @@
 
 (deftest get-pulse-test
   (testing "GET /api/pulse/:id"
-    (mt/with-temp Pulse [pulse]
+    (t2.with-temp/with-temp [Pulse pulse]
       (with-pulses-in-readable-collection [pulse]
         (is (= (assoc (pulse-details pulse)
                       :can_write     true
@@ -860,12 +861,12 @@
                    (update :collection_id boolean))))))
 
     (testing "cannot normally fetch a pulse without collection permissions"
-      (mt/with-temp Pulse [pulse {:creator_id (mt/user->id :crowberto)}]
+      (t2.with-temp/with-temp [Pulse pulse {:creator_id (mt/user->id :crowberto)}]
         (with-pulses-in-nonreadable-collection [pulse]
           (mt/user-http-request :rasta :get 403 (str "pulse/" (u/the-id pulse))))))
 
     (testing "can fetch a pulse without collection permissions if you are the creator or a recipient"
-      (mt/with-temp Pulse [pulse {:creator_id (mt/user->id :rasta)}]
+      (t2.with-temp/with-temp [Pulse pulse {:creator_id (mt/user->id :rasta)}]
         (with-pulses-in-nonreadable-collection [pulse]
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse)))))
 
@@ -877,7 +878,7 @@
           (mt/user-http-request :rasta :get 200 (str "pulse/" (u/the-id pulse))))))
 
     (testing "should 404 for an Alert"
-      (mt/with-temp Pulse [{pulse-id :id} {:alert_condition "rows"}]
+      (t2.with-temp/with-temp [Pulse {pulse-id :id} {:alert_condition "rows"}]
         (is (= "Not found."
                (with-pulses-in-readable-collection [pulse-id]
                  (mt/user-http-request :rasta :get 404 (str "pulse/" pulse-id)))))))))
@@ -913,7 +914,7 @@
 
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
-    (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
+    (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
       (with-redefs [pulse-channel/validate-email-domains (fn [& _]
                                                            (throw (ex-info "Nope!" {:status-code 403})))]
         ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
@@ -992,7 +993,7 @@
     (api.card-test/with-cards-in-readable-collection [card-1 card-2]
       (mt/with-fake-inbox
         (mt/with-model-cleanup [Pulse]
-          (mt/with-temp Collection [collection]
+          (t2.with-temp/with-temp [Collection collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             ;; First create the pulse
             (let [{pulse-id :id} (mt/user-http-request :rasta :post 200 "pulse"
@@ -1111,11 +1112,11 @@
                                                     :details       {:other  "stuff"
                                                                     :emails ["foo@bar.com"]}}]]
       (testing "Should be able to delete your own subscription"
-        (mt/with-temp PulseChannelRecipient [_ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil
                  (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
 
       (testing "Users can't delete someone else's pulse subscription"
-        (mt/with-temp PulseChannelRecipient [_ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (t2.with-temp/with-temp [PulseChannelRecipient _ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription")))))))))

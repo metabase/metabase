@@ -1,4 +1,3 @@
-import React from "react";
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -44,4 +43,5 @@ const DatabaseAuthCodeDescription = (): JSX.Element | null => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseAuthCodeDescription;

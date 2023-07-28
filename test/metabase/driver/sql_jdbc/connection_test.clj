@@ -2,9 +2,12 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.core :as mbc]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Secret]]
@@ -13,7 +16,9 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [next.jdbc :as next.jdbc]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,26 +51,30 @@
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]
-          (jdbc/with-db-connection [_conn spec]
-            (jdbc/execute! spec ["CREATE TABLE birds (name varchar)"])
-            (jdbc/execute! spec ["INSERT INTO birds values ('rasta'),('lucky')"])
-            (mt/with-temp Database [database {:engine :h2, :details connection-details}]
-              (testing "database id is not in our connection map initially"
-                ;; deref'ing a var to get the atom. looks weird
-                (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                    (u/id database)))))
-              (testing "when getting a pooled connection it is now in our connection map"
-                (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-                      birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
-                  (is (seq birds))
-                  (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                 (u/id database)))))
-              (testing "and is no longer in our connection map after cleanup"
-                (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)
-                (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                    (u/id database)))))
-              (testing "the pool has been destroyed"
-                (is @destroyed?)))))))))
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           spec
+           {:write? true}
+           (fn [conn]
+             (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
+             (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
+             (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
+               (testing "database id is not in our connection map initially"
+                 ;; deref'ing a var to get the atom. looks weird
+                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
+                                     (u/id database)))))
+               (testing "when getting a pooled connection it is now in our connection map"
+                 (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+                       birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
+                   (is (seq birds))
+                   (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool
+                                  (u/id database)))))
+               (testing "and is no longer in our connection map after cleanup"
+                 (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)
+                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
+                                     (u/id database)))))
+               (testing "the pool has been destroyed"
+                 (is @destroyed?))))))))))
 
 (deftest c3p0-datasource-name-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
@@ -178,3 +187,17 @@
         (is (= (#'sql-jdbc.conn/jdbc-spec-hash db)
                (#'sql-jdbc.conn/jdbc-spec-hash db))
             "Same db produced different hashes due to secrets")))))
+
+(deftest connection-pool-does-not-cache-audit-db
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (when config/ee-available?
+      (t2/delete! 'Database {:where [:= :is_audit true]})
+      (let [status (mbc/ensure-audit-db-installed!)
+            audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})
+            _ (is (= :metabase-enterprise.audit-db/installed status))
+            _ (is (= 13371337 audit-db-id))
+            first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
+            second-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
+        (is (= first-pool second-pool))
+        (is (= ::audit-db-not-in-cache!
+               (get @#'sql-jdbc.conn/database-id->connection-pool audit-db-id ::audit-db-not-in-cache!)))))))

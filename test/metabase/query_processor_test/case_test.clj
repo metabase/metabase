@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Metric Segment]]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- test-case
   [expr]
@@ -32,16 +33,16 @@
                                          [:ends-with [:field (mt/id :venues :name) nil] "t"]]]
                                        [:field (mt/id :venues :price) nil]]]]]))))
     (testing "Can we use segments in case"
-      (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
-                                               :definition {:source-table (mt/id :venues)
-                                                            :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+      (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                         :definition {:source-table (mt/id :venues)
+                                                                      :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
         (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field (mt/id :venues :price) nil]]]]])))))
     (testing "Can we use case in metric"
-      (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
-                                             :definition {:source-table (mt/id :venues)
-                                                          :aggregation  [:sum
-                                                                         [:case [[[:< [:field (mt/id :venues :price) nil] 4]
-                                                                                  [:field (mt/id :venues :price) nil]]]]]}}]
+      (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
+                                                       :definition {:source-table (mt/id :venues)
+                                                                    :aggregation  [:sum
+                                                                                   [:case [[[:< [:field (mt/id :venues :price) nil] 4]
+                                                                                            [:field (mt/id :venues :price) nil]]]]]}}]
         (is (= 179.0 (test-case [:metric metric-id])))))
     (testing "Can we use case with breakout"
       (is (= [[2 0.0]

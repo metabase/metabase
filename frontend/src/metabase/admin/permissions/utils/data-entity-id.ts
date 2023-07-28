@@ -1,3 +1,4 @@
+import { checkNotNull } from "metabase/core/utils/types";
 import type { ConcreteTableId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";
@@ -9,7 +10,7 @@ export const getDatabaseEntityId = (databaseEntity: Database) => ({
 });
 
 export const getSchemaEntityId = (schemaEntity: Schema) => ({
-  databaseId: schemaEntity.database.id,
+  databaseId: checkNotNull(schemaEntity.database).id,
   schemaName: schemaEntity.name,
 });
 

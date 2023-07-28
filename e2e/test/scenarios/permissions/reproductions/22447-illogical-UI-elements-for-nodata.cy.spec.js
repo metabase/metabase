@@ -1,4 +1,10 @@
-import { restore, visitQuestion, isEE, popover } from "e2e/support/helpers";
+import {
+  restore,
+  visitQuestion,
+  isEE,
+  popover,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
@@ -14,6 +20,7 @@ describe("UI elements that make no sense for users without data permissions (met
     visitQuestion("1");
 
     cy.findByTestId("viz-settings-button");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
     cy.findByTestId("display-options-sensible");
@@ -24,12 +31,14 @@ describe("UI elements that make no sense for users without data permissions (met
     });
 
     cy.findByTextEnsureVisible("Line options");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save")
       .as("saveButton")
       .invoke("css", "pointer-events")
       .should("equal", "none");
 
     cy.get("@saveButton").realHover();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You don't have permission to save this question.");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
@@ -37,6 +46,7 @@ describe("UI elements that make no sense for users without data permissions (met
     });
 
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
 
     popover()
@@ -49,6 +59,7 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.onlyOn(isEE);
 
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: { data: { schemas: "block" } },
@@ -65,12 +76,14 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByTextEnsureVisible("There was a problem with your question");
 
     cy.findByTestId("viz-settings-button").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("not.exist");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.icon("refresh").should("not.exist");
     });
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
 
     popover()

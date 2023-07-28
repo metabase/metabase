@@ -1,4 +1,4 @@
-import React, { forwardRef, HTMLAttributes, Ref } from "react";
+import { forwardRef, HTMLAttributes, Ref } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ColorSelectorPopover from "./ColorSelectorPopover";
@@ -35,4 +35,5 @@ const ColorSelector = forwardRef(function ColorSelector(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorSelector;

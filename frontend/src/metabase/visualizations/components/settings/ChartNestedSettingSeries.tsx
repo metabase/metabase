@@ -1,4 +1,3 @@
-import React from "react";
 import ChartNestedSettingSeriesMultiple from "./ChartNestedSettingSeriesMultiple";
 import ChartNestedSettingSeriesSingle, {
   ChartNestedSettingsSeriesSingleProps,
@@ -20,4 +19,5 @@ const ChartNestedSettingSeries = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartNestedSettingSeries;

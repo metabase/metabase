@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -74,7 +74,9 @@ function NotebookSteps({
       } else {
         const updatedLegacyQuery = Lib.toLegacyQuery(query);
         const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
-        await updateQuestion(updatedQuestion);
+        const updatedQuery = updatedQuestion.query() as StructuredQuery;
+        const cleanQuestion = updatedQuery.cleanNesting().question();
+        await updateQuestion(cleanQuestion);
       }
 
       // mark the step as "closed" since we can assume
@@ -114,4 +116,5 @@ function NotebookSteps({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NotebookSteps;

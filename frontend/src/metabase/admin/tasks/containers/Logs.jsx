@@ -1,4 +1,5 @@
-import React, { Component } from "react";
+import { Component } from "react";
+import * as React from "react";
 import ReactDOM from "react-dom";
 import reactAnsiStyle from "react-ansi-style";
 import "react-ansi-style/inject-css";

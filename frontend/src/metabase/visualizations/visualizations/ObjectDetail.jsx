@@ -8,12 +8,18 @@ import {
 } from "metabase/visualizations/lib/settings/column";
 
 import { formatColumn } from "metabase/lib/formatting";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 
 const ObjectDetailProperties = {
   uiName: t`Detail`,
   identifier: "object",
   iconName: "document",
   noun: t`object`,
+  minSize: getMinSize("object"),
+  defaultSize: getDefaultSize("object"),
   hidden: false,
   canSavePng: false,
   disableClickBehavior: true,

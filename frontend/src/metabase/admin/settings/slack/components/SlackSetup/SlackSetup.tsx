@@ -1,4 +1,4 @@
-import React, { ComponentType, ReactNode, useState } from "react";
+import { ComponentType, ReactNode, useState } from "react";
 import { jt, t } from "ttag";
 import SlackBadge from "../SlackBadge";
 import SlackAppsLink from "../SlackAppsLink";
@@ -129,4 +129,5 @@ const ActivateAppSection = ({ Form }: ActivateAppSectionProps): JSX.Element => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackSetup;

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import Form from "metabase/containers/FormikForm";
@@ -59,7 +59,7 @@ const Modal = ({
   );
 };
 
-class EntityForm extends React.Component {
+class EntityForm extends Component {
   render() {
     const { modal, ...props } = this.props;
 

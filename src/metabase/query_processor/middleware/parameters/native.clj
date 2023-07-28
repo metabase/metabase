@@ -26,13 +26,14 @@
       snippets and prepared statement args, and combine the sequence of fragments back into a single SQL string."
   (:require
    [clojure.set :as set]
-   [metabase.driver :as driver]))
+   [metabase.driver :as driver]
+   [metabase.query-processor.store :as qp.store]))
 
 (defn expand-inner
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
   [inner-query]
-  (if-not (driver/supports? driver/*driver* :native-parameters)
+  (if-not (driver/database-supports? driver/*driver* :native-parameters (qp.store/database))
     inner-query
     ;; Totally ridiculous, but top-level native queries use the key `:query` for SQL or equivalent, while native
     ;; source queries use `:native`. So we need to handle either case.

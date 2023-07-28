@@ -1,12 +1,12 @@
-import React, {
+import {
   forwardRef,
   HTMLAttributes,
   ReactNode,
   Ref,
   useContext,
   useMemo,
-  useRef,
 } from "react";
+import * as React from "react";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { TabContext, TabContextType } from "../Tab";
 import { TabListContent, TabListRoot } from "./TabList.styled";
@@ -15,17 +15,16 @@ export interface TabListProps<T>
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   value?: T;
   onChange?: (value: T) => void;
+  onScroll?: React.UIEventHandler<HTMLDivElement>;
   children?: ReactNode;
 }
 
 const TabList = forwardRef(function TabGroup<T>(
-  { value, onChange, children, ...props }: TabListProps<T>,
+  { value, onChange, onScroll, children, ...props }: TabListProps<T>,
   ref: Ref<HTMLDivElement>,
 ) {
   const idPrefix = useUniqueId();
   const outerContext = useContext(TabContext);
-
-  const tabListContentRef = useRef(null);
 
   const innerContext = useMemo(() => {
     return { value, idPrefix, onChange };
@@ -34,8 +33,8 @@ const TabList = forwardRef(function TabGroup<T>(
   const activeContext = outerContext.isDefault ? innerContext : outerContext;
 
   return (
-    <TabListRoot {...props} ref={ref} role="tablist">
-      <TabListContent ref={tabListContentRef}>
+    <TabListRoot {...props} role="tablist">
+      <TabListContent ref={ref} onScroll={onScroll}>
         <TabContext.Provider value={activeContext as TabContextType}>
           {children}
         </TabContext.Provider>
@@ -44,6 +43,7 @@ const TabList = forwardRef(function TabGroup<T>(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(TabList, {
   Root: TabListRoot,
   Content: TabListContent,

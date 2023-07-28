@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { AppBarLeftContainer } from "./AppBarLarge.styled";
 
 interface SidebarButtonProps {
@@ -35,6 +35,7 @@ interface SidebarIconProps {
 export const SidebarIcon = styled(Icon)<SidebarIconProps>`
   color: ${color("brand")};
   display: block;
+  transform: translateY(2px) translateX(2px);
 
   ${props =>
     !props.isLogoVisible &&

@@ -21,6 +21,7 @@
    [metabase.api.login-history :as api.login-history]
    [metabase.api.metabot :as api.metabot]
    [metabase.api.metric :as api.metric]
+   [metabase.api.model-index :as api.model-index]
    [metabase.api.native-query-snippet :as api.native-query-snippet]
    [metabase.api.notify :as api.notify]
    [metabase.api.permissions :as api.permissions]
@@ -31,7 +32,7 @@
    [metabase.api.pulse :as api.pulse]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
-    :refer [+apikey +auth +public-exceptions +message-only-exceptions]]
+    :refer [+apikey +auth +message-only-exceptions +public-exceptions]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -49,10 +50,10 @@
    [metabase.api.util :as api.util]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.api.routes))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.api.routes))
 
 ;; EE routes defined in [[metabase-enterprise.api.routes/routes]] always get the first chance to handle a request, if
 ;; they exist. If they don't exist, this handler returns `nil` which means Compojure will try the next handler.
@@ -86,6 +87,7 @@
   (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/metric"               [] (+auth api.metric/routes))
+  (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))

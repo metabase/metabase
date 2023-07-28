@@ -36,6 +36,10 @@ export function parseParameterValue(value, parameter) {
 }
 
 function parseParameterValueForNumber(value) {
+  if (Array.isArray(value)) {
+    return value.map(number => parseFloat(number));
+  }
+
   // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
   const valueSplitByCommas = value
     .split(",")

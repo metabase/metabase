@@ -1,5 +1,3 @@
-/* eslint-disable react/no-string-refs */
-import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -57,6 +55,7 @@ export const getDashboardActions = (
             icon="subscription"
             disabled={!canManageSubscriptions}
             onClick={onSharingClick}
+            aria-label="subscriptions"
             data-metabase-event="Dashboard;Subscriptions"
           />
         </Tooltip>,

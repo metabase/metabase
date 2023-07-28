@@ -1,1 +1,1 @@
-export { default } from "./ActionPicker";
+export { ActionPicker, ConnectedActionPicker } from "./ActionPicker";

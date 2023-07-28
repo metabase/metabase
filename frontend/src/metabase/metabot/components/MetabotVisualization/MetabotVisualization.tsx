@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -38,4 +37,5 @@ const MetabotVisualization = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(MetabotVisualization);

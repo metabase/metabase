@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 // things that will eventually load the quetsion
@@ -40,7 +40,7 @@ import Question from "metabase-lib/Question";
  * The raw un-connected component is also exported so we can unit test it
  * without the redux store.
  */
-export class AdHocQuestionLoader extends React.Component {
+export class AdHocQuestionLoader extends Component {
   state = {
     // this will store the loaded question
     question: null,

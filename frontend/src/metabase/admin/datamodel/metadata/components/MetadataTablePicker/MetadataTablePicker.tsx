@@ -1,8 +1,8 @@
-import React from "react";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";
-import { DatabaseId, Schema, SchemaId, TableId } from "metabase-types/api";
+import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Schema from "metabase-lib/metadata/Schema";
 import MetadataSchemaList from "../MetadataSchemaList";
 import MetadataTableList from "../MetadataTableList";
 
@@ -43,6 +43,7 @@ const MetadataTablePicker = ({
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Schemas.loadList({
   query: (_: State, { selectedDatabaseId }: OwnProps) => ({
     dbId: selectedDatabaseId,

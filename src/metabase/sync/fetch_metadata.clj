@@ -23,7 +23,7 @@
   "Get information about the foreign keys belonging to `table`."
   [database :- i/DatabaseInstance, table :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
-    (when (driver/supports? driver :foreign-keys)
+    (when (driver/database-supports? driver :foreign-keys database)
       (driver/describe-table-fks driver database table))))
 
 (s/defn nfc-metadata :- (s/maybe #{i/TableMetadataField})

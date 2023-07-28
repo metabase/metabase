@@ -27,10 +27,10 @@ export function startNewCard(type, databaseId, tableId) {
 export async function loadCard(cardId, { dispatch, getState }) {
   try {
     await dispatch(Questions.actions.fetch({ id: cardId }, { reload: true }));
-    const card = Questions.selectors.getObject(getState(), {
+    const question = Questions.selectors.getObject(getState(), {
       entityId: cardId,
     });
-    return card;
+    return question?.card();
   } catch (error) {
     console.error("error loading card", error);
     throw error;
@@ -45,6 +45,7 @@ function getCleanCard(card) {
 
   return {
     name: card.name,
+    collectionId: card.collectionId,
     description: card.description,
     dataset_query: dataset_query,
     display: card.display,

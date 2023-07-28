@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 
 import {
   DataSelectorSectionHeaderContainer as Container,
@@ -17,4 +17,5 @@ const DataSelectorSectionHeader = ({
   </Container>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorSectionHeader;

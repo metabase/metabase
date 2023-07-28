@@ -1,11 +1,10 @@
-import React from "react";
 import { t } from "ttag";
 import {
   isSyncAborted,
   isSyncCompleted,
   isSyncInProgress,
 } from "metabase/lib/syncing";
-import { Database } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
 
 import StatusLarge from "../StatusLarge";
 
@@ -64,4 +63,5 @@ const getDescription = (database: Database): string => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseStatusLarge;

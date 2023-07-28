@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import * as React from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -9,7 +10,7 @@ import {
   getChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
-import { measureText } from "metabase/lib/measure-text";
+import { measureTextWidth } from "metabase/lib/measure-text";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import {
   getClickData,
@@ -36,7 +37,7 @@ import {
   RemappingHydratedChartData,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
-import { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/core/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,
@@ -45,6 +46,10 @@ import {
 import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -265,7 +270,7 @@ const RowChartVisualization = ({
 
   const textMeasurer = useMemo(() => {
     return (text: string, style: FontStyle) =>
-      measureText(text, {
+      measureTextWidth(text, {
         ...style,
         family: fontFamily,
       });
@@ -304,7 +309,7 @@ const RowChartVisualization = ({
           stackOffset={stackOffset}
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
-          measureText={textMeasurer}
+          measureTextWidth={textMeasurer}
           hoveredData={hoverData}
           onClick={handleClick}
           onHover={handleHover}
@@ -327,8 +332,8 @@ RowChartVisualization.iconName = "horizontal_bar";
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = { width: 5, height: 4 };
-RowChartVisualization.defaultSize = { width: 5, height: 4 };
+RowChartVisualization.minSize = getMinSize("row");
+RowChartVisualization.defaultSize = getDefaultSize("row");
 
 RowChartVisualization.settings = {
   ...ROW_CHART_SETTINGS,
@@ -428,4 +433,5 @@ RowChartVisualization.placeholderSeries = [
   },
 ];
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RowChartVisualization;

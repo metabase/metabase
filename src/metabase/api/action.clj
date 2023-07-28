@@ -16,10 +16,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,7 +56,7 @@
   {model-id [:maybe ms/PositiveInt]}
   (letfn [(actions-for [models]
             (if (seq models)
-              (hydrate (action/select-actions models
+              (t2/hydrate (action/select-actions models
                                               :model_id [:in (map :id models)]
                                               :archived false)
                        :creator)
@@ -89,12 +86,12 @@
   [action-id]
   {action-id ms/PositiveInt}
   (-> (action/select-action :id action-id :archived false)
-      (hydrate :creator)
+      (t2/hydrate :creator)
       api/read-check))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:action-id"
+(api/defendpoint DELETE "/:action-id"
   [action-id]
+  {action-id ms/PositiveInt}
   (let [action (api/write-check Action action-id)]
     (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)
                                                                             :action_id action-id}))
@@ -181,7 +178,7 @@
   (let [action (api/read-check Action id :archived false)]
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
-               (u/prog1 (str (UUID/randomUUID))
+               (u/prog1 (str (random-uuid))
                  (t2/update! Action id
                              {:public_uuid <>
                               :made_public_by_id api/*current-user-id*})))}))

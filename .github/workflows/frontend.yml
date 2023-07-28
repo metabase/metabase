@@ -79,7 +79,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
     runs-on: buildjet-2vcpu-ubuntu-2204
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
@@ -131,6 +131,7 @@ jobs:
         uses: chromaui/action@v1
         env:
           PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          STORYBOOK_BUILD_TIMEOUT: 900000
         if: env.PUBLISH_CHROMATIC != null
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

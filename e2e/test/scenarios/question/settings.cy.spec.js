@@ -6,6 +6,7 @@ import {
   visitQuestionAdhoc,
   popover,
   sidebar,
+  moveColumnDown,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -49,6 +50,7 @@ describe("scenarios > question > settings", () => {
         .click();
 
       // wait a Category value to appear in the table, so we know the query completed
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Widget");
 
       // Add people.ean
@@ -59,6 +61,7 @@ describe("scenarios > question > settings", () => {
         .click();
 
       // wait a Ean value to appear in the table, so we know the query completed
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("8833419218504");
 
       // confirm that the table contains the right columns
@@ -68,8 +71,24 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Total").should("not.exist");
     });
 
-    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
-      cy.viewport(2000, 1200);
+    it("should allow you to re-order columns even when one has been removed (metabase2#9287)", () => {
+      cy.viewport(1600, 800);
+
+      openOrdersTable();
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByTestId("Subtotal-hide-button").click();
+      cy.findByTestId("Tax-hide-button").click();
+
+      getSidebarColumns().eq("3").as("total").contains("Total");
+
+      moveColumnDown(cy.get("@total"), -2);
+
+      getSidebarColumns().eq("1").should("contain.text", "Total");
+    });
+
+    it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
+      cy.viewport(2000, 1600);
       // Orders join Products
       visitQuestionAdhoc({
         dataset_query: {
@@ -106,26 +125,24 @@ describe("scenarios > question > settings", () => {
       cy.get("@prod-category")
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -300, { force: true })
-        .trigger("mouseup", 0, -300, { force: true });
+        .trigger("mousemove", 0, -350, { force: true })
+        .trigger("mouseup", 0, -350, { force: true });
 
       reloadResults();
 
       findColumnAtIndex("Products → Category", 5);
 
       // Remove "Total"
-      getSidebarColumns()
-        .contains("Total")
-        .closest("[data-testid^=draggable-item]")
-        .find(".Icon-eye_outline")
-        .click();
+      hideColumn("Total");
 
       reloadResults();
 
-      cy.findByText("117.03").should("not.exist");
+      cy.findByTestId("query-builder-main")
+        .findByText("117.03")
+        .should("not.exist");
 
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
-      cy.findByText("Visible columns").click();
+      cy.findByTestId("sidebar-left").findByText("More columns").click();
 
       findColumnAtIndex("Products → Category", 5);
 
@@ -133,7 +150,7 @@ describe("scenarios > question > settings", () => {
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
 
       // Add "Address"
-      cy.findByText("Address").siblings(".Icon-add").click();
+      addColumn("Address");
 
       // The result automatically load when adding new fields but two requests are fired.
       // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
@@ -143,24 +160,59 @@ describe("scenarios > question > settings", () => {
 
       // Move it one place up
       cy.get("@user-address")
+        .scrollIntoView()
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
-        .trigger("mousemove", 0, -50, { force: true })
-        .trigger("mouseup", 0, -50, { force: true });
+        .trigger("mousemove", 0, -100, { force: true })
+        .trigger("mouseup", 0, -100, { force: true });
 
-      findColumnAtIndex("User → Address", -2);
+      findColumnAtIndex("User → Address", -3);
 
       /**
        * Helper functions related to THIS test only
        */
 
-      function reloadResults() {
-        cy.icon("play").last().click();
-      }
-
       function findColumnAtIndex(column_name, index) {
-        return getSidebarColumns().eq(index).contains(column_name);
+        return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
+    });
+
+    it("should be okay showing an empty joined table (metabase#29140)", () => {
+      // Orders join Products
+      visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            fields: [
+              ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+              ["field", ORDERS.SUBTOTAL, { "base-type": "type/Float" }],
+            ],
+            limit: 5,
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "table",
+      });
+
+      cy.findByTestId("viz-settings-button").click();
+
+      addColumn("City");
+      // cy.findByText("City").siblings("button").find(".Icon-add").click();
+
+      // Remove "Product ID"
+      hideColumn("Product ID");
+
+      // Remove "Subtotal"
+      hideColumn("Subtotal");
+
+      reloadResults();
+
+      // Remove "City"
+      hideColumn("City");
+      cy.findByTestId("query-builder-main").findByText(
+        "Every field is hidden right now",
+      );
     });
 
     it("should change to column formatting when sidebar is already open (metabase#16043)", () => {
@@ -173,15 +225,18 @@ describe("scenarios > question > settings", () => {
       });
 
       cy.findByTestId("viz-settings-button").click(); // open settings sidebar
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
-      popover().within(() => cy.icon("gear").click()); // open subtotal column settings
+      popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Separator style"); // shows subtotal column settings
 
       cy.get(".TableInteractive").findByText("Created At").click(); // open created_at column header actions
-      popover().within(() => cy.icon("gear").click()); // open created_at column settings
+      popover().icon("gear").click(); // open created_at column settings
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Date style"); // shows created_at column settings
     });
 
@@ -206,6 +261,7 @@ describe("scenarios > question > settings", () => {
 
       visitQuestionAdhoc(questionDetails);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
       cy.findByTestId("viz-settings-button").click();
@@ -223,15 +279,22 @@ describe("scenarios > question > settings", () => {
           cy.icon("ellipsis").click();
         });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Normal").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Currency").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("US Dollar").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Bitcoin").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("In every table cell").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 2.07");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 6.10");
     });
   });
@@ -241,25 +304,36 @@ describe("scenarios > question > settings", () => {
       // create a question and add it to a modal
       openOrdersTable();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
       cy.get(".ModalContent").contains("button", "Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Yes please!").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders in a dashboard").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Cancel").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
       browse().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders").click();
 
       // This next assertion might not catch bugs where the modal displays after
       // a quick delay. With the previous presentation of this bug, the modal
       // was immediately visible, so I'm not going to add any waits.
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Add this question to a dashboard").should("not.exist");
     });
   });
 });
+
+function reloadResults() {
+  cy.icon("play").last().click();
+}
 
 function getSidebarColumns() {
   return cy
@@ -267,5 +341,27 @@ function getSidebarColumns() {
     .scrollIntoView()
     .should("be.visible")
     .parent()
-    .find("[data-testid^=draggable-item]");
+    .findAllByRole("listitem");
+}
+
+function getVisibleSidebarColumns() {
+  return cy
+    .findByRole("group", { name: /visible-columns/ })
+    .findAllByRole("listitem");
+}
+
+function hideColumn(name) {
+  getSidebarColumns()
+    .contains(name)
+    .parentsUntil("[role=listitem]")
+    .icon("eye_outline")
+    .click();
+}
+
+function addColumn(name) {
+  getSidebarColumns()
+    .contains(name)
+    .parentsUntil("[role=listitem]")
+    .icon("add")
+    .click();
 }

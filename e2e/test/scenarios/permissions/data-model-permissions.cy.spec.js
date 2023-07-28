@@ -4,6 +4,7 @@ import {
   describeEE,
   assertPermissionForItem,
   modifyPermission,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
@@ -18,6 +19,7 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     cy.intercept("PUT", "/api/table/*").as("tableUpdate");
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
@@ -45,11 +47,15 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Go to the admin settings
     cy.icon("gear").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Admin settings").click();
 
     // Assert the Data Model page state
-    cy.findByText("Data Model");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Table Metadata");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 Queryable Table");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
 
     cy.wait("@tableMetadataFetch");
@@ -63,10 +69,13 @@ describeEE("scenarios > admin > permissions", () => {
       .blur();
     cy.wait("@tableUpdate");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Updated Table display_name");
 
     // Update the table visibility
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Hidden").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 Hidden Table");
   });
 
@@ -87,14 +96,21 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Go to the admin settings
     cy.icon("gear").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Admin settings").click();
 
     // Assert the Data Model page state
-    cy.findByText("Data Model");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Table Metadata");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("4 Queryable Tables");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Products");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("People");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Reviews");
   });
 

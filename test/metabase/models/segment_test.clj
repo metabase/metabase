@@ -16,7 +16,7 @@
 
 (deftest update-test
   (testing "Updating"
-    (mt/with-temp Segment [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
+    (t2.with-temp/with-temp [Segment {:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Segment"
         (is (thrown-with-msg?
              Exception
@@ -131,7 +131,7 @@
                                                                    [:and
                                                                     [:= $price 4]
                                                                     [:= $category_id->categories.name "BBQ"]]}))}]
-    (is (= "Filtered by Price equals 4 and Categories → Name equals \"BBQ\""
+    (is (= "Filtered by Price equals 4 and Category → Name equals \"BBQ\""
            (:definition_description (t2/hydrate segment :definition_description))))
     (testing "Segments that reference other Segments (inception)"
       (t2.with-temp/with-temp [Segment segment-2 {:name "Segment 2"

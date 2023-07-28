@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from "react";
+import { ChangeEvent } from "react";
 
 import _ from "underscore";
 import Select from "metabase/core/components/Select";
@@ -23,4 +23,5 @@ const YearPicker = ({ value, onChange }: YearPickerProps) => (
   />
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default YearPicker;

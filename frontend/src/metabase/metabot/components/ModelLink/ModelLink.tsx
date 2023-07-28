@@ -1,4 +1,3 @@
-import React from "react";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/Question";
 import { ModelLinkRoot } from "./ModelLink.styled";
@@ -15,4 +14,5 @@ const ModelLink = ({ model }: ModelLinkProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelLink;

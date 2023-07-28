@@ -1,6 +1,5 @@
-import React from "react";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "../../../components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import {
   StatusCardRoot,
@@ -36,13 +35,15 @@ export interface StatusLargeProps {
   status: Status;
   isActive?: boolean;
   onCollapse?: () => void;
+  onDismiss?: () => void;
 }
 
 const StatusLarge = ({
   status,
   isActive,
   onCollapse,
-}: StatusLargeProps): JSX.Element => {
+  onDismiss,
+}: StatusLargeProps) => {
   return (
     <StatusRoot role="status">
       <StatusHeader>
@@ -50,6 +51,11 @@ const StatusLarge = ({
         {onCollapse && (
           <StatusToggle onClick={onCollapse}>
             <Icon name="chevrondown" />
+          </StatusToggle>
+        )}
+        {onDismiss && (
+          <StatusToggle onClick={onDismiss}>
+            <Icon name="close" />
           </StatusToggle>
         )}
       </StatusHeader>
@@ -81,9 +87,9 @@ const StatusCard = ({
   }
 
   return (
-    <StatusCardRoot key={id}>
+    <StatusCardRoot key={id} hasBody={!!description}>
       <StatusCardIcon>
-        <Icon name={icon} />
+        <Icon name={icon as unknown as IconName} />
       </StatusCardIcon>
       <StatusCardBody>
         <StatusCardTitle>
@@ -106,4 +112,5 @@ const StatusCard = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StatusLarge;

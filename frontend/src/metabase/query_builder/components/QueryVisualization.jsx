@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import cx from "classnames";
@@ -147,11 +147,9 @@ export const VisualizationDirtyState = ({
     })}
   >
     <RunButtonWithTooltip
-      className="shadowed"
+      className="py2 px3 shadowed"
       circular
       compact
-      py={2}
-      px={3}
       result={result}
       hidden={!isRunnable || hidden}
       isRunning={isRunning}

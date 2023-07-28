@@ -49,7 +49,9 @@ describe.skip("issue 19744", () => {
     editDashboard();
     cy.icon("filter").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Time").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All Options").click();
 
     cy.get(".DashCard").contains("Select…").click();
@@ -78,7 +80,7 @@ function addQuestionToDashboardAndVisit() {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
-        card: { size_x: 16, size_y: 10 },
+        card: { size_x: 21, size_y: 10 },
       });
     });
 

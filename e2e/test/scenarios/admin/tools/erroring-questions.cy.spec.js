@@ -1,4 +1,4 @@
-import { restore, isEE } from "e2e/support/helpers";
+import { restore, isEE, setTokenFeatures } from "e2e/support/helpers";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
 
@@ -26,7 +26,7 @@ const brokenQuestionDetails = {
 // UDATE:
 // We need to skip this completely! CI on `master` is almost constantly red.
 // TODO:
-// Once the underlying problem with H2 is solved, replace `describe.skip` with `describeEE`.
+// Once the underlying problem with H2 is solved, replace `describe.skip` with `describePremium`.
 describe.skip(
   "admin > tools > erroring questions ",
   { tags: "@quarantine" },
@@ -36,6 +36,7 @@ describe.skip(
 
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
@@ -56,6 +57,7 @@ describe.skip(
       it("should disable search input fields (metabase#18050)", () => {
         cy.visit(TOOLS_ERRORS_URL);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No results");
         cy.button("Rerun Selected").should("be.disabled");
         cy.findByPlaceholderText("Error contents").should("be.disabled");
@@ -83,6 +85,7 @@ describe.skip(
         cy.wait("@dataset");
 
         // The question is still there because we didn't fix it
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(brokenQuestionDetails.name);
         cy.button("Rerun Selected").should("be.disabled");
 
@@ -94,6 +97,7 @@ describe.skip(
 
         cy.wait("@dataset");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No results");
       });
 
@@ -108,6 +112,7 @@ describe.skip(
 
         cy.wait("@dataset");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No results");
       });
     });

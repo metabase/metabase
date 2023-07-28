@@ -1,12 +1,14 @@
-import React, { useCallback, ChangeEvent } from "react";
+import { useCallback, ChangeEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 
-import { FieldId } from "metabase-types/types/Field";
-import { ConcreteField } from "metabase-types/types/Query";
-import { DatasetColumn } from "metabase-types/api";
+import type {
+  ConcreteFieldReference,
+  DatasetColumn,
+  FieldId,
+} from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import Question from "metabase-lib/Question";
 
@@ -16,7 +18,7 @@ import {
   StyledSelect,
 } from "./ChartSettingsListColumns.styled";
 
-type FieldIdOrFieldRef = FieldId | ConcreteField;
+type FieldIdOrFieldRef = FieldId | ConcreteFieldReference;
 
 type SettingValue = {
   left: FieldIdOrFieldRef[];
@@ -144,4 +146,5 @@ function ChartSettingsListColumns({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsListColumns;

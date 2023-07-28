@@ -53,4 +53,5 @@ const getFormStatus = (status: FormStatus, isRecent: boolean): FormStatus => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default useFormSubmitButton;

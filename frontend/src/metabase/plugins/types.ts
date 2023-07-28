@@ -1,5 +1,23 @@
-import { Member, User } from "metabase-types/api";
-import { ConfirmationState } from "metabase/hooks/use-confirmation";
+import type { ComponentType } from "react";
+import type { Member, User } from "metabase-types/api";
+import type { ConfirmationState } from "metabase/hooks/use-confirmation";
+
+export interface AuthProvider {
+  name: string;
+  Button: ComponentType<AuthProviderButtonProps>;
+  Panel?: ComponentType<AuthProviderPanelProps>;
+}
+
+export interface AuthProviderButtonProps {
+  isCard?: boolean;
+  redirectUrl?: string;
+}
+
+export interface AuthProviderPanelProps {
+  redirectUrl?: string;
+}
+
+export type GetAuthProviders = (providers: AuthProvider[]) => AuthProvider[];
 
 export type GetChangeMembershipConfirmation = (
   currentUser: User,

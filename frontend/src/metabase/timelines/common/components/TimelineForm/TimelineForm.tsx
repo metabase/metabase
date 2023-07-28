@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import { getTimelineIcons } from "metabase/lib/timelines";
@@ -75,4 +75,5 @@ const TimelineForm = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TimelineForm;

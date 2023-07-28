@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import {
   EmptyStateIcon,
@@ -23,4 +22,5 @@ const SearchEmptyState = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SearchEmptyState;

@@ -101,7 +101,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`body`** value must be a map.
+*  **`body`** map
 
 ## `PUT /api/permissions/graph`
 

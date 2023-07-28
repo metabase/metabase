@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -10,7 +10,7 @@ import {
 } from "metabase/query_builder/components/DataSelector";
 
 const DataSourceSelectorsPropTypes = {
-  isNativeEditorOpen: PropTypes.bool.isRequired,
+  isNativeEditorOpen: PropTypes.bool,
   query: PropTypes.object,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
@@ -83,6 +83,7 @@ const DataSourceSelectors = ({
 
   return (
     <PopulatedDataSourceSelectors
+      isNativeEditorOpen={isNativeEditorOpen}
       database={database}
       databases={databases}
       query={query}

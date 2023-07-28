@@ -52,6 +52,7 @@ describe("issue 21559", { tags: "@external" }, () => {
   it("should respect dashboard card visualization (metabase#21559)", () => {
     cy.findByTestId("add-series-button").click({ force: true });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(q2Details.name).click();
     cy.get(".AddSeriesModal").within(() => {
       cy.findByText("Done").click();
@@ -63,6 +64,7 @@ describe("issue 21559", { tags: "@external" }, () => {
     saveDashboard();
 
     cy.icon("subscription").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")

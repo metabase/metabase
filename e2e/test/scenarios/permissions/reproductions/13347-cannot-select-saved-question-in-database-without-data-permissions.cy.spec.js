@@ -45,11 +45,14 @@ describe.skip("issue 13347", { tags: "@external" }, () => {
       cy.signIn("none");
 
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       test === "QB" ? cy.findByText("Q1").click() : cy.findByText("Q2").click();
 
       cy.wait("@dataset", { timeout: 5000 });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65");
     });
   });

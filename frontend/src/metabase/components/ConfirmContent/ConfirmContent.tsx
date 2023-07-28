@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-import React from "react";
 import _ from "underscore";
 
 import { t } from "ttag";
@@ -51,7 +49,7 @@ const ConfirmContent = ({
       </Button>
       <Button
         danger
-        ml={2}
+        className="ml2"
         onClick={() => {
           onAction();
           onClose();
@@ -63,4 +61,5 @@ const ConfirmContent = ({
   </ModalContent>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ConfirmContent;

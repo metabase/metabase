@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import { checkNotNull } from "metabase/core/utils/types";
 import QuestionDisplayToggle from "metabase/query_builder/components/view/QuestionDisplayToggle";
@@ -42,6 +41,7 @@ const MetabotDisplayToggle = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

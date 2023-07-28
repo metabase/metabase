@@ -5,16 +5,20 @@ import {
   describeEE,
   isOSS,
   assertPermissionTable,
+  assertPermissionOptions,
   modifyPermission,
   selectSidebarItem,
   assertSidebarItems,
   isPermissionDisabled,
   visitQuestion,
   visitDashboard,
+  selectPermissionRow,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -63,11 +67,15 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     cy.intercept("PUT", "/api/permissions/graph", req => {
       req.reply(500, "Server error");
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save changes").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("button", "Yes").click();
 
     // see error modal
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Server error");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("There was an error saving");
   });
 
@@ -190,6 +198,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.button("Yes").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save changes").should("not.exist");
 
       assertPermissionTable([
@@ -201,6 +210,72 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         ["readonly", "View"],
       ]);
     });
+  });
+
+  it("don't propagate permissions by checkbox without access select", () => {
+    cy.visit("/admin/permissions/collections");
+
+    const collections = ["Our analytics", "First collection"];
+    assertSidebarItems(collections);
+
+    selectSidebarItem("First collection");
+    assertSidebarItems([...collections, "Second collection"]);
+
+    selectSidebarItem("Second collection");
+
+    assertPermissionTable([
+      ["Administrators", "Curate"],
+      ["All Users", "No access"],
+      ["collection", "Curate"],
+      ["data", "No access"],
+      ["nosql", "No access"],
+      ["readonly", "View"],
+    ]);
+
+    modifyPermission(
+      "All Users",
+      COLLECTION_ACCESS_PERMISSION_INDEX,
+      "View",
+      false,
+    );
+
+    modifyPermission(
+      "All Users",
+      COLLECTION_ACCESS_PERMISSION_INDEX,
+      null,
+      true,
+    );
+
+    // Navigate to children
+    selectSidebarItem("Third collection");
+
+    assertPermissionTable([
+      ["Administrators", "Curate"],
+      ["All Users", "No access"], // Check permission hasn't been propagated
+      ["collection", "Curate"],
+      ["data", "No access"],
+      ["nosql", "No access"],
+      ["readonly", "View"],
+    ]);
+  });
+
+  it("show selected option for the collection with children", () => {
+    cy.visit("/admin/permissions/collections");
+
+    const collections = ["Our analytics", "First collection"];
+    assertSidebarItems(collections);
+
+    selectSidebarItem("First collection");
+    assertSidebarItems([...collections, "Second collection"]);
+
+    selectSidebarItem("Second collection");
+    selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
+    assertPermissionOptions(["Curate", "View", "No access"]);
+
+    selectSidebarItem("Third collection");
+    selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
+
+    assertPermissionOptions(["Curate", "View"]);
   });
 
   context("data permissions", () => {
@@ -215,6 +290,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         "Unrestricted",
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You've made changes to permissions.");
 
       // Switching to databases focus should not show any warnings
@@ -252,6 +328,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
         cy.visit("/admin/permissions");
 
         // no groups selected initially and it shows an empty state
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Select a group to see its data permissions");
 
         const groups = [
@@ -291,7 +368,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           `/admin/permissions/data/group/${ADMIN_GROUP}`,
         );
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Permissions for the Administrators group");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("1 person");
 
         assertPermissionTable([["Sample Database", "Unrestricted", "Yes"]]);
@@ -399,6 +478,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           cy.button("Yes").click();
         });
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Save changes").should("not.exist");
 
         assertPermissionTable([
@@ -420,6 +500,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
 
         cy.get("label").contains("Databases").click();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Select a database to see group permissions");
 
         selectSidebarItem("Sample Database");
@@ -505,6 +586,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           cy.button("Yes").click();
         });
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Save changes").should("not.exist");
 
         assertPermissionTable([
@@ -524,6 +606,7 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("allows editing sandboxed access in the database focused view", () => {
@@ -542,13 +625,18 @@ describeEE("scenarios > admin > permissions", () => {
       "include",
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Grant sandboxed access to this table");
     cy.button("Save").should("be.disabled");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a user attribute").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("attr_uid").click();
     cy.button("Save").click();
 
@@ -571,9 +659,11 @@ describeEE("scenarios > admin > permissions", () => {
       "include",
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Grant sandboxed access to this table");
 
     cy.button("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Grant sandboxed access to this table").should("not.exist");
 
     cy.button("Save changes").click();
@@ -591,6 +681,7 @@ describeEE("scenarios > admin > permissions", () => {
   it("'block' data permission should not have editable 'native query editing' option (metabase#17738)", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All Users")
       .closest("tr")
       .as("allUsersRow")
@@ -621,10 +712,12 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     cy.signIn("nodata");
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question");
     cy.findByTestId("viz-settings-button").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("not.exist");
   });
 
@@ -640,6 +733,53 @@ describeEE("scenarios > admin > permissions", () => {
     cy.signIn("nodata");
     visitDashboard(1);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
+  });
+});
+
+describe("scenarios > admin > permissions", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions");
+
+    // Data permissions
+    cy.get("main").within(() => {
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference")
+      .as("permissionsHelpContent")
+      .within(() => {
+        cy.findByText("Data permissions");
+        cy.findByText("Unrestricted");
+        cy.findByText("Impersonated (Pro)");
+        cy.findByLabelText("Close").click();
+      });
+
+    cy.get("main").within(() => {
+      cy.findByText("Collections").click();
+      cy.get("@permissionHelpButton").click();
+    });
+
+    // Collection permissions
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Collection permissions");
+      cy.findByText("Collections Permission Levels");
+    });
+
+    // The help reference keeps being open when switching tabs
+    cy.get("main").within(() => {
+      cy.findByText("Data").click();
+    });
+
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Data permissions");
+    });
   });
 });

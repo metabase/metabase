@@ -1,5 +1,3 @@
-import React from "react";
-
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { truncateText } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
@@ -34,6 +32,7 @@ interface GaugeContainerProps {
   getColor: ColorGetter;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function GaugeContainer({
   card,
   data,

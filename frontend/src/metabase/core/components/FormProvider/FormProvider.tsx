@@ -1,4 +1,3 @@
-import React from "react";
 import { Formik } from "formik";
 import type { FormikConfig, FormikValues } from "formik";
 import type { AnySchema } from "yup";
@@ -38,4 +37,5 @@ function FormProvider<T extends FormikValues, C = unknown>({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormProvider;

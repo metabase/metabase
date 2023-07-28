@@ -1,53 +1,75 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import Segment from "./Segment";
-import Base from "./Base";
+import { Segment } from "metabase-types/api";
+import { createMockSegment } from "metabase-types/api/mocks";
+import { createMockMetadata } from "__support__/metadata";
+
+interface SetupOpts {
+  segment?: Segment;
+}
+
+const setup = ({ segment = createMockSegment() }: SetupOpts = {}) => {
+  const metadata = createMockMetadata({
+    segments: [segment],
+  });
+
+  const instance = metadata.segment(segment.id);
+  if (!instance) {
+    throw new TypeError();
+  }
+
+  return instance;
+};
+
 describe("Segment", () => {
   describe("instantiation", () => {
     it("should create an instance of Segment", () => {
-      expect(new Segment()).toBeInstanceOf(Segment);
-    });
-    it("should add `object` props to the instance (because it extends Base)", () => {
-      expect(new Segment()).toBeInstanceOf(Base);
-      expect(
-        new Segment({
-          foo: "bar",
-        }),
-      ).toHaveProperty("foo", "bar");
+      const segment = setup();
+      expect(segment).toBeDefined();
     });
   });
+
   describe("displayName", () => {
     it("should return the `name` property found on the instance", () => {
-      expect(
-        new Segment({
+      const segment = setup({
+        segment: createMockSegment({
           name: "foo",
-        }).displayName(),
-      ).toBe("foo");
+        }),
+      });
+
+      expect(segment.displayName()).toBe("foo");
     });
   });
+
   describe("filterClause", () => {
     it("should return a filter clause", () => {
-      expect(
-        new Segment({
+      const segment = setup({
+        segment: createMockSegment({
           id: 123,
-        }).filterClause(),
-      ).toEqual(["segment", 123]);
+        }),
+      });
+
+      expect(segment.filterClause()).toEqual(["segment", 123]);
     });
   });
+
   describe("isActive", () => {
     it("should return true if the segment is not archived", () => {
-      expect(
-        new Segment({
+      const segment = setup({
+        segment: createMockSegment({
           archived: false,
-        }).isActive(),
-      ).toBe(true);
+        }),
+      });
+
+      expect(segment.isActive()).toBe(true);
     });
+
     it("should return false if the segment is archived", () => {
-      expect(
-        new Segment({
+      const segment = setup({
+        segment: createMockSegment({
           archived: true,
-        }).isActive(),
-      ).toBe(false);
+        }),
+      });
+
+      expect(segment.isActive()).toBe(false);
     });
   });
 });

@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
+import * as React from "react";
 
 type Options = {
   preventDefault?: boolean;
@@ -82,4 +83,5 @@ function EventSandbox({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EventSandbox;

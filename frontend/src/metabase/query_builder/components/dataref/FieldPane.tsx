@@ -1,5 +1,3 @@
-import React from "react";
-
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import Field from "metabase-lib/metadata/Field";
@@ -26,4 +24,5 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FieldPane;

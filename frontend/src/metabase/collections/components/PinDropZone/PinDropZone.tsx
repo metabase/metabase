@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 import {
@@ -32,4 +31,5 @@ function PinDropZone({ variant, empty, ...props }: PinDropZoneProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinDropZone;

@@ -1,3 +1,4 @@
+import icepick from "icepick";
 // NOTE: need to load visualizations first for getSettings to work
 import "metabase/visualizations/index";
 
@@ -163,6 +164,30 @@ describe("visualization_settings", () => {
         { card: { visualization_settings: { foo: "bar" } } },
       ]);
       expect(settings).toEqual({ foo: "bar" });
+    });
+    it("should work correctly with frozen objects", () => {
+      const settings = getStoredSettingsForSeries(
+        icepick.freeze([
+          {
+            card: {
+              visualization_settings: {
+                column_settings: {
+                  '["name","A"]': {
+                    number_style: "currency",
+                  },
+                },
+              },
+            },
+          },
+        ]),
+      );
+      expect(settings).toEqual({
+        column_settings: {
+          '["name","A"]': {
+            number_style: "currency",
+          },
+        },
+      });
     });
   });
   describe("table.cell_column", () => {

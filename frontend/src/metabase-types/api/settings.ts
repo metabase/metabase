@@ -177,13 +177,18 @@ export interface Settings {
   "available-locales": LocaleData[] | null;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
+  "custom-homepage": boolean;
+  "custom-homepage-dashboard": number | null;
   "deprecation-notice-version"?: string;
+  "dismissed-custom-dashboard-toast"?: boolean;
   "email-configured?": boolean;
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;
   "enable-enhancements?": boolean;
   "enable-nested-queries": boolean;
   "enable-query-caching"?: boolean;
+  "query-caching-ttl-ratio": number;
+  "query-caching-min-ttl": number;
   "enable-password-login": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
@@ -202,6 +207,7 @@ export interface Settings {
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "map-tile-server-url": string;
   "openai-api-key": string | null;
   "openai-organization": string | null;
   "openai-model": string | null;

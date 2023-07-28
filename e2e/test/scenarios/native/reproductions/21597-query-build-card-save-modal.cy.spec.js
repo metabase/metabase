@@ -47,6 +47,7 @@ describe("issue 21597", { tags: "@external" }, () => {
     });
 
     cy.get(".NativeQueryEditor .Icon-play").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("200");
 
     // Change DB
@@ -58,6 +59,7 @@ describe("issue 21597", { tags: "@external" }, () => {
       cy.findByText(databaseCopyName).click();
     });
     cy.get(".NativeQueryEditor .Icon-play").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(
       `Failed to fetch Field ${PRODUCTS.CATEGORY}: Field does not exist, or belongs to a different Database.`,
     );

@@ -60,12 +60,14 @@ describe("personal collections", () => {
       });
 
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Your personal collection");
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
       popover().findByText("Other users' personal collections").click();
       cy.location("pathname").should("eq", "/collection/users");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/All personal collections/i);
       Object.values(USERS).forEach(user => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
@@ -83,6 +85,7 @@ describe("personal collections", () => {
 
       // Go to admin's personal collection
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Your personal collection").click();
 
       getCollectionActions().within(() => {
@@ -131,6 +134,7 @@ describe("personal collections", () => {
       });
 
       cy.visit(`/collection/${NODATA_PERSONAL_COLLECTION_ID}`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Foo");
     });
   });
@@ -142,6 +146,7 @@ describe("personal collections", () => {
           cy.signIn(user);
 
           cy.visit("/collection/root");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Your personal collection").click();
 
           // Create initial collection inside the personal collection and navigate to it
@@ -164,8 +169,10 @@ describe("personal collections", () => {
           );
 
           openCollectionMenu();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           popover().within(() => cy.findByText("Archive").click());
           modal().findByRole("button", { name: "Archive" }).click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Archived collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
         });

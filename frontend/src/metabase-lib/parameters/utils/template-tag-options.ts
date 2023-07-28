@@ -1,13 +1,18 @@
 import { t } from "ttag";
-import { TemplateTag } from "metabase-types/api";
+import { TemplateTag, ParameterOptions } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 import {
   ID_OPTION,
   OPTIONS_WITH_OPERATOR_SUBTYPES,
   PARAMETER_OPERATOR_TYPES,
 } from "../constants";
-import { buildTypedOperatorOptions, getOperatorDisplayName } from "./operators";
 import { fieldFilterForParameter } from "./filters";
+import {
+  buildTypedOperatorOptions,
+  deriveFieldOperatorFromParameter,
+  getOperatorDisplayName,
+} from "./operators";
+import { getTemplateTagParameter } from "./template-tags";
 
 export function getParameterOptions() {
   return [
@@ -62,4 +67,12 @@ export function getDefaultParameterWidgetType(tag: TemplateTag, field: Field) {
   }
 
   return options[0].type;
+}
+
+export function getDefaultParameterOptions(
+  tag: TemplateTag,
+): ParameterOptions | undefined {
+  const parameter = getTemplateTagParameter(tag);
+  const operator = deriveFieldOperatorFromParameter(parameter);
+  return operator?.optionsDefaults;
 }

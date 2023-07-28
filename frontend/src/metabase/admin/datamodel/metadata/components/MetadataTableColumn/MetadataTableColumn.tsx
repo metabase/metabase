@@ -1,4 +1,4 @@
-import React, { ChangeEvent, ReactNode, useCallback } from "react";
+import { ReactNode, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { Link } from "react-router";
@@ -6,7 +6,6 @@ import * as Urls from "metabase/lib/urls";
 import Fields from "metabase/entities/fields";
 import Button from "metabase/core/components/Button/Button";
 import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
-import { Dispatch } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
@@ -27,16 +26,9 @@ interface DispatchProps {
 
 type MetadataTableColumnProps = OwnProps & DispatchProps;
 
-const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onUpdateField: (field, updates) =>
-    dispatch(
-      Fields.actions.updateField({
-        id: field.id,
-        display_name: field.displayName(),
-        ...updates,
-      }),
-    ),
-});
+const mapDispatchToProps: DispatchProps = {
+  onUpdateField: Fields.actions.updateField,
+};
 
 const MetadataTableColumn = ({
   field,
@@ -48,7 +40,7 @@ const MetadataTableColumn = ({
   onUpdateField,
 }: MetadataTableColumnProps) => {
   const handleChangeName = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onUpdateField(field, { display_name: event.target.value });
       } else {
@@ -59,7 +51,7 @@ const MetadataTableColumn = ({
   );
 
   const handleChangeDescription = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onUpdateField(field, { description: event.target.value });
       } else {
@@ -113,6 +105,7 @@ const MetadataTableColumn = ({
                     Number(field.id),
                   )}
                   className="text-brand-hover mr1"
+                  aria-label={t`Field settings`}
                 >
                   <Button icon="gear" style={{ padding: 10 }} />
                 </Link>
@@ -140,4 +133,5 @@ export const getFieldRawName = (field: Field) => {
   return field.nfc_path ? field.nfc_path.join(".") : field.name;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(MetadataTableColumn);

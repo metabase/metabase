@@ -9,11 +9,15 @@
    [metabase.util :as u]))
 
 ;; Importing and re-exporting some functions defined in each implementation.
-(shared.ns/import-fn common/to-range)
-(shared.ns/import-fn internal/valid?)
-(shared.ns/import-fn internal/same-day?)
-(shared.ns/import-fn internal/same-month?)
-(shared.ns/import-fn internal/same-year?)
+(shared.ns/import-fns
+ [common
+  to-range]
+ [internal
+  valid?
+  same-day?
+  same-month?
+  same-year?
+  day-diff])
 
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))

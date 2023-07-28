@@ -1,8 +1,6 @@
-import React from "react";
-
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";
 
 interface Props {
@@ -21,6 +19,7 @@ const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }: Props) => (
   </SpinnerRoot>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(LoadingSpinner, {
   Root: SpinnerRoot,
 });

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -105,6 +105,7 @@ function NumberInputWidget({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NumberInputWidget;
 
 function normalize(value: number[] | undefined): number[] {

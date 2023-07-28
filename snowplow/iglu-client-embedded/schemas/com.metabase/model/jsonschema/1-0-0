@@ -1,0 +1,30 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Model events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "model",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": ["index_model_entities_enabled"],
+      "maxLength": 1024
+    },
+    "model_id": {
+      "description": "Unique identifier for model (Practically might be the same as the question id)",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "required": ["event", "model_id"],
+  "additionalProperties": true
+}

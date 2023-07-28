@@ -38,17 +38,17 @@
                               :percentile-aggregations                false
                               :advanced-math-expressions              false
                               :standard-deviation-aggregations        false
+                              :schemas                                false
                               :datetime-diff                          true
-                              :now                                    true}]
-  (defmethod driver/supports? [:sqlite feature] [_ _] supported?))
-
-;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
-;; we have this 'feature' so the frontend doesn't try to present the option to you.
-(defmethod driver/supports? [:sqlite :case-sensitivity-string-filter-options] [_ _] false)
+                              :now                                    true
+                              ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
+                              ;; we have this 'feature' so the frontend doesn't try to present the option to you.
+                              :case-sensitivity-string-filter-options false}]
+  (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
 ;; for now we'll just skip the foreign key stuff in the tests.
-(defmethod driver/supports? [:sqlite :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:sqlite :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
 ;; or "** This file contains an SQLite
@@ -409,15 +409,16 @@
 ;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them. So skip that
 ;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from
 ;; the default impl is setting the transaction isolation level
-(defmethod sql-jdbc.execute/connection-with-timezone :sqlite
-  [driver database _timezone-id]
-  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
-    (try
-      (sql-jdbc.execute/set-best-transaction-level! driver conn)
-      conn
-      (catch Throwable e
-        (.close conn)
-        (throw e)))))
+(defmethod sql-jdbc.execute/do-with-connection-with-options :sqlite
+  [driver db-or-id-or-spec options f]
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (sql-jdbc.execute/set-best-transaction-level! driver conn))
+     (f conn))))
 
 ;; SQLite's JDBC driver is dumb and complains if you try to call `.setFetchDirection` on the Connection
 (defmethod sql-jdbc.execute/prepared-statement :sqlite

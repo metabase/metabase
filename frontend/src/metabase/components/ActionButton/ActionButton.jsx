@@ -1,13 +1,14 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 
 import { cancelable } from "metabase/lib/promise";
+import { SmallSpinner } from "./ActionButton.styled";
 
 export default class ActionButton extends Component {
   constructor(props) {
@@ -17,6 +18,7 @@ export default class ActionButton extends Component {
       active: false,
       result: null,
     };
+    this.resetState.bind(this);
   }
 
   static propTypes = {
@@ -39,6 +41,14 @@ export default class ActionButton extends Component {
     if (this.actionPromise) {
       this.actionPromise.cancel();
     }
+  }
+
+  resetState() {
+    clearTimeout(this.timeout);
+    this.setState({
+      active: false,
+      result: null,
+    });
   }
 
   resetStateOnTimeout = () => {
@@ -96,7 +106,8 @@ export default class ActionButton extends Component {
       activeText,
       failedText,
       successText,
-      // eslint-disable-next-line no-unused-vars
+      useLoadingSpinner = false,
+      resetState,
       actionFn,
       className,
       successClassName,
@@ -124,8 +135,11 @@ export default class ActionButton extends Component {
         onClick={this.onClick}
       >
         {active ? (
-          // TODO: loading spinner
-          activeText
+          useLoadingSpinner ? (
+            <SmallSpinner />
+          ) : (
+            activeText
+          )
         ) : result === "success" ? (
           <span>
             {forceActiveStyle ? null : <Icon name="check" size={12} />}

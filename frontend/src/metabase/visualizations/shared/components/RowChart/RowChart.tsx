@@ -1,8 +1,8 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 import type { NumberValue } from "d3-scale";
 
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
@@ -47,7 +47,7 @@ export interface RowChartProps<TDatum> {
 
   tickFormatters?: ChartTicksFormatters;
   labelsFormatter?: (value: NumberValue) => string;
-  measureText: TextMeasurer;
+  measureTextWidth: TextWidthMeasurer;
 
   xScaleType?: ContinuousScaleType;
 
@@ -88,7 +88,7 @@ export const RowChart = <TDatum,>({
 
   xScaleType = "linear",
 
-  measureText,
+  measureTextWidth,
 
   style,
 
@@ -141,7 +141,7 @@ export const RowChart = <TDatum,>({
         theme.axis.ticks,
         theme.axis.label,
         goal != null,
-        measureText,
+        measureTextWidth,
         xLabel,
         yLabel,
         hasXAxis,
@@ -153,7 +153,7 @@ export const RowChart = <TDatum,>({
       theme.axis.ticks,
       theme.axis.label,
       goal,
-      measureText,
+      measureTextWidth,
       xLabel,
       yLabel,
       hasXAxis,
@@ -197,7 +197,7 @@ export const RowChart = <TDatum,>({
         ? xScale
         : addSideSpacingForTicksAndLabels(
             xScale,
-            measureText,
+            measureTextWidth,
             theme.axis.ticks,
             xTickFormatter,
             theme.dataLabels,
@@ -206,7 +206,7 @@ export const RowChart = <TDatum,>({
           ),
     [
       labelsFormatter,
-      measureText,
+      measureTextWidth,
       labelledSeries,
       theme.axis.ticks,
       theme.dataLabels,
@@ -223,12 +223,12 @@ export const RowChart = <TDatum,>({
         innerWidth,
         paddedXScale,
         xTickFormatter,
-        measureText,
+        measureTextWidth,
         xScaleType,
       ),
     [
       innerWidth,
-      measureText,
+      measureTextWidth,
       theme.axis.ticks,
       paddedXScale,
       xScaleType,
@@ -237,8 +237,8 @@ export const RowChart = <TDatum,>({
   );
 
   const rowChartGoal = useMemo(
-    () => getRowChartGoal(goal, theme.goal, measureText, paddedXScale),
-    [goal, measureText, theme.goal, paddedXScale],
+    () => getRowChartGoal(goal, theme.goal, measureTextWidth, paddedXScale),
+    [goal, measureTextWidth, theme.goal, paddedXScale],
   );
 
   return (

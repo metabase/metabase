@@ -1,4 +1,4 @@
-import React, { FocusEvent, useCallback } from "react";
+import { FocusEvent, useCallback } from "react";
 import { t } from "ttag";
 import {
   TimeInputMessage,
@@ -50,4 +50,5 @@ const CacheTimeInput = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CacheTimeInput;

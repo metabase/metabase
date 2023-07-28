@@ -4,6 +4,7 @@ import {
   popover,
   describeEE,
   getFullName,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -16,7 +17,10 @@ describeEE("scenarios > admin > people", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
+
     cy.visit("/admin/people");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(normalUserName)
       .closest("tr")
       .findByText("2 other groups")
@@ -27,6 +31,7 @@ describeEE("scenarios > admin > people", () => {
     cy.signInAsNormalUser();
     cy.visit("/");
     cy.icon("gear").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Admin settings").click();
   });
 
@@ -38,20 +43,25 @@ describeEE("scenarios > admin > people", () => {
 
       // Edit group name
       cy.icon("ellipsis").eq(0).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit Name").click();
       cy.get("input").type(" updated");
       cy.button("Done").click();
 
       // Click on the group with the new name
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("collection updated").click();
 
       // Add "No Collection" user as a member
       cy.button("Add members").click();
       cy.focused().type("No");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add").click();
 
       // Find user row
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName).closest("tr").as("userRow");
 
       // Promote to manager and demote back to member
@@ -69,9 +79,11 @@ describeEE("scenarios > admin > people", () => {
       cy.get("@userRow").within(() => {
         cy.icon("close").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName).should("not.exist");
 
       // Demote myself
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(normalUserName)
         .closest("tr")
         .within(() => {
@@ -84,9 +96,11 @@ describeEE("scenarios > admin > people", () => {
       cy.url().should("match", /\/admin\/people\/groups$/);
 
       // Open another group
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("data").click();
 
       // Remove myself
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(normalUserName)
         .closest("tr")
         .within(() => {
@@ -100,6 +114,7 @@ describeEE("scenarios > admin > people", () => {
 
     it("can manage members from the people page", () => {
       // Open membership select for a user
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName)
         .closest("tr")
         .as("userRow")
@@ -130,6 +145,7 @@ describeEE("scenarios > admin > people", () => {
       });
 
       // Find own row
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(normalUserName)
         .closest("tr")
         .within(() => {

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
@@ -118,4 +118,5 @@ const getDocsLink = (): string => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default GoogleAuthForm;

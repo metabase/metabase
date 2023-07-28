@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import Input from "metabase/core/components/Input";
@@ -13,6 +13,7 @@ import type {
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
+import { isWithinIframe } from "metabase/lib/dom";
 
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 import {
@@ -51,6 +52,7 @@ export interface LinkVizProps {
   settings: DashboardOrderedCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
+  isEditingParameter?: boolean;
 }
 
 function LinkViz({
@@ -58,6 +60,7 @@ function LinkViz({
   isEditing,
   onUpdateVisualizationSettings,
   settings,
+  isEditingParameter,
 }: LinkVizProps) {
   const {
     link: { url, entity },
@@ -98,7 +101,7 @@ function LinkViz({
   if (entity) {
     if (isRestrictedLinkEntity(entity)) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper fade={isEditingParameter}>
           <RestrictedEntityDisplay />
         </EditLinkCardWrapper>
       );
@@ -113,24 +116,35 @@ function LinkViz({
 
     if (isEditing) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper
+          data-testid="entity-edit-display-link"
+          fade={isEditingParameter}
+        >
           <EntityDisplay entity={wrappedEntity} showDescription={false} />
         </EditLinkCardWrapper>
       );
     }
 
+    const target = isWithinIframe() ? undefined : "_blank";
+
     return (
       <DisplayLinkCardWrapper>
-        <CardLink to={wrappedEntity.getUrl()} target="_blank" rel="noreferrer">
+        <CardLink
+          data-testid="entity-view-display-link"
+          to={wrappedEntity.getUrl()}
+          target={target}
+          rel="noreferrer"
+          role="link"
+        >
           <EntityDisplay entity={wrappedEntity} showDescription />
         </CardLink>
       </DisplayLinkCardWrapper>
     );
   }
 
-  if (isEditing) {
+  if (isEditing && !isEditingParameter) {
     return (
-      <EditLinkCardWrapper>
+      <EditLinkCardWrapper data-testid="custom-edit-text-link">
         <TippyPopover
           visible={inputIsFocused && !isUrlString(url)}
           content={
@@ -140,6 +154,7 @@ function LinkViz({
               <SearchResultsContainer>
                 <SearchResults
                   searchText={url?.trim()}
+                  forceEntitySelect
                   onEntitySelect={handleEntitySelect}
                   models={MODELS_TO_SEARCH}
                 />
@@ -165,7 +180,10 @@ function LinkViz({
   }
 
   return (
-    <DisplayLinkCardWrapper>
+    <DisplayLinkCardWrapper
+      data-testid="custom-view-text-link"
+      fade={isEditingParameter}
+    >
       <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
         <UrlLinkDisplay url={url} />
       </CardLink>
@@ -173,4 +191,5 @@ function LinkViz({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(LinkViz, settings);

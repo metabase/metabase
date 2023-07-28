@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { createRef, Fragment, Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -8,6 +8,7 @@ import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginH
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
+import { getIsPaidPlan } from "metabase/selectors/settings";
 
 import {
   sendTestEmail,
@@ -30,6 +31,7 @@ class SettingsEmailForm extends Component {
 
   static propTypes = {
     elements: PropTypes.array.isRequired,
+    isPaidPlan: PropTypes.bool,
     sendTestEmail: PropTypes.func.isRequired,
     updateEmailSettings: PropTypes.func.isRequired,
     clearEmailSettings: PropTypes.func.isRequired,
@@ -38,7 +40,7 @@ class SettingsEmailForm extends Component {
   constructor(props, context) {
     super(props, context);
 
-    this.formRef = React.createRef();
+    this.formRef = createRef();
   }
 
   clearEmailSettings = async () => {
@@ -81,7 +83,7 @@ class SettingsEmailForm extends Component {
 
   render() {
     const { sendingEmail } = this.state;
-    const { elements } = this.props;
+    const { elements, isPaidPlan } = this.props;
     const visibleElements = elements.filter(setting => !setting.getHidden?.());
     return (
       <EmailFormRoot>
@@ -92,10 +94,10 @@ class SettingsEmailForm extends Component {
           updateSettings={this.props.updateEmailSettings}
           disable={sendingEmail !== "default"}
           renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
-            <React.Fragment>
+            <Fragment>
               {valid && pristine && submitting === "default" ? (
                 <Button
-                  mr={1}
+                  className="mr1"
                   success={sendingEmail === "success"}
                   disabled={disabled}
                   onClick={this.sendTestEmail}
@@ -104,16 +106,16 @@ class SettingsEmailForm extends Component {
                 </Button>
               ) : null}
               <Button
-                mr={1}
+                className="mr1"
                 disabled={disabled}
                 onClick={() => this.clearEmailSettings()}
               >
                 {t`Clear`}
               </Button>
-            </React.Fragment>
+            </Fragment>
           )}
         />
-        {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
+        {!MetabaseSettings.isHosted() && !isPaidPlan && (
           <MarginHostingCTA tagline={t`Have your email configured for you.`} />
         )}
       </EmailFormRoot>
@@ -121,8 +123,14 @@ class SettingsEmailForm extends Component {
   }
 }
 
-export default connect(null, {
+const mapStateToProps = state => ({
+  isPaidPlan: getIsPaidPlan(state),
+});
+
+const mapDispatchToProps = {
   sendTestEmail,
   updateEmailSettings,
   clearEmailSettings,
-})(SettingsEmailForm);
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(SettingsEmailForm);

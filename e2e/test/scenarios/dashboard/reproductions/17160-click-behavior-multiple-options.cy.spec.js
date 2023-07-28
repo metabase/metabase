@@ -45,6 +45,7 @@ describe("issue 17160", () => {
 
     cy.url().should("include", "/dashboard");
     cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -71,6 +72,7 @@ describe("issue 17160", () => {
     cy.url().should("include", "/public/dashboard");
     cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -153,7 +155,7 @@ function setup() {
                   card_id: questionId,
                   row: 0,
                   col: 0,
-                  size_x: 12,
+                  size_x: 16,
                   size_y: 10,
                   parameter_mappings: [
                     {
@@ -266,7 +268,7 @@ function createTargetDashboard() {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 10,
               parameter_mappings: [
                 {

@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import type {
@@ -16,6 +15,7 @@ interface Props {
   ) => void;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function LinkCardEditButton({
   dashcard,
   onUpdateVisualizationSettings,

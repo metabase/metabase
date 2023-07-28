@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -11,6 +10,7 @@ import {
   setupSearchEndpoints,
   setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
+import * as domUtils from "metabase/lib/dom";
 
 import type {
   DashboardOrderedCard,
@@ -203,6 +203,31 @@ describe("LinkViz", () => {
 
       expect(screen.getByLabelText("database icon")).toBeInTheDocument();
       expect(screen.getByText("Table Uno")).toBeInTheDocument();
+    });
+
+    it("sets embedded links to open in new tabs", () => {
+      setup({
+        isEditing: false,
+        dashcard: tableLinkDashcard,
+        settings:
+          tableLinkDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(screen.getByRole("link")).toHaveAttribute("target", "_blank");
+    });
+
+    it("sets embedded entity links to not open in new tabs", () => {
+      // here, we're mocking this appearing in an iframe
+      jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+
+      setup({
+        isEditing: false,
+        dashcard: tableLinkDashcard,
+        settings:
+          tableLinkDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      expect(screen.getByRole("link")).not.toHaveAttribute("target");
     });
 
     it("clicking a search item should update the entity", async () => {

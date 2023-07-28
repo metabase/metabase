@@ -1,4 +1,3 @@
-import React from "react";
 import styled from "@emotion/styled";
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
 import Dimension from "metabase-lib/Dimension";

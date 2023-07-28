@@ -4,6 +4,7 @@ import {
   showDashboardCardActions,
   visitDashboard,
   addOrUpdateDashboardCard,
+  getDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -30,17 +31,19 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // connect that to people.state
-      cy.findByText("Column to filter on")
-        .parent()
-        .within(() => {
-          cy.findByText("Select…").click();
-        });
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("Select…").click();
+      });
+
       popover().within(() => {
         cy.findByText("State").click();
       });
 
       // open the linked filters tab, and click the click to add a City filter
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Linked filters").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("add another dashboard filter").click();
       popover().within(() => {
         cy.findByText("Location").click();
@@ -48,16 +51,16 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // connect that to person.city
-      cy.findByText("Column to filter on")
-        .parent()
-        .within(() => {
-          cy.findByText("Select…").click();
-        });
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("Select…").click();
+      });
       popover().within(() => {
         cy.findByText("City").click();
       });
 
       // Link city to state
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Limit this filter's choices")
         .parent()
         .within(() => {
@@ -76,16 +79,20 @@ describe("scenarios > dashboard > chained filter", () => {
           cy.findByText("Filtered column");
         });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You're editing this dashboard.").should("not.exist");
 
       // now test that it worked!
       // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Location").click();
       popover().within(() => {
         cy.findByText("AK").click();
         cy.findByText("Add filter").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Location 1").click();
       popover().within(() => {
         cy.findByPlaceholderText(
@@ -97,6 +104,7 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.get("input").first().clear();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("AK").click();
       popover().within(() => {
         cy.findByText("AK").click();
@@ -106,6 +114,7 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // do it again to make sure it isn't cached incorrectly
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Location 1").click();
       popover().within(() => {
         cy.get("input").first().type("An");
@@ -113,6 +122,7 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.findByText("Anchorage").should("not.exist");
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("GA").click();
       popover().within(() => {
         cy.findByText("GA").click();
@@ -120,6 +130,7 @@ describe("scenarios > dashboard > chained filter", () => {
       });
 
       // do it again without a state filter to make sure it isn't cached incorrectly
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Location 1").click();
       popover().within(() => {
         cy.get("input").first().type("An");
@@ -170,7 +181,7 @@ describe("scenarios > dashboard > chained filter", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                size_x: 8,
+                size_x: 11,
                 size_y: 6,
                 parameter_mappings: [
                   {

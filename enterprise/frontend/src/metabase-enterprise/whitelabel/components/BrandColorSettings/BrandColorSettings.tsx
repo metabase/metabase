@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { color } from "metabase/lib/colors";
@@ -120,4 +120,5 @@ const BrandColorRow = memo(function BrandColorRow({
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default BrandColorSettings;

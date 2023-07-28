@@ -1,4 +1,3 @@
-import React from "react";
 import { withRouter } from "react-router";
 import type { Location } from "history";
 
@@ -8,7 +7,7 @@ import CollectionCaption from "./CollectionCaption";
 import CollectionBookmark from "./CollectionBookmark";
 import CollectionMenu from "./CollectionMenu";
 import CollectionTimeline from "./CollectionTimeline";
-import CollectionUpload from "./CollectionUpload";
+import { CollectionUpload } from "./CollectionUpload";
 
 import { HeaderActions, HeaderRoot } from "./CollectionHeader.styled";
 
@@ -23,6 +22,7 @@ export interface CollectionHeaderProps {
   onDeleteBookmark: (collection: Collection) => void;
   onUpload: (file: File, collectionId: CollectionId) => void;
   canUpload: boolean;
+  uploadsEnabled: boolean;
 }
 
 const CollectionHeader = ({
@@ -36,7 +36,11 @@ const CollectionHeader = ({
   onDeleteBookmark,
   onUpload,
   canUpload,
+  uploadsEnabled,
 }: CollectionHeaderProps): JSX.Element => {
+  const showUploadButton =
+    collection.can_write && (canUpload || !uploadsEnabled);
+
   return (
     <HeaderRoot>
       <CollectionCaption
@@ -44,6 +48,14 @@ const CollectionHeader = ({
         onUpdateCollection={onUpdateCollection}
       />
       <HeaderActions data-testid="collection-menu">
+        {showUploadButton && (
+          <CollectionUpload
+            collection={collection}
+            uploadsEnabled={uploadsEnabled}
+            isAdmin={isAdmin}
+            onUpload={onUpload}
+          />
+        )}
         <CollectionTimeline collection={collection} />
         <CollectionBookmark
           collection={collection}
@@ -51,9 +63,6 @@ const CollectionHeader = ({
           onCreateBookmark={onCreateBookmark}
           onDeleteBookmark={onDeleteBookmark}
         />
-        {canUpload && (
-          <CollectionUpload collection={collection} onUpload={onUpload} />
-        )}
         <CollectionMenu
           collection={collection}
           isAdmin={isAdmin}
@@ -65,4 +74,5 @@ const CollectionHeader = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default withRouter(CollectionHeader);

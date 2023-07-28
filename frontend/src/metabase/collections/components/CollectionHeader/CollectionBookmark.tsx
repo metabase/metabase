@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { isRootCollection } from "metabase/collections/utils";
 import { Collection } from "metabase-types/api";
@@ -33,10 +33,12 @@ const CollectionBookmark = ({
   return (
     <BookmarkToggle
       isBookmarked={isBookmarked}
+      tooltipPlacement="bottom"
       onCreateBookmark={handleCreateBookmark}
       onDeleteBookmark={handleDeleteBookmark}
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionBookmark;

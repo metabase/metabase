@@ -6,14 +6,12 @@
    [clojure.test :refer :all]
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
+   [metabase.email.messages :as messages]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [LoginHistory
-            PermissionsGroup
-            PermissionsGroupMembership
-            Session
-            User]]
-   [metabase.models.setting :as setting]
+    :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
+            PulseChannel Session User]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
@@ -23,9 +21,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,15 +72,18 @@
             response (mt/client-full-response :post 200 "session" body)]
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
   (testing "failure should log an error(#14317)"
-    (mt/with-temp User [user]
+    (t2.with-temp/with-temp [User user]
       (is (schema= [(s/one (s/eq :error)
                            "log type")
                     (s/one clojure.lang.ExceptionInfo
                            "exception")
                     (s/one (s/eq "Authentication endpoint error")
                            "log message")]
-                   (first (mt/with-log-messages-for-level :error
-                            (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
+                   (->> (mt/with-log-messages-for-level :error
+                          (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
+                        ;; geojson can throw errors and we want the authentication error
+                        (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
+                        first))))))
 
 (deftest ^:parallel login-validation-test
   (testing "POST /api/session"
@@ -278,8 +278,8 @@
       (mt/with-fake-inbox
         (let [password {:old "password"
                         :new "whateverUP12!!"}]
-          (mt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-            (let [token (u/prog1 (str id "_" (UUID/randomUUID))
+          (t2.with-temp/with-temp [User {:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+            (let [token (u/prog1 (str id "_" (random-uuid))
                           (t2/update! User id {:reset_token <>}))
                   creds {:old {:password (:old password)
                                :username email}
@@ -323,7 +323,7 @@
                                                             :password "whateverUP12!!"}))))
 
     (testing "Test that an expired token doesn't work"
-      (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
+      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:errors {:password "Invalid reset token"}}
                (mt/client :post 400 "session/reset_password" {:token    token
@@ -332,7 +332,7 @@
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
-      (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
+      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
@@ -342,7 +342,7 @@
              (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
 
     (testing "Check that an expired but valid token returns false"
-      (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
+      (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
@@ -354,17 +354,32 @@
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
-      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
-             (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
+      (mt/with-test-user :lucky
+       (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
+              (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
 
     (testing "Authenticated settings manager"
-      (with-redefs [setting/has-advanced-setting-access? (constantly true)]
-        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
-               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+      (mt/with-test-user :lucky
+       (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+                (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
     (testing "Authenticated super user"
-      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
-             (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
+      (mt/with-test-user :crowberto
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
+               (set (keys (mt/user-http-request :crowberto :get 200 "session/properties")))))))
+
+    (testing "Includes user-local settings"
+      (defsetting test-session-api-setting
+        "test setting"
+        :user-local :only
+        :type       :string
+        :default    "FOO")
+
+      (mt/with-test-user :lucky
+        (is (= "FOO"
+               (-> (mt/user-http-request :crowberto :get 200 "session/properties")
+                   :test-session-api-setting)))))))
 
 (deftest properties-i18n-test
   (testing "GET /session/properties"
@@ -381,7 +396,7 @@
   (testing "POST /google_auth"
     (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
-        (mt/with-temp User [_ {:email "test@metabase.com" :is_active true}]
+        (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active true}]
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
@@ -392,7 +407,7 @@
             (is (schema= SessionResponse
                          (mt/client :post 200 "session/google_auth" {:token "foo"}))))))
       (testing "Google auth throws exception for a disabled account"
-        (mt/with-temp User [_ {:email "test@metabase.com" :is_active false}]
+        (t2.with-temp/with-temp [User _ {:email "test@metabase.com" :is_active false}]
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
@@ -408,8 +423,8 @@
 (deftest ldap-login-test
   (ldap.test/with-ldap-server
     (testing "Test that we can login with LDAP"
-      (mt/with-temp User [_ {:email    "ngoc@metabase.com"
-                             :password "securedpassword"}]
+      (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
+                                       :password "securedpassword"}]
         (is (schema= SessionResponse
                      (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                      :password "securedpassword"})))))
@@ -429,17 +444,17 @@
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that a deactivated user cannot login with LDAP"
-      (mt/with-temp User [_ {:email    "ngoc@metabase.com"
-                             :password "securedpassword"
-                             :is_active false}]
+      (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
+                                       :password "securedpassword"
+                                       :is_active false}]
         (is (= {:errors {:_error "Your account is disabled."}}
                (mt/client :post 401 "session" {:username "ngoc@metabase.com"
                                                :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        (mt/with-temp User [_ {:email    "ngoc@metabase.com"
-                               :password "securedpassword"}]
+        (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
+                                         :password "securedpassword"}]
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" {:username "ngoc@metabase.com"
                                                        :password "securedpassword"}))))))
@@ -464,7 +479,7 @@
           (t2/delete! User :email "John.Smith@metabase.com"))))
 
     (testing "test that group sync works even if ldap doesn't return uid (#22014)"
-      (mt/with-temp PermissionsGroup [group {:name "Accounting"}]
+      (t2.with-temp/with-temp [PermissionsGroup group {:name "Accounting"}]
         (mt/with-temporary-raw-setting-values
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (schema= SessionResponse
@@ -475,7 +490,7 @@
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"
-    (mt/with-temp User [user]
+    (t2.with-temp/with-temp [User user]
       (t2/update! User (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
@@ -486,3 +501,59 @@
              clojure.lang.ExceptionInfo
              #"Password did not match stored password"
              (#'api.session/login (:email user) "password" device-info)))))))
+
+;;; ------------------------------------------- TESTS FOR UNSUBSCRIBING NONUSERS STUFF --------------------------------------------
+
+(deftest unsubscribe-test
+  (testing "POST /pulse/unsubscribe"
+    (let [email "test@metabase.com"]
+      (testing "Invalid hash"
+        (is (= "Invalid hash."
+               (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id 1
+                                                                 :email    email
+                                                                 :hash     "fake-hash"}))))
+
+      (testing "Valid hash but not email"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id pulse-id}]]
+          (is (= "Email for pulse-id doesnt exist."
+                 (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id pulse-id
+                                                                   :email    email
+                                                                   :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
+
+      (testing "Valid hash and email"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {:name "title"}]
+                        PulseChannel [_ {:pulse_id     pulse-id
+                                         :channel_type "email"
+                                         :details      {:emails [email]}}]]
+          (is (= {:status "success" :title "title"}
+                 (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
+                                                                   :email    email
+                                                                   :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))
+
+(deftest unsubscribe-undo-test
+  (testing "POST /pulse/unsubscribe/undo"
+    (let [email "test@metabase.com"]
+      (testing "Invalid hash"
+        (is (= "Invalid hash."
+               (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id 1
+                                                                      :email    email
+                                                                      :hash     "fake-hash"}))))
+
+      (testing "Valid hash and email doesn't exist"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {:name "title"}]
+                        PulseChannel [_ {:pulse_id pulse-id}]]
+          (is (= {:status "success" :title "title"}
+                 (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
+                                                                        :email    email
+                                                                        :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)})))))
+
+      (testing "Valid hash and email already exists"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id     pulse-id
+                                         :channel_type "email"
+                                         :details      {:emails [email]}}]]
+          (is (= "Email for pulse-id already exists."
+                 (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
+                                                                        :email    email
+                                                                        :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))

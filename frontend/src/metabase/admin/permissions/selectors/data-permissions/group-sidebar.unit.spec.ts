@@ -1,9 +1,12 @@
-import { state } from "./data-permissions.unit.spec.fixtures";
+import type { State } from "metabase-types/store";
+import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 import { getGroupsDataPermissionEditor } from ".";
+
+const state = mockState as unknown as State;
 
 describe("getGroupsDataPermissionEditor", () => {
   it("returns data for permission editor header", () => {
-    const permissionEditorData = getGroupsDataPermissionEditor(state as any, {
+    const permissionEditorData = getGroupsDataPermissionEditor(state, {
       params: {
         databaseId: 3,
       },
@@ -23,7 +26,7 @@ describe("getGroupsDataPermissionEditor", () => {
   });
 
   it("returns entities list for permissions editor", () => {
-    const entities = getGroupsDataPermissionEditor(state as any, {
+    const entities = getGroupsDataPermissionEditor(state, {
       params: {
         databaseId: 3,
       },

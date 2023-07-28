@@ -1,5 +1,7 @@
-import React, { useState, useLayoutEffect, useCallback } from "react";
+import * as React from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import _ from "underscore";
+import { useUnmount } from "react-use";
 import Input, { InputProps } from "metabase/core/components/Input";
 
 /**
@@ -7,17 +9,16 @@ import Input, { InputProps } from "metabase/core/components/Input";
  * `onBlurChange` feature, otherwise you should use <input> directly
  */
 
-interface InputBlurChangeProps extends Omit<InputProps, "onBlur"> {
-  onBlurChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+export interface InputBlurChangeProps
+  extends Omit<InputProps, "inputRef" | "value" | "onBlur"> {
+  value: string | undefined;
+  onBlurChange?: (event: { target: HTMLInputElement }) => void;
 }
 
-const InputBlurChange = ({
-  value,
-  onChange,
-  onBlurChange,
-  ...props
-}: InputBlurChangeProps) => {
+const InputBlurChange = (props: InputBlurChangeProps) => {
+  const { value, onChange, onBlurChange, ...restProps } = props;
   const [internalValue, setInternalValue] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useLayoutEffect(() => {
     setInternalValue(value);
@@ -26,6 +27,7 @@ const InputBlurChange = ({
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setInternalValue(event.target.value);
+
       if (onChange) {
         onChange(event);
       }
@@ -42,11 +44,23 @@ const InputBlurChange = ({
     [value, onBlurChange],
   );
 
-  const inputProps = _.omit(props, "onBlur", "onBlurChange", "onChange");
+  useUnmount(() => {
+    const lastPropsValue = value || "";
+    const currentValue = inputRef.current?.value || "";
+
+    if (onBlurChange && inputRef.current && lastPropsValue !== currentValue) {
+      onBlurChange({
+        target: inputRef.current,
+      });
+    }
+  });
+
+  const inputProps = _.omit(restProps, "onBlur", "onBlurChange", "onChange");
 
   return (
     <Input
       {...inputProps}
+      inputRef={inputRef}
       value={internalValue}
       onBlur={handleBlur}
       onChange={handleChange}
@@ -55,4 +69,5 @@ const InputBlurChange = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default InputBlurChange;

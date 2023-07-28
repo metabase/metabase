@@ -2,7 +2,7 @@ import { handleActions } from "redux-actions";
 import {
   INITIALIZE,
   RESET,
-  SAVE_DASHBOARD_AND_CARDS,
+  UPDATE_DASHBOARD_AND_CARDS,
 } from "metabase/dashboard/actions";
 import {
   API_UPDATE_QUESTION,
@@ -25,7 +25,7 @@ export const parameterValuesCache = handleActions<
     },
     // dashboards
     [INITIALIZE]: { next: () => ({}) },
-    [SAVE_DASHBOARD_AND_CARDS]: { next: () => ({}) },
+    [UPDATE_DASHBOARD_AND_CARDS]: { next: () => ({}) },
     [RESET]: { next: () => ({}) },
     // query builder
     [INITIALIZE_QB]: { next: () => ({}) },

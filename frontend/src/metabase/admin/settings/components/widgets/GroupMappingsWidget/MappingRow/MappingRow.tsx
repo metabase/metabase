@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { isAdminGroup } from "metabase/lib/groups";
 import Tooltip from "metabase/core/components/Tooltip";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Confirm from "metabase/components/Confirm";
 
 import type {
@@ -174,4 +175,5 @@ const DeleteButton = ({
   </Tooltip>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MappingRow;

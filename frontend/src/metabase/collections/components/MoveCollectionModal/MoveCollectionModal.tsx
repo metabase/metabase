@@ -1,5 +1,5 @@
-import React, { useCallback } from "react";
-import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import { useCallback } from "react";
+import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import { Collection } from "metabase-types/api";
 
 export interface MoveCollectionModalProps {
@@ -31,4 +31,5 @@ const MoveCollectionModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MoveCollectionModal;

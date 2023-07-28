@@ -50,8 +50,8 @@
 
   * `:only` means this Setting can *only* have a User- or Database-local value and cannot have a 'normal' site-wide
   value. It cannot be set via env var. Default values are still allowed for User- and Database-local-only Settings.
-  User- and Database-local-only Settings are never returned by [[writable-settings]] or
-  [[user-readable-values-map]] regardless of their [[Visibility]].
+  Database-local-only Settings are never returned by [[writable-settings]] or [[user-readable-values-map]] regardless of
+  their [[Visibility]].
 
   * `:allowed` means this Setting can be User- or Database-local and can also have a normal site-wide value; if both
   are specified, the User- or Database-specific value will be returned preferentially when we are in the context of a
@@ -81,6 +81,7 @@
    [environ.core :as env]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
@@ -89,8 +90,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
    (clojure.lang Keyword Symbol)
@@ -137,14 +138,22 @@
 
 (declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
 
-(models/defmodel Setting :setting)
+(def Setting
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Setting)
 
-(mi/define-methods
- Setting
- {:types       (constantly {:value :encrypted-text})
-  :primary-key (constantly :key)})
+(methodical/defmethod t2/table-name :model/Setting [_model] :setting)
 
-(defmethod serdes/hash-fields Setting
+(doto :model/Setting
+  (derive :metabase/model))
+
+(methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
+
+(t2/deftransforms :model/Setting
+  {:value mi/transform-encrypted-text})
+
+(defmethod serdes/hash-fields :model/Setting
   [_setting]
   [:key])
 
@@ -351,10 +360,16 @@
   (setting-name [this]
     (name this)))
 
+(defn- database-local-only? [setting]
+  (= (:database-local (resolve-setting setting)) :only))
+
+(defn- user-local-only? [setting]
+  (= (:user-local (resolve-setting setting)) :only))
+
 (defn- allows-site-wide-values? [setting]
   (and
-   (not= (:database-local (resolve-setting setting)) :only)
-   (not= (:user-local (resolve-setting setting)) :only)))
+   (not (database-local-only? setting))
+   (not (user-local-only? setting))))
 
 (defn- allows-database-local-values? [setting]
   (#{:only :allowed} (:database-local (resolve-setting setting))))
@@ -398,13 +413,13 @@
   []
   (or api/*is-superuser?*
       (do
-        (u/ignore-exceptions
-         (classloader/require 'metabase-enterprise.advanced-permissions.common
-                              'metabase.public-settings.premium-features))
-        (if-let [current-user-has-application-permisisons?
+        (when config/ee-available?
+          (classloader/require 'metabase-enterprise.advanced-permissions.common
+                               'metabase.public-settings.premium-features))
+        (if-let [current-user-has-application-permissions?
                  (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
-          (current-user-has-application-permisisons? :setting)
+          (current-user-has-application-permissions? :setting)
           false))))
 
 (defn- current-user-can-access-setting?
@@ -467,18 +482,19 @@
         db-is-set-up? (or (requiring-resolve 'metabase.db/db-is-set-up?)
                           ;; this should never be hit. it is just overly cautious against a NPE here. But no way this
                           ;; cannot resolve
-                          (constantly false))]
+                          (constantly false))
+        db-value      #(t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))]
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (let [v (if *disable-cache*
-                (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))
+                (db-value)
                 (do
                   (setting.cache/restore-cache-if-needed!)
                   (let [cache (setting.cache/cache)]
                     (if (nil? cache)
                       ;; If another thread is populating the cache for the first time, we will have a nil value for
                       ;; the cache and must hit the db while the cache populates
-                      (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))
+                      (db-value)
                       (clojure.core/get cache (setting-name setting-definition-or-name))))))]
         (not-empty v)))))
 
@@ -601,12 +617,10 @@
   if any."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default]} (resolve-setting setting-definition-or-name)
-        disable-cache?                           (not cache?)]
+        disable-cache?                           (or *disable-cache* (not cache?))]
     (if (or (nil? enabled?) (enabled?))
-      (if (= *disable-cache* disable-cache?)
-        (getter)
-        (binding [*disable-cache* disable-cache?]
-          (getter)))
+      (binding [*disable-cache* disable-cache?]
+        (getter))
       default)))
 
 
@@ -667,6 +681,10 @@
           (log/warn (trs "Setting {0} is deprecated as of Metabase {1} and may be removed in a future version."
                          setting-name
                          deprecated)))
+        (when (and
+               (= :only (:user-local setting))
+               (not (should-set-user-local-value? setting)))
+          (log/warn (trs "Setting {0} can only be set in a user-local way, but there are no *user-local-values*." setting-name)))
         (if (should-set-user-local-value? setting)
           ;; If this is user-local and this is being set in the context of an API call, we don't want to update the
           ;; site-wide value or write or read from the cache
@@ -851,7 +869,7 @@
 (defn- setting-fn-docstring [{:keys [default description], setting-type :type, :as setting}]
   ;; indentation below is intentional to make it clearer what shape the generated documentation is going to take.
   (str
-   description \newline
+   (description) \newline
    \newline
    (format "`%s` is a `%s` Setting. You can get its value by calling:\n" (setting-name setting) setting-type)
    \newline
@@ -1027,6 +1045,8 @@
                                           (in-test?))
                                     description
                                     (validate-description-form description))
+        ;; wrap the description form in a thunk, so its result updates with its dependencies
+        description               `(fn [] ~description)
         definition-form           (assoc options
                                          :name (keyword setting-symbol)
                                          :description description
@@ -1053,9 +1073,8 @@
 (defn set-many!
   "Set the value of several Settings at once.
 
-    (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
+    (set-many! {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
   [settings]
-  {:pre [(map? settings)]}
   ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
   ;; to revert any changes in the cache
   (try
@@ -1121,7 +1140,7 @@
                          (log/error e (trs "Error fetching value of Setting"))))
      :is_env_setting set-via-env-var?
      :env_name       (env-var-name setting)
-     :description    (str description)
+     :description    (str (description))
      :default        (if set-via-env-var?
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
@@ -1214,7 +1233,7 @@
     (into
      {}
      (comp (filter (fn [[_setting-name setting]]
-                     (and (allows-site-wide-values? setting)
+                     (and (not (database-local-only? setting))
                           (can-read-setting? setting visibilities))))
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))

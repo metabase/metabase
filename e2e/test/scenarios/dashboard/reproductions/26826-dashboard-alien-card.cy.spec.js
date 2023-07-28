@@ -20,6 +20,7 @@ describe("issue 26826", () => {
 
     openRecentItemFromSearch("Orders in a dashboard");
     cy.get(".Card").should("have.length", 1);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
   });
 });

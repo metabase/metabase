@@ -22,6 +22,7 @@ describe("issue 20963", () => {
 
     // Creat a snippet
     cy.icon("snippet").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Create a snippet").click();
 
     modal().within(() => {
@@ -34,6 +35,7 @@ describe("issue 20963", () => {
 
     cy.get("@editor").type(`{moveToStart}select `);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().within(() => {
       // I don't know why the input lost focus, especially when we ran the query before saving.
@@ -44,6 +46,7 @@ describe("issue 20963", () => {
     });
 
     // dismiss modal
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
 
     // Convert into to a model

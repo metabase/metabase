@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { SettingInputBlurChange } from "./SettingInput.styled";
 
 const maybeSingletonList = value => (value ? [value] : null);

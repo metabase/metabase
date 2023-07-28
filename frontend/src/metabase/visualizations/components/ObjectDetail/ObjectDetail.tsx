@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
@@ -6,11 +6,10 @@ import { t } from "ttag";
 import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
 import type {
-  ForeignKey,
   ConcreteTableId,
+  DatasetData,
   VisualizationSettings,
 } from "metabase-types/api";
-import { DatasetData } from "metabase-types/types/Dataset";
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
@@ -18,52 +17,52 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Tables from "metabase/entities/tables";
 import {
-  loadObjectDetailFKReferences,
-  followForeignKey,
-  viewPreviousObjectDetail,
-  viewNextObjectDetail,
   closeObjectDetail,
+  followForeignKey,
+  loadObjectDetailFKReferences,
+  viewNextObjectDetail,
+  viewPreviousObjectDetail,
 } from "metabase/query_builder/actions";
 import {
-  getQuestion,
-  getTableMetadata,
-  getTableForeignKeys,
-  getTableForeignKeyReferences,
-  getZoomRow,
-  getZoomedObjectId,
-  getCanZoomPreviousRow,
   getCanZoomNextRow,
+  getCanZoomPreviousRow,
+  getQuestion,
+  getTableForeignKeyReferences,
+  getTableForeignKeys,
+  getTableMetadata,
+  getZoomedObjectId,
+  getZoomRow,
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 
 import { MetabaseApi } from "metabase/services";
+import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
+import ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type {
+  ObjectDetailProps,
   ObjectId,
   OnVisualizationClickType,
-  ObjectDetailProps,
 } from "./types";
 
 import {
-  getObjectName,
   getDisplayId,
   getIdValue,
-  getSingleResultsRow,
+  getObjectName,
   getSinglePKIndex,
+  getSingleResultsRow,
 } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
-  RootModal,
-  ObjectDetailContainer,
-  ObjectDetailHeaderWrapper,
-  ObjectDetailBodyWrapper,
-  ObjectIdLabel,
   CloseButton,
   ErrorWrapper,
-  PaginationFooter,
+  ObjectDetailBodyWrapper,
+  ObjectDetailContainer,
+  ObjectDetailHeaderWrapper,
   ObjectDetailWrapperDiv,
+  ObjectIdLabel,
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
@@ -90,8 +89,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     question: getQuestion(state)!,
     table,
-    // FIXME: remove the type cast
-    tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
+    tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
     zoomedRow,
@@ -179,19 +177,44 @@ export function ObjectDetailView({
       return;
     }
 
-    if (table && table.fks == null && !isVirtualCardId(table.id)) {
+    if (table && _.isEmpty(table.fks) && !isVirtualCardId(table.id)) {
       fetchTableFks(table.id as ConcreteTableId);
     }
     // load up FK references
-    if (tableForeignKeys) {
+    if (!_.isEmpty(tableForeignKeys)) {
       loadFKReferences();
     }
-    window.addEventListener("keydown", onKeyDown, true);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
-    };
   });
+
+  useEffect(() => {
+    if (hasNotFoundError) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const capturedKeys: Record<string, () => void> = {
+        ArrowUp: viewPreviousObjectDetail,
+        ArrowDown: viewNextObjectDetail,
+        Escape: closeObjectDetail,
+      };
+
+      if (capturedKeys[event.key]) {
+        event.preventDefault();
+        capturedKeys[event.key]();
+      }
+      if (event.key === "Escape") {
+        closeObjectDetail();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [
+    hasNotFoundError,
+    viewPreviousObjectDetail,
+    viewNextObjectDetail,
+    closeObjectDetail,
+  ]);
 
   useEffect(() => {
     if (maybeLoading && pkIndex !== undefined) {
@@ -219,7 +242,7 @@ export function ObjectDetailView({
   }, [maybeLoading, passedData, question, zoomedRowID, pkIndex]);
 
   useEffect(() => {
-    if (tableForeignKeys && prevZoomedRowId !== zoomedRowID) {
+    if (!_.isEmpty(tableForeignKeys) && prevZoomedRowId !== zoomedRowID) {
       loadFKReferences();
     }
   }, [tableForeignKeys, prevZoomedRowId, zoomedRowID, loadFKReferences]);
@@ -234,7 +257,8 @@ export function ObjectDetailView({
 
   useEffect(() => {
     // if the card changed or table metadata loaded then reload fk references
-    const tableFKsJustLoaded = !prevTableForeignKeys && tableForeignKeys;
+    const tableFKsJustLoaded =
+      _.isEmpty(prevTableForeignKeys) && !_.isEmpty(tableForeignKeys);
     if (data !== prevData || tableFKsJustLoaded) {
       loadFKReferences();
     }
@@ -254,22 +278,6 @@ export function ObjectDetailView({
     },
     [zoomedRowID, followForeignKey],
   );
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    const capturedKeys: Record<string, () => void> = {
-      ArrowUp: viewPreviousObjectDetail,
-      ArrowDown: viewNextObjectDetail,
-      Escape: closeObjectDetail,
-    };
-
-    if (capturedKeys[event.key]) {
-      event.preventDefault();
-      capturedKeys[event.key]();
-    }
-    if (event.key === "Escape") {
-      closeObjectDetail();
-    }
-  };
 
   if (!data) {
     return null;
@@ -291,7 +299,7 @@ export function ObjectDetailView({
 
   const hasPk = !!data.cols.find(isPK);
   const hasRelationships =
-    showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
+    showRelations && !_.isEmpty(tableForeignKeys) && hasPk;
 
   return (
     <ObjectDetailContainer wide={hasRelationships} className={className}>
@@ -341,70 +349,6 @@ export function ObjectDetailView({
   );
 }
 
-export function ObjectDetailWrapper({
-  question,
-  isDataApp,
-  data,
-  closeObjectDetail,
-  card,
-  dashcard,
-  isObjectDetail,
-  ...props
-}: ObjectDetailProps) {
-  const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
-
-  // only show modal if this object detail was triggered via an object detail zoom action
-  const shouldShowModal = isObjectDetail;
-
-  if (shouldShowModal) {
-    return (
-      <RootModal
-        isOpen
-        full={false}
-        onClose={closeObjectDetail}
-        className={""} // need an empty className to override the Modal default width
-      >
-        <ObjectDetailView
-          {...props}
-          showHeader
-          data={data}
-          question={question}
-          closeObjectDetail={closeObjectDetail}
-        />
-      </RootModal>
-    );
-  }
-
-  const hasPagination = data?.rows?.length > 1;
-
-  return (
-    <>
-      <ObjectDetailView
-        {...props}
-        zoomedRow={data.rows[currentObjectIndex]}
-        data={data}
-        question={question}
-        showHeader={props.settings["detail.showHeader"]}
-        showActions={false}
-        showRelations={false}
-        closeObjectDetail={closeObjectDetail}
-        isDataApp={isDataApp}
-      />
-      {hasPagination && (
-        <PaginationFooter
-          data-testid="pagination-footer"
-          start={currentObjectIndex}
-          end={currentObjectIndex}
-          total={data.rows.length}
-          onNextPage={() => setCurrentObjectIndex(prev => prev + 1)}
-          onPreviousPage={() => setCurrentObjectIndex(prev => prev - 1)}
-          singleItem
-        />
-      )}
-    </>
-  );
-}
-
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
@@ -449,7 +393,6 @@ export function ObjectDetailHeader({
                   disabled={!canZoomPreviousRow}
                   onClick={viewPreviousObjectDetail}
                   icon="chevronup"
-                  iconSize={20}
                 />
                 <Button
                   data-testid="view-next-object-detail"
@@ -458,7 +401,6 @@ export function ObjectDetailHeader({
                   disabled={!canZoomNextRow}
                   onClick={viewNextObjectDetail}
                   icon="chevrondown"
-                  iconSize={20}
                 />
               </>
             )}
@@ -469,7 +411,6 @@ export function ObjectDetailHeader({
                 borderless
                 onClick={closeObjectDetail}
                 icon="close"
-                iconSize={20}
               />
             </CloseButton>
           </div>
@@ -533,6 +474,7 @@ export function ObjectDetailBody({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

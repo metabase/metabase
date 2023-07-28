@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { titleize } from "inflection";
 import { t } from "ttag";
 
 import _ from "underscore";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import {
   getSignedPreviewUrl,

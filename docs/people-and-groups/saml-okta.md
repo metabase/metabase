@@ -10,7 +10,7 @@ title: SAML with Okta
 
 | Metabase SAML                       | Okta SAML                                                                                                                    |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| URL the IdP should redirect back to | Single sign-on URL. This is your Metabase [Site URL][site-url] -- it should start with `https://` and end with `/auth/sso`.  |
+| URL the IdP should redirect back to | Single sign-on URL. This is your Metabase [Site URL][site-url] -- it should start with `https://` and end with `/auth/sso/`.  |
 | SAML Application Name               | Audience URI (SP Entity ID)                                                                                                  |
 
 ### Setting attribute statements

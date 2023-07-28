@@ -1,6 +1,3 @@
-/* eslint-disable react/prop-types */
-import React from "react";
-
 import MetabaseUtils from "metabase/lib/utils";
 import { Avatar as StyledAvatar, AvatarProps } from "./UserAvatar.styled";
 
@@ -23,6 +20,7 @@ interface Group {
   first_name: string;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function UserAvatar({
   user,
   ...props

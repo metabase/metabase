@@ -1,10 +1,10 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 

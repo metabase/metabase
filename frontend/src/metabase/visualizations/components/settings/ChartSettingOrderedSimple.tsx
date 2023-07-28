@@ -1,7 +1,7 @@
 import { updateIn } from "icepick";
-import React from "react";
 import { t } from "ttag";
-import { Series } from "metabase-types/types/Visualization";
+
+import type { Series } from "metabase-types/api";
 
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
 import {

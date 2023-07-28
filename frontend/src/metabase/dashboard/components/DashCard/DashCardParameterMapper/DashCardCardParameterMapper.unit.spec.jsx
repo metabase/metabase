@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { getIcon } from "__support__/ui";
 
@@ -6,19 +5,20 @@ import {
   createMockCard,
   createMockDashboardOrderedCard,
   createMockActionDashboardCard,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 
 const QUESTION_ID = 1;
 
 const state = createMockState({
-  entities: createEntitiesState({
+  entities: createMockEntitiesState({
     databases: [createSampleDatabase()],
     questions: [createMockCard({ id: QUESTION_ID })],
   }),
@@ -89,5 +89,89 @@ describe("DashCardParameterMapper", () => {
     });
     expect(getIcon("info")).toBeInTheDocument();
     expect(screen.getByLabelText(/in text cards/i)).toBeInTheDocument();
+  });
+
+  it("should render a different header for virtual cards", () => {
+    const textCard = createMockCard({ dataset_query: {}, display: "text" });
+    setup({
+      card: textCard,
+      dashcard: createMockDashboardOrderedCard({
+        card: textCard,
+        size_y: 3,
+        visualization_settings: {
+          virtual_card: textCard,
+        },
+      }),
+      mappingOptions: ["foo", "bar"],
+    });
+    expect(screen.getByText(/Variable to map to/i)).toBeInTheDocument();
+  });
+
+  it("should show header content when card is more than 2 units high", () => {
+    const numberCard = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({}),
+      display: "scalar",
+    });
+    setup({
+      card: numberCard,
+      dashcard: createMockDashboardOrderedCard({
+        card: numberCard,
+        size_y: 3,
+      }),
+      mappingOptions: ["foo", "bar"],
+    });
+    expect(screen.getByText(/Column to filter on/i)).toBeInTheDocument();
+  });
+
+  it("should hide header content when card is less than 3 units high", () => {
+    const numberCard = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({}),
+      display: "scalar",
+    });
+    setup({
+      card: numberCard,
+      dashcard: createMockDashboardOrderedCard({
+        card: numberCard,
+        size_y: 2,
+      }),
+      mappingOptions: ["foo", "bar"],
+    });
+    expect(screen.queryByText(/Column to filter on/i)).not.toBeInTheDocument();
+  });
+
+  describe("mobile", () => {
+    it("should show header content when card is more than 2 units high", () => {
+      const numberCard = createMockCard({
+        dataset_query: createMockStructuredDatasetQuery({}),
+        display: "scalar",
+      });
+      setup({
+        card: numberCard,
+        dashcard: createMockDashboardOrderedCard({
+          card: numberCard,
+          size_y: 2,
+        }),
+        mappingOptions: ["foo", "bar"],
+        isMobile: true,
+      });
+      expect(screen.getByText(/Column to filter on/i)).toBeInTheDocument();
+    });
+
+    it("should hide header content when card is less than 3 units high", () => {
+      const textCard = createMockCard({ dataset_query: {}, display: "text" });
+      setup({
+        card: textCard,
+        dashcard: createMockDashboardOrderedCard({
+          card: textCard,
+          size_y: 3,
+          visualization_settings: {
+            virtual_card: textCard,
+          },
+        }),
+        mappingOptions: ["foo", "bar"],
+        isMobile: true,
+      });
+      expect(screen.queryByText(/Variable to map to/i)).not.toBeInTheDocument();
+    });
   });
 });

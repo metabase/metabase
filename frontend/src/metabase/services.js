@@ -11,8 +11,10 @@ import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 export const ActivityApi = {
-  list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
+  most_recently_viewed_dashboard: GET(
+    "/api/activity/most_recently_viewed_dashboard",
+  ),
 };
 
 export const BookmarkApi = {
@@ -172,8 +174,17 @@ export const CardApi = {
   // related
   related: GET("/api/card/:cardId/related"),
   adHocRelated: POST("/api/card/related"),
+  compatibleCards: GET("/api/card/:cardId/series"),
   parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
   parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
+};
+
+export const ModelIndexApi = {
+  list: GET("/api/model-index"),
+  get: GET("/api/model-index/:id"),
+  create: POST("/api/model-index"),
+  update: PUT("/api/model-index/:id"),
+  delete: DELETE("/api/model-index/:id"),
 };
 
 export const DashboardApi = {
@@ -185,7 +196,7 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  updateCards: PUT("/api/dashboard/:dashId/cards"),
+  updateCardsAndTabs: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
@@ -309,9 +320,10 @@ export const MetabaseApi = {
   db_get: GET("/api/database/:dbId"),
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
-  db_metadata: GET("/api/database/:dbId/metadata"),
   db_schemas: GET("/api/database/:dbId/schemas"),
+  db_syncable_schemas: GET("/api/database/:dbId/syncable_schemas"),
   db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
+  db_virtual_dataset_tables: GET("/api/database/:dbId/datasets/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
@@ -428,6 +440,8 @@ export const SessionApi = {
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
   password_reset_token_valid: GET("/api/session/password_reset_token_valid"),
+  unsubscribe: POST("/api/session/pulse/unsubscribe"),
+  undo_unsubscribe: POST("/api/session/pulse/unsubscribe/undo"),
 };
 
 export const SettingsApi = {
@@ -468,7 +482,7 @@ export const SetupApi = {
 
 export const UserApi = {
   create: POST("/api/user"),
-  list: GET("/api/user"),
+  list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
   // get:                         GET("/api/user/:userId"),
   update: PUT("/api/user/:id"),

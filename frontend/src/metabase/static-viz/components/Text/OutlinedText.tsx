@@ -1,6 +1,6 @@
-import React from "react";
 import { Text, TextProps } from "@visx/text";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function OutlinedText(props: TextProps) {
   return (
     <>

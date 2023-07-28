@@ -1,4 +1,4 @@
-import React, { ChangeEventHandler, useState } from "react";
+import { ChangeEventHandler, useState } from "react";
 import { t } from "ttag";
 
 import Toggle from "metabase/core/components/Toggle";
@@ -109,4 +109,5 @@ const SessionTimeoutSetting = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SessionTimeoutSetting;

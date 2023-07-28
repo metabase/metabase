@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
@@ -17,6 +16,7 @@ function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
     <aside
       style={{ width: WIDTH, minWidth: WIDTH }}
       className="flex flex-column border-left bg-white"
+      aria-label="subscriptions sidebar"
     >
       <div className="flex flex-column flex-auto overflow-y-auto">
         {children}

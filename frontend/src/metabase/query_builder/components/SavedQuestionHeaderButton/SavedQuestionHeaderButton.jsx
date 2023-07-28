@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import { PLUGIN_MODERATION } from "metabase/plugins";

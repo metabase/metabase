@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { Form } from "formik";
 
 import {
@@ -66,4 +66,5 @@ function CustomForm<Values extends BaseFieldValues>(
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomForm;

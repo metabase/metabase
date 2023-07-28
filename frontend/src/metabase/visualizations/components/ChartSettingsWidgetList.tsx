@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
@@ -57,4 +56,5 @@ const ChartSettingsWidgetList = ({
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsWidgetList;

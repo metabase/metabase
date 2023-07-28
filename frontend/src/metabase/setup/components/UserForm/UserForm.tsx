@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
@@ -33,7 +33,11 @@ interface UserFormProps {
   onSubmit: (user: UserInfo) => void;
 }
 
-const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
+export const UserForm = ({
+  user,
+  onValidatePassword,
+  onSubmit,
+}: UserFormProps) => {
   const initialValues = useMemo(() => {
     return user ?? USER_SCHEMA.getDefault();
   }, [user]);
@@ -96,5 +100,3 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
     </FormProvider>
   );
 };
-
-export default UserForm;

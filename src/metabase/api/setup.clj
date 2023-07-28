@@ -16,10 +16,8 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.database :refer [Database]]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.segment :refer [Segment]]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.table :refer [Table]]
@@ -35,9 +33,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,12 +55,12 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [session-id (str (UUID/randomUUID))
+  (let [session-id (str (random-uuid))
         new-user   (first (t2/insert-returning-instances! User
                                                           :email        email
                                                           :first_name   first-name
                                                           :last_name    last-name
-                                                          :password     (str (UUID/randomUUID))
+                                                          :password     (str (random-uuid))
                                                           :is_superuser true))
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
@@ -204,13 +200,12 @@
              [:card :int]
              [:table :int]]]
    [:exists [:map
+             [:model :boolean]
              [:non-sample-db :boolean]
              [:dashboard :boolean]
              [:pulse :boolean]
              [:hidden-table :boolean]
-             [:collection :boolean]
-             [:metric :boolean]
-             [:segment :boolean]]]])
+             [:collection :boolean]]]])
 
 (mu/defn ^:private state-for-checklist :- ChecklistState
   []
@@ -226,8 +221,7 @@
                 :pulse         (t2/exists? Pulse)
                 :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
                 :collection    (t2/exists? Collection)
-                :metric        (t2/exists? Metric)
-                :segment       (t2/exists? Segment)}})
+                :model         (t2/exists? Card :dataset true)}})
 
 (defn- get-connected-tasks
   [{:keys [configured counts exists] :as _info}]
@@ -281,18 +275,12 @@
     :link        "/collection/root"
     :completed   (exists :collection)
     :triggered   (>= (counts :card) 30)}
-   {:title       (tru "Create metrics")
+   {:title       (tru "Create a model")
     :group       (tru "Curate your data")
-    :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
-    :link        "/admin/datamodel/metrics"
-    :completed   (exists :metric)
-    :triggered   (>= (counts :card) 30)}
-   {:title       (tru "Create segments")
-    :group       (tru "Curate your data")
-    :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
-    :link        "/admin/datamodel/segments"
-    :completed   (exists :segment)
-    :triggered   (>= (counts :card) 30)}])
+    :description (tru "Set up friendly starting points for your team to explore data")
+    :link        "/model/new"
+    :completed   (exists :model)
+    :triggered   (not (exists :model))}])
 
 (mu/defn ^:private checklist-items
   [info :- ChecklistState]

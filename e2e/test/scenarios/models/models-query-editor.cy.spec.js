@@ -5,7 +5,7 @@ import {
   popover,
   openQuestionActions,
 } from "e2e/support/helpers";
-
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { selectFromDropdown } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models query editor", () => {
@@ -20,14 +20,14 @@ describe("scenarios > models query editor", () => {
 
   describe("GUI models", () => {
     beforeEach(() => {
-      cy.request("PUT", "/api/card/1", {
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         name: "Orders Model",
         dataset: true,
       });
     });
 
     it("allows to edit GUI model query", () => {
-      cy.visit("/model/1");
+      cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
       cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
@@ -41,6 +41,7 @@ describe("scenarios > models query editor", () => {
       cy.findByTestId("data-step-cell").contains("Orders");
       cy.button("Save changes").should("be.disabled");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
       cy.findByPlaceholderText("Enter a limit").type("2");
 
@@ -54,7 +55,9 @@ describe("scenarios > models query editor", () => {
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
-      cy.url().should("include", "/model/1").and("not.include", "/query");
+      cy.url()
+        .should("include", `/model/${ORDERS_QUESTION_ID}`)
+        .and("not.include", "/query");
       cy.location("hash").should("eq", "");
 
       cy.get(".cellData")
@@ -63,7 +66,7 @@ describe("scenarios > models query editor", () => {
     });
 
     it("allows for canceling changes", () => {
-      cy.visit("/model/1");
+      cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
       cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
@@ -74,6 +77,7 @@ describe("scenarios > models query editor", () => {
         cy.findByText("Edit query definition").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row limit").click();
       cy.findByPlaceholderText("Enter a limit").type("2");
 
@@ -87,14 +91,16 @@ describe("scenarios > models query editor", () => {
       cy.button("Cancel").click();
       cy.wait("@cardQuery");
 
-      cy.url().should("include", "/model/1").and("not.include", "/query");
+      cy.url()
+        .should("include", `/model/${ORDERS_QUESTION_ID}`)
+        .and("not.include", "/query");
       cy.location("hash").should("eq", "");
 
       cy.get(".cellData").should("contain", "37.65").and("contain", "109.22");
     });
 
     it("locks display to table", () => {
-      cy.visit("/model/1/query");
+      cy.visit(`/model/${ORDERS_QUESTION_ID}/query`);
 
       summarize({ mode: "notebook" });
 
@@ -205,22 +211,27 @@ describe("scenarios > models query editor", () => {
         cy.findByText("Edit metadata").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Query").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
       cy.get(".ace_content").type("{backspace}".repeat(" FROM".length));
       runNativeQuery();
 
       cy.get(".cellData").contains(1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
 
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
       cy.get(".cellData").contains(1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Syntax error in SQL/).should("not.exist");
     });
   });

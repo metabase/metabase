@@ -1,5 +1,5 @@
-import { ORDERS } from "__support__/sample_database_fixture";
 import Utils from "metabase/lib/utils";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 describe("Legacy Q_DEPRECATED library", () => {
@@ -49,7 +49,12 @@ describe("Legacy Q_DEPRECATED library", () => {
 
   describe("cleanQuery", () => {
     it("should pass for a query created with metabase-lib", () => {
-      const datasetQuery = ORDERS.query().aggregate(["count"]).datasetQuery();
+      const datasetQuery = createMockStructuredDatasetQuery({
+        query: {
+          "source-table": 1,
+          aggregation: [["count"]],
+        },
+      });
 
       // We have to take a copy because the original object isn't extensible
       const copiedDatasetQuery = Utils.copy(datasetQuery);

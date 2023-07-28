@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
@@ -106,4 +106,5 @@ const DeleteGroupMappingModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DeleteGroupMappingModal;

@@ -4,6 +4,7 @@ import {
   popover,
   navigationSidebar,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const modelName = "Orders Model";
 
@@ -12,7 +13,10 @@ describe("issue 19737", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", "/api/card/1", { name: modelName, dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      name: modelName,
+      dataset: true,
+    });
   });
 
   it("should show moved model in the data picker without refreshing (metabase#19737)", () => {
@@ -20,9 +24,12 @@ describe("issue 19737", () => {
 
     moveModel(modelName, "My personal collection");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     popover().within(() => {
@@ -38,11 +45,14 @@ describe("issue 19737", () => {
 
     moveModel(modelName, "First collection");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
     // Close the modal so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
@@ -60,9 +70,12 @@ describe("issue 19737", () => {
 
     moveModel(modelName, "My personal collection");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     popover().within(() => {

@@ -37,9 +37,14 @@
                           (str "?" (str/join \& (letfn [(url-encode [s]
                                                           (cond-> s
                                                             (keyword? s)       u/qualified-name
-                                                            true               codec/url-encode))]
-                                                  (for [[k v] query-parameters]
-                                                    (str (url-encode k) \= (url-encode v)))))))))
+                                                            true               codec/url-encode))
+                                                        (encode-key-value [k v]
+                                                          (str (url-encode k) \= (url-encode v)))]
+                                                  (flatten (for [[k value-or-values] query-parameters]
+                                                             (if (sequential? value-or-values)
+                                                               (for [v value-or-values]
+                                                                 (encode-key-value k v))
+                                                               [(encode-key-value k value-or-values)])))))))))
 
 ;;; parse-response
 
@@ -238,8 +243,13 @@
     (cond-> parsed
       ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
       (:request-options parsed) (update :request-options :request-options)
-      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2}] => {:a 1, :b 2}
-      (:query-parameters parsed) (update :query-parameters (partial into {} (map (juxt :k :v)))))))
+      ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {:a 1, :b [2 3]}
+      (:query-parameters parsed) (update :query-parameters (fn [query-params]
+                                                             (update-vals (group-by :k query-params)
+                                                                          (fn [values]
+                                                                            (if (> (count values) 1)
+                                                                              (map :v values)
+                                                                              (:v (first values))))))))))
 
 (def ^:private response-timeout-ms (u/seconds->ms 45))
 

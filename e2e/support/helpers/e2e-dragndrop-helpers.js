@@ -1,7 +1,7 @@
 // Rely on native drag events, rather than on the coordinates
 // We have 3 "drag-handles" in this test. Their indexes are 0-based.
 export function dragField(startIndex, dropIndex) {
-  cy.get(".Icon-grabber2").should("be.visible").as("dragHandle");
+  cy.get(".Icon-grabber").should("be.visible").as("dragHandle");
 
   const BUTTON_INDEX = 0;
   const SLOPPY_CLICK_THRESHOLD = 10;
@@ -36,4 +36,12 @@ export function dragField(startIndex, dropIndex) {
             .trigger("mouseup");
         });
     });
+}
+
+export function dragAndDrop(subjectAlias, targetAlias) {
+  const dataTransfer = new DataTransfer();
+
+  cy.get("@" + subjectAlias).trigger("dragstart", { dataTransfer });
+  cy.get("@" + targetAlias).trigger("drop", { dataTransfer });
+  cy.get("@" + subjectAlias).trigger("dragend");
 }

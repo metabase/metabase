@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 
 import Schema from "metabase/entities/schemas";
@@ -50,12 +49,10 @@ function SchemaBrowser(props) {
                     to={`/browse/${dbId}/schema/${encodeURIComponent(
                       schema.name,
                     )}`}
-                    mb={1}
-                    hover={{ color: color("accent2") }}
                     data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
-                    className="overflow-hidden"
+                    className="mb1 overflow-hidden text-accent2-hover"
                   >
-                    <Card hoverable px={1}>
+                    <Card hoverable className="px1">
                       <EntityItem
                         name={schema.name}
                         iconName="folder"

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
@@ -10,7 +10,7 @@ import Task from "metabase/entities/tasks";
 import Code from "metabase/components/Code";
 import ModalContent from "metabase/components/ModalContent";
 
-class TaskModalInner extends React.Component {
+class TaskModalInner extends Component {
   render() {
     const { object } = this.props;
     return (

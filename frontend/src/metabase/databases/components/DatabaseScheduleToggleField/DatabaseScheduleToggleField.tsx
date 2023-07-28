@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback } from "react";
+import { ReactNode, useCallback } from "react";
 import { useFormikContext } from "formik";
 import FormToggle from "metabase/core/components/FormToggle";
 import { DatabaseData } from "metabase-types/api";
@@ -34,4 +34,5 @@ const DatabaseScheduleToggleField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseScheduleToggleField;

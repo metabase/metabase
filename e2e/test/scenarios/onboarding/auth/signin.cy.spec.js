@@ -30,7 +30,9 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/");
     cy.findByLabelText("Email address").type(admin.email);
     cy.findByLabelText("Password").type("INVALID" + admin.password);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("did not match stored password");
   });
 
@@ -38,7 +40,9 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/");
     cy.findByLabelText("Email address").type("INVALID" + admin.email);
     cy.findByLabelText("Password").type(admin.password);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("did not match stored password");
   });
 
@@ -46,7 +50,9 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/auth/login");
     cy.findByLabelText("Email address").should("be.focused").type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/[a-z ]+, Bob/i);
   });
 
@@ -54,7 +60,9 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/auth/login");
     cy.findByLabelText("Email address").type(admin.email.toUpperCase());
     cy.findByLabelText("Password").type(admin.password);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/[a-z ]+, Bob/i);
   });
 
@@ -73,22 +81,28 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/");
     // Browse data moved to an icon
     browse().click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sample Database").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
 
     // signout and reload page with question hash in url
     cy.signOut();
     cy.reload();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sign in to Metabase");
     cy.findByLabelText("Email address").type(admin.email);
     cy.findByLabelText("Password").type(admin.password);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in").click();
 
     // order table should load after login
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 
@@ -102,8 +116,10 @@ describe("scenarios > auth > signin", () => {
 
       cy.visit("/");
       cy.url().should("contain", "auth/login");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("I seem to have forgotten my password").click();
       cy.url().should("contain", "auth/forgot_password");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Back to sign in").click();
       cy.url().should("contain", "auth/login");
     });

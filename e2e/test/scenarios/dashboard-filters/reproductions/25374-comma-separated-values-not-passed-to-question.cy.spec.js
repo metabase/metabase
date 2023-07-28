@@ -58,7 +58,7 @@ describe("issue 25374", () => {
             card_id,
             row: 0,
             col: 0,
-            size_x: 8,
+            size_x: 11,
             size_y: 6,
             parameter_mappings: [
               {
@@ -86,6 +86,7 @@ describe("issue 25374", () => {
 
   it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {
     // Drill-through and go to the question
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 

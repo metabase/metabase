@@ -1,9 +1,11 @@
 (ns metabase.lib.convert-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [malli.core :as mc]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -88,6 +90,74 @@
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
 
+(deftest ^:parallel ->pMBQL-native-query-test
+  (testing "template tag dimensions are converted"
+    (let [original {:type :native,
+                    :native
+                    {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]",
+                     :template-tags
+                     {"NAME"
+                      {:name "NAME",
+                       :display-name "Name",
+                       :type :dimension,
+                       :dimension [:field 866 nil],
+                       :widget-type :string/=,
+                       :default nil}}},
+                    :database 76}
+          converted (lib.convert/->pMBQL original)]
+      (is (=? {:stages [{:template-tags {"NAME" {:dimension [:field {:lib/uuid string?} 866]}}}]}
+              converted))
+      (is (mc/validate :metabase.lib.schema/query converted)))))
+
+(deftest ^:parallel ->pMBQL-joins-default-alias-test
+  (let [original {:database (meta/id)
+                  :type     :query
+                  :query    {:source-table (meta/id :categories)
+                             :joins        [{:source-table (meta/id :venues)
+                                             :condition    [:=
+                                                            [:field (meta/id :venues :category-id) nil]
+                                                            [:field (meta/id :categories :id) nil]]
+                                             :strategy     :left-join}
+                                            {:source-table (meta/id :checkins)
+                                             :condition    [:=
+                                                            [:field (meta/id :venues :id) nil]
+                                                            [:field (meta/id :checkins :venue-id) nil]]
+                                             :strategy     :left-join}]}}]
+    (is (=? {:lib/type :mbql/query
+             :database (meta/id)
+             :stages   [{:lib/type :mbql.stage/mbql
+                         :joins    [{:lib/type    :mbql/join
+                                     :lib/options {:lib/uuid string?}
+                                     :alias       "__join"
+                                     :conditions  [[:=
+                                                    {:lib/uuid string?}
+                                                    [:field
+                                                     {:lib/uuid string?}
+                                                     (meta/id :venues :category-id)]
+                                                    [:field
+                                                     {:lib/uuid string?}
+                                                     (meta/id :categories :id)]]]
+                                     :strategy    :left-join
+                                     :stages      [{:lib/type     :mbql.stage/mbql
+                                                    :source-table (meta/id :venues)}]}
+                                    {:lib/type    :mbql/join
+                                     :lib/options {:lib/uuid string?}
+                                     :alias       "__join_2"
+                                     :conditions  [[:=
+                                                    {:lib/uuid string?}
+                                                    [:field
+                                                     {:lib/uuid string?}
+                                                     (meta/id :venues :id)]
+                                                    [:field
+                                                     {:lib/uuid string?}
+                                                     (meta/id :checkins :venue-id)]]]
+                                     :strategy    :left-join
+                                     :stages      [{:lib/type     :mbql.stage/mbql
+                                                    :source-table (meta/id :checkins)}]}]}]}
+            (lib.convert/->pMBQL original)))
+    (is (= original
+           (-> original lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
+
 (deftest ^:parallel ->pMBQL-join-fields-test
   (testing "#29898"
     (is (=? {:lib/type :mbql/query
@@ -134,17 +204,40 @@
              :query {:source-table 1
                      :aggregation  [[:sum [:field 1 nil]]]
                      :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
-            (lib.convert/->legacy-MBQL
-             {:lib/type :mbql/query
-              :stages   [{:lib/type     :mbql.stage/mbql
-                          :source-table 1
-                          :aggregation  [[:sum {:lib/uuid string?} [:field {:lib/uuid string?} 1]]]
-                          :breakout     [[:aggregation 0 {:display-name   "Revenue"
-                                                          :effective_type :type/Integer}]]}]})))))
+            (let [ag-uuid (str (random-uuid))]
+              (lib.convert/->legacy-MBQL
+                {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1
+                             :aggregation  [[:sum {:lib/uuid ag-uuid}
+                                             [:field {:lib/uuid string?
+                                                      :effective-type :type/Integer} 1]]]
+                             :breakout     [[:aggregation
+                                             {:display-name   "Revenue"
+                                              :effective-type :type/Integer}
+                                             ag-uuid]]}]}))))))
+
+(deftest ^:parallel source-card-test
+  (let [original {:database 1
+                  :type     :query
+                  :query    {:source-table "card__100"}}]
+    (is (=? {:lib/type :mbql/query
+             :stages   [{:lib/type    :mbql.stage/mbql
+                         :source-card 100}]}
+            (lib.convert/->pMBQL original)))
+    (is (= original
+           (lib.convert/->legacy-MBQL (lib.convert/->pMBQL original))))))
+
+(defn- test-round-trip [query]
+  (testing (str "original =\n" (u/pprint-to-str query))
+    (let [converted (lib.convert/->pMBQL query)]
+      (testing (str "\npMBQL =\n" (u/pprint-to-str converted))
+        (is (= query
+               (lib.convert/->legacy-MBQL converted)))))))
 
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
-  (are [query] (= query (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))
+  (are [query] (test-round-trip query)
     ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
     {:database 194
      :query {:aggregation [[:aggregation-options
@@ -179,9 +272,16 @@
 
     [:value nil {:base_type :type/Number}]
 
-    [:aggregation 0 {:display-name "Bean Count"}]
+    [:value "TX" nil]
 
     [:expression "expr" {:display-name "Iambic Diameter"}]
+
+    ;; (#29950)
+    [:starts-with [:field 133751 nil] "CHE" {:case-sensitive true}]
+
+    ;; (#29938)
+    {"First int"  [:case [[[:= [:field 133751 nil] 1] 1]]    {:default 0}]
+     "First bool" [:case [[[:= [:field 133751 nil] 1] true]] {:default false}]}
 
     [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]
 
@@ -258,7 +358,65 @@
      :parameters [{:target [:dimension [:field 16 {:source-field 5}]],
                    :type :category,
                    :value [:param-value]}],
-     :type :native}))
+     :type :native}
+
+    {:type :native,
+     :native
+     {:query "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]",
+      :template-tags
+      {"NAME"
+       {:name "NAME",
+        :display-name "Name",
+        :type :dimension,
+        :dimension [:field 866 nil],
+        :widget-type :string/=,
+        :default nil}}},
+     :database 76}
+
+    {:database 1
+     :type     :query
+     :query    {:source-table 224
+                :expressions {"a" 1}}}
+
+    ;; card__<id> source table syntax.
+    {:database 1
+     :type     :query
+     :query    {:source-table "card__1"}}
+
+    ;; #32055
+    {:type :query
+     :database 5
+     :query {:source-table 5822,
+     :expressions {"Additional Information Capture" [:coalesce
+                                                     [:field 519195 nil]
+                                                     [:field 519196 nil]
+                                                     [:field 519194 nil]
+                                                     [:field 519193 nil]
+                                                     "None"],
+                   "Additional Info Present" [:case
+                                              [[[:= [:expression "Additional Information Capture"] "None"]
+                                                "No"]]
+                                              {:default "Yes"}]},
+      :filter [:= [:field 518086 nil] "active"],
+      :aggregation [[:aggregation-options
+                     [:share [:= [:expression "Additional Info Present"] "Yes"]]
+                     {:name "Additional Information", :display-name "Additional Information"}]]}}))
+
+(deftest ^:parallel round-trip-aggregation-with-case-test
+  (test-round-trip
+   {:database 2762
+    :type     :query
+    :query    {:aggregation  [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+               :breakout     [[:field 139658 nil]]
+               :limit        4
+               :source-table 33674}}))
+
+(deftest ^:parallel round-trip-aggregation-with-metric-test
+  (test-round-trip
+   {:database 1
+    :query    {:aggregation  [[:+ [:metric 82] 1]]
+               :source-table 1}
+    :type     :query}))
 
 (deftest ^:parallel round-trip-options-test
   (testing "Round-tripping (p)MBQL caluses with options (#30280)"
@@ -376,7 +534,10 @@
                 pMBQL)))
       (testing "Round trip: make sure we convert back to `snake_case` when converting back."
         (is (= original
-               (lib.convert/->legacy-MBQL pMBQL)))))))
+               (lib.convert/->legacy-MBQL pMBQL))))))
+  (testing "Type is filled in properly when missing"
+    (is (=? [:value {:effective-type :type/Text} "TX"]
+            (lib.convert/->pMBQL [:value "TX" nil])))))
 
 (deftest ^:parallel clean-test
   (testing "irrecoverable queries"
@@ -385,53 +546,65 @@
     (is (= {:type :query
             :query {}}
            (lib.convert/->legacy-MBQL
-             (lib.convert/->pMBQL
-               {:type :query}))))
-    (is (= {:type :query
-            :database 1
-            :query {}}
-            (lib.convert/->legacy-MBQL
-              (lib.convert/->pMBQL
-                {:type :query
-                 :database 1}))))
+            (lib.convert/->pMBQL
+             {:type :query}))))
     (is (= {:type :query
             :database 1
             :query {}}
            (lib.convert/->legacy-MBQL
-             (lib.convert/->pMBQL
-               {:type :query
-                :database 1})))))
+            (lib.convert/->pMBQL
+             {:type :query
+              :database 1}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+           (lib.convert/->legacy-MBQL
+            (lib.convert/->pMBQL
+             {:type :query
+              :database 1})))))
   (testing "recoverable queries"
     (is (nil? (->
-                {:database 1
-                 :type :query
-                 :query {:source-table 224
-                         :order-by [[:asc [:xfield 1 nil]]]}}
-                lib.convert/->pMBQL
-                lib/order-bys)))
+               {:database 1
+                :type :query
+                :query {:source-table 224
+                        :order-by [[:asc [:xfield 1 nil]]]}}
+               lib.convert/->pMBQL
+               lib/order-bys)))
     (is (nil? (->
-                {:database 1
-                 :type :query
-                 :query {:source-table 224
-                         :filter [:and [:= [:xfield 1 nil]]]}}
-                lib.convert/->pMBQL
-                lib/filters)))
+               {:database 1
+                :type :query
+                :query {:source-table 224
+                        :filter [:and [:= [:xfield 1 nil]]]}}
+               lib.convert/->pMBQL
+               lib/filters)))
     (is (nil? (->
-                {:database 5
-                 :type :query
-                 :query {:joins [{:source-table 3
-                                  ;; Invalid condition makes the join invalid
-                                  :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
-                         :source-table 4}}
-                 lib.convert/->pMBQL
-                 lib/joins)))
+               {:database 5
+                :type :query
+                :query {:joins [{:source-table 3
+                                 ;; Invalid condition makes the join invalid
+                                 :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
+                        :source-table 4}}
+               lib.convert/->pMBQL
+               lib/joins)))
     (is (nil? (->
-                {:database 5
-                 :type :query
-                 :query {:joins [{:source-table 3
-                                  :condition [:= [:field 2 nil] [:field 2 nil]]
-                                  ;; Invalid field, the join is still valid
-                                  :fields [[:xfield 2 nil]]}]
-                         :source-table 4}}
-                 lib.convert/->pMBQL
-                 (get-in [:stages 0 :joins 0 :fields]))))))
+               {:database 5
+                :type :query
+                :query {:joins [{:source-table 3
+                                 :condition [:= [:field 2 nil] [:field 2 nil]]
+                                 ;; Invalid field, the join is still valid
+                                 :fields [[:xfield 2 nil]]}]
+                        :source-table 4}}
+               lib.convert/->pMBQL
+               (get-in [:stages 0 :joins 0 :fields]))))
+    (testing "references to missing expressions are removed (#32625)"
+      (let [query {:database 2762
+                   :type     :query
+                   :query    {:aggregation [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+                              :expressions {"custom" [:+ 1 1]}
+                              :breakout    [[:expression "expr1" nil] [:expression "expr2" nil]]
+                              :order-by    [[:expression "expr2" nil]]
+                              :limit       4
+                              :source-table 33674}}
+            converted (lib.convert/->pMBQL query)]
+        (is (empty? (get-in converted [:stages 0 :breakout])))
+        (is (empty? (get-in converted [:stages 0 :group-by])))))))

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -10,7 +10,7 @@ import AggregationPopover from "./AggregationPopover";
 import { AggregationLabel } from "./AggregationWidget.styled";
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
-export default class AggregationWidget extends React.Component {
+export default class AggregationWidget extends Component {
   constructor(props, context) {
     super(props, context);
 

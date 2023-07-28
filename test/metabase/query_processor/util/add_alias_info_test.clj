@@ -39,7 +39,7 @@
     (driver/with-driver (or driver/*driver* :h2)
       (-> query qp/preprocess add/add-alias-info remove-source-metadata (dissoc :middleware)))))
 
-(deftest join-in-source-query-test
+(deftest ^:parallel join-in-source-query-test
   (is (query= (mt/mbql-query venues
                 {:source-query {:source-table $$venues
                                 :joins        [{:strategy     :left-join
@@ -83,7 +83,7 @@
                   :breakout     [&Cat.categories.name]
                   :limit        1})))))
 
-(deftest multiple-joins-test
+(deftest ^:parallel multiple-joins-test
   (mt/dataset sample-dataset
     (is (query= (mt/mbql-query orders
                   {:source-query {:source-table $$orders
@@ -159,7 +159,7 @@
                                                                    :alias        "P2"}]}}]
                     :limit        1}))))))
 
-(deftest uniquify-aliases-test
+(deftest ^:parallel uniquify-aliases-test
   (mt/dataset sample-dataset
     (is (query= (mt/mbql-query products
                   {:source-table $$products
@@ -184,7 +184,7 @@
                                   [:expression "CATEGORY"]]
                     :limit       1}))))))
 
-(deftest not-null-test
+(deftest ^:parallel not-null-test
   (is (query= (mt/mbql-query checkins
                 {:aggregation [[:aggregation-options
                                 [:count]
@@ -208,7 +208,7 @@
                  {:aggregation [[:count]]
                   :filter      [:not-null $date]})))))
 
-(deftest duplicate-aggregations-test
+(deftest ^:parallel duplicate-aggregations-test
   (is (query= (mt/mbql-query venues
                 {:source-query {:source-table $$venues
                                 :aggregation  [[:aggregation-options
@@ -229,17 +229,17 @@
                                                  ::add/source-alias  "count_3"
                                                  ::add/desired-alias "count_3"
                                                  ::add/position      2}]]}
-                 :fields       [[:field "count" {:base-type          :type/BigInteger
+                 :fields       [[:field "count" {:base-type          :type/Integer
                                                  ::add/source-table  ::add/source
                                                  ::add/source-alias  "count"
                                                  ::add/desired-alias "count"
                                                  ::add/position      0}]
-                                [:field "count_2" {:base-type          :type/BigInteger
+                                [:field "count_2" {:base-type          :type/Integer
                                                    ::add/source-table  ::add/source
                                                    ::add/source-alias  "count_2"
                                                    ::add/desired-alias "count_2"
                                                    ::add/position      1}]
-                                [:field "count_3" {:base-type          :type/BigInteger
+                                [:field "count_3" {:base-type          :type/Integer
                                                    ::add/source-table  ::add/source
                                                    ::add/source-alias  "count_3"
                                                    ::add/desired-alias "count_3"
@@ -257,7 +257,7 @@
                                                 [:count]]}
                   :limit        1})))))
 
-(deftest multiple-expressions-test
+(deftest ^:parallel multiple-expressions-test
   (mt/with-everything-store
     (is (query= (mt/$ids venues
                   {$price                                     0
@@ -384,7 +384,7 @@
   [_driver field-alias]
   (prefix-alias field-alias))
 
-(deftest custom-escape-alias-test
+(deftest ^:parallel custom-escape-alias-test
   (let [db (mt/db)]
     (driver/with-driver ::custom-escape
       (mt/with-db db
@@ -424,7 +424,7 @@
                         add-alias-info
                         :query)))))))
 
-(deftest custom-escape-alias-filtering-aggregation-test
+(deftest ^:parallel custom-escape-alias-filtering-aggregation-test
   (let [db (mt/db)]
     (driver/with-driver ::custom-escape
       (mt/with-db db
@@ -443,7 +443,7 @@
                                         ::add/position 1}
                             outer-count-opts (-> count-opts
                                                  (dissoc :name)
-                                                 (assoc :base-type :type/BigInteger
+                                                 (assoc :base-type :type/Integer
                                                         ::add/source-table ::add/source)
                                                  (update ::add/source-alias prefix-alias)
                                                  (update ::add/desired-alias prefix-alias))]
@@ -460,7 +460,7 @@
                                   [:field
                                    "strange count"
                                    outer-count-opts]
-                                  [:value 10 {:base_type :type/BigInteger}]]
+                                  [:value 10 {:base_type :type/Integer}]]
                          :limit 1}))
                     (-> (mt/mbql-query venues
                           {:source-query {:source-table $$venues
@@ -468,7 +468,7 @@
                                                           [:count]
                                                           {:name "strange count"}]]
                                           :breakout     [$price]}
-                           :filter       [:< [:field "strange count" {:base-type :type/BigInteger}] 10]
+                           :filter       [:< [:field "strange count" {:base-type :type/Integer}] 10]
                            :limit        1})
                         add-alias-info
                         :query)))))))
@@ -480,7 +480,7 @@
   (-> ((get-method driver/escape-alias :h2) driver field-alias)
       (str/replace #"\s" "_")))
 
-(deftest use-correct-alias-for-joined-field-test
+(deftest ^:parallel use-correct-alias-for-joined-field-test
   (testing "Make sure we call `driver/escape-alias` for the `:source-alias` for Fields coming from joins (#20413)"
     (mt/dataset sample-dataset
       (let [db (mt/db)]
@@ -570,6 +570,45 @@
                             add-alias-info
                             :query)))))))))
 
+(deftest ^:parallel query->expected-cols-test
+  (testing "field_refs in expected columns have the original join aliases (#30648)"
+    (mt/dataset sample-dataset
+      (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
+        (let [query
+              (mt/mbql-query
+               products
+                {:joins
+                 [{:source-query
+                   {:source-table $$orders
+                    :joins
+                    [{:source-table $$people
+                      :alias "People"
+                      :condition [:= $orders.user_id &People.people.id]
+                      :fields [&People.people.address]
+                      :strategy :left-join}]
+                    :fields [$orders.id &People.people.address]}
+                   :alias "Question 54"
+                   :condition [:= $id [:field %orders.id {:join-alias "Question 54"}]]
+                   :fields [[:field %orders.id {:join-alias "Question 54"}]
+                            [:field %people.address {:join-alias "Question 54"}]]
+                   :strategy :left-join}]
+                 :fields
+                 [!default.created_at
+                  [:field %orders.id {:join-alias "Question 54"}]
+                  [:field %people.address {:join-alias "Question 54"}]]})]
+          (is (=? [{:name "CREATED_AT"
+                    :field_ref [:field (mt/id :products :created_at) {:temporal-unit :default}]
+                    :display_name "Created At"}
+                   {:name "ID"
+                    :field_ref [:field (mt/id :orders :id) {:join-alias "Question 54"}]
+                    :display_name "Question 54 → ID"
+                    :source_alias "Question 54"}
+                   {:name "ADDRESS"
+                    :field_ref [:field (mt/id :people :address) {:join-alias "Question 54"}]
+                    :display_name "Question 54 → Address"
+                    :source_alias "Question 54"}]
+                  (qp/query->expected-cols query))))))))
+
 (deftest use-source-unique-aliases-test
   (testing "Make sure uniquified aliases in the source query end up getting used for `::add/source-alias`"
     ;; keep track of the IDs so we don't accidentally fetch the wrong ones after we switch the name of `price`
@@ -607,7 +646,7 @@
                         add-alias-info
                         :query)))))))
 
-(deftest aggregation-reference-test
+(deftest ^:parallel aggregation-reference-test
   (testing "Make sure we add info to `:aggregation` reference clauses correctly"
     (is (query= (mt/mbql-query checkins
                   {:aggregation [[:aggregation-options
@@ -624,7 +663,7 @@
                    {:aggregation [[:sum $user_id]]
                     :order-by    [[:asc [:aggregation 0]]]}))))))
 
-(deftest uniquify-aggregation-names-text
+(deftest ^:parallel uniquify-aggregation-names-text
   (is (query= (mt/mbql-query checkins
                 {:expressions {"count" [:+ 1 1]}
                  :breakout    [[:expression "count" {::add/desired-alias "count"
@@ -643,7 +682,7 @@
                   :aggregation [[:count]]
                   :limit       1})))))
 
-(deftest fuzzy-field-info-test
+(deftest ^:parallel fuzzy-field-info-test
   (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
     (mt/with-driver :h2
       (mt/dataset sample-dataset

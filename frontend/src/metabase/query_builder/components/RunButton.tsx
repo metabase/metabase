@@ -1,4 +1,4 @@
-import React, { forwardRef, Ref } from "react";
+import { forwardRef, Ref } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import Button from "metabase/core/components/Button";
@@ -38,7 +38,6 @@ const RunButton = forwardRef(function RunButton(
       {...props}
       icon={icon}
       primary={isDirty}
-      iconSize={16}
       className={cx(className, "RunButton", {
         "RunButton--hidden": hidden,
         "RunButton--compact": circular && !props.borderless && compact,
@@ -76,4 +75,5 @@ const getButtonIcon = (isRunning: boolean, isDirty: boolean) => {
   return "refresh";
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RunButton;

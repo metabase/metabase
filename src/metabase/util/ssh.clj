@@ -4,8 +4,9 @@
   `metabase.driver.sql-jdbc.connection.ssh-tunnel` or something like that."
   (:require
    [metabase.driver :as driver]
-   [metabase.public-settings :as public-settings]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io ByteArrayInputStream)
@@ -22,7 +23,17 @@
    (org.apache.sshd.common.util.security SecurityUtils)
    (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
 
+(defsetting ssh-heartbeat-interval-sec
+  (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
+  :visibility :public
+  :type       :integer
+  :default    180)
+
 (set! *warn-on-reflection* true)
+
+(def default-ssh-tunnel-port
+  "The default port for SSH tunnels (22) used if no port is specified"
+  22)
 
 (def ^:private ^Long default-ssh-timeout 30000)
 
@@ -56,9 +67,10 @@
   [{:keys [^String tunnel-host ^Integer tunnel-port ^String tunnel-user tunnel-pass tunnel-private-key
            tunnel-private-key-passphrase host port]}]
   {:pre [(integer? port)]}
-  (let [^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
+  (let [^Integer tunnel-port       (or tunnel-port default-ssh-tunnel-port)
+        ^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
         ^SessionHolder conn-status (.verify conn-future default-ssh-timeout)
-        hb-sec                     (public-settings/ssh-heartbeat-interval-sec)
+        hb-sec                     (ssh-heartbeat-interval-sec)
         session                    (doto ^ClientSession (.getSession conn-status)
                                      (maybe-add-tunnel-password! tunnel-pass)
                                      (maybe-add-tunnel-private-key! tunnel-private-key tunnel-private-key-passphrase)

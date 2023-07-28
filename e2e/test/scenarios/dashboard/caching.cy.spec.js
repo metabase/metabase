@@ -4,12 +4,14 @@ import {
   popover,
   visitDashboard,
   rightSidebar,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 describeEE("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 

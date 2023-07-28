@@ -28,10 +28,11 @@
   (spit-yaml (file opts entity) entity))
 
 (defn- store-settings! [{:keys [root-dir]} settings]
-  (let [as-map (into (sorted-map)
-                     (for [{:keys [key value]} settings]
-                       [key value]))]
-    (spit-yaml (io/file root-dir "settings.yaml") as-map)))
+  (when (seq settings)
+    (let [as-map (into (sorted-map)
+                       (for [{:keys [key value]} settings]
+                         [key value]))]
+      (spit-yaml (io/file root-dir "settings.yaml") as-map))))
 
 (defn store!
   "Helper for storing a serialized database to a tree of YAML files."

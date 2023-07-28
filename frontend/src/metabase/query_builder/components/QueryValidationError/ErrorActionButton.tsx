@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -60,4 +59,5 @@ export function ErrorActionButton(props: ErrorActionButtonProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(ErrorActionButton);

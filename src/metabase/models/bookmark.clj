@@ -8,15 +8,27 @@
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel CardBookmark :card_bookmark)
-(models/defmodel DashboardBookmark :dashboard_bookmark)
-(models/defmodel CollectionBookmark :collection_bookmark)
-(models/defmodel BookmarkOrdering :bookmark_ordering)
+;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+;; We'll keep this till we replace all the symbols in our codebase."
+(def CardBookmark       "CardBookmark model"       :model/CardBookmark)
+(def DashboardBookmark  "DashboardBookmark model"  :model/DashboardBookmark)
+(def CollectionBookmark "CollectionBookmark model" :model/CollectionBookmark)
+(def BookmarkOrdering   "BookmarkOrdering model"   :model/BookmarkOrdering)
+
+(methodical/defmethod t2/table-name :model/CardBookmark       [_model] :card_bookmark)
+(methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
+(methodical/defmethod t2/table-name :model/CollectionBookmark [_model] :collection_bookmark)
+(methodical/defmethod t2/table-name :model/BookmarkOrdering   [_model] :bookmark_ordering)
+
+(derive :model/CardBookmark :metabase/model)
+(derive :model/DashboardBookmark :metabase/model)
+(derive :model/CollectionBookmark :metabase/model)
+(derive :model/BookmarkOrdering :metabase/model)
 
 (defn- unqualify-key
   [k]

@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import { Parameter, ValuesQueryType } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";

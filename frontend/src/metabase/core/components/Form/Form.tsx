@@ -1,9 +1,4 @@
-import React, {
-  FormHTMLAttributes,
-  forwardRef,
-  Ref,
-  SyntheticEvent,
-} from "react";
+import { FormHTMLAttributes, forwardRef, Ref, SyntheticEvent } from "react";
 import { useFormikContext } from "formik";
 
 export interface FormProps
@@ -32,4 +27,5 @@ const handleDisabledEvent = (event: SyntheticEvent) => {
   event.stopPropagation();
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Form;

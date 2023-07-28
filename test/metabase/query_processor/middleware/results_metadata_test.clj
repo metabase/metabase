@@ -13,7 +13,8 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- card-metadata [card]
   (t2/select-one-fn :result_metadata Card :id (u/the-id card)))
@@ -83,7 +84,7 @@
 
 (deftest save-result-metadata-test
   (testing "test that Card result metadata is saved after running a Card"
-    (mt/with-temp Card [card]
+    (t2.with-temp/with-temp [Card card]
       (let [result (qp/process-userland-query
                     (assoc (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
                            :info {:card-id    (u/the-id card)
@@ -94,8 +95,8 @@
              (-> card card-metadata round-to-2-decimals)))))
 
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
-    (mt/with-temp Card [card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                              :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+    (t2.with-temp/with-temp [Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+                                        :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (let [result (qp/process-userland-query {:database mbql.s/saved-questions-virtual-database-id
                                                :type     :query
                                                :query    {:source-table (str "card__" (u/the-id card))}})]
@@ -171,7 +172,7 @@
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
-    (mt/with-temp Card [card]
+    (t2.with-temp/with-temp [Card card]
       (qp/process-userland-query
        {:database (mt/id)
         :type     :query
@@ -265,11 +266,11 @@
         (do-test)
         (testing "With an FK column remapping"
           ;; Add column remapping from Orders Product ID -> Products.Title
-          (mt/with-temp Dimension [_ (mt/$ids orders
-                                       {:field_id                %product_id
-                                        :name                    "Product ID"
-                                        :type                    :external
-                                        :human_readable_field_id %products.title})]
+          (t2.with-temp/with-temp [Dimension _ (mt/$ids orders
+                                                 {:field_id                %product_id
+                                                  :name                    "Product ID"
+                                                  :type                    :external
+                                                  :human_readable_field_id %products.title})]
             (do-test)))))))
 
 (deftest field-refs-should-be-correct-fk-forms-test

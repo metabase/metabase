@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, KeyboardEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
@@ -8,7 +8,7 @@ import { pluralize } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
-import Icon from "metabase/components/Icon";
+import { Icon, IconName } from "metabase/core/components/Icon";
 import Question from "metabase-lib/Question";
 import StructuredQuery, {
   FilterSection,
@@ -47,6 +47,7 @@ const BulkFilterModal = ({
 }: BulkFilterModalProps): JSX.Element | null => {
   const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -98,14 +99,31 @@ const BulkFilterModal = ({
     setIsChanged(true);
   };
 
+  const toggleExpandedSearchBar = (e: KeyboardEvent<HTMLDivElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      e.preventDefault();
+      setIsSearchExpanded(true);
+    }
+  };
+
   const hasSideNav = sections.length > 1;
 
   return (
-    <ModalRoot hasSideNav={hasSideNav}>
+    <ModalRoot
+      hasSideNav={hasSideNav}
+      data-autofocus
+      tabIndex={0}
+      onKeyDown={e => toggleExpandedSearchBar(e)}
+    >
       <ModalHeader>
         <ModalTitle>{getTitle(query, sections.length === 1)}</ModalTitle>
 
-        <FieldSearch value={searchQuery} onChange={setSearchQuery} />
+        <FieldSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          isExpanded={isSearchExpanded}
+          setIsExpanded={setIsSearchExpanded}
+        />
 
         <ModalCloseButton onClick={onClose}>
           <Icon name="close" />
@@ -217,7 +235,11 @@ const BulkFilterModalSectionList = ({
     <TabContent value={tab} onChange={setTab}>
       <ModalTabList>
         {sections.map((section, index) => (
-          <Tab key={index} value={index} icon={section.icon}>
+          <Tab
+            key={index}
+            value={index}
+            icon={section.icon as unknown as IconName}
+          >
             {section.name}
           </Tab>
         ))}
@@ -260,4 +282,5 @@ const getTitle = (query: StructuredQuery, singleTable: boolean) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default BulkFilterModal;

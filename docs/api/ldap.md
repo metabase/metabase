@@ -12,6 +12,8 @@ summary: |
 
 Update LDAP related settings. You must be a superuser to do this.
 
+You must be a superuser to do this.
+
 ### PARAMS:
 
 *  **`settings`** value must be a map.

@@ -13,7 +13,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -23,18 +22,23 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Secret :secret)
+(def Secret
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Secret)
+
+(methodical/defmethod t2/table-name :model/Secret [_model] :secret)
 
 (doto Secret
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(mi/define-methods
- Secret
- {:types      (constantly {:value  :secret-value
-                           :kind   :keyword
-                           :source :keyword})
-  :properties (constantly {::mi/timestamped? true})})
+(t2/deftransforms :model/Secret
+  {:value  mi/transform-secret-value
+   :kind   mi/transform-keyword
+   :source mi/transform-keyword})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 

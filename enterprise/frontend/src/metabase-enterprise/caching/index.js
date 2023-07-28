@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { PLUGIN_CACHING, PLUGIN_FORM_WIDGETS } from "metabase/plugins";
@@ -14,6 +13,7 @@ import {
   getQuestionsImplicitCacheTTL,
   validateCacheTTL,
   normalizeCacheTTL,
+  hasQuestionCacheSection,
 } from "./utils";
 
 function getDatabaseCacheTTLFieldDescription() {
@@ -57,4 +57,5 @@ if (hasPremiumFeature("advanced_config")) {
   PLUGIN_CACHING.DashboardCacheSection = DashboardCacheSection;
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
   PLUGIN_CACHING.isEnabled = () => true;
+  PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
 }

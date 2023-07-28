@@ -18,6 +18,10 @@ The simplest and most basic way of running Metabase.
 
 If you prefer to use a Docker container, we've got you covered.
 
+## [Running on Podman](running-metabase-on-podman.md)
+
+Our Docker image is also compatible with Podman.
+
 ## [Metabase Cloud](https://www.metabase.com/pricing)
 
 Our official hosted version, [Metabase Cloud](https://www.metabase.com/pricing). All you need to do is sign up for a free trial, and you're off to the races.

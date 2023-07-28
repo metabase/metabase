@@ -11,11 +11,14 @@ describe("issue 17963", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("QA Mongo4").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
   });
 
   it("should be able to compare two fields using filter expression (metabase#17963)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filters to narrow your answer").click();
 
     popover().contains("Custom Expression").click();
@@ -28,9 +31,12 @@ describe("issue 17963", { tags: "@external" }, () => {
 
     cy.button("Done").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Discount > Quantity");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick the metric you want to see").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
     visualize();

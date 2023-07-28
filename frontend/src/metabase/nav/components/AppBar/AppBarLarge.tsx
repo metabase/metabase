@@ -1,4 +1,3 @@
-import React from "react";
 import { CollectionId, User } from "metabase-types/api";
 import NewItemButton from "../NewItemButton";
 import ProfileLink from "../ProfileLink";
@@ -82,4 +81,5 @@ const AppBarLarge = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarLarge;

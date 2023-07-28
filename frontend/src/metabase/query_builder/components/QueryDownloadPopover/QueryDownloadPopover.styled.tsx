@@ -1,13 +1,5 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-
-const FORMAT_COLORS: Record<string, string> = {
-  csv: color("filter"),
-  xlsx: color("summarize"),
-  json: color("bg-dark"),
-  png: color("accent0"),
-};
 
 export interface DownloadPopoverRootProps {
   isExpanded?: boolean;
@@ -38,20 +30,6 @@ export const DownloadButtonRoot = styled.button`
 
   &:hover {
     background-color: ${color("brand")};
-  }
-`;
-
-interface DownloadButtonIconProps {
-  format: string;
-}
-
-export const DownloadButtonIcon = styled(Icon)<DownloadButtonIconProps>`
-  width: 2rem;
-  height: 2rem;
-  color: ${props => FORMAT_COLORS[props.format] ?? color("brand")};
-
-  ${DownloadButtonRoot}:hover & {
-    color: ${color("white")};
   }
 `;
 

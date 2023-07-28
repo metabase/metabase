@@ -27,6 +27,7 @@ describe("issue 18976", () => {
   it("should display a pivot table as regular one when pivot columns are missing (metabase#18976)", () => {
     visitQuestionAdhoc(questionDetails);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
 });

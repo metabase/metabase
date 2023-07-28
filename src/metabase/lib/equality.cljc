@@ -2,8 +2,13 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
+   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.hierarchy :as lib.hierarchy]))
+   [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
+   [metabase.mbql.util.match :as mbql.u.match]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -51,11 +56,107 @@
               (or (empty? more-x)
                   (recur more-x more-y))))))
 
+(def ^:private ^:dynamic *side->uuid->index* nil)
+
+(defn- aggregation-uuid->index
+  [stage]
+  (into {}
+        (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                       [ag-uuid idx]))
+        (:aggregation stage)))
+
+(defmethod = :mbql.stage/mbql
+  [x y]
+  (binding [*side->uuid->index* {:left (aggregation-uuid->index x)
+                                 :right (aggregation-uuid->index y)}]
+    ((get-method = :dispatch-type/map) x y)))
+
+(defmethod = :aggregation
+  [[x-tag x-opts x-uuid :as x] [y-tag y-opts y-uuid :as y]]
+  (and (clojure.core/= 3 (count x) (count y))
+       (clojure.core/= x-tag y-tag)
+       (= x-opts y-opts)
+       ;; If nil, it means we aren't comparing a stage, so just compare the uuid directly
+       (if *side->uuid->index*
+         (clojure.core/= (get-in *side->uuid->index* [:left x-uuid] ::no-left)
+                         (get-in *side->uuid->index* [:right y-uuid] ::no-right))
+         (clojure.core/= x-uuid y-uuid))))
+
 ;;; if we've gotten here we at least know the dispatch values for `x` and `y` are the same, which means the types will
 ;;; be the same.
 (defmethod = :default
   [x y]
   (cond
-    (map? x)                   ((get-method = :dispatch-type/map) x y)
-    (sequential? x)            ((get-method = :dispatch-type/sequential) x y)
-    :else                      (clojure.core/= x y)))
+    (map? x)        ((get-method = :dispatch-type/map) x y)
+    (sequential? x) ((get-method = :dispatch-type/sequential) x y)
+    :else           (clojure.core/= x y)))
+
+(defn- update-options-remove-namespaced-keys [a-ref]
+  (lib.options/update-options a-ref (fn [options]
+                                      (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
+
+(defn find-closest-matching-ref
+  "Find the ref that most closely matches `a-ref` from a sequence of `refs`. This is meant to power things
+  like [[metabase.lib.breakout/breakoutable-columns]] which are supposed to include `:breakout-position` for columns
+  that are already present as a breakout; sometimes the column in the breakout does not exactly match what MLv2 would
+  have generated. So try to figure out which column it is referring to.
+
+  This first looks for a matching ref with a strict comparison, then in increasingly less-strict comparisons until it
+  finds something that matches. This is mostly to work around bugs like #31482 where MLv1 generated queries with
+  `:field` refs that did not include join aliases even tho the Fields came from joined Tables... we still know the
+  Fields are the same if they have the same IDs.
+
+  The three-arity version can also find matches between integer Field ID references like `[:field {} 1]` and
+  equivalent string column name field literal references like `[:field {} \"bird_type\"]` by resolving Field IDs using
+  a `metadata-providerable` (something that can be treated as a metadata provider, e.g. a `query` with a
+  MetadataProvider associated with it). This is the ultimately hacky workaround for totally busted legacy queries.
+  Note that this currently only works when `a-ref` is the one with the integer Field ID and `refs` have string literal
+  column names; it does not work the other way around. Luckily we currently don't have problems with MLv1/legacy
+  queries accidentally using string :field literals where it shouldn't have been doing so."
+  ([a-ref refs]
+   (loop [xform identity, more-xforms [ ;; ignore irrelevant keys from :binning options
+                                       #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
+                                       ;; ignore namespaced keys
+                                       update-options-remove-namespaced-keys
+                                       ;; ignore type info
+                                       #(lib.options/update-options % dissoc :base-type :effective-type)
+                                       ;; ignore join alias
+                                       #(lib.options/update-options % dissoc :join-alias)]]
+     (or (let [a-ref (xform a-ref)]
+           (m/find-first #(= (xform %) a-ref)
+                         refs))
+         (when (seq more-xforms)
+           (recur (comp xform (first more-xforms)) (rest more-xforms))))))
+
+  ([metadata-providerable a-ref refs]
+   (or (find-closest-matching-ref a-ref refs)
+       (when metadata-providerable
+         (mbql.u.match/match-one a-ref
+           [:field opts (field-id :guard integer?)]
+           (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
+             (find-closest-matching-ref [:field opts field-name] refs)))))))
+
+(defn mark-selected-columns
+  "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching
+  with [[find-closest-matching-ref]].
+
+  Example usage:
+
+    ;; example (simplified) implementation of [[metabase.lib.field/fieldable-columns]]
+    ;;
+    ;; return (visibile-columns query), but if any of those appear in `:fields`, mark then `:selected?`
+    (mark-selected-columns (visibile-columns query) (:fields stage))"
+  ([columns selected-columns-or-refs]
+   (mark-selected-columns nil columns selected-columns-or-refs))
+
+  ([metadata-providerable columns selected-columns-or-refs]
+   (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
+         refs                   (mapv lib.ref/ref columns)
+         matching-selected-refs (into #{}
+                                      (map (fn [selected-ref]
+                                             (find-closest-matching-ref metadata-providerable selected-ref refs)))
+                                      selected-refs)]
+     (mapv (fn [col a-ref]
+             (assoc col :selected? (contains? matching-selected-refs a-ref)))
+           columns
+           refs))))

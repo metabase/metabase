@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import { EmptyBanner, ColoredIcon } from "./EmptyPinnedItemsBanner.styled";
@@ -12,4 +11,5 @@ function EmptyPinnedItemsBanner() {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EmptyPinnedItemsBanner;

@@ -1,6 +1,8 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export const withBackground = className => ComposedComponent => {
   return class extends Component {
     static displayName = "BackgroundApplicator";

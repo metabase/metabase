@@ -1,1 +1,1 @@
-export { default } from "./FullAppEmbeddingLinkWidget";
+export { FullAppEmbeddingLinkWidget } from "./FullAppEmbeddingLinkWidget";

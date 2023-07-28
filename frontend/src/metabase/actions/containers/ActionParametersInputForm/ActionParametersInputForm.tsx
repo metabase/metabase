@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -59,10 +59,17 @@ function ActionParametersInputForm({
     [prefetchedValues, dashcardParamValues],
   );
 
-  const hiddenFields = useMemo(
-    () => mappedParameters.map(parameter => parameter.id),
-    [mappedParameters],
-  );
+  const hiddenFields = useMemo(() => {
+    const hiddenFieldIds = Object.values(
+      action.visualization_settings?.fields ?? {},
+    )
+      .filter(field => field.hidden)
+      .map(field => field.id);
+
+    return mappedParameters
+      .map(parameter => parameter.id)
+      .concat(hiddenFieldIds);
+  }, [mappedParameters, action.visualization_settings?.fields]);
 
   const fetchInitialValues = useCallback(async () => {
     const prefetchEndpoint =
@@ -85,12 +92,13 @@ function ActionParametersInputForm({
     const hasValueFromDashboard = Object.keys(dashcardParamValues).length > 0;
     const canPrefetch = hasValueFromDashboard && dashboard && dashcard;
 
-    if (shouldPrefetch) {
+    if (shouldPrefetch && !hasPrefetchedValues) {
       setPrefetchedValues({});
       canPrefetch && fetchInitialValues();
     }
   }, [
     shouldPrefetch,
+    hasPrefetchedValues,
     dashboard,
     dashcard,
     dashcardParamValues,
@@ -127,4 +135,5 @@ function ActionParametersInputForm({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionParametersInputForm;

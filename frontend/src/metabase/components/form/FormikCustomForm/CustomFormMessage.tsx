@@ -1,5 +1,3 @@
-import React from "react";
-
 import FormMessage from "metabase/components/form/FormMessage";
 
 import { useForm } from "./context";
@@ -20,4 +18,5 @@ function CustomFormMessage(props: CustomFormMessageProps) {
   return null;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomFormMessage;

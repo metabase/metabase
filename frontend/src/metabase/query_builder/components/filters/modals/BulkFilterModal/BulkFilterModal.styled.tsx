@@ -6,7 +6,7 @@ import TabList from "metabase/core/components/TabList";
 import TabPanel from "metabase/core/components/TabPanel";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 interface ModalRootProps {
   hasSideNav?: boolean;
@@ -85,8 +85,8 @@ export const ModalCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
 `;
 
-export const SearchIcon = styled(Icon)`
-  margin: 0 ${space(1)};
+export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
+  margin: ${props => (props.isActive ? `0 ${space(1)}` : "auto")};
   color: ${color("text-light")};
 `;
 

@@ -31,8 +31,10 @@ describe(
       );
 
       cy.visit(embeddingPage);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Full-app embedding").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(
         "With some of our paid plans, you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
       );
@@ -43,8 +45,10 @@ describe(
 
       cy.findByRole("heading").invoke("text").should("eq", "Premium embedding");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(discountedWarning);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Enter the token you bought from the Metabase Store below.",
       );
@@ -62,6 +66,7 @@ describe(
         );
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(invalidTokenMessage);
 
       // 2. Try a valid format, but an invalid token
@@ -73,6 +78,7 @@ describe(
         expect(body["error-details"]).to.be.null;
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(invalidTokenMessage);
 
       // 3. Try submitting an empty value
@@ -84,6 +90,7 @@ describe(
         expect(body).to.eq("");
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(invalidTokenMessage).should("not.exist");
     });
 
@@ -100,6 +107,7 @@ describe(
       });
 
       cy.wait("@getSettings");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         /Your Premium Embedding license is active until Dec 3(0|1), 2122\./,
       );

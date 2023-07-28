@@ -30,8 +30,11 @@ describe("scenarios > embedding > native questions", () => {
 
       visitIframe();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Lora Cronin");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("39.58");
 
       filterWidget().should("not.exist");
@@ -45,6 +48,7 @@ describe("scenarios > embedding > native questions", () => {
       setParameter("Product ID", "Editable");
 
       // We must enter a value for a locked parameter
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Preview Locked Parameters")
         .parent()
         .within(() => {
@@ -71,13 +75,16 @@ describe("scenarios > embedding > native questions", () => {
 
       visitIframe();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
-      // Created At: Q2, 2018
+      // Created At: Q2 2023
       filterWidget().contains("Created At").click();
       cy.findByTestId("select-button").click();
-      popover().contains("2018").click();
+      popover().last().contains("2023").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
 
       // State: is not KS
@@ -87,15 +94,18 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByTestId("KS-filter-value").should("be.visible").click();
       cy.button("Add filter").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Logan Weber").should("not.exist");
 
       // Product ID is 10
       cy.findByPlaceholderText("Product ID").type("10{enter}");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Affiliate").should("not.exist");
 
       // Let's try to remove one filter
-      cy.findByText("Q2, 2018")
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q2 2023")
         .closest("fieldset")
         .within(() => {
           cy.icon("close").click();
@@ -108,8 +118,11 @@ describe("scenarios > embedding > native questions", () => {
 
       cy.findByTestId("table-row").should("have.length", 1);
 
-      cy.findByText("December 29, 2018, 4:54 AM");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("December 29, 2024, 4:54 AM");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CO");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sid Mills").should("not.exist");
 
       cy.location("search").should("eq", "?id=926&state=KS&product_id=10");
@@ -173,13 +186,13 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         visitEmbeddedPage(payload, {
-          setFilters: "created_at=Q2-2019&source=Organic&state=OR",
+          setFilters: "created_at=Q2-2025&source=Organic&state=OR",
         });
 
         filterWidget()
           .should("have.length", 4)
           .and("contain", "OR")
-          .and("contain", "Q2, 2019");
+          .and("contain", "Q2 2025");
         // Why do we use input field in one filter widget but a simple `span` in the other one?
         cy.findByDisplayValue("Organic");
 
@@ -220,7 +233,7 @@ describe("scenarios > embedding > native questions", () => {
             id: [92, 96, 102, 104],
             product_id: [140],
             state: ["AK", "TX"],
-            created_at: "Q3-2018",
+            created_at: "Q3-2024",
             total: [10],
             source: ["Organic"],
           },

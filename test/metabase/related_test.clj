@@ -44,7 +44,7 @@
           (is (= expected-similarity
                  (double (#'related/similarity (t2/select-one Card :id (get cards card-x)) (t2/select-one Card :id (get cards card-y)))))))))))
 
-(def ^:private ^:dynamic *world*)
+(def ^:private ^:dynamic *world* {})
 
 (defn- do-with-world [f]
   (mt/with-temp* [Collection [{collection-id :id}]

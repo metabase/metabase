@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { NumericInputBlurChange } from "./NumericInput.styled";
 
 const NumericInput = ({ value, onChange, ...props }) => (

@@ -1,4 +1,5 @@
 import { getDashboardCardMenu } from "./e2e-dashboard-helpers";
+import { popover } from "./e2e-ui-elements-helpers";
 
 const xlsx = require("xlsx");
 
@@ -25,7 +26,6 @@ export function downloadAndAssert(
   } = {},
   callback,
 ) {
-  const downloadClassName = `.Icon-${fileType}`;
   const endpoint = getEndpoint(
     fileType,
     questionId,
@@ -67,7 +67,7 @@ export function downloadAndAssert(
     cy.findByTestId("download-button").click();
   }
   // Initiate the file download
-  cy.get(downloadClassName).click();
+  popover().findByText(`.${fileType}`).click();
 
   cy.wait("@fileDownload")
     .its("request")

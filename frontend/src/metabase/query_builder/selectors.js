@@ -1,13 +1,11 @@
 /*eslint no-use-before-define: "error"*/
 
 import d3 from "d3";
-import { createSelector } from "reselect";
-import createCachedSelector from "re-reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
-// eslint-disable-next-line no-unused-vars
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -25,6 +23,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { getSetting } from "metabase/selectors/settings";
+import { getDashboardById } from "metabase/dashboard/selectors";
 import {
   getXValues,
   isTimeseries,
@@ -181,8 +180,6 @@ export const getPKRowIndexMap = createSelector(
   },
 );
 
-export const getIsNew = state => state.qb.card && !state.qb.card.id;
-
 export const getQueryStartTime = state => state.qb.queryStartTime;
 
 export const getDatabaseId = createSelector(
@@ -225,7 +222,7 @@ export const getTableMetadata = createSelector(
 
 export const getTableForeignKeys = createSelector(
   [getTableMetadata],
-  table => table && table.fks,
+  table => table?.fks ?? [],
 );
 
 export const getSampleDatabaseId = createSelector(
@@ -315,14 +312,22 @@ export const getLastRunQuestion = createSelector(
     card && metadata && new Question(card, metadata, parameterValues),
 );
 
-export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
-  (metadata, card, parameterValues, queryBuilderMode) => {
-    if (!metadata || !card) {
+export const getQuestionWithParameters = createSelector(
+  [getCard, getMetadata, getParameterValues],
+  (card, metadata, parameterValues) => {
+    if (!card || !metadata) {
       return;
     }
-    const question = new Question(card, metadata, parameterValues);
+    return new Question(card, metadata, parameterValues);
+  },
+);
 
+export const getQuestion = createSelector(
+  [getQuestionWithParameters, getQueryBuilderMode],
+  (question, queryBuilderMode) => {
+    if (!question) {
+      return;
+    }
     const isEditingModel = queryBuilderMode === "dataset";
     if (isEditingModel) {
       return question.lockDisplay();
@@ -340,14 +345,6 @@ export const getQuestion = createSelector(
       : question;
   },
 );
-
-// This jsdoc keeps the TS typechecker happy.
-// Otherwise TS thinks this `getQuestionFromCard` requires two args.
-/** @type {function(unknown, unknown): Question} */
-export const getQuestionFromCard = createCachedSelector(
-  [getMetadata, (_state, card) => card],
-  (metadata, card) => new Question(card, metadata),
-)((_state, card) => card.id);
 
 function isQuestionEditable(question) {
   return !question?.query().readOnly();
@@ -559,6 +556,18 @@ export const getIsDirty = createSelector(
   },
 );
 
+export const getIsSavedQuestionChanged = createSelector(
+  [getQuestion, getOriginalQuestion],
+  (question, originalQuestion) => {
+    return (
+      question != null &&
+      !question.isSaved() &&
+      originalQuestion != null &&
+      !originalQuestion.isDataset()
+    );
+  },
+);
+
 export const getQuery = createSelector(
   [getQuestion],
   question => question && question.query(),
@@ -593,6 +602,35 @@ export const isResultsMetadataDirty = createSelector(
   [getMetadataDiff],
   metadataDiff => {
     return Object.keys(metadataDiff).length > 0;
+  },
+);
+
+export const getShouldShowUnsavedChangesWarning = createSelector(
+  [
+    getQueryBuilderMode,
+    getIsDirty,
+    isResultsMetadataDirty,
+    getQuestion,
+    getIsSavedQuestionChanged,
+  ],
+  (
+    queryBuilderMode,
+    isDirty,
+    isMetadataDirty,
+    question,
+    isSavedQuestionChanged,
+  ) => {
+    const isEditingModel = queryBuilderMode === "dataset";
+
+    const shouldShowUnsavedChangesWarningForModels =
+      isEditingModel && (isDirty || isMetadataDirty);
+    const shouldShowUnsavedChangesWarningForSqlQuery =
+      question != null && question.isNative() && isSavedQuestionChanged;
+
+    return (
+      shouldShowUnsavedChangesWarningForModels ||
+      shouldShowUnsavedChangesWarningForSqlQuery
+    );
   },
 );
 
@@ -939,3 +977,15 @@ export const getNativeQueryFn = createSelector(
     };
   },
 );
+
+export const getDashboardId = state => {
+  return state.qb.parentDashboard.dashboardId;
+};
+
+export const getIsEditingInDashboard = state => {
+  return state.qb.parentDashboard.isEditing;
+};
+
+export const getDashboard = state => {
+  return getDashboardById(state, getDashboardId(state));
+};

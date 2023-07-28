@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 
 import QueryViewer from "metabase/query_builder/containers/QueryViewer";

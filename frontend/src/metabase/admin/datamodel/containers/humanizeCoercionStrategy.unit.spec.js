@@ -123,6 +123,35 @@ describe("UNIX microseconds", () => {
   });
 });
 
+describe("UNIX nanoseconds", () => {
+  it("converts to UNIX nanoseconds → Time", () => {
+    const original = "UNIXNanoSeconds->Time";
+    const expected = "UNIX nanoseconds → Time";
+
+    const humanized = humanizeCoercionStrategy(original);
+
+    expect(humanized).toBe(expected);
+  });
+
+  it("converts to UNIX nanoseconds → Date", () => {
+    const original = "UNIXNanoSeconds->Date";
+    const expected = "UNIX nanoseconds → Date";
+
+    const humanized = humanizeCoercionStrategy(original);
+
+    expect(humanized).toBe(expected);
+  });
+
+  it("converts to UNIX nanoseconds → Datetime", () => {
+    const original = "UNIXNanoSeconds->DateTime";
+    const expected = "UNIX nanoseconds → Datetime";
+
+    const humanized = humanizeCoercionStrategy(original);
+
+    expect(humanized).toBe(expected);
+  });
+});
+
 describe("YYYYMMDDHHMMSS", () => {
   it("converts YYYYMMDDHHMMSSString->Temporal to YYYYMMDDHHMMSS → Time", () => {
     const original = "YYYYMMDDHHMMSSString->Temporal";

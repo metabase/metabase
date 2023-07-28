@@ -1,4 +1,5 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
+import * as React from "react";
 import cx from "classnames";
 import { t, jt } from "ttag";
 
@@ -163,4 +164,5 @@ function CronExpressionInput({ onChange, onBlurChange, ...props }: InputProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CronExpressionInput;

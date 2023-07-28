@@ -35,9 +35,11 @@ describe("issue 25378", () => {
   it("should be able to use relative date filter on a breakout after the aggregation (metabase#25378)", () => {
     cy.icon("notebook").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
     popover().contains("Created At").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Relative dates/).click();
     // Change `days` to `months`
     cy.findAllByTestId("select-button-content").contains("days").click();
@@ -46,6 +48,7 @@ describe("issue 25378", () => {
     popover().within(() => {
       cy.icon("ellipsis").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Starting from/).click();
 
     cy.button("Add filter").click();

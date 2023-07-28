@@ -3,6 +3,7 @@ const LEFT_TERM_CONVERSIONS = {
   UNIXSeconds: "UNIX seconds",
   UNIXMilliSeconds: "UNIX milliseconds",
   UNIXMicroSeconds: "UNIX microseconds",
+  UNIXNanoSeconds: "UNIX nanoseconds",
   YYYYMMDDHHMMSSString: "YYYYMMDDHHMMSS string",
   YYYYMMDDHHMMSSBytes: "YYYYMMDDHHMMSS bytes",
 };

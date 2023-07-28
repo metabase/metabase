@@ -11,12 +11,17 @@ describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
     cy.signInAsNormalUser();
 
     cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     // Reproduces metabase#20499 issue
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Native query").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(MONGO_DB_NAME).click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a table").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
   });
 
@@ -32,6 +37,7 @@ describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
 
     cy.findByTextEnsureVisible("18,760");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.findByTextEnsureVisible("Save new question");
@@ -44,6 +50,7 @@ describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
 
     cy.wait("@createQuestion");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
 
     cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);

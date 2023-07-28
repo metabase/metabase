@@ -27,7 +27,7 @@
     (mt/with-empty-h2-app-db
       (ts/with-temp-dpc [Collection [parent {:name "Some Collection"}]
                          Collection [child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]]
-        (let [export          (into [] (extract/extract-metabase nil))
+        (let [export          (into [] (extract/extract nil))
               parent-filename (format "%s_some_collection"  (:entity_id parent))
               child-filename  (format "%s_child_collection" (:entity_id child))]
           (storage/store! export dump-dir)
@@ -72,7 +72,7 @@
                          Card        [c3          {:name "parent card"      :collection_id (:id parent)}]
                          Card        [c4          {:name "child card"       :collection_id (:id child)}]
                          Dashboard   [d1          {:name "parent dash"      :collection_id (:id parent)}]]
-        (let [export          (into [] (extract/extract-metabase nil))]
+        (let [export          (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
@@ -104,7 +104,7 @@
                          NativeQuerySnippet [c2          {:name "grandparent snippet" :collection_id (:id grandparent)}]
                          NativeQuerySnippet [c3          {:name "parent snippet"      :collection_id (:id parent)}]
                          NativeQuerySnippet [c4          {:name "child snippet"       :collection_id (:id child)}]]
-        (let [export          (into [] (extract/extract-metabase nil))]
+        (let [export          (into [] (extract/extract nil))]
           (storage/store! export dump-dir)
           (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
                 p-dir  (str (:entity_id parent)      "_parent_collection")
@@ -130,7 +130,7 @@
                          Field       [website {:name "Company/organization website" :table_id (:id table)}]
                          FieldValues [_       {:field_id (:id website)}]
                          Table       [_       {:name "Orders/Invoices" :db_id (:id db)}]]
-        (let [export          (into [] (extract/extract-metabase {:include-field-values true}))]
+        (let [export          (into [] (extract/extract {:include-field-values true}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{["Company__SLASH__organization website.yaml"]

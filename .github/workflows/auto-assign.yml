@@ -29,6 +29,10 @@ jobs:
             const prAuthor = context.payload.pull_request.user.login;
             const prNumber = context.payload.pull_request.number;
 
+            if (prAuthor.endsWith('[bot]')) {
+              return false;
+            }
+
             // Assign PR author
             await github.rest.issues.addAssignees({
               owner: context.repo.owner,
@@ -40,6 +44,17 @@ jobs:
             const team = teamConfig.teams.find(t => t.members.includes(prAuthor));
             if (!team) {
               console.log('You are not assigned to any team. If you need one, update .github/team.json');
+              return false;
+            }
+
+            try {
+              const label = await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: team.label
+              });
+            } catch (e) {
+              console.log(`The label ${team.label} does not exist, create it first`);
               return false;
             }
 

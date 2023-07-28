@@ -1,4 +1,4 @@
-import React, { forwardRef, ReactNode, Ref, useCallback } from "react";
+import { forwardRef, ReactNode, Ref, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Toggle, { ToggleProps } from "metabase/core/components/Toggle";
@@ -7,6 +7,7 @@ import FormField from "metabase/core/components/FormField";
 export interface FormToggleProps extends Omit<ToggleProps, "value" | "onBlur"> {
   name: string;
   title?: string;
+  actions?: ReactNode;
   description?: ReactNode;
   optional?: boolean;
 }
@@ -17,6 +18,7 @@ const FormToggle = forwardRef(function FormToggle(
     className,
     style,
     title,
+    actions,
     description,
     onChange,
     optional,
@@ -59,4 +61,5 @@ const FormToggle = forwardRef(function FormToggle(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormToggle;

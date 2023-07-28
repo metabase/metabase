@@ -6,7 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [hawk.init]
+   [mb.hawk.init]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
@@ -44,7 +44,7 @@
   {:pre [(every? keyword? (cons feature more-features))]}
   ;; Can't use [[normal-drivers-with-feature]] during test initialization, because it means we end up having to load
   ;; plugins and a bunch of other nonsense.
-  (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
+  (mb.hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
@@ -337,7 +337,7 @@
 (defn supports-report-timezone?
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
-  (driver/supports? driver :set-timezone))
+  (driver/database-supports? driver :set-timezone (data/db)))
 
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
@@ -409,12 +409,12 @@
               (= driver driver-or-drivers)))]
     (if-not (add-fks? driver/*driver*)
       (thunk)
-      (let [supports? driver/supports?]
-        (with-redefs [driver/supports? (fn [driver feature]
-                                         (if (and (add-fks? driver)
-                                                  (= feature :foreign-keys))
-                                           true
-                                           (supports? driver feature)))]
+      (let [database-supports? driver/database-supports?]
+        (with-redefs [driver/database-supports? (fn [driver feature db]
+                                                  (if (and (add-fks? driver)
+                                                           (= feature :foreign-keys))
+                                                    true
+                                                    (database-supports? driver feature db)))]
           (let [thunk (reduce
                        (fn [thunk [source dest]]
                          (fn []

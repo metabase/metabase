@@ -10,7 +10,9 @@
 (mr/def ::non-blank-string
   [:and
    [:string {:min 1}]
-   [:fn (complement str/blank?)]])
+   [:fn
+    {:error/message "non-blank string"}
+    (complement str/blank?)]])
 
 ;;; Schema representing an integer than must also be greater than or equal to zero.
 (mr/def ::int-greater-than-or-equal-to-zero
@@ -58,6 +60,7 @@
 
 (mr/def ::external-op
   [:map
+   [:lib/type [:= :lib/external-op]]
    [:operator [:or :string :keyword]]
    [:options {:optional true} ::options]
    [:args [:sequential :any]]])

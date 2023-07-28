@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { ngettext, msgid, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -91,7 +91,7 @@ function QuestionRowCount({
     question.isStructured() && question.query().isEditable();
 
   const limit = canChangeLimit
-    ? Lib.currentLimit(question._getMLv2Query())
+    ? Lib.currentLimit(question._getMLv2Query(), -1)
     : null;
 
   if (loading) {
@@ -103,6 +103,7 @@ function QuestionRowCount({
       triggerElement={
         <RowCountLabel
           className={className}
+          data-testid="question-row-count"
           highlighted={limit != null}
           disabled={!canChangeLimit}
         >
@@ -153,7 +154,7 @@ const formatRowCount = (count: number) => {
 };
 
 function getLimitMessage(question: Question, result: Dataset): string {
-  const limit = Lib.currentLimit(question._getMLv2Query());
+  const limit = Lib.currentLimit(question._getMLv2Query(), -1);
   const isValidLimit =
     typeof limit === "number" && limit > 0 && limit < HARD_ROW_LIMIT;
 
@@ -196,15 +197,14 @@ const ConnectedQuestionRowCount = _.compose(
 )(QuestionRowCount);
 
 function shouldRender({
-  question,
   result,
   isObjectDetail,
 }: {
-  question: Question;
   result?: Dataset;
   isObjectDetail: boolean;
 }) {
-  return result?.data && !isObjectDetail && question.display() === "table";
+  return result?.data && !isObjectDetail;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(ConnectedQuestionRowCount, { shouldRender });

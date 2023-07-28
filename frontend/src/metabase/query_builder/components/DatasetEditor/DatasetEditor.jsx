@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -18,12 +18,15 @@ import TagEditorSidebar from "metabase/query_builder/components/template_tags/Ta
 import SnippetSidebar from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 
+import { modelIndexes } from "metabase/entities";
+
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import {
   getDatasetEditorTab,
   getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -70,6 +73,7 @@ const propTypes = {
   handleResize: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
   onOpenModal: PropTypes.func.isRequired,
+  modelIndexes: PropTypes.array.isRequired,
 
   // Native editor sidebars
   isShowingTemplateTagsEditor: PropTypes.bool.isRequired,
@@ -85,6 +89,7 @@ const TABLE_HEADER_HEIGHT = 45;
 
 function mapStateToProps(state) {
   return {
+    metadata: getMetadata(state),
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
     resultsMetadata: getResultsMetadata(state),
@@ -112,6 +117,7 @@ function getSidebar(
     toggleTemplateTagsEditor,
     toggleDataReference,
     toggleSnippetSidebar,
+    modelIndexes,
   } = props;
 
   if (datasetEditorTab === "metadata") {
@@ -132,6 +138,7 @@ function getSidebar(
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
         onFieldMetadataChange={onFieldMetadataChange}
+        modelIndexes={modelIndexes}
       />
     );
   }
@@ -190,6 +197,7 @@ function DatasetEditor(props) {
     onSave,
     handleResize,
     onOpenModal,
+    modelIndexes = [],
   } = props;
 
   const fields = useMemo(
@@ -230,7 +238,7 @@ function DatasetEditor(props) {
   const focusedField = useMemo(() => {
     const field = fields[focusedFieldIndex];
     if (field) {
-      const fieldMetadata = metadata.field(field.id, field.table_id);
+      const fieldMetadata = metadata?.field?.(field.id, field.table_id);
       return {
         ...fieldMetadata,
         ...field,
@@ -254,7 +262,7 @@ function DatasetEditor(props) {
 
   const inheritMappedFieldProperties = useCallback(
     changes => {
-      const mappedField = metadata.field(changes.id).getPlainObject();
+      const mappedField = metadata.field?.(changes.id)?.getPlainObject();
       const inheritedProperties = _.pick(mappedField, ...FIELDS);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
@@ -390,18 +398,22 @@ function DatasetEditor(props) {
     );
   }, [dataset, fields, isModelQueryDirty, isMetadataDirty]);
 
-  const sidebar = getSidebar(props, {
-    datasetEditorTab,
-    isQueryError: result?.error,
-    focusedField,
-    focusedFieldIndex,
-    focusFirstField,
-    onFieldMetadataChange,
-  });
+  const sidebar = getSidebar(
+    { ...props, modelIndexes },
+    {
+      datasetEditorTab,
+      isQueryError: result?.error,
+      focusedField,
+      focusedFieldIndex,
+      focusFirstField,
+      onFieldMetadataChange,
+    },
+  );
 
   return (
     <>
       <DatasetEditBar
+        data-testid="dataset-edit-bar"
         title={dataset.displayName()}
         center={
           <EditorTabs
@@ -451,13 +463,21 @@ function DatasetEditor(props) {
       <Root>
         <MainContainer>
           <QueryEditorContainer isResizable={isEditingQuery}>
-            <DatasetQueryEditor
-              {...props}
-              isActive={isEditingQuery}
-              height={editorHeight}
-              viewHeight={height}
-              onResizeStop={handleResize}
-            />
+            {/**
+             * Optimization: DatasetQueryEditor can be expensive to re-render
+             * and we don't need it on the "Metadata" tab.
+             *
+             * @see https://github.com/metabase/metabase/pull/31142/files#r1211352364
+             */}
+            {isEditingQuery && editorHeight > 0 && (
+              <DatasetQueryEditor
+                {...props}
+                isActive={isEditingQuery}
+                height={editorHeight}
+                viewHeight={height}
+                onResizeStop={handleResize}
+              />
+            )}
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
             <DebouncedFrame className="flex-full" enabled>
@@ -491,4 +511,10 @@ function DatasetEditor(props) {
 
 DatasetEditor.propTypes = propTypes;
 
-export default connect(mapStateToProps, mapDispatchToProps)(DatasetEditor);
+export default _.compose(
+  modelIndexes.loadList({
+    query: (_state, props) => ({ model_id: props?.question?.id() }),
+    loadingAndErrorWrapper: false,
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(DatasetEditor);

@@ -10,6 +10,7 @@ describe("issue 17968", () => {
   it("shows correct table names when joining many tables (metabase#17968)", () => {
     openOrdersTable({ mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
     popover().findByText("Products").click();
 

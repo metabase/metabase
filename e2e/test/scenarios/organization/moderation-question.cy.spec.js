@@ -5,9 +5,14 @@ import {
   openQuestionActions,
   questionInfoButton,
   getFullName,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 const adminFullName = getFullName(admin);
@@ -17,10 +22,11 @@ describeEE("scenarios > saved question moderation", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("should be able to verify and unverify a saved question", () => {
-      visitQuestion(2);
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       verifyQuestion();
 
@@ -29,6 +35,7 @@ describeEE("scenarios > saved question moderation", () => {
 
       // 2. Question's history
       questionInfoButton().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("History");
       cy.findAllByText("You verified this")
         .should("have.length", 2)
@@ -48,10 +55,11 @@ describeEE("scenarios > saved question moderation", () => {
 
       // 5. Question's collection
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").closest("a").find(".Icon-verified");
 
       // Let's go back to the question and remove the verification
-      visitQuestion(2);
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       removeQuestionVerification();
 
@@ -62,8 +70,11 @@ describeEE("scenarios > saved question moderation", () => {
 
       // 2. Question's history
       questionInfoButton().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("History");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You removed verification");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
 
       // 3. Recently viewed list
@@ -82,6 +93,7 @@ describeEE("scenarios > saved question moderation", () => {
 
       // 5. Question's collection
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count")
         .closest("a")
         .find(".Icon-verified")
@@ -93,6 +105,7 @@ describeEE("scenarios > saved question moderation", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       cy.createModerationReview({
         status: "verified",
@@ -104,27 +117,30 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see that a question has not been verified", () => {
-      visitQuestion(3);
+      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
       cy.icon("verified").should("not.exist");
 
       questionInfoButton().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${adminFullName} verified this`).should("not.exist");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count, Grouped by Created At (year)")
         .find(".Icon-verified")
         .should("not.exist");
 
       cy.visit("/collection/root");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count, Grouped by Created At (year)")
         .find(".Icon-verified")
         .should("not.exist");
     });
 
     it("should be able to see that a question has been verified", () => {
-      visitQuestion(2);
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       cy.icon("verified");
 
@@ -132,11 +148,13 @@ describeEE("scenarios > saved question moderation", () => {
       cy.findAllByText(`${adminFullName} verified this`);
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
-      cy.findByText("Orders, Count").icon("verified");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Orders, Count").parent().icon("verified");
 
       cy.visit("/collection/root");
 
-      cy.findByText("Orders, Count").icon("verified");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Orders, Count").closest("td").icon("verified");
     });
   });
 });

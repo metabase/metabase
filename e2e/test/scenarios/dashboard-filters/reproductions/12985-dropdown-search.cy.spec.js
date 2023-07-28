@@ -48,7 +48,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 10,
+              size_x: 13,
               size_y: 8,
               series: [],
               visualization_settings: {},
@@ -80,6 +80,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     cy.button("Add filter").click();
 
     cy.location("search").should("eq", "?category=Gadget");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Ergonomic Silk Coat");
   });
 
@@ -107,7 +108,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 8,
+              size_x: 11,
               size_y: 6,
               series: [],
               visualization_settings: {},
@@ -133,8 +134,10 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     filterWidget().contains("Category").click();
     // It will fail at this point until the issue is fixed because popover never appears
     popover().contains("Gadget").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
     cy.url().should("contain", "?category=Gadget");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Ergonomic Silk Coat");
   });
 });

@@ -13,6 +13,11 @@
             "name": "react-redux",
             "importNames": ["useSelector", "useDispatch"],
             "message": "Please import from `metabase/lib/redux` instead."
+          },
+          {
+            "name": "@mantine/core",
+            "importNames": ["createStyles"],
+            "message": "Avoid using `createStyles` because of breaking changes in the upcoming Mantine update"
           }
         ]
       }
@@ -23,6 +28,12 @@
       "files": ["**/*.unit.spec.{js,jsx,ts,tsx}"],
       "rules": {
         "no-console": 0
+      }
+    },
+    {
+      "files": ["**/*.stories.tsx"],
+      "rules": {
+        "import/no-default-export": 0
       }
     },
     {

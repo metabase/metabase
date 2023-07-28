@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
@@ -11,8 +11,9 @@ import Questions from "metabase/entities/questions";
 
 import { getDashboard } from "metabase/dashboard/selectors";
 
-import type { Card, Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 
 import MainNavbarContainer from "./MainNavbarContainer";
 
@@ -28,7 +29,7 @@ import getSelectedItems, {
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
 interface EntityLoaderProps {
-  card?: Card;
+  question?: Question;
 }
 
 interface StateProps {
@@ -63,7 +64,7 @@ function MainNavbar({
   isOpen,
   location,
   params,
-  card,
+  question,
   dashboard,
   openNavbar,
   closeNavbar,
@@ -92,10 +93,10 @@ function MainNavbar({
       getSelectedItems({
         pathname: location.pathname,
         params,
-        card,
+        question,
         dashboard,
       }),
-    [location, params, card, dashboard],
+    [location, params, question, dashboard],
   );
 
   return (
@@ -130,11 +131,12 @@ function maybeGetQuestionId(
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   Questions.load({
     id: maybeGetQuestionId,
     loadingAndErrorWrapper: false,
-    entityAlias: "card",
+    entityAlias: "question",
   }),
 )(MainNavbar);

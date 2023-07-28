@@ -7,7 +7,8 @@
    [metabase.models.query :as query]
    [metabase.test :as mt]
    [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private segment
   (delay
@@ -26,7 +27,7 @@
 ;; TODO -- I don't know what these are supposed to test. So I have no idea what to name them.
 
 (deftest test-1
-  (mt/with-temp Segment [{segment-id :id} @segment]
+  (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup
         (is (some? (test-comparison (t2/select-one Table :id (mt/id :venues)) (t2/select-one Segment :id segment-id))))
@@ -50,11 +51,11 @@
         (is (some? (test-comparison (t2/select-one Table :id (mt/id :venues)) q)))))))
 
 (deftest test-4
-  (mt/with-temp Card [{card-id :id} {:table_id      (mt/id :venues)
-                                     :dataset_query {:query    {:filter       (-> @segment :definition :filter)
-                                                                :source-table (mt/id :venues)}
-                                                     :type     :query
-                                                     :database (mt/id)}}]
+  (t2.with-temp/with-temp [Card {card-id :id} {:table_id      (mt/id :venues)
+                                               :dataset_query {:query    {:filter       (-> @segment :definition :filter)
+                                                                          :source-table (mt/id :venues)}
+                                                               :type     :query
+                                                               :database (mt/id)}}]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup
         (is (some? (test-comparison (t2/select-one Table :id (mt/id :venues)) (t2/select-one Card :id card-id))))))))

@@ -14,8 +14,8 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +56,7 @@
     (testing "Make sure we correctly infer complex types in views (#8630, #9276, #12191, #12547, #10681)"
       (let [details (mt/dbdef->connection-details :sqlite :db {:database-name "views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :sqlite details)]
-        (mt/with-temp Database [{db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
+        (t2.with-temp/with-temp [Database {db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
                              "drop view if exists v_src;"
@@ -76,7 +76,7 @@
                              :base_type :type/Integer}
                             {:name      "time"
                              :base_type :type/Text}]}]
-                 (->> (hydrate (t2/select Table :db_id db-id {:order-by [:name]}) :fields)
+                 (->> (t2/hydrate (t2/select Table :db_id db-id {:order-by [:name]}) :fields)
                       (map table-fingerprint))))
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
@@ -112,7 +112,7 @@
                              :base_type :type/Text}
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
-                 (->> (hydrate (t2/select Table :db_id db-id
+                 (->> (t2/hydrate (t2/select Table :db_id db-id
                                           {:where    [:in :name ["groupby_test" "v_groupby_test"]]
                                            :order-by [:name]}) :fields)
                       (map table-fingerprint)))))))))
@@ -132,7 +132,7 @@
                       "INSERT INTO timestamp_table (created_at) VALUES (datetime('now'));"]]
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver details)
                          [stmt]))
-        (mt/with-temp Database [db {:engine driver :details (assoc details :dbname db-name)}]
+        (t2.with-temp/with-temp [Database db {:engine driver :details (assoc details :dbname db-name)}]
           (sync/sync-database! db)
           (mt/with-db db
             (testing "timestamp columns"
@@ -171,7 +171,7 @@
                       ('null',            null,                      null,          null);"]]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
                        [stmt]))
-      (mt/with-temp Database [db {:engine :sqlite :details (assoc details :dbname db-name)}]
+      (t2.with-temp/with-temp [Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
         (sync/sync-database! db)
         ;; In SQLite, you can actually store any value in any date/timestamp column,
         ;; let's test only values we'd reasonably run into.
@@ -184,34 +184,34 @@
                      "2021-08-25T04:18:24Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_timestamp $col_date $col_datetime]
-                                        :filter [:= $test_case "epoch"]})))))
+                      {:fields [$col_timestamp $col_date $col_datetime]
+                       :filter [:= $test_case "epoch"]})))))
           (testing "select datetime stored as string with milliseconds"
             (is (= [["2021-08-25T04:18:24.111Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24.111Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_timestamp $col_datetime]
-                                        :filter [:= $test_case "iso8601-ms"]})))))
+                      {:fields [$col_timestamp $col_datetime]
+                       :filter [:= $test_case "iso8601-ms"]})))))
           (testing "select datetime stored as string without milliseconds"
             (is (= [["2021-08-25T04:18:24Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_timestamp $col_datetime]
-                                        :filter [:= $test_case "iso8601-no-ms"]})))))
+                      {:fields [$col_timestamp $col_datetime]
+                       :filter [:= $test_case "iso8601-no-ms"]})))))
           (testing "select date stored as string without time"
             (is (= [["2021-08-25T00:00:00Z"]] ; DATE
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_date]
-                                        :filter [:= $test_case "iso8601-no-time"]})))))
+                      {:fields [$col_date]
+                       :filter [:= $test_case "iso8601-no-time"]})))))
           (testing "select NULL"
             (is (= [[nil nil nil]]
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_timestamp $col_date $col_datetime]
-                                        :filter [:= $test_case "null"]}))))))))))
+                      {:fields [$col_timestamp $col_date $col_datetime]
+                       :filter [:= $test_case "null"]}))))))))))
 
 (deftest duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"

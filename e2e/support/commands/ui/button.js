@@ -1,3 +1,18 @@
-Cypress.Commands.add("button", (button_name, timeout) => {
-  cy.findByRole("button", { name: button_name, timeout: timeout });
-});
+Cypress.Commands.add(
+  "button",
+  {
+    prevSubject: "optional",
+  },
+  (subject, button_name, timeout) => {
+    const config = {
+      name: button_name,
+      timeout,
+    };
+
+    if (subject) {
+      cy.wrap(subject).findByRole("button", config);
+    } else {
+      cy.findByRole("button", config);
+    }
+  },
+);

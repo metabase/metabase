@@ -272,15 +272,14 @@
 (defn validate-param-values
   "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
   populated by the defendpoint schema)"
-  [{route :compojure/route body :body} expected-params]
+  [{method :request-method uri :uri body :body} expected-params]
   (when (and (not config/is-prod?)
              (map? body))
     (let [extraneous-params (set/difference (set (keys body))
                                             (set expected-params))]
       (when (seq extraneous-params)
         (log/warnf "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the API client"
-                   route (vec extraneous-params))))))
-
+                   [method uri] (vec extraneous-params))))))
 
 (defn method-symbol->keyword
   "Convert Compojure-style HTTP method symbols (PUT, POST, etc.) to the keywords used internally by
@@ -352,10 +351,8 @@
   "Define an API function.
    This automatically does several things:
 
-   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
-      `Integer/parseInt`
-
-   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+   -  converts `route` from a simple form like `\"/:id\"` to a regex-typed one like `[\"/:id\" :id #\"[0-9]+\"]` based
+      on its malli schema
 
    -  sequentially applies specified annotation functions on args to validate them.
 
@@ -610,9 +607,32 @@
          (reconcile-position-for-collection! old-collection-id old-position nil)
          (reconcile-position-for-collection! new-collection-id nil new-position))))))
 
+
+;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
+
 (defn bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
   [v]
   (if (number? v)
     (not (zero? v))
     v))
+
+(defn parse-multi-values-param
+  "Parse a param that could have a single value or multiple values using `parse-fn`.
+  Always return a vector.
+
+  Used for API that can parse single value or multiple values for a param:
+  e.g:
+    single value: api/card/series?exclude_ids=1
+    multi values: api/card/series?exclude_ids=1&exclude_ids=2
+
+  Example usage:
+    (parse-multi-values-param \"1\" parse-long)
+    => [1]
+
+    (parse-multi-values-param [\"1\" \"2\"] parse-long)
+    => [1, 2]"
+  [xs parse-fn]
+  (if (sequential? xs)
+    (map parse-fn xs)
+    [(parse-fn xs)]))

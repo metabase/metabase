@@ -10,7 +10,8 @@
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.pulse.test-util :refer [checkins-query-card]]
    [metabase.task.send-pulses :as send-pulses]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest send-pulses-test
   (mt/with-temp* [Card                 [{card-id :id}  (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
@@ -79,3 +80,40 @@
           (testing "There shouldn't be any failures, just skipping over the archived pulse"
             (is (= []
                    @exceptions))))))))
+
+(deftest clear-pulse-channels-test
+  (testing "Removes empty PulseChannel"
+    (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                    PulseChannel [_ {:pulse_id pulse-id}]]
+      (#'send-pulses/clear-pulse-channels!)
+      (is (= 0
+             (t2/count PulseChannel)))
+      (is (:archived (t2/select-one Pulse :id pulse-id)))))
+
+  (testing "Has PulseChannelRecipient"
+    (mt/with-temp* [Pulse                 [{pulse-id :id} {}]
+                    PulseChannel          [{pc-id :id} {:pulse_id     pulse-id
+                                                        :channel_type :email}]
+                    PulseChannelRecipient [_           {:user_id          (mt/user->id :rasta)
+                                                        :pulse_channel_id pc-id}]]
+      (#'send-pulses/clear-pulse-channels!)
+      (is (= 1
+             (t2/count PulseChannel)))))
+
+  (testing "Has email"
+    (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                    PulseChannel [_ {:pulse_id     pulse-id
+                                     :channel_type :email
+                                     :details      {:emails ["test@metabase.com"]}}]]
+      (#'send-pulses/clear-pulse-channels!)
+      (is (= 1
+             (t2/count PulseChannel)))))
+
+  (testing "Has channel"
+    (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                    PulseChannel [_ {:pulse_id     pulse-id
+                                     :channel_type :slack
+                                     :details      {:channel ["#test"]}}]]
+      (#'send-pulses/clear-pulse-channels!)
+      (is (= 1
+             (t2/count PulseChannel))))))

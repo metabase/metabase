@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import ImageToggle from "../ImageToggle";
 import { MetabotSetting } from "./types";
@@ -26,4 +25,5 @@ const MetabotToggleWidget = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetabotToggleWidget;

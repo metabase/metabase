@@ -11,7 +11,8 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Download permissions                                                  |
@@ -22,7 +23,7 @@
 
 (deftest update-db-download-permissions-test
   (mt/with-model-cleanup [Permissions]
-    (mt/with-temp PermissionsGroup [{group-id :id}]
+    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Download perms for all schemas can be set and revoked"
           (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full})
@@ -163,7 +164,7 @@
 
 (deftest update-db-data-model-permissions-test
   (mt/with-model-cleanup [Permissions]
-    (mt/with-temp PermissionsGroup [{group-id :id}]
+    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Data model perms for an entire DB can be set and revoked"
           (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all})
@@ -218,7 +219,7 @@
 
 (deftest update-db-details-permissions-test
   (mt/with-model-cleanup [Permissions]
-    (mt/with-temp PermissionsGroup [{group-id :id}]
+    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
             (testing "Detail perms for a DB can be set and revoked"
               (ee-perms/update-db-details-permissions! group-id (mt/id) :yes)
@@ -243,7 +244,7 @@
 
 (deftest update-db-execute-permissions-test
   (mt/with-model-cleanup [Permissions]
-    (mt/with-temp PermissionsGroup [{group-id :id}]
+    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Execute perms for a DB can be set and revoked"
           (ee-perms/update-db-execute-permissions! group-id (mt/id) :all)
@@ -268,7 +269,7 @@
     (doseq [[perm-type perm-value] [[:data-model :all] [:download :full]]]
       (testing (pr-str perm-type)
         (testing "slash"
-          (mt/with-temp PermissionsGroup [group]
+          (t2.with-temp/with-temp [PermissionsGroup group]
             (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema/with_slash")
             (is (= "schema/with_slash"
                    (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])
@@ -276,7 +277,7 @@
                        first)))))
 
         (testing "backslash"
-          (mt/with-temp PermissionsGroup [group]
+          (t2.with-temp/with-temp [PermissionsGroup group]
             (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema\\with_backslash")
             (is (= "schema\\with_backslash"
                    (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])

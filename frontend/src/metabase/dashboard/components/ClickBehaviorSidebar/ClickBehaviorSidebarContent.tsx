@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { getIn } from "icepick";
 
 import type {
@@ -91,4 +91,5 @@ function ClickBehaviorSidebar({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ClickBehaviorSidebar;

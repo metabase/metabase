@@ -1,4 +1,3 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import { createMockCollection } from "metabase-types/api/mocks";
 import FileUploadStatusLarge from "./FileUploadStatusLarge";
