@@ -1,5 +1,6 @@
 (ns metabase.cmd.load-from-h2-test
   (:require [clojure.test :refer :all]
+            [metabase.cmd.copy :as copy]
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.cmd.test-util :as cmd.test-util]
             [metabase.db.connection :as mdb.connection]
@@ -22,7 +23,8 @@
                                target-db-type
                                (tx/dbdef->connection-details target-db-type :db db-def)))]
       (tx/create-db! target-db-type db-def)
-      (binding [mdb.connection/*application-db* (mdb.connection/application-db target-db-type target-data-source)]
+      (binding [mdb.connection/*application-db*   (mdb.connection/application-db target-db-type target-data-source)
+                copy/*allow-loading-h2-databases* true]
         (load-from-h2/load-from-h2! h2-filename)
         (is (= 4
                (db/count Table)))
