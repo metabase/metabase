@@ -78,9 +78,10 @@
 (defenterprise refreshable-states
   "States of `persisted_info` records which can be refreshed.
 
-   Without the :cache-granular-controls feature flag, any models with state=off should be treated as if they were
-   in state=creating (i.e. they should be refreshable, and not prunable). This situation is only possible if the
-   instance previously had the :cache-granular-controls feature flag, then downgraded to not have it."
+   'off' needs to be handled here even though setting the state to off is only possible with :cache-granular-controls
+   enabled. A model could still have state=off if the instance previously had the feature flag, then downgraded to not
+   have it. In that case models with state=off were previously prunable when the feature flag enabled, but they should be
+   refreshable with the feature flag disabled."
   metabase-enterprise.advanced-config.caching
   []
   #{"creating" "persisted" "error" "off"})
