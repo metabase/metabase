@@ -2,11 +2,32 @@
   (:require
    [clojure.test :refer :all]
    [metabase.cmd.copy :as copy]
+   [metabase.models :refer [Database]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
-(deftest all-models-accounted-for-test
+(deftest ^:parallel sql-for-selecting-instances-from-source-db-test
+  (are [table-name] (re-find #"(?i)SELECT \* FROM METABASE_DATABASE WHERE engine <> 'h2'"
+                             (#'copy/sql-for-selecting-instances-from-source-db table-name))
+    (t2/table-name Database)
+    :METABASE_DATABASE
+    "metabase_database")
+  ;; make sure the H2 `test-data` DB is loaded
+  (mt/db)
+  (let [sql              (#'copy/sql-for-selecting-instances-from-source-db (t2/table-name Database))
+        selected-drivers (t2/select-fn-set :engine Database sql)]
+    (is (not (contains? selected-drivers :h2)))))
+
+(deftest ^:parallel allow-loading-h2-databases-test
+  (testing `copy/*allow-loading-h2-databases*
+    (binding [copy/*allow-loading-h2-databases* true]
+      (is (= "SELECT * FROM metabase_database"
+             (#'copy/sql-for-selecting-instances-from-source-db (t2/table-name Database)))))))
+
+(deftest ^:paralell all-models-accounted-for-test
   ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities
   (let [migrated-model-names (set (map :name copy/entities))
         ;; Models that should *not* be migrated in `load-from-h2`.
