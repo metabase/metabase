@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   openNativeEditor,
+  addPostgresDatabase,
 } from "__support__/e2e/helpers";
 
 const databaseName = "Sample Database";
@@ -18,39 +19,11 @@ describe("display the relevant error message in save question modal (metabase#21
   it("duplicates the Sample Database DB", () => {
     cy.route({
       method: "POST",
-      url: "/api/database",
-      delay: 1000,
-    }).as("createDatabase");
-    cy.route({
-      method: "POST",
       url: "/api/card",
       delay: 1000,
     }).as("saveNativeQuestion");
 
-    // Second DB (copy)
-    cy.visit("/");
-    cy.get(".Nav .Icon-gear").click();
-    cy.findByText("Admin settings").click();
-    cy.findByText("Databases").click();
-    cy.findByText("Add database").click();
-
-    cy.get(".Form-field")
-      .findByTestId("select-button")
-      .first()
-      .click();
-    cy.findByText("H2").click();
-    cy.get(`input[name="name"]`).type(databaseCopyName);
-    cy.get(`input[name="details.db"]`).type(
-      "./resources/sample-database.db;USER=GUEST;PASSWORD=guest",
-    );
-
-    cy.button("Save")
-      .should("not.be.disabled")
-      .click();
-
-    cy.wait("@createDatabase");
-    cy.findByText("We're taking a look at your database!");
-    cy.findByText("Explore sample data");
+    addPostgresDatabase(databaseCopyName);
 
     // Create a native query
     // and run it
