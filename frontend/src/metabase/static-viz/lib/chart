@@ -1,0 +1,173 @@
+<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" baseProfile="full" viewBox="0 0 600 400">
+<rect width="600" height="400" x="0" y="0" id="0" fill="none"></rect>
+<path d="M60 330.5L540 330.5" fill="none" stroke="#E0E6F1"></path>
+<path d="M60 276.5L540 276.5" fill="none" stroke="#E0E6F1"></path>
+<path d="M60 222.5L540 222.5" fill="none" stroke="#E0E6F1"></path>
+<path d="M60 168.5L540 168.5" fill="none" stroke="#E0E6F1"></path>
+<path d="M60 114.5L540 114.5" fill="none" stroke="#E0E6F1"></path>
+<path d="M60 60.5L540 60.5" fill="none" stroke="#E0E6F1"></path>
+<path d="M60 330.5L540 330.5" fill="none" stroke="#6E7079" stroke-linecap="round"></path>
+<path d="M60.5 330L60.5 335" fill="none" stroke="#6E7079"></path>
+<path d="M180.5 330L180.5 335" fill="none" stroke="#6E7079"></path>
+<path d="M300.5 330L300.5 335" fill="none" stroke="#6E7079"></path>
+<path d="M420.5 330L420.5 335" fill="none" stroke="#6E7079"></path>
+<path d="M540.5 330L540.5 335" fill="none" stroke="#6E7079"></path>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(52 330)" fill="#6E7079">0</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(52 276)" fill="#6E7079">20</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(52 222)" fill="#6E7079">40</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(52 168)" fill="#6E7079">60</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(52 114)" fill="#6E7079">80</text>
+<text dominant-baseline="central" text-anchor="end" style="font-size:12px;font-family:sans-serif;" transform="translate(52 60)" fill="#6E7079">100</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" y="6" transform="translate(120 338)" fill="#6E7079">Matcha Latte</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" y="6" transform="translate(240 338)" fill="#6E7079">Milk Tea</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" y="6" transform="translate(360 338)" fill="#6E7079">Cheese Cocoa</text>
+<text dominant-baseline="central" text-anchor="middle" style="font-size:12px;font-family:sans-serif;" xml:space="preserve" y="6" transform="translate(480 338)" fill="#6E7079">Walnut Brownie</text>
+<path d="M73.8 330l27.2 0l0 -116.9l-27.2 0Z" fill="#5470c6" class="zr0-cls-0"></path>
+<path d="M193.8 330l27.2 0l0 -224.4l-27.2 0Z" fill="#5470c6" class="zr0-cls-1"></path>
+<path d="M313.8 330l27.2 0l0 -233.3l-27.2 0Z" fill="#5470c6" class="zr0-cls-2"></path>
+<path d="M433.8 330l27.2 0l0 -195.5l-27.2 0Z" fill="#5470c6" class="zr0-cls-3"></path>
+<path d="M106.4 330l27.2 0l0 -231.7l-27.2 0Z" fill="#91cc75" class="zr0-cls-4"></path>
+<path d="M226.4 330l27.2 0l0 -198.2l-27.2 0Z" fill="#91cc75" class="zr0-cls-5"></path>
+<path d="M346.4 330l27.2 0l0 -176l-27.2 0Z" fill="#91cc75" class="zr0-cls-6"></path>
+<path d="M466.4 330l27.2 0l0 -145.5l-27.2 0Z" fill="#91cc75" class="zr0-cls-7"></path>
+<path d="M139 330l27.2 0l0 -253l-27.2 0Z" fill="#fac858" class="zr0-cls-8"></path>
+<path d="M259 330l27.2 0l0 -148.8l-27.2 0Z" fill="#fac858" class="zr0-cls-9"></path>
+<path d="M379 330l27.2 0l0 -222.7l-27.2 0Z" fill="#fac858" class="zr0-cls-10"></path>
+<path d="M499 330l27.2 0l0 -105.6l-27.2 0Z" fill="#fac858" class="zr0-cls-11"></path>
+<style ><![CDATA[
+.zr0-cls-0 {
+animation:zr0-ani-0 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-1 {
+animation:zr0-ani-1 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-2 {
+animation:zr0-ani-2 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-3 {
+animation:zr0-ani-3 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-4 {
+animation:zr0-ani-4 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-5 {
+animation:zr0-ani-5 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-6 {
+animation:zr0-ani-6 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-7 {
+animation:zr0-ani-7 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-8 {
+animation:zr0-ani-8 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-9 {
+animation:zr0-ani-9 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-10 {
+animation:zr0-ani-10 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+.zr0-cls-11 {
+animation:zr0-ani-11 1s cubic-bezier(0.65,0,0.35,1) both;
+}
+@keyframes zr0-ani-0 {
+0% {
+d:path("M73.8 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M73.8 330l27.2 0l0 -116.9l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-1 {
+0% {
+d:path("M193.8 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M193.8 330l27.2 0l0 -224.4l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-2 {
+0% {
+d:path("M313.8 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M313.8 330l27.2 0l0 -233.3l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-3 {
+0% {
+d:path("M433.8 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M433.8 330l27.2 0l0 -195.5l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-4 {
+0% {
+d:path("M106.4 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M106.4 330l27.2 0l0 -231.7l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-5 {
+0% {
+d:path("M226.4 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M226.4 330l27.2 0l0 -198.2l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-6 {
+0% {
+d:path("M346.4 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M346.4 330l27.2 0l0 -176l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-7 {
+0% {
+d:path("M466.4 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M466.4 330l27.2 0l0 -145.5l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-8 {
+0% {
+d:path("M139 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M139 330l27.2 0l0 -253l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-9 {
+0% {
+d:path("M259 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M259 330l27.2 0l0 -148.8l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-10 {
+0% {
+d:path("M379 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M379 330l27.2 0l0 -222.7l-27.2 0Z");
+}
+}
+@keyframes zr0-ani-11 {
+0% {
+d:path("M499 330l27.2 0l0 0l-27.2 0Z");
+}
+100% {
+d:path("M499 330l27.2 0l0 -105.6l-27.2 0Z");
+}
+}
+]]>
+
+</style>
+</svg>

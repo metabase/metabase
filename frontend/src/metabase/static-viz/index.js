@@ -1,8 +1,5 @@
-import ReactDOMServer from "react-dom/server";
-import StaticChart from "./containers/StaticChart";
+import * as chart from "metabase/static-viz/lib/renderers";
 
 export function RenderChart(type, options) {
-  return ReactDOMServer.renderToStaticMarkup(
-    <StaticChart type={type} options={options} />,
-  );
+  return chart.renderMap();
 }

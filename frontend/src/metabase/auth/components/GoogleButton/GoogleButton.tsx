@@ -55,7 +55,6 @@ export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
             onSuccess={handleLogin}
             onError={handleError}
             locale={locale}
-            width="300"
           />
         </GoogleOAuthProvider>
       ) : (
