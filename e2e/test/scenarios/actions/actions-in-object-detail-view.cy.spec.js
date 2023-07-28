@@ -36,7 +36,7 @@ const SECOND_SCORE_ROW_ID = 12;
 const UPDATED_SCORE = 987654321;
 const UPDATED_SCORE_FORMATTED = "987,654,321";
 
-describe("Actions in object detail view", () => {
+describe("scenarios > actions > actions-in-object-detail-view", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/action").as("createBasicActions");
     cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
@@ -48,7 +48,7 @@ describe("Actions in object detail view", () => {
     restore("postgres-writable");
   });
 
-  describe("In dashboard", () => {
+  describe("in dashboard", () => {
     beforeEach(() => {
       asAdmin(() => {
         resyncDatabase({
@@ -92,7 +92,7 @@ describe("Actions in object detail view", () => {
     });
   });
 
-  describe("In modal", () => {
+  describe("in modal", () => {
     beforeEach(() => {
       asAdmin(() => {
         resyncDatabase({
@@ -103,7 +103,7 @@ describe("Actions in object detail view", () => {
       });
     });
 
-    it("should be able to run update and delete actions", () => {
+    it("should be able to run update and delete actions when enabled", () => {
       cy.get("@modelId").then(modelId => {
         asNormalUser(() => {
           cy.log("As normal user: verify database actions are enabled");
