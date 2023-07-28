@@ -309,7 +309,7 @@ describe("Object Detail", () => {
   });
 
   describe("renders actions menu", () => {
-    beforeEach(async () => {
+    beforeEach(() => {
       setupDatabasesEndpoints([databaseWithEnabledActions]);
       setupActionsEndpoints(actions);
       setup({ question: mockDataset });
@@ -356,7 +356,7 @@ describe("Object Detail", () => {
     });
   });
 
-  it("does not render actions menu for non-model questions", async () => {
+  it("does not render actions menu for non-model questions", () => {
     setupDatabasesEndpoints([databaseWithEnabledActions]);
     setupActionsEndpoints(actions);
     setup({ question: mockQuestion });
