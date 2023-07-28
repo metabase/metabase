@@ -733,14 +733,17 @@
    cache_ttl          (s/maybe su/IntGreaterThanZero)
    settings           (s/maybe su/Map)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (let [existing-database (api/write-check (Database id))
-        details           (driver.u/db-details-client->server engine details)
-        details           (upsert-sensitive-fields existing-database details)
-        conn-error        (when (some? details)
-                            (assert (some? engine))
-                            (test-database-connection engine details))
-        full-sync?        (when-not (nil? is_full_sync)
-                            (boolean is_full_sync))]
+  (let [existing-database (api/write-check (db/select-one Database :id id))
+        details           (some->> details
+                                   (driver.u/db-details-client->server (or engine (:engine existing-database)))
+                                   (upsert-sensitive-fields existing-database))
+        ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
+        details-changed?  (some-> details (not= (:details existing-database)))
+        engine-changed?   (some-> engine (not= (:engine existing-database)))
+        conn-error        (when (or details-changed? engine-changed?)
+                            (test-database-connection (or engine (:engine existing-database))
+                                                      (or details (:details existing-database))))
+        full-sync?        (some-> is_full_sync boolean)]
     (if conn-error
       ;; failed to connect, return error
       {:status 400

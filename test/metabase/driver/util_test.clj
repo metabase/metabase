@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [metabase.driver.h2 :as h2]
             [metabase.driver.util :as driver.u]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
@@ -9,6 +10,8 @@
   (:import java.nio.charset.StandardCharsets
            java.util.Base64
            javax.net.ssl.SSLSocketFactory))
+
+(comment h2/keep-me)
 
 (use-fixtures :once (fixtures/initialize :plugins :test-drivers))
 
@@ -233,3 +236,8 @@
              (select-keys transformed [:host :password-value :keystore-password-value :use-keystore])))
       ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)e
       (is (mt/secret-value-equals? ks-val (:keystore-value transformed))))))
+
+(deftest ^:parallel mark-h2-superseded-test
+  (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
+    (is (partial= {:driver-name "H2", :superseded-by :deprecated}
+                  (:h2 (driver.u/available-drivers-info))))))
