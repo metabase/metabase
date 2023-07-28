@@ -35,13 +35,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   }, [query, stageIndex, join, table]);
 
   useEffect(() => {
-    if (
-      join &&
-      previousJoin !== join &&
-      previousQuery &&
-      // This prevents updates when only metadata is updated
-      !Lib.areQueriesEqual(query, previousQuery)
-    ) {
+    if (join && previousJoin !== join) {
       _setStrategy(Lib.joinStrategy(join));
       _setTable(Lib.joinedThing(query, join));
       _setConditions(Lib.joinConditions(join));
