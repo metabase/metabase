@@ -18,7 +18,11 @@ describe("scenarios > question > view", () => {
     beforeEach(() => {
       // All users upgraded to collection view access
       cy.visit("/admin/permissions/collections/root");
-      cy.icon("close").first().click();
+      cy.findByText("All Users")
+        .closest("tr")
+        .within(() => {
+          cy.icon("close").click();
+        });
       cy.findAllByRole("option").contains("View").click();
       cy.findByText("Save changes").click();
       cy.findByText("Yes").click();

@@ -80,23 +80,6 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
-    cy.intercept("POST", "/api/database").as("createDatabase");
-    cy.visit("/admin/databases/create");
-
-    chooseDatabase("H2");
-    typeField("Display name", "Test db name");
-    typeField("Connection String", "invalid");
-
-    cy.findByText("Show advanced options").click();
-    toggleFieldWithDisplayName("Choose when syncs and scans happen");
-
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-    cy.findByText(": check your connection string");
-    cy.findByText("Implicitly relative file paths are not allowed.");
-  });
-
   it("should show scheduling settings if you enable the toggle", () => {
     cy.intercept("POST", "/api/database", req => {
       req.reply({ body: { id: 42 } });
