@@ -106,10 +106,10 @@
    database-id
    question)
   (let [{:keys [mbql]} (mbql-inference/infer-mbql question)]
-    {:card {:dataset_query {:database 1                     ;;TODO
-                            :type :query
-                            :query mbql}
-            :display :table
+    {:card {:dataset_query          {:database 1            ;;TODO
+                                     :type     :query
+                                     :query    mbql}
+            :display                :table
             :visualization_settings {}}})
   #_(let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
           _       (check-database-support (:id database))
@@ -171,11 +171,13 @@
   [prompt]
   {prompt su/NonBlankString}
   (log/infof "Metabot generating mbql for prompt: %s" prompt)
-  (let [inferencer (task-impl/fine-tune-mbql-inferencer)
-        embedder   (task-impl/fine-tune-embedder)]
+  (let [inferencer        (task-impl/fine-tune-mbql-inferencer)
+        embedder          (task-impl/fine-tune-embedder)
+        context-generator (task-impl/seq-of-objects-context-generator)]
     (mbql-inference/infer-mbql
-     {:embedder   embedder
-      :inferencer inferencer}
+     {:embedder          embedder
+      :inferencer        inferencer
+      :context-generator context-generator}
      prompt)))
 
 (api/define-routes)

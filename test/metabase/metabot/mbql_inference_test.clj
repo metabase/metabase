@@ -5,6 +5,7 @@
    [metabase.metabot.metabot-test-models :as mtm]
    [metabase.metabot.precomputes :as precomputes]
    [metabase.metabot.task-api :as task-api]
+   [metabase.metabot.task-impl :as task-impl]
    [metabase.metabot.util :as metabot-util]
    [metabase.test :as mt]
    [metabase.models :as models]
@@ -41,32 +42,34 @@
               source-query    {:database (mt/id)
                                :type     :query
                                :query    (mtm/full-join-orders-test-query)}]
-          (let [inferencer (reify task-api/MBQLInferencer
-                             (infer [_ _]
-                               expected-result))
-                embedder   (reify task-api/Embedder
-                             (single [_ _]
-                               [0 1 0 0]))]
+          (let [inferencer        (reify task-api/MBQLInferencer
+                                    (infer [_ _]
+                                      expected-result))
+                embedder          (reify task-api/Embedder
+                                    (single [_ _]
+                                      [0 1 0 0]))
+                context-generator (task-impl/seq-of-objects-context-generator)]
             (t2.with-temp/with-temp
              [models/Card model {:name          test-model-name
                                  :table_id      (mt/id :orders)
                                  :dataset_query source-query
                                  :dataset       true}]
-              (with-redefs [mbql-inference/precomputes          (constantly
-                                                                 (reify precomputes/Precomputes
-                                                                   (embeddings [_]
-                                                                     {[:table (:id model)]       [0 1 0 0]
-                                                                      [:table (inc (:id model))] [1 0 0 0]
-                                                                      [:table (dec (:id model))] [0 0 0 1]})
-                                                                   (context [_ entity-type entity-id]
-                                                                     (get-in
-                                                                      {:table
-                                                                       {(:id model)
-                                                                        (metabot-util/model->context model)}}
-                                                                      [entity-type entity-id]))))]
+              (with-redefs [mbql-inference/precomputes (constantly
+                                                        (reify precomputes/Precomputes
+                                                          (embeddings [_]
+                                                            {[:table (:id model)]       [0 1 0 0]
+                                                             [:table (inc (:id model))] [1 0 0 0]
+                                                             [:table (dec (:id model))] [0 0 0 1]})
+                                                          (context [_ entity-type entity-id]
+                                                            (get-in
+                                                             {:table
+                                                              {(:id model)
+                                                               (metabot-util/model->context model)}}
+                                                             [entity-type entity-id]))))]
                 (is (= expected-result
                        (mbql-inference/infer-mbql
-                        {:inferencer inferencer
-                         :embedder   embedder}
+                        {:inferencer        inferencer
+                         :embedder          embedder
+                         :context-generator context-generator}
                         test-prompt)))))))))))
 

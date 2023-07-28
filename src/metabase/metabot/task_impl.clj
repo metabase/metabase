@@ -2,7 +2,10 @@
   (:require
    [metabase.metabot.inference-ws-client :as inference-ws-client]
    [metabase.metabot.settings :as metabot-settings]
-   [metabase.metabot.task-api :as task-api]))
+   [metabase.metabot.task-api :as task-api]
+   [metabase.metabot.util :as metabot-util]
+   [metabase.models :as models]
+   [toucan2.core :as t2]))
 
 (defrecord MBFineTuneEmbedder [base-url])
 
@@ -29,3 +32,11 @@
   ([base-url]
    (->MBFineTuneMBQLInferencer base-url))
   ([] (fine-tune-mbql-inferencer (metabot-settings/metabot-inference-ws-url))))
+
+(defn seq-of-objects-context-generator []
+  (reify task-api/ContextGenerator
+    (context [_ {:keys [context-entities]}]
+      (for [[entity-type entity-id] context-entities
+            :let [resolved-type ({:model models/Card :card models/Card} entity-type)
+                  entity (t2/select-one resolved-type :id entity-id)]]
+        (metabot-util/model->context entity)))))

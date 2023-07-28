@@ -1,19 +1,19 @@
 (ns metabase.metabot.openai.infer-mbql-test
   (:require
-    [cheshire.core :as json]
-    [clojure.test :refer :all]
-    [metabase.metabot.test-models :as test-models]
-    [metabase.metabot.client :as metabot-client]
-    [metabase.metabot.openai.infer-mbql :as infer-mbql]
-    [metabase.models :refer [Card]]
-    [metabase.test :as mt]))
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [metabase.metabot.test-models :as test-models]
+   [metabase.metabot.client :as metabot-client]
+   [metabase.metabot.openai.infer-mbql :as infer-mbql]
+   [metabase.models :refer [Card]]
+   [metabase.test :as mt]))
 
 (defn- mock-llm-endpoint [metabot-response usage]
   (constantly
-    {:usage usage
-     :choices
-     [{:message
-       {:content (json/generate-string metabot-response)}}]}))
+   {:usage usage
+    :choices
+    [{:message
+      {:content (json/generate-string metabot-response)}}]}))
 
 (deftest infer-mbql-descriptive-stats-test
   (testing "infer-mbql with prompt \"Provide descriptive stats for sales per state\""
@@ -39,8 +39,7 @@
                                    :source-table (format "card__%s" model-id)
                                    :lib/type     :mbql.stage/mbql}]
                       :llm/usage usage}
-                     mbql))))))))
-  )
+                     mbql)))))))))
 
 (deftest infer-mbql-five-average-highest-rated-products-test
   (testing "infer-mbql with prompt \"What are the 5 highest rated products by average product rating?\""

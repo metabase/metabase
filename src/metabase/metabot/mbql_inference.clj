@@ -23,19 +23,32 @@
 
 (defn infer-mbql
   "Generate mbql from a prompt."
-  [{:keys [embedder inferencer]} prompt]
+  [{:keys [embedder inferencer context-generator]} prompt]
   (let [p          (precomputes)
         embeddings (precomputes/embeddings p)
         [{:keys [object]}] (rank-data-by-prompt embedder prompt embeddings)
-        context    (apply precomputes/context p object)]
-    (task-api/infer inferencer {:prompt prompt :context [context]})))
+        context    (task-api/context context-generator {:prompt prompt :context-entities [object]})]
+    (task-api/infer inferencer {:prompt prompt :context context})))
 
 (comment
   (require '[metabase.metabot.task-impl :as task-impl])
   (let [base-url   "http://localhost:4000"
         inferencer (task-impl/fine-tune-mbql-inferencer base-url)
+        embedder   (task-impl/fine-tune-embedder base-url)
+        context-generator (task-impl/seq-of-objects-context-generator)]
+    (infer-mbql
+     {:embedder          embedder
+      :inferencer        inferencer
+      :context-generator context-generator}
+     "Show data where tax is greater than zero"))
+
+  (require '[metabase.metabot.openai.infer-mbql :as openai-mbql])
+  (let [inferencer openai-mbql/openai-mbql-inferencer
+        context-generator openai-mbql/openai-infer-mbql-context-generator
+        base-url   "http://localhost:4000"
         embedder   (task-impl/fine-tune-embedder base-url)]
     (infer-mbql
-     {:embedder   embedder
-      :inferencer inferencer}
+     {:embedder          embedder
+      :inferencer        inferencer
+      :context-generator context-generator}
      "Show data where tax is greater than zero")))

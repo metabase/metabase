@@ -7,7 +7,7 @@
   (bulk [_ map-of-string-to-string]))
 
 (defprotocol ContextGenerator
-  (context [_ {:keys [prompt cards]}]))
+  (context [_ {:keys [prompt context-entities]}]))
 
 (defprotocol MBQLInferencer
   (infer [_ {:keys [context prompt]}]))

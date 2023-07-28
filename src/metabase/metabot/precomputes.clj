@@ -9,7 +9,6 @@
 (defprotocol Precomputes
   (embeddings [this] [this entity-type entity-id])
   (compa-summary [this entity-type entity-id])
-  (context [this entity-type entity-id])
   (update! [this]))
 
 (defrecord AtomicPrecomputes [store])
@@ -20,15 +19,11 @@
         encoded-models (zipmap
                         (map :id models)
                         (map metabot-util/model->summary models))
-        model-contexts (zipmap
-                        (map :id models)
-                        (map metabot-util/model->context models))
         ;; TODO -- partition-all X and then this...
         embeddings     (update-keys
                         (task-api/bulk embedder encoded-models)
                         parse-long)]
     {:embeddings    {:card embeddings :table {}}
-     :context       {:card model-contexts :table {}}
      :compa-summary {:card encoded-models :table {}}}))
 
 (extend-type AtomicPrecomputes
@@ -46,8 +41,6 @@
      (get-in @store [:embeddings entity-type entity-id])))
   (compa-summary [{:keys [store]} entity-type entity-id]
     (get-in @store [:compa-summary entity-type entity-id]))
-  (context [{:keys [store]} entity-type entity-id]
-    (get-in @store [:context entity-type entity-id]))
   (update! [{:keys [store]}]
     (swap! store (constantly (all-precomputes)))))
 

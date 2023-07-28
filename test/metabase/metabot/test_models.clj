@@ -59,22 +59,22 @@
   [response]
   (let [name->keyword (comp u/lower-case-en keyword)]
     (walk/prewalk
-      (fn [m]
-        (if (vector? m)
-          (let [[k o id & r] m]
-            (case k
-              :database (into [k `(~'mt/id)] r)
-              :field (let [{field-name :name table-id :table_id} (t2/select-one [Field :name :table_id] :id id)
-                           table-name (t2/select-one-fn :name Table :id table-id)]
-                       (into [k o `(~'mt/id ~(name->keyword table-name) ~(name->keyword field-name))] r))
-              :source-table (if (and
-                                  (string? o)
-                                  (str/starts-with? o "card__"))
-                              [k `(~'format "card__%s" ~'model-id)]
-                              m)
-              m))
-          m))
-      response)))
+     (fn [m]
+       (if (vector? m)
+         (let [[k o id & r] m]
+           (case k
+             :database (into [k `(~'mt/id)] r)
+             :field (let [{field-name :name table-id :table_id} (t2/select-one [Field :name :table_id] :id id)
+                          table-name (t2/select-one-fn :name Table :id table-id)]
+                      (into [k o `(~'mt/id ~(name->keyword table-name) ~(name->keyword field-name))] r))
+             :source-table (if (and
+                                (string? o)
+                                (str/starts-with? o "card__"))
+                             [k `(~'format "card__%s" ~'model-id)]
+                             m)
+             m))
+         m))
+     response)))
 
 (defmacro infer-mbql [dataset model prompt]
   `(mt/dataset ~dataset
