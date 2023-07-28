@@ -25,7 +25,7 @@ describe("issue 17968", () => {
     popover().findByText("Product ID").click();
 
     cy.findByTestId("step-join-0-1")
-      .findByTestId("parent-dimension")
+      .findByLabelText("Left column")
       .findByText("Products");
   });
 });
