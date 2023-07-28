@@ -86,6 +86,22 @@ const mockDataset = new Question(
   metadata,
 );
 
+const mockDatasetNoWritePermission = new Question(
+  createMockCard({
+    name: "Product",
+    can_write: false,
+    dataset: true,
+    dataset_query: {
+      type: "query",
+      database: databaseWithActionsEnabled.id,
+      query: {
+        "source-table": PEOPLE_ID,
+      },
+    },
+  }),
+  metadata,
+);
+
 const implicitCreateAction = createMockImplicitQueryAction({
   id: getNextId(),
   database_id: databaseWithActionsEnabled.id,
@@ -365,22 +381,40 @@ describe("Object Detail", () => {
     });
   });
 
-  it("should not render actions menu for models based on database without actions enabled", () => {
+  it("should not render actions menu for models based on database with actions disabled", async () => {
     setupDatabasesEndpoints([databaseWithActionsDisabled]);
     setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
     setup({ question: mockDataset });
 
-    const actionsMenu = screen.queryByTestId("actions-menu");
-    expect(actionsMenu).not.toBeInTheDocument();
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
   });
 
-  it("should not render actions menu for non-model questions", () => {
+  it("should not render actions menu for non-model questions", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockQuestion });
 
-    const actionsMenu = screen.queryByTestId("actions-menu");
-    expect(actionsMenu).not.toBeInTheDocument();
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
+  });
+
+  it("should render actions menu when user has write permission", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDataset });
+
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeInTheDocument();
+  });
+
+  it("should not render actions menu when user has no write permission", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetNoWritePermission });
+
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
   });
 
   it("should show update object modal on update action click", async () => {
@@ -430,4 +464,17 @@ async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
   const popover = await screen.findByTestId("popover");
   const action = within(popover).queryByText(name);
   return action;
+}
+
+/**
+ * There is no loading state for useActionListQuery & useDatabaseListQuery
+ * in ObjectDetail component, so there is no easy way to wait for relevant
+ * API requests to finish. This function relies on DOM changes instead.
+ */
+async function findActionsMenu() {
+  try {
+    return await screen.findByTestId("actions-menu");
+  } catch (error) {
+    return undefined;
+  }
 }
