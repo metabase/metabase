@@ -20,6 +20,7 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
+  PEOPLE,
   PEOPLE_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -80,6 +81,27 @@ const mockDataset = new Question(
       database: databaseWithActionsEnabled.id,
       query: {
         "source-table": PEOPLE_ID,
+      },
+    },
+  }),
+  metadata,
+);
+
+const mockDatasetWithClauses = new Question(
+  createMockCard({
+    name: "Product",
+    dataset: true,
+    dataset_query: {
+      type: "query",
+      database: databaseWithActionsEnabled.id,
+      query: {
+        "source-table": PEOPLE_ID,
+        filter: [
+          "contains",
+          ["field", PEOPLE.NAME, null],
+          "Macy",
+          { "case-sensitive": false },
+        ],
       },
     },
   }),
@@ -421,6 +443,20 @@ describe("Object Detail", () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetNoWritePermission });
+
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
+  });
+
+  /**
+   * This is an exotic case. It's not possible to enable implicit actions
+   * for a model with clauses (joins, expressions, filters, etc.).
+   * Implicit actions are supported only in very simple models.
+   */
+  it("should not render actions menu when model's query has clauses", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetWithClauses });
 
     const actionsMenu = await findActionsMenu();
     expect(actionsMenu).toBeUndefined();
