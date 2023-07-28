@@ -22,6 +22,8 @@
   [field]
   (default-get-or-create-field-values-for-current-user! field))
 
+;; (clojure.tools.trace/trace-ns *ns*)
+
 (defn current-user-can-fetch-field-values?
   "Whether the current User has permissions to fetch FieldValues for a `field`."
   [field]
@@ -107,22 +109,23 @@
   The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
   list of values and human_readable_values of the full FieldValues of the same field."
   [fv-type field hash-key constraints]
-  (when-let [{:keys [values has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
-    (let [;; each value in `values` is a 1-tuple, so unwrap the raw for storage
-          unwrapped-values      (map first values)
+  (when-let [{wrapped-values :values
+              :keys [has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
+    (let [;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
+          values                (map first wrapped-values)
           ;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
           human-readable-values (field-values/fixup-human-readable-values
                                   (t2/select-one FieldValues
                                                  :field_id (:id field)
                                                  :type :full)
-                                  unwrapped-values)]
+                                  values)]
       (first (t2/insert-returning-instances! FieldValues
                                              :field_id (:id field)
                                              :type fv-type
                                              :hash_key hash-key
                                              :has_more_values has_more_values
                                              :human_readable_values human-readable-values
-                                             :values unwrapped-values)))))
+                                             :values values)))))
 
 (defn get-or-create-advanced-field-values!
   "Fetch an Advanced FieldValues with type `fv-type` for a `field`, creating them if needed.

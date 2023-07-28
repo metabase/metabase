@@ -29,7 +29,7 @@
   (let [normalized-query (search/normalize query)]
     (filter (fn [v]
               (str/includes? (search/normalize (if (= (count v) 1)
-                                                 v
+                                                 (first v)
                                                  (second v)))
                              normalized-query))
             values)))

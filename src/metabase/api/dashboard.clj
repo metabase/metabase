@@ -847,9 +847,11 @@
              values (distinct (mapcat :values results))
              has_more_values (boolean (some true? (map :has_more_values results)))]
          ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-         {:values          (if (= (count (first values)) 2)
-                             (sort-by second values)
-                             (sort values))
+         {:values          (cond->> values
+                             (seq values)
+                             (sort-by (case (count (first values))
+                                        2 second
+                                        1 first)))
           :has_more_values has_more_values})
        (catch clojure.lang.ExceptionInfo e
          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)

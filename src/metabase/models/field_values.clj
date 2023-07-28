@@ -306,7 +306,7 @@
   It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned values list is a subset of all possible values.
 
   ;; (distinct-values (Field 1))
-  ;; ->  {:values          [1, 2, 3]
+  ;; ->  {:values          [[1], [2], [3]]
           :has_more_values false}
 
   (This function provides the values that normally get saved as a Field's
@@ -341,9 +341,12 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values                     (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
-        {:keys [values has_more_values]} (distinct-values field)
-        field-name                       (or (:name field) (:id field))]
+  (let [field-values              (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
+        {unwrapped-values :values
+         :keys [has_more_values]} (distinct-values field)
+        ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
+        values                    (map first unwrapped-values)
+        field-name                (or (:name field) (:id field))]
     (cond
       ;; If this Field is marked `auto-list`, and the number of values in now over the [[auto-list-cardinality-threshold]] or
       ;; the accumulated length of all values exceeded the [[*total-max-length*]] threshold

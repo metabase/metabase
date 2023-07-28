@@ -29,7 +29,7 @@
 (defn take-n-values
   "Call `take` on the result of chain-filter function.
 
-  (take-n-values 1 {:values          [1 2 3]
+  (take-n-values 1 {:values          [[1] [2] [3]]
                     :has_more_values false})
   -> {:values          [1]
       :has_more_values false}"

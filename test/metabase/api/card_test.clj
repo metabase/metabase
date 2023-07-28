@@ -2620,16 +2620,16 @@
   (testing "getting values"
     (with-card-param-values-fixtures [{:keys [card param-keys]}]
       (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          ["Brite Spot Family Restaurant"
-                                   "Red Medicine"
-                                   "Stout Burgers & Beers"
-                                   "The Apple Pan"
-                                   "Wurstküche"]
+        (is (=? {:values          [["Brite Spot Family Restaurant"]
+                                   ["Red Medicine"]
+                                   ["Stout Burgers & Beers"]
+                                   ["The Apple Pan"]
+                                   ["Wurstküche"]]
                  :has_more_values false}
                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
       (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-        (is (= {:values          ["Red Medicine"]
+        (is (= {:values          [["Red Medicine"]]
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
 
@@ -2773,7 +2773,7 @@
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
     (testing "we could get the values"
       (is (= {:has_more_values false,
-              :values          ["African" "American" "Asian"]}
+              :values          [["African"] ["American"] ["Asian"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list param-keys)))))
 
@@ -2784,7 +2784,7 @@
 
     (testing "we could search the values"
       (is (= {:has_more_values false,
-              :values          ["African"]}
+              :values          [["African"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list param-keys) "af"))))
 
