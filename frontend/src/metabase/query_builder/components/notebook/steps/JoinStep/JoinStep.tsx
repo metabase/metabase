@@ -125,9 +125,12 @@ export function JoinStep({
       return null;
     }
 
-    const isEditing = condition && typeof index === "number";
-    const key = isEditing ? `join-condition-${index}` : "new-join-condition";
-    const isSingleCondition = conditions.length === 0;
+    const isComplete = !!condition && typeof index === "number";
+    const key = isComplete ? `join-condition-${index}` : "new-join-condition";
+
+    const isLast = isAddingNewCondition
+      ? !isComplete
+      : index === conditions.length - 1;
 
     return (
       <Flex key={key} mr="6px" align="center" data-testid={key}>
@@ -140,7 +143,7 @@ export function JoinStep({
           color={color}
           readOnly={readOnly}
           onChange={nextCondition => {
-            if (isEditing) {
+            if (isComplete) {
               handleUpdateCondition(index, nextCondition);
             } else {
               handleAddCondition(nextCondition);
@@ -148,24 +151,14 @@ export function JoinStep({
           }}
           onChangeLHSColumn={setSelectedLHSColumn}
         />
-        {isEditing && !readOnly && !isAddingNewCondition && (
-          <NotebookCellAdd
-            color={color}
-            onClick={handleNewConditionClick}
-            aria-label={t`Add condition`}
-          />
-        )}
-        {isEditing && !readOnly && isAddingNewCondition && (
-          <ConditionUnionLabel>{t`and`}</ConditionUnionLabel>
-        )}
-        {!isSingleCondition && !isEditing && !readOnly && isAddingNewCondition && (
-          <RemoveConditionButton
-            onClick={() => setIsAddingNewCondition(false)}
-            aria-label={t`Remove condition`}
-          >
-            <Icon name="close" size={12} />
-          </RemoveConditionButton>
-        )}
+        <JoinConditionRightPart
+          isComplete={isComplete}
+          isLast={isLast}
+          color={color}
+          readOnly={readOnly}
+          onNewCondition={handleNewConditionClick}
+          onRemove={() => setIsAddingNewCondition(false)}
+        />
       </Flex>
     );
   };
@@ -209,6 +202,48 @@ export function JoinStep({
         </>
       )}
     </Flex>
+  );
+}
+
+interface JoinConditionRightPartProps {
+  isComplete: boolean;
+  isLast: boolean;
+  color: string;
+  readOnly?: boolean;
+  onNewCondition: () => void;
+  onRemove: () => void;
+}
+
+function JoinConditionRightPart({
+  isComplete,
+  isLast,
+  color,
+  readOnly,
+  onNewCondition,
+  onRemove,
+}: JoinConditionRightPartProps) {
+  if (!isLast) {
+    return <ConditionUnionLabel>{t`and`}</ConditionUnionLabel>;
+  }
+
+  if (readOnly) {
+    return null;
+  }
+
+  if (isComplete) {
+    return (
+      <NotebookCellAdd
+        color={color}
+        onClick={onNewCondition}
+        aria-label={t`Add condition`}
+      />
+    );
+  }
+
+  return (
+    <RemoveConditionButton onClick={onRemove} aria-label={t`Remove condition`}>
+      <Icon name="close" size={12} />
+    </RemoveConditionButton>
   );
 }
 
