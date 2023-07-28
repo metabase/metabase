@@ -1,6 +1,7 @@
 (ns build.uberjar
   (:require
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.tools.build.api :as b]
    [clojure.tools.build.util.zip :as build.zip]
    [clojure.tools.namespace.dependency :as ns.deps]
@@ -67,11 +68,14 @@
   (let [ns-decls   (mapcat
                     (comp ns.find/find-ns-decls-in-dir io/file)
                     (all-paths basis))
-        ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
-    (->> (dependencies-graph ns-decls)
-         ns.deps/topo-sort
-         (filter ns-symbols)
-         (cons 'metabase.bootstrap))))
+        ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))
+        sorted     (->> (dependencies-graph ns-decls)
+                        ns.deps/topo-sort
+                        (filter ns-symbols))
+        orphans    (set/difference (set ns-symbols) (set sorted))]
+    (concat
+     orphans
+     sorted)))
 
 (defn compile-sources! [basis]
   (u/step "Compile Clojure source files"
@@ -88,17 +92,18 @@
 
 (defn copy-resources! [edition basis]
   (u/step "Copy resources"
-    ;; technically we don't NEED to copy the Clojure source files but it doesn't really hurt anything IMO.
     (doseq [path (all-paths basis)]
-      (u/step (format "Copy %s" path)
-        (b/copy-dir {:target-dir class-dir, :src-dirs [path]})))))
+     (when (not (#{"src" "shared/src" "enterprise/backend/src"} path))
+       (u/step (format "Copy %s" path)
+         (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
 
 (defn create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
       (depstar/uber {:class-dir class-dir
                      :uber-file uberjar-filename
-                     :basis     basis})
+                     :basis     basis
+                     :exclude   [".*metabase.*.clj[c|s]?$"]})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def manifest-entries
