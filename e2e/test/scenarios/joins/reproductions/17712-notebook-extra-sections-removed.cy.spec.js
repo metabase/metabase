@@ -14,10 +14,9 @@ describe("issue 17712", () => {
     cy.findByText("Join data").click();
     popover().findByText("Products").click();
     cy.findByTestId("step-join-0-0")
-      .findByTestId("parent-dimension")
-      .within(() => {
-        cy.icon("close").click();
-      });
+      .findByLabelText("Left column")
+      .findByLabelText("Remove")
+      .click();
 
     cy.findByTestId("action-buttons").findByText("Join data").click();
     popover().findByText("Reviews").click();
