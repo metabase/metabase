@@ -108,6 +108,7 @@ describe("scenarios > admin > databases > list", () => {
       req.reply(res => {
         res.body.data = res.body.data.map(database => ({
           ...database,
+          is_sample: false,
           engine: "presto",
         }));
       });
