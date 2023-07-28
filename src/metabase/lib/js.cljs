@@ -8,6 +8,7 @@
    :exclude
    [filter])
   (:require
+   [goog.object :as gobj]
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
@@ -430,12 +431,6 @@
   [a-query stage-number column]
   (lib.core/remove-field a-query stage-number column))
 
-(def ^:private visible-columns-defaults
-  {:include-joined?              true
-   :include-expressions?         true
-   :include-implicitly-joinable? true})
-
-
 ;; TODO: Added as an expedient to fix metabase/metabase#32373. Due to the interaction with viz-settings, this issue
 ;; was difficult to fix entirely within MLv2. Once viz-settings are ported, this function should not be needed, and the
 ;; FE logic using it should be ported to MLv2 behind more meaningful names.
@@ -444,24 +439,19 @@
   which defines the set of columns to return. All the options default to *true*, ie. everything is returned by default.
   ```
   {
-    include_joined: true,
-    include_expressions true,
-    include_implicitly_joinable: true,
+    includeJoined: true,
+    includeExpressions true,
+    includeImplicitlyJoinable true,
   }
   ```"
   [a-query stage-number ^js js-options]
-  (let [options     (merge visible-columns-defaults
-                           (when-let [opts (some-> js-options js-keys set)]
-                             (cond-> {}
-                               (opts "includeJoined")
-                               (assoc :include-joined? (.-includeJoined js-options))
-                               (opts "includeExpressions")
-                               (assoc :include-expressions? (.-includeExpressions? js-options))
-                               (opts "includeImplicitlyJoinable")
-                               (assoc :include-implicitly-joinable? (.-includeImplicitlyJoinable js-options)))))
-        stage            (lib.util/query-stage a-query stage-number)
-        vis-columns (lib.metadata.calculation/visible-columns a-query stage-number stage options)
-        ret-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+  (let [^js js-options (or js-options #js {})
+        options        {:include-joined?              (gobj/get js-options "includeJoined" true)
+                        :include-expressions?         (gobj/get js-options "includeExpressions" true)
+                        :include-implicitly-joinable? (gobj/get js-options "includeImplicitlyJoinable" true)}
+        stage          (lib.util/query-stage a-query stage-number)
+        vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage options)
+        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
     (to-array (lib.equality/mark-selected-columns vis-columns ret-columns))))
 
 (defn ^:export legacy-field-ref
@@ -754,3 +744,6 @@
   `:database-id`; if this is not available for one reason or another this will return `nil`."
   [a-query]
   (lib.core/database-id a-query))
+
+(comment
+  (gobj/get #js {} "foo" true))

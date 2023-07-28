@@ -1,5 +1,9 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatasetQuery, FieldReference } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  DatasetQuery,
+  FieldReference,
+} from "metabase-types/api";
 import type { ColumnMetadata, Query } from "./types";
 
 export function areLegacyQueriesEqual(
@@ -13,7 +17,7 @@ export function areLegacyQueriesEqual(
 export function findColumnIndexForColumnSetting(
   query: Query,
   stageIndex: number,
-  columns: ColumnMetadata[],
+  columns: (DatasetColumn | ColumnMetadata)[],
   legacyFieldRef: FieldReference,
 ): number {
   return ML.find_column_index_from_legacy_ref(

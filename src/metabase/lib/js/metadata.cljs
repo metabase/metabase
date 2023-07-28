@@ -5,7 +5,6 @@
    [clojure.walk :as walk]
    [goog]
    [goog.object :as gobject]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -385,15 +384,15 @@
   (some-> metadata :segments deref (get segment-id) deref))
 
 (defn- tables [metadata database-id]
-  (for [[_id table-delay]  (some-> metadata :tables deref)
-        :let               [a-table (some-> table-delay deref)]
-        :when              (and a-table (= (:db-id a-table) database-id))]
+  (for [[_id table-delay] (some-> metadata :tables deref)
+        :let              [a-table (some-> table-delay deref)]
+        :when             (and a-table (= (:db-id a-table) database-id))]
     a-table))
 
 (defn- fields [metadata table-id]
-  (for [[_id field-delay]  (some-> metadata :fields deref)
-        :let               [a-field (some-> field-delay deref)]
-        :when              (and a-field (= (:table-id a-field) table-id))]
+  (for [[_id field-delay] (some-> metadata :fields deref)
+        :let              [a-field (some-> field-delay deref)]
+        :when             (and a-field (= (:table-id a-field) table-id))]
     a-field))
 
 (defn- metrics [metadata table-id]
@@ -401,9 +400,6 @@
         :let               [a-metric (some-> metric-delay deref)]
         :when              (and a-metric (= (:table-id a-metric) table-id))]
     a-metric))
-
-(defn- setting [key]
-  (.get js/__metabaseSettings (name key)))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
@@ -420,7 +416,6 @@
       (tables   [_this]            (tables   metadata database-id))
       (fields   [_this table-id]   (fields   metadata table-id))
       (metrics  [_this table-id]   (metrics  metadata table-id))
-      (setting  [_this key]        (setting  key))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.
