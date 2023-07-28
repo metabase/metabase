@@ -9,6 +9,7 @@ import {
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -187,7 +188,7 @@ describe("scenarios > filters > bulk filtering", () => {
     const SEGMENT_2_NAME = "Discounted Orders";
 
     beforeEach(() => {
-      cy.request("POST", "/api/segment", {
+      createSegment({
         name: SEGMENT_1_NAME,
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
@@ -198,7 +199,7 @@ describe("scenarios > filters > bulk filtering", () => {
         },
       });
 
-      cy.request("POST", "/api/segment", {
+      createSegment({
         name: SEGMENT_2_NAME,
         description: "All orders with a discount",
         table_id: ORDERS_ID,

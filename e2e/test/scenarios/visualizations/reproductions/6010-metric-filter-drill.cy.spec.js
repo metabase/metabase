@@ -1,5 +1,6 @@
 import { restore, visitQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -28,7 +29,7 @@ describe("issue 6010", () => {
 });
 
 const createMetric = () => {
-  return cy.request("POST", "/api/metric", {
+  return apiCreateMetric({
     name: "Metric",
     description: "Metric with a filter",
     table_id: ORDERS_ID,
