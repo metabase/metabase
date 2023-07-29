@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeExternalLinks from "rehype-external-links";
@@ -86,6 +86,8 @@ export function Text({
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
+  const [text, setText] = useState(hasContent ? settings.text : "");
+
   if (isEditing) {
     return (
       <EditModeContainer
@@ -119,11 +121,14 @@ export function Text({
             data-testid="editing-dashboard-text-input"
             name="text"
             placeholder={placeholder}
-            value={settings.text}
+            value={text}
             autoFocus={justAdded || isFocused}
-            onChange={e => handleTextChange(e.target.value)}
+            onChange={e => setText(e.target.value)}
             onMouseDown={preventDragging}
-            onBlur={toggleFocusOff}
+            onBlur={() => {
+              handleTextChange(text);
+              toggleFocusOff();
+            }}
             isMobile={isMobile}
             isSingleRow={isSingleRow}
           />
