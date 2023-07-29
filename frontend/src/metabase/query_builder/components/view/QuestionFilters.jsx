@@ -5,7 +5,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
 import { color } from "metabase/lib/colors";
 import ViewPill from "./ViewPill";
 
