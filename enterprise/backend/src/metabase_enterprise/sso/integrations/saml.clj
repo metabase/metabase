@@ -20,7 +20,6 @@
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [java-time :as t]
-   [medley.core :as m]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
@@ -166,12 +165,11 @@
   "For some reason all of the user attributes coming back from the saml library are wrapped in a list, instead of 'Ryan',
   it's ('Ryan'). This function discards the list if there's just a single item in it."
   [m]
-  (m/map-vals (fn [maybe-coll]
-                (if (and (coll? maybe-coll)
-                         (= 1 (count maybe-coll)))
-                  (first maybe-coll)
-                  maybe-coll))
-              m))
+  (update-vals m (fn [maybe-coll]
+                   (if (and (coll? maybe-coll)
+                            (= 1 (count maybe-coll)))
+                     (first maybe-coll)
+                     maybe-coll))))
 
 (defn- saml-response->attributes [saml-response]
   (let [assertions (saml/assertions saml-response)

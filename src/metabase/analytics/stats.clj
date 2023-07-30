@@ -5,7 +5,6 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time :as t]
-   [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
@@ -47,11 +46,10 @@
   [ms]
   (reduce (partial merge-with +)
           (for [m ms]
-            (m/map-vals #(cond
-                           (number? %) %
-                           %           1
-                           :else       0)
-                        m))))
+            (update-vals m #(cond
+                              (number? %) %
+                              %           1
+                              :else       0)))))
 
 (def ^:private ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 

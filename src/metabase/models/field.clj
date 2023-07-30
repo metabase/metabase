@@ -132,7 +132,7 @@
   yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
   [fingerprint]
   (m/update-existing-in fingerprint [:type :type/Number]
-                        (partial m/map-vals maybe-parse-semantic-numeric-values)))
+                        update-vals maybe-parse-semantic-numeric-values))
 
 (def ^:private transform-json-fingerprints
   {:in  mi/json-in

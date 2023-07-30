@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -13,8 +12,8 @@
                             Dashboard
                             DashboardCard
                             Database
-                            ParameterCard
                             Field
+                            ParameterCard
                             Table]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
@@ -25,29 +24,29 @@
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
- (:import
-  (java.io File)
-  (java.nio.file Path)))
+  (:import
+   (java.io File)
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
-(defn- dir->contents-set [p dir]
+(defn- dir->contents-set [p ^File dir]
   (->> dir
        .listFiles
        (filter p)
-       (map #(.getName %))
+       (map #(.getName ^File %))
        set))
 
-(defn- dir->file-set [dir]
-  (dir->contents-set #(.isFile %) dir))
+(defn- dir->file-set [^File dir]
+  (dir->contents-set #(.isFile ^File %) dir))
 
-(defn- dir->dir-set [dir]
-  (dir->contents-set #(.isDirectory %) dir))
+(defn- dir->dir-set [^File dir]
+  (dir->contents-set #(.isDirectory ^File %) dir))
 
-(defn- subdirs [dir]
+(defn- subdirs [^File dir]
   (->> dir
        .listFiles
-       (remove #(.isFile %))))
+       (remove #(.isFile ^File %))))
 
 (defn- by-model [entities model-name]
   (filter #(-> % :serdes/meta last :model (= model-name))
@@ -84,7 +83,7 @@
   The bindings map has the same keys as `:refs`, but the values are `[base-keyword width]` pairs or
   `[base-keyword width floor]` triples. These are passed to [[random-keyword]]."
   [base bindings]
-  (update base :refs merge (m/map-vals #(apply random-keyword %) bindings)))
+  (update base :refs merge (update-vals bindings #(apply random-keyword %))))
 
 (defn- many-random-fks [n base bindings]
   (vec (repeatedly n #(vector 1 (random-fks base bindings)))))

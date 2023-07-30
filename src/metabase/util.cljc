@@ -132,7 +132,7 @@
   [f m]
   (walk/postwalk
    #(if (map? %)
-      (m/map-keys f %)
+      (update-keys % f)
       %)
    m))
 

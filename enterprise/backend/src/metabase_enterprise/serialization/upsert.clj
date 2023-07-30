@@ -53,14 +53,14 @@
 ;; This could potentially be unrolled into one giant select
 (defn- select-identical
   [model entity]
-  (->> (or (identity-condition model)
-           (throw (ex-info (trs "Model {0} does not support upsert" model) {:model model})))
-       (select-keys entity)
-       (m/map-vals (fn [v]
+  (-> (or (identity-condition model)
+          (throw (ex-info (trs "Model {0} does not support upsert" model) {:model model})))
+      (->> (select-keys entity))
+      (update-vals (fn [v]
                      (if (coll? v)
                        (json/encode v)
                        v)))
-       (m/mapply t2/select-one model)))
+      (->> (m/mapply t2/select-one model))))
 
 (defn- has-post-insert?
   [model]

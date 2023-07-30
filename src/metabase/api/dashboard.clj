@@ -514,9 +514,9 @@
   {<dashboard-card-id> #{{:target       [:dimension [:field 1000 nil]]
                           :parameter_id \"abcdef\"}}}"
   [dashboard-id]
-  (m/map-vals (fn [mappings]
-                (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
-              (t2/select-pk->fn :parameter_mappings DashboardCard :dashboard_id dashboard-id)))
+  (t2/select-pk->fn (fn [{mappings :parameter_mappings}]
+                      (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
+                    DashboardCard :dashboard_id dashboard-id))
 
 (defn- check-updated-parameter-mapping-permissions
   "In 0.41.0+ you now require data permissions for the Table in question to add or modify Dashboard parameter mappings.

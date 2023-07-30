@@ -4,7 +4,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
@@ -58,15 +57,15 @@
                       (set
                        (map (partial into {})
                             (t2/select [Field :id :name :active]
-                              :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))]
+                                       :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))]
       (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
               :after-sync #{{:name "species",      :active true}
                             {:name "Example_Name", :active true}}}
-             (m/map-vals (fn [results] (into (empty results)
-                                             (map #(dissoc % :id))
-                                             results))
-                         db-state)))
+             (update-vals db-state
+                          (fn [results] (into (empty results)
+                                              (map #(dissoc % :id))
+                                              results)))))
       (testing "It sees this as the same field and not a new field"
         (let [ids-of (fn [k] (->> db-state k (into #{} (map :id))))]
           (is (= (ids-of :before-sync) (ids-of :after-sync))))))))

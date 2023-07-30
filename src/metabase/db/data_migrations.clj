@@ -96,9 +96,9 @@
                          (-> settings
                              (m/update-existing "column_settings"
                                                 (fn [column_settings]
-                                                  (m/map-vals
-                                                   #(select-keys % ["click_behavior"])
-                                                   column_settings)))
+                                                  (update-vals
+                                                   column_settings
+                                                   #(select-keys % ["click_behavior"]))))
                              ;; select click behavior top level and in column settings
                              (u/select-non-nil-keys ["column_settings" "click_behavior"])))
         fix-top-level  (fn [toplevel]

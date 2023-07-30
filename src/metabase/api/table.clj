@@ -221,7 +221,7 @@
                :type :type/Coordinate})))))
 
 (def ^:private dimension-options-for-response
-  (m/map-keys str dimension-options))
+  (update-keys dimension-options str))
 
 (defn- create-dim-index-seq [dim-type]
   (->> dimension-options

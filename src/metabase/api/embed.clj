@@ -209,7 +209,7 @@
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
   not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect."
   [query-params]
-  (m/map-keys keyword query-params))
+  (update-keys query-params keyword))
 
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
@@ -354,7 +354,7 @@
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
-   (m/map-keys keyword query-params)
+   (update-keys query-params keyword)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -507,7 +507,7 @@
     dashcard-id
     card-id
     export-format
-    (m/map-keys keyword query-params)
+    (update-keys query-params keyword)
     :constraints nil
     :middleware {:process-viz-settings? true
                  :js-int-to-string?     false

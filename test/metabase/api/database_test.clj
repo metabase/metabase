@@ -226,7 +226,7 @@
   (testing "POST /api/database"
     (testing "Check that we can create a Database"
       (is (schema= (merge
-                    (m/map-vals s/eq (mt/object-defaults Database))
+                    (update-vals (mt/object-defaults Database) s/eq)
                     {:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"
                      :cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"}
                     {:created_at java.time.temporal.Temporal

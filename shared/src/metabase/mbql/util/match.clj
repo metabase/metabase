@@ -230,7 +230,7 @@
   "Like `match`, but replace matches in `x` with the results of result body. The same pattern options are supported,
   and `&parents` and `&match` anaphors are available in the same way. (`&match` is particularly useful here if you
   want to use keywords or sets of keywords as patterns.)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [x & patterns-and-results]
   ;; as with `match` actual impl is in `match` namespace to discourage you from using the constituent functions and
   ;; macros that power this macro directly

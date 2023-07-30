@@ -5,7 +5,6 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
-   [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
@@ -52,9 +51,9 @@
   (reset! previous-compilation-trace (vec (.getStackTrace (Thread/currentThread)))))
 
 (defn- normalize-attribute-remapping-targets [attribute-remappings]
-  (m/map-vals
-   mbql.normalize/normalize
-   attribute-remappings))
+  (update-vals
+   attribute-remappings
+   mbql.normalize/normalize))
 
 (t2/deftransforms :model/GroupTableAccessPolicy
   {:attribute_remappings {:in  (comp mi/json-in normalize-attribute-remapping-targets)

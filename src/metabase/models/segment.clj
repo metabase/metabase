@@ -3,7 +3,6 @@
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -98,15 +97,15 @@
   [model segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
-    (m/map-vals (fn [v] {:after v}) (select-keys segment2 [:name :description :definition]))
+    (update-vals (select-keys segment2 [:name :description :definition]) (fn [v] {:after v}))
     ;; do our diff logic
     (let [base-diff ((get-method revision/diff-map :default)
                      model
                      (select-keys segment1 [:name :description :definition])
                      (select-keys segment2 [:name :description :definition]))]
       (cond-> (merge-with merge
-                          (m/map-vals (fn [v] {:after v}) (:after base-diff))
-                          (m/map-vals (fn [v] {:before v}) (:before base-diff)))
+                          (update-vals (:after base-diff) (fn [v] {:after v}))
+                          (update-vals (:before base-diff) (fn [v] {:before v})))
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
                                                                           :after  (get-in segment2 [:definition])})))))

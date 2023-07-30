@@ -10,7 +10,6 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time :as t]
-   [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
@@ -2302,7 +2301,7 @@
         (testing "Test that superusers can fetch a list of publicly-accessible cards"
           (is (= [{:name true, :id true, :public_uuid true}]
                  (for [card (mt/user-http-request :crowberto :get 200 "card/public")]
-                   (m/map-vals boolean (select-keys card [:name :id :public_uuid]))))))))))
+                   (update-vals (select-keys card [:name :id :public_uuid]) boolean)))))))))
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
@@ -2310,7 +2309,7 @@
       (t2.with-temp/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
-                 (m/map-vals boolean (select-keys card [:name :id])))))))))
+                 (update-vals (select-keys card [:name :id]) boolean))))))))
 
 (deftest test-related-recommended-entities
   (t2.with-temp/with-temp [:model/Card card]

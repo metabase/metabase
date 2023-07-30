@@ -140,8 +140,8 @@
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
-                (u/pprint-to-str (->> dashboard-param-id->param
-                                      (m/map-vals (fn [param]
+                (u/pprint-to-str (-> dashboard-param-id->param
+                                     (update-vals (fn [param]
                                                     (update param :mappings (fn [mappings]
                                                                               (into #{} (map #(dissoc % :dashcard)) mappings)))))))
                 (u/pprint-to-str request-param-id->param)

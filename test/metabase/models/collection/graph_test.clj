@@ -1,7 +1,6 @@
 (ns metabase.models.collection.graph-test
   (:require
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.models :refer [User]]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -36,10 +35,10 @@
    (let [id      (if (map? collection-or-id) (:id collection-or-id) collection-or-id)
          ;; match variations that pop up depending on whether the map was serialized to JSON. 100, :100, or "100"
          id-keys #{id (str id) (keyword (str id))}]
-     (update graph :groups (partial m/map-vals (partial m/map-keys (fn [collection-id]
-                                                                     (if (id-keys collection-id)
-                                                                       replacement-key
-                                                                       collection-id))))))))
+     (update graph :groups update-vals #(update-keys % (fn [collection-id]
+                                                         (if (id-keys collection-id)
+                                                           replacement-key
+                                                           collection-id)))))))
 
 (defn- clear-graph-revisions! []
   (t2/delete! CollectionPermissionGraphRevision))
@@ -56,8 +55,7 @@
               (if (= :root collection-or-id)
                 collection-or-id
                 (u/the-id collection-or-id)))]
-    (update graph :groups (fn [groups]
-                            (m/map-vals #(select-keys % ids) groups)))))
+    (update graph :groups update-vals #(select-keys % ids))))
 
 (defn- graph
   "Fetch collection graph.

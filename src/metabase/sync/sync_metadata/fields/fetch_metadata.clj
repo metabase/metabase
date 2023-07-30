@@ -5,7 +5,6 @@
   comparing the differences in the two sets of Metadata."
   (:require
    [clojure.set :as set]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :as table]
@@ -22,26 +21,26 @@
 
 (s/defn ^:private fields->parent-id->fields :- {common/ParentID #{common/TableMetadataFieldWithID}}
   [fields :- (s/maybe [i/FieldInstance])]
-  (->> (for [field fields]
-         {:parent-id                 (:parent_id field)
-          :id                        (:id field)
-          :name                      (:name field)
-          :database-type             (:database_type field)
-          :effective-type            (:effective_type field)
-          :coercion-strategy         (:coercion_strategy field)
-          :base-type                 (:base_type field)
-          :semantic-type             (:semantic_type field)
-          :pk?                       (isa? (:semantic_type field) :type/PK)
-          :field-comment             (:description field)
-          :json-unfolding            (:json_unfolding field)
-          :database-is-auto-increment (:database_is_auto_increment field)
-          :position                  (:position field)
-          :database-position         (:database_position field)
-          :database-required         (:database_required field)})
-       ;; make a map of parent-id -> set of child Fields
-       (group-by :parent-id)
-       ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
-       (m/map-vals (fn [fields]
+  (-> (for [field fields]
+        {:parent-id                 (:parent_id field)
+         :id                        (:id field)
+         :name                      (:name field)
+         :database-type             (:database_type field)
+         :effective-type            (:effective_type field)
+         :coercion-strategy         (:coercion_strategy field)
+         :base-type                 (:base_type field)
+         :semantic-type             (:semantic_type field)
+         :pk?                       (isa? (:semantic_type field) :type/PK)
+         :field-comment             (:description field)
+         :json-unfolding            (:json_unfolding field)
+         :database-is-auto-increment (:database_is_auto_increment field)
+         :position                  (:position field)
+         :database-position         (:database_position field)
+         :database-required         (:database_required field)})
+      ;; make a map of parent-id -> set of child Fields
+      (->> (group-by :parent-id))
+      ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
+      (update-vals (fn [fields]
                      (set (for [field fields]
                             (dissoc field :parent-id)))))))
 

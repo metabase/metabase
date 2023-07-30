@@ -172,7 +172,6 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
-   [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.config :as config]
@@ -860,15 +859,15 @@
 (mu/defn generate-graph :- :map
   "Used to generation permission graph from parsed permission paths of v1 and v2 permission graphs for the api layer."
   [db-ids group-id->paths :- [:map-of :int [:* Path]]]
-  (->> group-id->paths
-       (m/map-vals
-        (fn [paths]
-          (let [permissions-graph (perms-parse/->graph paths)]
-            (if (= permissions-graph :all)
-              (all-permissions db-ids)
-              (:db permissions-graph)))))
-       post-process-graph
-       add-impersonations-to-permissions-graph))
+  (-> group-id->paths
+      (update-vals
+       (fn [paths]
+         (let [permissions-graph (perms-parse/->graph paths)]
+           (if (= permissions-graph :all)
+             (all-permissions db-ids)
+             (:db permissions-graph)))))
+      post-process-graph
+      add-impersonations-to-permissions-graph))
 
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
@@ -886,11 +885,11 @@
   "
   []
   (let [db-ids             (delay (t2/select-pks-set 'Database))
-        group-id->v1-paths (->> (permissions-by-group-ids [:or
-                                                           [:= :object (h2x/literal "/")]
-                                                           [:like :object (h2x/literal "%/db/%")]])
-                                ;;  keep v1 paths, implicitly remove v2
-                                (m/map-vals (fn [paths]
+        group-id->v1-paths (-> (permissions-by-group-ids [:or
+                                                          [:= :object (h2x/literal "/")]
+                                                          [:like :object (h2x/literal "%/db/%")]])
+                               ;;  keep v1 paths, implicitly remove v2
+                               (update-vals (fn [paths]
                                               (filter (fn [path]
                                                         (mc/validate [:re path-regex-v1] path))
                                                       paths))))]
@@ -913,13 +912,13 @@
                            v2 permissions"
   []
   (let [db-ids             (delay (t2/select-pks-set 'Database))
-        group-id->v2-paths (->> (permissions-by-group-ids [:or
-                                                           [:= :object (h2x/literal "/")]
-                                                           [:like :object (h2x/literal "%/db/%")]])
-                                (m/map-vals (fn [paths]
+        group-id->v2-paths (-> (permissions-by-group-ids [:or
+                                                          [:= :object (h2x/literal "/")]
+                                                          [:like :object (h2x/literal "%/db/%")]])
+                               (update-vals (fn [paths]
                                               ;; remove v1 paths, implicitly keep v2 paths
                                               (remove (fn [path] (mc/validate [:re (u.regex/rx "^/" v1-data-permissions-rx "$")]
-                                                                  path))
+                                                                              path))
                                                       paths))))]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v2-paths)}))
@@ -932,13 +931,13 @@
   (let [group-id->paths (permissions-by-group-ids [:or
                                                    [:= :object (h2x/literal "/")]
                                                    [:like :object (h2x/literal "/execute/%")]])
-        group-id->graph (m/map-vals
+        group-id->graph (update-vals
+                         group-id->paths
                          (fn [paths]
                            (let [permissions-graph (perms-parse/->graph paths)]
                              (if (#{:all {:execute :all}} permissions-graph)
                                :all
-                               (:execute permissions-graph))))
-                         group-id->paths)]
+                               (:execute permissions-graph)))))]
     {:revision (perms-revision/latest-id)
      :groups   group-id->graph}))
 

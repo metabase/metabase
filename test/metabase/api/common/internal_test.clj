@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [compojure.core :refer [POST]]
    [malli.util :as mut]
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.internal :as internal]
    [metabase.config :as config]
@@ -273,8 +272,8 @@
     #\"[0-9]+\" -> \"#[0-9]+\""
   {:style/indent 0}
   [& body]
-  `(binding [internal/*auto-parse-types* (m/map-vals #(update % :route-param-regex (partial str "#"))
-                                                     internal/*auto-parse-types*)]
+  `(binding [internal/*auto-parse-types* (update-vals internal/*auto-parse-types*
+                                                      #(update % :route-param-regex (partial str "#")))]
      ~@body))
 
 (deftest route-param-regex-test

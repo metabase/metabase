@@ -26,7 +26,7 @@
   (delay
     (with-test-domain-entity-specs
       (let [table (m/find-first (comp #{(mt/id :venues)} u/the-id) (#'tf/tableset (mt/id) "PUBLIC"))]
-        {"Venues" {:dimensions (m/map-vals de/mbql-reference (get-in table [:domain_entity :dimensions]))
+        {"Venues" {:dimensions (update-vals (get-in table [:domain_entity :dimensions]) de/mbql-reference)
                    :entity     table}}))))
 
 (deftest add-bindings-test

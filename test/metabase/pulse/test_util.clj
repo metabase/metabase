@@ -1,7 +1,6 @@
 (ns metabase.pulse.test-util
   (:require
    [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase.integrations.slack :as slack]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -138,7 +137,7 @@
                                (if (:rendered-info attachment-info)
                                  (update attachment-info
                                          :rendered-info
-                                         (fn [ri] (m/map-vals some? ri)))
+                                         update-vals some?)
                                  attachment-info))))
 
 (def test-dashboard
