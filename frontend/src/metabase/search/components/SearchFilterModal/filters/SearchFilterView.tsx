@@ -4,7 +4,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { Icon } from "metabase/core/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-export const SearchFilter = ({
+export const SearchFilterView = ({
   title,
   tooltip,
   isLoading,

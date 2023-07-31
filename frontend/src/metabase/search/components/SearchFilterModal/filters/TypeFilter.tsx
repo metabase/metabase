@@ -4,7 +4,7 @@ import { getTranslatedEntityName } from "metabase/nav/utils";
 import { Checkbox } from "metabase/ui";
 import { useSearchListQuery } from "metabase/common/hooks";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { SearchFilter } from "metabase/search/components/SearchFilterModal/filters/SearchFilter";
+import { SearchFilterView } from "metabase/search/components/SearchFilterModal/filters/SearchFilterView";
 
 import type { SearchFilterComponent } from "metabase/search/types";
 import { TypeCheckboxGroupWrapper } from "metabase/search/components/SearchFilterModal/filters/TypeFilter.styled";
@@ -25,7 +25,7 @@ export const TypeFilter: SearchFilterComponent<"type"> = ({
   return isLoading ? (
     <LoadingSpinner />
   ) : (
-    <SearchFilter data-testid={dataTestId} title={t`Type`}>
+    <SearchFilterView data-testid={dataTestId} title={t`Type`}>
       <Checkbox.Group
         value={value}
         onChange={onChange}
@@ -42,6 +42,6 @@ export const TypeFilter: SearchFilterComponent<"type"> = ({
           />
         ))}
       </Checkbox.Group>
-    </SearchFilter>
+    </SearchFilterView>
   );
 };

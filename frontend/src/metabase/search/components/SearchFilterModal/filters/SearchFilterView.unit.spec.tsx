@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { SearchFilter } from "./SearchFilter";
+import { SearchFilterView } from "./SearchFilterView";
 
 type SetupProps = {
   title?: string;
@@ -17,13 +17,13 @@ const setup = ({
   children = <div>Children</div>,
 }: SetupProps = {}) => {
   render(
-    <SearchFilter title={title} tooltip={tooltip} isLoading={isLoading}>
+    <SearchFilterView title={title} tooltip={tooltip} isLoading={isLoading}>
       {children}
-    </SearchFilter>,
+    </SearchFilterView>,
   );
 };
 
-describe("SearchFilter", () => {
+describe("SearchFilterView", () => {
   it("renders title and children without tooltip when not loading", () => {
     setup();
 
