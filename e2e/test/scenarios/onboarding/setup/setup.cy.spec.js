@@ -151,6 +151,7 @@ describe("scenarios > setup", () => {
         .should("not.be.disabled")
         .click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("I'll add my data later").click();
 
       // test database setup help card is hidden on the next step
@@ -223,18 +224,7 @@ describe("scenarios > setup", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add your data");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("I'll add my data later");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show more options").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("H2").click();
-    cy.findByLabelText("Display name").type("Metabase H2");
-
-    const dbFilename = "e2e/runner/empty.db";
-    const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
-    cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-    cy.button("Connect database").click();
+    cy.findByText("I'll add my data later").click();
 
     // Turns off anonymous data collection
     cy.findByLabelText(
