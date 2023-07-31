@@ -7,6 +7,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -205,9 +206,9 @@
   name and ID of these databases, removing all other fields."
   [dbs]
   (let [filtered-dbs
-        (if-let [f (u/ignore-exceptions
-                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
+        (if-let [f (when config/ee-available?
+                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
           (f dbs)
           dbs)]
     (map
@@ -423,7 +424,7 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden? include-editable-data-model?]
+(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
@@ -450,7 +451,11 @@
                           (for [table tables]
                             (-> table
                                 (update :segments (partial filter mi/can-read?))
-                                (update :metrics  (partial filter mi/can-read?)))))))))
+                                (update :metrics  (partial filter mi/can-read?))))))
+        (update :tables (if remove_inactive?
+                          (fn [tables]
+                            (filter :active tables))
+                          identity)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/metadata"
@@ -461,12 +466,14 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include_hidden include_editable_data_model]
+  [id include_hidden include_editable_data_model remove_inactive]
   {include_hidden              (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+   include_editable_data_model (s/maybe su/BooleanString)
+   remove_inactive             (s/maybe su/BooleanString)}
   (db-metadata id
                (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean include_editable_data_model)))
+               (Boolean/parseBoolean include_editable_data_model)
+               (Boolean/parseBoolean remove_inactive)))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -1118,9 +1125,9 @@
                              :visibility_type nil
                              {:order-by [[:display_name :asc]]}))]
      (if include_editable_data_model
-       (if-let [f (u/ignore-exceptions
-                   (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                   (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
+       (if-let [f (when config/ee-available?
+                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
          (f tables)
          tables)
        (filter mi/can-read? tables)))))

@@ -30,7 +30,7 @@ interface ActionFormProps {
   dashboard: Dashboard;
   missingParameters?: WritebackParameter[];
   mappedParameters?: WritebackParameter[];
-  initialValues: ParametersForActionExecution;
+  dashcardParamValues: ParametersForActionExecution;
   settings: VisualizationSettings;
   isSettings: boolean;
   shouldDisplayButton: boolean;
@@ -48,7 +48,7 @@ function ActionVizForm({
   settings,
   missingParameters = [],
   mappedParameters = [],
-  initialValues,
+  dashcardParamValues,
   isSettings,
   shouldDisplayButton,
   isEditingDashcard,
@@ -91,7 +91,7 @@ function ActionVizForm({
         ? PublicApi.prefetchDashcardValues
         : ActionsApi.prefetchDashcardValues;
 
-    const canPrefetch = Object.keys(initialValues).length > 0;
+    const canPrefetch = Object.keys(dashcardParamValues).length > 0;
 
     if (!canPrefetch) {
       return {};
@@ -100,9 +100,9 @@ function ActionVizForm({
     return prefetchDashcardValues({
       dashboardId: dashboard.id,
       dashcardId: dashcard.id,
-      parameters: JSON.stringify(initialValues),
+      parameters: JSON.stringify(dashcardParamValues),
     });
-  }, [dashboard.id, dashcard.id, initialValues]);
+  }, [dashboard.id, dashcard.id, dashcardParamValues]);
 
   const shouldPrefetch = isImplicitUpdateAction(action);
 
@@ -119,7 +119,7 @@ function ActionVizForm({
           <ActionParametersInputModal
             action={action}
             mappedParameters={mappedParameters}
-            initialValues={initialValues}
+            initialValues={dashcardParamValues}
             fetchInitialValues={fetchInitialValues}
             shouldPrefetch={shouldPrefetch}
             title={title}
@@ -158,7 +158,7 @@ function ActionVizForm({
       <ActionParametersInputForm
         action={action}
         mappedParameters={mappedParameters}
-        initialValues={initialValues}
+        initialValues={dashcardParamValues}
         fetchInitialValues={fetchInitialValues}
         shouldPrefetch={shouldPrefetch}
         onSubmit={onSubmit}
