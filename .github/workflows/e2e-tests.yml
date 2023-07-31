@@ -125,9 +125,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       openldap:
-        image: osixia/openldap:1.5.0
+        image: bitnami/openldap:2.6.4
         ports:
-          - "389:389"
+          - 389:389
+        env:
+          LDAP_ADMIN_PASSWORD: adminpass
+          LDAP_USERS: user01@example.org,user02@example.org
+          LDAP_PASSWORDS: 123456,123465
+          LDAP_ROOT: dc=example,dc=org
+          LDAP_PORT_NUMBER: 389
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -170,6 +176,17 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      - name: Install Chrome v114
+        uses: browser-actions/setup-chrome@v1
+        with:
+          # https://chromium.cypress.io/linux/stable/114.0.5735.133
+          # https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/Linux_x64%2F1135580%2Fchrome-linux.zip
+          chrome-version: 1135580
+        id: setup-chrome
+      - run: |
+          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
+
       - uses: actions/download-artifact@v3
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
         with:
@@ -184,7 +201,8 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js'
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
 
@@ -193,7 +211,8 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
-          --folder ${{ matrix.folder }}
+          --folder ${{ matrix.folder }} \
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
 
