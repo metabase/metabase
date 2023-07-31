@@ -9,6 +9,7 @@ import {
 import type {
   DashboardOrderedCard,
   Dashboard,
+  ParameterId,
   ParameterValueOrArray,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -26,7 +27,7 @@ interface Options {
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
   settings?: VisualizationSettings;
   dashboard?: Dashboard;
-  parameterValues?: { [id: string]: ParameterValueOrArray };
+  parameterValues?: Record<ParameterId, ParameterValueOrArray>;
 }
 
 const defaultProps = {
