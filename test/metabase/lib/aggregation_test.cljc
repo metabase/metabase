@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -196,7 +195,7 @@
               (-> q
                   (lib/aggregate {:operator :sum
                                   :lib/type :lib/external-op
-                                  :args [(lib/ref (lib.metadata/field q nil "VENUES" "CATEGORY_ID"))]})
+                                  :args [(lib/ref (meta/field-metadata :venues :category-id))]})
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel type-of-sum-test
@@ -236,7 +235,7 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2))
                   (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))]
-    (is (=? [{:lib/type     :metadata/field
+    (is (=? [{:lib/type     :metadata/column
               :base-type    :type/Integer
               :name         "sum"
               :display-name "Sum of double-price"}]
@@ -300,6 +299,22 @@
     :effective-type :type/Text
     :semantic-type  :type/Name
     :lib/source     :source/implicitly-joinable}])
+
+(deftest ^:parallel aggregation-clause-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        aggregation-operators (lib/available-aggregation-operators query)
+        count-op (first aggregation-operators)
+        sum-op (second aggregation-operators)]
+    (is (=? [:sum {} [:field {} (meta/id :venues :price)]]
+            (lib/aggregation-clause sum-op (meta/field-metadata :venues :price))))
+    (is (=? [:count {}]
+            (lib/aggregation-clause count-op)))
+    (is (=? [:count {} [:field {} (meta/id :venues :price)]]
+            (lib/aggregation-clause count-op (meta/field-metadata :venues :price))))
+    (is (thrown-with-msg?
+          #?(:clj Exception :cljs :default)
+          #"aggregation operator :sum requires an argument"
+          (lib/aggregation-clause sum-op)))))
 
 (deftest ^:parallel aggregation-operator-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -406,18 +421,18 @@
                     [:count {}]
                     [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?]]]}]}
                 agg-query))
-        (is (=? [{:lib/type       :metadata/field
+        (is (=? [{:lib/type       :metadata/column
                   :effective-type :type/Integer
                   :name           "sum"
                   :display-name   "Sum of double-price"
                   :lib/source     :source/aggregations}
-                 {:lib/type       :metadata/field
+                 {:lib/type       :metadata/column
                   :effective-type :type/Integer
                   :name           "count"
                   :display-name   "Count"
                   :lib/source     :source/aggregations}
                  {:settings       {:is_priceless true}
-                  :lib/type       :metadata/field
+                  :lib/type       :metadata/column
                   :effective-type :type/Integer
                   :name           "sum"
                   :display-name   "Sum of Price"
@@ -591,7 +606,7 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))]
       (is (=? {:settings       {:is_priceless true}
-               :lib/type       :metadata/field
+               :lib/type       :metadata/column
                :effective-type :type/Integer
                :name           "sum"
                :display-name   "Sum of Price"
@@ -603,7 +618,7 @@
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/aggregate (lib/count)))
           count-meta (first (lib/aggregations-metadata query -1))]
-      (is (=? {:lib/type       :metadata/field
+      (is (=? {:lib/type       :metadata/column
                :effective-type :type/Integer
                :name           "count"
                :display-name   "Count"
@@ -628,7 +643,7 @@
            (lib.metadata.calculation/type-of query ag-ref)))
     (is (= "Average of Price + 1"
            (lib.metadata.calculation/display-name query ag-ref)))
-    (is (=? {:lib/type        :metadata/field
+    (is (=? {:lib/type        :metadata/column
              :lib/source      :source/aggregations
              :display-name    "Average of Price + 1"
              :effective-type  :type/Float
@@ -675,7 +690,7 @@
                                                       (meta/field-metadata :venues :price)]]
                                             0))))]
     (is (=? [{:description              nil
-              :lib/type                 :metadata/field
+              :lib/type                 :metadata/column
               :table-id                 (meta/id :venues)
               :name                     "CATEGORY_ID"
               :base-type                :type/Integer
@@ -697,7 +712,7 @@
               :target                   nil
               :preview-display          true
               :fingerprint              {:global {:distinct-count 28, :nil% 0.0}}}
-             {:lib/type                 :metadata/field
+             {:lib/type                 :metadata/column
               :base-type                :type/Integer
               :name                     "sum"
               :display-name             "Sum of Case"

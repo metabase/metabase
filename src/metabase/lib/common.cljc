@@ -40,9 +40,13 @@
   [xs]
   (mapv ->op-arg xs))
 
-(defmethod ->op-arg :metadata/field
+(defmethod ->op-arg :metadata/column
   [field-metadata]
   (lib.ref/ref field-metadata))
+
+(defmethod ->op-arg :metadata/metric
+  [metric-def]
+  (lib.ref/ref metric-def))
 
 (defmethod ->op-arg :lib/external-op
   [{:keys [operator options args] :or {options {}}}]

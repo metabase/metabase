@@ -73,7 +73,7 @@
   (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
                             (lib.metadata.protocols/store-metadatas! :metadata/segment segments))
         field-ids         (mbql.u/referenced-field-ids (map :definition segments))
-        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/field field-ids)
+        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
                                 (comp cat (map :table_id))
                                 [fields segments])]

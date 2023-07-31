@@ -4,7 +4,8 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel remove-clause-order-bys-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -161,6 +162,34 @@
                 (lib/append-stage)
                 (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
                 (lib/remove-clause 0 (first fields))))))))
+
+(deftest ^:parallel replace-clause-join-with-all-fields-test
+  (testing "Joins with :all fields selected can be handled (#31858)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                    (lib/breakout (meta/field-metadata :categories :id))
+                    (lib/aggregate (lib/sum (meta/field-metadata :categories :id)))
+                    (lib/join (-> (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                                   [(lib/= (meta/field-metadata :venues :category-id)
+                                                           (meta/field-metadata :categories :id))])
+                                  (lib/with-join-fields :all))))
+          query' (lib/order-by query (lib/aggregation-ref query 0))
+          aggs (lib/aggregations query')]
+      (is (=? {:lib/type :mbql/query
+               :stages
+               [{:lib/type :mbql.stage/mbql
+                 :breakout [[:field {} (meta/id :categories :id)]]
+                 :aggregation [[:avg {} [:length {} [:field {} (meta/id :categories :name)]]]]
+                 :joins
+                 [{:lib/type :mbql/join
+                   :stages [{:lib/type :mbql.stage/mbql, :source-table (meta/id :venues)}]
+                   :conditions [[:= {}
+                                 [:field {:join-alias "Venues"} (meta/id :venues :category-id)]
+                                 [:field {} (meta/id :categories :id)]]]
+                   :fields :all
+                   :alias "Venues"}]}]}
+              (lib/replace-clause query'
+                                  (first aggs)
+                                  (lib/avg (lib/length (meta/field-metadata :categories :name)))))))))
 
 (deftest ^:parallel remove-clause-aggregation-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -348,7 +377,32 @@
                   (as-> <> (lib/expression <> "expr" (lib/aggregation-ref <> 0)))
                   (lib/append-stage)
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
-                  (lib/replace-clause 0 (first aggregations) (lib/sum (meta/field-metadata :venues :price)))))))))
+                  (lib/replace-clause 0 (first aggregations) (lib/sum (meta/field-metadata :venues :price))))))))
+  (testing "replacing with metric should work"
+    (let [metadata-provider (lib.tu/mock-metadata-provider
+                              {:database meta/metadata
+                               :tables   [(meta/table-metadata :venues)]
+                               :fields   [(meta/field-metadata :venues :price)]
+                               :metrics  [{:id          100
+                                           :name        "Sum of Cans"
+                                           :table-id    (meta/id :venues)
+                                           :definition  {:source-table (meta/id :venues)
+                                                         :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
+                                                         :filter       [:= [:field (meta/id :venues :price) nil] 4]}
+                                           :description "Number of toucans plus number of pelicans"}]})
+          query (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate (lib/count)))]
+      (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]]}]}
+              (lib/replace-clause
+                query
+                (first (lib/aggregations query))
+                (first (lib/available-metrics query)))))
+      (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]]}]}
+              (-> query
+                  (lib/replace-clause
+                    (first (lib/aggregations query))
+                    (first (lib/available-metrics query)))
+                  (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
 (deftest ^:parallel replace-clause-expression-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))

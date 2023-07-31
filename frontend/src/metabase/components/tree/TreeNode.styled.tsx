@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color, lighten } from "metabase/lib/colors";
 import { Icon, IconProps } from "metabase/core/components/Icon";
+import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 interface TreeNodeRootProps {
   isSelected: boolean;
@@ -37,7 +38,9 @@ interface ExpandToggleIconProps {
   isExpanded: boolean;
 }
 
-export const ExpandToggleIcon = styled(Icon)<ExpandToggleIconProps & IconProps>`
+export const ExpandToggleIcon = styled(Icon, {
+  shouldForwardProp: shouldForwardNonTransientProp,
+})<ExpandToggleIconProps & IconProps>`
   transition: transform 200ms;
 
   ${props =>
