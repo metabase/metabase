@@ -38,7 +38,7 @@
    [saml20-clj.core :as saml]
    [schema.core :as s])
   (:import
-   (java.net MalformedURLException URL)
+   (java.net MalformedURLException URI)
    (java.util Base64 UUID)))
 
 (set! *warn-on-reflection* true)
@@ -114,7 +114,7 @@
 
 (defn- has-host? [url]
   (try
-    (some? (.getHost (new URL url)))
+    (some? (.getHost (new URI url)))
     (catch MalformedURLException _ false)))
 
 (defmethod sso.i/sso-get :saml
