@@ -7,7 +7,6 @@ import {
   setupCardDataset,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders } from "__support__/ui";
 import { getNextId } from "__support__/utils";
@@ -24,13 +23,7 @@ import {
   PEOPLE_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
 import {
   ObjectDetailBody,
   ObjectDetailHeader,
@@ -38,20 +31,16 @@ import {
 } from "./ObjectDetail";
 import type { ObjectDetailProps } from "./types";
 
-const MOCK_CARD = createMockCard({
+const mockCard = createMockCard({
+  id: getNextId(),
   name: "Product",
 });
 
-const MOCK_TABLE = createMockTable({
+const mockTable = createMockTable({
+  id: getNextId(),
   name: "Product",
   display_name: "Product",
 });
-
-const mockQuestion = new Question(
-  createMockCard({
-    name: "Product",
-  }),
-);
 
 const databaseWithActionsEnabled = createMockDatabase({
   id: getNextId(),
@@ -63,6 +52,52 @@ const databaseWithActionsDisabled = createMockDatabase({
   settings: { "database-enable-actions": false },
 });
 
+const mockDatasetCard = createMockCard({
+  id: getNextId(),
+  name: "Product",
+  dataset: true,
+  dataset_query: {
+    type: "query",
+    database: databaseWithActionsEnabled.id,
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+  },
+});
+
+const mockDatasetWithClausesCard = createMockCard({
+  id: getNextId(),
+  name: "Product",
+  dataset: true,
+  dataset_query: {
+    type: "query",
+    database: databaseWithActionsEnabled.id,
+    query: {
+      "source-table": PEOPLE_ID,
+      filter: [
+        "contains",
+        ["field", PEOPLE.NAME, null],
+        "Macy",
+        { "case-sensitive": false },
+      ],
+    },
+  },
+});
+
+const mockDatasetNoWritePermissionCard = createMockCard({
+  id: getNextId(),
+  name: "Product",
+  can_write: false,
+  dataset: true,
+  dataset_query: {
+    type: "query",
+    database: databaseWithActionsEnabled.id,
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+  },
+});
+
 const metadata = createMockMetadata({
   databases: [
     createSampleDatabase({
@@ -70,58 +105,25 @@ const metadata = createMockMetadata({
       settings: { "database-enable-actions": true },
     }),
   ],
+  tables: [mockTable],
+  questions: [
+    mockCard,
+    mockDatasetCard,
+    mockDatasetWithClausesCard,
+    mockDatasetNoWritePermissionCard,
+  ],
 });
 
-const mockDataset = new Question(
-  createMockCard({
-    name: "Product",
-    dataset: true,
-    dataset_query: {
-      type: "query",
-      database: databaseWithActionsEnabled.id,
-      query: {
-        "source-table": PEOPLE_ID,
-      },
-    },
-  }),
-  metadata,
+const mockQuestion = checkNotNull(metadata.question(mockCard.id));
+
+const mockDataset = checkNotNull(metadata.question(mockDatasetCard.id));
+
+const mockDatasetWithClauses = checkNotNull(
+  metadata.question(mockDatasetWithClausesCard.id),
 );
 
-const mockDatasetWithClauses = new Question(
-  createMockCard({
-    name: "Product",
-    dataset: true,
-    dataset_query: {
-      type: "query",
-      database: databaseWithActionsEnabled.id,
-      query: {
-        "source-table": PEOPLE_ID,
-        filter: [
-          "contains",
-          ["field", PEOPLE.NAME, null],
-          "Macy",
-          { "case-sensitive": false },
-        ],
-      },
-    },
-  }),
-  metadata,
-);
-
-const mockDatasetNoWritePermission = new Question(
-  createMockCard({
-    name: "Product",
-    can_write: false,
-    dataset: true,
-    dataset_query: {
-      type: "query",
-      database: databaseWithActionsEnabled.id,
-      query: {
-        "source-table": PEOPLE_ID,
-      },
-    },
-  }),
-  metadata,
+const mockDatasetNoWritePermission = checkNotNull(
+  metadata.question(mockDatasetNoWritePermissionCard.id),
 );
 
 const implicitCreateAction = createMockImplicitQueryAction({
@@ -194,24 +196,13 @@ const actionsFromDatabaseWithDisabledActions = actions.map(action => ({
   database_id: databaseWithActionsDisabled.id,
 }));
 
-function setup(options?: Partial<ObjectDetailProps>) {
-  const state = createMockState({
-    entities: createMockEntitiesState({
-      questions: [MOCK_CARD],
-      tables: [MOCK_TABLE],
-    }),
-    qb: createMockQueryBuilderState({ card: MOCK_CARD }),
-  });
-  const metadata = getMetadata(state);
-
-  const question = checkNotNull(metadata.question(MOCK_CARD.id));
-  const table = checkNotNull(metadata.table(MOCK_TABLE.id));
-
+function setup(
+  options: Partial<ObjectDetailProps> &
+    Required<Pick<ObjectDetailProps, "question">>,
+) {
   renderWithProviders(
     <ObjectDetailView
       data={testDataset}
-      question={question}
-      table={table}
       zoomedRow={testDataset.rows[0]}
       zoomedRowID={0}
       tableForeignKeys={[]}
@@ -304,7 +295,7 @@ describe("Object Detail", () => {
   });
 
   it("renders an object detail component", () => {
-    setup();
+    setup({ question: mockQuestion });
 
     expect(screen.getByText(/Product/i)).toBeInTheDocument();
     expect(
@@ -337,7 +328,7 @@ describe("Object Detail", () => {
     });
 
     // because this row is not in the test dataset, it should trigger a fetch
-    setup({ zoomedRowID: "101", zoomedRow: undefined });
+    setup({ question: mockQuestion, zoomedRowID: "101", zoomedRow: undefined });
 
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     expect(
@@ -349,7 +340,7 @@ describe("Object Detail", () => {
     setupCardDataset({ data: { rows: [] } });
 
     // because this row is not in the test dataset, it should trigger a fetch
-    setup({ zoomedRowID: "102", zoomedRow: undefined });
+    setup({ question: mockQuestion, zoomedRowID: "102", zoomedRow: undefined });
 
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     expect(await screen.findByText(/we're a little lost/i)).toBeInTheDocument();
