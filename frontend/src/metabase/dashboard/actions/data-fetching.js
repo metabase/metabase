@@ -98,9 +98,8 @@ function isNewAdditionalSeriesCard(card, dashcard) {
 
 const updateLoadingTitle = createThunkAction(
   SET_DOCUMENT_TITLE,
-  () => (dispatch, getState) => {
+  totalCards => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
-    const totalCards = loadingDashCards.dashcardIds.length;
     const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
     return `${loadingComplete}/${totalCards} loaded`;
   },
@@ -419,32 +418,38 @@ export const fetchCardData = createThunkAction(
   },
 );
 
-export const fetchDashboardCardData = createThunkAction(
-  FETCH_DASHBOARD_CARD_DATA,
-  options => (dispatch, getState) => {
-    const dashboard = getDashboardComplete(getState());
-    const selectedTabId = getSelectedTabId(getState());
-    const dashcardIds = [];
-    const promises = getCurrentTabDashboardCards(dashboard, selectedTabId)
-      .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
-      .map(({ card, dashcard }) => {
-        dashcardIds.push(dashcard.id);
-        return dispatch(fetchCardData(card, dashcard, options)).then(() => {
-          return dispatch(updateLoadingTitle());
-        });
-      });
+const fetchDashboardCardDataSync = createAction(FETCH_DASHBOARD_CARD_DATA);
 
-    dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
+export const fetchDashboardCardData = options => (dispatch, getState) => {
+  const dashboard = getDashboardComplete(getState());
+  const selectedTabId = getSelectedTabId(getState());
 
-    // XXX: There is a race condition here, when refreshing a dashboard before
-    // the previous API calls finished.
-    Promise.all(promises).then(() => {
-      dispatch(loadingComplete());
+  const nonVirtualDashcards = getCurrentTabDashboardCards(
+    dashboard,
+    selectedTabId,
+  ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
+
+  const dashcardIds = nonVirtualDashcards.map(({ dashcard }) => {
+    return dashcard.id;
+  });
+  dispatch(
+    fetchDashboardCardDataSync({ currentTime: performance.now(), dashcardIds }),
+  );
+
+  const promises = nonVirtualDashcards.map(({ card, dashcard }) => {
+    return dispatch(fetchCardData(card, dashcard, options)).then(() => {
+      return dispatch(updateLoadingTitle(nonVirtualDashcards.length));
     });
+  });
 
-    return { currentTime: performance.now(), dashcardIds };
-  },
-);
+  dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
+
+  // XXX: There is a race condition here, when refreshing a dashboard before
+  // the previous API calls finished.
+  Promise.all(promises).then(() => {
+    dispatch(loadingComplete());
+  });
+};
 
 export const fetchDashboardCardMetadata = createThunkAction(
   FETCH_DASHBOARD_CARD_METADATA,

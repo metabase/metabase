@@ -43,7 +43,6 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
-  SET_LOADING_DASHCARDS_COMPLETE,
 } from "./actions";
 import { syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -373,11 +372,12 @@ const loadingDashCards = handleActions(
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
       next: (state, { payload: { currentTime, dashcardIds } }) => {
-        const loadingIds = Array.isArray(dashcardIds) ? dashcardIds : [];
+        const loadingIds = dashcardIds;
 
         return {
           ...state,
-          dashcardIds: loadingIds,
+          // used for updating documents title. It's used for the number of total request loaded.
+          // dashcardIds: loadingIds,
           loadingIds,
           loadingStatus: loadingIds.length > 0 ? "running" : "idle",
           startTime: loadingIds.length > 0 ? currentTime : null,
@@ -406,15 +406,7 @@ const loadingDashCards = handleActions(
         };
       },
     },
-    [SET_LOADING_DASHCARDS_COMPLETE]: {
-      next: state => {
-        return {
-          ...state,
-          loadingIds: [],
-          loadingStatus: "complete",
-        };
-      },
-    },
+
     [RESET]: {
       next: state => ({
         ...state,
