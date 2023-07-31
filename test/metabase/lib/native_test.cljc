@@ -8,6 +8,7 @@
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util.humanization :as u.humanization]))
 
 (deftest ^:parallel variable-tag-test
@@ -203,7 +204,7 @@
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
           #"Must be a native query"
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/with-native-query "foobar"))))))
 
 (deftest ^:parallel with-template-tags-test
@@ -227,7 +228,7 @@
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
           #"Must be a native query"
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
 
 (defn ^:private metadata-provider-requiring-collection []
@@ -268,7 +269,7 @@
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
           #"Must be a native query"
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/with-different-database meta/metadata-provider))))))
 
 (deftest ^:parallel with-native-collection-test

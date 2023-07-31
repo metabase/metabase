@@ -7,8 +7,8 @@ import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
-export const Container = styled.div`
-  margin: ${space(1)} 0;
+export const Container = styled.div<{ isSmall: boolean }>`
+  margin: ${({ isSmall }) => (isSmall ? 0 : space(1))} 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -76,7 +76,6 @@ export const TargetButton = styled.div<{ variant: string }>`
   background-color: ${color("white")};
   text-weight: bold;
   cursor: pointer;
-  font-size: 1.2em;
   border: 2px solid ${color("brand")};
   border-radius: 8px;
   min-height: 30px;

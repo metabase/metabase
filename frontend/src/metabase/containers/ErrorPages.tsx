@@ -38,7 +38,7 @@ export const NotFound = ({
   title?: string;
   message?: string;
 }) => (
-  <ErrorPageRoot>
+  <ErrorPageRoot aria-label="error page">
     <EmptyState
       illustrationElement={<img src={NoResults} />}
       title={title}

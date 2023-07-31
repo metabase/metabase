@@ -8,6 +8,7 @@ import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   ORDERS_QUESTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
@@ -106,7 +107,9 @@ describe("URLs", () => {
       cy.findByText(getFullName(normal)).click();
       cy.location("pathname").should(
         "eq",
-        `/collection/9-${getUsersPersonalCollectionSlug(normal)}`,
+        `/collection/${NORMAL_PERSONAL_COLLECTION_ID}-${getUsersPersonalCollectionSlug(
+          normal,
+        )}`,
       );
     });
 
@@ -127,7 +130,11 @@ describe("URLs", () => {
         `${getFullName(admin)}'s Personal Collection`,
       );
 
-      cy.visit(`/collection/9-${getUsersPersonalCollectionSlug(normal)}`);
+      cy.visit(
+        `/collection/${NORMAL_PERSONAL_COLLECTION_ID}-${getUsersPersonalCollectionSlug(
+          normal,
+        )}`,
+      );
       cy.findByTestId("collection-name-heading").should(
         "have.text",
         `${getFullName(normal)}'s Personal Collection`,
