@@ -9,14 +9,15 @@ import { SearchModelType } from "metabase-types/api";
 const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   action: "Action",
   card: "Question",
-  dataset: "Model",
-  dashboard: "Dashboard",
-  table: "Table",
-  database: "Database",
   collection: "Collection",
-  segment: "Segment",
+  dashboard: "Dashboard",
+  database: "Database",
+  dataset: "Model",
+  "indexed-entity": "Indexed Entity",
   metric: "Metric",
   pulse: "Pulse",
+  segment: "Segment",
+  table: "Table",
 };
 
 const TEST_TYPES: Array<SearchModelType> = [
@@ -98,8 +99,9 @@ describe("TypeFilter", () => {
     await setup();
     expect(screen.getByText("Type")).toBeInTheDocument();
     for (const entityType of TEST_TYPES) {
-      console.log(entityType);
-      expect(TRANSLATED_NAME_BY_MODEL_TYPE[entityType]).toBeInTheDocument();
+      expect(
+        screen.getByText(TRANSLATED_NAME_BY_MODEL_TYPE[entityType]),
+      ).toBeInTheDocument();
     }
   });
 
