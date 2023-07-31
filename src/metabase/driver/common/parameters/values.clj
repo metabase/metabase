@@ -60,7 +60,7 @@
 
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
-  (s/named (s/maybe (s/cond-pre (s/eq params/no-value) SingleValue [SingleValue] su/Map))
+  (s/named (s/cond-pre (s/eq params/no-value) SingleValue [SingleValue] su/Map)
            "Valid param value(s)"))
 
 (s/defn ^:private tag-targets
@@ -364,10 +364,7 @@
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags
-                   :let    [v (value-for-tag tag params)]
-                   :when   v]
-               ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
-               ;; kind of query shouldn't be possible from the frontend anyway
+                   :let    [v (value-for-tag tag params)]]
                (do
                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
                  {k v})))
