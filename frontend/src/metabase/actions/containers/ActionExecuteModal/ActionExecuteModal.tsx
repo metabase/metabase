@@ -12,8 +12,8 @@ import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 
 import { executeAction } from "../../actions";
+import { useActionInitialValues } from "../../hooks/use-action-initial-values";
 import ActionParametersInputForm from "../ActionParametersInputForm";
-import { useActionInitialValues } from "../ActionParametersInputForm/ActionParametersInputForm";
 
 interface ActionExecuteModalProps {
   actionId: WritebackActionId | undefined;
