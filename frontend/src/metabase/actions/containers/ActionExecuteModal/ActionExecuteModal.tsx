@@ -6,6 +6,7 @@ import {
   WritebackActionId,
 } from "metabase-types/api";
 import { useActionQuery } from "metabase/common/hooks/use-action-query";
+import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
@@ -80,16 +81,22 @@ export const ActionExecuteModal = ({
     return <LoadingAndErrorWrapper error={t`Failed to load action details`} />;
   }
 
+  const showEmptyState = shouldPrefetch && !hasPrefetchedValues;
+
   return (
     <ModalContent title={action.name} onClose={onClose}>
-      <ActionParametersInputForm
-        action={action}
-        initialValues={initialValues}
-        prefetchesInitialValues
-        onCancel={onClose}
-        onSubmit={handleSubmit}
-        onSubmitSuccess={handleSubmitSuccess}
-      />
+      {showEmptyState && <EmptyState message={t`Choose a record to update`} />}
+
+      {!showEmptyState && (
+        <ActionParametersInputForm
+          action={action}
+          initialValues={initialValues}
+          prefetchesInitialValues
+          onCancel={onClose}
+          onSubmit={handleSubmit}
+          onSubmitSuccess={handleSubmitSuccess}
+        />
+      )}
     </ModalContent>
   );
 };

@@ -6,14 +6,11 @@ import _ from "underscore";
 import { getIcon, render, screen } from "__support__/ui";
 
 import {
-  createMockActionDashboardCard,
   createMockActionParameter,
-  createMockDashboard,
   createMockFieldSettings,
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
-import { ActionsApi } from "metabase/services";
 
 import ActionParametersInputForm, {
   ActionParametersInputFormProps,
@@ -50,27 +47,15 @@ const mockAction = createMockQueryAction({
   },
 });
 
-const dashboard = createMockDashboard({ id: 123 });
-
-const dashcard = createMockActionDashboardCard({ id: 456, action: mockAction });
-
 const defaultProps: ActionParametersInputFormProps = {
   action: mockAction,
   mappedParameters: [],
-  fetchInitialValues: undefined,
-  shouldPrefetch: false,
+  prefetchesInitialValues: false,
   initialValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
   onSubmit: jest.fn().mockResolvedValue({ success: true }),
 };
-
-const fetchInitialValues = () =>
-  ActionsApi.prefetchDashcardValues({
-    dashboardId: dashboard.id,
-    dashcardId: dashcard.id,
-    parameters: JSON.stringify({}),
-  }).catch(_.noop);
 
 function setup(options?: Partial<ActionParametersInputModalProps>) {
   render(<ActionParametersInputForm {...defaultProps} {...options} />);
@@ -189,8 +174,7 @@ describe("Actions > ActionParametersInputForm", () => {
       initialValues: {
         id: 888,
       },
-      fetchInitialValues,
-      shouldPrefetch: true,
+      prefetchesInitialValues: true,
     });
 
     await waitFor(async () => {
@@ -209,7 +193,7 @@ describe("Actions > ActionParametersInputForm", () => {
         kind: "row/update",
       }),
       initialValues: {},
-      shouldPrefetch: true,
+      prefetchesInitialValues: true,
     });
 
     expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
@@ -238,8 +222,7 @@ describe("Actions > ActionParametersInputForm", () => {
       initialValues: {
         id: 888,
       },
-      fetchInitialValues,
-      shouldPrefetch: true,
+      prefetchesInitialValues: true,
     });
 
     expect(

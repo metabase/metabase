@@ -102,10 +102,6 @@ function ActionParametersInputForm({
     [onSubmit, onSubmitSuccess],
   );
 
-  // if (shouldPrefetch && !hasPrefetchedValues) {
-  //   return <EmptyState message={t`Choose a record to update`} />;
-  // }
-
   return (
     <ActionForm
       action={action}
