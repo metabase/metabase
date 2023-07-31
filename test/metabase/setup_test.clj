@@ -30,8 +30,8 @@
           (is (= false
                  (setup/has-user-setup))))
         (testing "Should continue doing new DB calls as long as there is no User"
-          (is (= 5
-                 (call-count)))))))
+          (is (<= (call-count)
+                  10)))))) ;; in dev/test we check settings for an override
   (testing "Switch back to the 'normal' app DB; value should still be cached for it"
     (t2/with-call-count [call-count]
       (is (= true

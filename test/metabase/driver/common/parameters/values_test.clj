@@ -22,12 +22,11 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.util UUID)
    (metabase.driver.common.parameters ReferencedCardQuery)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private test-uuid (str (UUID/randomUUID)))
+(def ^:private test-uuid (str (random-uuid)))
 
 (deftest variable-value-test
   (mt/with-everything-store

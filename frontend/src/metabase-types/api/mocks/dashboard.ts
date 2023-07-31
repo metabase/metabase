@@ -23,6 +23,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
     timestamp: "2018-01-01",
   },
   auto_apply_filters: true,
+  archived: false,
   ...opts,
 });
 
@@ -89,6 +90,27 @@ export const createMockHeadingDashboardCard = (
         archived: false,
         dataset_query: {},
         display: "heading",
+        name: "",
+        visualization_settings: {},
+      } as VirtualCard,
+    },
+  }),
+  ...opts,
+});
+
+export const createMockLinkDashboardCard = (
+  opts?: Partial<DashboardOrderedCard> & { url?: string },
+): DashboardOrderedCard => ({
+  ...createMockDashboardCardWithVirtualCard({
+    id: 1,
+    visualization_settings: {
+      link: {
+        url: opts?.url ?? "Link url",
+      },
+      virtual_card: {
+        archived: false,
+        dataset_query: {},
+        display: "link",
         name: "",
         visualization_settings: {},
       } as VirtualCard,
