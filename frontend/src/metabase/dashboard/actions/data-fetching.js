@@ -423,32 +423,42 @@ const fetchDashboardCardDataSync = createAction(FETCH_DASHBOARD_CARD_DATA);
 export const fetchDashboardCardData = options => (dispatch, getState) => {
   const dashboard = getDashboardComplete(getState());
   const selectedTabId = getSelectedTabId(getState());
+  const loadingIds = getLoadingDashCards(getState()).loadingIds;
 
-  const nonVirtualDashcards = getCurrentTabDashboardCards(
+  const nonVirtualDashcardsToFetch = getCurrentTabDashboardCards(
     dashboard,
     selectedTabId,
-  ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
+  )
+    .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
+    .filter(({ dashcard }) => {
+      return !loadingIds.includes(dashcard.id);
+    });
 
-  const dashcardIds = nonVirtualDashcards.map(({ dashcard }) => {
+  const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
     return dashcard.id;
   });
   dispatch(
-    fetchDashboardCardDataSync({ currentTime: performance.now(), dashcardIds }),
+    fetchDashboardCardDataSync({
+      currentTime: performance.now(),
+      loadingIds: newLoadingIds,
+    }),
   );
 
-  const promises = nonVirtualDashcards.map(({ card, dashcard }) => {
+  const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
     return dispatch(fetchCardData(card, dashcard, options)).then(() => {
-      return dispatch(updateLoadingTitle(nonVirtualDashcards.length));
+      return dispatch(updateLoadingTitle(newLoadingIds.length));
     });
   });
 
-  dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
+  if (newLoadingIds.length > 0) {
+    dispatch(setDocumentTitle(t`0/${newLoadingIds.length} loaded`));
 
-  // TODO: There is a race condition here, when refreshing a dashboard before
-  // the previous API calls finished.
-  Promise.all(promises).then(() => {
-    dispatch(loadingComplete());
-  });
+    // TODO: There is a race condition here, when refreshing a dashboard before
+    // the previous API calls finished.
+    Promise.all(promises).then(() => {
+      dispatch(loadingComplete());
+    });
+  }
 };
 
 export const fetchDashboardCardMetadata = createThunkAction(

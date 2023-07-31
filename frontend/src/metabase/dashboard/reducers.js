@@ -371,15 +371,14 @@ const loadingDashCards = handleActions(
       }),
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: (state, { payload: { currentTime, dashcardIds } }) => {
-        const loadingIds = dashcardIds;
-
+      next: (state, { payload: { currentTime, loadingIds } }) => {
+        const newLoadingIds = state.loadingIds.concat(loadingIds);
         return {
           ...state,
           // used for updating documents title. It's used for the number of total request loaded.
           // dashcardIds: loadingIds,
-          loadingIds: state.loadingIds.concat(loadingIds),
-          loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+          loadingIds: newLoadingIds,
+          loadingStatus: newLoadingIds.length > 0 ? "running" : "idle",
           startTime: loadingIds.length > 0 ? currentTime : null,
         };
       },
@@ -406,7 +405,6 @@ const loadingDashCards = handleActions(
         };
       },
     },
-
     [RESET]: {
       next: state => ({
         ...state,
