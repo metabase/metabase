@@ -33,7 +33,7 @@ import {
 } from "metabase-lib/parameters/utils/parameter-type";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
-import S from "./ParameterWidget.css";
+import S from "./ParameterValueWidget.css";
 
 const DATE_WIDGETS = {
   "date/single": DateSingleWidget,

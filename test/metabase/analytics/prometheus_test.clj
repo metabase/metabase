@@ -4,13 +4,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [iapetos.operations :as ops]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.test.fixtures :as fixtures])
   (:import
-   (iapetos.registry IapetosRegistry)
-   (io.prometheus.client Collector Collector$MetricFamilySamples CollectorRegistry GaugeMetricFamily)
-   (metabase.analytics.prometheus PrometheusSystem)
+   (io.prometheus.client Collector GaugeMetricFamily)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -157,18 +156,15 @@
 
 (deftest email-collector-test
   (testing "Registry has email metrics registered"
-    (with-prometheus-system [_ system]
-      (let [sample-names (set (for [metric-family-samples (enumeration-seq (.metricFamilySamples ^CollectorRegistry (.raw ^IapetosRegistry (.-registry system))))
-                                    sample-name           (.getNames ^Collector$MetricFamilySamples metric-family-samples)]
-                                sample-name))]
-        (is (contains? sample-names "metabase_email_messages") "messages sample not found")
-        (is (contains? sample-names "metabase_email_message_errors") "message_errors sample not found")))))
+    (with-prometheus-system [port _]
+      (is (= #{"metabase_email_messages_total" "metabase_email_messages_created" "metabase_email_message_errors_total" "metabase_email_message_errors_created"}
+             (->> (metric-lines port)
+                  (map #(str/split % #"\s+"))
+                  (map first)
+                  (filter #(str/starts-with? % "metabase_email_"))
+                  set))))))
 
-(defn- get-sample-value
-  [^PrometheusSystem system ^String metric]
-  (.getSampleValue ^CollectorRegistry (registry/raw (.-registry system)) metric))
-
-(deftest inc-server-test
+(deftest inc-test
   (testing "inc has no effect if system is not setup"
     (prometheus/inc :metabase-email/messages)) ; << Does not throw.
   (testing "inc has no effect when called with unknown metric"
@@ -177,4 +173,4 @@
   (testing "inc is recorded for known metrics"
     (with-prometheus-system [_ system]
       (prometheus/inc :metabase-email/messages)
-      (is (< 0 (get-sample-value system "metabase_email_messages_total"))))))
+      (is (< 0 (-> system :registry :metabase-email/messages ops/read-value))))))
