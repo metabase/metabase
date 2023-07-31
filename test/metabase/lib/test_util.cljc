@@ -261,3 +261,31 @@
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [categories-native-card]})))
+
+(def mock-cards
+  "Map of mock MBQL query Card against the test tables."
+  (into {}
+        (for [[idx table] (m/indexed [:categories
+                                      :checkins
+                                      :users
+                                      :venues
+                                      :products
+                                      :orders
+                                      :people
+                                      :reviews])]
+          [table {:lib/type :metadata/card
+                  :id idx
+                  :name (str "Mock " (name table) " card")
+                  :dataset-query {:database (meta/id)
+                                  :type :query
+                                  :query {:source-table (meta/id table)}}
+                  :result-metadata (for [[[meta-table meta-col] _] (methods meta/field-metadata-method)
+                                         :when (= table meta-table)]
+                                     (dissoc (meta/field-metadata table meta-col) :id :table-id))}])))
+
+(def metadata-provider-with-mock-cards
+  "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+    meta/metadata-provider
+    (mock-metadata-provider
+      {:cards (vals mock-cards)})))
