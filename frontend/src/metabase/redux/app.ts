@@ -1,5 +1,6 @@
 import { push, LOCATION_CHANGE } from "react-router-redux";
 import { createSelector } from "@reduxjs/toolkit";
+import type { Selector } from "@reduxjs/toolkit";
 
 import {
   combineReducers,
@@ -14,9 +15,10 @@ import {
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getIsAppBarVisible } from "metabase/selectors/app";
+import type { State, Dispatch } from "metabase-types/store";
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
-export function setErrorPage(error) {
+export function setErrorPage(error: any) {
   console.error("Error:", error);
   return {
     type: SET_ERROR_PAGE,
@@ -24,13 +26,21 @@ export function setErrorPage(error) {
   };
 }
 
-export const openUrl = (url, options) => dispatch => {
-  if (shouldOpenInBlankWindow(url, options)) {
-    openInBlankWindow(url);
-  } else {
-    dispatch(push(url));
-  }
-};
+interface IOpenUrlOptions {
+  blank?: boolean;
+  event?: Event;
+  blankOnMetaOrCtrlKey?: boolean;
+  blankOnDifferentOrigin?: boolean;
+}
+
+export const openUrl =
+  (url: string, options: IOpenUrlOptions) => (dispatch: Dispatch) => {
+    if (shouldOpenInBlankWindow(url, options)) {
+      openInBlankWindow(url);
+    } else {
+      dispatch(push(url));
+    }
+  };
 
 const errorPage = handleActions(
   {
@@ -64,7 +74,7 @@ export const openNavbar = createAction(OPEN_NAVBAR);
 export const closeNavbar = createAction(CLOSE_NAVBAR);
 export const toggleNavbar = createAction(TOGGLE_NAVBAR);
 
-export const getIsNavbarOpen = createSelector(
+export const getIsNavbarOpen: Selector<State> = createSelector(
   [
     getIsEmbedded,
     getEmbedOptions,
@@ -91,6 +101,7 @@ const isNavbarOpen = handleActions(
   checkIsSidebarInitiallyOpen(),
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   errorPage,
   isNavbarOpen,
