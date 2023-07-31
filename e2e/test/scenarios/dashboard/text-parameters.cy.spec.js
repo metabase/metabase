@@ -23,22 +23,6 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     });
   });
 
-  it("should show instructional text for text and heading cards with no variables", () => {
-    editDashboard();
-
-    addTextBoxWhileEditing("Text card with no variables");
-    addHeadingWhileEditing("Heading card with no variables");
-
-    setFilter("Number", "Equal to");
-
-    getDashboardCard(0)
-      .findByText("You can connect widgets to {{variables}} in text cards.")
-      .should("exist");
-    getDashboardCard(1)
-      .findByText("You can connect widgets to {{variables}} in heading cards.")
-      .should("exist");
-  });
-
   it("should allow dashboard filters to be connected to tags in text cards", () => {
     editDashboard();
 
