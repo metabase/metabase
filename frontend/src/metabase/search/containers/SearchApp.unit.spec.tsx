@@ -13,7 +13,7 @@ import {
 } from "metabase-types/api/mocks";
 import { SearchResult } from "metabase-types/api";
 
-import { SearchFilters } from "metabase/search/util/filter-types";
+import { SearchFilters } from "metabase/search/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({
