@@ -8,6 +8,7 @@
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Dimension Field FieldValues Table]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]

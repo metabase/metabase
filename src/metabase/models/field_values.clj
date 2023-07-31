@@ -377,17 +377,17 @@
         ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
-      (and field-values values)
+      (and field-values unwrapped-values)
       (do
         (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
         (db/update-non-nil-keys! FieldValues (u/the-id field-values)
-          :has_more_values       has_more_values
-          :values                values
-          :human_readable_values (fixup-human-readable-values field-values values))
+                                 :has_more_values       has_more_values
+                                 :values                values
+                                 :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
 
       ;; if FieldValues object doesn't exist create one
-      values
+      unwrapped-values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (t2/insert! FieldValues

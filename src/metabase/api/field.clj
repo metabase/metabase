@@ -254,7 +254,7 @@
     {:values          (search-values (api/check-404 field)
                                      (api/check-404 (t2/select-one Field :id remapped-field-id)))
      :field_id        field-id
-     :has_more_values has_more_values}
+     :has_more_values (boolean has_more_values)}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
 (mu/defn search-values-from-field-id :- ms/FieldValuesResult
