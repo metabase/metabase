@@ -98,7 +98,7 @@ const setup = ({ initSelectedType = null } = {}) => {
 describe("TypeSearchSidebar", () => {
   it("display all available models with the correct text and icon for each type", () => {
     setup();
-    const sidebar = within(screen.getByTestId("sidebar"));
+    const sidebar = within(screen.getByTestId("type-sidebar"));
     TEST_ALL_TYPES.forEach(({ name, icon }) => {
       expect(sidebar.getByText(name)).toBeInTheDocument();
       expect(sidebar.getByLabelText(`${icon} icon`)).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe("TypeSearchSidebar", () => {
 
   it("should select the correct type when clicking on it", () => {
     const { onChange } = setup();
-    const sidebar = within(screen.getByTestId("sidebar"));
+    const sidebar = within(screen.getByTestId("type-sidebar"));
     TEST_TYPES.forEach(({ name, filter }) => {
       sidebar.getByText(name).click();
       expect(onChange).toHaveBeenCalledWith(filter);
