@@ -8,7 +8,7 @@ import {
   SortableHandle,
 } from "metabase/components/sortable";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { ParameterWidget as StaticParameterWidget } from "./ParameterWidget";
+import StaticParameterWidget from "./ParameterWidget";
 
 const StaticParameterWidgetList = ({
   children,
