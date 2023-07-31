@@ -76,7 +76,7 @@
                                                 request))]
        (testing "Require a EE token with the `:serialization` feature"
          (premium-features-test/with-premium-features #{}
-           (is (= "This API endpoint is only enabled if you have a premium token with the :serialization feature."
+           (is (= "Serialization is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                   (serialize! :expected-status-code 402)))))
        (testing "Require current user to be a superuser"
          (is (= "You don't have permissions to do that."
