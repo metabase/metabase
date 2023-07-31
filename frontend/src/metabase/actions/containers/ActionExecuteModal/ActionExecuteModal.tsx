@@ -10,10 +10,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 
-import { executeAction } from "../actions";
-
-import ActionParametersInputForm from "./ActionParametersInputForm";
-import { useActionInitialValues } from "./ActionParametersInputForm/ActionParametersInputForm";
+import { executeAction } from "../../actions";
+import ActionParametersInputForm from "../ActionParametersInputForm";
+import { useActionInitialValues } from "../ActionParametersInputForm/ActionParametersInputForm";
 
 interface ActionExecuteModalProps {
   actionId: WritebackActionId;
