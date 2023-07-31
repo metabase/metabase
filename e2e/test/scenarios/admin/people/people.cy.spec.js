@@ -248,6 +248,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should not offer to reset passwords when password login is disabled", () => {
+      setTokenFeatures("all");
       cy.request("PUT", "/api/google/settings", {
         "google-auth-auto-create-accounts-domain": null,
         "google-auth-client-id": "example1.apps.googleusercontent.com",
