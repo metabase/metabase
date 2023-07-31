@@ -55,5 +55,6 @@
          ~(macros.common/ignore-unused 'snippet-nested-collection-id) nil
          ~(macros.common/ignore-unused 'nested-snippet-id)            nil
          ~(macros.common/ignore-unused 'card-id-with-native-snippet)  nil
-         ~(macros.common/ignore-unused 'card-join-card-id)            nil]
+         ~(macros.common/ignore-unused 'card-join-card-id)            nil
+         ~(macros.common/ignore-unused 'card-id-pivot-table)          nil]
      ~@body))
