@@ -133,7 +133,7 @@
         {"foo" {:type :string/= :value "<script>alert(1)</script>"}}
         "<script>alert(1)</script>"
 
-      ;; Characters in the original text are not escaped
+        ;; Characters in the original text are not escaped
         "_*{{foo}}*_"
         {"foo" {:type :string/= :value "*bar*"}}
         "_**bar**_"))
