@@ -24,6 +24,10 @@ export const getSetting = <T extends SettingKey>(
   key: T,
 ): Settings[T] => getSettings(state)[key];
 
+export const getWebsiteUrl = (path = "") => {
+  return `https://www.metabase.com/${path}`;
+};
+
 export const getStoreUrl = (path = "") => {
   return `https://store.metabase.com/${path}`;
 };
