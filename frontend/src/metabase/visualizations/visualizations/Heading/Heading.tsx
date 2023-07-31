@@ -56,7 +56,7 @@ export function Heading({
         parameterValues,
         text: settings.text,
       }),
-    [dashcard, dashboard, parameterValues, settings],
+    [dashcard, dashboard, parameterValues, settings.text],
   );
 
   const hasContent = !isEmpty(settings.text);

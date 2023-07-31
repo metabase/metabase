@@ -61,7 +61,7 @@ export function Text({
         text: settings.text,
         escapeMarkdown: true,
       }),
-    [dashcard, dashboard, parameterValues, settings],
+    [dashcard, dashboard, parameterValues, settings.text],
   );
 
   const hasContent = !isEmpty(settings.text);
