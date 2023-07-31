@@ -25,7 +25,7 @@ const setup = () => {
   renderWithProviders(<SsoButton />, { storeInitialState: state });
 };
 
-describe("SsoButton", () => {
+describe("SSOButton", () => {
   it("should login immediately when embedded", async () => {
     setup();
 
