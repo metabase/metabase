@@ -6,7 +6,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useMount, useUnmount, usePrevious } from "react-use";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
@@ -31,6 +30,8 @@ import favicon from "metabase/hoc/Favicon";
 
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useSelector } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+
 import View from "../components/view/View";
 
 import {
@@ -176,7 +177,7 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-    loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
+    loadingMessage: getWhiteLabeledLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
   };

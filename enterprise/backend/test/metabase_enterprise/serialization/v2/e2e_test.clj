@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.serialization.cmd :as cmd]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -19,6 +20,7 @@
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
@@ -697,3 +699,40 @@
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-2}]
                          (:ordered_cards new-dashboard))))))))))))
+
+(deftest premium-features-test
+  (testing "with :serialization enabled on the token"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (premium-features-test/with-premium-features #{:serialization}
+        (ts/with-source-and-dest-dbs
+          (ts/with-source-db
+            ;; preparation
+            (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
+              (testing "export (v2-dump) command"
+                (is (cmd/v2-dump dump-dir {})
+                    "works"))
+
+              (testing "import (v2-load) command"
+                (ts/with-dest-db
+                  (testing "doing ingestion"
+                    (is (cmd/v2-load dump-dir {})
+                        "works"))))))))))
+
+  (testing "without :serialization feature enabled"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (premium-features-test/with-premium-features #{}
+        (ts/with-source-and-dest-dbs
+          (ts/with-source-db
+            ;; preparation
+            (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
+              (testing "export (v2-dump) command"
+                (is (thrown-with-msg? Exception #"Please upgrade"
+                                      (cmd/v2-dump dump-dir {}))
+                    "throws"))
+
+              (testing "import (v2-load) command"
+                (ts/with-dest-db
+                  (testing "doing ingestion"
+                    (is (thrown-with-msg? Exception #"Please upgrade"
+                                          (cmd/v2-load dump-dir {}))
+                        "throws")))))))))))
