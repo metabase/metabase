@@ -190,21 +190,49 @@ export const ComboChart2 = ({
     event: React.MouseEvent,
     bar: BarData<GroupedDatum, SeriesInfo>,
   ) => {
-    if (bar == null) {
-      onHoverChange?.(null);
-      return;
-    }
-    const hoverData = getHoverData(
-      bar,
-      settings,
-      chartColumns,
-      data.cols,
-      series,
-      seriesColors,
-    );
+    const data = {
+      index: 3,
+      event: {
+        isTrusted: true,
+      },
+      stackedTooltipModel: {
+        headerTitle: "Total",
+        headerRows: [
+          {
+            name: "80  –  100",
+            value: 65,
+            color: "#EF8C8C",
+          },
+        ],
+        bodyRows: [
+          {
+            name: "20  –  40",
+            value: 94,
+            color: "#98D9D9",
+          },
+          {
+            name: "40  –  60",
+            value: 77,
+            color: "#F9D45C",
+          },
+          {
+            name: "60  –  80",
+            value: 52,
+            color: "#A989C5",
+          },
+          {
+            name: "Other",
+            value: 10,
+            color: "#949AAB",
+          },
+        ],
+        showTotal: true,
+        showPercentages: true,
+      },
+    };
 
     onHoverChange?.({
-      ...hoverData,
+      ...data,
       event: event.nativeEvent,
       element: event.target,
     });

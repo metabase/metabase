@@ -13,8 +13,6 @@ import { ContinuousScaleType, Range } from "../../types/scale";
 
 import { RowChartTheme, Series, StackOffset } from "./types";
 
-import { getComboChartOptions } from "metabase/visualizations/shared/components/ComboChart2/options";
-
 const MIN_BAR_HEIGHT = 24;
 
 const defaultFormatter = (value: any) => String(value);
@@ -59,6 +57,8 @@ export const ComboChart2 = <TDatum,>({
   width,
   height,
   rawData,
+  onClick,
+  onHover,
 }: ComboChart2Props<TDatum>) => {
   const chartRoot = useRef<HTMLDivElement>(null);
 
@@ -75,6 +75,14 @@ export const ComboChart2 = <TDatum,>({
       renderer: "svg",
     });
     chartRef.current.setOption(getChartOptions());
+
+    chartRef.current.on("click", e => {
+      onClick(e.event.event);
+    });
+
+    chartRef.current.on("mouseover", e => {
+      onHover(e.event.event);
+    });
   }, [getChartOptions]);
 
   useEffect(() => {

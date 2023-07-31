@@ -21034,7 +21034,7 @@ export const treeMapData = [
   },
 ];
 
-const mapData = {
+export const mapData = {
   type: "FeatureCollection",
   features: [
     {
