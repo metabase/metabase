@@ -288,7 +288,7 @@
                                         :details {:db "my_db"}}))))))
 
     (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
-      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (mt/user-http-request :crowberto :post 402 "database"
                               {:name      (mt/random-name)
                                :engine    (u/qualified-name ::test-driver)
@@ -296,7 +296,7 @@
                                :cache_ttl 13})))
 
     (testing "should allow setting `cache_ttl` on EE"
-      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
 
@@ -363,7 +363,7 @@
                  (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
 
     (testing "should not be able to modify `cache_ttl` in OSS"
-      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates {:cache_ttl 13}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
@@ -371,7 +371,7 @@
                  (t2/select-one-fn :cache_ttl Database, :id db-id))))))
 
     (testing "should be able to set and unset `cache_ttl` in EE"
-      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates1 {:cache_ttl 1337}
                 updates2 {:cache_ttl nil}
