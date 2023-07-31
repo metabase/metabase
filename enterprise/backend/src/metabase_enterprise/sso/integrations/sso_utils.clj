@@ -13,7 +13,7 @@
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (java.net URI URL URLDecoder)))
+   (java.net URI URLDecoder)))
 
 (set! *warn-on-reflection* true)
 
