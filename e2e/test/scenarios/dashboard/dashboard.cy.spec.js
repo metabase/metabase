@@ -778,7 +778,20 @@ describeWithSnowplow("scenarios > dashboard (snowplow)", () => {
     cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");
 
+    popover().within(() => {
+      cy.findByText(/Loading/i).should("not.exist");
+      cy.findByText("Orders in a dashboard").click();
+    });
+
+    cy.findByTestId("entity-edit-display-link").findByText(
+      /orders in a dashboard/i,
+    );
+
     saveDashboard();
+
+    cy.findByTestId("entity-view-display-link").findByText(
+      /orders in a dashboard/i,
+    );
 
     expectGoodSnowplowEvent({
       event: "new_link_card_created",
