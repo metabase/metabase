@@ -181,6 +181,12 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         required: true,
         widget: SecretKeyWidget,
         getHidden: settings => !settings["jwt-enabled"],
+        props: {
+          confirmation: {
+            header: t`Regenerate JWT signing key?`,
+            dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,
+          },
+        },
       },
       {
         key: "jwt-attribute-email",
