@@ -1,1 +1,1 @@
-export { default as ActionExecuteModal } from "./ActionExecuteModal";
+export { ActionExecuteModal } from "./ActionExecuteModal";
