@@ -420,46 +420,52 @@ export const fetchCardData = createThunkAction(
 
 const fetchDashboardCardDataSync = createAction(FETCH_DASHBOARD_CARD_DATA);
 
-export const fetchDashboardCardData = options => (dispatch, getState) => {
-  const dashboard = getDashboardComplete(getState());
-  const selectedTabId = getSelectedTabId(getState());
-  const loadingIds = getLoadingDashCards(getState()).loadingIds;
+export const fetchDashboardCardData =
+  ({ skipOngoingDashcardRequests, ...options }) =>
+  (dispatch, getState) => {
+    const dashboard = getDashboardComplete(getState());
+    const selectedTabId = getSelectedTabId(getState());
 
-  const nonVirtualDashcardsToFetch = getCurrentTabDashboardCards(
-    dashboard,
-    selectedTabId,
-  )
-    .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
-    .filter(({ dashcard }) => {
-      return !loadingIds.includes(dashcard.id);
+    const nonVirtualDashcardsToFetch = getCurrentTabDashboardCards(
+      dashboard,
+      selectedTabId,
+    )
+      .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
+      .filter(({ dashcard }) => {
+        if (skipOngoingDashcardRequests) {
+          const loadingIds = getLoadingDashCards(getState()).loadingIds;
+          return !loadingIds.includes(dashcard.id);
+        }
+
+        return true;
+      });
+
+    const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
+      return dashcard.id;
+    });
+    dispatch(
+      fetchDashboardCardDataSync({
+        currentTime: performance.now(),
+        loadingIds: newLoadingIds,
+      }),
+    );
+
+    const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
+      return dispatch(fetchCardData(card, dashcard, options)).then(() => {
+        return dispatch(updateLoadingTitle(newLoadingIds.length));
+      });
     });
 
-  const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
-    return dashcard.id;
-  });
-  dispatch(
-    fetchDashboardCardDataSync({
-      currentTime: performance.now(),
-      loadingIds: newLoadingIds,
-    }),
-  );
+    if (newLoadingIds.length > 0) {
+      dispatch(setDocumentTitle(t`0/${newLoadingIds.length} loaded`));
 
-  const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
-    return dispatch(fetchCardData(card, dashcard, options)).then(() => {
-      return dispatch(updateLoadingTitle(newLoadingIds.length));
-    });
-  });
-
-  if (newLoadingIds.length > 0) {
-    dispatch(setDocumentTitle(t`0/${newLoadingIds.length} loaded`));
-
-    // TODO: There is a race condition here, when refreshing a dashboard before
-    // the previous API calls finished.
-    Promise.all(promises).then(() => {
-      dispatch(loadingComplete());
-    });
-  }
-};
+      // TODO: There is a race condition here, when refreshing a dashboard before
+      // the previous API calls finished.
+      Promise.all(promises).then(() => {
+        dispatch(loadingComplete());
+      });
+    }
+  };
 
 export const fetchDashboardCardMetadata = createThunkAction(
   FETCH_DASHBOARD_CARD_METADATA,
