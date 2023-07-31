@@ -5,9 +5,10 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase-types/store/mocks";
 import {
   createMockDatabase,
-  createMockTokenStatus,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { TokenFeatures } from "metabase-types/api";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
@@ -43,7 +44,9 @@ async function setup({
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
-      "token-status": createMockTokenStatus({ valid: isPaidPlan }),
+      "token-features": createMockTokenFeatures(
+        isPaidPlan ? randomizePaidPlanFeatures() : {},
+      ),
       "application-name": isWhiteLabeling ? "Acme Corp." : "Metabase",
     }),
   });
@@ -248,3 +251,14 @@ describe("DatabasePromptBanner", () => {
     });
   });
 });
+
+function randomizePaidPlanFeatures(): Partial<TokenFeatures> {
+  const features: Partial<TokenFeatures> = {};
+  if (Math.random() > 0.5) {
+    features.sso = true;
+  } else {
+    features.hosting = true;
+  }
+
+  return features;
+}
