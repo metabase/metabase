@@ -45,16 +45,15 @@ const TestTypeFilterComponent = ({
   onChangeFilters,
 }: {
   initialValue?: SearchModelType[];
-  onChangeFilters: (value: SearchModelType[]) => void;
+  onChangeFilters: jest.Mock;
 }) => {
   const [value, setValue] = useState<SearchModelType[]>(initialValue);
 
-  const onChange = (value: SearchModelType[]) => {
+  onChangeFilters.mockImplementation((value: SearchModelType[]) => {
     setValue(value);
-    onChangeFilters(value);
-  };
+  });
 
-  return <TypeFilter value={value} onChange={onChange} />;
+  return <TypeFilter value={value} onChange={onChangeFilters} />;
 };
 
 const setup = async ({
