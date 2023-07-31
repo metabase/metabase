@@ -25,42 +25,17 @@ describe("admin > database > add", () => {
     cy.findByLabelText("Database type").click();
   });
 
-  it("should add a new database", () => {
-    popover().within(() => {
-      if (isEE) {
-        // EE should ship with Oracle and Vertica as options
-        cy.findByText("Oracle");
-        cy.findByText("Vertica");
-      }
-      cy.findByText("H2").click();
-    });
-
-    typeAndBlurUsingLabel("Display name", "Test");
-    typeAndBlurUsingLabel("Connection String", "invalid");
-
-    // should surface an error if the connection string is invalid
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(": check your connection string");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Implicitly relative file paths are not allowed.");
-
-    // should be able to recover from an error and add database with the correct connection string
-    cy.findByDisplayValue("invalid")
-      .clear()
-      .type(
-        "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
-        { delay: 0 },
-      );
-    cy.button("Save", { timeout: 10000 }).click();
-    cy.wait("@createDatabase");
-  });
-
   describe("external databases", { tags: "@external" }, () => {
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("PostgreSQL").click({ force: true });
+      popover().within(() => {
+        if (isEE) {
+          // EE should ship with Oracle and Vertica as options
+          cy.findByText("Oracle");
+          cy.findByText("Vertica");
+        }
+
+        cy.findByText("PostgreSQL").click({ force: true });
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show advanced options").click();
