@@ -47,6 +47,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
 
   return (
     <ModalContent
+      data-testid="delete-object-modal"
       title={t`Are you sure you want to delete this row?`}
       footer={[
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,

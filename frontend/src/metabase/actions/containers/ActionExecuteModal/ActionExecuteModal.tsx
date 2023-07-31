@@ -51,7 +51,11 @@ const ActionExecuteModal = ({
   };
 
   return (
-    <ModalContent title={action.name} onClose={onClose}>
+    <ModalContent
+      data-testid="action-execute-modal"
+      title={action.name}
+      onClose={onClose}
+    >
       <ActionParametersInputForm
         action={action}
         initialValues={initialValues}
