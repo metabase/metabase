@@ -15,6 +15,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { useDispatch } from "metabase/lib/redux";
 import { zoomInRow } from "metabase/query_builder/actions";
 
+import { getSearchTextFromLocation } from "metabase/search/utils";
 import SearchResults from "./SearchResults";
 import RecentsList from "./RecentsList";
 import {
@@ -41,18 +42,6 @@ type OwnProps = {
 };
 
 type Props = RouterProps & OwnProps;
-
-function isSearchPageLocation(location: Location) {
-  const components = location.pathname.split("/");
-  return components[components.length - 1];
-}
-
-function getSearchTextFromLocation(location: SearchAwareLocation) {
-  if (isSearchPageLocation(location)) {
-    return location.query.q || "";
-  }
-  return "";
-}
 
 function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const [searchText, setSearchText] = useState<string>(() =>
