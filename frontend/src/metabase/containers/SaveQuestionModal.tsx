@@ -181,7 +181,8 @@ export const SaveQuestionModal = ({
         collectionId={openCollectionId}
         onClose={() => setCreatingNewCollection(false)}
         onCreate={(collection: Collection) => {
-          handleSubmit({ ...stagedValues, collection_id: collection.id });
+          setCreatingNewCollection(false);
+          setStagedValues({ ...stagedValues, collection_id: collection.id });
         }}
       />
     );
@@ -238,7 +239,6 @@ export const SaveQuestionModal = ({
                       title={t`Which collection should this go in?`}
                     >
                       <NewCollectionButton
-                        disabled={!isValid}
                         onClick={() => {
                           setCreatingNewCollection(true);
                           setStagedValues(values);
