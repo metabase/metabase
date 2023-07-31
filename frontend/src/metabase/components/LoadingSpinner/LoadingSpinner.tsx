@@ -14,11 +14,11 @@ const LoadingSpinner = ({
   className,
   size = 32,
   borderWidth = 4,
-  ...rest
+  "data-testid": dataTestId,
 }: Props) => (
   <SpinnerRoot
     className={className}
-    data-testid={rest["data-testid"] ?? "loading-spinner"}
+    data-testid={dataTestId ?? "loading-spinner"}
   >
     {isReducedMotionPreferred() ? (
       <Icon name="hourglass" size="24" />
