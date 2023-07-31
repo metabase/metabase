@@ -150,19 +150,19 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.go("back");
       cy.location("pathname").should("eq", embeddingPage);
 
-      cy.log("The second section: 'Full-app embedding'");
-      cy.findByTestId("-full-app-embedding-setting").within(() => {
+      cy.log("The second section: 'Interactive embedding'");
+      cy.findByTestId("-interactive-embedding-setting").within(() => {
         const fullAppEmbeddingPath =
           "/admin/settings/embedding-in-other-applications/full-app";
 
-        cy.findByRole("link")
+        cy.findAllByRole("link")
           .should("have.attr", "href")
           .and("eq", fullAppEmbeddingPath);
 
         cy.findByText(/Paid/i);
-        cy.findByText("Full-app embedding");
+        cy.findByText("Interactive embedding");
         cy.findByText(
-          "With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder.",
+          "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO—down to the row- or column-level—so people only see what they need to.",
         );
         cy.findByText("More details").click();
         cy.location("pathname").should("eq", fullAppEmbeddingPath);
