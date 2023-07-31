@@ -424,7 +424,7 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden? include-editable-data-model?]
+(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
@@ -451,7 +451,11 @@
                           (for [table tables]
                             (-> table
                                 (update :segments (partial filter mi/can-read?))
-                                (update :metrics  (partial filter mi/can-read?)))))))))
+                                (update :metrics  (partial filter mi/can-read?))))))
+        (update :tables (if remove_inactive?
+                          (fn [tables]
+                            (filter :active tables))
+                          identity)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/metadata"
@@ -462,12 +466,14 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include_hidden include_editable_data_model]
+  [id include_hidden include_editable_data_model remove_inactive]
   {include_hidden              (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+   include_editable_data_model (s/maybe su/BooleanString)
+   remove_inactive             (s/maybe su/BooleanString)}
   (db-metadata id
                (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean include_editable_data_model)))
+               (Boolean/parseBoolean include_editable_data_model)
+               (Boolean/parseBoolean remove_inactive)))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------

@@ -190,9 +190,21 @@ export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => (_dispatch, getState) => {
     const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    return { id: parameterId, value, isDraft: isSettingDraftParameterValues };
+    return {
+      id: parameterId,
+      value: normalizeValue(value),
+      isDraft: isSettingDraftParameterValues,
+    };
   },
 );
+
+function normalizeValue(value) {
+  if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+
+  return value;
+}
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
 export const setParameterValues = createAction(SET_PARAMETER_VALUES);
