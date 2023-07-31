@@ -21,6 +21,11 @@ import SearchResults from "metabase/nav/components/SearchResults";
 
 import { SearchAwareLocation } from "metabase/search/types";
 import {
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+  isSearchPageLocation,
+} from "metabase/search/utils";
+import {
   SearchInputContainer,
   SearchIcon,
   CloseSearchButton,
@@ -30,11 +35,6 @@ import {
   SearchBarRoot,
   SearchFunnelButton,
 } from "./SearchBar.styled";
-import {
-  getFiltersFromLocation,
-  getSearchTextFromLocation,
-  isSearchPageLocation,
-} from "metabase/search/utils";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
