@@ -14,7 +14,7 @@
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
   (:import
-   (java.util UUID)))
+   (java.util)))
 
 (set! *warn-on-reflection* true)
 
