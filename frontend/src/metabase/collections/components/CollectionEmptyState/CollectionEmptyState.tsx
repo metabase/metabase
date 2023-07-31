@@ -18,7 +18,7 @@ export interface CollectionEmptyStateProps {
 const CollectionEmptyState = ({
   collection,
 }: CollectionEmptyStateProps): JSX.Element => {
-  const canWrite = collection?.can_write ?? false;
+  const canWrite = !!collection?.can_write;
 
   return (
     <EmptyStateRoot data-testid="collection-empty-state">
