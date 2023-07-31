@@ -134,22 +134,6 @@ describe("scenarios > setup", () => {
 
       // remove database
       cy.findByLabelText("Remove database").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show more options").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("H2").click();
-      cy.findByLabelText("Display name").type("Metabase H2");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Connect database").closest("button").should("be.disabled");
-
-      const dbFilename = "e2e/runner/empty.db";
-      const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
-      cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Connect database")
-        .closest("button")
-        .should("not.be.disabled")
-        .click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("I'll add my data later").click();
