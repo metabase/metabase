@@ -15,7 +15,7 @@ import ActionParametersInputForm from "../ActionParametersInputForm";
 import { useActionInitialValues } from "../ActionParametersInputForm/ActionParametersInputForm";
 
 interface ActionExecuteModalProps {
-  actionId: WritebackActionId;
+  actionId: WritebackActionId | undefined;
   initialValues?: ParametersForActionExecution;
   fetchInitialValues?: () => Promise<ParametersForActionExecution>;
   shouldPrefetch?: boolean;
