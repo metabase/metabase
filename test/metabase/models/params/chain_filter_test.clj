@@ -536,9 +536,9 @@
     (mt/dataset nil-values-dataset
       (mt/$ids tbl
         (letfn [(thunk []
-                  (doseq [[field expected-values] {:mytype  {:values          ["empty" "null" "value"]
+                  (doseq [[field expected-values] {:mytype  {:values          [["empty"] ["null"] ["value"]]
                                                              :has_more_values false}
-                                                   :myfield {:values          [nil "" "value"]
+                                                   :myfield {:values          [[nil] [""] ["value"]]
                                                              :has_more_values false}}]
                     (testing "chain-filter"
                       ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
@@ -546,7 +546,7 @@
                       (is (= expected-values
                              (update (chain-filter/chain-filter (mt/id :tbl field) {}) :values sort))))
                     (testing "chain-filter-search"
-                      (is (= {:values          ["value"]
+                      (is (= {:values          [["value"]]
                               :has_more_values false}
                              (chain-filter/chain-filter-search (mt/id :tbl field) {} "val"))))))]
           (testing "no FieldValues"
