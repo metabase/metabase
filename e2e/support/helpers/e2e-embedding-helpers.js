@@ -1,14 +1,36 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 
 /**
- * Programatically generate token and visit the embedded page for a question or a dashboard
+ * @typedef {object} QuestionResource
+ * @property {number} question - ID of a question we are embedding
  *
- * @param {object} payload
- * @param {{setFilters: object, setStyle: object, hideFilters: string[]}}
+ * @typedef {object} DashboardResource
+ * @property {number} dashboard - ID of a dashboard we are embedding
+ *
+ * @typedef {object} EmbedPayload
+ * @property {(QuestionResource|DashboardResource)} resource
+ * {@link QuestionResource} or {@link DashboardResource}
+ * @property {object} params
+ *
+ * @typedef {object} HiddenFilters
+ * @property {string} hide_parameters
+ *
+ * @typedef {object} PageStyle
+ * @property {boolean} bordered
+ * @property {boolean} titled
+ * @property {boolean} hide_download_button - EE/PRO only feature to disable downloads
+ */
+
+/**
+ * Programmatically generate token and visit the embedded page for a question or a dashboard
+ *
+ * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
+ * @param {{setFilters: object, pageStyle: PageStyle, hideFilters: string[]}} options
  *
  * @example
  * visitEmbeddedPage(payload, {
  *   setFilters: {id: 92, source: "Organic"},
+ *   pageStyle: {titled: true},
  *   hideFilters: ["id", "source"]
  * });
  */
@@ -47,19 +69,21 @@ export function visitEmbeddedPage(
   });
 
   /**
-   * Construct the string that hides certain filters
+   * Construct a hidden filters object from the list of filters we want to hide
    *
    * @param {string[]} filters
-   * @returns object
+   * @returns {HiddenFilters}
    */
   function getHiddenFilters(filters) {
-    return filters.length > 0 ? { hide_parameters: filters.join(",") } : {};
+    const params = filters.join(",");
+    return filters.length > 0 ? { hide_parameters: params } : {};
   }
 
   /**
+   * Get the URL hash from the page style and/or hidden filters parameters
    *
-   * @param {object} pageStyle
-   * @param {object} hiddenFilters
+   * @param {PageStyle} pageStyle
+   * @param {HiddenFilters} hiddenFilters
    *
    * @returns string
    */
@@ -70,7 +94,7 @@ export function visitEmbeddedPage(
   /**
    * Extract the embeddable object type from the payload
    *
-   * @param {object} payload
+   * @param {EmbedPayload} payload - See {@link EmbedPayload}
    * @returns ("question"|"dashboard")
    */
   function getEmbeddableObject(payload) {
@@ -79,7 +103,7 @@ export function visitEmbeddedPage(
 }
 
 /**
- * Grab iframe `src` via UI and open it,
+ * Grab an iframe `src` via UI and open it,
  * but make sure user is signed out.
  */
 export function visitIframe() {
