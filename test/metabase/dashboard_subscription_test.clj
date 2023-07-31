@@ -405,8 +405,8 @@
           {:email
            (fn [_ _]
              (testing "Markdown cards are included in email subscriptions"
-               (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
-                                                  "header, quote isn't escaped"      true}
+               (is (= (rasta-pulse-email {:body [{"Aviary KPIs"                 true
+                                                  "header, quote isn't escaped" true}
                                                  pulse.test-util/png-attachment]})
                       (mt/summarize-multipart-email #"Aviary KPIs"
                                                     #"header, quote isn't escaped")))))
