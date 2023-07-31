@@ -529,3 +529,8 @@
                (assoc col :selected? true))
              visible-columns)
        (lib.equality/mark-selected-columns visible-columns selected-fields)))))
+
+(mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
+  "Find the field id for something or nil."
+  [field-metadata :- lib.metadata/ColumnMetadata]
+  (:id field-metadata))

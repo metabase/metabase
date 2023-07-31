@@ -2735,6 +2735,40 @@
                              (-> response :values set)))
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
+(deftest parameters-with-field-to-field-remapping-test
+  (let [param-key "id_param_id"]
+    (t2.with-temp/with-temp
+      [:model/Card card {:dataset_query
+                         {:database (mt/id)
+                          :type     :native
+                          :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{ID}}"
+                                     :template-tags {"ID" {:id           param-key
+                                                           :name         "ID"
+                                                           :display_name "ID"
+                                                           :type         :dimension
+                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                           :required     true}}}}
+                         :name       "native card with ID field filter"
+                         :parameters [{:id     param-key,
+                                       :type   :id,
+                                       :target [:dimension [:template-tag "ID"]],
+                                       :name   "ID",
+                                       :slug   "ID"}]}]
+      (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
+        (is (= :type/Name
+               (t2/select-one-fn :semantic_type :model/Field (metabase.test/id :venues :name)))
+            "venues.name has semantic_type=type/Name, so it will be searched")
+        (testing "without search query"
+          (mt/let-url [url (param-values-url card param-key)]
+            (is (partial= {:has_more_values false
+                           :values [[1 "Red Medicine"] [2 "Stout Burgers & Beers"] [3 "The Apple Pan"]]}
+                          (mt/user-http-request :rasta :get 200 url)))))
+        (testing "with search query"
+          (mt/let-url [url (param-values-url card param-key "pan")]
+            (is (partial= {:has_more_values true
+                           :values [[3 "The Apple Pan"] [18 "The Original Pantry"] [62 "Hot Sauce and Panko"]]}
+                          (mt/user-http-request :rasta :get 200 url)))))))))
+
 (deftest parameters-with-source-is-static-list-test
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
     (testing "we could get the values"
