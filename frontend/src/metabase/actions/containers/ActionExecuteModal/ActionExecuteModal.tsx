@@ -84,7 +84,11 @@ export const ActionExecuteModal = ({
   const showEmptyState = shouldPrefetch && !hasPrefetchedValues;
 
   return (
-    <ModalContent title={action.name} onClose={onClose}>
+    <ModalContent
+      data-testid="action-execute-modal"
+      title={action.name}
+      onClose={onClose}
+    >
       {showEmptyState && <EmptyState message={t`Choose a record to update`} />}
 
       {!showEmptyState && (

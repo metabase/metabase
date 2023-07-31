@@ -23,7 +23,7 @@ const setup = ({ activeUsersCount, ssoEnabled, isSuperUser }: SetupOpts) => {
     settings: createMockSettingsState({
       "active-users-count": activeUsersCount,
       "token-features": createMockTokenFeatures({
-        sso: ssoEnabled,
+        sso_saml: ssoEnabled,
       }),
     }),
   });
