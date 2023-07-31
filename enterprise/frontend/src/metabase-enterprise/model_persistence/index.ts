@@ -8,7 +8,7 @@ import ModelCacheControl, {
   toggleModelPersistence,
 } from "./components/ModelCacheControl";
 
-if (hasPremiumFeature("advanced_config")) {
+if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled = () => true;
 
   PLUGIN_MODEL_PERSISTENCE.ModelCacheControl = ModelCacheControl;
