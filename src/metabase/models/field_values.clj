@@ -219,10 +219,11 @@
 
 (defn take-by-length
   "Like `take` but condition by the total length of elements.
-  Returns a stateful transducer when no collection is provided.
+   Assumes the elements are 1-tuples of values with a .toString() method.
+   Returns a stateful transducer when no collection is provided.
 
-    ;; (take-by-length 6 [\"Dog\" \"Cat\" \"Crocodile\"])
-    ;; => [\"Dog\" \"Cat\"]"
+    ;; (take-by-length 6 [[\"Dog\"] [\"Cat\"] [\"Duck\"]])
+    ;; => [[\"Dog\"] [\"Cat\"]]"
   ([max-length]
    (fn [rf]
      (let [current-length (volatile! 0)]
@@ -231,7 +232,7 @@
          ([result]
           (rf result))
          ([result input]
-          (vswap! current-length + (count (str input)))
+          (vswap! current-length + (count (str (first input))))
           (if (< @current-length max-length)
             (rf result input)
             (reduced result)))))))
@@ -240,7 +241,7 @@
    (lazy-seq
      (when-let [s (seq coll)]
        (let [f          (first s)
-             new-length (- max-length (count (str f)))]
+             new-length (- max-length (count (str (first f))))]
          (when-not (neg? new-length)
            (cons f (take-by-length new-length
                                    (rest s)))))))))

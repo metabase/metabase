@@ -62,7 +62,7 @@
 
             ;; returns much more if not sandboxed
             (is (> (-> (get-values :crowberto) :values count) 3))
-            (is (=? {:values          [["African"] ["American"] ["Artisan"]]
+            (is (=? {:values          [["Artisan"] ["African"] ["American"]]
                      :has_more_values false}
                     (get-values :rasta)))))
 
