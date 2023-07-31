@@ -378,7 +378,7 @@ const loadingDashCards = handleActions(
           ...state,
           // used for updating documents title. It's used for the number of total request loaded.
           // dashcardIds: loadingIds,
-          loadingIds,
+          loadingIds: state.loadingIds.concat(loadingIds),
           loadingStatus: loadingIds.length > 0 ? "running" : "idle",
           startTime: loadingIds.length > 0 ? currentTime : null,
         };

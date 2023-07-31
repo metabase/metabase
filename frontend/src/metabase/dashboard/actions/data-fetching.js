@@ -444,7 +444,7 @@ export const fetchDashboardCardData = options => (dispatch, getState) => {
 
   dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
 
-  // XXX: There is a race condition here, when refreshing a dashboard before
+  // TODO: There is a race condition here, when refreshing a dashboard before
   // the previous API calls finished.
   Promise.all(promises).then(() => {
     dispatch(loadingComplete());
