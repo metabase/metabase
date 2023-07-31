@@ -11,7 +11,7 @@ existing models follow this same pattern, e.g. Sandboxing-specific code for Tabl
 `metabase-enterprise.sandboxes.models.table`.
 
 Groups of API routes should be defined in namespaces like we do in OSS, for example
-`metabase-enterprise.content-management.api.review` for ModerationReview-related endpoints. All endpoints for a
+`metabase-enterprise.content-verification.api.review` for ModerationReview-related endpoints. All endpoints for a
 specific feature are combined into a single `routes` handler in a `metabase-enterprise.<feature>.api.routes` namespace
 similar to how OSS routes are combined in `metabase.api.routes`. Finally, all EE routes are combined into a single
 handler in `metabase-enterprise.api.routes`; this handler is included in `metabase.api.routes/routes` if EE code is
