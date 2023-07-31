@@ -10,11 +10,6 @@ const TEST_TYPES: {
   filter: SearchModelType;
 }[] = [
   {
-    name: "Apps",
-    filter: "app",
-    icon: "star",
-  },
-  {
     name: "Dashboards",
     filter: "dashboard",
     icon: "dashboard",

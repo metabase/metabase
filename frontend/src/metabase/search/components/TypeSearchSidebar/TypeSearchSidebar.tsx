@@ -10,11 +10,6 @@ const SEARCH_FILTERS: {
   filter: SearchModelType;
 }[] = [
   {
-    name: t`Apps`,
-    filter: "app",
-    icon: "star",
-  },
-  {
     name: t`Dashboards`,
     filter: "dashboard",
     icon: "dashboard",
