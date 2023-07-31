@@ -1,7 +1,10 @@
 import { t } from "ttag";
 import { updateIn } from "icepick";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+import {
+  hasAnySsoPremiumFeature,
+  hasPremiumFeature,
+} from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -29,42 +32,45 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       description: null,
       noHeader: true,
       widget: SamlAuthCard,
-      getHidden: () => !hasPremiumFeature("sso"),
+      getHidden: () => !hasPremiumFeature("sso_saml"),
     },
     {
       key: "jwt-enabled",
       description: null,
       noHeader: true,
       widget: JwtAuthCard,
-      getHidden: () => !hasPremiumFeature("sso"),
+      getHidden: () => !hasPremiumFeature("sso_jwt"),
     },
     {
       key: "enable-password-login",
       display_name: t`Enable Password Authentication`,
       description: t`When enabled, users can additionally log in with email and password.`,
       type: "boolean",
-      getHidden: settings =>
-        !settings["google-auth-enabled"] &&
-        !settings["ldap-enabled"] &&
-        !settings["saml-enabled"] &&
-        !settings["jwt-enabled"],
+      getHidden: (_settings, derivedSettings) =>
+        !hasPremiumFeature("disable_password_login") ||
+        (!derivedSettings["google-auth-enabled"] &&
+          !derivedSettings["ldap-enabled"] &&
+          !derivedSettings["saml-enabled"] &&
+          !derivedSettings["jwt-enabled"]),
     },
     {
       key: "send-new-sso-user-admin-email?",
       display_name: t`Notify admins of new SSO users`,
       description: t`When enabled, administrators will receive an email the first time a user uses Single Sign-On.`,
       type: "boolean",
-      getHidden: settings =>
-        !settings["google-auth-enabled"] &&
-        !settings["ldap-enabled"] &&
-        !settings["saml-enabled"] &&
-        !settings["jwt-enabled"],
+      getHidden: (_, derivedSettings) =>
+        !hasAnySsoPremiumFeature() ||
+        (!derivedSettings["google-auth-enabled"] &&
+          !derivedSettings["ldap-enabled"] &&
+          !derivedSettings["saml-enabled"] &&
+          !derivedSettings["jwt-enabled"]),
     },
     {
       key: "session-timeout",
       display_name: t`Session timeout`,
       description: t`Time before inactive users are logged out.`,
       widget: SessionTimeoutSetting,
+      getHidden: () => !hasPremiumFeature("session_timeout_config"),
     },
   ]),
 );
@@ -72,6 +78,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/saml": {
+    getHidden: () => !hasPremiumFeature("sso_saml"),
     component: SettingsSAMLForm,
     settings: [
       {
@@ -158,6 +165,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   },
   "authentication/jwt": {
     component: SettingsJWTForm,
+    getHidden: () => !hasPremiumFeature("sso_jwt"),
     settings: [
       {
         key: "jwt-enabled",
@@ -172,7 +180,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         type: "string",
         required: true,
         autoFocus: true,
-        getHidden: settings => !settings["jwt-enabled"],
+        getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
       },
       {
         key: "jwt-shared-secret",
@@ -180,7 +188,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         type: "text",
         required: true,
         widget: SecretKeyWidget,
-        getHidden: settings => !settings["jwt-enabled"],
+        getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
         props: {
           confirmation: {
             header: t`Regenerate JWT signing key?`,
@@ -227,10 +235,14 @@ const SSO_PROVIDER = {
 };
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
-  if (MetabaseSettings.get("other-sso-enabled?")) {
+  if (
+    (hasPremiumFeature("sso_jwt") || hasPremiumFeature("sso_saml")) &&
+    MetabaseSettings.get("other-sso-enabled?")
+  ) {
     providers = [SSO_PROVIDER, ...providers];
   }
   if (
+    hasPremiumFeature("disable_password_login") &&
     !MetabaseSettings.isPasswordLoginEnabled() &&
     !MetabaseSettings.isLdapEnabled()
   ) {
@@ -239,34 +251,40 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   return providers;
 });
 
-PLUGIN_IS_PASSWORD_USER.push(
-  user =>
-    !user.google_auth &&
-    !user.ldap_auth &&
-    MetabaseSettings.isPasswordLoginEnabled(),
-);
+if (hasPremiumFeature("disable_password_login")) {
+  PLUGIN_IS_PASSWORD_USER.push(
+    user =>
+      !user.google_auth &&
+      !user.ldap_auth &&
+      MetabaseSettings.isPasswordLoginEnabled(),
+  );
+}
 
-PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
-  updateIn(sections, ["authentication/ldap", "settings"], settings => [
-    ...settings,
-    {
-      key: "ldap-group-membership-filter",
-      display_name: t`Group membership filter`,
-      type: "string",
-      validations: [
-        value =>
-          (value.match(/\(/g) || []).length !==
-          (value.match(/\)/g) || []).length
-            ? t`Check your parentheses`
-            : null,
-      ],
-    },
-    {
-      key: "ldap-sync-admin-group",
-      display_name: t`Sync Administrator group`,
-      type: "boolean",
-    },
-  ]),
-);
+if (hasPremiumFeature("sso_ldap")) {
+  PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
+    updateIn(sections, ["authentication/ldap", "settings"], settings => [
+      ...settings,
+      {
+        key: "ldap-group-membership-filter",
+        display_name: t`Group membership filter`,
+        type: "string",
+        validations: [
+          value =>
+            (value.match(/\(/g) || []).length !==
+            (value.match(/\)/g) || []).length
+              ? t`Check your parentheses`
+              : null,
+        ],
+      },
+      {
+        key: "ldap-sync-admin-group",
+        display_name: t`Sync Administrator group`,
+        type: "boolean",
+      },
+    ]),
+  );
+}
 
-PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));
+if (hasPremiumFeature("session_timeout_config")) {
+  PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));
+}

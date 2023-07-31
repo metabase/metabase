@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
@@ -10,6 +9,7 @@ import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
 import Question from "metabase-lib/Question";
@@ -150,7 +150,7 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    const loadingMessage = PLUGIN_SELECTORS.getLoadingMessage(getState());
+    const loadingMessage = getWhiteLabeledLoadingMessage(getState());
     const title = {
       onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,

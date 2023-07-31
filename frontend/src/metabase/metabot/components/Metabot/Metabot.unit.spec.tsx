@@ -13,16 +13,15 @@ import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
 import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 import {
+  API_ERROR,
   setupCardDataset,
   setupDatabaseEndpoints,
-} from "__support__/server-mocks";
-import {
-  API_ERROR,
   setupBadRequestMetabotDatabaseEndpoint,
   setupBadRequestMetabotModelEndpoint,
   setupMetabotDatabaseEndpoint,
   setupMetabotModelEndpoint,
-} from "__support__/server-mocks/metabot";
+} from "__support__/server-mocks";
+
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import Metabot from "./Metabot";

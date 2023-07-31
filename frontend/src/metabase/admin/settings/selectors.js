@@ -73,7 +73,7 @@ function updateSectionsWithPlugins(sections) {
   }
 }
 
-const SECTIONS = {
+export const ADMIN_SETTINGS_SECTIONS = {
   setup: {
     name: t`Setup`,
     order: 10,
@@ -206,7 +206,6 @@ const SECTIONS = {
         type: "string",
         required: true,
         autoFocus: true,
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-port",
@@ -215,7 +214,6 @@ const SECTIONS = {
         type: "number",
         required: true,
         validations: [["integer", t`That's not a valid port number`]],
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-security",
@@ -224,7 +222,6 @@ const SECTIONS = {
         type: "radio",
         options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
         defaultValue: "none",
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-username",
@@ -232,7 +229,6 @@ const SECTIONS = {
         description: null,
         placeholder: "nicetoseeyou",
         type: "string",
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-password",
@@ -717,7 +713,7 @@ const SECTIONS = {
 };
 
 const getSectionsWithPlugins = _.once(() =>
-  updateSectionsWithPlugins(SECTIONS),
+  updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 
 export const getSettings = createSelector(
