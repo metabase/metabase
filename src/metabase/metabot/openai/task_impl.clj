@@ -1,11 +1,11 @@
 (ns metabase.metabot.openai.task-impl
   (:require
-   [metabase.metabot.openai.client :as metabot-client]
-   [metabase.metabot.openai.infer-mbql :as infer-mbql]
-   [metabase.metabot.task-api :as task-api]
-   [metabase.metabot.util :as metabot-util]
-   [metabase.models :as models]
-   [toucan2.core :as t2]))
+    [metabase.metabot.openai.client :as metabot-client]
+    [metabase.metabot.openai.infer-mbql :as infer-mbql]
+    [metabase.metabot.task-api :as task-api]
+    [metabase.metabot.util :as metabot-util]
+    [metabase.models :as models]
+    [toucan2.core :as t2]))
 
 (def openai-infer-mbql-context-generator
   (reify task-api/ContextGenerator
@@ -18,7 +18,7 @@
 
 (def openai-mbql-inferencer
   (reify task-api/MBQLInferencer
-    (infer [_ {:keys [context]}]
+    (infer-mbql [_ {:keys [context]}]
       (let [mbql (-> context
                      infer-mbql/generate-prompt
                      metabot-client/invoke-metabot

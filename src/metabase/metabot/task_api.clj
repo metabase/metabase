@@ -10,5 +10,5 @@
   (context [_ {:keys [prompt context-entities]}]))
 
 (defprotocol MBQLInferencer
-  (infer [_ {:keys [context prompt]}]))
+  (infer-mbql [_ {:keys [context prompt]}]))
 

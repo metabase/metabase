@@ -1,19 +1,20 @@
 (ns metabase.metabot.inference-ws.client
   (:require
-   [clj-http.client :as http]
-   [clojure.data.json :as json]
-   [clojure.walk :as walk]
-   [malli.core :as mc]
-   [metabase.metabot.settings :as metabot-settings]
-   [metabase.metabot.schema :as metabot-schema]))
+    [clj-http.client :as http]
+    [clojure.data.json :as json]
+    [clojure.walk :as walk]
+    [malli.core :as mc]
+    [metabase.metabot.settings :as metabot-settings]
+    [metabase.metabot.schema :as metabot-schema]
+    [metabase.util.log :as log]))
 
 (def embeddings-schema
   (mc/schema
-   [:map-of :string :string]))
+    [:map-of :string :string]))
 
 (def embeddings-return-schema
   (mc/schema
-   [:map-of :string [:vector float?]]))
+    [:map-of :string [:vector float?]]))
 
 (mc/validate embeddings-schema {"A" "esafs"})
 (mc/validate embeddings-return-schema {"A" [1.0]})
@@ -22,7 +23,7 @@
   "Convert the input map of {obj-str encoding} to a map of {obj-str embedding (a vector of floats)}."
   ([endpoint obj-strs->encodings]
    (let [request {:method       :post
-                  :url          (format "%s/bulkEmbed" endpoint)
+                  :url          (format "%s/api/bulkEmbed" endpoint)
                   :body         (json/write-str {:input obj-strs->encodings})
                   :content-type :json}
          {:keys [body status]} (http/request request)]
@@ -30,8 +31,8 @@
        (get (json/read-str body) "embeddings"))))
   ([obj-strs->encoddings]
    (bulk-embeddings
-    (metabot-settings/metabot-inference-ws-url)
-    obj-strs->encoddings)))
+     (metabot-settings/metabot-inference-ws-url)
+     obj-strs->encoddings)))
 
 (defn keywordize-types
   [mbql]
@@ -52,18 +53,22 @@
   to select the best single dataset if it doesn't know how to do joins or that
   it will select and join as desired from the provided datasets to provide the
   final answer."
-  ([endpoint {:keys [prompt context] :as args}]
+  ([endpoint {:keys [prompt context models] :as args}]
    {:pre [prompt context (mc/validate metabot-schema/inference-schema args)]}
-   (let [request {:method           :post
-                  :url              (format "%s/infer" endpoint)
-                  :body             (json/write-str {:prompt prompt :context context})
-                  :as               :json
-                  :content-type     :json
-                  :throw-exceptions false}
+   (log/info "Context will not be passed to inferencer any more.")
+   (let [request-body {:prompt prompt
+                       ;:context          context
+                       :models models}
+         request      {:method           :post
+                       :url              (format "%s/api/inferMBQL" endpoint)
+                       :body             (json/write-str request-body)
+                       :as               :json
+                       :content-type     :json
+                       :throw-exceptions false}
          {:keys [body status]} (http/request request)]
      (when (= 200 status)
        (keywordize-types body))))
   ([prompt-data]
    (infer
-    (metabot-settings/metabot-inference-ws-url)
-    prompt-data)))
+     (metabot-settings/metabot-inference-ws-url)
+     prompt-data)))

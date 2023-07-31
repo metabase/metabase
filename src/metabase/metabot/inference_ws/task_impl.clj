@@ -20,7 +20,7 @@
 
 (extend-type MBFineTuneMBQLInferencer
   task-api/MBQLInferencer
-  (infer [{:keys [base-url]} request]
+  (infer-mbql [{:keys [base-url]} request]
     (inference-ws-client/infer base-url request)))
 
 (defn inference-ws-embedder

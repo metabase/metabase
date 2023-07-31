@@ -43,7 +43,7 @@
                                :type     :query
                                :query    (mtm/full-join-orders-test-query)}]
           (let [inferencer        (reify task-api/MBQLInferencer
-                                    (infer [_ _]
+                                    (infer-mbql [_ _]
                                       expected-result))
                 embedder          (reify task-api/Embedder
                                     (single [_ _]
@@ -59,13 +59,7 @@
                                                           (embeddings [_]
                                                             {[:table (:id model)]       [0 1 0 0]
                                                              [:table (inc (:id model))] [1 0 0 0]
-                                                             [:table (dec (:id model))] [0 0 0 1]})
-                                                          (context [_ entity-type entity-id]
-                                                            (get-in
-                                                             {:table
-                                                              {(:id model)
-                                                               (metabot-util/model->context model)}}
-                                                             [entity-type entity-id]))))]
+                                                             [:table (dec (:id model))] [0 0 0 1]})))]
                 (is (= expected-result
                        (mbql-inference/infer-mbql
                         {:inferencer        inferencer
