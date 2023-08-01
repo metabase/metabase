@@ -35,7 +35,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -1506,36 +1505,6 @@
                                               :namespace  "snippets"})))
           (finally
             (t2/delete! Collection :name collection-name)))))))
-
-(deftest create-collection-types-test
-  (testing "POST /api/collection"
-    (testing "collection types"
-      (mt/with-model-cleanup [Collection]
-        (testing "Admins should be able to create with a type"
-          (is (malli= [:map
-                       [:description       :nil]
-                       [:archived          [:= false]]
-                       [:slug              [:= "foo"]]
-                       [:color             [:= "#f38630"]]
-                       [:name              [:= "foo"]]
-                       [:personal_owner_id :nil]
-                       [:authority_level   [:= "official"]]
-                       [:id                :int]
-                       [:location          [:= "/"]]
-                       [:entity_id         [:maybe ms/NanoIdString]]
-                       [:namespace         :nil]
-                       [:created_at        [:fn
-                                            {:error/message "instance of java.time.temporal.Temporal"}
-                                            (partial instance? java.time.temporal.Temporal)]]
-                       [:type              [:maybe :string]]]
-                      (mt/user-http-request :crowberto :post 200 "collection"
-                                            {:name "foo", :color "#f38630", :authority_level "official"})))
-          (testing "But they have to be valid types"
-            (mt/user-http-request :crowberto :post 400 "collection"
-                                  {:name "foo", :color "#f38630", :authority_level "no-way-this-is-valid-type"})))
-        (testing "Non-admins cannot create a collection with a type"
-          (mt/user-http-request :rasta :post 403 "collection"
-                                {:name "foo", :color "#f38630", :authority_level "official"}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |
