@@ -11,6 +11,7 @@
    [honeysql.format :as hformat]
    [honeysql.types]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -185,6 +186,7 @@
 (p.types/defrecord+ ^{:deprecated "0.46.0"} TypedHoneySQLForm [form info]
   pretty/PrettyPrintable
   (pretty [_]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     `(with-type-info ~form ~info))
 
   ToSql
@@ -225,7 +227,7 @@
     (:metabase.util.honeysql-extensions/database-type type-info)
     (update :metabase.util.honeysql-extensions/database-type (comp u/lower-case-en name))))
 
-(extend-protocol TypedHoneySQL
+(extend-protocol #_{:clj-kondo/ignore [:deprecated-var]} TypedHoneySQL
   Object
   (type-info [_]
     nil)
@@ -265,6 +267,7 @@
    Otherwise, returns `nil`."
   {:deprecated "0.46.0"}
   [honeysql-form]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (some-> honeysql-form type-info type-info->db-type))
 
 (defn is-of-type?
@@ -290,6 +293,7 @@
     ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
   {:deprecated "0.46.0", :style/indent [:form]}
   [honeysql-form db-type :- (s/maybe su/KeywordOrString)]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (if (some? db-type)
     (with-type-info honeysql-form {:metabase.util.honeysql-extensions/database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
@@ -345,6 +349,7 @@
   [operator]
   (fn [& args]
     (let [arg-db-type (some (fn [arg]
+                              #_{:clj-kondo/ignore [:deprecated-var]}
                               (-> arg type-info type-info->db-type))
                             args)]
       #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}

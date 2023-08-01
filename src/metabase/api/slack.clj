@@ -8,6 +8,7 @@
    [metabase.config :as config]
    [metabase.integrations.slack :as slack]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

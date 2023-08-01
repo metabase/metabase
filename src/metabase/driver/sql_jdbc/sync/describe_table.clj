@@ -17,6 +17,7 @@
    [metabase.models :refer [Field]]
    [metabase.models.table :as table]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2])

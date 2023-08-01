@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.models.collection :refer [Collection]]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [toucan2.core :as t2]))
 

@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.moderation :as moderation]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

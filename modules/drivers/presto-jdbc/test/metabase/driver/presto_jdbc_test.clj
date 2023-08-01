@@ -18,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])

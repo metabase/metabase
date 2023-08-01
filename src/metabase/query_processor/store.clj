@@ -23,6 +23,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [pretty.core :as pretty]
    [schema.core :as s]

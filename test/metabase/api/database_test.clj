@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]

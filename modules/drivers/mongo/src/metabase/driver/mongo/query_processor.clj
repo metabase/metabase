@@ -24,6 +24,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [monger.operators :refer [$add $addToSet $and $avg $cond
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
