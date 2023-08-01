@@ -787,12 +787,20 @@
         series-seqs       (map card-result->series (cons {:card card :result {:data data}} multi-res))]
     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series-seqs settings)))))
 
+(defn- replace-nils [rows]
+  (mapv (fn [row]
+          (if (nil? (first row))
+            (assoc row 0 "(empty)")
+            row))
+        rows))
+
 (defn- lab-image-bundle
   "Generate an image-bundle for a Line Area Bar chart (LAB)
 
   Use the combo charts for every chart-type in line area bar because we get multiple chart series for cheaper this way."
   [chart-type render-type _timezone-id card dashcard {:keys [cols rows viz-settings] :as data}]
-  (let [viz-settings    (merge viz-settings (:visualization_settings dashcard))
+  (let [rows            (replace-nils rows)
+        viz-settings    (merge viz-settings (:visualization_settings dashcard))
         x-axis-rowfn    (or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
         y-axis-rowfn    (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))
         x-rows          (filter some? (map x-axis-rowfn rows))
