@@ -102,6 +102,8 @@ export const DATE_RANGE_FORMAT_SPECS: {
   const mmS = "[minute] :mm";
   const mmP = "[minutes] :mm";
 
+  // For a readable table, see the PR description for:
+  // https://github.com/metabase/metabase/pull/32490
   return {
     default: [],
     // Use Wikipedia’s date range formatting guidelines for some of these:
@@ -482,34 +484,6 @@ export const SPECIFIC_DATE_TIME_UNITS: DatetimeUnit[] = [
   "minute",
   "minute-of-hour",
 ];
-
-export function genDateRangeTable() {
-  const getSpecsRows = (unit: DatetimeUnit) => {
-    const specs = DATE_RANGE_FORMAT_SPECS[unit];
-    return specs.map(({ same, test: { output } }) => {
-      const kind =
-        same === unit.split("-")[0]
-          ? "single"
-          : same
-          ? `same ${same}`
-          : "otherwise";
-      return [`<em>${kind}</em>`, output].map(s => `<td>${s}</td>`);
-    });
-  };
-  const getUnitRows = (unit: DatetimeUnit) => {
-    const rows = getSpecsRows(unit);
-    rows[0] = [
-      `<td valign=top rowspan="${rows.length}"><code>${unit}</code></td>`,
-      ...rows[0],
-    ];
-    return rows.map(cols => ["<tr>", ...cols, "</tr>"].join("\n"));
-  };
-  const headerRow = ["date unit", "range type", "example"]
-    .map(s => `<td><strong>${s}</strong></td>`)
-    .join("\n");
-  const allRows = SPECIFIC_DATE_TIME_UNITS.map(getUnitRows).flat();
-  return ["<table>", headerRow, ...allRows, "</table>"].join("\n");
-}
 
 const getDayFormat = (options: OptionsType) =>
   options.compact || options.date_abbreviate ? "ddd" : "dddd";
