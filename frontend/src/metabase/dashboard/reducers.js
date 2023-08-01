@@ -373,11 +373,22 @@ const loadingDashCards = handleActions(
     [FETCH_DASHBOARD_CARD_DATA]: {
       next: (state, { payload: { currentTime, loadingIds } }) => {
         const newLoadingIds = state.loadingIds.concat(loadingIds);
+        const startFetching =
+          state.loadingIds.length === 0 && loadingIds.length > 0;
+        const hasNothingToFetch =
+          state.loadingIds.length === 0 && loadingIds.length === 0;
+        let startTime;
+        if (startFetching) {
+          startTime = currentTime;
+        } else if (hasNothingToFetch) {
+          startTime = null;
+        }
+
         return {
           ...state,
           loadingIds: newLoadingIds,
           loadingStatus: newLoadingIds.length > 0 ? "running" : "idle",
-          startTime: loadingIds.length > 0 ? currentTime : null,
+          ...(startTime !== undefined ? { startTime } : {}),
         };
       },
     },
