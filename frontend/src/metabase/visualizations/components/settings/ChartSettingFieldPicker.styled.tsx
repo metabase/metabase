@@ -4,7 +4,7 @@ import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import SelectButton from "metabase/core/components/SelectButton";
 import Triggerable from "metabase/components/Triggerable";
-import ChartSettingColorPicker from "./ChartSettingColorPicker";
+import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
 interface ChartSettingFieldPickerRootProps {
   disabled: boolean;

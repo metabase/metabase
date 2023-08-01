@@ -122,8 +122,11 @@ class ChartSettings extends Component {
     this.props.onChange(settings);
   };
 
-  handleChangeSettings = changedSettings => {
-    this.props.onChange(updateSettings(this._getSettings(), changedSettings));
+  handleChangeSettings = (changedSettings, question) => {
+    this.props.onChange(
+      updateSettings(this._getSettings(), changedSettings),
+      question,
+    );
   };
 
   handleChangeSeriesColor = (seriesKey, color) => {

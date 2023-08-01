@@ -9,6 +9,7 @@ import type {
   PublicCard,
 } from "metabase-types/api";
 
+import { TableColumnOrderSetting } from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
@@ -93,5 +94,13 @@ export const createMockModerationReview = (
   status: "verified",
   created_at: "2015-01-01T20:10:30.200",
   most_recent: true,
+  ...opts,
+});
+
+export const createMockTableColumnOrderSetting = (
+  opts?: Partial<TableColumnOrderSetting>,
+): TableColumnOrderSetting => ({
+  name: "Column",
+  enabled: true,
   ...opts,
 });
