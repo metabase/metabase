@@ -229,9 +229,6 @@
   [db]
   (driver/database-supports? (driver.u/database->driver db) :uploads db))
 
-(defn to-map
-       [x]
-       (into {} x))
 (defn- dbs-list
   [& {:keys [include-tables?
              include-saved-questions-db?
@@ -287,8 +284,7 @@
                                                               :exclude-uneditable-details?     only-editable?
                                                               :include-analytics?              include_analytics
                                                               :include-only-uploadable?        include_only_uploadable))
-                                            [])
-        db-list-res                     (map #(into {} %) db-list-res)]
+                                            [])]
    {:data  db-list-res
     :total (count db-list-res)}))
 
