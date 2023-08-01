@@ -97,7 +97,7 @@ describe("scenarios > visualizations > table column settings", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  describe("table data source", () => {
+  describe("tables", () => {
     it("should be able to show and hide table fields", () => {
       cy.createQuestion(tableQuestion, { visitQuestion: true });
       openSettings();
@@ -267,8 +267,8 @@ describe("scenarios > visualizations > table column settings", () => {
     });
   });
 
-  describe("structured question data source", () => {
-    it("should be able to show and hide nested query fields", () => {
+  describe("nested structured questions", () => {
+    it("should be able to show and hide fields from a nested query", () => {
       cy.createQuestion(tableQuestion).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
@@ -288,7 +288,27 @@ describe("scenarios > visualizations > table column settings", () => {
       additionalColumns().findByText("Tax").should("not.exist");
     });
 
-    it("should be able to show and hide implicitly joinable fields for the nested query table", () => {
+    it.skip("should be able to show and hide fields from a nested query with joins (metabase#32373)", () => {
+      cy.createQuestion(tableQuestionWithJoin).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+      });
+      openSettings();
+
+      cy.log("hide a column");
+      visibleColumns().within(() => hideColumn("Products → Ean"));
+      visibleColumns().findByText("Products → Ean").should("not.exist");
+      disabledColumns().findByText("Products → Ean").should("exist");
+      runQuery();
+      cy.wait("@dataset");
+
+      cy.log("show a column");
+      additionalColumns().within(() => showColumn("Products → Ean"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Products → Ean").should("exist");
+      additionalColumns().findByText("Products → Ean").should("not.exist");
+    });
+
+    it("should be able to show and hide implicitly joinable fields for a nested query", () => {
       cy.createQuestion(tableQuestion).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
@@ -304,9 +324,9 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().within(() => hideColumn("Product → Category"));
       visibleColumns().findByText("Product → Category").should("not.exist");
       disabledColumns().findByText("Product → Category").should("exist");
+
       runQuery();
       cy.wait("@dataset");
-
       visibleColumns().findByText("Product → Category").should("not.exist");
       additionalColumns().findByText("Category").should("exist");
     });
