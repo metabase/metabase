@@ -5,15 +5,17 @@ import type { ParametersForActionExecution } from "metabase-types/api";
 
 const NO_VALUES: ParametersForActionExecution = {};
 
+interface Options {
+  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
+  initialValues?: ParametersForActionExecution;
+  shouldPrefetch?: boolean;
+}
+
 export const useActionInitialValues = ({
   fetchInitialValues,
   initialValues: initialValuesProp,
   shouldPrefetch,
-}: {
-  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
-  initialValues?: ParametersForActionExecution;
-  shouldPrefetch?: boolean;
-}) => {
+}: Options) => {
   const [
     { error, loading: isLoading, value: prefetchedInitialValues = NO_VALUES },
     prefetchValues,
