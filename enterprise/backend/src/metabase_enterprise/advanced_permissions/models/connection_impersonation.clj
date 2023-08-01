@@ -29,14 +29,18 @@
              {}
              impersonations))))
 
-(defenterprise upsert-impersonations!
-  "Create new Connection Impersonation records or update existing ones, if they have an `:id`."
+(defenterprise insert-impersonations!
+  "Create new Connection Impersonation records. Deletes any existing Connection Impersonation records for the same
+  group and database before creating new ones."
   :feature :advanced-permissions
   [impersonations]
   (doall
    (for [impersonation impersonations]
-     (if-let [id (:id impersonation)]
-       (t2/update! :model/ConnectionImpersonation id impersonation)
+
+     (do
+       (t2/delete! :model/ConnectionImpersonation
+                   :group_id (:group_id impersonation)
+                   :db_id (:db_id impersonation))
        (-> (t2/insert-returning-instances! :model/ConnectionImpersonation impersonation)
            first)))))
 

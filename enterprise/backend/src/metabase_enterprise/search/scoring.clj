@@ -20,7 +20,7 @@
 
 (defenterprise score-result
   "Scoring implementation that adds score for items in official collections."
-  :feature :any
+  :feature :content-management
   [result]
   (conj (scoring/weights-and-scores result)
         {:weight 2
