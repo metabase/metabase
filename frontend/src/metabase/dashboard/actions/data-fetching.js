@@ -419,7 +419,7 @@ export const fetchCardData = createThunkAction(
 );
 
 export const fetchDashboardCardData =
-  ({ isRefreshing, ...options }) =>
+  ({ isRefreshing, ...options } = {}) =>
   (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
