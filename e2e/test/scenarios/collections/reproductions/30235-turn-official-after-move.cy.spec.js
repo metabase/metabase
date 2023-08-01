@@ -4,12 +4,14 @@ import {
   openCollectionMenu,
   popover,
   restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 describeEE("issue 30235", function () {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {
