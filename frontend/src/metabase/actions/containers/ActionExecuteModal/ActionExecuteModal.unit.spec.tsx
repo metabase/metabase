@@ -11,7 +11,7 @@ import { ActionsApi } from "metabase/services";
 
 import {
   ActionExecuteModal,
-  type Props as ActionExecuteModalProps,
+  type ActionExecuteModalProps,
 } from "./ActionExecuteModal";
 
 const parameter1 = createMockActionParameter({

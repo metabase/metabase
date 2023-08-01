@@ -15,7 +15,7 @@ import { executeAction } from "../../actions";
 import { useActionInitialValues } from "../../hooks/use-action-initial-values";
 import ActionParametersInputForm from "../ActionParametersInputForm";
 
-export interface Props {
+export interface ActionExecuteModalProps {
   actionId: WritebackActionId | undefined;
   initialValues?: ParametersForActionExecution;
   fetchInitialValues?: () => Promise<ParametersForActionExecution>;
@@ -31,7 +31,7 @@ export const ActionExecuteModal = ({
   shouldPrefetch,
   onClose,
   onSuccess,
-}: Props) => {
+}: ActionExecuteModalProps) => {
   const dispatch = useDispatch();
 
   const {
