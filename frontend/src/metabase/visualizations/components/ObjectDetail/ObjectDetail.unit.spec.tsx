@@ -494,7 +494,7 @@ describe("Object Detail", () => {
     expect(actionsMenu).toBeUndefined();
   });
 
-  it("should not render actions menu when model does not have a PK", async () => {
+  it("should not render actions menu when model's source table does not have a primary key", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetNoPk });
@@ -503,7 +503,7 @@ describe("Object Detail", () => {
     expect(actionsMenu).toBeUndefined();
   });
 
-  it("should not render actions menu when model has more than 1 PK", async () => {
+  it("should not render actions menu when model's source table has multiple primary keys", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetMultplePk });
