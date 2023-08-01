@@ -72,7 +72,7 @@ const tableQuestionWithExpressionAndFields = {
   },
 };
 
-const tableWithAggregation = {
+const tableWithAggregations = {
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -280,7 +280,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide columns from aggregations", () => {
-      cy.createQuestion(tableWithAggregation, { visitQuestion: true });
+      cy.createQuestion(tableWithAggregations, { visitQuestion: true });
       openSettings();
 
       cy.log("hide a column");
@@ -463,6 +463,45 @@ describe("scenarios > visualizations > table column settings", () => {
       additionalColumns().findByText("Math").should("not.exist");
       scrollVisualization();
       visualization().findByText("Math").should("exist");
+    });
+
+    it("should be able to show and hide columns from aggregations from a nested query", () => {
+      cy.createQuestion(tableWithAggregations).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+      });
+      openSettings();
+
+      cy.log("hide a column");
+      visibleColumns().within(() => hideColumn("Count"));
+      visibleColumns().findByText("Count").should("not.exist");
+      visibleColumns().findByText("Sum of Quantity").should("exist");
+      disabledColumns().findByText("Count").should("exist");
+      visualization().findByText("Count").should("not.exist");
+      runQuery();
+      cy.wait("@dataset");
+
+      cy.log("show a column");
+      additionalColumns().within(() => showColumn("Count"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Count").should("exist");
+      visibleColumns().findByText("Sum of Quantity").should("exist");
+      visualization().findByText("Count").should("exist");
+
+      cy.log("hide a column with an inner field");
+      visibleColumns().within(() => hideColumn("Sum of Quantity"));
+      visibleColumns().findByText("Sum of Quantity").should("not.exist");
+      visibleColumns().findByText("Count").should("exist");
+      disabledColumns().findByText("Sum of Quantity").should("exist");
+      visualization().findByText("Sum of Quantity").should("not.exist");
+      runQuery();
+      cy.wait("@dataset");
+
+      cy.log("show a column with an inner field");
+      additionalColumns().within(() => showColumn("Sum of Quantity"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Sum of Quantity").should("exist");
+      visibleColumns().findByText("Count").should("exist");
+      visualization().findByText("Sum of Quantity").should("exist");
     });
   });
 });
