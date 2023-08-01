@@ -24,7 +24,7 @@ export function setSingleDate(date) {
   setDate(date, cy.findByTestId("specific-date-picker"));
 }
 
-export function setTime({ hh: hours, mm: minutes }) {
+export function setTime({ hours, minutes }) {
   popover().within(() => {
     cy.findByText("Add a time").click();
     cy.findByPlaceholderText("hh").clear().type(hours);

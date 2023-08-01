@@ -174,7 +174,7 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
-      DateFilter.setTime({ hh: 11, mm: 0 });
+      DateFilter.setTime({ hours: 11, minutes: 0 });
       cy.findByText("Update filter").click();
       break;
 
