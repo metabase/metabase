@@ -346,9 +346,9 @@
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "myint"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
-                   driver/*driver*
-                   (mt/db)
-                   (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+                  driver/*driver*
+                  (mt/db)
+                  (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
 (mt/defdataset json-int-turn-string
   "Used for testing mysql json value unwrapping"
@@ -399,19 +399,19 @@
                         :visibility-type   :normal
                         :nfc-path          [:json_col "int_turn_string"]}}
                      (sql-jdbc.sync/describe-nested-field-columns
-                       driver/*driver*
-                       (mt/db)
-                       (t2/select-one Table :db_id (mt/id) :name "json_with_pk"))))
+                      driver/*driver*
+                      (mt/db)
+                      (t2/select-one Table :db_id (mt/id) :name "json_with_pk"))))
 
-             (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
-               (is (= #{{:name              "json_col → int_turn_string"
-                         :database-type     "bigint"
-                         :base-type         :type/Integer
-                         :database-position 0
-                         :json-unfolding    false
-                         :visibility-type   :normal
-                         :nfc-path          [:json_col "int_turn_string"]}}
-                      (sql-jdbc.sync/describe-nested-field-columns
+              (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
+                (is (= #{{:name              "json_col → int_turn_string"
+                          :database-type     "bigint"
+                          :base-type         :type/Integer
+                          :database-position 0
+                          :json-unfolding    false
+                          :visibility-type   :normal
+                          :nfc-path          [:json_col "int_turn_string"]}}
+                       (sql-jdbc.sync/describe-nested-field-columns
                         driver/*driver*
                         (mt/db)
                         (t2/select-one Table :db_id (mt/id) :name "json_without_pk"))))))))))))
