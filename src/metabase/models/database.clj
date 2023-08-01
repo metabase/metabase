@@ -31,6 +31,7 @@
 
 (t2/deftransforms :model/Database
   {:details                     mi/transform-encrypted-json
+   :options                     mi/transform-json
    :engine                      mi/transform-keyword
    :metadata_sync_schedule      mi/transform-cron-string
    :cache_field_values_schedule mi/transform-cron-string
