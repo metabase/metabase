@@ -72,7 +72,11 @@ export const QueryColumnSelector = ({
 
   const handleAddColumn = useCallback(
     (columnItem: ColumnMetadataItem) => {
-      const newSettings = addColumnInSettings(columnSettings, columnItem);
+      const newSettings = addColumnInSettings(
+        query,
+        columnSettings,
+        columnItem,
+      );
       const newQuery = addColumnInQuery(query, columnItem);
       onChange(newSettings, newQuery);
     },

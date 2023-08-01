@@ -169,12 +169,45 @@ export const disableColumnInQuery = (
   return Lib.removeField(query, STAGE_INDEX, metadataColumn);
 };
 
+const findColumnSettingIndex = (
+  query: Lib.Query,
+  column: Lib.ColumnMetadata,
+  columnSettings: TableColumnOrderSetting[],
+) => {
+  const columns = [column];
+
+  return columnSettings.findIndex(columnSetting => {
+    if (!columnSetting.fieldRef) {
+      return false;
+    }
+
+    const columnIndex = Lib.findColumnIndexFromLegacyRef(
+      query,
+      STAGE_INDEX,
+      columns,
+      columnSetting.fieldRef,
+    );
+
+    return columnIndex >= 0;
+  });
+};
+
 export const addColumnInSettings = (
+  query: Lib.Query,
   columnSettings: TableColumnOrderSetting[],
   { column, name }: ColumnMetadataItem,
 ): TableColumnOrderSetting[] => {
-  const fieldRef = Lib.legacyFieldRef(column);
-  return [...columnSettings, { name, fieldRef, enabled: true }];
+  const settingIndex = findColumnSettingIndex(query, column, columnSettings);
+
+  const newSettings = [...columnSettings];
+  if (settingIndex >= 0) {
+    newSettings[settingIndex] = { ...newSettings[settingIndex], enabled: true };
+  } else {
+    const fieldRef = Lib.legacyFieldRef(column);
+    newSettings.push({ name, fieldRef, enabled: true });
+  }
+
+  return newSettings;
 };
 
 export const enableColumnInSettings = (
