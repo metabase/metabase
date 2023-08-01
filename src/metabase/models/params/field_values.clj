@@ -22,8 +22,6 @@
   [field]
   (default-get-or-create-field-values-for-current-user! field))
 
-;; (clojure.tools.trace/trace-ns *ns*)
-
 (defn current-user-can-fetch-field-values?
   "Whether the current User has permissions to fetch FieldValues for a `field`."
   [field]
