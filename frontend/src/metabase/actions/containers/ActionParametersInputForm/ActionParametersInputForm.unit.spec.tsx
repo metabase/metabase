@@ -147,58 +147,6 @@ describe("Actions > ActionParametersInputForm", () => {
     );
   });
 
-  it("should fetch and load existing values from API for implicit update actions", async () => {
-    setupPrefetch();
-
-    const idParameter = createMockActionParameter({ id: "id" });
-
-    const parameter1 = createMockActionParameter({
-      id: "parameter_1",
-      type: "type/Text",
-      "display-name": "Parameter 1",
-    });
-
-    const parameter2 = createMockActionParameter({
-      id: "parameter_2",
-      type: "type/Text",
-      "display-name": "Parameter 2",
-    });
-
-    await setup({
-      action: createMockImplicitQueryAction({
-        type: "implicit",
-        kind: "row/update",
-        parameters: [idParameter, parameter1, parameter2],
-      }),
-      mappedParameters: [idParameter],
-      initialValues: {
-        id: 888,
-      },
-      prefetchesInitialValues: true,
-    });
-
-    await waitFor(async () => {
-      expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno");
-    });
-
-    await waitFor(async () => {
-      expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos");
-    });
-  });
-
-  it("should show a warning if an implicit update action does not have a linked ID", async () => {
-    await setup({
-      action: createMockImplicitQueryAction({
-        type: "implicit",
-        kind: "row/update",
-      }),
-      initialValues: {},
-      prefetchesInitialValues: true,
-    });
-
-    expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
-  });
-
   it('should change the submit button label to "delete" for an implicit delete action', async () => {
     await setup({
       action: createMockImplicitQueryAction({

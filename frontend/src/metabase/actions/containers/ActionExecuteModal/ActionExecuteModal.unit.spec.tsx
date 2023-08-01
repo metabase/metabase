@@ -1,6 +1,5 @@
-import { waitFor } from "@testing-library/react";
+import { waitFor, waitForElementToBeRemoved } from "@testing-library/react";
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -8,14 +7,15 @@ import {
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
 import { ActionsApi } from "metabase/services";
+import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 
+import { setupActionsEndpoints } from "__support__/server-mocks";
 import {
   ActionExecuteModal,
   type Props as ActionExecuteModalProps,
 } from "./ActionExecuteModal";
 
-const dashboardId = 123;
-const dashcardId = 456;
+const objectId = 888;
 
 const parameter1 = createMockActionParameter({
   id: "parameter_1",
@@ -29,51 +29,50 @@ const parameter2 = createMockActionParameter({
   "display-name": "Parameter 2",
 });
 
-const mockAction = createMockImplicitQueryAction({
-  type: "implicit",
-  kind: "row/update",
-  parameters: [parameter1, parameter2],
-});
-
 const implicitUpdateAction = createMockImplicitQueryAction({
   type: "implicit",
   kind: "row/update",
   parameters: [parameter1, parameter2],
 });
 
-function setup(props?: Partial<ActionExecuteModalProps>) {
-  renderWithProviders(<ActionExecuteModal {...props} actionId={undefined} />);
+function setupPrefetch() {
+  fetchMock.get(`path:/api/action/${implicitUpdateAction.id}/execute`, {
+    parameter_1: "uno",
+    parameter_2: "dos",
+  });
 }
 
-function setupPrefetch() {
-  fetchMock.get(
-    `path:/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
-    {
-      parameter_1: "uno",
-      parameter_2: "dos",
-    },
+const fetchInitialValues = (objectId?: ObjectId | null) =>
+  ActionsApi.prefetchValues({
+    id: implicitUpdateAction.id,
+    parameters: JSON.stringify({
+      id: objectId,
+    }),
+  });
+
+function setup(props?: Partial<ActionExecuteModalProps>) {
+  setupActionsEndpoints([implicitUpdateAction]);
+  setupPrefetch();
+
+  renderWithProviders(
+    <ActionExecuteModal {...props} actionId={implicitUpdateAction.id} />,
   );
 }
 
-const fetchInitialValues = () =>
-  ActionsApi.prefetchDashcardValues({
-    dashboardId,
-    dashcardId,
-    parameters: JSON.stringify({}),
-  }).catch(_.noop);
-
 describe("Actions > ActionExecuteModal", () => {
   it("should fetch and load existing values from API for implicit update actions", async () => {
-    setupPrefetch();
-
     await setup({
-      actionId: mockAction.id,
+      actionId: implicitUpdateAction.id,
       fetchInitialValues,
       initialValues: {
-        id: 888,
+        id: objectId,
       },
       shouldPrefetch: true,
     });
+
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
     await waitFor(async () => {
       expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno");
@@ -84,13 +83,19 @@ describe("Actions > ActionExecuteModal", () => {
     });
   });
 
-  it("should show a warning if an implicit update action does not have a linked ID", async () => {
+  it("should show an empty state if an implicit update action does not have a linked ID", async () => {
     await setup({
       actionId: implicitUpdateAction.id,
       fetchInitialValues,
-      initialValues: {},
+      initialValues: {
+        id: null,
+      },
       shouldPrefetch: true,
     });
+
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
     expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
   });
