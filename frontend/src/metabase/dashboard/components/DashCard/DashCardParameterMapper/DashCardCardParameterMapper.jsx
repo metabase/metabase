@@ -199,91 +199,115 @@ export function DashCardCardParameterMapper({
       action: t`Open this card's action settings to connect variables`,
     }[virtualCardType] ?? "";
 
+  const CardLabelComponent = hasSeries && <CardLabel>{card.name}</CardLabel>;
+
+  const VirtualDashCardInfoComponent =
+    isVirtual && isDisabled ? (
+      showVirtualDashCardInfoText(dashcard, isMobile) ? (
+        <TextCardDefault>
+          <Icon name="info" size={12} className="pr1" />
+          {mappingInfoText}
+        </TextCardDefault>
+      ) : (
+        <TextCardDefault aria-label={mappingInfoText}>
+          <Icon
+            name="info"
+            size={16}
+            className="text-dark-hover"
+            tooltip={mappingInfoText}
+          />
+        </TextCardDefault>
+      )
+    ) : null;
+
+  const NativeCardComponent =
+    isNative && isDisabled ? (
+      <NativeCardDefault>
+        <NativeCardIcon name="info" />
+        <NativeCardText>
+          {getNativeDashCardEmptyMappingText(editingParameter)}
+        </NativeCardText>
+        <NativeCardLink
+          href={MetabaseSettings.docsUrl(
+            "questions/native-editor/sql-parameters",
+          )}
+        >
+          {t`Learn how`}
+        </NativeCardLink>
+      </NativeCardDefault>
+    ) : null;
+
+  const HeaderComponent = headerContent && (
+    <Header>
+      <Ellipsified>{headerContent}</Ellipsified>
+    </Header>
+  );
+
+  const ParameterTargetListComponent = (
+    <ParameterTargetList
+      onChange={target => {
+        handleChangeTarget(target);
+        setIsDropdownVisible(false);
+      }}
+      target={target}
+      mappingOptions={mappingOptions}
+    />
+  );
+
+  const TargetButtonComponent = (
+    <TargetButton
+      variant={buttonVariant}
+      aria-label={buttonTooltip}
+      aria-haspopup="listbox"
+      aria-expanded={isDropdownVisible}
+      aria-disabled={isDisabled || !hasPermissionsToMap}
+      onClick={() => {
+        setIsDropdownVisible(true);
+      }}
+      onKeyDown={e => {
+        if (e.key === "Enter") {
+          setIsDropdownVisible(true);
+        }
+      }}
+    >
+      {buttonText && (
+        <TargetButtonText>
+          <Ellipsified>{buttonText}</Ellipsified>
+        </TargetButtonText>
+      )}
+      {buttonIcon}
+    </TargetButton>
+  );
+
+  const TooltipComponent = (
+    <Tooltip tooltip={buttonTooltip}>
+      <TippyPopover
+        visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
+        onClickOutside={() => setIsDropdownVisible(false)}
+        placement="bottom-start"
+        content={ParameterTargetListComponent}
+      >
+        {TargetButtonComponent}
+      </TippyPopover>
+    </Tooltip>
+  );
+
+  const WarningComponent = onlyAcceptsSingleValue && (
+    <Warning>
+      {t`This field only accepts a single value because it's used in a SQL query.`}
+    </Warning>
+  );
+
   return (
     <Container isSmall={!isMobile && dashcard.size_y < 2}>
-      {hasSeries && <CardLabel>{card.name}</CardLabel>}
-      {isVirtual && isDisabled ? (
-        showVirtualDashCardInfoText(dashcard, isMobile) ? (
-          <TextCardDefault>
-            <Icon name="info" size={12} className="pr1" />
-            {mappingInfoText}
-          </TextCardDefault>
-        ) : (
-          <TextCardDefault aria-label={mappingInfoText}>
-            <Icon
-              name="info"
-              size={16}
-              className="text-dark-hover"
-              tooltip={mappingInfoText}
-            />
-          </TextCardDefault>
-        )
-      ) : isNative && isDisabled ? (
-        <NativeCardDefault>
-          <NativeCardIcon name="info" />
-          <NativeCardText>
-            {getNativeDashCardEmptyMappingText(editingParameter)}
-          </NativeCardText>
-          <NativeCardLink
-            href={MetabaseSettings.docsUrl(
-              "questions/native-editor/sql-parameters",
-            )}
-          >{t`Learn how`}</NativeCardLink>
-        </NativeCardDefault>
-      ) : (
+      {CardLabelComponent}
+      {VirtualDashCardInfoComponent || NativeCardComponent || (
         <>
-          {headerContent && (
-            <Header>
-              <Ellipsified>{headerContent}</Ellipsified>
-            </Header>
-          )}
-          <Tooltip tooltip={buttonTooltip}>
-            <TippyPopover
-              visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
-              onClickOutside={() => setIsDropdownVisible(false)}
-              placement="bottom-start"
-              content={
-                <ParameterTargetList
-                  onChange={target => {
-                    handleChangeTarget(target);
-                    setIsDropdownVisible(false);
-                  }}
-                  target={target}
-                  mappingOptions={mappingOptions}
-                />
-              }
-            >
-              <TargetButton
-                variant={buttonVariant}
-                aria-label={buttonTooltip}
-                aria-haspopup="listbox"
-                aria-expanded={isDropdownVisible}
-                aria-disabled={isDisabled || !hasPermissionsToMap}
-                onClick={() => {
-                  setIsDropdownVisible(true);
-                }}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    setIsDropdownVisible(true);
-                  }
-                }}
-              >
-                {buttonText && (
-                  <TargetButtonText>
-                    <Ellipsified>{buttonText}</Ellipsified>
-                  </TargetButtonText>
-                )}
-                {buttonIcon}
-              </TargetButton>
-            </TippyPopover>
-          </Tooltip>
+          {HeaderComponent}
+          {TooltipComponent}
         </>
       )}
-      {onlyAcceptsSingleValue && (
-        <Warning>
-          {t`This field only accepts a single value because it's used in a SQL query.`}
-        </Warning>
-      )}
+      {WarningComponent}
     </Container>
   );
 }

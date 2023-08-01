@@ -98,6 +98,15 @@ export function showVirtualDashCardInfoText(
   dashcard: DashboardOrderedCard,
   isMobile: boolean,
 ) {
+  console.log({
+    isVirtualDashCard: isVirtualDashCard(dashcard),
+    isMobile,
+    "size_y > 2": dashcard.size_y > 2,
+    "size_x > 5": dashcard.size_x > 5,
+    final: isVirtualDashCard(dashcard)
+      ? isMobile || dashcard.size_y > 10 || dashcard.size_x > 10
+      : true,
+  });
   if (isVirtualDashCard(dashcard)) {
     return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
   } else {

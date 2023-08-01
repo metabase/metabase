@@ -8,12 +8,12 @@ import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const Container = styled.div<{ isSmall: boolean }>`
-  margin: ${({ isSmall }) => (isSmall ? 0 : space(1))} 0;
+  // margin: ${({ isSmall }) => (isSmall ? 0 : space(1))} 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  padding: 0.25rem;
+  //padding: 0.25rem;
 `;
 
 export const TextCardDefault = styled.div`
@@ -156,8 +156,8 @@ KeyIcon.defaultProps = {
 };
 
 export const Warning = styled.span`
-  margin-top: ${space(1)};
-  margin-bottom: -${space(1)};
-  padding: ${space(4)} 0;
+  //margin-top: ${space(1)};
+  //margin-bottom: -${space(1)};
+  //padding: ${space(4)} 0;
   text-align: center;
 `;
