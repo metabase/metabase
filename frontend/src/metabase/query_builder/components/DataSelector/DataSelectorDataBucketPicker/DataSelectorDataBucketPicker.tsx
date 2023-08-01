@@ -1,80 +1,64 @@
-import { t } from "ttag";
-
-import { IconName } from "metabase/core/components/Icon";
-import { DATA_BUCKET } from "../constants";
+import { DataTypeInfoItem } from "metabase/containers/DataPicker";
 
 import {
-  DataBucketList as List,
   DataBucketListItemContainer as ItemContainer,
-  DataBucketTitleContainer as TitleContainer,
+  DataBucketListItemDescription as ItemDescription,
+  DataBucketListItemDescriptionContainer as ItemDescriptionContainer,
   DataBucketListItemIcon as ItemIcon,
   DataBucketListItemTitle as ItemTitle,
-  DataBucketListItemDescriptionContainer as ItemDescriptionContainer,
-  DataBucketListItemDescription as ItemDescription,
+  DataBucketList as List,
+  DataBucketTitleContainer as TitleContainer,
 } from "./DataSelectorDataBucketPicker.styled";
 
 type DataSelectorDataBucketPickerProps = {
-  onChangeDataBucket: () => void;
+  dataTypes: DataTypeInfoItem[];
+  onChangeDataBucket: (id: DataTypeInfoItem["id"]) => void;
 };
-
-type Bucket = {
-  id: string;
-  icon: IconName;
-  name: string;
-  description: string;
-  onSelect: () => void;
-};
-
-const BUCKETS = [
-  {
-    id: DATA_BUCKET.DATASETS,
-    icon: "model" as const,
-    name: t`Models`,
-    description: t`The best starting place for new questions.`,
-  },
-  {
-    id: DATA_BUCKET.RAW_DATA,
-    icon: "database" as const,
-    name: t`Raw Data`,
-    description: t`Unaltered tables in connected databases.`,
-  },
-  {
-    id: DATA_BUCKET.SAVED_QUESTIONS,
-    name: t`Saved Questions`,
-    icon: "folder" as const,
-    description: t`Use any question’s results to start a new question.`,
-  },
-];
 
 const DataSelectorDataBucketPicker = ({
+  dataTypes,
   onChangeDataBucket,
 }: DataSelectorDataBucketPickerProps) => (
   <List>
-    {BUCKETS.map(bucket => (
+    {dataTypes.map(({ id, icon, name, description }) => (
       <DataBucketListItem
-        {...bucket}
-        key={bucket.id}
-        onSelect={onChangeDataBucket}
+        description={description}
+        id={id}
+        icon={icon}
+        key={id}
+        name={name}
+        onSelect={() => onChangeDataBucket(id)}
       />
     ))}
   </List>
 );
 
-const DataBucketListItem = (props: Bucket) => {
-  const { name, icon, description } = props;
-
-  return (
-    <ItemContainer {...props}>
-      <TitleContainer>
-        <ItemIcon name={icon} size={18} />
-        <ItemTitle>{name}</ItemTitle>
-      </TitleContainer>
-      <ItemDescriptionContainer>
-        <ItemDescription>{description}</ItemDescription>
-      </ItemDescriptionContainer>
-    </ItemContainer>
-  );
+type DataBucketListItemProps = DataTypeInfoItem & {
+  onSelect: () => void;
 };
+
+const DataBucketListItem = ({
+  description,
+  icon,
+  id,
+  name,
+  onSelect,
+}: DataBucketListItemProps) => (
+  <ItemContainer
+    data-testid="data-bucket-list-item"
+    id={id}
+    name={name}
+    onSelect={onSelect}
+  >
+    <TitleContainer>
+      <ItemIcon name={icon} size={18} />
+      <ItemTitle>{name}</ItemTitle>
+    </TitleContainer>
+    <ItemDescriptionContainer>
+      <ItemDescription>{description}</ItemDescription>
+    </ItemDescriptionContainer>
+  </ItemContainer>
+);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorDataBucketPicker;

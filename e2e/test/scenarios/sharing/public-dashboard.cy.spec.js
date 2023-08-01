@@ -102,14 +102,23 @@ describe("scenarios > public > dashboard", () => {
       .findByRole("switch")
       .check();
 
-    cy.wait("@publicLink");
+    cy.wait("@publicLink").then(({ response }) => {
+      expect(response.body.uuid).not.to.be.null;
 
-    cy.findByRole("heading", { name: "Public link" })
-      .parent()
-      .findByDisplayValue(/^http/)
-      .then($input => {
-        expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
-      });
+      cy.findByRole("heading", { name: "Public link" })
+        // This click doesn't have any meaning in the context of the correctness of this test!
+        // It's simply here to prevent test flakiness, which happens because the Modal overlay
+        // is animating (disappearing) and we need to wait for it to stop the transition.
+        // Cypress will retry clicking this text until the DOM element is "actionable", or in
+        // our case - until there's no element on top of it blocking it. That's also when we
+        // expect this input field to be populated with the actual value.
+        .click()
+        .parent()
+        .findByDisplayValue(/^http/)
+        .then($input => {
+          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
+        });
+    });
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>

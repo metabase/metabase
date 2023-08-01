@@ -18,6 +18,7 @@ import {
 
 interface HeadingProps {
   isEditing: boolean;
+  isEditingParameter: boolean;
   onUpdateVisualizationSettings: ({ text }: { text: string }) => void;
   dashcard: BaseDashboardOrderedCard;
   settings: VisualizationSettings;
@@ -26,6 +27,7 @@ interface HeadingProps {
 export function Heading({
   settings,
   isEditing,
+  isEditingParameter,
   onUpdateVisualizationSettings,
   dashcard,
 }: HeadingProps) {
@@ -44,7 +46,7 @@ export function Heading({
   const hasContent = !isEmpty(content);
   const placeholder = t`Heading`;
 
-  if (isEditing) {
+  if (isEditing && !isEditingParameter) {
     return (
       <InputContainer
         data-testid="editing-dashboard-heading-container"
@@ -78,7 +80,10 @@ export function Heading({
 
   return (
     <HeadingContainer>
-      <HeadingContent data-testid="saved-dashboard-heading-content">
+      <HeadingContent
+        data-testid="saved-dashboard-heading-content"
+        fade={isEditingParameter}
+      >
         {content}
       </HeadingContent>
     </HeadingContainer>

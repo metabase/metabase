@@ -107,6 +107,7 @@
                   :dashboard_id nil
                   :error        nil
                   :id           true
+                  :action_id    nil
                   :cache_hit    false
                   :database_id  (mt/id)
                   :started_at   true

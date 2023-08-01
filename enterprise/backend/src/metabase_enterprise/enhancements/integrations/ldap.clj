@@ -3,7 +3,6 @@
   (:require
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.default-implementation :as default-impl]
-   [metabase.integrations.ldap.interface :as i]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
@@ -19,7 +18,7 @@
    (com.unboundid.ldap.sdk LDAPConnectionPool)))
 
 (def ^:private EEUserInfo
-  (assoc i/UserInfo :attributes (s/maybe {s/Keyword s/Any})))
+  (assoc default-impl/UserInfo :attributes (s/maybe {s/Keyword s/Any})))
 
 (defsetting ldap-sync-user-attributes
   (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
@@ -62,10 +61,10 @@
 
 (defenterprise-schema find-user :- (s/maybe EEUserInfo)
   "Get user information for the supplied username."
-  :feature :any
+  :feature :sso-ldap
   [ldap-connection :- LDAPConnectionPool
    username        :- su/NonBlankString
-   settings        :- i/LDAPSettings]
+   settings        :- default-impl/LDAPSettings]
   (when-let [result (default-impl/search ldap-connection username settings)]
     (when-let [user-info (default-impl/ldap-search-result->user-info
                           ldap-connection
@@ -76,9 +75,9 @@
 
 (defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
-  :feature :any
+  :feature :sso-ldap
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
-   {:keys [sync-groups?], :as settings}                                  :- i/LDAPSettings]
+   {:keys [sync-groups?], :as settings}                                  :- default-impl/LDAPSettings]
   (let [user (or (attribute-synced-user user-info)
                  (-> (user/create-new-ldap-auth-user! {:first_name       first-name
                                                        :last_name        last-name

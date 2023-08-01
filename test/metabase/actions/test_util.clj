@@ -2,7 +2,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.http-client :as client]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
@@ -14,6 +17,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.util :as tu]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -111,6 +115,23 @@
   [& body]
   `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym))) (fn [] ~@body)))
 
+(defn- delete-categories-1-query []
+  (sql.qp/format-honeysql
+   2
+   (sql.qp/quote-style driver/*driver*)
+   {:delete-from [(h2x/identifier :table (ddl.i/format-name driver/*driver* "categories"))]
+    :where       [:=
+                  (h2x/identifier :field (ddl.i/format-name driver/*driver* "id"))
+                  [:inline 1]]}))
+
+(deftest ^:parallel delete-categories-1-query-test
+  (are [driver query] (= query
+                         (binding [driver/*driver* driver]
+                           (delete-categories-1-query)))
+    :h2       ["DELETE FROM \"CATEGORIES\" WHERE \"ID\" = 1"]
+    :postgres ["DELETE FROM \"categories\" WHERE \"id\" = 1"]
+    :mysql    ["DELETE FROM `categories` WHERE `id` = 1"]))
+
 (deftest with-actions-test-data-test
   (datasets/test-drivers (qp.test/normal-drivers-with-feature :actions/custom)
     (dotimes [i 2]
@@ -124,7 +145,7 @@
             (testing "delete row"
               (is (= [1]
                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (data/id))
-                                    "DELETE FROM CATEGORIES WHERE ID = 1;"))))
+                                    (delete-categories-1-query)))))
             (testing "after"
               (is (= [[74]]
                      (row-count))))))))))
@@ -147,7 +168,7 @@
                                            :required false
                                            :target [:variable [:template-tag "name"]]}]
                              :visualization_settings {:inline true}
-                             :public_uuid (str (java.util.UUID/randomUUID))
+                             :public_uuid (str (random-uuid))
                              :made_public_by_id (test.users/user->id :crowberto)
                              :database_id (data/id)
                              :creator_id (test.users/user->id :crowberto)
@@ -171,7 +192,7 @@
                                      {:type :implicit
                                       :name "Update Example"
                                       :kind "row/update"
-                                      :public_uuid (str (java.util.UUID/randomUUID))
+                                      :public_uuid (str (random-uuid))
                                       :made_public_by_id (test.users/user->id :crowberto)
                                       :creator_id (test.users/user->id :crowberto)
                                       :model_id model-id}
@@ -194,7 +215,7 @@
                                                     :target [:template-tag "fail"]}]
                                       :response_handle ".body"
                                       :model_id model-id
-                                      :public_uuid (str (java.util.UUID/randomUUID))
+                                      :public_uuid (str (random-uuid))
                                       :made_public_by_id (test.users/user->id :crowberto)
                                       :creator_id (test.users/user->id :crowberto)}
                                      options-map))]

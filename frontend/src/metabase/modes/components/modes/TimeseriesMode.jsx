@@ -12,7 +12,7 @@ const TimeseriesModeFooter = props => {
   };
 
   return (
-    <div className="flex layout-centered">
+    <div className="flex layout-centered" data-testid="timeseries-mode-bar">
       <span className="mr1">{t`View`}</span>
       <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
       <span className="mx1">{t`by`}</span>

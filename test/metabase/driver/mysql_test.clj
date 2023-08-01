@@ -127,7 +127,7 @@
      ["Empty Vending Machine" 0]]]])
 
 (defn db->fields
-  "Give a DB return it fields as a set."
+  "Given a DB return its fields as a set."
   [db]
   (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
     (set (map (partial into {}) (t2/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))

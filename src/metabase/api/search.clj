@@ -4,6 +4,7 @@
    [compojure.core :refer [GET]]
    [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -20,33 +21,33 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private SearchContext
-  "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string                (s/maybe su/NonBlankString)
-   :archived?                    s/Bool
-   :current-user-perms           #{perms/PathSchema}
-   (s/optional-key :models)      (s/maybe #{su/NonBlankString})
-   (s/optional-key :table-db-id) (s/maybe s/Int)
-   (s/optional-key :limit-int)   (s/maybe s/Int)
-   (s/optional-key :offset-int)  (s/maybe s/Int)})
-
 (def ^:private SearchableModel
-  (apply s/enum search-config/all-models))
+  (into [:enum] search-config/all-models))
+
+(def ^:private SearchContext
+  "Map with the various allowed search parameters, used to construct the SQL query."
+  (mc/schema
+    [:map {:closed true}
+     [:search-string                       [:maybe ms/NonBlankString]]
+     [:archived?                           :boolean]
+     [:current-user-perms                  [:set perms/PathMalliSchema]]
+     [:models             {:optional true} [:maybe [:set SearchableModel]]]
+     [:table-db-id        {:optional true} [:maybe ms/Int]]
+     [:limit-int          {:optional true} [:maybe ms/Int]]
+     [:offset-int         {:optional true} [:maybe ms/Int]]]))
 
 (def ^:private HoneySQLColumn
-  (s/cond-pre
-   s/Keyword
-   [(s/one s/Any "column or value")
-    (s/one s/Keyword "alias")]))
+  [:or
+   :keyword
+   [:tuple :any :keyword]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Columns for each Entity                                             |
@@ -107,11 +108,11 @@
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
 
-(s/defn ^:private model->alias :- s/Keyword
+(mu/defn ^:private model->alias :- keyword?
   [model :- SearchableModel]
   (-> model search-config/model-to-db-model :alias))
 
-(s/defn ^:private ->column-alias :- s/Keyword
+(mu/defn ^:private ->column-alias :- keyword?
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
   column name"
   [column-or-aliased :- HoneySQLColumn]
@@ -119,11 +120,11 @@
     (second column-or-aliased)
     column-or-aliased))
 
-(s/defn ^:private canonical-columns :- [HoneySQLColumn]
+(mu/defn ^:private canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of canonicalized list of columns for the search query with the given `model` Will return column names
   prefixed with the `model` name so that it can be used in criteria. Projects a `nil` for columns the `model` doesn't
   have and doesn't modify aliases."
-  [model :- SearchableModel, col-alias->honeysql-clause :- {s/Keyword HoneySQLColumn}]
+  [model :- SearchableModel, col-alias->honeysql-clause :- [:map-of :keyword HoneySQLColumn]]
   (for [[search-col col-type] all-search-columns
         :let                  [maybe-aliased-col (get col-alias->honeysql-clause search-col)]]
     (cond
@@ -149,7 +150,7 @@
          [:cast nil col-type])
        search-col])))
 
-(s/defn ^:private select-clause-for-model :- [HoneySQLColumn]
+(mu/defn ^:private select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `all-search-columns`."
@@ -159,8 +160,7 @@
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
-(s/defn ^:private from-clause-for-model :- [(s/one [(s/one s/Keyword "table name") (s/one s/Keyword "alias")]
-                                                   "from clause")]
+(mu/defn ^:private from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
   [model :- SearchableModel]
   (let [{:keys [db-model alias]} (get search-config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
@@ -212,8 +212,8 @@
                [:lower column]
                (wildcard-match token)])))))
 
-(s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and := :inline) "type") s/Any]
-  [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
+(mu/defn ^:private base-where-clause-for-model :- [:fn (fn [x] (and (seq x) (#{:and :inline :=} (first x))))]
+  [model :- SearchableModel {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
         search-clause   (search-string-clause model search-string
                                               (map (let [model-alias (name (model->alias model))]
@@ -224,19 +224,19 @@
       [:and archived-clause search-clause]
       archived-clause)))
 
-(s/defn ^:private base-query-for-model :- {:select s/Any, :from s/Any, :where s/Any}
+(mu/defn ^:private base-query-for-model :- [:map {:closed true} [:select :any] [:from :any] [:where :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
-  [model :- SearchableModel, context :- SearchContext]
+  [model :- SearchableModel context :- SearchContext]
   {:select (select-clause-for-model model)
    :from   (from-clause-for-model model)
    :where  (base-where-clause-for-model model context)})
 
-(s/defn ^:private add-collection-join-and-where-clauses
+(mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
-  [honeysql-query               :- su/Map
-   collection-id-column         :- s/Keyword
+  [honeysql-query               :- ms/Map
+   collection-id-column         :- keyword?
    {:keys [current-user-perms]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
@@ -251,18 +251,18 @@
       (sql.helpers/left-join [:collection :collection]
                              [:= collection-id-column :collection.id]))))
 
-(s/defn ^:private add-table-db-id-clause
+(mu/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- su/Map, id :- (s/maybe s/Int)]
+  [query :- ms/Map id :- [:maybe ms/PositiveInt]]
   (if (some? id)
     (sql.helpers/where query [:= id :db_id])
     query))
 
-(s/defn ^:private add-card-db-id-clause
+(mu/defn ^:private add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
-  [query :- su/Map, id :- (s/maybe s/Int)]
+  [query :- ms/Map id :- [:maybe ms/PositiveInt]]
   (if (some? id)
     (sql.helpers/where query [:= id :database_id])
     query))
@@ -275,7 +275,8 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
-(s/defn ^:private shared-card-impl [dataset? :- s/Bool search-ctx :- SearchContext]
+(mu/defn ^:private shared-card-impl
+  [dataset? :- :boolean search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (update :where (fn [where] [:and [:= :card.dataset dataset?] where]))
       (sql.helpers/left-join [:card_bookmark :bookmark]
@@ -285,8 +286,8 @@
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))))
 
-(s/defmethod search-query-for-model "action"
-  [model search-ctx :- SearchContext]
+(defmethod search-query-for-model "action"
+  [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:report_card :model]
                              [:= :model.id :action.model_id])
@@ -294,18 +295,18 @@
                              [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
-(s/defmethod search-query-for-model "card"
-  [_model search-ctx :- SearchContext]
+(defmethod search-query-for-model "card"
+  [_model search-ctx]
   (shared-card-impl false search-ctx))
 
-(s/defmethod search-query-for-model "dataset"
-  [_model search-ctx :- SearchContext]
+(defmethod search-query-for-model "dataset"
+  [_model search-ctx]
   (-> (shared-card-impl true search-ctx)
       (update :select (fn [columns]
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
 
-(s/defmethod search-query-for-model "collection"
-  [_model search-ctx :- SearchContext]
+(defmethod search-query-for-model "collection"
+  [_model search-ctx]
   (-> (base-query-for-model "collection" search-ctx)
       (sql.helpers/left-join [:collection_bookmark :bookmark]
                              [:and
@@ -313,12 +314,12 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
 
-(s/defmethod search-query-for-model "database"
-  [model search-ctx :- SearchContext]
+(defmethod search-query-for-model "database"
+  [model search-ctx]
   (base-query-for-model model search-ctx))
 
-(s/defmethod search-query-for-model "dashboard"
-  [model search-ctx :- SearchContext]
+(defmethod search-query-for-model "dashboard"
+  [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:dashboard_bookmark :bookmark]
                              [:and
@@ -326,26 +327,26 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
-(s/defmethod search-query-for-model "metric"
-  [model search-ctx :- SearchContext]
+(defmethod search-query-for-model "metric"
+  [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])))
 
-(s/defmethod search-query-for-model "indexed-entity"
-  [model search-ctx :- SearchContext]
+(defmethod search-query-for-model "indexed-entity"
+  [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:model_index :model-index]
                              [:= :model-index.id :model-index-value.model_index_id])
       (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
       (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])))
 
-(s/defmethod search-query-for-model "segment"
-  [model search-ctx :- SearchContext]
+(defmethod search-query-for-model "segment"
+  [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:metabase_table :table] [:= :segment.table_id :table.id])))
 
-(s/defmethod search-query-for-model "table"
-  [model {:keys [current-user-perms table-db-id], :as search-ctx} :- SearchContext]
+(defmethod search-query-for-model "table"
+  [model {:keys [current-user-perms table-db-id], :as search-ctx}]
   (when (seq current-user-perms)
     (let [base-query (base-query-for-model model search-ctx)]
       (add-table-db-id-clause
@@ -408,9 +409,9 @@
   [instance]
   (mi/can-read? instance))
 
-(defn- query-model-set
+(mu/defn query-model-set
   "Queries all models with respect to query for one result to see if we get a result or not"
-  [search-ctx]
+  [search-ctx :- SearchContext]
   (map #(get (first %) :model)
        (filter not-empty
                (for [model search-config/all-models]
@@ -418,10 +419,10 @@
                        query-with-limit (sql.helpers/limit search-query 1)]
                    (mdb.query/query query-with-limit))))))
 
-(defn- full-search-query
+(mu/defn ^:private full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
   one model without errors. Therefore we degenerate it down for it"
-  [search-ctx]
+  [search-ctx :- SearchContext]
   (let [models       (or (:models search-ctx)
                          search-config/all-models)
         sql-alias    :alias_is_required_by_sql_but_not_needed_here
@@ -435,7 +436,7 @@
                                       query))} sql-alias]]
        :order-by order-clause})))
 
-(s/defn ^:private search
+(mu/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
   (let [search-query       (full-search-query search-ctx)
@@ -475,16 +476,13 @@
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
-
-(s/defn ^:private search-context :- SearchContext
-  [search-string   :- (s/maybe su/NonBlankString),
-   archived-string :- (s/maybe su/BooleanString)
-   table-db-id     :- (s/maybe su/IntGreaterThanZero)
-   models          :- (s/maybe models-schema)
-   limit           :- (s/maybe su/IntGreaterThanZero)
-   offset          :- (s/maybe su/IntGreaterThanOrEqualToZero)]
+(mu/defn ^:private search-context :- SearchContext
+  [search-string   :- [:maybe ms/NonBlankString]
+   archived-string :- [:maybe ms/BooleanString]
+   table-db-id     :- [:maybe ms/PositiveInt]
+   models          :- [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   limit           :- [:maybe ms/PositiveInt]
+   offset          :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
@@ -500,8 +498,7 @@
   {table-db-id [:maybe ms/PositiveInt]}
   (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
   For the list of models, check [[metabase.search.config/all-models]].
 
@@ -511,10 +508,10 @@
   To specify a list of models, pass in an array to `models`.
   "
   [q archived table_db_id models]
-  {q            (s/maybe su/NonBlankString)
-   archived     (s/maybe su/BooleanString)
-   table_db_id  (s/maybe su/IntGreaterThanZero)
-   models       (s/maybe models-schema)}
+  {q            [:maybe ms/NonBlankString]
+   archived     [:maybe ms/BooleanString]
+   table_db_id  [:maybe ms/PositiveInt]
+   models       [:maybe [:or SearchableModel [:sequential SearchableModel]]]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         results    (search (search-context

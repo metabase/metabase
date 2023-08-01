@@ -3,11 +3,9 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.ref :as lib.ref]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util :as u]
@@ -77,6 +75,7 @@
               stage-number
               unmodified-query-for-stage
               :expression
+              {}
               (lib.util/expression-name target-clause))
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
 
@@ -86,6 +85,7 @@
               stage-number
               unmodified-query-for-stage
               :aggregation
+              {}
               target-uuid)
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
 
@@ -100,15 +100,19 @@
         result)
       result)))
 
-(defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-ref-id]
+(defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-opts target-ref-id]
   (let [stage (lib.util/query-stage query stage-number)
         to-remove (mapcat
-                   (fn [location]
-                     (when-let [clauses (get-in stage location)]
-                       (->> clauses
-                            (keep #(mbql.match/match-one %
-                                     [target-op _ target-ref-id] [location %])))))
-                   (stage-paths query stage-number))]
+                    (fn [location]
+                      (when-let [clauses (get-in stage location)]
+                        (->> clauses
+                             (keep (fn [clause]
+                                     (mbql.match/match-one clause
+                                       [target-op
+                                        (_ :guard #(or (empty? target-opts)
+                                                       (set/subset? (set target-opts) (set %))))
+                                        target-ref-id] [location clause]))))))
+                    (stage-paths query stage-number))]
     (reduce
      (fn [query [location target-clause]]
        (remove-replace-location query stage-number unmodified-query-for-stage location target-clause lib.util/remove-clause))
@@ -125,7 +129,7 @@
                                        (:lib/desired-column-alias column)))))]
       (if target-ref-id
         ;; We are moving to the next stage, so pass the current query as the unmodified-query-for-stage
-        (remove-local-references query stage-number query :field target-ref-id)
+        (remove-local-references query stage-number query :field {} target-ref-id)
         query))
     query))
 
@@ -254,58 +258,31 @@
      (lib.util/update-query-stage query stage-number rename-join-in-stage idx new-name)
      query)))
 
-(defn- matching-locations
-  [form pred]
-  (loop [stack [[[] form]], matches []]
-    (if-let [[loc form :as top] (peek stack)]
-      (let [stack (pop stack)
-            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
-        (cond
-          (pred form)        (recur stack                                  (conj matches top))
-          (map? form)        (recur (onto-stack form)                      matches)
-          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
-          :else              (recur stack                                  matches)))
-      matches)))
-
-(defn- referring-locations
-  [metadata-providerable form columns]
-  (let [refs (mapv lib.ref/ref columns)]
-    (matching-locations
-     form
-     (fn [field-clause]
-       (and (lib.util/field-clause? field-clause)
-            (lib.equality/find-closest-matching-ref metadata-providerable field-clause refs))))))
-
-(defn- removable-loc
-  [paths loc]
-  (keep (fn [stage-path]
-          (let [[prefix suffix] (split-at (count stage-path) loc)]
-            (when (= prefix stage-path)
-              (cond-> (vec stage-path)
-                (seq suffix) (conj (first suffix))))))
-        paths))
-
-(defn- clauses-to-remove
-  [stage paths locs]
-  (into #{}
-        (comp (mapcat #(removable-loc paths %))
-              (map #(get-in stage %)))
-        locs))
+(defn- remove-matching-missing-columns
+  [query-after query-before stage-number match-spec]
+  (let [removed-cols (set/difference
+                       (set (lib.metadata.calculation/visible-columns query-before stage-number (lib.util/query-stage query-before stage-number)))
+                       (set (lib.metadata.calculation/visible-columns query-after stage-number (lib.util/query-stage query-after stage-number))))]
+    (reduce
+      #(apply remove-local-references %1 stage-number query-after (match-spec %2))
+      query-after
+      removed-cols)))
 
 (defn- remove-invalidated-refs
   [query-after query-before stage-number]
-  (let [stage-before (lib.util/query-stage query-before stage-number)
-        stage-after  (lib.util/query-stage query-after stage-number)
-        removed-cols (set/difference
-                      (set (lib.metadata.calculation/visible-columns query-before stage-number stage-before))
-                      (set (lib.metadata.calculation/visible-columns query-after stage-number stage-after)))
-        invalid-locs (referring-locations query-after stage-after removed-cols)
-        paths        (stage-paths query-after stage-number)
-        to-remove    (concat (clauses-to-remove stage-after paths (map first invalid-locs))
-                             (map second invalid-locs))]
-    (reduce #(remove-clause %1 stage-number %2)
-            query-after
-            to-remove)))
+  (let [query-without-local-refs (remove-matching-missing-columns
+                                   query-after
+                                   query-before
+                                   stage-number
+                                   (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
+    ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at the next stage as well
+    (if-let [stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
+      (remove-matching-missing-columns
+        query-without-local-refs
+        query-before
+        stage-number
+        (fn [column] [:field {} (:lib/desired-column-alias column)]))
+      query-without-local-refs)))
 
 (defn- join-spec->alias
   [query stage-number join-spec]
@@ -318,14 +295,22 @@
   ([query stage-number join-spec f]
    (if-let [join-alias (join-spec->alias query stage-number join-spec)]
      (binding [mu/*enforce* false]
-       (let [query-after (lib.util/update-query-stage
-                          query
-                          stage-number
-                          (fn [stage]
-                            (u/assoc-dissoc stage :joins (f (:joins stage) join-alias))))]
-         (reduce #(remove-invalidated-refs %1 query %2)
-                 query-after
-                 (take-while some? (iterate #(lib.util/next-stage-number query %) stage-number)))))
+       (let [query-after (as-> query $q
+                           (lib.util/update-query-stage
+                             $q
+                             stage-number
+                             (fn [stage]
+                               (u/assoc-dissoc stage :joins (f (:joins stage) join-alias))))
+                           (lib.util/update-query-stage
+                             $q
+                             stage-number
+                             (fn [stage]
+                               (m/update-existing
+                                 stage
+                                 :joins
+                                 (fn [joins]
+                                   (mapv #(lib.join/add-default-alias $q stage-number %) joins))))))]
+         (remove-invalidated-refs query-after query stage-number)))
      query)))
 
 (mu/defn remove-join :- :metabase.lib.schema/query
@@ -359,7 +344,7 @@
   ([query        :- :metabase.lib.schema/query
     stage-number :- :int
     join-spec    :- [:or :metabase.lib.schema.join/join :string :int]
-    new-join     :- [:maybe :metabase.lib.schema.join/join]]
+    new-join]
    (if (nil? new-join)
      (remove-join query stage-number join-spec)
      (update-joins query stage-number join-spec (fn [joins join-alias]

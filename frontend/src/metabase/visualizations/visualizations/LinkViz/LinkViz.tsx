@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
+import _ from "underscore";
 
 import Input from "metabase/core/components/Input";
 import SearchResults from "metabase/nav/components/SearchResults";
@@ -52,6 +53,7 @@ export interface LinkVizProps {
   settings: DashboardOrderedCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
+  isEditingParameter?: boolean;
 }
 
 function LinkViz({
@@ -59,6 +61,7 @@ function LinkViz({
   isEditing,
   onUpdateVisualizationSettings,
   settings,
+  isEditingParameter,
 }: LinkVizProps) {
   const {
     link: { url, entity },
@@ -99,7 +102,7 @@ function LinkViz({
   if (entity) {
     if (isRestrictedLinkEntity(entity)) {
       return (
-        <EditLinkCardWrapper>
+        <EditLinkCardWrapper fade={isEditingParameter}>
           <RestrictedEntityDisplay />
         </EditLinkCardWrapper>
       );
@@ -114,7 +117,10 @@ function LinkViz({
 
     if (isEditing) {
       return (
-        <EditLinkCardWrapper data-testid="entity-edit-display-link">
+        <EditLinkCardWrapper
+          data-testid="entity-edit-display-link"
+          fade={isEditingParameter}
+        >
           <EntityDisplay entity={wrappedEntity} showDescription={false} />
         </EditLinkCardWrapper>
       );
@@ -137,7 +143,7 @@ function LinkViz({
     );
   }
 
-  if (isEditing) {
+  if (isEditing && !isEditingParameter) {
     return (
       <EditLinkCardWrapper data-testid="custom-edit-text-link">
         <TippyPopover
@@ -165,7 +171,8 @@ function LinkViz({
             placeholder={"https://example.com"}
             onChange={e => handleLinkChange(e.target.value)}
             onFocus={onFocusInput}
-            onBlur={onBlurInput}
+            // we need to debounce this or it may close the popover before the click event can fire
+            onBlur={_.debounce(onBlurInput, 100)}
             // the dashcard really wants to turn all mouse events into drag events
             onMouseDown={e => e.stopPropagation()}
           />
@@ -175,7 +182,10 @@ function LinkViz({
   }
 
   return (
-    <DisplayLinkCardWrapper data-testid="custom-view-text-link">
+    <DisplayLinkCardWrapper
+      data-testid="custom-view-text-link"
+      fade={isEditingParameter}
+    >
       <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
         <UrlLinkDisplay url={url} />
       </CardLink>
