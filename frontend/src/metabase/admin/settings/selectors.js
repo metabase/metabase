@@ -475,7 +475,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Static embedding`,
-        embedDescription: t`Securely embed individual questions and dashboards within other applications.`,
+        embedDescription: t`Embed dashboards, charts, and questions on your app or website with basic filters for insights with limited discovery.`,
         embedType: "standalone",
       },
       {

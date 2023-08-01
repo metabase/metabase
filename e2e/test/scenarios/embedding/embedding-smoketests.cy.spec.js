@@ -108,7 +108,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           .and("eq", standalonePath);
         cy.findByText("Static embedding");
         cy.findByText(
-          "Securely embed individual questions and dashboards within other applications.",
+          "Embed dashboards, charts, and questions on your app or website with basic filters for insights with limited discovery.",
         );
         cy.findByText("More details").click();
         cy.location("pathname").should("eq", standalonePath);
