@@ -284,9 +284,9 @@
                  view-nm))
             (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
               ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",              :base_type :type/Decimal}
-                      {:name "raw_null",                    :database_type "varchar",              :base_type :type/Text}
-                      {:name "raw_var",                     :database_type "character varying(5)", :base_type :type/Text}]
+              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric", :base_type :type/Decimal}
+                      {:name "raw_null",                    :database_type "varchar", :base_type :type/Text}
+                      {:name "raw_var",                     :database_type "varchar", :base_type :type/Text}]
                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))
             (finally
               (execute! (str "DROP VIEW IF EXISTS %s;")
@@ -311,7 +311,7 @@
         (try
           (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
             (t2.with-temp/with-temp [Database db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
-              (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))]
+              (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
                 (let [schemas (reduce conj
                                       #{}
                                       (sql-jdbc.sync/filtered-syncable-schemas :redshift
@@ -319,10 +319,11 @@
                                                                                (.getMetaData conn)
                                                                                nil
                                                                                nil))]
-                  (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
-                    (is (contains? schemas random-schema)))
-                  (testing "should not contain the current session-schema name (since that was never granted)"
-                    (is (not (contains? schemas (redshift.test/unique-session-schema)))))))))
+                  (testing (str "\nschemas = " (u/pprint-to-str schemas))
+                    (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
+                      (is (contains? schemas random-schema)))
+                    (testing "should not contain the current session-schema name (since that was never granted)"
+                      (is (not (contains? schemas (redshift.test/unique-session-schema))))))))))
           (finally
             (execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
                            "DROP USER IF EXISTS %s;%n"
