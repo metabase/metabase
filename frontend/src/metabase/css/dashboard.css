@@ -101,6 +101,10 @@
   z-index: 2;
 }
 
+/* dashcards use positioned absolutely,
+   so children calculate z-index inside a container, not globally,
+   that's why we have to override parent's z-index
+*/
 .DashCard:hover {
   z-index: 3;
 }
