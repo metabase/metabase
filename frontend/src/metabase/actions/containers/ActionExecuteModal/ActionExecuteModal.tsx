@@ -1,3 +1,4 @@
+import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -45,6 +46,7 @@ export const ActionExecuteModal = ({
     hasPrefetchedValues,
     initialValues,
     isLoading: isLoadingInitialValues,
+    prefetchValues,
   } = useActionInitialValues({
     fetchInitialValues,
     initialValues: initialValuesProp,
@@ -63,10 +65,19 @@ export const ActionExecuteModal = ({
     [dispatch, action],
   );
 
-  const handleSubmitSuccess = useCallback(() => {
-    onClose?.();
-    onSuccess?.();
-  }, [onClose, onSuccess]);
+  const handleSubmitSuccess = useCallback(
+    (actions: FormikHelpers<ParametersForActionExecution>) => {
+      onClose?.();
+      onSuccess?.();
+
+      if (shouldPrefetch) {
+        prefetchValues();
+      } else {
+        actions.resetForm();
+      }
+    },
+    [onClose, onSuccess, shouldPrefetch, prefetchValues],
+  );
 
   const error = errorAction || errorInitialValues;
   const isLoading =
