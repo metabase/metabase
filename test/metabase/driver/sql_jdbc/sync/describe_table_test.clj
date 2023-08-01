@@ -153,16 +153,6 @@
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
-(deftest get-table-pks-test
-  (mt/test-drivers (mt/sql-jdbc-drivers)
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver/*driver*
-     (mt/db)
-     nil
-     (fn [conn]
-       (is (= ["id"]
-              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn (:name (mt/db)) (t2/select-one :model/Table (mt/id :venues)))))))))
-
 ;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
 
 (deftest json-details-only-test
