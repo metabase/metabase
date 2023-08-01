@@ -186,10 +186,7 @@ export const ComboChart2 = ({
     onVisualizationClick({ ...clickData, element: event.target });
   };
 
-  const handleHover = (
-    event: React.MouseEvent,
-    bar: BarData<GroupedDatum, SeriesInfo>,
-  ) => {
+  const handleHover = (event?: React.MouseEvent) => {
     const data = {
       index: 3,
       event: {
@@ -233,8 +230,8 @@ export const ComboChart2 = ({
 
     onHoverChange?.({
       ...data,
-      event: event.nativeEvent,
-      element: event.target,
+      event: event?.nativeEvent,
+      element: event?.target,
     });
   };
 

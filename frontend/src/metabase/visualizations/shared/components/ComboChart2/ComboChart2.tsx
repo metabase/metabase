@@ -12,6 +12,7 @@ import { ChartGoal } from "../../types/settings";
 import { ContinuousScaleType, Range } from "../../types/scale";
 
 import { RowChartTheme, Series, StackOffset } from "./types";
+import { getComboChartOptions } from "./options";
 
 const MIN_BAR_HEIGHT = 24;
 
@@ -77,11 +78,33 @@ export const ComboChart2 = <TDatum,>({
     chartRef.current.setOption(getChartOptions());
 
     chartRef.current.on("click", e => {
+      console.log(">>>clicked");
       onClick(e.event.event);
     });
 
     chartRef.current.on("mouseover", e => {
       onHover(e.event.event);
+    });
+
+    chartRef.current.on("mouseout", e => {
+      onHover(null);
+    });
+
+    chartRef.current.dispatchAction({
+      type: "takeGlobalCursor",
+      key: "brush",
+      brushOption: {
+        brushType: "lineX",
+        brushMode: "single",
+      },
+    });
+
+    chartRef.current.on("brushSelected", params => {
+      console.log(">>brushSelected params", params);
+    });
+
+    chartRef.current.on("brushEnd", params => {
+      console.log(">>brushEnd params", params);
     });
   }, [getChartOptions]);
 
