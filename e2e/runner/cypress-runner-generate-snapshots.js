@@ -4,6 +4,7 @@ const { parseArguments, args } = require("./cypress-runner-utils");
 
 const getConfig = baseUrl => {
   return {
+    browser: "chrome",
     configFile: "e2e/support/cypress-snapshots.config.js",
     config: {
       baseUrl,
