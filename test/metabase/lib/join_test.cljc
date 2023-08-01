@@ -947,14 +947,12 @@
                                                           [false true join]))))
           [num-stages query]                   {1 query
                                                 2 (lib/append-stage query)}]
-    (testing (str (u/pprint-to-str {:source-table?      source-table?
-                                    :num-existing-joins num-existing-joins
-                                    :first-join?        first-join?
-                                    :join?              join?
-                                    :join-or-joinable   join-or-joinable
-                                    :num-stages         num-stages
-                                    :query              query})
-                  \newline)
+    (testing (str "query w/ source table?" source-table?                                              \newline
+                  "num-existing-joins = "  num-existing-joins                                         \newline
+                  "num-stages = "          num-stages                                                 \newline
+                  "join =\n"               (u/pprint-to-str join-or-joinable)                         \newline
+                  "existing joins = "      (u/pprint-to-str (map lib.options/uuid (lib/joins query))) \newline
+                  "first join? "           first-join?)
       (testing "When passing an explicit LHS column, use display name for its `:table`"
         (is (= "Orders"
                (lib/join-lhs-display-name query join-or-joinable (meta/field-metadata :orders :product-id)))))
