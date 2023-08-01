@@ -42,6 +42,11 @@ const mockTable = createMockTable({
   display_name: "Product",
 });
 
+const mockTableNoPk = createMockTable({
+  id: getNextId(),
+  fields: [],
+});
+
 const databaseWithActionsEnabled = createMockDatabase({
   id: getNextId(),
   settings: { "database-enable-actions": true },
@@ -61,6 +66,19 @@ const mockDatasetCard = createMockCard({
     database: databaseWithActionsEnabled.id,
     query: {
       "source-table": PEOPLE_ID,
+    },
+  },
+});
+
+const mockDatasetNoPkCard = createMockCard({
+  id: getNextId(),
+  name: "Product",
+  dataset: true,
+  dataset_query: {
+    type: "query",
+    database: databaseWithActionsEnabled.id,
+    query: {
+      "source-table": mockTableNoPk.id,
     },
   },
 });
@@ -109,6 +127,7 @@ const metadata = createMockMetadata({
   questions: [
     mockCard,
     mockDatasetCard,
+    mockDatasetNoPkCard,
     mockDatasetWithClausesCard,
     mockDatasetNoWritePermissionCard,
   ],
@@ -117,6 +136,7 @@ const metadata = createMockMetadata({
 const mockQuestion = checkNotNull(metadata.question(mockCard.id));
 
 const mockDataset = checkNotNull(metadata.question(mockDatasetCard.id));
+const mockDatasetNoPk = checkNotNull(metadata.question(mockDatasetNoPkCard.id));
 
 const mockDatasetWithClauses = checkNotNull(
   metadata.question(mockDatasetWithClausesCard.id),
@@ -448,6 +468,15 @@ describe("Object Detail", () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetWithClauses });
+
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
+  });
+
+  it("should not render actions menu when model does not have a PK", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetNoPk });
 
     const actionsMenu = await findActionsMenu();
     expect(actionsMenu).toBeUndefined();
