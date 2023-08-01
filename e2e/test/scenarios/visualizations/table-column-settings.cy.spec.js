@@ -3,14 +3,15 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const tableQuestion = {
+const tableQuestion = ({ dataset = false } = {}) => ({
   display: "table",
+  dataset,
   query: {
     "source-table": ORDERS_ID,
   },
-};
+});
 
-const tableQuestionWithJoin = {
+const tableQuestionWithJoin = () => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -27,9 +28,9 @@ const tableQuestionWithJoin = {
       },
     ],
   },
-};
+});
 
-const tableQuestionWithJoinAndFields = {
+const tableQuestionWithJoinAndFields = () => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -46,9 +47,9 @@ const tableQuestionWithJoinAndFields = {
       },
     ],
   },
-};
+});
 
-const tableQuestionWithExpression = {
+const tableQuestionWithExpression = () => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -56,9 +57,9 @@ const tableQuestionWithExpression = {
       Math: ["+", 1, 1],
     },
   },
-};
+});
 
-const tableQuestionWithExpressionAndFields = {
+const tableQuestionWithExpressionAndFields = () => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -70,9 +71,9 @@ const tableQuestionWithExpressionAndFields = {
       ["expression", "Math", { "base-type": "type/Integer" }],
     ],
   },
-};
+});
 
-const tableWithAggregations = {
+const tableWithAggregations = () => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
@@ -81,14 +82,14 @@ const tableWithAggregations = {
       ["sum", ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }]],
     ],
   },
-};
+});
 
-const nativeQuestion = {
+const nativeQuestion = () => ({
   display: "table",
   native: {
     query: "SELECT * FROM ORDERS",
   },
-};
+});
 
 const nestedQuestion = card => ({
   display: "table",
@@ -125,7 +126,7 @@ describe("scenarios > visualizations > table column settings", () => {
 
   describe("tables", () => {
     it("should be able to show and hide table fields", () => {
-      cy.createQuestion(tableQuestion, { visitQuestion: true });
+      cy.createQuestion(tableQuestion(), { visitQuestion: true });
       openSettings();
 
       cy.log("hide a column");
@@ -153,7 +154,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide table fields with in a join", () => {
-      cy.createQuestion(tableQuestionWithJoin, { visitQuestion: true });
+      cy.createQuestion(tableQuestionWithJoin(), { visitQuestion: true });
       openSettings();
 
       cy.log("hide a column");
@@ -181,7 +182,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide table fields with in a join with fields", () => {
-      cy.createQuestion(tableQuestionWithJoinAndFields, {
+      cy.createQuestion(tableQuestionWithJoinAndFields(), {
         visitQuestion: true,
       });
       openSettings();
@@ -223,7 +224,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide implicitly joinable fields for a table", () => {
-      cy.createQuestion(tableQuestion, { visitQuestion: true });
+      cy.createQuestion(tableQuestion(), { visitQuestion: true });
       openSettings();
 
       cy.log("show a column");
@@ -253,7 +254,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide custom expressions for a table", () => {
-      cy.createQuestion(tableQuestionWithExpression, {
+      cy.createQuestion(tableQuestionWithExpression(), {
         visitQuestion: true,
       });
       openSettings();
@@ -281,7 +282,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide custom expressions for a table with selected fields", () => {
-      cy.createQuestion(tableQuestionWithExpressionAndFields, {
+      cy.createQuestion(tableQuestionWithExpressionAndFields(), {
         visitQuestion: true,
       });
       openSettings();
@@ -306,7 +307,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide columns from aggregations", () => {
-      cy.createQuestion(tableWithAggregations, { visitQuestion: true });
+      cy.createQuestion(tableWithAggregations(), { visitQuestion: true });
       openSettings();
 
       cy.log("hide a column");
@@ -339,7 +340,7 @@ describe("scenarios > visualizations > table column settings", () => {
 
   describe("nested structured questions", () => {
     it("should be able to show and hide fields from a nested query", () => {
-      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+      cy.createQuestion(tableQuestion()).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
       openSettings();
@@ -367,7 +368,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it.skip("should be able to show and hide fields from a nested query with joins (metabase#32373)", () => {
-      cy.createQuestion(tableQuestionWithJoin).then(({ body: card }) => {
+      cy.createQuestion(tableQuestionWithJoin()).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
       openSettings();
@@ -395,7 +396,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it.skip("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
-      cy.createQuestion(tableQuestionWithJoinAndFields).then(
+      cy.createQuestion(tableQuestionWithJoinAndFields()).then(
         ({ body: card }) => {
           cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
         },
@@ -435,7 +436,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide implicitly joinable fields for a nested query", () => {
-      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+      cy.createQuestion(tableQuestion()).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
       openSettings();
@@ -464,9 +465,11 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide custom expressions from a nested query", () => {
-      cy.createQuestion(tableQuestionWithExpression).then(({ body: card }) => {
-        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
-      });
+      cy.createQuestion(tableQuestionWithExpression()).then(
+        ({ body: card }) => {
+          cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+        },
+      );
       openSettings();
 
       cy.log("hide a column");
@@ -492,7 +495,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide columns from aggregations from a nested query", () => {
-      cy.createQuestion(tableWithAggregations).then(({ body: card }) => {
+      cy.createQuestion(tableWithAggregations()).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
       openSettings();
@@ -531,7 +534,7 @@ describe("scenarios > visualizations > table column settings", () => {
     });
 
     it("should be able to show and hide questions from a nested query with a self join", () => {
-      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+      cy.createQuestion(tableQuestion()).then(({ body: card }) => {
         const columnName = "Tax";
         const columnLongName = `Question ${card.id} → ${columnName}`;
 
@@ -565,7 +568,7 @@ describe("scenarios > visualizations > table column settings", () => {
 
   describe("nested native questions", () => {
     it("should be able to show and hide fields from a nested native query", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      cy.createNativeQuestion(nativeQuestion()).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
       openSettings();
