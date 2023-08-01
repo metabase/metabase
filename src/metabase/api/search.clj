@@ -11,6 +11,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
@@ -18,6 +19,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -141,7 +143,12 @@
   (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
 
-(mu/defn ^:private base-query-for-model :- [:map {:closed true} [:select :any] [:from :any] [:where :any]]
+(mu/defn ^:private base-query-for-model :- [:map {:closed true}
+                                            [:select :any]
+                                            [:from :any]
+                                            [:where :any]
+                                            [:join {:optional true} :any]
+                                            [:left-join {:optional true} :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
   [model :- SearchableModel context :- SearchContext]
@@ -401,42 +408,51 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn ^:private search-context
-  [{:keys [archived-string
+  [{:keys [archived
            created-by
            limit
            models
            offset
            search-string
-           table-db-id]} :- [:map {:closed true}
-                             [:search-string                    [:maybe ms/NonBlankString]]
-                             [:models                           [:maybe [:set SearchableModel]]]
-                             [:archived-string {:optional true} [:maybe ms/BooleanString]]
-                             [:created-by      {:optional true} [:maybe ms/PositiveInt]]
-                             [:limit           {:optional true} [:maybe ms/Int]]
-                             [:offset          {:optional true} [:maybe ms/Int]]
-                             [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]]]
+           table-db-id
+           verified]}      :- [:map {:closed true}
+                               [:search-string                    [:maybe ms/NonBlankString]]
+                               [:models                           [:maybe [:set SearchableModel]]]
+                               [:archived        {:optional true} [:maybe :boolean]]
+                               [:created-by      {:optional true} [:maybe ms/PositiveInt]]
+                               [:limit           {:optional true} [:maybe ms/Int]]
+                               [:offset          {:optional true} [:maybe ms/Int]]
+                               [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]
+                               [:verified        {:optional true} [:maybe true?]]]]
+  (when (some? verified)
+    (premium-features/assert-has-any-features
+     [:content-verification :official-collections]
+     (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:search-string      search-string
                         :current-user-perms @api/*current-user-permissions-set*
-                        :archived?          (Boolean/parseBoolean archived-string)
+                        :archived?          (boolean archived)
                         :models             models}
                  (some? created-by)  (assoc :created-by created-by)
                  (some? table-db-id) (assoc :table-db-id table-db-id)
                  (some? limit)       (assoc :limit-int limit)
-                 (some? offset)      (assoc :offset-int offset))]
+                 (some? offset)      (assoc :offset-int offset)
+                 (some? verified)    (assoc :verified verified))]
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived-string table-db-id created_by]
-  {archived-string [:maybe ms/BooleanString]
-   table-db-id     [:maybe ms/PositiveInt]
-   created_by      [:maybe ms/PositiveInt]}
-  (query-model-set (search-context {:search-string   q
-                                    :archived-string archived-string
-                                    :table-db-id     table-db-id
-                                    :created-by      created_by
-                                    :models          search.config/all-models})))
+  [q archived table-db-id created_by verified]
+  {archived    [:maybe ms/BooleanValue]
+   table-db-id [:maybe ms/PositiveInt]
+   created_by  [:maybe ms/PositiveInt]
+   verified    [:maybe true?]}
+  (query-model-set (search-context {:search-string q
+                                    :archived      archived
+                                    :table-db-id   table-db-id
+                                    :created-by    created_by
+                                    :verified      verified
+                                    :models        search.config/all-models})))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
@@ -447,12 +463,13 @@
   to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
-  [q archived created_by table_db_id models]
-  {q            [:maybe ms/NonBlankString]
-   archived     [:maybe ms/BooleanString]
-   table_db_id  [:maybe ms/PositiveInt]
-   models       [:maybe [:or SearchableModel [:sequential SearchableModel]]]
-   created_by   [:maybe ms/PositiveInt]}
+  [q archived created_by table_db_id models verified]
+  {q           [:maybe ms/NonBlankString]
+   archived    [:maybe :boolean]
+   table_db_id [:maybe ms/PositiveInt]
+   models      [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   created_by  [:maybe ms/PositiveInt]
+   verified    [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         models-set (cond
@@ -460,13 +477,14 @@
                     (string? models) #{models}
                     :else            (set models))
         results    (search (search-context
-                            {:search-string   q
-                             :archived-string archived
-                             :created-by      created_by
-                             :table-db-id     table_db_id
-                             :models          models-set
-                             :limit           mw.offset-paging/*limit*
-                             :offset          mw.offset-paging/*offset*}))
+                            {:search-string q
+                             :archived      archived
+                             :created-by    created_by
+                             :table-db-id   table_db_id
+                             :models        models-set
+                             :limit         mw.offset-paging/*limit*
+                             :offset        mw.offset-paging/*offset*
+                             :verified      verified}))
         duration   (- (System/currentTimeMillis) start-time)]
     ;; Only track global searches
     (when (and (nil? models)

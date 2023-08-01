@@ -113,6 +113,28 @@
   [_filter model query creator-id]
   (sql.helpers/where query (default-created-by-fitler-clause model creator-id)))
 
+;; Verified filters
+
+(defmethod build-optional-filter-query [:verified "card"]
+  [_filter model query verified]
+  (assert (true? verified) "filter for non-verified cards is not supported")
+  (if (premium-features/has-feature? :content-verification)
+    (-> query
+        (sql.helpers/join :moderation_review
+                          [:= :moderation_review.moderated_item_id
+                           (search.config/column-with-model-alias model :id)])
+        (sql.helpers/where [:= :moderation_review.status "verified"]
+                           [:= :moderation_review.moderated_item_type "card"]
+                           [:= :moderation_review.most_recent true]))
+    (sql.helpers/where query false-clause)))
+
+(defmethod build-optional-filter-query [:verified "collection"]
+  [_filter model query verified]
+  (assert (true? verified) "filter for non-verified collections is not supported")
+  (if (premium-features/has-feature? :official-collections)
+    (sql.helpers/where query [:= (search.config/column-with-model-alias model :authority_level) "official"])
+    (sql.helpers/where query false-clause)))
+
 (defn- feature->supported-models
   "Return A map of filter to its support models.
 
@@ -134,18 +156,23 @@
   "Given a search-context, retuns the list of models that can be applied to it.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
-  [{:keys [created-by models] :as _search-context} :- SearchContext]
-  (cond-> models
-    (some? created-by) (set/intersection (:created-by (feature->supported-models)))))
+  [search-context :- SearchContext]
+  (let [{:keys [created-by
+                models
+                verified]} search-context]
+    (cond-> models
+      (some? created-by) (set/intersection (:created-by (feature->supported-models)))
+      (some? verified)   (set/intersection (:verified (feature->supported-models))))))
 
 (mu/defn build-filters :- map?
   "Build the search filters for a model."
-  [honeysql-query :- :any
+  [honeysql-query :- :map
    model          :- SearchableModel
    search-context :- SearchContext]
   (let [{:keys [archived?
                 created-by
-                search-string]} search-context]
+                search-string
+                verified]}    search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context))
@@ -155,4 +182,7 @@
 
       ;; build optional filters
       (int? created-by)
-      (#(build-optional-filter-query :created-by model % created-by)))))
+      (#(build-optional-filter-query :created-by model % created-by))
+
+      (some? verified)
+      (#(build-optional-filter-query :verified model % verified)))))

@@ -84,15 +84,18 @@
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
   (mc/schema
-    [:map {:closed true}
-     [:search-string                       [:maybe ms/NonBlankString]]
-     [:archived?                           :boolean]
-     [:models                              [:set SearchableModel]]
-     [:current-user-perms                  [:set perms/PathMalliSchema]]
-     [:created-by         {:optional true} ms/PositiveInt]
-     [:table-db-id        {:optional true} ms/PositiveInt]
-     [:limit-int          {:optional true} ms/Int]
-     [:offset-int         {:optional true} ms/Int]]))
+   [:map {:closed true}
+    [:search-string                       [:maybe ms/NonBlankString]]
+    [:archived?                           :boolean]
+    [:models                              [:set SearchableModel]]
+    [:current-user-perms                  [:set perms/PathMalliSchema]]
+    [:created-by         {:optional true} ms/PositiveInt]
+    [:table-db-id        {:optional true} ms/PositiveInt]
+    [:limit-int          {:optional true} ms/Int]
+    [:offset-int         {:optional true} ms/Int]
+    ;; true to search for verified items only,
+    ;; nil will return all items
+    [:verified           {:optional true} [:maybe true?]]]))
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
