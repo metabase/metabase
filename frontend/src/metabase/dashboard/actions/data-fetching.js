@@ -418,8 +418,6 @@ export const fetchCardData = createThunkAction(
   },
 );
 
-const fetchDashboardCardDataSync = createAction(FETCH_DASHBOARD_CARD_DATA);
-
 export const fetchDashboardCardData =
   ({ skipOngoingDashcardRequests, ...options }) =>
   (dispatch, getState) => {
@@ -443,12 +441,13 @@ export const fetchDashboardCardData =
     const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
       return dashcard.id;
     });
-    dispatch(
-      fetchDashboardCardDataSync({
+    dispatch({
+      type: FETCH_DASHBOARD_CARD_DATA,
+      payload: {
         currentTime: performance.now(),
         loadingIds: newLoadingIds,
-      }),
-    );
+      },
+    });
 
     const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
       return dispatch(fetchCardData(card, dashcard, options)).then(() => {
