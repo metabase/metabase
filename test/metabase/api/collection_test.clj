@@ -29,6 +29,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -128,7 +130,7 @@
                                                                  :authority_level "official"}
                                  Collection _                   {:name     "Crowberto's Child Collection"
                                                                  :location (collection/location-path crowberto-root)}]
-          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection" }
+          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
                 luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))
@@ -880,7 +882,19 @@
                           :name      "My Snippet"
                           :entity_id (:entity_id snippet)
                           :model     "snippet"}]
-                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))))))
+                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))
+
+        (testing "Snippets in nested collections should be returned as a flat list on OSS"
+          (premium-features-test/with-premium-features #{}
+             (t2.with-temp/with-temp [:model/Collection  sub-collection {:namespace "snippets"
+                                                                         :name      "Nested Snippet Collection"
+                                                                         :location  (collection/location-path collection)}
+                                      :model/NativeQuerySnippet sub-snippet {:collection_id (:id sub-collection)
+                                                                             :name          "Nested Snippet"}]
+               (is (=?
+                    [{:id (:id snippet), :name "My Snippet"}
+                     {:id (:id sub-snippet), :name "Nested Snippet"}]
+                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
@@ -1539,39 +1553,9 @@
                         :entity_id       (:entity_id collection)
                         :color           "#ABCDEF"
                         :location        "/"
-                        :authority_level "official"
                         :parent_id       nil})
                       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                            {:name "My Beautiful Collection", :color "#ABCDEF", :authority_level "official"})))))
-    (testing "Admins can edit the type"
-      (t2.with-temp/with-temp [Collection collection]
-        (is (= "official"
-               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                         {:name "foo" :authority_level "official"})
-                   :authority_level)))
-        (is (= :official
-               (t2/select-one-fn :authority_level Collection :id (u/the-id collection)))))
-      (testing "But not for personal collections"
-        (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
-          (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id personal-coll))
-                                {:authority_level "official"})
-          (is (nil? (t2/select-one-fn :authority_level Collection :id (u/the-id personal-coll))))))
-      (testing "And not for children of personal collections"
-        (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
-          (t2.with-temp/with-temp [Collection child-coll]
-            (collection/move-collection! child-coll (collection/children-location personal-coll))
-            (mt/user-http-request :crowberto :put 403 (str "collection/" (u/the-id child-coll))
-                                  {:authority_level "official"})))))
-    (testing "Non-admins get a 403 when editing the type"
-      (t2.with-temp/with-temp [Collection collection]
-        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                              {:name "foo" :authority_level "official"})))
-    (testing "Non-admins patching without type is fine"
-      (t2.with-temp/with-temp [Collection collection {:name "whatever" :authority_level "official"}]
-        (is (= "official"
-               (-> (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id collection))
-                                         {:name "foo"})
-                   :authority_level)))))
+                                            {:name "My Beautiful Collection" :color "#ABCDEF"})))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]

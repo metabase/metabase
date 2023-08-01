@@ -53,7 +53,10 @@ async function setup({ dashboard }: { dashboard?: Partial<Dashboard> } = {}) {
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
   setupCollectionsEndpoints({ collections: [] });
-  setupCollectionItemsEndpoint(TEST_COLLECTION);
+  setupCollectionItemsEndpoint({
+    collection: TEST_COLLECTION,
+    collectionItems: [],
+  });
   setupSearchEndpoints([TEST_COLLECTION_ITEM]);
   setupCardsEndpoints([TEST_CARD]);
   setupTableEndpoints(TEST_TABLE);

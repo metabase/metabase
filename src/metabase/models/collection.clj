@@ -68,9 +68,8 @@
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (def AuthorityLevel
-  "Schema for valid collection authority levels"
-  [:maybe [:enum "official"]])
-
+  "Malli Schema for valid collection authority levels."
+  [:enum "official"])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Slug & Hex Color & Validation                                          |
@@ -886,7 +885,7 @@
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
     ;; (5) make sure hex color is valid
     (when (api/column-will-change? :color collection-before-updates collection-updates)
-      (assert-valid-hex-color color))
+     (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)
@@ -894,7 +893,6 @@
     ;; to Toucan's `update!` impl
     (cond-> collection-updates
       collection-name (assoc :slug (slugify collection-name)))))
-
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 

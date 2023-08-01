@@ -37,6 +37,12 @@
     [driver _feature db]
     (driver/database-supports? driver :foreign-keys db)))
 
+(defmethod driver/database-supports? [:sql :persist-models-enabled]
+  [driver _feat db]
+  (and
+    (driver/database-supports? driver :persist-models db)
+    (-> db :settings :persist-models-enabled)))
+
 (defmethod driver/mbql->native :sql
   [driver query]
   (sql.qp/mbql->native driver query))

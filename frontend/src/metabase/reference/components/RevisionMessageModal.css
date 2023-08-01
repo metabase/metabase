@@ -1,0 +1,13 @@
+:local(.modalBody) {
+  composes: flex justify-center align-center from "style";
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 32px;
+}
+
+:local(.modalTextArea) {
+  composes: flex-full text-dark input p2 from "style";
+  resize: none;
+  font-size: 16px;
+  min-height: 100px;
+}
