@@ -229,6 +229,9 @@
   [db]
   (driver/database-supports? (driver.u/database->driver db) :uploads db))
 
+(defn to-map
+       [x]
+       (into {} x))
 (defn- dbs-list
   [& {:keys [include-tables?
              include-saved-questions-db?
@@ -248,7 +251,7 @@
       filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
-      include-only-uploadable?     (#(filter uploadable-db? %)))))
+     include-only-uploadable?     (#(filter uploadable-db? %)))))
 
 (api/defendpoint GET "/"
   "Fetch all `Databases`.
@@ -277,17 +280,17 @@
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
-        db-list-res                     (or (dbs-list :include-tables?                 include-tables?
-                                                      :include-saved-questions-db?     saved
-                                                      :include-saved-questions-tables? include-saved-questions-tables?
-                                                      :include-editable-data-model?    include_editable_data_model
-                                                      :exclude-uneditable-details?     only-editable?
-                                                      :include-analytics?  include_analytics
-                                                      :include-only-uploadable?        include_only_uploadable)
-                                            [])]
-    {:data  db-list-res
-     :total (count db-list-res)}))
-
+        db-list-res                     (or (into [] (dbs-list :include-tables?                 include-tables?
+                                                              :include-saved-questions-db?     saved
+                                                              :include-saved-questions-tables? include-saved-questions-tables?
+                                                              :include-editable-data-model?    include_editable_data_model
+                                                              :exclude-uneditable-details?     only-editable?
+                                                              :include-analytics?              include_analytics
+                                                              :include-only-uploadable?        include_only_uploadable))
+                                            [])
+        db-list-res                     (map #(into {} %) db-list-res)]
+   {:data  db-list-res
+    :total (count db-list-res)}))
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
