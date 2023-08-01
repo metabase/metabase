@@ -108,8 +108,12 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("ID").should("exist");
       disabledColumns().findByText("Tax").should("exist");
       additionalColumns().findByText("Tax").should("not.exist");
+      visualization().findByText("Tax").should("not.exist");
+
+      cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
+      visualization().findByText("Tax").should("not.exist");
 
       cy.log("show a column");
       additionalColumns().within(() => showColumn("Tax"));
@@ -118,6 +122,8 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("ID").should("exist");
       disabledColumns().findByText("Tax").should("not.exist");
       additionalColumns().findByText("Tax").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Tax").should("exist");
     });
 
     it("should be able to show and hide table fields with in a join", () => {
@@ -130,8 +136,12 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Products → Ean").should("exist");
       disabledColumns().findByText("Products → Category").should("exist");
       additionalColumns().findByText("Category").should("not.exist");
+      visualization().findByText("Products → Category").should("not.exist");
+
+      cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
+      visualization().findByText("Products → Category").should("not.exist");
 
       cy.log("show a column");
       additionalColumns().within(() => showColumn("Category"));
@@ -140,6 +150,8 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Products → Ean").should("exist");
       disabledColumns().findByText("Category").should("not.exist");
       additionalColumns().findByText("Category").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Products → Category").should("exist");
     });
 
     it("should be able to show and hide table fields with in a join with fields", () => {
@@ -154,8 +166,12 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Products → Ean").should("not.exist");
       disabledColumns().findByText("Products → Category").should("exist");
       additionalColumns().findByText("Category").should("not.exist");
+      visualization().findByText("Products → Category").should("not.exist");
+
+      cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
+      visualization().findByText("Products → Category").should("not.exist");
 
       cy.log("show an existing column");
       additionalColumns().within(() => showColumn("Ean"));
@@ -165,6 +181,8 @@ describe("scenarios > visualizations > table column settings", () => {
       disabledColumns().findByText("Products → Ean").should("not.exist");
       additionalColumns().findByText("Ean").should("not.exist");
       additionalColumns().findByText("Category").should("exist");
+      scrollVisualization();
+      visualization().findByText("Products → Ean").should("exist");
 
       cy.log("show a new column");
       additionalColumns().within(() => showColumn("Category"));
@@ -174,6 +192,8 @@ describe("scenarios > visualizations > table column settings", () => {
       additionalColumns().findByText("Ean").should("not.exist");
       additionalColumns().findByText("Category").should("not.exist");
       additionalColumns().findByText("Rating").should("exist");
+      scrollVisualization();
+      visualization().findByText("Products → Category").should("exist");
     });
 
     it("should be able to show and hide implicitly joinable fields for a table", () => {
@@ -185,18 +205,25 @@ describe("scenarios > visualizations > table column settings", () => {
       cy.wait("@dataset");
       visibleColumns().findByText("Product → Category").should("exist");
       additionalColumns().findByText("Category").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Product → Category").should("exist");
 
       cy.log("hide a column");
       visibleColumns().within(() => hideColumn("Product → Category"));
       visibleColumns().findByText("Product → Category").should("not.exist");
       disabledColumns().findByText("Product → Category").should("exist");
       additionalColumns().findByText("Category").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Product → Category").should("not.exist");
+
+      cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
-
       visibleColumns().findByText("Product → Category").should("not.exist");
       disabledColumns().findByText("Product → Category").should("not.exist");
       additionalColumns().findByText("Category").should("exist");
+      scrollVisualization();
+      visualization().findByText("Product → Category").should("not.exist");
     });
 
     it("should be able to show and hide custom expressions for a table", () => {
@@ -209,14 +236,22 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().within(() => hideColumn("Math"));
       visibleColumns().findByText("Math").should("not.exist");
       disabledColumns().findByText("Math").should("exist");
+      scrollVisualization();
+      visualization().findByText("Math").should("not.exist");
+
+      cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
+      scrollVisualization();
+      visualization().findByText("Math").should("not.exist");
 
       cy.log("show a column");
       additionalColumns().within(() => showColumn("Math"));
       cy.wait("@dataset");
       visibleColumns().findByText("Math").should("exist");
       additionalColumns().findByText("Math").should("not.exist");
+      scrollVisualization();
+      visualization().findByText("Math").should("exist");
     });
 
     it("should be able to show and hide custom expressions for a table with selected fields", () => {
@@ -229,14 +264,19 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().within(() => hideColumn("Math"));
       visibleColumns().findByText("Math").should("not.exist");
       disabledColumns().findByText("Math").should("exist");
+      visualization().findByText("Math").should("not.exist");
+
+      cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
+      visualization().findByText("Math").should("not.exist");
 
       cy.log("show a column");
       additionalColumns().within(() => showColumn("Math"));
       cy.wait("@dataset");
       visibleColumns().findByText("Math").should("exist");
       additionalColumns().findByText("Math").should("not.exist");
+      visualization().findByText("Math").should("exist");
     });
 
     it("should be able to show and hide columns from aggregations", () => {
@@ -248,22 +288,26 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Count").should("not.exist");
       visibleColumns().findByText("Sum of Quantity").should("exist");
       disabledColumns().findByText("Count").should("exist");
+      visualization().findByText("Count").should("not.exist");
 
       cy.log("show a column");
       disabledColumns().within(() => showColumn("Count"));
       visibleColumns().findByText("Count").should("exist");
       visibleColumns().findByText("Sum of Quantity").should("exist");
+      visualization().findByText("Count").should("exist");
 
       cy.log("hide a column with an inner field");
       visibleColumns().within(() => hideColumn("Sum of Quantity"));
       visibleColumns().findByText("Sum of Quantity").should("not.exist");
       visibleColumns().findByText("Count").should("exist");
       disabledColumns().findByText("Sum of Quantity").should("exist");
+      visualization().findByText("Sum of Quantity").should("not.exist");
 
       cy.log("show a column with an inner field");
       disabledColumns().within(() => showColumn("Sum of Quantity"));
       visibleColumns().findByText("Sum of Quantity").should("exist");
       visibleColumns().findByText("Count").should("exist");
+      visualization().findByText("Sum of Quantity").should("exist");
     });
   });
 
@@ -358,6 +402,26 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Product → Category").should("not.exist");
       additionalColumns().findByText("Category").should("exist");
     });
+
+    it("should be able to show and hide custom expressions from a nested query", () => {
+      cy.createQuestion(tableQuestionWithExpression).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+      });
+      openSettings();
+
+      cy.log("hide a column");
+      visibleColumns().within(() => hideColumn("Math"));
+      visibleColumns().findByText("Math").should("not.exist");
+      disabledColumns().findByText("Math").should("exist");
+      runQuery();
+      cy.wait("@dataset");
+
+      cy.log("show a column");
+      additionalColumns().within(() => showColumn("Math"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Math").should("exist");
+      additionalColumns().findByText("Math").should("not.exist");
+    });
   });
 });
 
@@ -375,6 +439,14 @@ const hideColumn = column => {
 
 const openSettings = () => {
   cy.findByTestId("viz-settings-button").click();
+};
+
+const visualization = () => {
+  return cy.findByTestId("TableInteractive-root");
+};
+
+const scrollVisualization = (position = "right") => {
+  cy.get("#main-data-grid").scrollTo(position);
 };
 
 const visibleColumns = () => {
