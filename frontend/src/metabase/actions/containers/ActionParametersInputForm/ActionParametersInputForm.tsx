@@ -50,12 +50,6 @@ function ActionParametersInputForm({
       if (success) {
         actions.setErrors({});
         onSubmitSuccess?.(actions);
-
-        // if (shouldPrefetch) {
-        //   prefetchValues();
-        // } else {
-        //   actions.resetForm();
-        // }
       } else {
         throw new Error(error);
       }
