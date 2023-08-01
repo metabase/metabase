@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import {
   ColumnItemIcon,
   ColumnItemSpan,
@@ -9,40 +8,40 @@ import {
   ColumnItemColorPicker,
 } from "./ColumnItem.styled";
 
-const ActionIcon = ({ icon, onClick, ...props }) => (
-  <ColumnItemIcon
-    data-testid={props["data-testid"]}
-    onlyIcon
-    icon={icon}
-    iconSize={16}
-    onClick={e => {
-      e.stopPropagation();
-      onClick(e.target);
-    }}
-  />
-);
+interface ColumnItemProps {
+  className?: string;
+  title: string;
+  color?: string;
+  role?: string;
+  draggable?: boolean;
+  onClick?: () => void;
+  onAdd?: (target: HTMLElement) => void;
+  onRemove?: (target: HTMLElement) => void;
+  onEdit?: (target: HTMLElement) => void;
+  onEnable?: (target: HTMLElement) => void;
+  onColorChange?: (newColor: string) => void;
+}
 
-const ColumnItem = ({
+export const ColumnItem = ({
+  className,
   title,
   color,
+  role,
+  draggable = false,
+  onClick,
   onAdd,
   onRemove,
-  onClick,
   onEdit,
   onEnable,
   onColorChange,
-  draggable,
-  className = "",
-  ...props
-}) => {
+}: ColumnItemProps) => {
   return (
     <ColumnItemRoot
       className={className}
       onClick={onClick}
       isDraggable={draggable}
       data-testid={draggable ? `draggable-item-${title}` : null}
-      {...props}
-      title={props.role ? title : null}
+      title={role ? title : undefined}
     >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber" />}
@@ -89,7 +88,30 @@ const ColumnItem = ({
   );
 };
 
-export default Object.assign(ColumnItem, {
+interface ActionIconProps {
+  icon: string;
+  onClick: (target: HTMLElement) => void;
+  "data-testid"?: string;
+}
+
+const ActionIcon = ({
+  icon,
+  onClick,
+  "data-testid": dataTestId,
+}: ActionIconProps) => (
+  <ColumnItemIcon
+    icon={icon}
+    onlyIcon
+    iconSize={16}
+    data-testid={dataTestId}
+    onClick={e => {
+      e.stopPropagation();
+      onClick(e.currentTarget);
+    }}
+  />
+);
+
+Object.assign(ColumnItem, {
   Root: ColumnItemRoot,
   Container: ColumnItemContainer,
 });

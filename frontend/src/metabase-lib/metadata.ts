@@ -134,3 +134,10 @@ export function tableOrCardMetadata(
 ): CardMetadata | TableMetadata {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }
+
+export function visibleColumns(
+  query: Query,
+  stageIndex: number,
+): ColumnMetadata[] {
+  return ML.visible_columns(query, stageIndex);
+}
