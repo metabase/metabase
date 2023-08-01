@@ -619,7 +619,7 @@
       ;; Default case - do nothing if we don't know about the incoming value.
       ;; Generates a warning, as we should aim to capture all the :source/* values here.
       (do
-        (log/warn (i18n/tru "Cannot add-field with unknown source " (pr-str source)))
+        (log/warn (i18n/tru "Cannot add-field with unknown source {0}" (pr-str source)))
         query))))
 
 (defn- remove-matching-ref [query stage-number a-ref refs]
@@ -690,7 +690,7 @@
       ;; Default case: do nothing and return the query unchaged.
       ;; Generate a warning - we should aim to capture every `:source/*` value above.
       (do
-        (log/warn (i18n/tru "Cannot remove-field with unknown source " (pr-str source)))
+        (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
         query))))
 
 ;; TODO: Refactor this away? The special handling for aggregations is strange.
