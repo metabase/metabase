@@ -48,7 +48,7 @@ export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
   return ["variable", variable.mbql()];
 }
 
-export function buildTextTagTarget(tagName: string) {
+export function buildTextTagTarget(tagName: string): ["text-tag", string] {
   return ["text-tag", tagName];
 }
 
