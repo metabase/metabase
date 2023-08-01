@@ -107,8 +107,8 @@ if (hasPremiumFeature("whitelabel")) {
 
   PLUGIN_LOGO_ICON_COMPONENTS.push(LogoIcon);
   PLUGIN_SELECTORS.canWhitelabel = () => true;
-}
 
-// these selectors control whitelabeling UI
-PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
-PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
+  // these selectors control whitelabeling UI
+  PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
+  PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
+}

@@ -73,6 +73,20 @@
                   (and (re-matches #"Database .+ not found, .+" (.getMessage e))
                        ::exception-thrown)))))))
 
+(deftest ^:parallel only-connect-when-non-malicious-properties
+  (testing "Reject connection strings with malicious properties"
+    (let [conn-str (str "jdbc:h2:file:"
+                        (System/getProperty "user.dir")
+                        "/toucan_sightings.db"
+                        ";TRACE_LEVEL_SYSTEM_OUT=1\\;CREATE TRIGGER IAMPWNED BEFORE SELECT ON INFORMATION_SCHEMA.TABLES AS $$//javascript\nnew java.net.URL('http://localhost:3000/api/health').openConnection().getContentLength()\n$$--=x\\;")
+          result (try (driver/can-connect? :h2 {:db conn-str})
+                      ::did-not-throw
+                      (catch Exception e e))]
+      (is (instance? clojure.lang.ExceptionInfo result))
+      (is (partial= {:cause "Malicious keys detected"
+                     :data {:keys ["TRACE_LEVEL_SYSTEM_OUT"]}}
+                    (Throwable->map result))))))
+
 (deftest db-default-timezone-test
   (mt/test-driver :h2
     ;; [[driver/db-default-timezone]] returns `nil`. This *probably* doesn't make sense. We should go in an fix it, by
