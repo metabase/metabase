@@ -4,6 +4,7 @@ import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getWebsiteUrl } from "metabase/selectors/settings";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -470,19 +471,30 @@ export const ADMIN_SETTINGS_SECTIONS = {
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
-        key: "-standalone-embeds",
+        key: "-static-embedding",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        embedName: t`Standalone embeds`,
+        embedName: t`Static embedding`,
         embedDescription: t`Securely embed individual questions and dashboards within other applications.`,
         embedType: "standalone",
       },
       {
-        key: "-full-app-embedding",
+        key: "-interactive-embedding",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        embedName: t`Full-app embedding`,
-        embedDescription: t`With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder.`,
+        embedName: t`Interactive embedding`,
+        embedDescription: jt`With this
+           ${(
+             <ExternalLink href={getWebsiteUrl("product/pro")}>
+               Pro
+             </ExternalLink>
+           )}
+               /
+               ${(
+                 <ExternalLink href={getWebsiteUrl("sales")}>
+                   Enterprise
+                 </ExternalLink>
+               )} feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO—down to the row- or column-level—so people only see what they need to.`,
         embedType: "full-app",
       },
     ],
@@ -499,7 +511,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
                   t`Embedding`,
                   "/admin/settings/embedding-in-other-applications",
                 ],
-                [t`Standalone embeds`],
+                [t`Static embedding`],
               ]}
             />
           );
@@ -555,7 +567,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
                   t`Embedding`,
                   "/admin/settings/embedding-in-other-applications",
                 ],
-                [t`Full-app embedding`],
+                [t`Interactive embedding`],
               ]}
             />
           );
