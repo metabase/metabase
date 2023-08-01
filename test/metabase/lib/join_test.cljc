@@ -959,3 +959,20 @@
                "Venues"
                "Previous results")
              (lib/join-lhs-display-name query join-or-joinable))))))
+
+(deftest ^:parallel join-condition-update-temporal-bucketing-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/join (lib/join-clause (meta/table-metadata :products)
+                                             [(lib/= (meta/field-metadata :orders :created-at)
+                                                     (meta/field-metadata :products :created-at))])))
+        [condition] (lib/join-conditions (first (lib/joins query)))]
+    (is (=? {:stages [{:joins [{:conditions [[:= {}
+                                              [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+                                              [:field {:temporal-unit :year} (meta/id :products :created-at)]]]}]}]}
+            (lib.join/join-condition-update-temporal-bucketing query -1 condition :year)))
+    (is (=? {:stages [{:joins [{:conditions [[:= {}
+                                              [:field (complement :temporal-unit) (meta/id :orders :created-at)]
+                                              [:field (complement :temporal-unit) (meta/id :products :created-at)]]]}]}]}
+            (-> query
+                (lib.join/join-condition-update-temporal-bucketing -1 condition :year)
+                (lib.join/join-condition-update-temporal-bucketing -1 condition nil))))))
