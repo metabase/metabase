@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
+
 import moment from "moment-timezone";
 
 import { color } from "metabase/lib/colors";
 import { getFullName } from "metabase/lib/user";
 import * as Urls from "metabase/lib/urls";
-
+import { useSelector } from "metabase/lib/redux";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
@@ -14,7 +15,10 @@ import Tooltip from "metabase/core/components/Tooltip";
 import UserAvatar from "metabase/components/UserAvatar";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
 import MembershipSelect from "./MembershipSelect";
+
+const enablePasswordLoginKey = "enable-password-login";
 
 const PeopleListRow = ({
   user,
@@ -37,6 +41,10 @@ const PeopleListRow = ({
   );
 
   const isLoadingGroups = !groups;
+
+  const isPasswordLoginEnabled = useSelector(state =>
+    getSetting(state, enablePasswordLoginKey),
+  );
 
   return (
     <tr key={user.id}>
@@ -106,7 +114,7 @@ const PeopleListRow = ({
                     title: t`Edit user`,
                     link: Urls.editUser(user.id),
                   },
-                  {
+                  isPasswordLoginEnabled && {
                     title: t`Reset password`,
                     link: Urls.resetPassword(user.id),
                   },
