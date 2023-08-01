@@ -9,7 +9,7 @@
 ;; TODO -- should we make a `metabase-enterprise.routes` namespace where this can live instead of injecting it
 ;; directly?
 ;;
-;; TODO -- we need to feature-flag this based on the `:sso` feature
+;; TODO -- we need to feature-flag this based on the `:sso-` feature flags
 (compojure/defroutes ^{:doc "Ring routes for auth (SAML) API endpoints."} routes
   (compojure/context
     "/auth"

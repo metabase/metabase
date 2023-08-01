@@ -124,6 +124,11 @@
       (update :table update-keys u/->camelCaseEn)
       (clj->js :keyword-fn u/qualified-name)))
 
+(defn ^:export field-id
+  "Find the field id for something or nil."
+  [field-metadata]
+  (lib.core/field-id field-metadata))
+
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
   ([orderable]

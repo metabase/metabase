@@ -142,6 +142,7 @@
    upper
    lower]
   [lib.field
+   field-id
    fields
    with-fields
    fieldable-columns]

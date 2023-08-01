@@ -1,11 +1,11 @@
-(ns metabase.pulse.parameters-test
+(ns ^:mb/once metabase.pulse.parameters-test
   (:require
    [clojure.test :refer :all]
    [metabase.pulse.parameters :as params]
    [metabase.pulse.test-util :refer [test-dashboard]]
    [metabase.test :as mt]))
 
-(deftest value-string-test
+(deftest ^:parallel value-string-test
   (testing "If a filter has multiple values, they are concatenated into a comma-separated string"
     (is (= "CA, NY, and NJ"
            (params/value-string (-> test-dashboard :parameters first)))))
