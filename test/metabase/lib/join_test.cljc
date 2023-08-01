@@ -63,7 +63,29 @@
                             :source-table (meta/id :orders)}]
              :lib/options {:lib/uuid string?}
              :fields      :all}
-            (lib/join-clause (meta/table-metadata :orders))))))
+            (lib/join-clause (meta/table-metadata :orders)))))
+  (testing "source-card"
+    (let [query {:lib/type :mbql/query
+                 :lib/metadata lib.tu/metadata-provider-with-mock-cards
+                 :database (meta/id)
+                 :stages [{:lib/type :mbql.stage/mbql
+                           :source-card (:id (lib.tu/mock-cards :orders))}]}
+          product-card (lib.tu/mock-cards :products)
+          [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
+          [products-id] (lib/join-condition-rhs-columns query product-card orders-product-id nil)]
+      (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
+          (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
+  (testing "source-table"
+    (let [query {:lib/type :mbql/query
+                 :lib/metadata lib.tu/metadata-provider-with-mock-cards
+                 :database (meta/id)
+                 :stages [{:lib/type :mbql.stage/mbql
+                           :source-card (:id (lib.tu/mock-cards :orders))}]}
+          product-table (meta/table-metadata :products)
+          [_ orders-product-id] (lib/join-condition-lhs-columns query product-table nil nil)
+          [products-id] (lib/join-condition-rhs-columns query product-table orders-product-id nil)]
+      (is (=? {:stages [{:joins [{:stages [{:source-table (:id product-table)}]}]}]}
+              (lib/join query (lib/join-clause product-table [(lib/= orders-product-id products-id)])))))))
 
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
