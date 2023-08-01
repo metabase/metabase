@@ -37,7 +37,7 @@ describe("Filter", () => {
     it("should return the correct string for a segment filter", () => {
       expect(filter(["segment", 1]).displayName()).toEqual("Expensive Things");
     });
-    describe("betterDateLabel", () => {
+    describe("date labels", () => {
       it("should display is-week filter as a day range", () => {
         expect(
           filter([
