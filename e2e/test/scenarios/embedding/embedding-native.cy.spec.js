@@ -157,8 +157,8 @@ describe("scenarios > embedding > native questions", () => {
         // It should be possible to both set the filter value and hide it at the same time.
         // That's the synonymous to the locked filter.
         visitEmbeddedPage(payload, {
-          setFilters: "id=92",
-          hideFilters: "id,product_id,state,created_at,total",
+          setFilters: { id: 92 },
+          hideFilters: ["id", "product_id", "state", "created_at", "total"],
         });
 
         cy.findByTestId("table-row").should("have.length", 1);
@@ -186,7 +186,7 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         visitEmbeddedPage(payload, {
-          setFilters: "created_at=Q2-2025&source=Organic&state=OR",
+          setFilters: { created_at: "Q2-2025", source: "Organic", state: "OR" },
         });
 
         filterWidget()
@@ -204,7 +204,7 @@ describe("scenarios > embedding > native questions", () => {
 
         // OTOH, we should also be able to override the default filter value by eplixitly setting it
         visitEmbeddedPage(payload, {
-          setFilters: "total=80",
+          setFilters: { total: 80 },
         });
 
         cy.get("legend").contains("Total").parent("fieldset").contains("80");
