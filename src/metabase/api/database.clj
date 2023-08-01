@@ -282,12 +282,11 @@
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
                                                       :exclude-uneditable-details?     only-editable?
-                                                      :include-analytics?  include_analytics
+                                                      :include-analytics?              include_analytics
                                                       :include-only-uploadable?        include_only_uploadable)
                                             [])]
-    {:data  db-list-res
-     :total (count db-list-res)}))
-
+   {:data  db-list-res
+    :total (count db-list-res)}))
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
