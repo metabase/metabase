@@ -16021,6 +16021,31 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v48.00-001
+      author: qnkhuat
+      comment: Added 0.47.0 - Migrate database.options to database.settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateDatabaseOptionsToSettings"
+
+  - changeSet:
+      id: v48.00-002
+      author: qnkhuat
+      comment: Added 0.47.0 - drop metabase_database.options
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: options
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: options
+                  type: ${text.type}
+                  remarks: "Serialized JSON containing various options like QB behavior."
+
+  - changeSet:
       id: v48.00-003
       author: qnkhuat
       comment: Added 0.48.0 - drop computation_job_result table
