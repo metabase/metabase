@@ -89,10 +89,10 @@
      [:archived?                           :boolean]
      [:models                              [:set SearchableModel]]
      [:current-user-perms                  [:set perms/PathMalliSchema]]
-     [:created-by         {:optional true} [:maybe ms/PositiveInt]]
-     [:table-db-id        {:optional true} [:maybe ms/PositiveInt]]
-     [:limit-int          {:optional true} [:maybe ms/Int]]
-     [:offset-int         {:optional true} [:maybe ms/Int]]]))
+     [:created-by         {:optional true} ms/PositiveInt]
+     [:table-db-id        {:optional true} ms/PositiveInt]
+     [:limit-int          {:optional true} ms/Int]
+     [:offset-int         {:optional true} ms/Int]]))
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
