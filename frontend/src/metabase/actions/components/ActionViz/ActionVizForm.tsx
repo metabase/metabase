@@ -26,7 +26,7 @@ import ActionButtonView from "./ActionButtonView";
 import { FormTitle, FormWrapper } from "./ActionForm.styled";
 import { shouldShowConfirmation } from "./utils";
 
-interface ActionFormProps {
+export interface ActionFormProps {
   action: WritebackAction;
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
