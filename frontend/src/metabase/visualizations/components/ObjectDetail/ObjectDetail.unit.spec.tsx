@@ -155,7 +155,7 @@ const mockDataset = checkNotNull(metadata.question(mockDatasetCard.id));
 
 const mockDatasetNoPk = checkNotNull(metadata.question(mockDatasetNoPkCard.id));
 
-const mockDatasetMultplePk = checkNotNull(
+const mockDatasetMultiplePk = checkNotNull(
   metadata.question(mockDatasetMultiplePkCard.id),
 );
 
@@ -506,7 +506,7 @@ describe("Object Detail", () => {
   it("should not render actions menu when model's source table has multiple primary keys", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
-    setup({ question: mockDatasetMultplePk });
+    setup({ question: mockDatasetMultiplePk });
 
     const actionsMenu = await findActionsMenu();
     expect(actionsMenu).toBeUndefined();
