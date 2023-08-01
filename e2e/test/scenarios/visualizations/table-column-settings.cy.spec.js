@@ -83,19 +83,38 @@ const tableWithAggregations = {
   },
 };
 
-const nestedQuestion = ({ id }) => ({
-  display: "table",
-  query: {
-    "source-table": `card__${id}`,
-  },
-});
-
 const nativeQuestion = {
   display: "table",
   native: {
     query: "SELECT * FROM ORDERS",
   },
 };
+
+const nestedQuestion = card => ({
+  display: "table",
+  query: {
+    "source-table": `card__${card.id}`,
+  },
+});
+
+const nestedQuestionWithSelfJoin = card => ({
+  display: "table",
+  query: {
+    "source-table": `card__${card.id}`,
+    joins: [
+      {
+        fields: "all",
+        "source-table": `card__${card.id}`,
+        condition: [
+          "=",
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.ID, { "join-alias": `Question ${card.id}` }],
+        ],
+        alias: `Question ${card.id}`,
+      },
+    ],
+  },
+});
 
 describe("scenarios > visualizations > table column settings", () => {
   beforeEach(() => {
@@ -509,6 +528,38 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Sum of Quantity").should("exist");
       visibleColumns().findByText("Count").should("exist");
       visualization().findByText("Sum of Quantity").should("exist");
+    });
+
+    it("should be able to show and hide questions from a nested query with a self join", () => {
+      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+        const columnName = "Tax";
+        const columnLongName = `Question ${card.id} → ${columnName}`;
+
+        cy.createQuestion(nestedQuestionWithSelfJoin(card), {
+          visitQuestion: true,
+        });
+        openSettings();
+
+        cy.log("hide a column");
+        visibleColumns().within(() => hideColumn(columnLongName));
+        visibleColumns().findByText(columnLongName).should("not.exist");
+        disabledColumns().findByText(columnLongName).should("exist");
+        scrollVisualization();
+        visualization().findByText(columnLongName).should("not.exist");
+
+        cy.log("re-run the query");
+        runQuery();
+        cy.wait("@dataset");
+        scrollVisualization();
+        visualization().findByText(columnLongName).should("not.exist");
+
+        cy.log("show a column");
+        additionalColumns().within(() => showColumn(columnName));
+        cy.wait("@dataset");
+        visibleColumns().findByText(columnLongName).should("exist");
+        scrollVisualization();
+        visualization().findByText(columnLongName).should("exist");
+      });
     });
   });
 
