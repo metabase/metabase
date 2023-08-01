@@ -1064,7 +1064,7 @@
             (is (=? field-query
                     (lib/remove-field field-query -1 (nth table-columns 6)))))))
 
-      (testing "join with :fields :all"
+      (testing "with :fields :all"
         (let [created-at (first (filter (comp #{"CREATED_AT"} :name) join-columns))]
           (testing "fills in the :fields list and removes the field"
             (is (=? (->> (concat table-columns
@@ -1078,7 +1078,7 @@
                          (map lib/ref)
                          sorted-fields))))))
 
-      (testing "join with :fields list"
+      (testing "with :fields list"
         (let [join-fields-query (lib.util/update-query-stage
                                  query -1
                                  update-in [:joins 0]
@@ -1093,7 +1093,7 @@
                          lib.metadata.calculation/returned-columns
                          (map lib/ref)
                          sorted-fields))))
-          (testing ":does nothing if the join field is already selected"
+          (testing "does nothing if the join field is already selected"
             (is (=? join-fields-query
                     (lib/remove-field join-fields-query -1 (nth join-columns 6)))))))))
 

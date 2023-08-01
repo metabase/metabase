@@ -644,8 +644,8 @@
                           join-fields)
             removed     (remove #(lib.equality/find-closest-matching-ref query field-ref [%]) join-fields)]
         (cond-> query
-          ;; Return the query unchanged if we didn't find anything.
-          (= (count join-fields) (count removed))
+          ;; If we actually removed a field, replace the join. Otherwise return the query unchanged.
+          (< (count removed) (count join-fields))
           (lib.remove-replace/replace-join stage-number join (lib.join/with-join-fields join removed)))))))
 
 (mu/defn remove-field :- ::lib.schema/query
