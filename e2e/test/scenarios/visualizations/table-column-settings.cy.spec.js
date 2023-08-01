@@ -90,6 +90,13 @@ const nestedQuestion = ({ id }) => ({
   },
 });
 
+const nativeQuestion = {
+  display: "table",
+  native: {
+    query: "SELECT * FROM ORDERS",
+  },
+};
+
 describe("scenarios > visualizations > table column settings", () => {
   beforeEach(() => {
     restore();
@@ -502,6 +509,35 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Sum of Quantity").should("exist");
       visibleColumns().findByText("Count").should("exist");
       visualization().findByText("Sum of Quantity").should("exist");
+    });
+  });
+
+  describe("nested native questions", () => {
+    it("should be able to show and hide fields from a nested native query", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+      });
+      openSettings();
+
+      cy.log("hide a column");
+      visibleColumns().within(() => hideColumn("TAX"));
+      visibleColumns().findByText("TAX").should("not.exist");
+      disabledColumns().findByText("TAX").should("exist");
+      scrollVisualization();
+      visualization().findByText("TAX").should("not.exist");
+
+      cy.log("re-run the query");
+      runQuery();
+      cy.wait("@dataset");
+      scrollVisualization();
+      visualization().findByText("TAX").should("not.exist");
+
+      cy.log("show a column");
+      additionalColumns().within(() => showColumn("TAX"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("TAX").should("exist");
+      scrollVisualization();
+      visualization().findByText("TAX").should("exist");
     });
   });
 });
