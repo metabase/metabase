@@ -147,8 +147,7 @@
                                                                                        :filter [:>= [:field field-id nil] 18]
                                                                                        :aggregation [[:count]]}
                                                                                :database db-id}}]
-                       Card       [{model-id  :id
-                                    model-eid :entity_id}     {:name          "Some Model"
+                       Card       [{model-id  :id}            {:name          "Some Model"
                                                                :database_id   db-id
                                                                :table_id      no-schema-id
                                                                :collection_id coll-id
