@@ -114,7 +114,7 @@
 
 (defn- has-host? [url]
   (try
-    (some? (.getHost (new URI url)))
+    (-> uri URI. .getHost some?)
     (catch MalformedURLException _ false)))
 
 (defmethod sso.i/sso-get :saml
