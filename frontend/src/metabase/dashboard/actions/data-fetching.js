@@ -419,7 +419,7 @@ export const fetchCardData = createThunkAction(
 );
 
 export const fetchDashboardCardData =
-  ({ skipOngoingDashcardRequests, ...options }) =>
+  ({ isRefreshing, ...options }) =>
   (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
@@ -430,7 +430,7 @@ export const fetchDashboardCardData =
     )
       .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
       .filter(({ dashcard }) => {
-        if (skipOngoingDashcardRequests) {
+        if (isRefreshing) {
           const loadingIds = getLoadingDashCards(getState()).loadingIds;
           return !loadingIds.includes(dashcard.id);
         }

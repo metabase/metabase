@@ -174,7 +174,7 @@ export default ComposedComponent =>
             { preserveParameters: true },
           );
           this.props.fetchDashboardCardData({
-            skipOngoingDashcardRequests: true,
+            isRefreshing: true,
             reload: true,
             clearCache: false,
           });
