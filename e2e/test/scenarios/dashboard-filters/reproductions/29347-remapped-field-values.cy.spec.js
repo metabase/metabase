@@ -130,7 +130,7 @@ describe("issues 29347, 29346", () => {
             params: {},
           },
           {
-            setFilters: `${filterDetails.slug}=${filterValue}`,
+            setFilters: { [filterDetails.slug]: filterValue },
           },
         );
       });
