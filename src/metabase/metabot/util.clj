@@ -8,7 +8,7 @@
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.util :as mbql.u]
-   [metabase.metabot.openai.client :as metabot-client]
+   [metabase.metabot.openai-client :as openai-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.models :refer [Card Field FieldValues Table]]
    [metabase.query-processor :as qp]
@@ -351,7 +351,7 @@
     enum-cardinality-threshold)
    (try
      (let [ddl (table->pseudo-ddl table enum-cardinality-threshold)
-           {:keys [prompt embedding tokens]} (metabot-client/create-embedding ddl)]
+           {:keys [prompt embedding tokens]} (openai-client/create-embedding ddl)]
        {:prompt    prompt
         :embedding embedding
         :tokens    tokens})
@@ -538,7 +538,7 @@
   and a prompt will add the :prompt and :prompt_match to each object."
   [prompt-objects user-prompt]
   (let [dot (fn dot [a b] (reduce + (map * a b)))
-        {prompt-embedding :embedding} (metabot-client/create-embedding user-prompt)]
+        {prompt-embedding :embedding} (openai-client/create-embedding user-prompt)]
     (map
      (fn [{:keys [embedding] :as prompt-object}]
        (assoc prompt-object

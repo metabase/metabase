@@ -1,15 +1,10 @@
 (ns metabase.metabot.precomputes
   (:require
-   [metabase.metabot.task-api :as task-api]
+   [metabase.metabot.protocols :as metabot-protocols]
    [metabase.metabot.inference-ws.task-impl :as task-impl]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :as models]
    [toucan2.core :as t2]))
-
-(defprotocol Precomputes
-  (embeddings [this] [this entity-type entity-id])
-  (compa-summary [this entity-type entity-id])
-  (update! [this]))
 
 (defrecord AtomicPrecomputes [store])
 
@@ -21,13 +16,13 @@
                         (map metabot-util/model->summary models))
         ;; TODO -- partition-all X and then this...
         embeddings     (update-keys
-                        (task-api/bulk embedder encoded-models)
+                        (metabot-protocols/bulk embedder encoded-models)
                         parse-long)]
     {:embeddings    {:card embeddings :table {}}
      :compa-summary {:card encoded-models :table {}}}))
 
 (extend-type AtomicPrecomputes
-  Precomputes
+  metabot-protocols/Precomputes
   (embeddings
     ([{:keys [store]}]
      (let [{:keys [embeddings]} @store

@@ -1,4 +1,4 @@
-(ns metabase.metabot.openai.client
+(ns metabase.metabot.openai-client
   (:require
    [cheshire.core :as json]
    [metabase.metabot.settings :as metabot-settings]

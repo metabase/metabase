@@ -1,12 +1,11 @@
-(ns metabase.metabot.inference-ws.client
+(ns metabase.metabot.inference-ws-client
   (:require
     [clj-http.client :as http]
     [clojure.data.json :as json]
     [clojure.walk :as walk]
     [malli.core :as mc]
     [metabase.metabot.settings :as metabot-settings]
-    [metabase.metabot.schema :as metabot-schema]
-    [metabase.util.log :as log]))
+    [metabase.metabot.schema :as metabot-schema]))
 
 (def embeddings-schema
   (mc/schema
@@ -43,8 +42,8 @@
                      x))
                  mbql))
 
-(defn ^:dynamic infer
-  "Infer LLM output from a provided prompt and context.
+(defn ^:dynamic infer-mbql
+  "Infer LLM output from a provided prompt and model.
 
   The prompt is the user prompt and the context is a machine-generated
   description of the data to be used when performing inferencing. Ideally, this
@@ -53,22 +52,25 @@
   to select the best single dataset if it doesn't know how to do joins or that
   it will select and join as desired from the provided datasets to provide the
   final answer."
-  ([endpoint {:keys [prompt context models] :as args}]
-   {:pre [prompt context (mc/validate metabot-schema/inference-schema args)]}
-   (log/info "Context will not be passed to inferencer any more.")
-   (let [request-body {:prompt prompt
-                       ;:context          context
-                       :models models}
-         request      {:method           :post
-                       :url              (format "%s/api/inferMBQL" endpoint)
-                       :body             (json/write-str request-body)
-                       :as               :json
-                       :content-type     :json
-                       :throw-exceptions false}
+  ([endpoint {:keys [prompt model] :as args}]
+   {:pre [prompt (mc/validate metabot-schema/inference-schema args)]}
+   (let [request-body {:prompt prompt :model model}
+         request      (cond->
+                        {:method           :post
+                         :url              (format "%s/api/inferMBQL" endpoint)
+                         :body             (json/write-str request-body)
+                         :as               :json
+                         :content-type     :json
+                         :throw-exceptions false}
+                        (and
+                          (metabot-settings/openai-api-key)
+                          (metabot-settings/openai-organization))
+                        (assoc :headers {:openai-api-key      (metabot-settings/openai-api-key)
+                                         :openai-organization (metabot-settings/openai-organization)}))
          {:keys [body status]} (http/request request)]
      (when (= 200 status)
        (keywordize-types body))))
   ([prompt-data]
-   (infer
+   (infer-mbql
      (metabot-settings/metabot-inference-ws-url)
      prompt-data)))

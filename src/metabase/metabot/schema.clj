@@ -5,32 +5,61 @@
   "Specification for a field clause
   (e.g. [:field \"TITLE\" {:base-type \"type/Text\"}])"
   (mc/schema
-   [:tuple
-    [:enum :field]
-    string?
-    [:map [:base-type string?]]]))
+    [:tuple
+     [:enum :field]
+     string?
+     [:map [:base-type string?]]]))
 
 (def context-schema
   (mc/schema
-   [:sequential
+    [:sequential
+     [:map
+      [:table_name string?]
+      [:table_id integer?]
+      [:fields
+       [:sequential
+        [:map
+         [:clause clause-schema]
+         [:field_name string?]
+         [:field_type [:or
+                       keyword?
+                       string?]]]]]]]))
+
+(def field-ref-schema
+  "Specification for a field ref"
+  (mc/schema
+    [:tuple
+     [:enum :field]
+     [:or :string :int]
+     [:maybe [:map]]]))
+
+(def rsmd-schema
+  (mc/schema
     [:map
-     [:table_name string?]
-     [:table_id integer?]
-     [:fields
-      [:sequential
-       [:map
-        [:clause clause-schema]
-        [:field_name string?]
-        [:field_type [:or
-                      keyword?
-                      string?]]]]]]]))
+     [:name :string]
+     [:id :int]
+     [:display_name :string]
+     [:description :string]
+     [:field_ref field-ref-schema]
+     [:base_type {:optional true} [:or :string :keyword]]
+     [:effective_type {:optional true} [:or :string :keyword]]]))
+
+(def model-schema
+  (mc/schema
+    [:map {:closed false}
+     [:name :string]
+     [:id :int]
+     [:description [:maybe :string]]
+     [:database_id :int]
+     [:result_metadata
+      [:vector rsmd-schema]]]))
 
 (def inference-schema
   "The schema used to validate LLM infer input"
   (mc/schema
-   [:map
-    [:prompt string?]
-    [:context context-schema]]))
+    [:map
+     [:prompt string?]
+     [:model model-schema]]))
 
 (comment
   (require '[malli.generator :as mg])

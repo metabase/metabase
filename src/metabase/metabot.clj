@@ -4,7 +4,7 @@
   (:require
    [cheshire.core :as json]
    [metabase.lib.native :as lib-native]
-   [metabase.metabot.openai.client :as metabot-client]
+   [metabase.metabot.openai-client :as openai-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Table]]
@@ -23,10 +23,10 @@
       ;; More interesting SQL merits a more interesting display
       (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
         {:template                (metabot-util/find-result
-                                   (fn [message]
+                                    (fn [message]
                                      (metabot-util/response->viz
                                       (json/parse-string message keyword)))
-                                   (metabot-client/invoke-metabot prompt))
+                                    (openai-client/invoke-metabot prompt))
          :prompt_template_version (format "%s:%s" prompt_template version)}))
     (log/warn "Metabot is not enabled")))
 
@@ -38,8 +38,8 @@
     (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)
           {:keys [database_id inner_query]} model]
       (if-some [bot-sql (metabot-util/find-result
-                         metabot-util/extract-sql
-                         (metabot-client/invoke-metabot prompt))]
+                          metabot-util/extract-sql
+                          (openai-client/invoke-metabot prompt))]
         (let [final-sql     (metabot-util/bot-sql->final-sql model bot-sql)
               _             (log/infof "Inferred sql for model '%s' with prompt '%s':\n%s"
                                        (:id model)
@@ -68,7 +68,7 @@
   (if (metabot-settings/is-metabot-enabled)
     (let [models (->> models
                       (map (fn [{:keys [create_table_ddl] :as model}]
-                             (let [{:keys [prompt embedding tokens]} (metabot-client/create-embedding create_table_ddl)]
+                             (let [{:keys [prompt embedding tokens]} (openai-client/create-embedding create_table_ddl)]
                                (assoc model
                                       :prompt prompt
                                       :embedding embedding
@@ -92,12 +92,12 @@
           ids->models   (zipmap (map :id models) models)
           candidates    (set (keys ids->models))
           best-model-id (metabot-util/find-result
-                         (fn [message]
+                          (fn [message]
                            (some->> message
                                     (re-seq #"\d+")
                                     (map parse-long)
                                     (some candidates)))
-                         (metabot-client/invoke-metabot prompt))]
+                          (openai-client/invoke-metabot prompt))]
       (if-some [model (ids->models best-model-id)]
         (do
           (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s'."
@@ -122,8 +122,8 @@
           context        (assoc-in context [:database :create_database_ddl] ddl)
           {:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
       (if-some [sql (metabot-util/find-result
-                     metabot-util/extract-sql
-                     (metabot-client/invoke-metabot prompt))]
+                      metabot-util/extract-sql
+                      (openai-client/invoke-metabot prompt))]
         {:sql                      sql
          :prompt_template_versions (conj
                                     (vec prompt_template_versions)
