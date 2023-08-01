@@ -36,7 +36,7 @@ async function setup({
 
 describe("empty collection", () => {
   it("should show the 'create a new' button if the user has write access", async () => {
-    await setup();
+    await setup({ collection: { can_write: true } });
 
     expect(screen.getByText("Create a new…")).toBeInTheDocument();
   });
