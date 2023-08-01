@@ -1,27 +1,9 @@
-import type { FormikHelpers } from "formik";
 import { useEffect, useMemo } from "react";
 import { useAsyncFn } from "react-use";
 
-import type {
-  OnSubmitActionForm,
-  ParametersForActionExecution,
-  WritebackAction,
-  WritebackParameter,
-} from "metabase-types/api";
+import type { ParametersForActionExecution } from "metabase-types/api";
 
 const NO_VALUES: ParametersForActionExecution = {};
-
-export interface ActionParametersInputFormProps {
-  action: WritebackAction;
-  mappedParameters?: WritebackParameter[];
-  initialValues?: ParametersForActionExecution;
-  prefetchesInitialValues?: boolean;
-  onSubmit: OnSubmitActionForm;
-  onSubmitSuccess?: (
-    actions: FormikHelpers<ParametersForActionExecution>,
-  ) => void;
-  onCancel?: () => void;
-}
 
 export const useActionInitialValues = ({
   fetchInitialValues,
