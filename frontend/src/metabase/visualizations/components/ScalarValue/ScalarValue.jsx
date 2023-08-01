@@ -84,7 +84,7 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
           }
           maxWidth="22em"
         >
-          <ScalarDescriptionIcon name="info_outline" />
+          <ScalarDescriptionIcon name="info_filled" />
         </Tooltip>
       </ScalarDescriptionContainer>
     )}
