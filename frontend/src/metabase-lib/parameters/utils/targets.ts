@@ -1,9 +1,4 @@
-import type {
-  Card,
-  ParameterDimensionTarget,
-  ParameterVariableTarget,
-  ParameterTarget,
-} from "metabase-types/api";
+import type { Card, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
 import Metadata from "metabase-lib/metadata/Metadata";
@@ -17,7 +12,7 @@ export function isVariableTarget(target: ParameterTarget) {
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
-  if (!target?.[1]) {
+  if (!target?.[1] || target?.[0] === "text-tag") {
     return null;
   }
 
@@ -53,7 +48,7 @@ export function buildTextTagTarget(tagName: string): ["text-tag", string] {
 }
 
 export function getTargetFieldFromCard(
-  target: ParameterVariableTarget | ParameterDimensionTarget,
+  target: ParameterTarget,
   card: Card,
   metadata: Metadata,
 ) {
