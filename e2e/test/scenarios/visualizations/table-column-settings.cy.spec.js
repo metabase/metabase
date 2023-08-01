@@ -29,6 +29,25 @@ const tableQuestionWithJoin = {
   },
 };
 
+const tableQuestionWithJoinOnQuestion = card => ({
+  display: "table",
+  query: {
+    "source-table": ORDERS_ID,
+    joins: [
+      {
+        fields: "all",
+        "source-table": `card__${card.id}`,
+        condition: [
+          "=",
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.ID, { "join-alias": `Question ${card.id}` }],
+        ],
+        alias: `Question ${card.id}`,
+      },
+    ],
+  },
+});
+
 const tableQuestionWithJoinAndFields = {
   display: "table",
   query: {
@@ -557,6 +576,39 @@ describe("scenarios > visualizations > table column settings", () => {
         additionalColumns().within(() => showColumn(columnName));
         cy.wait("@dataset");
         visibleColumns().findByText(columnLongName).should("exist");
+        scrollVisualization();
+        visualization().findByText(columnLongName).should("exist");
+      });
+    });
+
+    it("should be able to show and hide custom expressions from a joined question", () => {
+      cy.createQuestion(tableQuestionWithExpression).then(({ body: card }) => {
+        cy.createQuestion(tableQuestionWithJoinOnQuestion(card), {
+          visitQuestion: true,
+        });
+        const columnName = "Math";
+        const columnLongName = `Question ${card.id} → ${columnName}`;
+
+        openSettings();
+
+        cy.log("hide a column");
+        visibleColumns().within(() => hideColumn(columnLongName));
+        visibleColumns().findByText(columnLongName).should("not.exist");
+        disabledColumns().findByText(columnLongName).should("exist");
+        scrollVisualization();
+        visualization().findByText(columnLongName).should("not.exist");
+
+        cy.log("re-run the query");
+        runQuery();
+        cy.wait("@dataset");
+        scrollVisualization();
+        visualization().findByText(columnLongName).should("not.exist");
+
+        cy.log("show a column");
+        additionalColumns().within(() => showColumn(columnName));
+        cy.wait("@dataset");
+        visibleColumns().findByText(columnLongName).should("exist");
+        additionalColumns().findByText(columnName).should("not.exist");
         scrollVisualization();
         visualization().findByText(columnLongName).should("exist");
       });
