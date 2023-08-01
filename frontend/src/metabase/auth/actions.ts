@@ -10,6 +10,7 @@ import * as Urls from "metabase/lib/urls";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
+import { reload } from "metabase/lib/dom";
 import {
   trackLogin,
   trackLoginGoogle,
@@ -92,11 +93,11 @@ export const logout = createAsyncThunk(
   async (redirectUrl: string | undefined, { dispatch, rejectWithValue }) => {
     try {
       await deleteSession();
-      await dispatch(clearCurrentUser());
+      dispatch(clearCurrentUser());
       await dispatch(refreshLocale()).unwrap();
       trackLogout();
       dispatch(push(Urls.login(redirectUrl)));
-      window.location.reload(); // clears redux state and browser caches
+      reload(); // clears redux state and browser caches
     } catch (error) {
       return rejectWithValue(error);
     }

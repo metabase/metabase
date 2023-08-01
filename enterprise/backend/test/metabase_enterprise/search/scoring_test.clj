@@ -6,7 +6,8 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.search.scoring :as scoring]))
 
 (deftest ^:parallel verified-score-test
@@ -23,14 +24,12 @@
 
 (defn- ee-score
   [search-string item]
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]}
-                premium-features/enable-enhancements? (constantly true)]
+  (premium-features-test/with-premium-features #{:content-management}
     (-> (scoring/score-and-result search-string item) :score)))
 
 (defn- oss-score
   [search-string item]
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]}
-                premium-features/enable-enhancements? (constantly false)]
+  (premium-features-test/with-premium-features #{}
     (-> (scoring/score-and-result search-string item) :score)))
 
 (deftest official-collection-tests
@@ -49,7 +48,10 @@
       (doseq [item [a b c d]]
         (is (> (ee-score search-string (assoc item :collection_authority_level "official"))
                (ee-score search-string item))
-            (str "Score should be greater for item: " item " vs " (assoc item :collection_authority_level "official"))))
+            (str "On EE, should be greater for item: " item " vs " (assoc item :collection_authority_level "official")))
+        (is (= (oss-score search-string (assoc item :collection_authority_level "official"))
+               (oss-score search-string item))
+            (str "On OSS, should be the same for item: " item " vs " (assoc item :collection_authority_level "official"))))
       (is (= ["customer examples of bad sorting"
               "customer success stories"
               "examples of custom expressions"
