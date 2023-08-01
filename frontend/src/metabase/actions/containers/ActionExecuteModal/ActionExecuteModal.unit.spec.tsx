@@ -1,21 +1,18 @@
 import { waitFor, waitForElementToBeRemoved } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { setupActionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
 } from "metabase-types/api/mocks";
 import { ActionsApi } from "metabase/services";
-import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 
-import { setupActionsEndpoints } from "__support__/server-mocks";
 import {
   ActionExecuteModal,
   type Props as ActionExecuteModalProps,
 } from "./ActionExecuteModal";
-
-const objectId = 888;
 
 const parameter1 = createMockActionParameter({
   id: "parameter_1",
@@ -42,12 +39,10 @@ function setupPrefetch() {
   });
 }
 
-const fetchInitialValues = (objectId?: ObjectId | null) =>
+const fetchInitialValues = () =>
   ActionsApi.prefetchValues({
     id: implicitUpdateAction.id,
-    parameters: JSON.stringify({
-      id: objectId,
-    }),
+    parameters: JSON.stringify({}),
   });
 
 function setup(props?: Partial<ActionExecuteModalProps>) {
@@ -64,9 +59,6 @@ describe("Actions > ActionExecuteModal", () => {
     await setup({
       actionId: implicitUpdateAction.id,
       fetchInitialValues,
-      initialValues: {
-        id: objectId,
-      },
       shouldPrefetch: true,
     });
 
@@ -81,22 +73,5 @@ describe("Actions > ActionExecuteModal", () => {
     await waitFor(async () => {
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos");
     });
-  });
-
-  it("should show an empty state if an implicit update action does not have a linked ID", async () => {
-    await setup({
-      actionId: implicitUpdateAction.id,
-      fetchInitialValues,
-      initialValues: {
-        id: null,
-      },
-      shouldPrefetch: true,
-    });
-
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
-
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-
-    expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
   });
 });
