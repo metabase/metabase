@@ -95,48 +95,88 @@
   (lib.options/update-options a-ref (fn [options]
                                       (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
 
-(defn find-closest-matching-ref
-  "Find the ref that most closely matches `a-ref` from a sequence of `refs`. This is meant to power things
+(defn- named-refs-for-integer-refs [metadata-providerable refs]
+  (keep (fn [a-ref]
+          (mbql.u.match/match-one a-ref
+            [:field opts (field-id :guard integer?)]
+            (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
+              [:field opts field-name])))
+        refs))
+
+(defn find-closest-matches-for-refs
+  "For each ref in `needles`, find the ref in `haystack` that it most closely matches. This is meant to power things
   like [[metabase.lib.breakout/breakoutable-columns]] which are supposed to include `:breakout-position` for columns
   that are already present as a breakout; sometimes the column in the breakout does not exactly match what MLv2 would
   have generated. So try to figure out which column it is referring to.
 
-  This first looks for a matching ref with a strict comparison, then in increasingly less-strict comparisons until it
+  This first looks for each matching ref with a strict comparison, then in increasingly less-strict comparisons until it
   finds something that matches. This is mostly to work around bugs like #31482 where MLv1 generated queries with
-  `:field` refs that did not include join aliases even tho the Fields came from joined Tables... we still know the
+  `:field` refs that did not include join aliases even though the Fields came from joined Tables... we still know the
   Fields are the same if they have the same IDs.
 
   The three-arity version can also find matches between integer Field ID references like `[:field {} 1]` and
   equivalent string column name field literal references like `[:field {} \"bird_type\"]` by resolving Field IDs using
   a `metadata-providerable` (something that can be treated as a metadata provider, e.g. a `query` with a
   MetadataProvider associated with it). This is the ultimately hacky workaround for totally busted legacy queries.
-  Note that this currently only works when `a-ref` is the one with the integer Field ID and `refs` have string literal
-  column names; it does not work the other way around. Luckily we currently don't have problems with MLv1/legacy
-  queries accidentally using string :field literals where it shouldn't have been doing so."
-  ([a-ref refs]
-   (loop [xform identity, more-xforms [ ;; ignore irrelevant keys from :binning options
-                                       #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
-                                       ;; ignore namespaced keys
-                                       update-options-remove-namespaced-keys
-                                       ;; ignore type info
-                                       #(lib.options/update-options % dissoc :base-type :effective-type)
-                                       ;; ignore binning and bucketing
-                                       #(lib.options/update-options % dissoc :binning :temporal-unit)
-                                       ;; ignore join alias
-                                       #(lib.options/update-options % dissoc :join-alias)]]
-     (or (let [a-ref (xform a-ref)]
-           (m/find-first #(= (xform %) a-ref)
-                         refs))
-         (when (seq more-xforms)
-           (recur (comp xform (first more-xforms)) (rest more-xforms))))))
 
-  ([metadata-providerable a-ref refs]
-   (or (find-closest-matching-ref a-ref refs)
-       (when metadata-providerable
-         (mbql.u.match/match-one a-ref
-           [:field opts (field-id :guard integer?)]
-           (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-             (find-closest-matching-ref [:field opts field-name] refs)))))))
+  Note that this currently only works when `needles` contain integer Field IDs. The `haystack` refs must have string
+  literal column names. Luckily we currently don't have problems with MLv1/legacy queries accidentally using string
+  `:field` literals where it shouldn't have been doing so.
+
+  Returns a list parallel to `needles`, where each element is either nil (no match) or the index of the most closely
+  matching ref in `haystack`."
+  ([needles haystack]
+   (loop [xforms      [identity ; Start with no transformation at all.
+                       ;; ignore irrelevant keys from :binning options
+                       #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
+                       ;; ignore namespaced keys
+                       update-options-remove-namespaced-keys
+                       ;; ignore type info
+                       #(lib.options/update-options % dissoc :base-type :effective-type)
+                       ;; ignore binning and bucketing
+                       #(lib.options/update-options % dissoc :binning :temporal-unit)
+                       ;; ignore join alias
+                       #(lib.options/update-options % dissoc :join-alias)]
+          haystack-xf haystack
+          ;; The output list of found indexes, all nil to start.
+          results      (vec (repeat (count needles) nil))
+          ;; A map of needles left to find. Keys are indexes, values are the refs to find.
+          needles      (into {} (map-indexed vector needles))]
+     (if (or (empty? needles)
+             (empty? xforms)
+             (every? some? results))
+       results
+       (let [xformed (map (first xforms) haystack-xf)
+             needles (update-vals needles (first xforms))
+             matches (for [[needle-index a-ref] needles
+                           :let [haystack-index (first (keep-indexed #(when (= %2 a-ref) %1) xformed))]
+                           :when haystack-index]
+                       [needle-index haystack-index])
+             finished-needles (set (map first matches))]
+         ;; matches is a list of [index-in-results index-in-haystack] pairs
+         (recur (rest xforms)
+                xformed
+                ;; Don't overwrite an already-populated index in the results - if it's already filled in, it was set by
+                ;; an earlier, more precise match. Note that "needles" with integer field refs have the a duplicate with
+                ;; the corresponding :name added as a duplicate needle. The first to match should win.
+                (reduce (fn [res [at to]] (update res at #(or % to))) results matches)
+                (m/remove-keys finished-needles needles))))))
+
+  ([metadata-providerable needles haystack]
+   ;; First run with the needles as given.
+   (let [matches (find-closest-matches-for-refs needles haystack)
+         blanks  (keep-indexed #(when-not %2 %1) matches)
+         ;; Then if any of the needles were not found, try converting them to :name refs and search again.
+         by-name (when (seq blanks)
+                   (find-closest-matches-for-refs (map #(nth needles %) blanks) haystack))]
+     (when (seq by-name)
+       (reduce (fn [matches at]
+                 (when-let [named (nth by-name at)]
+                   (update matches at )
+                   )
+                 ))
+       )
+     (find-closest-matches-for-refs (concat needles named-needles) haystack))))
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching

@@ -465,21 +465,21 @@
                                %))
       clj->js))
 
-(defn ^:export find-column-index-from-legacy-ref
-  "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`), search through it for a field matching the
-  given legacy field ref. Returns the index, or -1 if no matching column is found."
-  [a-query _stage-number legacy-columns legacy-ref]
-  (let [columns   (map #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
-        field-ref (-> legacy-ref
-                      (js->clj :keywordize-keys true)
-                      (update 0 keyword)
-                      convert/->pMBQL)]
-    (or (->> columns
-             (keep-indexed #(when (lib.equality/find-closest-matching-ref a-query field-ref
-                                                                          [(lib.core/ref %2)])
-                              %1))
-             first)
-        -1)))
+(defn ^:export find-column-indexes-from-legacy-refs
+  "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
+  corresponding index into the list of columns.
+
+  Returns a parallel list to the refs, with the corresponding index, or -1 if no matching column is found."
+  [a-query _stage-number legacy-columns legacy-refs]
+  (let [columns    (map #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
+        field-refs (for [legacy-ref legacy-refs]
+                     (-> legacy-ref
+                         (js->clj :keywordize-keys true)
+                         (update 0 keyword)
+                         convert/->pMBQL))]
+    (->> (lib.equality/find-closest-matches-for-refs columns field-refs)
+         (map #(or % -1))
+         to-array)))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."

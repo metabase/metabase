@@ -74,3 +74,7 @@
               {:lib/type :option/join.strategy, :strategy :right-join}
               {:lib/type :option/join.strategy, :strategy :inner-join}]
              (vec strategies))))))
+
+(deftest ^:parallel find-column-index-from-legacy-ref-test
+
+ )
