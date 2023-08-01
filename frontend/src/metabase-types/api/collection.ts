@@ -47,6 +47,7 @@ type CollectionItemModel =
   | "dataset"
   | "dashboard"
   | "pulse"
+  | "snippet"
   | "collection";
 
 export type CollectionItemId = number;
