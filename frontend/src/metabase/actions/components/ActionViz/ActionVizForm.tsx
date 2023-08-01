@@ -141,6 +141,7 @@ function ActionVizForm({
             initialValues={initialValues}
             prefetchesInitialValues
             title={title}
+            showEmptyState={Object.keys(dashcardParamValues).length === 0}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
             onEdit={canEditAction ? handleActionEdit : undefined}

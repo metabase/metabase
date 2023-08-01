@@ -7,7 +7,6 @@ import {
   WritebackActionId,
 } from "metabase-types/api";
 import { useActionQuery } from "metabase/common/hooks/use-action-query";
-import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
@@ -43,7 +42,6 @@ export const ActionExecuteModal = ({
 
   const {
     error: errorInitialValues,
-    hasPrefetchedValues,
     initialValues,
     isLoading: isLoadingInitialValues,
     prefetchValues,
@@ -80,8 +78,7 @@ export const ActionExecuteModal = ({
   );
 
   const error = errorAction || errorInitialValues;
-  const isLoading =
-    isLoadingAction || (isLoadingInitialValues && !hasPrefetchedValues);
+  const isLoading = isLoadingAction || isLoadingInitialValues;
 
   if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
@@ -92,26 +89,20 @@ export const ActionExecuteModal = ({
     return <LoadingAndErrorWrapper error={t`Failed to load action details`} />;
   }
 
-  const showEmptyState = shouldPrefetch && !hasPrefetchedValues;
-
   return (
     <ModalContent
       data-testid="action-execute-modal"
       title={action.name}
       onClose={onClose}
     >
-      {showEmptyState && <EmptyState message={t`Choose a record to update`} />}
-
-      {!showEmptyState && (
-        <ActionParametersInputForm
-          action={action}
-          initialValues={initialValues}
-          prefetchesInitialValues
-          onCancel={onClose}
-          onSubmit={handleSubmit}
-          onSubmitSuccess={handleSubmitSuccess}
-        />
-      )}
+      <ActionParametersInputForm
+        action={action}
+        initialValues={initialValues}
+        prefetchesInitialValues
+        onCancel={onClose}
+        onSubmit={handleSubmit}
+        onSubmitSuccess={handleSubmitSuccess}
+      />
     </ModalContent>
   );
 };

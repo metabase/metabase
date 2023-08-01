@@ -21,8 +21,6 @@ export const useActionInitialValues = ({
     prefetchValues,
   ] = useAsyncFn(async () => fetchInitialValues?.(), [fetchInitialValues]);
 
-  const hasPrefetchedValues = Object.keys(prefetchedInitialValues).length > 0;
-
   const initialValues = useMemo(
     () => ({ ...prefetchedInitialValues, ...initialValuesProp }),
     [prefetchedInitialValues, initialValuesProp],
@@ -36,7 +34,6 @@ export const useActionInitialValues = ({
 
   return {
     error,
-    hasPrefetchedValues,
     initialValues,
     isLoading: Boolean(isLoading && fetchInitialValues && shouldPrefetch),
     prefetchValues,
