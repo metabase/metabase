@@ -371,24 +371,37 @@ const loadingDashCards = handleActions(
       }),
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: (state, { payload: { currentTime, loadingIds } }) => {
+      next: (state, { payload: { currentTime, loadingIds, dashboardId } }) => {
+        // Loading a new dahsboard e.g. when navigating to a new dashboard
+        if (dashboardId !== state.dashboardId) {
+          return {
+            ...state,
+            dashboardId,
+            loadingIds,
+            loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+            startTime: loadingIds.length > 0 ? currentTime : null,
+          };
+        }
+
+        // When auto-refreshing we could load a different dashcard while other dashcards are still loading
         const newLoadingIds = state.loadingIds.concat(loadingIds);
-        const startFetching =
-          state.loadingIds.length === 0 && loadingIds.length > 0;
-        const hasNothingToFetch =
-          state.loadingIds.length === 0 && loadingIds.length === 0;
+
         let startTime;
-        if (startFetching) {
+        const notFinishLoadingDashcards = state.loadingIds.length > 0;
+        if (notFinishLoadingDashcards) {
+          startTime = state.startTime;
+        } else if (loadingIds.length > 0) {
           startTime = currentTime;
-        } else if (hasNothingToFetch) {
+        } else {
           startTime = null;
         }
 
         return {
           ...state,
+          dashboardId,
           loadingIds: newLoadingIds,
           loadingStatus: newLoadingIds.length > 0 ? "running" : "idle",
-          ...(startTime !== undefined ? { startTime } : {}),
+          startTime,
         };
       },
     },

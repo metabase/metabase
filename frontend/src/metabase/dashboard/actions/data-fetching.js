@@ -446,6 +446,7 @@ export const fetchDashboardCardData =
       payload: {
         currentTime: performance.now(),
         loadingIds: newLoadingIds,
+        dashboardId: dashboard.id,
       },
     });
 
