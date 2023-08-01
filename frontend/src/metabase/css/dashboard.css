@@ -101,6 +101,10 @@
   z-index: 2;
 }
 
+.DashCard:hover {
+  z-index: 3;
+}
+
 .DashCard .Card {
   position: absolute;
   top: 0;
