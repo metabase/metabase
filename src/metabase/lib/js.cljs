@@ -650,8 +650,8 @@
 (defn ^:export join-lhs-display-name
   "Get the display name for whatever we are joining. For an existing join, pass in the join clause. When constructing a
   join, pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata."
-  [a-query stage-number join-or-joinable]
-  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable))
+  [a-query stage-number join-or-joinable condition-lhs-column-or-nil]
+  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-column-or-nil))
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with a query. If the query is using
