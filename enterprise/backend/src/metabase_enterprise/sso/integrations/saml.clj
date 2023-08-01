@@ -112,7 +112,7 @@
   (api/check (sso-settings/saml-enabled)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
-(defn- has-host? [url]
+(defn- has-host? [uri]
   (try
     (-> uri URI. .getHost some?)
     (catch MalformedURLException _ false)))
