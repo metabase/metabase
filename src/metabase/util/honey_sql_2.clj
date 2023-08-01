@@ -141,16 +141,13 @@
               :when     (some? component)]
           (u/qualified-name component)))])
 
-(mu/defn identifier->name :- keyword?
-  "Given an identifer return its last component.
-  (identifier->name (identifier :field :metabase :user :email))
-  => \"email\")
+(mu/defn identifier->components :- [:sequential string?]
+  "Given an identifer return its components
+  (identifier->components (identifier :field :metabase :user :email))
+  => (\"metabase\" \"user\" \"email\"))
   "
   [identifier :- [:fn identifier?]]
-  (-> identifier
-      last
-      last
-      keyword))
+  (last identifier))
 
 ;;; Single-quoted string literal
 

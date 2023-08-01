@@ -189,7 +189,10 @@
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defmulti get-table-pks
-  "Returns a set of primary keys for `table` using a JDBC DatabaseMetaData from JDBC Connection `conn`.
+  "Returns a vector of primary keys for `table` using a JDBC DatabaseMetaData from JDBC Connection `conn`.
+  The PKs should be ordered by column names if there are multiple PKs.
+  Ref: https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getPrimaryKeys-java.lang.String-java.lang.String-java.lang.String-
+
   Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access."
   {:added    "0.45.0"
    :arglists '([driver ^Connection conn db-name-or-nil table])}
@@ -199,14 +202,14 @@
 (defmethod get-table-pks :default
   [_driver ^Connection conn db-name-or-nil table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
-    (into #{} (sql-jdbc.sync.common/reducible-results
-               #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
-               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+    (into [] (sql-jdbc.sync.common/reducible-results
+              #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
+              (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defn add-table-pks
   "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true for those columns."
   [driver ^Connection conn db-name-or-nil table]
-  (let [pks (get-table-pks driver conn db-name-or-nil table)]
+  (let [pks (set (get-table-pks driver conn db-name-or-nil table))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
                                    (if-not (contains? pks (:name field))
@@ -440,9 +443,8 @@
                  (into [:and]
                        (for [pk-identifier pk-identifiers]
                          [:=
-                          (hx/identifier :field :result (hx/identifier->name pk-identifier))
+                          (hx/identifier :field :result (last (hx/identifier->components pk-identifier)))
                           pk-identifier]))]}
-
         {:select json-field-exprs
          :from   [table-expr]
          :limit  metadata-queries/nested-field-sample-limit}))))

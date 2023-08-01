@@ -4,6 +4,11 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.48.0
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
+  of a set.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
@@ -11,8 +16,8 @@ title: Driver interface changelog
   An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
   database doesn't store tables in schemas.
 
-- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports 
-  uploading CSV files to tables in the database. To support the uploads feature, implement the following new 
+- Another driver feature has been added: `:uploads`. The `:uploads` feature signals whether the database supports
+  uploading CSV files to tables in the database. To support the uploads feature, implement the following new
   multimethods: `metabase.driver/create-table!` (creates a table), `metabase.driver/drop-table!` (drops
   a table), and `metabase.driver/insert-into!` (inserts values into a table).
 
@@ -243,6 +248,9 @@ Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; us
 
 - `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
   the default behavior for fetching field metadata (such as types) for a table.
+
+- `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` has been added. This methods is used to get a set of pks
+  given a table.
 
 - `->honeysql [<driver> :convert-timezone]` has been added. Implement this method if you want your driver to support
   the `convertTimezone` expression. This method takes 2 or 3 arguments and returns a `timestamp without time zone` column.

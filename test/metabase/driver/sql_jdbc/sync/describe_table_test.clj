@@ -160,7 +160,7 @@
      (mt/db)
      nil
      (fn [conn]
-       (is (= #{"id"}
+       (is (= ["id"]
               (sql-jdbc.describe-table/get-table-pks driver/*driver* conn (:name (mt/db)) (t2/select-one :model/Table (mt/id :venues)))))))))
 
 ;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
@@ -381,6 +381,9 @@
      ;; last row turn to a string
      ["{\"int_turn_string\":\"6\"}"]]]])
 
+;; Tests for composite pks are in driver specific ns
+;; metabase.driver.postgres-test/sync-json-with-composite-pks-test
+;; metabase.driver.mysql-test/sync-json-with-composite-pks-test
 
 (deftest json-fetch-last-on-table-with-ids-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
@@ -390,7 +393,7 @@
       (with-redefs [sql-jdbc.describe-table/get-table-pks      (fn [driver conn db-name-or-nil table]
                                                                  (condp = (:name table)
                                                                    "json_without_pk"
-                                                                   #{}
+                                                                   []
 
                                                                    (original-get-table-pks driver conn db-name-or-nil table)))
                     metadata-queries/nested-field-sample-limit 4]

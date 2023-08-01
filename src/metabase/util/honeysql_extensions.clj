@@ -44,7 +44,7 @@
     1 (apply h1x/identifier identifier-type components)
     2 (apply h2x/identifier identifier-type components)))
 
-(defn identifier->name
+(defn identifier->components
   "Given an identifer return its component.
   (identifier->name (identifier :field :metabase :user :email))
   => \"email\")
@@ -52,8 +52,8 @@
   [identifier]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (case (long *honey-sql-version*)
-    1 (h1x/identifier->name identifier)
-    2 (h2x/identifier->name identifier)))
+    1 (h1x/identifier->components identifier)
+    2 (h2x/identifier->components identifier)))
 
 (defn identifier?
   "Whether `x` is a valid identifier for the current Honey SQL version."

@@ -129,16 +129,13 @@
          :when     (some? component)]
      (u/qualified-name component))))
 
-(defn identifier->name
-  "Given an identifer return its last component.
-  (identifier->name (identifier :field :metabase :user :email))
-  => :email)
+(defn identifier->components
+  "Given an identifer return its components
+  (identifier->components (identifier :field :metabase :user :email))
+  => (\"metabase\" \"user\" \"email\"))
   "
   [identifier]
-  (-> identifier
-      :components
-      last
-      keyword))
+  (:components identifier))
 
 (defn identifier?
   "Whether `x` is an instance of `Identifier`."
