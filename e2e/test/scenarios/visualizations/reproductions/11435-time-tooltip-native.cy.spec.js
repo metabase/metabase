@@ -7,8 +7,8 @@ const questionDetails = {
     query: `
 SELECT "PUBLIC"."ORDERS"."ID" AS "ID", "PUBLIC"."ORDERS"."USER_ID" AS "USER_ID", "PUBLIC"."ORDERS"."PRODUCT_ID" AS "PRODUCT_ID", "PUBLIC"."ORDERS"."SUBTOTAL" AS "SUBTOTAL", "PUBLIC"."ORDERS"."TAX" AS "TAX", "PUBLIC"."ORDERS"."TOTAL" AS "TOTAL", "PUBLIC"."ORDERS"."DISCOUNT" AS "DISCOUNT", "PUBLIC"."ORDERS"."CREATED_AT" AS "CREATED_AT", "PUBLIC"."ORDERS"."QUANTITY" AS "QUANTITY"
 FROM "PUBLIC"."ORDERS"
-WHERE ("PUBLIC"."ORDERS"."CREATED_AT" >= timestamp with time zone '2019-03-12 00:00:00.000+03:00'
-       AND "PUBLIC"."ORDERS"."CREATED_AT" < timestamp with time zone '2019-03-13 00:00:00.000+03:00')
+WHERE ("PUBLIC"."ORDERS"."CREATED_AT" >= timestamp with time zone '2025-03-12 00:00:00.000+03:00'
+       AND "PUBLIC"."ORDERS"."CREATED_AT" < timestamp with time zone '2025-03-13 00:00:00.000+03:00')
 LIMIT 1048575`,
   },
   visualization_settings: {
@@ -31,7 +31,7 @@ describe("issue 11435", () => {
   it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    popover().findByTextEnsureVisible("March 11, 2019, 8:45:17.010 PM");
+    popover().findByTextEnsureVisible("March 11, 2025, 8:45:17.010 PM");
   });
 });
 

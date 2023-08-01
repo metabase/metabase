@@ -71,13 +71,13 @@ export const PARAMETER_OPERATOR_TYPES = {
       type: "date/month-year",
       operator: "month-year",
       name: t`Month and Year`,
-      description: t`Like January, 2016`,
+      description: t`Like January 2016`,
     },
     {
       type: "date/quarter-year",
       operator: "quarter-year",
       name: t`Quarter and Year`,
-      description: t`Like Q1, 2016`,
+      description: t`Like Q1 2016`,
     },
     {
       type: "date/single",

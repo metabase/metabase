@@ -6,7 +6,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useMount, useUnmount, usePrevious } from "react-use";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
@@ -30,6 +29,9 @@ import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
 import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useSelector } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+
 import View from "../components/view/View";
 
 import {
@@ -42,7 +44,6 @@ import {
   getQueryResults,
   getParameterValues,
   getIsDirty,
-  getIsNew,
   getIsObjectDetail,
   getTables,
   getTableForeignKeys,
@@ -86,6 +87,7 @@ import {
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
+  getShouldShowUnsavedChangesWarning,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -139,7 +141,6 @@ const mapStateToProps = (state, props) => {
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
-    isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
@@ -176,7 +177,7 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-    loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
+    loadingMessage: getWhiteLabeledLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
   };
@@ -215,10 +216,7 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
-    isDirty: isModelQueryDirty,
-    isMetadataDirty,
     closeQB,
-    isNew,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -300,17 +298,10 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   });
 
-  const isExistingModelDirty = useMemo(
-    () => isModelQueryDirty || isMetadataDirty,
-    [isMetadataDirty, isModelQueryDirty],
+  const shouldShowUnsavedChangesWarning = useSelector(
+    getShouldShowUnsavedChangesWarning,
   );
-
-  const isExistingSqlQueryDirty = useMemo(
-    () => isModelQueryDirty && isNativeEditorOpen,
-    [isModelQueryDirty, isNativeEditorOpen],
-  );
-
-  useBeforeUnload(!isNew && (isExistingModelDirty || isExistingSqlQueryDirty));
+  useBeforeUnload(shouldShowUnsavedChangesWarning);
 
   useUnmount(() => {
     cancelQuery();
@@ -378,7 +369,7 @@ function QueryBuilder(props) {
     onTimeout,
   });
 
-  const [requestPermission, showNotification] = useWebNotification();
+  const { requestPermission, showNotification } = useWebNotification();
 
   useEffect(() => {
     if (isLoadingComplete) {

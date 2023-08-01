@@ -127,41 +127,44 @@
            #"Values greater than 204,800 \(200\.0 MB\) are not allowed"
            (public-settings/query-caching-max-kb! (* 1024 1024)))))))
 
-(deftest site-locale-test
-  (testing "site-locale Setting"
-    (testing "should validate input"
-      (testing "invalid format"
-        (testing "blank string"
-          (mt/with-temporary-setting-values [site-locale "en_US"]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Invalid locale \"\""
-                 (public-settings/site-locale! "")))
-            (is (= "en_US"
-                   (public-settings/site-locale)))))
-
-        (testing "non-existant locale"
-          (mt/with-temporary-setting-values [site-locale "en_US"]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Invalid locale \"en_EN\""
-                 (public-settings/site-locale! "en_EN")))
-            (is (= "en_US"
-                   (public-settings/site-locale)))))))
-
-    (testing "should normalize input"
-      (mt/discard-setting-changes [site-locale]
-        (public-settings/site-locale! "en-us")
+(deftest site-locale-validate-input-test
+  (testing "site-locale should validate input"
+    (testing "blank string"
+      (mt/with-temporary-setting-values [site-locale "en_US"]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid locale \"\""
+             (public-settings/site-locale! "")))
         (is (= "en_US"
                (public-settings/site-locale)))))
+    (testing "non-existant locale"
+      (mt/with-temporary-setting-values [site-locale "en_US"]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid locale \"en_EN\""
+             (public-settings/site-locale! "en_EN")))
+        (is (= "en_US"
+               (public-settings/site-locale)))))))
 
-    (testing "should be able to unset site locale"
-      (mt/discard-setting-changes [site-locale]
-        (public-settings/site-locale! "es")
-        (public-settings/site-locale! nil)
-        (is (= "en"
-               (public-settings/site-locale))
-            "should default to English")))))
+(deftest site-locale-normalize-input-test
+  (testing "site-locale should normalize input"
+    (mt/discard-setting-changes [site-locale]
+      (public-settings/site-locale! "en-us")
+      (is (= "en_US"
+             (public-settings/site-locale))))))
+
+(deftest unset-site-locale-test
+  (testing "should be able to unset site-locale"
+    (mt/discard-setting-changes [site-locale]
+      (public-settings/site-locale! "es")
+      (public-settings/site-locale! nil)
+      (is (= "en"
+             (public-settings/site-locale))
+          "should default to English"))))
+
+(deftest site-locale-only-return-valid-locales-test
+  (mt/with-temporary-raw-setting-values [site-locale "wow_this_in_not_a_locale"]
+    (is (nil? (public-settings/site-locale)))))
 
 (deftest redirect-all-requests-to-https-test
   (testing "Shouldn't be allowed to set `redirect-all-requests-to-https` to `true` unless `site-url` is HTTPS"

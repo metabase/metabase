@@ -1,5 +1,5 @@
 (ns metabase.util.malli
-  (:refer-clojure :exclude [defn])
+  (:refer-clojure :exclude [defn defmethod])
   (:require
    [clojure.core :as core]
    [malli.core :as mc]
@@ -13,6 +13,7 @@
               [malli.experimental :as mx]
               [malli.instrument :as minst]
               [metabase.util.i18n :as i18n]
+              [metabase.util.malli.defmethod :as mu.defmethod]
               [net.cgrand.macrovich :as macros]
               [ring.util.codec :as codec])))
   #?(:cljs (:require-macros [metabase.util.malli])))
@@ -134,7 +135,8 @@
   [:and any?
    [:fn {:description "a malli schema"} mc/schema]])
 
-(def ^:private localized-string-schema
+(def localized-string-schema
+  "Schema for localized string."
   #?(:clj  [:fn {:error/message "must be a localized string"}
             i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
@@ -160,3 +162,11 @@
                           :description description-message
                           ;; override generic description in :specific-errors key in API's response
                           :error/fn    (fn [_ _] specific-error-message))))
+
+#?(:clj
+   (defmacro defmethod
+     "Like [[schema.core/defmethod]], but for Malli."
+     [multifn dispatch-value & fn-tail]
+     `(.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
+                  ~dispatch-value
+                  ~(mu.defmethod/instrumented-fn-form fn-tail))))

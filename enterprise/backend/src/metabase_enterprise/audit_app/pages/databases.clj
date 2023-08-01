@@ -4,7 +4,7 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 ;; SELECT
 ;;   db.id AS database_id,
@@ -39,8 +39,8 @@
                :order-by [[[:lower :db.name] :asc]]})})
 
 ;; Query that returns count of query executions grouped by Database and a `datetime-unit`.
-(s/defmethod audit.i/internal-query ::query-executions-by-time
-  [_ datetime-unit :- common/DateTimeUnitStr]
+(mu/defmethod audit.i/internal-query ::query-executions-by-time
+  [_query-type datetime-unit :- common/DateTimeUnitStr]
   {:metadata [[:date          {:display_name "Date",          :base_type (common/datetime-unit-str->base-type datetime-unit)}]
               [:database_id   {:display_name "Database ID",   :base_type :type/Integer, :remapped_to   :database_name}]
               [:database_name {:display_name "Database Name", :base_type :type/Name,    :remapped_from :database_id}]
@@ -74,10 +74,10 @@
   (audit.i/internal-query ::query-executions-by-time "day"))
 
 ;; Table with information and statistics about all the data warehouse Databases in this Metabase instance.
-(s/defmethod audit.i/internal-query ::table
+(mu/defmethod audit.i/internal-query ::table
   ([query-type]
    (audit.i/internal-query query-type nil))
-  ([_ query-string :- (s/maybe s/Str)]
+  ([_query-type query-string :- [:maybe :string]]
    ;; TODO - Should we convert sync_schedule from a cron string into English? Not sure that's going to be feasible for
    ;; really complicated schedules
    {:metadata [[:database_id   {:display_name "Database ID", :base_type :type/Integer, :remapped_to :title}]

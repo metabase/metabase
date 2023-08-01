@@ -318,7 +318,6 @@
                                                                                    :col              0
                                                                                    :size_x           4
                                                                                    :size_y           4})))
-
             tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
                                                                                   default-card
                                                                                   {:dashboard_tab_id tab4-id

@@ -230,7 +230,7 @@ Color log lines. When set to `false` it will disable log line colors. This is di
 Type: string<br>
 Default: `config.yml`
 
-This feature requires the `advanced-config` feature flag on your token.
+This feature requires the `config-text-file` feature flag on your token.
 
 ### `MB_CUSTOM_FORMATTING`
 

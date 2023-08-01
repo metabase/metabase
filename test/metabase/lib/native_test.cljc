@@ -3,12 +3,12 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]
               [metabase.test.util.js :as test.js]))
    [clojure.test :refer [are deftest is testing]]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util.humanization :as u.humanization]))
 
 (deftest ^:parallel variable-tag-test
@@ -59,7 +59,7 @@
     (let [old-tag {:type         :text
                    :name         "foo"
                    :display-name "Foo"
-                   :id           (str (m/random-uuid))}]
+                   :id           (str (random-uuid))}]
       (testing "changes display-name if the original is not customized"
         (is (=? {"bar" {:type         :text
                         :name         "bar"
@@ -79,7 +79,7 @@
         (let [other {:type         :text
                      :name         "other"
                      :display-name "Some Var"
-                     :id           (str (m/random-uuid))}]
+                     :id           (str (random-uuid))}]
           (is (=? {"other" other
                    "bar"   {:type         :text
                             :name         "bar"
@@ -204,7 +204,7 @@
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
           #"Must be a native query"
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/with-native-query "foobar"))))))
 
 (deftest ^:parallel with-template-tags-test
@@ -228,7 +228,7 @@
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
           #"Must be a native query"
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
 
 (defn ^:private metadata-provider-requiring-collection []
@@ -269,7 +269,7 @@
     (is (thrown-with-msg?
           #?(:clj Throwable :cljs :default)
           #"Must be a native query"
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/with-different-database meta/metadata-provider))))))
 
 (deftest ^:parallel with-native-collection-test

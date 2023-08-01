@@ -51,7 +51,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gadget");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January, 2017");
+    cy.contains("January 2023");
     cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
 
     // drag across to filter
@@ -62,12 +62,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // new filter applied
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
-    //       It is enough that we assert that the filter exists and that it starts with May, 2016
+    //       It is enough that we assert that the filter exists and that it starts with May 2022.
+    //       The date range formatter sometimes omits the year of the first month (e.g. May–July 2022),
+    //       so checking that 2022 occurs after May ensures that May 2022 is in fact the first date.
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Created At between May, 2016/);
+    cy.contains(/^Created At is May.*2022/);
     // more granular axis labels
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("June, 2016");
+    cy.contains("June 2022");
     // confirm that product category is still broken out
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Gadget");
@@ -111,7 +113,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       granularity === "month"
         ? // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Created At between September, 2016 February, 2017")
+          cy.findByText("Created At is September 2022 – February 2023")
         : // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
           null;
 
@@ -311,7 +313,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders by Created At: Week").click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January, 2019");
+    cy.contains("January 2025");
 
     // drill into a recent week
     cy.get(".dot").eq(-4).click({ force: true });
@@ -325,7 +327,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.log("Filter should show the range between two dates");
     // Now click on the filter widget to see if the proper parameters got passed in
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Created At between").click();
+    cy.contains(/^Created At is .*–/).click(); // en-dash to detect date range
   });
 
   it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
@@ -386,7 +388,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         name: "11907",
         native: {
           query:
-            "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 5 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 4 AS \"c\"",
+            "SELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 5 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-02', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-02', 'yyyy-MM-dd') AS \"d\", 4 AS \"c\"",
           "template-tags": {},
         },
         display: "line",
@@ -396,13 +398,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     hoverLineDot({ index: 0 });
     popover().within(() => {
-      cy.findByText("January 1, 2020");
+      cy.findByText("January 1, 2026");
       cy.findByText("10");
     });
 
     hoverLineDot({ index: 1 });
     popover().within(() => {
-      cy.findByText("January 2, 2020");
+      cy.findByText("January 2, 2026");
       cy.findByText("5");
     });
   });
@@ -636,6 +638,131 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Gizmo").should("not.exist");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doohickey").should("not.exist");
+    });
+  });
+
+  it("should display proper drills on chart click for line chart", () => {
+    cy.createQuestion(
+      {
+        name: "Line chart drills",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
+            ],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+        display: "line",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.get(".LineAreaBarChart").get(".dot").first().click({ force: true });
+    popover().within(() => {
+      cy.findByText(`See these Orders`).should("be.visible");
+
+      cy.findByText(`See this month by week`).should("be.visible");
+
+      cy.findByText(`Break out by…`).should("be.visible");
+      cy.findByText(`Automatic insights…`).should("be.visible");
+
+      cy.findByText(`>`).should("be.visible");
+      cy.findByText(`<`).should("be.visible");
+      cy.findByText(`=`).should("be.visible");
+      cy.findByText(`≠`).should("be.visible");
+    });
+
+    cy.findByTestId("timeseries-mode-bar").within(() => {
+      cy.findByText(`View`).should("be.visible");
+      cy.findByText(`All Time`).should("be.visible");
+      cy.findByText(`by`).should("be.visible");
+      cy.findByText(`Month`).should("be.visible");
+    });
+  });
+
+  it("should display proper drills on chart click for bar chart", () => {
+    cy.createQuestion(
+      {
+        name: "Line chart drills",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
+            ],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+          ],
+        },
+        display: "bar",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.get(".LineAreaBarChart").findAllByTestId("legend-item").first().click();
+
+    popover().within(() => {
+      cy.findByText(`See these Orders`).should("be.visible");
+      cy.findByText(`Automatic insights…`).should("be.visible");
+    });
+
+    cy.get(".LineAreaBarChart").get(".bar").first().click({ force: true });
+    popover().within(() => {
+      cy.findByText(`See these Orders`).should("be.visible");
+
+      cy.findByText(`See this month by week`).should("be.visible");
+
+      cy.findByText(`Break out by…`).should("be.visible");
+      cy.findByText(`Automatic insights…`).should("be.visible");
+
+      cy.findByText(`>`).should("be.visible");
+      cy.findByText(`<`).should("be.visible");
+      cy.findByText(`=`).should("be.visible");
+      cy.findByText(`≠`).should("be.visible");
+    });
+
+    cy.findByTestId("timeseries-mode-bar").within(() => {
+      cy.findByText(`View`).should("be.visible");
+      cy.findByText(`All Time`).should("be.visible");
+      cy.findByText(`by`).should("be.visible");
+      cy.findByText(`Month`).should("be.visible");
+    });
+  });
+
+  it("should display proper drills on chart click for query grouped by state", () => {
+    cy.createQuestion(
+      {
+        name: "Line chart drills",
+        query: {
+          "source-table": PEOPLE_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PEOPLE.STATE, null]],
+        },
+        display: "map",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.get(".CardVisualization").get("path.cursor-pointer").first().click();
+
+    popover().within(() => {
+      cy.findByText(`See these People`).should("be.visible");
+      cy.findByText(`Zoom in`).should("be.visible");
+
+      cy.findByText(`Break out by…`).should("be.visible");
+      cy.findByText(`Automatic insights…`).should("be.visible");
+
+      cy.findByText(`>`).should("be.visible");
+      cy.findByText(`<`).should("be.visible");
+      cy.findByText(`=`).should("be.visible");
+      cy.findByText(`≠`).should("be.visible");
     });
   });
 });

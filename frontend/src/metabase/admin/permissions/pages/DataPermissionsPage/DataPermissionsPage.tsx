@@ -57,6 +57,7 @@ function DataPermissionsPage({
         Tables.actions.fetchList({
           dbId,
           include_hidden: true,
+          remove_inactive: true,
         }),
       ),
     [dispatch],

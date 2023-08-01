@@ -1,4 +1,9 @@
-import { restore, popover, describeEE } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  describeEE,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -7,6 +12,7 @@ describeEE("issue 17763", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
