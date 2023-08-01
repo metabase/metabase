@@ -91,11 +91,9 @@ const ColumnNotebookCellItem = forwardRef<
   return (
     <JoinConditionCellItem {...props} ref={ref}>
       <Flex direction="column" gap="2px">
-        {!!tableName && (
-          <Text display="block" size={11} lh={1} color="white" opacity={0.65}>
-            {tableName}
-          </Text>
-        )}
+        <Text display="block" size={11} lh={1} color="white" opacity={0.65}>
+          {tableName || t`Previous results`}
+        </Text>
         <Text display="block" lh={1}>
           {columnName || t`Pick a column…`}
         </Text>
