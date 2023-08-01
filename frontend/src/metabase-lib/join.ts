@@ -217,7 +217,7 @@ export function joinableColumns(
  *
  *   ```
  *   +--------+   +----------+    +-------------+    +----------+
- *   | Orders | ∪ | Whatever | on | Orders      | =  | Whatever |
+ *   | Orders | + | Whatever | on | Orders      | =  | Whatever |
  *   |        |   |          |    | Whatever ID |    | ID       |
  *   +--------+   +----------+    +-------------+    +----------+
  *   ```
