@@ -1,7 +1,7 @@
 (ns metabase.test.data.redshift
   (:require
+   [clojure.java.jdbc :as jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test.data.interface :as tx]
@@ -92,11 +92,8 @@
   (filterv sql.tu.unique-prefix/old-dataset-name? (fetch-schemas conn)))
 
 (comment
-  (sql-jdbc.execute/do-with-connection-with-options
-   :redshift
-   (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)
-   nil
-   old-schemas))
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details))]
+    (old-schemas conn)))
 
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
@@ -112,11 +109,8 @@
         (.execute stmt (drop-sql schema))))))
 
 (comment
-  (sql-jdbc.execute/do-with-connection-with-options
-   :redshift
-   (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)
-   nil
-   delete-old-schemas!))
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details))]
+    (delete-old-schemas! conn)))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]
@@ -127,13 +121,9 @@
 
 (defmethod tx/before-run :redshift
   [driver]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
-   {:write? true}
-   (fn [conn]
-     (delete-old-schemas! conn)
-     (create-session-schema! conn))))
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/connection-details->spec driver @db-connection-details))]
+    (delete-old-schemas! conn)
+    (create-session-schema! conn)))
 
 (defonce ^:private ^{:arglists '([driver connection metadata _ _])}
   original-filtered-syncable-schemas
