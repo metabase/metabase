@@ -155,7 +155,7 @@
 
 (deftest get-table-pks-test
   ;; FIXME: this should works for all sql drivers
-  (mt/test-drivers #{:mysql :postgres}
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (sql-jdbc.execute/do-with-connection-with-options
      driver/*driver*
      (mt/db)
