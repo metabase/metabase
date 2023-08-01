@@ -83,6 +83,13 @@ const tableWithAggregation = {
   },
 };
 
+const nestedQuestion = ({ id }) => ({
+  display: "table",
+  query: {
+    "source-table": `card__${id}`,
+  },
+});
+
 describe("scenarios > visualizations > table column settings", () => {
   beforeEach(() => {
     restore();
@@ -257,6 +264,51 @@ describe("scenarios > visualizations > table column settings", () => {
       disabledColumns().within(() => showColumn("Sum of Quantity"));
       visibleColumns().findByText("Sum of Quantity").should("exist");
       visibleColumns().findByText("Count").should("exist");
+    });
+  });
+
+  describe("structured question data source", () => {
+    it("should be able to show and hide nested query fields", () => {
+      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+      });
+      openSettings();
+
+      cy.log("hide a column");
+      visibleColumns().within(() => hideColumn("Tax"));
+      visibleColumns().findByText("Tax").should("not.exist");
+      disabledColumns().findByText("Tax").should("exist");
+      runQuery();
+      cy.wait("@dataset");
+
+      cy.log("show a column");
+      additionalColumns().within(() => showColumn("Tax"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Tax").should("exist");
+      additionalColumns().findByText("Tax").should("not.exist");
+    });
+
+    it("should be able to show and hide implicitly joinable fields for the nested query table", () => {
+      cy.createQuestion(tableQuestion).then(({ body: card }) => {
+        cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
+      });
+      openSettings();
+
+      cy.log("show a column");
+      additionalColumns().within(() => showColumn("Category"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Product → Category").should("exist");
+      additionalColumns().findByText("Category").should("not.exist");
+
+      cy.log("hide a column");
+      visibleColumns().within(() => hideColumn("Product → Category"));
+      visibleColumns().findByText("Product → Category").should("not.exist");
+      disabledColumns().findByText("Product → Category").should("exist");
+      runQuery();
+      cy.wait("@dataset");
+
+      visibleColumns().findByText("Product → Category").should("not.exist");
+      additionalColumns().findByText("Category").should("exist");
     });
   });
 });
