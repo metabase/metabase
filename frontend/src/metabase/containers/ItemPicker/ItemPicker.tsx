@@ -38,6 +38,8 @@ interface OwnProps<TId> {
   onChange: (value: PickerValue<TId>) => void;
   initialOpenCollectionId?: CollectionId;
   collectionFilter?: (collection: Collection) => boolean;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  children?: React.ReactNode;
 }
 
 interface StateProps {
@@ -87,6 +89,8 @@ function ItemPicker<TId>({
   onChange,
   getCollectionIcon,
   initialOpenCollectionId = "root",
+  onOpenCollectionChange,
+  children,
 }: Props<TId>) {
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
@@ -121,8 +125,11 @@ function ItemPicker<TId>({
 
   const crumbs = useMemo(
     () =>
-      getCrumbs(openCollection, collectionsById, id => setOpenCollectionId(id)),
-    [openCollection, collectionsById],
+      getCrumbs(openCollection, collectionsById, id => {
+        setOpenCollectionId(id);
+        onOpenCollectionChange?.(id);
+      }),
+    [openCollection, collectionsById, onOpenCollectionChange],
   );
 
   const searchQuery = useMemo(() => {
@@ -207,9 +214,13 @@ function ItemPicker<TId>({
     [onChange],
   );
 
-  const handleCollectionOpen = useCallback(collectionId => {
-    setOpenCollectionId(collectionId);
-  }, []);
+  const handleCollectionOpen = useCallback(
+    collectionId => {
+      setOpenCollectionId(collectionId);
+      onOpenCollectionChange?.(collectionId);
+    },
+    [onOpenCollectionChange],
+  );
 
   return (
     <ScrollAwareLoadingAndErrorWrapper
@@ -234,7 +245,9 @@ function ItemPicker<TId>({
         style={style}
         // personal is a fake collection for admins that contains all other user's collections
         allowFetch={openCollectionId !== "personal"}
-      />
+      >
+        {children}
+      </ItemPickerView>
     </ScrollAwareLoadingAndErrorWrapper>
   );
 }

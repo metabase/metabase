@@ -24,9 +24,12 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
+import { ButtonProps } from "metabase/core/components/Button";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
+  NewButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -35,6 +38,8 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
+  initialOpenCollectionId?: CollectionId;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
 }
 
 function ItemName({
@@ -51,6 +56,22 @@ function ItemName({
   );
 }
 
+export const NewCollectionButton = (props: ButtonProps) => {
+  const button = (
+    <NewButton light icon="add" {...props}>
+      {t`New collection`}
+    </NewButton>
+  );
+  // button has to be wrapped in a span when disabled or the tooltip doesn’t show
+  return props.disabled === true ? (
+    <Tooltip tooltip={t`You must first fix the required fields above.`}>
+      <span>{button}</span>
+    </Tooltip>
+  ) : (
+    button
+  );
+};
+
 function FormCollectionPicker({
   className,
   style,
@@ -58,6 +79,9 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
+  initialOpenCollectionId,
+  onOpenCollectionChange,
+  children,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -112,10 +136,22 @@ function FormCollectionPicker({
           }}
           showSearch={hasSearch}
           width={width}
-        />
+          initialOpenCollectionId={initialOpenCollectionId}
+          onOpenCollectionChange={onOpenCollectionChange}
+        >
+          {children}
+        </PopoverItemPicker>
       );
     },
-    [value, type, width, setValue],
+    [
+      value,
+      type,
+      width,
+      setValue,
+      children,
+      initialOpenCollectionId,
+      onOpenCollectionChange,
+    ],
   );
 
   return (
