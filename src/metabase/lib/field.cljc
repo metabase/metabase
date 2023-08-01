@@ -550,11 +550,15 @@
                                                        (map lib.ref/ref))
                                               (lib.metadata.calculation/returned-columns query stage-number stage))))))
 
+(defn- query-with-fields
+  "If the given stage already has a `:fields` clause, do nothing. If it doesn't, populate the `:fields` clause with the
+  full set of `returned-columns`. (See [[populate-fields-for-stage]] for the details.)"
+  [query stage-number]
+  (cond-> query
+    (not (:fields (lib.util/query-stage query stage-number))) (populate-fields-for-stage stage-number)))
+
 (defn- include-field [query stage-number column]
-  (let [stage      (lib.util/query-stage query stage-number)
-        populated  (if (:fields stage)
-                     query
-                     (populate-fields-for-stage query stage-number))
+  (let [populated  (query-with-fields query stage-number)
         column-ref (lib.ref/ref column)]
     (if (lib.equality/find-closest-matching-ref populated column-ref (fields populated stage-number))
       ;; If the column is already found, do nothing and return the original query.
@@ -562,7 +566,7 @@
       (lib.util/update-query-stage populated stage-number update :fields conj column-ref))))
 
 (defn- add-field-to-join [query stage-number column]
-  (let [column-ref    (lib.ref/ref column)
+  (let [column-ref   (lib.ref/ref column)
         [join field] (first (for [join  (lib.join/joins query stage-number)
                                   field (lib.join/joinable-columns query stage-number join)
                                   :when (lib.equality/find-closest-matching-ref query column-ref
@@ -587,7 +591,8 @@
 (mu/defn add-field :- ::lib.schema/query
   "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
-  - Source table/card: add it to the `:fields` list
+  - Source table/card, previous stage of the query, aggregation or breakout:
+      - Add it to the `:fields` list
       - If `:fields` is missing, it's implicitly `:all`, so do nothing.
   - Implicit join: add it to the `:fields` list; query processor will do the right thing with it.
   - Explicit join: add it to that join's `:fields` list.
@@ -606,8 +611,8 @@
       :source/joins               (add-field-to-join query stage-number column)
       :source/implicitly-joinable (include-field query stage-number column)
       :source/native              (throw (ex-info native-query-fields-edit-error {:query query :stage stage-number}))
-      ;; Default case - for columns from a card, from a native query, from a custom expression - these are always
-      ;; returned and cannot be selected off and on.
+      ;; Default case - for columns from a native query or a custom expression - these are always returned and cannot be
+      ;; selected off and on.
       query)))
 
 (defn- exclude-field
@@ -615,10 +620,10 @@
   It shouldn't happen that we can't find the target field, but if that does happen, this will return the original query
   unchanged. (In particular, if `:fields` did not exist before it will still be omitted.)"
   [query stage-number column]
-  (let [old-fields (cond-> query
-                     (not (:fields (lib.util/query-stage query stage-number))) (populate-fields-for-stage stage-number)
-                     true                                                      (lib.util/query-stage stage-number)
-                     true                                                      :fields)
+  (let [old-fields (-> query
+                       (query-with-fields stage-number)
+                       (lib.util/query-stage stage-number)
+                       :fields)
         column-ref (lib.ref/ref column)
         index      (first (keep-indexed (fn [index field]
                                           (when (lib.equality/find-closest-matching-ref query column-ref [field])
@@ -651,9 +656,11 @@
 (mu/defn remove-field :- ::lib.schema/query
   "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
   query. Exactly what this means depends on the source of the field:
-  - Source table/card: remove it from the `:fields` list
+  - Source table/card, previous stage, aggregations or breakouts:
       - If `:fields` is missing, it's implicitly `:all` - populate it with all the columns except the removed one.
+      - Remove the target column from the `:fields` list
   - Implicit join: remove it from the `:fields` list; do nothing if it's not there.
+      - (An implicit join only exists in the `:fields` clause, so if it's not there then it's not anywhere.)
   - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables).
   - Custom expression: Throw! Custom expressions are always returned. To remove a custom expression, the expression
     itself should be removed from the query."
