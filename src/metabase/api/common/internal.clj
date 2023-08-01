@@ -46,8 +46,8 @@
                (str/replace #"^metabase-enterprise\.sandbox\.api\.table" "/api/table")
                ;; /api/ee/sandbox -> /api/mt
                (str/replace #"^metabase-enterprise\.sandbox\.api\." "/api/mt/")
-               ;; /api/ee/content-management -> /api/moderation-review
-               (str/replace #"^metabase-enterprise\.content-management\.api\." "/api/moderation-review/")
+               ;; /api/ee/content-verification -> /api/moderation-review
+               (str/replace #"^metabase-enterprise\.content-verification\.api\." "/api/moderation-review/")
                ;; /api/ee/sso/sso/ -> /auth/sso
                (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
                ;; this should be only the replace for enterprise once we resolved #22687

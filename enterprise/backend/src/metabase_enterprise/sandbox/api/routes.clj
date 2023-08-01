@@ -6,7 +6,8 @@
    [metabase-enterprise.sandbox.api.gtap :as gtap]
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.api.user :as user]
-   [metabase.api.routes.common :refer [+auth]]))
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (compojure/defroutes ^{:doc "Ring routes for mt API endpoints."} routes
   ;; EE-only sandboxing routes live under `/mt` for historical reasons. `/mt` is for multi-tenant.
@@ -16,6 +17,7 @@
    "/mt" []
    (ee.api.common/+require-premium-feature
     :sandboxes
+    (deferred-tru "Sandboxes")
     (compojure/routes
      (compojure/context "/gtap" [] (+auth gtap/routes))
      (compojure/context "/user" [] (+auth user/routes)))))

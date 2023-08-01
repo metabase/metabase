@@ -726,7 +726,7 @@ const openSlowEmbeddingDashboard = (params = {}) => {
       params: {},
     };
     visitEmbeddedPage(embeddingPayload, {
-      setFilters: new URLSearchParams(params).toString(),
+      setFilters: params,
     });
   });
 
