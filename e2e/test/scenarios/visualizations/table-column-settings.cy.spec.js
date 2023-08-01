@@ -102,6 +102,17 @@ const tableWithAggregations = {
   },
 };
 
+const multiStageQuestion = {
+  query: {
+    "source-query": {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }]],
+    },
+    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
+  },
+};
+
 const nativeQuestion = {
   display: "table",
   native: {
@@ -353,6 +364,57 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Sum of Quantity").should("exist");
       visibleColumns().findByText("Count").should("exist");
       visualization().findByText("Sum of Quantity").should("exist");
+    });
+  });
+
+  describe("multi-stage questions", () => {
+    it("should be able to show and hide table fields in a multi-stage query", () => {
+      cy.createQuestion(multiStageQuestion, { visitQuestion: true });
+      openSettings();
+
+      cy.log("hide an aggregation column");
+      visibleColumns().within(() => hideColumn("Count"));
+      visibleColumns().findByText("Count").should("not.exist");
+      visibleColumns().findByText("Product ID").should("exist");
+      disabledColumns().findByText("Count").should("exist");
+      additionalColumns().findByText("Count").should("not.exist");
+      visualization().findByText("Count").should("not.exist");
+
+      cy.log("re-run the query");
+      runQuery();
+      cy.wait("@dataset");
+      visualization().findByText("Count").should("not.exist");
+
+      cy.log("show an aggregation column");
+      additionalColumns().within(() => showColumn("Count"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Count").should("exist");
+      visibleColumns().findByText("Product ID").should("exist");
+      disabledColumns().findByText("Count").should("not.exist");
+      additionalColumns().findByText("Count").should("not.exist");
+      visualization().findByText("Count").should("exist");
+
+      cy.log("hide a breakout column");
+      visibleColumns().within(() => hideColumn("Product ID"));
+      visibleColumns().findByText("Product ID").should("not.exist");
+      visibleColumns().findByText("Count").should("exist");
+      disabledColumns().findByText("Product ID").should("exist");
+      additionalColumns().findByText("Product ID").should("not.exist");
+      visualization().findByText("Product ID").should("not.exist");
+
+      cy.log("re-run the query");
+      runQuery();
+      cy.wait("@dataset");
+      visualization().findByText("Product ID").should("not.exist");
+
+      cy.log("show a breakout column");
+      additionalColumns().within(() => showColumn("Product ID"));
+      cy.wait("@dataset");
+      visibleColumns().findByText("Product ID").should("exist");
+      visibleColumns().findByText("Count").should("exist");
+      disabledColumns().findByText("Product ID").should("not.exist");
+      additionalColumns().findByText("Product ID").should("not.exist");
+      visualization().findByText("Product ID").should("exist");
     });
   });
 

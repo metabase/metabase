@@ -100,6 +100,14 @@ export const getAdditionalMetadataColumns = (
   return Array.from(disabledMetadataColumns);
 };
 
+const getColumnGroupName = (
+  displayInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo,
+) => {
+  const columnInfo = displayInfo as Lib.ColumnDisplayInfo;
+  const tableInfo = displayInfo as Lib.TableDisplayInfo;
+  return columnInfo.fkReferenceName || tableInfo.displayName;
+};
+
 export const getColumnGroups = (
   query: Lib.Query,
   metadataColumns: Lib.ColumnMetadata[],
@@ -119,7 +127,7 @@ export const getColumnGroups = (
           displayName: displayInfo.displayName,
         };
       }),
-      displayName: displayInfo.displayName,
+      displayName: getColumnGroupName(displayInfo),
       isJoinable: displayInfo.isFromJoin || displayInfo.isImplicitlyJoinable,
     };
   });
