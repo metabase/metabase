@@ -192,6 +192,7 @@ export function JoinStep({
             query={query}
             stageIndex={stageIndex}
             strategy={strategy}
+            readOnly={readOnly}
             onChange={handleStrategyChange}
           />
           <JoinTablePicker

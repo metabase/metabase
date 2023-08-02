@@ -751,4 +751,58 @@ describe("Notebook Editor > Join Step", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("read-only", () => {
+    it("shouldn't allow changing the join type", () => {
+      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+        readOnly: true,
+      });
+
+      expect(screen.getByLabelText("Change join type")).toBeDisabled();
+    });
+
+    it("shouldn't allow changing the operator", () => {
+      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+        readOnly: true,
+      });
+
+      expect(screen.getByLabelText("Change operator")).toBeDisabled();
+    });
+
+    it("shouldn't allow changing the join fields", () => {
+      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+        readOnly: true,
+      });
+
+      expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
+    });
+
+    it("shouldn't allow changing columns", () => {
+      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+        readOnly: true,
+      });
+
+      expect(screen.getByLabelText("Left column")).toBeDisabled();
+      expect(screen.getByLabelText("Right column")).toBeDisabled();
+    });
+
+    it("shouldn't allow adding a new condition", () => {
+      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+        readOnly: true,
+      });
+
+      expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
+    });
+
+    it("shouldn't allow removing a condition", async () => {
+      const query = getJoinedQueryWithMultipleConditions();
+      setup(createMockNotebookStep({ topLevelQuery: query }), {
+        readOnly: true,
+      });
+
+      expect(
+        screen.queryByLabelText("Remove condition"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
