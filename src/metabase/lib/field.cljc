@@ -489,11 +489,15 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     xs]
-   (let [xs       (not-empty (mapv lib.ref/ref xs))
-         ;; if any fields are specified, include all expressions not yet included too
-         included (when xs
-                    (lib.equality/find-closest-matches-for-refs (expression-refs query stage-number) xs))
-         xs       (some->> xs (remove included))]
+   (let [xs        (not-empty (mapv lib.ref/ref xs))
+         ;; If any fields are specified, include all expressions not yet included.
+         expr-refs (expression-refs query stage-number)
+         ;; Set of indexes of expr-refs which are *already* included.
+         included  (set (when xs
+                          (vals (lib.equality/find-closest-matches-for-refs expr-refs xs))))
+         ;; Those expr-refs which must still be included.
+         to-add    (keep-indexed #(when-not (included %1) %2) expr-refs)
+         xs        (when xs (into xs to-add))]
      (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields xs))))
 
 (mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
@@ -629,8 +633,9 @@
                        (lib.util/query-stage stage-number)
                        :fields)
         new-fields (remove-matching-ref query (lib.ref/ref column) old-fields)]
-    ;; If we couldn't find the field, return the original query unchanged.
-    (lib.util/update-query-stage stage-number assoc :fields new-fields)))
+    (cond-> query
+      ;; If we couldn't find the field, return the original query unchanged.
+      (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))))
 
 (defn- remove-field-from-join [query stage-number column]
   (let [field-ref    (lib.ref/ref column)

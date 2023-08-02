@@ -151,7 +151,7 @@
                             (comp (map-indexed vector)
                                   (filter second))
                             needles)
-          results     nil]
+          results     {}]
      (if (or (empty? needles)
              (empty? xforms))
        results
@@ -173,7 +173,7 @@
    ;; First run with the needles as given.
    (let [matches       (find-closest-matches-for-refs needles haystack)
          ;; Those that were matched are replaced with nil.
-         blank-matched (reduce #(assoc %1 %2 nil) needles (vals matches))
+         blank-matched (reduce #(assoc %1 %2 nil) (vec needles) (vals matches))
          ;; Those that remain are converted to [:field {} "name"] refs if possible, or nil if not.
          converted     (when (and metadata-providerable
                                   (some some? blank-matched))

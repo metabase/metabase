@@ -20,10 +20,7 @@ export function findColumnIndexFromLegacyRef(
   columns: ColumnMetadata[] | DatasetColumn[],
   fieldRef: FieldReference,
 ): number {
-  return ML.find_column_index_from_legacy_ref(
-    query,
-    stageIndex,
-    columns,
+  return ML.find_column_indexes_from_legacy_refs(query, stageIndex, columns, [
     fieldRef,
-  );
+  ]);
 }

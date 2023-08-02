@@ -477,7 +477,7 @@
                          (js->clj :keywordize-keys true)
                          (update 0 keyword)
                          convert/->pMBQL))
-        matches    (lib.equality/find-closest-matches-for-refs columns field-refs)
+        matches    (lib.equality/find-closest-matches-for-refs a-query columns field-refs)
         ;; matches is a map of [column index-of-ref]; so flip it around.
         by-index   (into {} (for [[k v] matches]
                               [v k]))]
