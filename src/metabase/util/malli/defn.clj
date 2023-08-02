@@ -1,9 +1,9 @@
 (ns metabase.util.malli.defn
   (:refer-clojure :exclude [defn])
   (:require
-   [malli.core :as mc]
+   [clojure.string :as str]
    [malli.destructure]
-   [malli.experimental :as mx]
+   [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn]
    [net.cgrand.macrovich :as macros]))
 
@@ -16,6 +16,27 @@
     (case arities-type
       :single   (list (deparameterized-arglist arities-value))
       :multiple (map deparameterized-arglist (:arities arities-value)))))
+
+(defn- annotated-docstring
+  "Generate a docstring with additional information about inputs and return type using a parsed fn tail (as parsed
+  by [[mx/SchematizedParams]])."
+  [{original-docstring           :doc
+    [arities-type arities-value] :arities
+    :keys                        [return]
+    :as                          _parsed}]
+  (str/trim
+   (str "Inputs: " (case arities-type
+                     :single   (pr-str (:args arities-value))
+                     :multiple (str "("
+                                    (str/join "\n           "
+                                              (map (comp pr-str :args)
+                                                   (:arities arities-value)))
+                                    ")"))
+        "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
+                                    "\n"
+                                    (str "\n          "))
+        (when (not-empty original-docstring)
+          (str "\n\n  " original-docstring)))))
 
 (defmacro defn
   "Implementation of [[metabase.util.malli/defn]]. Like [[schema.core/defn]], but for Malli.
@@ -42,16 +63,15 @@
   Known issue: does not currently generate automatic type hints the way [[schema.core/defn]] does, nor does it attempt
   to preserve them if you specify them manually. We can fix this in the future."
   [& [fn-name :as fn-tail]]
-  (let [parsed (mc/parse mx/SchematizedParams fn-tail)]
-    (when (= ::mc/invalid parsed)
-      (mc/-fail! ::parse-error {:schema mx/SchematizedParams, :args fn-tail}))
-    (let [{attr-map :meta, docstring :doc} parsed
-          attr-map                         (merge
-                                            {:arglists (list 'quote (deparameterized-arglists parsed))}
-                                            attr-map)]
-      `(def ~(vary-meta fn-name merge attr-map)
-         ~@(when docstring
-             [docstring])
-         ~(macros/case
-            :clj  (mu.fn/instrumented-fn-form fn-tail)
-            :cljs (mu.fn/deparameterized-fn-form fn-tail))))))
+  (let [parsed           (mu.fn/parse-fn-tail fn-tail)
+        {attr-map :meta} parsed
+        attr-map         (merge
+                          {:arglists (list 'quote (deparameterized-arglists parsed))
+                           :schema   (mu.fn/fn-schema parsed)}
+                          attr-map)
+        docstring        (annotated-docstring parsed)]
+    `(def ~(vary-meta fn-name merge attr-map)
+       ~docstring
+       ~(macros/case
+          :clj  (mu.fn/instrumented-fn-form parsed)
+          :cljs (mu.fn/deparameterized-fn-form parsed)))))

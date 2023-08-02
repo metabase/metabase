@@ -26,7 +26,9 @@
                      more)
             schema (if (and (map? x)
                             (not schema))
-                     [:maybe :map]
+                     (if (= (last acc) '&)
+                       [:* :any]
+                       [:maybe :map])
                      schema)
             acc    (concat acc (if schema
                                  [x :- schema]
@@ -43,7 +45,9 @@
    (:schema (md/parse (add-default-map-schemas args)))
    return-schema])
 
-(defn- parameterized-fn-tail->schema [fn-tail]
+(defn parse-fn-tail
+  "Parse a parameterized `fn` tail with the [[mx/SchematizedParams]] schema. Throw an exception if it cannot be parsed."
+  [fn-tail]
   (let [parsed (mc/parse mx/SchematizedParams (if (symbol? (first fn-tail))
                                                 fn-tail
                                                 (cons '&f fn-tail)))]
@@ -54,14 +58,20 @@
                         {:fn-tail   fn-tail
                          :error     error
                          :humanized humanized}))))
-    (let [{:keys [return arities]}     parsed
-          return-schema                (:schema return :any)
-          [arities-type arities-value] arities]
-      (case arities-type
-        :single   (arity-schema arities-value return-schema)
-        :multiple (into [:function]
-                        (for [arity (:arities arities-value)]
-                          (arity-schema arity return-schema)))))))
+    parsed))
+
+(defn fn-schema
+  "Implementation for [[fn]] and [[metabase.util.malli.defn/defn]]. Given an unparsed parametered fn tail, extract the
+  annotations and return a `:=>` or `:function` schema."
+  [parsed]
+  (let [{:keys [return arities]}     parsed
+        return-schema                (:schema return :any)
+        [arities-type arities-value] arities]
+    (case arities-type
+      :single   (arity-schema arities-value return-schema)
+      :multiple (into [:function]
+                      (for [arity (:arities arities-value)]
+                        (arity-schema arity return-schema))))))
 
 (defn- deparameterized-arity [{:keys [body args prepost], :as _arity}]
   (concat
@@ -70,30 +80,28 @@
      [prepost])
    body))
 
-(defn- deparameterized-fn-tail [fn-tail]
-  (let [{:keys [arities]}            (mc/parse mx/SchematizedParams (if (symbol? (first fn-tail))
-                                                                      fn-tail
-                                                                      (cons '&f fn-tail)))
-        [arities-type arities-value] arities
-        body                         (case arities-type
-                                       :single   (deparameterized-arity arities-value)
-                                       :multiple (for [arity (:arities arities-value)]
-                                                   (deparameterized-arity arity)))]
+(defn- deparameterized-fn-tail [{[arities-type arities-value] :arities, :as _parsed}]
+  (let [body (case arities-type
+               :single   (deparameterized-arity arities-value)
+               :multiple (for [arity (:arities arities-value)]
+                           (deparameterized-arity arity)))]
     body))
 
 (defn deparameterized-fn-form
-  "Given a parameterized `fn-tail` (the arguments passed to [[clojure.core/fn]] or similar, excluding the `fn` symbol
-  itself), return a [[clojure.core.fn]] form with the parameters stripped out.
+  "Impl for [[metabase.util.malli.fn/fn]] and [[metabase.util.malli.defn/defn]]. Given a parsed `fn` tail (as parsed
+  by [[parsed-fn-tail]]), return a [[clojure.core.fn]] form with the parameters stripped out.
 
-    (deparameterized-fn-form [:- :int [x :- :int] (inc x)])
+    (deparameterized-fn-form (parse-fn-tail '[:- :int [x :- :int] (inc x)]))
     ;; =>
     (fn [x] (inc x))"
-  [fn-tail]
-  `(clojure.core/fn ~@(deparameterized-fn-tail fn-tail)))
+  [parsed]
+  `(clojure.core/fn ~@(deparameterized-fn-tail parsed)))
 
 (def ^:dynamic *enforce* true)
 
 (defn validate-input
+  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
+  explainer and throws an exception if the check fails."
   [schema value]
   (when *enforce*
     (when-let [error (mr/explain schema value)]
@@ -105,7 +113,10 @@
                          :schema    schema
                          :value     value}))))))
 
-(defn validate-output [schema value]
+(defn validate-output
+  "Impl for [[metabase.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
+  and throws an exception if the check fails. Returns validated value."
+  [schema value]
   (when *enforce*
     (when-let [error (mr/explain schema value)]
       (let [humanized (me/humanize error)]
@@ -118,8 +129,10 @@
   value)
 
 (defn- varargs-schema? [[_cat & args :as _input-schema]]
-  (and (sequential? (last args))
-       (= (first (last args)) :*)))
+  (letfn [(star-schema? [schema]
+            (and (sequential? schema)
+                 (= (first schema) :*)))]
+    (star-schema? (last args))))
 
 (defn- input-schema-arg-names [[_cat & args :as input-schema]]
   (let [varargs?    (varargs-schema? input-schema)
@@ -144,7 +157,13 @@
                     (concat (butlast schemas) [[:maybe (last schemas)]])
                     schemas)]
     (->> (map (clojure.core/fn [arg-name schema]
-                (when-not (= schema :any)
+                ;; 1. Skip checks against `:any` schema, there is no situation where it would fail.
+                ;;
+                ;; 2. Skip checks against the default varargs schema, there is no situation where [:maybe [:* :any]] is
+                ;; going to fail.
+                (when-not (= schema (if (= arg-name 'more)
+                                      [:maybe [:* :any]]
+                                      :any))
                   `(validate-input ~schema ~arg-name)))
               arg-names
               schemas)
@@ -179,22 +198,20 @@
     (let [[_function & schemas] schema]
       (map instrumented-arity schemas))))
 
-(defmacro instrumented-fn* [schema]
-  `(clojure.core/fn ~@(instrumented-fn-tail schema)))
-
 (defn instrumented-fn-form
   "Given a `fn-tail` like
 
     ([x :- :int y] (+ 1 2))
 
+  and parsed by [[parsed-fn-tail]],
+
   return an unevaluated instrumented [[fn]] form like
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
-  [fn-tail]
-  (deparameterized-fn-form fn-tail)
-  `(let [~'&f ~(deparameterized-fn-form fn-tail)]
-     (instrumented-fn* ~(parameterized-fn-tail->schema fn-tail))))
+  [parsed]
+  `(let [~'&f ~(deparameterized-fn-form parsed)]
+     (clojure.core/fn ~@(instrumented-fn-tail (fn-schema parsed)))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]]. A form like
@@ -236,4 +253,4 @@
   problem for another day. The passed function name comes back from [[mc/parse]] as `:name` if we want to attempt to
   fix this later."
   [& fn-tail]
-  (instrumented-fn-form fn-tail))
+  (instrumented-fn-form (parse-fn-tail fn-tail)))

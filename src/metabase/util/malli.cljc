@@ -9,21 +9,20 @@
    #?@(:clj
        ([metabase.util.i18n]
         [metabase.util.malli.defn :as mu.defn]
-        [metabase.util.malli.fn :as mu.fn])))
+        [metabase.util.malli.fn :as mu.fn]
+        [potemkin :as p])))
   #?(:cljs (:require-macros [metabase.util.malli])))
+
+#?(:clj (comment mu.defn/keep-me))
+
+#?(:clj
+   (p/import-vars [mu.defn defn]))
 
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
   [{:keys [value message]}]
   ;; TODO Should this be translated with more complete context? (tru "{0}, received: {1}" message (pr-str value))
   (str message ", " (i18n/tru "received") ": " (pr-str value)))
-
-#?(:clj
-   (defmacro defn
-     "Like s/defn, but for malli. Will always validate input and output without the need for calls to instrumentation (they are emitted automatically).
-     Calls to minst/unstrument! can remove this, so use a filter that avoids :validate! if you use that."
-     [& args]
-     `(mu.defn/defn ~@args)))
 
 (def ^:private Schema
   [:and any?
@@ -63,4 +62,4 @@
      [multifn dispatch-value & fn-tail]
      `(.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                   ~dispatch-value
-                  ~(mu.fn/instrumented-fn-form fn-tail))))
+                  ~(mu.fn/instrumented-fn-form (mu.fn/parse-fn-tail fn-tail)))))
