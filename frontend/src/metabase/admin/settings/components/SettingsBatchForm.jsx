@@ -14,6 +14,7 @@ import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
 import { updateSettings as defaultUpdateSettings } from "../settings";
 import SettingsSetting from "./SettingsSetting";
+import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
 
 const VALIDATIONS = {
   email: {
@@ -365,15 +366,12 @@ class CollapsibleSection extends React.Component {
     const { show } = this.state;
     return (
       <section className="mb4">
-        <div
-          className="inline-block ml1 cursor-pointer text-brand-hover"
-          onClick={this.handleToggle.bind(this)}
-        >
+        <CollapsibleSectionContent onClick={this.handleToggle.bind(this)}>
           <div className="flex align-center">
             <DisclosureTriangle className="mx1" open={show} />
             <h3>{title}</h3>
           </div>
-        </div>
+        </CollapsibleSectionContent>
         <Collapse isOpened={show} keepCollapsedContent>
           <ul>{children}</ul>
         </Collapse>
