@@ -46,7 +46,8 @@ export const RemoveConditionButton = styled.button`
 
   transition: background-color 300ms linear;
 
-  &:hover {
+  &:hover,
+  &:focus {
     background-color: ${darken("brand", 0.15)};
   }
 `;
