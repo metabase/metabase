@@ -1,4 +1,6 @@
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const HelpRoot = styled.div`
   padding: 2rem;
@@ -19,4 +21,17 @@ export const InfoBlockRoot = styled.div`
 
 export const InfoBlockButton = styled.div`
   margin: 1rem;
+`;
+
+export const HelpExternalLink = styled(ExternalLink)`
+  display: flex;
+  padding: 1rem;
+  border: 1px solid ${color("brand")};
+  border-radius: 0.5rem;
+  transition: border 0.3s linear;
+  text-decoration: none;
+
+  &:hover {
+    border-color: ${color("brand")};
+  }
 `;

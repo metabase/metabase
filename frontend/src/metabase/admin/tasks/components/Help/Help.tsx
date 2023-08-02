@@ -6,13 +6,13 @@ import _ from "underscore";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import CopyButton from "metabase/components/CopyButton";
-import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { UtilApi } from "metabase/services";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 import {
   HelpBody,
+  HelpExternalLink,
   HelpLinks,
   HelpRoot,
   InfoBlockButton,
@@ -67,16 +67,12 @@ interface HelpLinkProps {
 
 const HelpLink = ({ title, description, link }: HelpLinkProps) => (
   <li className="mb2">
-    <ExternalLink
-      className="bordered border-brand-hover rounded transition-border flex p2 no-decoration"
-      href={link}
-      target="_blank"
-    >
+    <HelpExternalLink href={link} target="_blank">
       <div>
         <h3 className="text-brand">{title}</h3>
         <p className="m0 mt1">{description}</p>
       </div>
-    </ExternalLink>
+    </HelpExternalLink>
   </li>
 );
 
