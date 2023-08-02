@@ -136,7 +136,7 @@
                                                                         :dimension    [:field (mt/id :products :category) nil]
                                                                         :widget-type  :category
                                                                         :default      ["Gizmo" "Gadget"]
-                                                                        :required     true}}}}}]
+                                                                        :required     false}}}}}]
                       Dashboard [{dashboard-id :id} {:parameters [{:name    "category"
                                                                    :slug    "category"
                                                                    :id      "abc123"
@@ -158,7 +158,13 @@
                  (mt/rows (run-query-for-dashcard
                            dashboard-id card-id dashcard-id
                            :parameters [{:id    "abc123"
-                                         :value ["Doohickey"]}])))))))))
+                                         :value ["Doohickey"]}])))))
+        (testing "Specifying a nil value should override both defaults and not apply the filter."
+          (is (= [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]
+                 (mt/rows (run-query-for-dashcard
+                           dashboard-id card-id dashcard-id
+                           :parameters [{:id    "abc123"
+                                         :value nil}])))))))))
 
 (deftest default-value-precedence-test-raw-values
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
