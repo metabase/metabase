@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
 import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 import {
   FullScreenButtonIcon,
+  NightModeButtonIcon,
   RefreshWidgetButton,
   ShareButton,
 } from "./DashboardActions.styled";
@@ -115,8 +115,7 @@ export const getDashboardActions = (
         <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
           <DashboardHeaderButton
             icon={
-              <NightModeIcon
-                className="text-brand-hover cursor-pointer"
+              <NightModeButtonIcon
                 isNightMode={isNightMode}
                 onClick={() => onNightModeChange(!isNightMode)}
               />
