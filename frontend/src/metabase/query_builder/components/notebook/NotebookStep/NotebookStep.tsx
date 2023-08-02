@@ -148,6 +148,7 @@ function NotebookStep({
             {!readOnly && (
               <StepButtonContainer>
                 <PreviewButton
+                  as={ActionButton}
                   icon="play"
                   title={t`Preview`}
                   color={c("text-light")}

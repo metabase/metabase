@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button";
 import { alpha, color, darken, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
-import ActionButton from "./ActionButton";
 
 const getPercentage = (number: number): string => {
   return `${number * 100}%`;
@@ -69,10 +68,12 @@ export const ColorButton = styled(Button)<ColorButtonProps>`
 `;
 
 interface PreviewButtonProps {
+  icon?: string;
+  transparent?: boolean;
   hasPreviewButton?: boolean;
 }
 
-export const PreviewButton = styled(ActionButton)<PreviewButtonProps>`
+export const PreviewButton = styled.div<PreviewButtonProps>`
   margin-left: 0.5rem;
   visibility: ${props => !props.hasPreviewButton && "hidden"};
   pointer-events: ${props => !props.hasPreviewButton && "none"};
