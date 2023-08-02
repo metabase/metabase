@@ -4,11 +4,6 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.48.0
-
-- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
-  of a set.
-
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
@@ -39,6 +34,9 @@ title: Driver interface changelog
   used to enable connection impersonation, which is a new feature added in 0.47.0. Connection impersonation allows users
   to be assigned to specific database roles which are set before any queries are executed, so that access to tables can
   be restricted at the database level instead of (or in conjunction with) Metabase's built-in permissions system.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
+  of a set.
 
 ## Metabase 0.46.0
 
