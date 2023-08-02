@@ -9,7 +9,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   #?@(:clj ([metabase.util.malli.fn :as mu.fn]))))
 
 (defn- stage-paths
   [query stage-number]
@@ -134,7 +135,7 @@
     query))
 
 (defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
-  (binding [mu/*enforce* false]
+  (binding #?(:clj [mu.fn/*enforce* false] :cljs  [])
     (let [target-clause (lib.common/->op-arg target-clause)
           stage (lib.util/query-stage query stage-number)
           location (m/find-first
@@ -294,7 +295,7 @@
 (defn- update-joins
   ([query stage-number join-spec f]
    (if-let [join-alias (join-spec->alias query stage-number join-spec)]
-     (binding [mu/*enforce* false]
+     (binding #?(:clj [mu.fn/*enforce* false] :cljs [])
        (let [query-after (as-> query $q
                            (lib.util/update-query-stage
                              $q
