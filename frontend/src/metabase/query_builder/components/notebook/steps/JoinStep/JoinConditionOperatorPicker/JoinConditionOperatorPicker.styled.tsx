@@ -1,15 +1,24 @@
 import styled from "@emotion/styled";
-import Button from "metabase/core/components/Button";
 import SelectList from "metabase/components/SelectList";
+import { color, darken } from "metabase/lib/colors";
 
-export const OperatorPickerButton = styled(Button)`
-  width: 36px;
-  height: 36px;
+export const OperatorPickerButton = styled.button<{ isOpen?: boolean }>`
+  background-color: ${props =>
+    props.isOpen ? darken("brand", 0.15) : "transparent"};
+  color: ${color("white")};
   font-size: 16px;
-  padding: 0;
-`;
 
-OperatorPickerButton.defaultProps = { primary: true };
+  padding: 4px 8px;
+  border-radius: 4px;
+
+  cursor: ${props => (props.disabled ? "default" : "pointer")};
+
+  transition: background 300ms linear;
+
+  &:hover {
+    background: ${darken("brand", 0.15)};
+  }
+`;
 
 export const OperatorList = styled(SelectList)`
   width: 80px;
