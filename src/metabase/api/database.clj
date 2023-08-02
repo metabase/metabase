@@ -282,12 +282,11 @@
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
                                                       :exclude-uneditable-details?     only-editable?
-                                                      :include-analytics?  include_analytics
+                                                      :include-analytics?              include_analytics
                                                       :include-only-uploadable?        include_only_uploadable)
                                             [])]
-    {:data  db-list-res
-     :total (count db-list-res)}))
-
+   {:data  db-list-res
+    :total (count db-list-res)}))
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
@@ -1179,17 +1178,5 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
-
-(api/defendpoint GET "/db-ids-with-deprecated-drivers"
-  "Return a list of database IDs using currently deprecated drivers."
-  []
-  (map
-   u/the-id
-   (filter
-    (fn [database]
-      (let [info (driver.u/available-drivers-info)
-            d    (driver.u/database->driver database)]
-        (some? (:superseded-by (d info)))))
-    (t2/select-pks-set Database))))
 
 (api/define-routes)
