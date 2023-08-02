@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { IndexLink } from "react-router";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 
@@ -19,16 +18,6 @@ export const SidebarItemRoot = styled.div<SidebarItemRootProps>`
 `;
 
 export const SidebarItemLink = styled(Link)`
-  color: ${color("brand")};
-  text-decoration: none;
-
-  &.active {
-    color: ${color("brand")};
-  }
-`;
-
-export const SidebarIndexLink = styled(IndexLink)`
-  color: ${color("brand")};
   text-decoration: none;
 
   &.active {

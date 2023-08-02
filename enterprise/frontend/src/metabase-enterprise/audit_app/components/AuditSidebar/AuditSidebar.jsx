@@ -1,11 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import cx from "classnames";
-import {
-  SidebarIndexLink,
-  SidebarItemLink,
-  SidebarItemRoot,
-} from "./AuditSidebar.styled";
+import { SidebarItemLink, SidebarItemRoot } from "./AuditSidebar.styled";
 
 const AuditSidebarSection = ({ title, children }) => (
   <div className="pb2">
@@ -22,15 +18,9 @@ const AuditSidebarSectionTitle = ({ title }) => (
 
 const AuditSidebarItem = ({ title, path }) => (
   <SidebarItemRoot isDisabled={!path}>
-    {path ? (
-      <SidebarItemLink to={path} activeClassName="active">
-        {title}
-      </SidebarItemLink>
-    ) : (
-      <SidebarIndexLink to="/admin/audit" activeClassName="active">
-        {title}
-      </SidebarIndexLink>
-    )}
+    <SidebarItemLink to={path} activeClassName="active">
+      {title}
+    </SidebarItemLink>
   </SidebarItemRoot>
 );
 
