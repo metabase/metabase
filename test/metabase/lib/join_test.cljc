@@ -966,13 +966,16 @@
                                              [(lib/= (meta/field-metadata :orders :created-at)
                                                      (meta/field-metadata :products :created-at))])))
         [condition] (lib/join-conditions (first (lib/joins query)))]
-    (is (=? {:stages [{:joins [{:conditions [[:= {}
-                                              [:field {:temporal-unit :year} (meta/id :orders :created-at)]
-                                              [:field {:temporal-unit :year} (meta/id :products :created-at)]]]}]}]}
+    (is (=? [:= {}
+             [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+             [:field {:temporal-unit :year} (meta/id :products :created-at)]]
             (lib.join/join-condition-update-temporal-bucketing query -1 condition :year)))
-    (is (=? {:stages [{:joins [{:conditions [[:= {}
-                                              [:field (complement :temporal-unit) (meta/id :orders :created-at)]
-                                              [:field (complement :temporal-unit) (meta/id :products :created-at)]]]}]}]}
-            (-> query
-                (lib.join/join-condition-update-temporal-bucketing -1 condition :year)
-                (lib.join/join-condition-update-temporal-bucketing -1 condition nil))))))
+    (testing "removing with nil"
+      (is (=? [:= {}
+               [:field (complement :temporal-unit) (meta/id :orders :created-at)]
+               [:field (complement :temporal-unit) (meta/id :products :created-at)]]
+              (lib.join/join-condition-update-temporal-bucketing
+                query
+                -1
+                (lib.join/join-condition-update-temporal-bucketing query -1 condition :year)
+                nil))))))

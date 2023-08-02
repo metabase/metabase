@@ -882,12 +882,12 @@
        (lib.metadata.calculation/display-name query stage-number table))
      (i18n/tru "Previous results"))))
 
-(mu/defn join-condition-update-temporal-bucketing :- ::lib.schema/query
-  "Updates the provided join-condition's fields' temporal-bucketing option.
+(mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
+  "Updates the provided join-condition's fields' temporal-bucketing option, returns the updated join-condition.
    Must be called on a standard join condition as per [[standard-join-condition?]].
    This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
    Fields that do not support the provided option will be ignored."
-  ([query  :- ::lib.schema/query
+  ([query :- ::lib.schema/query
     join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
     option-or-unit :- [:maybe [:or
                                ::lib.schema.temporal-bucketing/option
@@ -899,17 +899,16 @@
     option-or-unit :- [:maybe [:or
                                ::lib.schema.temporal-bucketing/option
                                ::lib.schema.temporal-bucketing/unit]]]
-   (assert (standard-join-condition? join-condition)
-           (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
-   (let [unit (cond-> option-or-unit
-                (not (keyword? option-or-unit)) :unit)
-         [[loc _]] (mbql.u/matching-locations query #(= (lib.options/uuid join-condition) (lib.options/uuid %)))
-         lhs-loc (conj loc 2)
-         rhs-loc (conj loc 3)
-         available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number (get-in query lhs-loc))
-         available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number (get-in query rhs-loc))
-         sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
-         sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
-     (cond-> query
-       sync-lhs? (update-in lhs-loc lib.temporal-bucket/with-temporal-bucket unit)
-       sync-rhs? (update-in rhs-loc lib.temporal-bucket/with-temporal-bucket unit)))))
+   (let [[_ _ lhs rhs :as join-condition] join-condition]
+     (assert (standard-join-condition? join-condition)
+             (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
+     (let [unit (cond-> option-or-unit
+                  (not (keyword? option-or-unit)) :unit)
+           stage-number (lib.util/canonical-stage-index query stage-number)
+           available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
+           available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
+           sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
+           sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+       (cond-> join-condition
+         sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
+         sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
