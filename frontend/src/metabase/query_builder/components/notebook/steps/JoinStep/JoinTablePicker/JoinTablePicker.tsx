@@ -83,7 +83,7 @@ export function JoinTablePicker({
       color={color}
       aria-label={t`Right table`}
       right={
-        table ? (
+        table && !readOnly ? (
           <JoinTableColumnsPicker
             query={query}
             stageIndex={stageIndex}
@@ -106,7 +106,9 @@ export function JoinTablePicker({
         selectedTableId={tableId}
         setSourceTableFn={handleTableChange}
         triggerElement={
-          <PickerButton>{tableInfo?.displayName || t`Pick data…`}</PickerButton>
+          <PickerButton disabled={readOnly}>
+            {tableInfo?.displayName || t`Pick data…`}
+          </PickerButton>
         }
       />
     </NotebookCellItem>
