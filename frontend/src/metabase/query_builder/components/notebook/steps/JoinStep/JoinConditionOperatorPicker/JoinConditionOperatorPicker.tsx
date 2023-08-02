@@ -12,6 +12,7 @@ interface JoinConditionOperatorPickerProps {
   stageIndex: number;
   operator?: Lib.FilterOperator;
   operators: Lib.FilterOperator[];
+  disabled?: boolean;
   onChange: (operator: Lib.FilterOperator) => void;
 }
 
@@ -20,6 +21,7 @@ export function JoinConditionOperatorPicker({
   stageIndex,
   operator: selectedOperator,
   operators,
+  disabled,
   onChange,
 }: JoinConditionOperatorPickerProps) {
   const selectedOperatorInfo = selectedOperator
@@ -28,8 +30,13 @@ export function JoinConditionOperatorPicker({
 
   return (
     <TippyPopoverWithTrigger
-      renderTrigger={({ onClick }) => (
-        <OperatorPickerButton onClick={onClick} aria-label={t`Change operator`}>
+      renderTrigger={({ visible, onClick }) => (
+        <OperatorPickerButton
+          isOpen={visible}
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={t`Change operator`}
+        >
           {selectedOperatorInfo?.shortName}
         </OperatorPickerButton>
       )}
