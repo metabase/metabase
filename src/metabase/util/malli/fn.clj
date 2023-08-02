@@ -97,7 +97,10 @@
   [parsed]
   `(clojure.core/fn ~@(deparameterized-fn-tail parsed)))
 
-(def ^:dynamic *enforce* true)
+(def ^:dynamic *enforce*
+  "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
+  use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
+  true)
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached

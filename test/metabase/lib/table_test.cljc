@@ -6,8 +6,8 @@
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:clj  ([metabase.util.malli.fn :as mu.fn])
-       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -42,5 +42,5 @@
             (fields   [_this table-id] (mapv #(assoc % :name nil)
                                              (metadata.protocols/fields meta/metadata-provider table-id))))
           query (lib/query metadata-provider (meta/table-metadata :venues))]
-      (binding #?(:clj [mu.fn/*enforce* false] :cljs [])
+      (mu/disable-enforcement
         (is (sequential? (lib.metadata.calculation/visible-columns query)))))))

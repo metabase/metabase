@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel add-default-map-schemas-test
   (are [input expected] (= expected
@@ -101,7 +101,7 @@
   (let [f (mu.fn/fn :- :int [y] y)]
     (is (= 1
            (f 1)))
-    (binding [mu.fn/*enforce* false]
+    (mu/disable-enforcement
       (is (nil? (f nil))))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

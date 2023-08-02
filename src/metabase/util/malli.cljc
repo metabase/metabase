@@ -10,10 +10,9 @@
        ([metabase.util.i18n]
         [metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
+        [net.cgrand.macrovich :as macros]
         [potemkin :as p])))
   #?(:cljs (:require-macros [metabase.util.malli])))
-
-#?(:clj (comment mu.defn/keep-me))
 
 #?(:clj
    (p/import-vars [mu.defn defn]))
@@ -55,6 +54,20 @@
                           :description description-message
                           ;; override generic description in :specific-errors key in API's response
                           :error/fn    (fn [_ _] specific-error-message))))
+
+#?(:clj
+   (defmacro disable-enforcement
+     "Convenience for disabling [[defn]] and [[metabase.util.malli.fn/fn]] input/output schema validation. Since
+  input/output validation is currently disabled for ClojureScript, this is a no-op."
+     {:style/indent 0}
+     [& body]
+     (macros/case
+       :clj
+       `(binding [mu.fn/*enforce* false]
+          ~@body)
+
+       :cljs
+       (do ~@body))))
 
 #?(:clj
    (defmacro defmethod
