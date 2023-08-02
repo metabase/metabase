@@ -42,6 +42,7 @@ export const ActionExecuteModal = ({
 
   const {
     error: errorInitialValues,
+    hasPrefetchedValues,
     initialValues,
     isLoading: isLoadingInitialValues,
     prefetchValues,
@@ -78,7 +79,8 @@ export const ActionExecuteModal = ({
   );
 
   const error = errorAction || errorInitialValues;
-  const isLoading = isLoadingAction || isLoadingInitialValues;
+  const isLoading =
+    isLoadingAction || (isLoadingInitialValues && !hasPrefetchedValues);
 
   if (error || isLoading) {
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;

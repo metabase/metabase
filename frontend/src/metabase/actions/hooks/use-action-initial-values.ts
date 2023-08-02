@@ -26,6 +26,8 @@ export const useActionInitialValues = ({
     [prefetchedInitialValues, initialValuesProp],
   );
 
+  const hasPrefetchedValues = prefetchedInitialValues !== NO_VALUES;
+
   useEffect(() => {
     if (shouldPrefetch && fetchInitialValues) {
       prefetchValues();
@@ -34,6 +36,7 @@ export const useActionInitialValues = ({
 
   return {
     error,
+    hasPrefetchedValues,
     initialValues,
     isLoading: Boolean(isLoading && fetchInitialValues && shouldPrefetch),
     prefetchValues,
