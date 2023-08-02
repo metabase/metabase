@@ -370,7 +370,6 @@
 (mu/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
-  (def search-ctx search-ctx)
   (let [search-query       (full-search-query search-ctx)
         _                  (log/tracef "Searching with query:\n%s\n%s"
                                        (u/pprint-to-str search-query)
@@ -501,19 +500,20 @@
       (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime-milliseconds duration}))
     results))
 
-(metabase.test/user-http-request :crowberto :get 200 "search" :q "r" :created_at "past7days")
+(comment
+ (metabase.test/user-http-request :crowberto :get 200 "search" :q "r" :created_at "past7days")
 
-(metabase.test/with-current-user 2
-  (->> (search (search-context {:search-string "p"
-                                :archived      false
-                                :models        search.config/all-models
-                                :created-at    "past7hours"}))
-       :data
-       (map #(select-keys % [:model :id :name]))))
+ (metabase.test/with-current-user 2
+   (->> (search (search-context {:search-string "p"
+                                 :archived      false
+                                 :models        search.config/all-models
+                                 :created-at    "past7hours"}))
+        :data
+        (map #(select-keys % [:model :id :name]))))
 
-(search-query-for-model "card" search-ctx)
+ (search-query-for-model "card" search-ctx)
 
-(t2/select-one-fn :created_at :model/Card {:where [:= [:cast :created_at :date] #t "2023-08-02"]})
+ (t2/select-one-fn :created_at :model/Card {:where [:= [:cast :created_at :date] #t "2023-08-02"]}))
 
 
 

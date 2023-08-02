@@ -390,7 +390,6 @@
 
   ([date-string  :- s/Str {:keys [inclusive-start? inclusive-end?]
                            :or   {inclusive-start? true, inclusive-end? true}}]
-   #p ['range date-string]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
          now (t/local-date-time)]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
@@ -412,7 +411,6 @@
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- s/Str field :- (s/cond-pre su/IntGreaterThanZero mbql.s/Field)]
-  #p ['filter date-string]
   (or (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
                       {:type        qp.error-type/invalid-parameter
