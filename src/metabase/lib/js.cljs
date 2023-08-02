@@ -124,6 +124,11 @@
       (update :table update-keys u/->camelCaseEn)
       (clj->js :keyword-fn u/qualified-name)))
 
+(defn ^:export field-id
+  "Find the field id for something or nil."
+  [field-metadata]
+  (lib.core/field-id field-metadata))
+
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
   ([orderable]
@@ -396,6 +401,32 @@
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
+(defn ^:export add-field
+  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage of the query, aggregation or breakout:
+      - Add it to the `:fields` list
+      - If `:fields` is missing, it's implicitly `:all`, so do nothing.
+  - Implicit join: add it to the `:fields` list; query processor will do the right thing with it.
+  - Explicit join: add it to that join's `:fields` list.
+  - Custom expression: Do nothing - expressions are always included."
+  [a-query stage-number column]
+  (lib.core/add-field a-query stage-number column))
+
+(defn ^:export remove-field
+  "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
+  query. Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage, aggregations or breakouts:
+      - If `:fields` is missing, it's implicitly `:all` - populate it with all the columns except the removed one.
+      - Remove the target column from the `:fields` list
+  - Implicit join: remove it from the `:fields` list; do nothing if it's not there.
+      - (An implicit join only exists in the `:fields` clause, so if it's not there then it's not anywhere.)
+  - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables).
+  - Custom expression: Throw! Custom expressions are always returned. To remove a custom expression, the expression
+    itself should be removed from the query."
+  [a-query stage-number column]
+  (lib.core/remove-field a-query stage-number column))
+
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
@@ -416,10 +447,15 @@
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
 
-  If you are changing the LHS of a condition for an existing join, pass in that existing join as
-  `existing-join-or-nil` so we can filter out the columns added by it (it doesn't make sense to present the columns
-  added by a join as options for its own LHS). Otherwise pass `nil` when building a new join. See #32005 for more
-  info.
+  If you are changing the LHS of a condition for an existing join, pass in that existing join as `join-or-joinable` so
+  we can filter out the columns added by it (it doesn't make sense to present the columns added by a join as options
+  for its own LHS) or added by later joins (joins can only depend on things from previous joins). Otherwise you can
+  either pass in `nil` or something joinable (Table or Card metadata) we're joining against when building a new
+  join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
+  of [[join-condition-rhs-columns]].) See #32005 for more info.
+
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
 
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
@@ -427,21 +463,24 @@
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  [a-query stage-number existing-join-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-lhs-columns a-query stage-number existing-join-or-nil rhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-rhs-columns
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
-  is the one that belongs to the thing being joined, `joinable`, which can be something like a
+  is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
   Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
-  another query, etc. -- anything you can pass to [[join-clause]].
+  another query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
-  If the lhs-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
+  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
+
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  [a-query stage-number joinable lhs-column-or-nil]
-  (to-array (lib.core/join-condition-rhs-columns a-query stage-number joinable lhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-operators
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder

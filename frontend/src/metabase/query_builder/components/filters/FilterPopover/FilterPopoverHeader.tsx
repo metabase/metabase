@@ -14,8 +14,7 @@ type Props = {
   onBack: () => void;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function FilterPopoverHeader({
+export function FilterPopoverHeader({
   className,
   showFieldPicker,
   forceShowOperatorSelector,

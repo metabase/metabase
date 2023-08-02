@@ -9,6 +9,7 @@ export * from "./column_types";
 export * from "./common";
 export * from "./comparison";
 export * from "./database";
+export * from "./expression";
 export * from "./fields";
 export * from "./filter";
 export * from "./join";
