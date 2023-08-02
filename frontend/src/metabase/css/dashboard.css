@@ -101,10 +101,13 @@
   z-index: 2;
 }
 
-/* dashcards use positioned absolutely,
-   so children calculate z-index inside a container, not globally,
-   that's why we have to override parent's z-index
-*/
+/**
+ * Dashcards are positioned absolutely so each one forms a new stacking context.
+ * The dashcard user is currently interacting with needs to be positioned above other dashcards
+ * to make sure it's not covered by absolutely positioned children of neighboring dashcards.
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Understanding_z-index/Stacking_context
+ */
 .DashCard:hover {
   z-index: 3;
 }
