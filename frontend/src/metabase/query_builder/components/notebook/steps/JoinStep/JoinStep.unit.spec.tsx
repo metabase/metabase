@@ -346,20 +346,14 @@ describe("Notebook Editor > Join Step", () => {
     );
   });
 
-  it("shouldn't show a remove column button until a column is selected", async () => {
+  it("shouldn't allow removing an incomplete condition", async () => {
     setup();
 
-    const popover = screen.getByTestId("popover");
-    userEvent.click(await within(popover).findByText("Reviews"));
+    userEvent.click(screen.getByLabelText("Right table"));
+    const tablePicker = await screen.findByTestId("popover");
+    userEvent.click(await within(tablePicker).findByText("Reviews"));
 
-    expect(screen.queryByLabelText("Remove")).not.toBeInTheDocument();
-  });
-
-  it("shouldn't show a remove column button in read-only mode", async () => {
-    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
-      readOnly: true,
-    });
-    expect(screen.queryByLabelText("Remove")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Remove condition")).not.toBeInTheDocument();
   });
 
   it("should display temporal unit for date-time columns", async () => {
@@ -706,15 +700,54 @@ describe("Notebook Editor > Join Step", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shouldn't allow removing complete conditions", () => {
-      setup(
+    it("should remove a complete condition", async () => {
+      const { getRecentJoin } = setup(
         createMockNotebookStep({
           topLevelQuery: getJoinedQueryWithMultipleConditions(),
         }),
       );
 
+      let firstCondition = screen.getByTestId("join-condition-0");
+      const secondCondition = screen.getByTestId("join-condition-1");
+
+      expect(
+        within(firstCondition).getByLabelText("Remove condition"),
+      ).toBeInTheDocument();
+      expect(
+        within(secondCondition).getByLabelText("Remove condition"),
+      ).toBeInTheDocument();
+
+      userEvent.click(
+        within(secondCondition).getByLabelText("Remove condition"),
+      );
+
+      firstCondition = screen.getByTestId("join-condition-0");
+      expect(
+        within(firstCondition).getByLabelText("Left column"),
+      ).toHaveTextContent("Product ID");
+      expect(
+        within(firstCondition).getByLabelText("Right column"),
+      ).toHaveTextContent("ID");
+
+      const { conditions } = getRecentJoin();
+      const [condition] = conditions;
+      expect(conditions).toHaveLength(1);
+      expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
+      expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
+    });
+
+    it("shouldn't allow removing a single complete condition", async () => {
+      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+
       expect(
         screen.queryByLabelText("Remove condition"),
+      ).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByLabelText("Add condition"));
+
+      const firstCondition = screen.getByTestId("join-condition-0");
+      expect(
+        within(firstCondition).queryByLabelText("Remove condition"),
       ).not.toBeInTheDocument();
     });
   });
