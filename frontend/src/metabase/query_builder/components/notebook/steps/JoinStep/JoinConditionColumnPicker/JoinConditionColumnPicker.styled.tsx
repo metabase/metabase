@@ -4,16 +4,15 @@ import QueryColumnPicker from "metabase/common/components/QueryColumnPicker/Quer
 import { color, darken } from "metabase/lib/colors";
 
 const noColumnStyle = css`
-  height: 34px;
+  min-height: 34px;
   padding: 8px 20px;
   border: 1px solid rgba(255, 255, 255, 0.51);
   border-radius: 4px;
 `;
 
 const hasColumnStyle = css`
-  height: 39px;
-  padding-right: 16px;
-  padding-left: 10px;
+  min-height: 39px;
+  padding: 6px 16px 6px 10px;
   border-radius: 6px;
 `;
 
