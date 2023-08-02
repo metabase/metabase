@@ -3,8 +3,6 @@ import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 export const MAXIMUM_PARAMETERS_FOR_STICKINESS = 6;
 
 export const updateParametersWidgetStickiness = dashboard => {
-  initializeWidgetOffsetTop(dashboard);
-
   const shouldBeSticky = checkIfParametersWidgetShouldBeSticky(dashboard);
 
   const shouldToggleStickiness = checkIfShouldToggleStickiness(
@@ -13,18 +11,8 @@ export const updateParametersWidgetStickiness = dashboard => {
   );
 
   if (shouldToggleStickiness) {
-    updateParametersAndCardsContainerStyle(dashboard, shouldBeSticky);
-
     dashboard.setState({
       isParametersWidgetSticky: shouldBeSticky,
-    });
-  }
-};
-
-const initializeWidgetOffsetTop = dashboard => {
-  if (!dashboard.state.parametersWidgetOffsetTop) {
-    dashboard.setState({
-      parametersWidgetOffsetTop: dashboard.parametersWidgetRef.offsetTop,
     });
   }
 };
@@ -54,14 +42,12 @@ const checkIfParametersWidgetShouldBeSticky = dashboard => {
   return getMainElement().scrollTop > offsetTop;
 };
 
-const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {
-  const { offsetHeight } = dashboard.parametersWidgetRef;
+const getOffsetTop = dashboard => {
+  const parametersWidget = dashboard.parametersWidgetRef.current;
 
-  const paddingTop = shouldBeSticky ? offsetHeight + "px" : "0";
-
-  dashboard.parametersAndCardsContainerRef.style.paddingTop = paddingTop;
+  if (parametersWidget) {
+    return parametersWidget.offsetTop;
+  } else {
+    return 0;
+  }
 };
-
-const getOffsetTop = dashboard =>
-  dashboard.state.parametersWidgetOffsetTop ||
-  dashboard.parametersWidgetRef.offsetTop;

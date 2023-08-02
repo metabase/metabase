@@ -103,7 +103,6 @@ class Dashboard extends Component {
   constructor(props) {
     super(props);
     this.parametersWidgetRef = React.createRef();
-    this.parametersAndCardsContainerRef = React.createRef();
   }
 
   static getDerivedStateFromProps({ parameters }, { parametersListLength }) {
@@ -298,12 +297,14 @@ class Dashboard extends Component {
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer
                 data-testid="dashboard-parameters-and-cards"
-                ref={element => (this.parametersAndCardsContainerRef = element)}
+                shouldMakeDashboardHeaderStickyAfterScrolling={
+                  !isFullscreen && (isEditing || isSharing)
+                }
               >
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     data-testid="dashboard-parameters-widget-container"
-                    ref={element => (this.parametersWidgetRef = element)}
+                    ref={this.parametersWidgetRef}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
                     topNav={embedOptions?.top_nav}
