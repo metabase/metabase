@@ -100,13 +100,21 @@ const ColumnNotebookCellItem = forwardRef<
       ref={ref}
     >
       {hasTableLabel && (
-        <Text display="block" size={11} lh={1} color="white" weight={400}>
+        <Text
+          display="block"
+          size={11}
+          lh={1}
+          color="white"
+          align="left"
+          weight={400}
+        >
           {tableName || t`Previous results`}
         </Text>
       )}
       <Text
         display="block"
         color="white"
+        align="left"
         weight={hasColumnSelected ? 600 : 400}
         lh={1}
       >
