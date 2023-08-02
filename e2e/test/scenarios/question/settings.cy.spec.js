@@ -345,9 +345,7 @@ function getSidebarColumns() {
 }
 
 function getVisibleSidebarColumns() {
-  return cy
-    .findByRole("group", { name: /visible-columns/ })
-    .findAllByRole("listitem");
+  return cy.findByTestId("visible-columns").findAllByRole("listitem");
 }
 
 function hideColumn(name) {
