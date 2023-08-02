@@ -470,20 +470,23 @@
   corresponding index into the list of columns.
 
   Returns a parallel list to the refs, with the corresponding index, or -1 if no matching column is found."
-  [a-query _stage-number legacy-columns legacy-refs]
-  (let [columns    (map #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
-        field-refs (for [legacy-ref legacy-refs]
-                     (-> legacy-ref
-                         (js->clj :keywordize-keys true)
-                         (update 0 keyword)
-                         convert/->pMBQL))
-        matches    (lib.equality/find-closest-matches-for-refs a-query columns field-refs)
-        ;; matches is a map of [column index-of-ref]; so flip it around.
-        by-index   (into {} (for [[k v] matches]
-                              [v k]))]
-    (->> (range (count legacy-refs))
-         (map #(by-index % -1))
-         to-array)))
+  [a-query stage-number legacy-columns legacy-refs]
+  ;; Set up this query stage's `:aggregation` list as the context for [[convert/->pMBQL]] to convert legacy
+  ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
+  (convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
+    (let [columns    (map #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
+          field-refs (for [legacy-ref legacy-refs]
+                       (-> legacy-ref
+                           (js->clj :keywordize-keys true)
+                           (update 0 keyword)
+                           convert/->pMBQL))
+          matches    (lib.equality/find-closest-matches-for-refs a-query columns field-refs)
+          ;; matches is a map of [column index-of-ref]; so flip it around.
+          by-index   (into {} (for [[k v] matches]
+                                [v k]))]
+      (->> (range (count legacy-refs))
+           (map #(by-index % -1))
+           to-array))))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."

@@ -81,4 +81,11 @@
                     lib.metadata.calculation/visible-columns)))))
   (testing "nil has no visible columns (#31366)"
     (is (empty? (-> lib.tu/venues-query
-                    (lib.metadata.calculation/visible-columns nil))))))
+                    (lib.metadata.calculation/visible-columns nil)))))
+
+  (testing "multiple aggregations"
+    (lib.metadata.calculation/visible-columns
+      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          (lib/aggregate (lib/count))
+          (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))))
+    ))

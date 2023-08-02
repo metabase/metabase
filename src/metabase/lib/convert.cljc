@@ -13,7 +13,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  #?@(:cljs [(:require-macros [metabase.lib.convert])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
   {})
@@ -145,6 +146,25 @@
         (dissoc :source-table))
     stage))
 
+#?(:clj
+   (defmacro with-aggregation-list
+     "Macro for capturing the context of a query stage's `:aggregation` list, so any legacy `[:aggregation 0]` indexed
+     refs can be converted correctly to UUID-based pMBQL refs."
+     [aggregations & body]
+     `(let [aggregations#  ~aggregations
+            legacy->pMBQL# (into {}
+                                 (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
+                                                [~'idx ~'ag-uuid]))
+                                 aggregations#)
+            pMBQL->legacy# (into {}
+                                 (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
+                                                [~'ag-uuid ~'idx]))
+                                 aggregations#)]
+        (prn aggregations# legacy->pMBQL# pMBQL->legacy#)
+        (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL#
+                  *pMBQL-uuid->legacy-index* pMBQL->legacy#]
+          ~@body))))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
   (let [aggregations (->pMBQL (:aggregation stage))
@@ -155,20 +175,30 @@
                                       ->pMBQL
                                       (lib.util/named-expression-clause k))))
                           not-empty)]
-    (binding [*legacy-index->pMBQL-uuid* (into {}
-                                               (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
-                                                              [idx ag-uuid]))
-                                               aggregations)]
+    (prn (macroexpand '(metabase.lib.convert/with-aggregation-list aggregations
+                         (let [stage (-> stage
+                                         stage-source-card-id->pMBQL
+                                         (m/assoc-some :aggregation aggregations :expressions expressions))
+                               stage (reduce
+                                       (fn [stage k]
+                                         (if-not (get stage k)
+                                           stage
+                                           (update stage k ->pMBQL)))
+                                       stage
+                                       (disj stage-keys :aggregation :expressions))]
+                           (cond-> stage
+                             (:joins stage) (update :joins deduplicate-join-aliases))))))
+    (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
                       (m/assoc-some :aggregation aggregations :expressions expressions))
             stage (reduce
-                   (fn [stage k]
-                     (if-not (get stage k)
-                       stage
-                       (update stage k ->pMBQL)))
-                   stage
-                   (disj stage-keys :aggregation :expressions))]
+                    (fn [stage k]
+                      (if-not (get stage k)
+                        stage
+                        (update stage k ->pMBQL)))
+                    stage
+                    (disj stage-keys :aggregation :expressions))]
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
 
@@ -435,10 +465,7 @@
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
-  (binding [*pMBQL-uuid->legacy-index* (into {}
-                                             (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
-                                                            [ag-uuid idx]))
-                                             (:aggregation stage))]
+  (metabase.lib.convert/with-aggregation-list (:aggregation stage)
     (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
             (-> stage
                 disqualify
