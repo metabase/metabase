@@ -20,6 +20,7 @@ import { WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
+  createMockField,
   createMockImplicitQueryAction,
   createMockQueryAction,
   createMockTable,
@@ -44,8 +45,19 @@ const mockCard = createMockCard({
 
 const mockTable = createMockTable({
   id: getNextId(),
-  name: "Product",
-  display_name: "Product",
+});
+
+const mockTableNoPk = createMockTable({
+  id: getNextId(),
+  fields: [],
+});
+
+const mockTableMultiplePks = createMockTable({
+  id: getNextId(),
+  fields: [
+    createMockField({ semantic_type: "type/PK" }),
+    createMockField({ semantic_type: "type/PK" }),
+  ],
 });
 
 const databaseWithActionsEnabled = createMockDatabase({
@@ -60,7 +72,6 @@ const databaseWithActionsDisabled = createMockDatabase({
 
 const mockDatasetCard = createMockCard({
   id: getNextId(),
-  name: "Product",
   dataset: true,
   dataset_query: {
     type: "query",
@@ -71,9 +82,32 @@ const mockDatasetCard = createMockCard({
   },
 });
 
+const mockDatasetNoPkCard = createMockCard({
+  id: getNextId(),
+  dataset: true,
+  dataset_query: {
+    type: "query",
+    database: databaseWithActionsEnabled.id,
+    query: {
+      "source-table": mockTableNoPk.id,
+    },
+  },
+});
+
+const mockDatasetMultiplePksCard = createMockCard({
+  id: getNextId(),
+  dataset: true,
+  dataset_query: {
+    type: "query",
+    database: databaseWithActionsEnabled.id,
+    query: {
+      "source-table": mockTableMultiplePks.id,
+    },
+  },
+});
+
 const mockDatasetWithClausesCard = createMockCard({
   id: getNextId(),
-  name: "Product",
   dataset: true,
   dataset_query: {
     type: "query",
@@ -92,7 +126,6 @@ const mockDatasetWithClausesCard = createMockCard({
 
 const mockDatasetNoWritePermissionCard = createMockCard({
   id: getNextId(),
-  name: "Product",
   can_write: false,
   dataset: true,
   dataset_query: {
@@ -111,10 +144,12 @@ const metadata = createMockMetadata({
       settings: { "database-enable-actions": true },
     }),
   ],
-  tables: [mockTable],
+  tables: [mockTable, mockTableMultiplePks, mockTableNoPk],
   questions: [
     mockCard,
     mockDatasetCard,
+    mockDatasetNoPkCard,
+    mockDatasetMultiplePksCard,
     mockDatasetWithClausesCard,
     mockDatasetNoWritePermissionCard,
   ],
@@ -123,6 +158,12 @@ const metadata = createMockMetadata({
 const mockQuestion = checkNotNull(metadata.question(mockCard.id));
 
 const mockDataset = checkNotNull(metadata.question(mockDatasetCard.id));
+
+const mockDatasetNoPk = checkNotNull(metadata.question(mockDatasetNoPkCard.id));
+
+const mockDatasetMultiplePks = checkNotNull(
+  metadata.question(mockDatasetMultiplePksCard.id),
+);
 
 const mockDatasetWithClauses = checkNotNull(
   metadata.question(mockDatasetWithClausesCard.id),
@@ -458,6 +499,24 @@ describe("Object Detail", () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDatasetWithClauses });
+
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
+  });
+
+  it("should not render actions menu when model's source table does not have a primary key", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetNoPk });
+
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
+  });
+
+  it("should not render actions menu when model's source table has multiple primary keys", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    setupActionsEndpoints(actions);
+    setup({ question: mockDatasetMultiplePks });
 
     const actionsMenu = await findActionsMenu();
     expect(actionsMenu).toBeUndefined();
