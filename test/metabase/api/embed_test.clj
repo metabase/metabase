@@ -167,25 +167,6 @@
              (dissoc-id-and-name
                (client/client :get 200 (card-url card))))))))
 
-(comment
-  ;; Check that defaults apply correctly
-  (mt/with-db (t2/select-one 'Database 1)
-    (with-embedding-enabled-and-new-secret-key
-      (t2.with-temp/with-temp
-        [Card card {:enable_embedding true
-                    :parameters [{:type :string/=, :name "a", :display_name "a" :id "a_id" :default "A"}
-                                 {:type :string/=, :name "b", :display_name "b" :id "b_id" :default "B"}]
-                    :dataset_query    {:database (mt/id)
-                                       :type     :native
-                                       :native   {:template-tags
-                                                  {"a" {:type :string/=, :name "a", :display_name "a" :id "a_id" :default "A"}
-                                                   "b" {:type :string/=, :name "b", :display_name "b" :id "b_id" :default "B"}}}}
-                    :embedding_params {"a" "enabled" "b" "disabled"}
-                    #_{:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
-        (client/client :get 200 (card-url card {:params {"a" nil}}))))) ;; <--- all the parameters whose slug matches the template tags should be removed from the results, because they're meant to be hidden from the user??
-  ;; should have empty parameters
-  )
-
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true}]
@@ -447,22 +428,22 @@
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :enabled})]
           (testing "the default should apply if no param value is provided"
             (is (= [[107]]
-                   (-> (client/client :get 202 (card-query-url card "")) :data :rows)))
+                   (mt/rows (client/client :get 202 (card-query-url card "")))))
             (testing "check this is the same result as when a default value is provided"
               (is (= [[107]]
-                     (-> (client/client :get 202 (str (card-query-url card "") "?date=Q1-2014")) :data :rows)))))
+                     (mt/rows (client/client :get 202 (str (card-query-url card "") "?date=Q1-2014")))))))
           (testing "an empty value should apply if provided as an empty string in the query params"
             (is (= [[1000]]
-                   (-> (client/client :get 202 (str (card-query-url card "") "?date=")) :data :rows))))
+                   (mt/rows (client/client :get 202 (str (card-query-url card "") "?date="))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
-                   (-> (client/client :get 202 (card-query-url card "" {:params {:date nil}})) :data :rows))))))
+                   (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}}))))))))
       (testing "if the param is disabled"
         (t2.with-temp/with-temp
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :disabled})]
           (testing "the default should apply if no param is provided"
             (is (= [[107]]
-                   (-> (client/client :get 202 (card-query-url card "")) :data :rows))))
+                   (mt/rows (client/client :get 202 (card-query-url card ""))))))
           (testing "you can't apply an empty param value if the parameter is disabled"
             (is (= "You're not allowed to specify a value for :date."
                    (client/client :get 400 (str (card-query-url card "") "?date=")))))))
@@ -471,10 +452,10 @@
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
-                   (-> (client/client :get 202 (card-query-url card "" {:params {:date nil}})) :data :rows)))
+                   (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}})))))
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
-                     (-> (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})) :data :rows)))))
+                     (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})))))))
           (testing "an empty string value is invalid and should result in an error"
             (is (= "You must specify a value for :date in the JWT."
                    (client/client :get 400 (card-query-url card "" {:params {:date ""}}))))))))))

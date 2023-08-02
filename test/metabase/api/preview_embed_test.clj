@@ -155,30 +155,25 @@
           [Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "enabled"})]
           (testing "the default should apply if no param value is provided"
             (is (= [[107]]
-                   (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
-                       :data :rows)))
+                   (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card)))))
             (testing "check this is the same result as when a default value is provided"
               (is (= [[107]]
-                     (-> (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
-                                                                        "?date=Q1-2014"))
-                         :data :rows)))))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
+                                                                        "?date=Q1-2014")))))))
           (testing "an empty value should apply if provided as an empty string in the query params"
             (is (= [[1000]]
-                   (-> (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
-                                                                      "?date="))
-                       :data :rows))))
+                   (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
+                                                                      "?date="))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
-                   (-> (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "enabled"}
-                                                                                       :params {:date nil}}))
-                       :data :rows))))))
+                   (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "enabled"}
+                                                                                       :params {:date nil}}))))))))
       (testing "if the param is disabled"
         (t2.with-temp/with-temp
           [Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "disabled"})]
           (testing "the default should apply if no param is provided"
             (is (= [[107]]
-                   (-> (mt/user-http-request :crowberto :get 202 (card-query-url card))
-                       :data :rows))))
+                   (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card))))))
           (testing "you can't apply an empty param value if the parameter is disabled"
             (is (= "You're not allowed to specify a value for :date."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:date "disabled"}}) "?date=")))))))
@@ -187,14 +182,12 @@
           [Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "locked"})]
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
-                   (-> (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
-                                                                                       :params {:date nil}}))
-                       :data :rows)))
+                   (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
+                                                                                       :params {:date nil}})))))
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
-                     (-> (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
-                                                                                      :params {:date "Q2-2014"}}))
-                         :data :rows)))))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
+                                                                                      :params {:date "Q2-2014"}})))))))
           (testing "an empty string value is invalid and should result in an error"
             (is (= "You must specify a value for :date in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:date "locked"}
