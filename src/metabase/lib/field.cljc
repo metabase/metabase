@@ -585,7 +585,7 @@
                                            [column]
                                            (conj join-fields column)))))))
 
-(def ^:private native-query-fields-edit-error
+(defn- native-query-fields-edit-error []
   (i18n/tru "Fields cannot be adjusted on native queries. Either edit the native query, or save this question and edit the fields in a GUI question based on this one."))
 
 (mu/defn add-field :- ::lib.schema/query
@@ -610,7 +610,7 @@
                                     (contains? stage :fields) (include-field stage-number column))
       :source/joins               (add-field-to-join query stage-number column)
       :source/implicitly-joinable (include-field query stage-number column)
-      :source/native              (throw (ex-info native-query-fields-edit-error {:query query :stage stage-number}))
+      :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
       ;; Default case - for columns from a native query or a custom expression - these are always returned and cannot be
       ;; selected off and on.
       query)))
@@ -683,6 +683,6 @@
                                                   {:query      query
                                                    :stage      stage-number
                                                    :expression column}))
-      :source/native              (throw (ex-info native-query-fields-edit-error {:query query :stage stage-number}))
+      :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
       ;; Default case: do nothing and return the query unchaged.
       query)))
