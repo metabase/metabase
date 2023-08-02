@@ -335,6 +335,7 @@ function JoinCondition({
             stageIndex={stageIndex}
             column={lhsColumn}
             columnGroups={lhsColumnGroup}
+            withDefaultBucketing={!rhsColumn}
             label={t`Left column`}
             isInitiallyVisible={!condition}
             readOnly={readOnly}
@@ -355,6 +356,7 @@ function JoinCondition({
             stageIndex={stageIndex}
             column={rhsColumn}
             columnGroups={rhsColumnGroup}
+            withDefaultBucketing={!lhsColumn}
             label={t`Right column`}
             readOnly={readOnly}
             popoverRef={rhsColumnPicker}

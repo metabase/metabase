@@ -72,14 +72,36 @@ export function useJoinCondition(
   const setLHSColumn = (lhsColumn: Lib.ColumnMetadata) => {
     _setLHSColumn(lhsColumn);
     if (operator && lhsColumn && rhsColumn) {
-      return Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      let condition = Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      const temporalBucket =
+        Lib.temporalBucket(lhsColumn) || Lib.temporalBucket(rhsColumn);
+      if (temporalBucket) {
+        condition = Lib.joinConditionUpdateTemporalBucketing(
+          query,
+          stageIndex,
+          condition,
+          temporalBucket,
+        );
+      }
+      return condition;
     }
   };
 
   const setRHSColumn = (rhsColumn: Lib.ColumnMetadata) => {
     _setRHSColumn(rhsColumn);
     if (operator && lhsColumn && rhsColumn) {
-      return Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      let condition = Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      const temporalBucket =
+        Lib.temporalBucket(rhsColumn) || Lib.temporalBucket(lhsColumn);
+      if (temporalBucket) {
+        condition = Lib.joinConditionUpdateTemporalBucketing(
+          query,
+          stageIndex,
+          condition,
+          temporalBucket,
+        );
+      }
+      return condition;
     }
   };
 
