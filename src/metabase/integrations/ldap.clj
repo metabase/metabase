@@ -92,8 +92,8 @@
 
                (map? new-value)
                (do (doseq [k (keys new-value)]
-                     (when-not (DN/isValidDN (metabase.util/qualified-name k))
-                       (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
+                     (when-not (DN/isValidDN (u/qualified-name k))
+                       (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k))))))
                    (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
