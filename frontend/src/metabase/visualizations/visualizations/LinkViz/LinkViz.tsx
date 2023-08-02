@@ -30,6 +30,7 @@ import {
   CardLink,
   SearchResultsContainer,
   StyledRecentsList,
+  ExternalLink,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
@@ -56,7 +57,7 @@ export interface LinkVizProps {
   isEditingParameter?: boolean;
 }
 
-function LinkViz({
+function LinkVizInner({
   dashcard,
   isEditing,
   onUpdateVisualizationSettings,
@@ -181,17 +182,17 @@ function LinkViz({
     );
   }
 
+  // external link
   return (
     <DisplayLinkCardWrapper
       data-testid="custom-view-text-link"
       fade={isEditingParameter}
     >
-      <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
+      <ExternalLink href={url ?? ""} target="_blank" rel="noreferrer">
         <UrlLinkDisplay url={url} />
-      </CardLink>
+      </ExternalLink>
     </DisplayLinkCardWrapper>
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(LinkViz, settings);
+export const LinkViz = Object.assign(LinkVizInner, settings);
