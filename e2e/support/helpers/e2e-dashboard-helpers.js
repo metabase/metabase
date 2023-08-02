@@ -1,5 +1,5 @@
 import { visitDashboard } from "./e2e-misc-helpers";
-import { popover } from "./e2e-ui-elements-helpers";
+import { dashboardHeader, popover } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -174,4 +174,8 @@ export function resizeDashboardCard({ card, x, y }) {
 
 export function createLinkCard() {
   cy.icon("link").click();
+}
+
+export function openDashboardMenu() {
+  return dashboardHeader().findByLabelText("dashboard-menu-button");
 }
