@@ -2,11 +2,10 @@
 import { memo } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import Ellipsified from "metabase/core/components/Ellipsified";
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.css";
 import { Icon } from "metabase/core/components/Icon";
-import { ListItemLink } from "./ListItem.styled";
+import { ListItemLink, ListItemName } from "./ListItem.styled";
 
 const ListItem = ({ name, description, placeholder, url, icon }) => (
   <li className="relative">
@@ -18,13 +17,9 @@ const ListItem = ({ name, description, placeholder, url, icon }) => (
           </div>
           <div className={S.itemBody}>
             <div className={S.itemTitle}>
-              <Ellipsified
-                className={S.itemName}
-                tooltip={name}
-                tooltipMaxWidth="100%"
-              >
+              <ListItemName tooltip={name} tooltipMaxWidth="100%">
                 <h3>{name}</h3>
-              </Ellipsified>
+              </ListItemName>
             </div>
             {(description || placeholder) && (
               <div className={cx(S.itemSubtitle)}>
