@@ -31,7 +31,6 @@
 
 (t2/deftransforms :model/Database
   {:details                     mi/transform-encrypted-json
-   :options                     mi/transform-json
    :engine                      mi/transform-keyword
    :metadata_sync_schedule      mi/transform-cron-string
    :cache_field_values_schedule mi/transform-cron-string
@@ -300,12 +299,16 @@
                                      details
                                      (sensitive-fields-for-db db)))))]
      (update db :settings (fn [settings]
-                            (when settings
+                            (when (map? settings)
                               (into {}
                                     (filter (fn [[setting-name _v]]
-                                              (setting/can-read-setting? setting-name
-                                                                         (setting/current-user-readable-visibilities))))
-                                    settings)))))
+                                              (try
+                                               (setting/can-read-setting? setting-name
+                                                                          (setting/current-user-readable-visibilities))
+                                               (catch Throwable _e
+                                                 true)))
+                                            settings))))))
+
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------

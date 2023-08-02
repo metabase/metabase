@@ -1,0 +1,172 @@
+:root {
+  --title-color: var(--color-text-dark);
+  --subtitle-color: var(--color-text-medium);
+  --muted-color: var(--color-text-light);
+}
+
+:local(.list) {
+  composes: ml-auto mr-auto from "style";
+}
+
+:local(.list-wrapper) {
+  composes: ml-auto mr-auto from "style";
+}
+
+:local(.list) a {
+  text-decoration: none;
+}
+
+:local(.header) {
+  composes: flex flex-row from "style";
+  composes: mt4 mb2 from "style";
+  color: var(--title-color);
+  font-size: 24px;
+  min-height: 48px;
+}
+
+:local(.headerBody) {
+  composes: flex flex-full border-bottom from "style";
+  align-items: center;
+  height: 100%;
+  border-color: var(--color-brand);
+}
+
+:local(.headerLink) {
+  composes: text-brand ml2 flex-no-shrink from "style";
+  font-size: 14px;
+}
+
+:local(.headerButton) {
+  composes: flex ml1 align-center from "style";
+  font-size: 14px;
+}
+
+:local(.empty) {
+  composes: full flex justify-center from "style";
+  padding-top: 75px;
+}
+
+:local(.item) {
+  composes: flex align-center from "style";
+  composes: relative from "style";
+}
+
+:local(.itemBody) {
+  composes: flex-full from "style";
+  max-width: 100%;
+}
+
+:local(.itemTitle) {
+  composes: text-bold from "style";
+  max-width: 100%;
+  overflow: hidden;
+}
+
+:local(.itemName) {
+  composes: text-brand-hover mr1 from "style";
+  max-width: 100%;
+  overflow: hidden;
+}
+
+:local(.itemSubtitle) {
+  color: var(--subtitle-color);
+  max-width: 600px;
+  font-size: 14px;
+}
+
+:local(.itemSubtitleLight) {
+  composes: text-light from "style";
+  font-size: 14px;
+}
+
+:local(.itemSubtitleBold) {
+  color: var(--title-color);
+}
+
+:local(.icons) {
+  composes: flex flex-row align-center from "style";
+}
+:local(.leftIcons) {
+  composes: flex-no-shrink flex align-self-start mr2 from "style";
+  composes: icons;
+}
+:local(.rightIcons) {
+  composes: icons;
+}
+:local(.itemIcons) {
+  composes: leftIcons;
+  padding-top: 4px;
+}
+
+:local(.extraIcons) {
+  composes: icons;
+  composes: absolute top full-height from "style";
+  right: -40px;
+}
+
+/* hack fix for IE 11 which was hiding the archive icon */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  :local(.extraIcons) {
+    composes: icons;
+  }
+}
+
+:local(.icon) {
+  composes: relative from "style";
+  color: var(--muted-color);
+}
+
+:local(.item) :local(.icon) {
+  visibility: hidden;
+}
+:local(.item):hover :local(.icon) {
+  visibility: visible;
+}
+:local(.icon):hover {
+  color: var(--color-brand);
+}
+
+/* ITEM CHECKBOX */
+:local(.itemCheckbox) {
+  composes: icon;
+  display: none;
+  visibility: visible !important;
+  margin-left: 10px;
+}
+:local(.item):hover :local(.itemCheckbox),
+:local(.item.selected) :local(.itemCheckbox) {
+  display: inline;
+}
+:local(.item.selected) :local(.itemCheckbox) {
+  color: var(--color-brand);
+}
+
+/* ITEM ICON */
+:local(.itemIcon) {
+  composes: icon;
+  visibility: visible !important;
+  composes: relative from "style";
+}
+:local(.item):hover :local(.itemIcon),
+:local(.item.selected) :local(.itemIcon) {
+  display: none;
+}
+
+/* CHART ICON */
+:local(.chartIcon) {
+  composes: icon;
+  visibility: visible !important;
+  composes: relative from "style";
+}
+
+/* ACTION ICONS */
+:local(.tagIcon),
+:local(.favoriteIcon),
+:local(.archiveIcon) {
+  composes: icon;
+  composes: mx1 from "style";
+}
+
+:local(.trigger) {
+  line-height: 0;
+}
