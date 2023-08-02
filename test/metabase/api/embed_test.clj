@@ -425,7 +425,7 @@
                           (str (card-query-url card response-format) "?venue_id=200")
                           {:request-options request-options})))))))
 
-(defn- card-with-date-field-filter-default
+(defn card-with-date-field-filter-default
   []
   {:enable_embedding true
    :dataset_query
@@ -451,9 +451,12 @@
             (testing "check this is the same result as when a default value is provided"
               (is (= [[107]]
                      (-> (client/client :get 202 (str (card-query-url card "") "?date=Q1-2014")) :data :rows)))))
-          (testing "an empty param should apply despite a edfault value"
+          (testing "an empty value should apply if provided as an empty string in the query params"
             (is (= [[1000]]
-                   (-> (client/client :get 202 (str (card-query-url card "") "?date=")) :data :rows))))))
+                   (-> (client/client :get 202 (str (card-query-url card "") "?date=")) :data :rows))))
+          (testing "an empty value should apply if provided as nil in the JWT params"
+            (is (= [[1000]]
+                   (-> (client/client :get 202 (card-query-url card "" {:params {:date nil}})) :data :rows))))))
       (testing "if the param is disabled"
         (t2.with-temp/with-temp
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :disabled})]
@@ -466,7 +469,7 @@
       (testing "if the param is locked"
         (t2.with-temp/with-temp
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
-          (testing "an empty value should apply if provided as nil, not the default value"
+          (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
                    (-> (client/client :get 202 (card-query-url card "" {:params {:date nil}})) :data :rows)))
             (testing "check this is different to when a non-nil value is provided"
