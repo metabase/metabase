@@ -67,7 +67,7 @@
           ~@body)
 
        :cljs
-       (do ~@body))))
+       `(do ~@body))))
 
 #?(:clj
    (defmacro defmethod
