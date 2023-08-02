@@ -15,7 +15,8 @@ export const OperatorPickerButton = styled.button<{ isOpen?: boolean }>`
 
   transition: background 300ms linear;
 
-  &:hover {
+  &:hover,
+  &:focus {
     background: ${darken("brand", 0.15)};
   }
 `;
