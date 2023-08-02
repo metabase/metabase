@@ -1376,7 +1376,7 @@
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
       (mt/dataset sample-dataset
-        (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
+        (mt/with-bigquery-fks!
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
                                         :breakout     [!month.product_id->products.created_at]

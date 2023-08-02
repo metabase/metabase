@@ -7,7 +7,7 @@
 ;;; them, e.g. when we start working on the generative stuff
 
 (mr/def ::database
-  ::common/int-greater-than-or-equal-to-zero)
+  ::common/positive-int)
 
 (def saved-questions-virtual-database-id
   "The ID used to signify that a database is 'virtual' rather than physical.
@@ -30,19 +30,19 @@
   [:= saved-questions-virtual-database-id])
 
 (mr/def ::table
-  ::common/int-greater-than-or-equal-to-zero)
+  ::common/positive-int)
 
 (mr/def ::field
-  ::common/int-greater-than-or-equal-to-zero)
+  ::common/positive-int)
 
 (mr/def ::card
-  ::common/int-greater-than-or-equal-to-zero)
+  ::common/positive-int)
 
 (mr/def ::segment
-  ::common/int-greater-than-or-equal-to-zero)
+  ::common/positive-int)
 
 (mr/def ::metric
-  ::common/int-greater-than-or-equal-to-zero)
+  ::common/positive-int)
 
 (mr/def ::snippet
-  ::common/int-greater-than-or-equal-to-zero)
+  ::common/positive-int)

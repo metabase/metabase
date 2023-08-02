@@ -10,14 +10,22 @@
 (defonce ^:private explainer-cache
   (atom {}))
 
+(defn- ref-schema? [schema]
+  (and (sequential? schema)
+       (= (first schema) :ref)))
+
 (defn explainer
   "Fetch a cached [[mc/explainer]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
   [schema]
-  (or (get @explainer-cache schema)
-      (let [explainer (mc/explainer schema)]
-        (swap! explainer-cache assoc schema explainer)
-        explainer)))
+  ;; unwrap `:ref` schemas, because for purposes of caching we should consider `[:ref ::whatever]` and `::whatever` to
+  ;; be identical.
+  (let [schema (cond-> schema
+                 (ref-schema? schema) last)]
+    (or (get @explainer-cache schema)
+        (let [explainer (mc/explainer schema)]
+          (swap! explainer-cache assoc schema explainer)
+          explainer))))
 
 (defn explain
   "[[mc/explain]], but uses a cached explainer from [[explainer]]."

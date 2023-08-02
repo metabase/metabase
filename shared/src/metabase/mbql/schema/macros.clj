@@ -41,7 +41,7 @@
                                                      [(keyword arg) `'~schema])
                                                    (partition 2 arg-names-and-schemas)))
                         :doc         (format "Schema for a valid %s clause." clause-name))
-         ~clause-registry-name))))
+         [:ref ~clause-registry-name]))))
 
 (defmacro one-of
   "Define a schema that accepts one of several different MBQL clauses.

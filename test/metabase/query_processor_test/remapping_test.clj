@@ -268,7 +268,7 @@
                          :mongo)
     (testing "Remapped columns in joined source queries should work (#15578)"
       (mt/dataset sample-dataset
-        (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
+        (mt/with-bigquery-fks!
           (mt/with-column-remappings [orders.product_id products.title]
             (let [query (mt/mbql-query products
                           {:joins    [{:source-query {:source-table $$orders

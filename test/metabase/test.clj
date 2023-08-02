@@ -175,7 +175,7 @@
   normal-drivers-without-feature
   rows
   rows+column-names
-  with-bigquery-fks]
+  with-bigquery-fks!]
 
  [qp.test-util
   card-with-source-metadata-for-query
