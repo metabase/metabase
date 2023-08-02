@@ -124,7 +124,7 @@
     "@babel/node": "^7.22.6",
     "@babel/preset-env": "^7.22.9",
     "@babel/preset-react": "^7.22.5",
-    "@babel/preset-typescript": "^7.17.12",
+    "@babel/preset-typescript": "^7.22.5",
     "@bahmutov/cypress-esbuild-preprocessor": "^2.2.0",
     "@cypress/grep": "^3.1.0",
     "@cypress/skip-test": "^2.6.1",
