@@ -9,7 +9,14 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
-(defn- add-default-map-schemas [args]
+(defn- add-default-map-schemas
+  "Malli normally generates wacky default schemas when you use map destructuring in an argslist; this never seems to work
+  correctly, so just add `[:maybe :map]` schemas manually to circumvent Malli's weird behavior.
+
+    (add-default-map-schemas '[x {:keys [y]}])
+    ;; =>
+    [x {:keys [y]} :- [:maybe :map]]"
+  [args]
   (if (empty? args)
     args
     (loop [acc [], [x & [y z :as more]] args]
@@ -19,7 +26,7 @@
                      more)
             schema (if (and (map? x)
                             (not schema))
-                     :any
+                     [:maybe :map]
                      schema)
             acc    (concat acc (if schema
                                  [x :- schema]
@@ -28,7 +35,10 @@
           (recur acc more)
           acc)))))
 
-(defn- arity-schema [{:keys [args], :as _arity} return-schema]
+(defn- arity-schema
+  "Given a `fn` arity as parsed by [[mx/SchematizedParams]] an `return-schema`, return an appropriate `:=>` schema for
+  the arity."
+  [{:keys [args], :as _arity} return-schema]
   [:=>
    (:schema (md/parse (add-default-map-schemas args)))
    return-schema])
@@ -61,22 +71,30 @@
    body))
 
 (defn- deparameterized-fn-tail [fn-tail]
-  (let [{:keys [arities], fn-name :name} (mc/parse mx/SchematizedParams (if (symbol? (first fn-tail))
-                                                                          fn-tail
-                                                                          (cons '&f fn-tail)))
-        [arities-type arities-value]     arities
-        body                             (case arities-type
-                                           :single   (deparameterized-arity arities-value)
-                                           :multiple (for [arity (:arities arities-value)]
-                                                       (deparameterized-arity arity)))]
+  (let [{:keys [arities]}            (mc/parse mx/SchematizedParams (if (symbol? (first fn-tail))
+                                                                      fn-tail
+                                                                      (cons '&f fn-tail)))
+        [arities-type arities-value] arities
+        body                         (case arities-type
+                                       :single   (deparameterized-arity arities-value)
+                                       :multiple (for [arity (:arities arities-value)]
+                                                   (deparameterized-arity arity)))]
     body))
 
-(defn deparameterized-fn-form [fn-tail]
+(defn deparameterized-fn-form
+  "Given a parameterized `fn-tail` (the arguments passed to [[clojure.core/fn]] or similar, excluding the `fn` symbol
+  itself), return a [[clojure.core.fn]] form with the parameters stripped out.
+
+    (deparameterized-fn-form [:- :int [x :- :int] (inc x)])
+    ;; =>
+    (fn [x] (inc x))"
+  [fn-tail]
   `(clojure.core/fn ~@(deparameterized-fn-tail fn-tail)))
 
 (def ^:dynamic *enforce* true)
 
-(defn validate-input [schema value]
+(defn validate-input
+  [schema value]
   (when *enforce*
     (when-let [error (mr/explain schema value)]
       (let [humanized (me/humanize error)]
@@ -164,7 +182,6 @@
 (defmacro instrumented-fn* [schema]
   `(clojure.core/fn ~@(instrumented-fn-tail schema)))
 
-;;; TODO -- this could also be used to power a Malli version of [[fn]]
 (defn instrumented-fn-form
   "Given a `fn-tail` like
 
@@ -179,5 +196,44 @@
   `(let [~'&f ~(deparameterized-fn-form fn-tail)]
      (instrumented-fn* ~(parameterized-fn-tail->schema fn-tail))))
 
-(defmacro fn [& fn-tail]
+(defmacro fn
+  "Malli version of [[schema.core/fn]]. A form like
+
+    (fn :- :int [x :- :int] (inc x))
+
+  compiles to something like
+
+    (let [&f (fn [x] (inc x))]
+      (fn [a]
+        (validate-input :int a)
+        (validate-output :int (&f a))))
+
+  Known issue: this version of `fn` does not capture the optional function name and make it available, e.g. you can't
+  do
+
+    (mu/fn my-fn
+     ([x] (my-fn x 1))
+     ([x y :- :int] (+ x y)))
+
+  If we were to include `my-fn` in the uninstrumented `fn` form, then it would bypass schema checks when you call
+  another arity:
+
+    (let [&f (fn my-fn
+               ([x] (my-fn x 1))
+               ([x y] (+ x y)))]
+      (fn
+        ([a]
+         (&f a))
+        ([a b]
+         (validate-input :int b)
+         (&f a b))))
+
+    ;; skips the `:- :int` check on `y` in the 2-arity
+    (my-fn 1.0) ;; => 2.0
+
+  Since this is a big gotcha, we are currently not including the optional function name `my-fn` in the generated
+  output. We can probably fix this with [[letfn]], since it allows mutually recursive function calls, but that's a
+  problem for another day. The passed function name comes back from [[mc/parse]] as `:name` if we want to attempt to
+  fix this later."
+  [& fn-tail]
   (instrumented-fn-form fn-tail))
