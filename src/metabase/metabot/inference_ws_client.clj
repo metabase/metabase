@@ -16,8 +16,9 @@
   (mc/schema
     [:map-of :string [:vector float?]]))
 
-(mc/validate embeddings-schema {"A" "esafs"})
-(mc/validate embeddings-return-schema {"A" [1.0]})
+(comment
+  (mc/validate embeddings-schema {"A" "esafs"})
+  (mc/validate embeddings-return-schema {"A" [1.0]}))
 
 (defn ^:dynamic bulk-embeddings
   "Convert the input map of {obj-str encoding} to a map of {obj-str embedding (a vector of floats)}."

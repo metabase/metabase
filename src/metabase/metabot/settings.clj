@@ -1,11 +1,8 @@
 (ns metabase.metabot.settings
   (:require
-    [clojure.core.memoize :as memoize]
     [metabase.models.setting :as setting :refer [defsetting]]
     [metabase.util :as u]
-    [metabase.util.i18n :refer [deferred-tru]]
-    [metabase.util.log :as log]
-    [wkok.openai-clojure.api :as openai.api]))
+    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting openai-model
   (deferred-tru "The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo')")
@@ -75,36 +72,6 @@
        ;; Take the top item in each partition and select what we want
        (map (comp #(select-keys % [:id :owned_by]) first))
        reverse))
-
-(def ^:private memoized-fetch-openai-models
-  (memoize/ttl
-    ^{::memoize/args-fn (fn [[api-key organization]] [api-key organization])}
-    (fn [api-key organization]
-      (try
-        (->> (openai.api/list-models
-               {:api-key      api-key
-                :organization organization})
-             :data
-             select-models)
-        (catch Exception _
-          (log/warn "Unable to fetch openai models.")
-          [])))
-    :ttl/threshold (* 1000 60 60 24)))
-
-(defsetting openai-available-models
-  (deferred-tru "List available openai models.")
-  :visibility :settings-manager
-  :type :json
-  :setter :none
-  :getter (fn []
-            (if (and
-                  (is-metabot-enabled)
-                  (openai-api-key)
-                  (openai-organization))
-              (memoized-fetch-openai-models
-                (openai-api-key)
-                (openai-organization))
-              [])))
 
 (defsetting enum-cardinality-threshold
   (deferred-tru "Enumerated field values with cardinality at or below this point are treated as enums in the pseudo-ddl used in some model prompts.")

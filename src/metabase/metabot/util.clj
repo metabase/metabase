@@ -8,7 +8,6 @@
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.util :as mbql.u]
-   [metabase.metabot.openai-client :as openai-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.models :refer [Card Field FieldValues Table]]
    [metabase.query-processor :as qp]
@@ -224,84 +223,6 @@
         (assoc :models (mapv enrich-model models))
         add-model-json-summary)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Pseudo-ddls -> Embeddings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn create-table-embedding
-  "Given a table (and an optional threshold to downsize the generated table enums) will compute relevant embedding
-  information:
-  - prompt: The prompt encoded for the table (a pseudo create table ddl)
-  - embedding: A vector of doubles that encodes the prompt for embedding comparison
-  - tokens: The number of tokens used to encode the prompt
-
-  This function will recursively try to create an embedding for the table pseudo-ddl starting with the default enum
-  cardinality (distinct fields at or below this count are turned into DDL enums).
-
-  If the creation fails, will try again with the enum threshold divided by 2 until either a result is generated or the
-  operation fails (returning nil). Although returning nil (vs throwing) may mask the fact that a particular table isn't
-  present in the final embeddings set, this allows for queries over the rest of the database, which is preferred.
-  Anything so large (the table name, column names, and base column types have to exceed the token limit) is probably
-  going to be problematic and a model would be a better fit anyways.
-  "
-  ([{table-name :name table-id :id :as table} enum-cardinality-threshold]
-   (log/debugf
-    "Creating embedding for table '%s'(%s) with cardinality threshold '%s'."
-    table-name
-    table-id
-    enum-cardinality-threshold)
-   (try
-     (let [ddl (table->pseudo-ddl table enum-cardinality-threshold)
-           {:keys [prompt embedding tokens]} (openai-client/create-embedding ddl)]
-       {:prompt    prompt
-        :embedding embedding
-        :tokens    tokens})
-     ;; The most likely case of throwing here is that the ddl is too big.
-     ;; When this happens, we'll try again with 1/2 the cardinality selected.
-     ;; This will reduce the number of fields that become enumerated.
-     ;; In the extreme case (= enum-cardinality-threshold 0), no enums are created.
-     ;; The only way this would fail to create an embedding would be if the number
-     ;; of columns were so huge that just that list of columns and types exceeded
-     ;; the embedding token limit.
-     (catch Exception e
-       (let [{:keys [status-code message]} (ex-data e)]
-         (if (and (pos? enum-cardinality-threshold)
-                  (= 400 status-code))
-           (let [new-enum-cardinality-threshold (quot enum-cardinality-threshold 2)]
-             (log/debugf
-              (str
-               "Embedding creation for table '%s'(%s) with cardinality threshold '%s' failed. "
-               "Retrying again with cardinality threshold '%s'.")
-              table-name
-              table-id
-              enum-cardinality-threshold
-              new-enum-cardinality-threshold)
-             (create-table-embedding table new-enum-cardinality-threshold))
-           ;; Instead of throwing an exception, we are going to try to recover and
-           ; ignore the problematic table. This is likely a massive table with too
-           ;; many columns and would be a better candidate for a model.
-           (log/warnf
-            (str/join
-             " "
-             ["Embeddings for table '%s'(%s) could not be generated."
-              "It could be that this table has too many columns."
-              "You might want to create a model for this table instead."
-              "Error message: %s"])
-            table-name
-            table-id
-            message))))))
-  ([table]
-   (create-table-embedding table (metabot-settings/enum-cardinality-threshold))))
-
-(def memoized-create-table-embedding
-  "Memoized version of create-table-embedding. Generally embeddings are small, so this is a reasonable tradeoff,
-  especially when the number of tables in a db is large.
-  Should probably have the same threshold as metabot-client/memoized-create-embedding."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[{table-id :id} enum-cardinality-threshold]]
-                         [table-id enum-cardinality-threshold])}
-   create-table-embedding
-    ;; 24-hour ttl
-   :ttl/threshold (* 1000 60 60 24)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Prompt Input ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- prompt-template->messages
@@ -429,49 +350,6 @@
       {:display                :table
        :name                   description
        :visualization_settings {:title description}})))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embedding Selection ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn score-prompt-embeddings
-  "Given a set of 'prompt objects' (a seq of items with keys :embedding :tokens :prompt),
-  and a prompt will add the :prompt and :prompt_match to each object."
-  [prompt-objects user-prompt]
-  (let [dot (fn dot [a b] (reduce + (map * a b)))
-        {prompt-embedding :embedding} (openai-client/create-embedding user-prompt)]
-    (map
-     (fn [{:keys [embedding] :as prompt-object}]
-       (assoc prompt-object
-              :user_prompt user-prompt
-              :prompt_match (dot prompt-embedding embedding)))
-     prompt-objects)))
-
-(defn generate-prompt
-  "Given a set of 'prompt objects' (a seq of items with keys :embedding :tokens :prompt),
-  will determine the set of prompts that best match the given prompt whose token sum
-  does not exceed the token limit."
-  ([prompt-objects prompt token-limit]
-   (->> (score-prompt-embeddings prompt-objects prompt)
-        (sort-by (comp - :prompt_match))
-        (reduce
-         (fn [{:keys [total-tokens] :as acc} {:keys [prompt tokens]}]
-           (if (> (+ tokens total-tokens) token-limit)
-             (reduced acc)
-             (-> acc
-                 (update :total-tokens + tokens)
-                 (update :prompts conj prompt))))
-         {:total-tokens 0 :prompts []})
-        :prompts
-        (str/join "\n")))
-  ([prompt-objects prompt]
-   (generate-prompt prompt-objects prompt (metabot-settings/metabot-prompt-generator-token-limit))))
-
-(defn best-prompt-object
-  "Given a set of 'prompt objects' (a seq of items with keys :embedding :tokens :prompt),
-  will return the item that best matches the input prompt."
-  ([prompt-objects prompt]
-   (some->> (score-prompt-embeddings prompt-objects prompt)
-            seq
-            (apply max-key :prompt_match))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Inference WS/IL Methods ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
