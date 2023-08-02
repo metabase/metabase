@@ -167,6 +167,25 @@
              (dissoc-id-and-name
                (client/client :get 200 (card-url card))))))))
 
+(comment
+  ;; Check that defaults apply correctly
+  (mt/with-db (t2/select-one 'Database 1)
+    (with-embedding-enabled-and-new-secret-key
+      (t2.with-temp/with-temp
+        [Card card {:enable_embedding true
+                    :parameters [{:type :string/=, :name "a", :display_name "a" :id "a_id" :default "A"}
+                                 {:type :string/=, :name "b", :display_name "b" :id "b_id" :default "B"}]
+                    :dataset_query    {:database (mt/id)
+                                       :type     :native
+                                       :native   {:template-tags
+                                                  {"a" {:type :string/=, :name "a", :display_name "a" :id "a_id" :default "A"}
+                                                   "b" {:type :string/=, :name "b", :display_name "b" :id "b_id" :default "B"}}}}
+                    :embedding_params {"a" "enabled" "b" "disabled"}
+                    #_{:a "locked", :b "disabled", :c "enabled", :d "enabled"}}]
+        (client/client :get 200 (card-url card {:params {"a" nil}}))))) ;; <--- all the parameters whose slug matches the template tags should be removed from the results, because they're meant to be hidden from the user??
+  ;; should have empty parameters
+  )
+
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true}]
@@ -211,7 +230,15 @@
                                :name    "d"
                                :slug    "d"
                                :default nil}]}
-                (client/client :get 200 (card-url card {:params {:c 100}}))))))))
+                (client/client :get 200 (card-url card {:params {:c 100}}))))
+        (testing "even if the value of the parameter is nil"
+          (is (=? {:parameters [{:id      "d"
+                                 :type    "date/single"
+                                 :target  ["variable" ["template-tag" "d"]]
+                                 :name    "d"
+                                 :slug    "d"
+                                 :default nil}]}
+                  (client/client :get 200 (card-url card {:params {:c nil}})))))))))
 
 (deftest parameters-should-include-template-tags
   (testing "parameters should get from both template-tags and card.parameters"
@@ -283,6 +310,57 @@
            :let                                        [~response-format-binding response-format#]]
      (testing (format "response-format = %s\n" (pr-str response-format#))
        ~@body)))
+
+(defn- card-with-date-field-filter-default
+  []
+  {:enable_embedding true
+   :dataset_query
+   {:database (mt/id)
+    :type     :native
+    :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
+               :template-tags {:date {:name         "date"
+                                      :display-name "Date"
+                                      :type         "dimension"
+                                      :default      "Q1-2014"
+                                      :dimension    [:field (mt/id :checkins :date) nil]
+                                      :widget-type  "date/quarter-year"}}}}})
+
+(deftest default-value-card-query-test
+  (testing "GET /api/embed/card/:token/query with default values for params"
+    (with-embedding-enabled-and-new-secret-key
+      (testing "if the param is enabled"
+        (t2.with-temp/with-temp
+          [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :enabled})]
+          (testing "the default should apply if no param value is provided"
+            (is (= [[107]]
+                   (-> (client/client :get 202 (card-query-url card "")) :data :rows)))
+            (testing "check this is the same result as when a default value is provided"
+              (is (= [[107]]
+                     (-> (client/client :get 202 (str (card-query-url card "") "?date=Q1-2014")) :data :rows)))))
+          (testing "an empty param should apply despite a edfault value"
+            (is (= [[1000]]
+                   (-> (client/client :get 202 (str (card-query-url card "") "?date=")) :data :rows))))))
+      (testing "if the param is disabled"
+        (t2.with-temp/with-temp
+          [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :disabled})]
+          (testing "the default should apply if no param is provided"
+            (is (= [[107]]
+                   (-> (client/client :get 202 (card-query-url card "")) :data :rows))))
+          (testing "you can't apply an empty param value if the parameter is disabled"
+            (is (= "You're not allowed to specify a value for :date."
+                   (client/client :get 400 (str (card-query-url card "") "?date=")))))))
+      (testing "if the param is locked"
+        (t2.with-temp/with-temp
+          [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
+          (testing "an empty value should apply if provided as nil, not the default value"
+            (is (= [[1000]]
+                   (-> (client/client :get 202 (card-query-url card "" {:params {:date nil}})) :data :rows)))
+            (testing "check this is different to when a non-nil value is provided"
+              (is (= [[138]]
+                     (-> (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})) :data :rows)))))
+          (testing "an empty string value is invalid and should result in an error"
+            (is (= "You must specify a value for :date in the JWT."
+                   (client/client :get 400 (card-query-url card "" {:params {:date ""}}))))))))))
 
 (deftest card-query-test
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"

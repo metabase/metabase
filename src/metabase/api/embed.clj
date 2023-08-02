@@ -85,11 +85,10 @@
   (check-params-exist object-embedding-params (set/union token-params user-params)))
 
 (defn- valid-param?
-  "Is V a valid param value? (Is it non-`nil`, and, if a String, non-blank?)"
+  "Is V a valid param value? (If it is a String, is it non-blank?)"
   [v]
-  (and (some? v)
-       (or (not (string? v))
-           (not (str/blank? v)))))
+  (or (not (string? v))
+      (not (str/blank? v))))
 
 (s/defn ^:private validate-and-merge-params :- {s/Keyword s/Any}
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
@@ -167,14 +166,15 @@
   [parameters slug->value]
   (when (seq parameters)
     (for [param parameters
-          :let  [value (get slug->value (keyword (:slug param)))
+          :let  [slug  (keyword (:slug param))
+                 value (get slug->value slug)
                  ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
                  ;; query parameter) wrap it in a sequence
                  value (if (and (some? value)
                                 (params.ops/operator? (:type param)))
                          (u/one-or-many value)
                          value)]
-          :when (some? value)]
+          :when (contains? slug->value slug)]
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
@@ -207,9 +207,12 @@
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
-  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect."
+  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
+  Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
   [query-params]
-  (m/map-keys keyword query-params))
+  (-> query-params
+      (update-keys keyword)
+      (update-vals (fn [v] (if (= v "") nil v)))))
 
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
@@ -235,8 +238,7 @@
   [& {:keys [export-format card-id embedding-params token-params query-params qp-runner constraints options]
       :or   {qp-runner qp/process-query-and-save-execution!}}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
-  (let [merged-slug->value (-> (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-                               (update-vals (fn [v] (if (= v "") nil v))))
+  (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply api.public/run-query-for-card-with-id-async
               card-id export-format parameters
@@ -270,8 +272,7 @@
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
-  (let [slug->value (-> (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-                        (update-vals (fn [v] (if (= v "") nil v))))
+  (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
     (api.public/public-dashcard-results-async
      :dashboard-id  dashboard-id
