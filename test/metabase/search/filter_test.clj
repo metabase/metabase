@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]))
 
@@ -37,13 +38,25 @@
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
-                      :created-by 1})))))))
+                      :created-by 1})))))
+
+    (testing "verified"
+      (is (= #{"card" "collection"}
+             (search.filter/search-context->applicable-models
+              (merge default-search-ctx
+                     {:verified true}))))
+
+      (is (= #{"card"}
+             (search.filter/search-context->applicable-models
+              (merge default-search-ctx
+                     {:models #{"card" "dashboard" "dataset" "table"}
+                      :verified true})))))))
 
 (def ^:private base-search-query
   {:select [:*]
    :from   [:table]})
 
-(deftest ^:parallel build-filters-test
+(deftest build-filters-test
   (testing "archived filters"
     (is (= [:= :card.archived false]
            (:where (search.filter/build-filters
@@ -55,12 +68,12 @@
 
   (testing "with search string"
     (is (= [:and
-             [:or
-              [:like [:lower :card.name] "%a%"]
-              [:like [:lower :card.name] "%string%"]
-              [:like [:lower :card.description] "%a%"]
-              [:like [:lower :card.description] "%string%"]]
-             [:= :card.archived false]]
+            [:or
+             [:like [:lower :card.name] "%a%"]
+             [:like [:lower :card.name] "%string%"]
+             [:like [:lower :card.description] "%a%"]
+             [:like [:lower :card.description] "%string%"]]
+            [:= :card.archived false]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx {:search-string "a string"}))))))
@@ -72,15 +85,57 @@
                     (merge default-search-ctx
                            {:created-by 1}))))))
 
-  (testing "throw error for filtering with unsupport models"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #":created-by filter for database is not supported"
-         (search.filter/build-filters
-          base-search-query
-          "database"
-          (merge default-search-ctx
-                 {:created-by 1}))))))
+  (testing "verified filter"
+    (premium-features-test/with-premium-features #{:content-verification :official-collections}
+      (testing "for cards"
+        (is (= (merge
+                base-search-query
+                {:where  [:and
+                           [:= :card.archived false]
+                           [:= :moderation_review.status "verified"]
+                           [:= :moderation_review.moderated_item_type "card"]
+                           [:= :moderation_review.most_recent true]]
+                  :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
+               (search.filter/build-filters
+                base-search-query "card"
+                (merge default-search-ctx {:verified true})))))
+
+      (testing "for collections"
+        (is (= (merge
+                base-search-query
+                {:where [:and [:= :collection.archived false] [:= :collection.authority_level "official"]]})
+             (search.filter/build-filters
+              base-search-query "collection"
+              (merge default-search-ctx {:verified true}))))))
+
+    (premium-features-test/with-premium-features #{}
+      (testing "for cards without ee features"
+        (is (= (merge
+                base-search-query
+                {:where  [:and
+                          [:= :card.archived false]
+                          [:inline [:= 0 1]]]})
+               (search.filter/build-filters
+                base-search-query "card"
+                (merge default-search-ctx {:verified true})))))
+
+      (testing "for collections without ee features"
+        (is (= (merge
+                base-search-query
+                {:where [:and [:= :collection.archived false] [:inline [:= 0 1]]]})
+               (search.filter/build-filters
+                base-search-query "collection"
+                (merge default-search-ctx {:verified true})))))))
+
+ (testing "throw error for filtering with unsupport models"
+   (is (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #":created-by filter for database is not supported"
+        (search.filter/build-filters
+         base-search-query
+         "database"
+         (merge default-search-ctx
+                {:created-by 1}))))))
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
