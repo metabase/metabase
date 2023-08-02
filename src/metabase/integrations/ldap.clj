@@ -20,7 +20,7 @@
 ;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
 ;; Otherwise, this would only happen the first time `find-user` or `fetch-or-create-user!` is called.
 (when config/ee-available?
- (classloader/require 'metabase-enterprise.enhancements.integrations.ldap))
+  (classloader/require 'metabase-enterprise.enhancements.integrations.ldap))
 
 (defsetting ldap-host
   (deferred-tru "Server hostname."))
@@ -92,7 +92,7 @@
 
                (map? new-value)
                (do (doseq [k (keys new-value)]
-                     (when-not (DN/isValidDN (name k))
+                     (when-not (DN/isValidDN (metabase.util/qualified-name k))
                        (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
                    (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
@@ -200,7 +200,7 @@
   "Tests the connection to an LDAP server using the currently set settings."
   []
   (let [settings (into {} (for [[k v] mb-settings->ldap-details]
-                             [v (setting/get k)]))]
+                            [v (setting/get k)]))]
     (test-ldap-connection settings)))
 
 (defn verify-password
