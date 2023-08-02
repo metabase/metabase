@@ -1,6 +1,5 @@
 import { useLayoutEffect } from "react";
 import { connect } from "react-redux";
-import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,6 +11,7 @@ import { DatabaseDataSelector } from "metabase/query_builder/components/DataSele
 import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { Dispatch } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
+import { TableSettingsLink } from "./MetadataHeader.styled";
 
 interface OwnProps {
   selectedDatabaseId?: DatabaseId;
@@ -64,7 +64,7 @@ const MetadataHeader = ({
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
           <span className="ml4 mr3">
-            <Link
+            <TableSettingsLink
               aria-label={t`Settings`}
               to={Urls.dataModelTableSettings(
                 selectedDatabaseId,
@@ -72,8 +72,8 @@ const MetadataHeader = ({
                 selectedTableId,
               )}
             >
-              <Icon name="gear" className="text-brand-hover" />
-            </Link>
+              <Icon name="gear" />
+            </TableSettingsLink>
           </span>
         </div>
       )}
