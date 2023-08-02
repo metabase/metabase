@@ -396,7 +396,8 @@
                          ""
                          "   "
                          "/"
-                         "https://badsite.com"]]
+                         "https://badsite.com"
+                         "//badsite.com"]]
       (testing (format "\nRelayState = %s" (pr-str relay-state))
         (with-saml-default-setup
           (do-with-some-validators-disabled
@@ -408,8 +409,10 @@
                        (get-in response [:headers "Location"])))
                 (is (= (some-saml-attributes "rasta")
                        (saml-login-attributes "rasta@metabase.com"))))))))))
+
   (testing "if the RelayState leads us to the wrong host, avoid the open redirect (boat#160)"
-    (let [redirect-url "https://badsite.com"]
+    (doseq [redirect-url ["https://badsite.com"
+                          "//badsite.com"]]
       (with-saml-default-setup
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
           (do-with-some-validators-disabled
