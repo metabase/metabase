@@ -1,11 +1,16 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper/IconButtonWrapper";
+import { alpha, color, darken } from "metabase/lib/colors";
+import { Flex } from "metabase/ui";
 import { NotebookCell } from "../../NotebookCell";
 
 export const TablesNotebookCell = styled(NotebookCell)`
   flex: 1;
   align-self: start;
+`;
+
+export const ConditionContainer = styled(Flex)`
+  background-color: ${color("brand")};
+  border-radius: 8px;
 `;
 
 export const ConditionNotebookCell = styled(NotebookCell)`
@@ -20,17 +25,28 @@ export const ConditionNotebookCell = styled(NotebookCell)`
 
 export const ConditionUnionLabel = styled.span`
   display: block;
-  color: ${color("text-medium")};
-  font-weight: bold;
-  margin-left: 4px;
+  font-weight: 400;
+  color: ${color("text-dark")};
 `;
 
-export const RemoveConditionButton = styled(IconButtonWrapper)`
-  margin-left: 8px;
+export const RemoveConditionButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
 
-  color: ${color("text-light")};
+  cursor: pointer;
+
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+
+  border-left: 1px solid ${alpha(color("white"), 0.25)};
+
+  transition: background-color 300ms linear;
 
   &:hover {
-    color: ${color("text-medium")};
+    background-color: ${darken("brand", 0.15)};
   }
 `;
