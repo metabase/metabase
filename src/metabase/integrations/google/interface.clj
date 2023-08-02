@@ -7,4 +7,4 @@
 #_{:clj-kondo/ignore [:missing-docstring]}
 (define-multi-setting google-auth-auto-create-accounts-domain
   (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain.")
-  (fn [] (if (premium-features/enable-sso?) :ee :oss)))
+  (fn [] (if (premium-features/enable-sso-google?) :ee :oss)))

@@ -1,4 +1,4 @@
-import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
+import { setupRevisionsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,

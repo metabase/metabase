@@ -253,12 +253,12 @@
   ;; enabling that check tho)
   (when-let [m (config)]
     (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
-      ;; you can only use the config-from-file stuff with an EE/Pro token with the `:advanced-config` feature. Since you
+      ;; you can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature. Since you
       ;; might have to use the `:settings` section to set the token, skip the check for Settings. But check it for the
       ;; other sections.
       (when-not (= section-name :settings)
-        (when-not (premium-features/has-feature? :advanced-config)
-          (throw (ex-info (tru "Metabase config files require a Premium token with the :advanced-config feature.")
+        (when-not (premium-features/enable-config-text-file?)
+          (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
                           {}))))
       (log/info (u/colorize :magenta (trs "Initializing {0} from config file..." section-name)) (u/emoji "🗄️"))
       (advanced-config.file.i/initialize-section! section-name section-config))

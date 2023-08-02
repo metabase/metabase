@@ -738,9 +738,9 @@
    cache_ttl        (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
   (when cache_ttl
-    (api/check (premium-features/enable-advanced-config?)
+    (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
-                              "advanced-config feature."))]))
+                              "cache granular controls feature."))]))
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
         details-or-error (test-connection-details engine details)
@@ -922,7 +922,7 @@
 
         ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
         ;; with the advanced-config feature enabled.
-        (when (premium-features/enable-advanced-config?)
+        (when (premium-features/enable-cache-granular-controls?)
           (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]

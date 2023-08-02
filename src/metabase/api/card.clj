@@ -1046,6 +1046,7 @@ saved later when it is ready."
   query in place of the model's query."
   [card-id]
   {card-id ms/PositiveInt}
+  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [{:keys [dataset database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
@@ -1084,6 +1085,7 @@ saved later when it is ready."
   query rather than the saved version of the query."
   [card-id]
   {card-id ms/PositiveInt}
+  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [_card (t2/select-one Card :id card-id)]
     (api/let-404 [persisted-info (t2/select-one PersistedInfo :card_id card-id)]
       (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
