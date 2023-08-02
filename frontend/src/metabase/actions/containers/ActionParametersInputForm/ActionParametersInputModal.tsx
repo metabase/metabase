@@ -29,16 +29,6 @@ function ActionParametersInputModal({
   onClose,
   ...formProps
 }: ActionParametersInputModalProps) {
-  if (showEmptyState) {
-    return (
-      <Modal data-testid="action-parameters-input-modal" onClose={onClose}>
-        <ModalContent title={title} onClose={onClose}>
-          <EmptyState message={t`Choose a record to update`} />
-        </ModalContent>
-      </Modal>
-    );
-  }
-
   return (
     <Modal data-testid="action-parameters-input-modal" onClose={onClose}>
       <ModalContent
@@ -55,8 +45,18 @@ function ActionParametersInputModal({
         onClose={onClose}
       >
         <>
-          {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
-          <ActionParametersInputForm {...formProps} />
+          {showEmptyState && (
+            <EmptyState message={t`Choose a record to update`} />
+          )}
+
+          {!showEmptyState && (
+            <>
+              {showConfirmMessage && (
+                <ConfirmMessage message={confirmMessage} />
+              )}
+              <ActionParametersInputForm {...formProps} />
+            </>
+          )}
         </>
       </ModalContent>
     </Modal>
