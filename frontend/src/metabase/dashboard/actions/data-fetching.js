@@ -424,40 +424,55 @@ export const fetchDashboardCardData =
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
 
-    const nonVirtualDashcardsToFetch = getCurrentTabDashboardCards(
+    const loadingIds = getLoadingDashCards(getState()).loadingIds;
+    const nonVirtualDashcards = getCurrentTabDashboardCards(
       dashboard,
       selectedTabId,
-    )
-      .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
-      .filter(({ dashcard }) => {
-        if (isRefreshing) {
-          const loadingIds = getLoadingDashCards(getState()).loadingIds;
-          return !loadingIds.includes(dashcard.id);
-        }
+    ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
 
-        return true;
+    let nonVirtualDashcardsToFetch = [];
+    if (isRefreshing) {
+      nonVirtualDashcardsToFetch = nonVirtualDashcards.filter(
+        ({ dashcard }) => {
+          return !loadingIds.includes(dashcard.id);
+        },
+      );
+      const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
+        return dashcard.id;
       });
 
-    const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
-      return dashcard.id;
-    });
-    dispatch({
-      type: FETCH_DASHBOARD_CARD_DATA,
-      payload: {
-        currentTime: performance.now(),
-        loadingIds: newLoadingIds,
-        dashboardId: dashboard.id,
-      },
-    });
+      dispatch({
+        type: FETCH_DASHBOARD_CARD_DATA,
+        payload: {
+          currentTime: performance.now(),
+          loadingIds: loadingIds.concat(newLoadingIds),
+        },
+      });
+    } else {
+      nonVirtualDashcardsToFetch = nonVirtualDashcards;
+      const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
+        return dashcard.id;
+      });
+
+      dispatch({
+        type: FETCH_DASHBOARD_CARD_DATA,
+        payload: {
+          currentTime: performance.now(),
+          loadingIds: newLoadingIds,
+        },
+      });
+    }
 
     const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
       return dispatch(fetchCardData(card, dashcard, options)).then(() => {
-        return dispatch(updateLoadingTitle(newLoadingIds.length));
+        return dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
       });
     });
 
-    if (newLoadingIds.length > 0) {
-      dispatch(setDocumentTitle(t`0/${newLoadingIds.length} loaded`));
+    if (nonVirtualDashcardsToFetch.length > 0) {
+      dispatch(
+        setDocumentTitle(t`0/${nonVirtualDashcardsToFetch.length} loaded`),
+      );
 
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
