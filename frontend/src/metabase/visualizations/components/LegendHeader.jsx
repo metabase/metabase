@@ -89,6 +89,7 @@ class LegendHeader extends Component {
             isMuted={
               hovered && hovered.index != null && index !== hovered.index
             }
+            isBreakoutSeries={isBreakoutSeries}
             onMouseEnter={() => onHoverChange && onHoverChange({ index })}
             onMouseLeave={() => onHoverChange && onHoverChange(null)}
             onClick={
