@@ -13,7 +13,7 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 import AggregationWidget from "./AggregationWidget";
 import BreakoutWidget from "./BreakoutWidget";
 import FilterWidgetList from "./filters/FilterWidgetList";
-import FilterPopover from "./filters/FilterPopover";
+import { FilterPopover } from "./filters/FilterPopover";
 
 export default class GuiQueryEditor extends Component {
   constructor(props) {

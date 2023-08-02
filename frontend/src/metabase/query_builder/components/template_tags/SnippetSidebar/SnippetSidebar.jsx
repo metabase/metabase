@@ -38,7 +38,7 @@ const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 16;
 const MIN_SNIPPETS_FOR_SEARCH = 15;
 
-class SnippetSidebar extends React.Component {
+class SnippetSidebarInner extends React.Component {
   state = {
     showSearch: false,
     searchString: "",
@@ -252,7 +252,7 @@ class SnippetSidebar extends React.Component {
   }
 }
 
-export default _.compose(
+export const SnippetSidebar = _.compose(
   Snippets.loadList(),
   SnippetCollections.loadList(),
   SnippetCollections.load({
@@ -267,7 +267,7 @@ export default _.compose(
       namespace: "snippets",
     }),
   }),
-)(SnippetSidebar);
+)(SnippetSidebarInner);
 
 class ArchivedSnippetsInner extends React.Component {
   render() {

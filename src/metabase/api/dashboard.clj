@@ -955,15 +955,17 @@
 
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute"
+
+(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [dashboard-id dashcard-id parameters]
-  {dashboard-id su/IntGreaterThanZero
-   dashcard-id su/IntGreaterThanZero
-   parameters su/JSONString}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   parameters   ms/JSONString}
   (api/read-check :model/Dashboard dashboard-id)
-  (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
+  (actions.execution/fetch-values
+   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
+   (json/parse-string parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"

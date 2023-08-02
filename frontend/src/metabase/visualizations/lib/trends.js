@@ -35,6 +35,16 @@ export function compileExpression(node) {
 
 const msToDays = ms => ms / (24 * 60 * 60 * 1000);
 
+export function getNormalizedStackedTrendDatas(trendDatas) {
+  const count = trendDatas[0].length;
+  const sums = _.range(count).map(i =>
+    trendDatas.reduce((sum, trendData) => sum + trendData[i][1], 0),
+  );
+  return trendDatas.map(trendData =>
+    trendData.map(([x, y], i) => [x, y / sums[i]]),
+  );
+}
+
 export function getTrendDataPointsFromInsight(insight, xDomain, count = 10) {
   const isTimeseries = moment.isMoment(xDomain[0]);
 
@@ -57,5 +67,5 @@ export function getTrendDataPointsFromInsight(insight, xDomain, count = 10) {
 
 function getValuesInRange(start, end, count) {
   const delta = (end - start) / (count - 1);
-  return _.range(start, end, delta).concat([end]);
+  return _.range(count).map(i => start + delta * i);
 }

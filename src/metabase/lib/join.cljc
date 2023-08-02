@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [inflections.core :as inflections]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
@@ -42,11 +43,24 @@
    [:map
     [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]]])
 
-(def ^:private FieldOrPartialJoin
+(def ^:private Field
   [:or
    lib.metadata/ColumnMetadata
-   [:ref :mbql.clause/field]
-   PartialJoin])
+   [:ref :mbql.clause/field]])
+
+(def ^:private FieldOrPartialJoin
+  [:or Field PartialJoin])
+
+(defn- join? [x]
+  (= (lib.dispatch/dispatch-value x) :mbql/join))
+
+(def ^:private Joinable
+  [:or lib.metadata/TableMetadata lib.metadata/CardMetadata])
+
+(def ^:private JoinOrJoinable
+  [:or
+   [:ref ::lib.schema.join/join]
+   Joinable])
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
   "Get the current join alias associated with something, if it has one."
@@ -71,25 +85,68 @@
                                                (with-join-alias field-ref new-alias))
                                              fields))))))
 
-(defn- with-join-alias-update-join-conditions
+(mu/defn ^:private standard-join-condition? :- :boolean
+  "Whether this join condition is a binary condition with two `:field` references (a LHS and a RHS), as you'd produce
+  in the frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]],
+  and [[join-condition-rhs-columns]]."
+  [condition  :- ::lib.schema.expression/boolean]
+  (mbql.u.match/match-one condition
+    [(_operator :guard keyword?)
+     _opts
+     [:field _lhs-opts _lhs-id-or-name]
+     [:field _rhs-opts _rhs-id-or-name]]
+    true
+    _
+    false))
+
+(defn- standard-join-condition-rhs
+  "If `condition` is a [[standard-join-condition?]], return the RHS."
+  [condition]
+  (when (standard-join-condition? condition)
+    (let [[_operator _opts _lhs rhs] condition]
+      rhs)))
+
+(defn- standard-join-condition-update-rhs
+  "If `condition` is a [[standard-join-condition?]], update the RHS with `f` like
+
+    (apply f rhs args)"
+  [condition f & args]
+  (if-not (standard-join-condition? condition)
+    condition
+    (let [[operator opts lhs rhs] condition]
+      [operator opts lhs (apply f rhs args)])))
+
+(mu/defn ^:private with-join-alias-update-join-conditions :- PartialJoin
   "Impl for [[with-join-alias]] for a join: recursively update the `:join-alias` for inside the `:conditions` of the
   join.
 
-  Only updates things that already had a join alias of `old-alias`; does not add alias to things that did not already
-  have one (such as the RHS of a 'typical' join condition). I went back and forth on this behavior, but eventually
-  decided NOT to assume that every join condition is the shape
+  If `old-alias` is specified, uses [[metabase.mbql.util.match]] to update all the `:field` references using the old
+  alias.
 
-    [<operator> <lhs-column-from-source> <rhs-column-from-join>]
-
-  This is currently true of normal FE usage, but may not be true everywhere in the future; we don't want to make MLv2
-  impossible to use if you're doing something different like swapping the order of the columns or some sort of more
-  complex condition."
-  [join old-alias new-alias]
-  (if-not old-alias
+  If `old-alias` is `nil`, updates the RHS of all 'standard' conditions (binary filter clauses with two `:field` refs as
+  args, e.g. the kind you'd get if you were using [[join-condition-operators]] and the like to create them). This
+  currently doesn't handle more complex filter clauses that were created without the 'normal' MLv2 functions used by
+  the frontend; we can add this in the future if we need it."
+  [join      :- PartialJoin
+   old-alias :- [:maybe ::lib.schema.common/non-blank-string]
+   new-alias :- [:maybe ::lib.schema.common/non-blank-string]]
+  (cond
+    (empty? (:conditions join))
     join
+
+    ;; if we've specified `old-alias`, then update ANY `:field` clause using it to `new-alias` instead.
+    old-alias
     (mbql.u.match/replace-in join [:conditions]
       [:field {:join-alias old-alias} _id-or-name]
-      (with-join-alias &match new-alias))))
+      (with-join-alias &match new-alias))
+
+    ;; otherwise if `old-alias` is `nil`, then add (or remove!) `new-alias` to the RHS of any binary
+    ;; filter clauses that don't already have a `:join-alias`.
+    :else
+    (update join :conditions (fn [conditions]
+                               (mapv (fn [condition]
+                                       (standard-join-condition-update-rhs condition with-join-alias new-alias))
+                                     conditions)))))
 
 (defn- with-join-alias-update-join
   "Impl for [[with-join-alias]] for a join."
@@ -137,7 +194,7 @@
    (when source-table
      (:display-name (lib.metadata/table query source-table)))
    (when source-card
-     (i18n/tru "Question {0}" source-card))
+     (lib.card/fallback-display-name source-card))
    (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
@@ -198,8 +255,10 @@
    unique-name-fn :- fn?
    col            :- :map]
   (assoc col
-         :lib/source-column-alias  (:name col)
-         :lib/desired-column-alias (unique-name-fn (joined-field-desired-alias (:alias join) (:name col)))))
+         :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) col)
+         :lib/desired-column-alias (unique-name-fn (joined-field-desired-alias
+                                                    (:alias join)
+                                                    ((some-fn :lib/source-column-alias :name) col)))))
 
 (defmethod lib.metadata.calculation/returned-columns-method :mbql/join
   [query
@@ -276,22 +335,51 @@
        :stages   [mbql-stage]}
       lib.options/ensure-uuid))
 
+(defmethod join-clause-method :metadata/card
+  [card]
+  (-> {:lib/type :mbql/join
+       :stages [{:source-card (:id card)
+                 :lib/type :mbql.stage/mbql}]}
+      lib.options/ensure-uuid))
+
+(defmethod join-clause-method :metadata/table
+  [table]
+  (-> {:lib/type :mbql/join
+       :stages [{:source-table (:id table)
+                 :lib/type :mbql.stage/mbql}]}
+      lib.options/ensure-uuid))
+
+(defn- with-join-conditions-add-alias-to-rhses
+  "Add `join-alias` to the RHS of all [[standard-join-condition?]] `conditions` that don't already have a `:join-alias`.
+  If an RHS already has a `:join-alias`, don't second guess what was already explicitly specified."
+  [conditions join-alias]
+  (if-not join-alias
+    conditions
+    (mapv (fn [condition]
+            (or (when-let [rhs (standard-join-condition-rhs condition)]
+                  (when-not (current-join-alias rhs)
+                    (standard-join-condition-update-rhs condition with-join-alias join-alias)))
+                condition))
+          conditions)))
+
 (mu/defn with-join-conditions :- PartialJoin
   "Update the `:conditions` (filters) for a Join clause."
   {:style/indent [:form]}
   [a-join     :- PartialJoin
    conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]]]]
-  (u/assoc-dissoc a-join :conditions (not-empty (mapv lib.common/->op-arg conditions))))
+  (let [conditions (-> (mapv lib.common/->op-arg conditions)
+                       (with-join-conditions-add-alias-to-rhses (current-join-alias a-join)))]
+    (u/assoc-dissoc a-join :conditions (not-empty conditions))))
 
 (mu/defn join-clause :- PartialJoin
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
   ([joinable]
-   (join-clause-method joinable))
+   (-> (join-clause-method joinable)
+       (u/assoc-default :fields :all)))
 
   ([joinable conditions]
    (-> (join-clause joinable)
-       (u/assoc-default :fields :all)
        (with-join-conditions conditions))))
 
 (mu/defn with-join-fields :- PartialJoin
@@ -413,27 +501,31 @@
     (run! generator taken-names)
     (generator base-name)))
 
-(mu/defn ^:private add-default-alias :- ::lib.schema.join/join
+(mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one."
   [query        :- ::lib.schema/query
    stage-number :- :int
    a-join       :- JoinWithOptionalAlias]
-  (let [stage       (lib.util/query-stage query stage-number)
-        home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
-        cond-fields (mbql.u.match/match (:conditions a-join) :field)
-        home-col    (select-home-column home-cols cond-fields)
-        join-alias  (-> (calculate-join-alias query a-join home-col)
-                        (generate-unique-name (map :alias (:joins stage))))
-        home-refs   (mapv lib.ref/ref home-cols)
-        join-refs   (mapv lib.ref/ref
-                          (lib.metadata.calculation/returned-columns
-                           (lib.query/query-with-stages query (:stages a-join))))]
-    (-> a-join
-        (update :conditions
-                (fn [conditions]
-                  (mapv #(add-alias-to-condition query % join-alias home-refs join-refs)
-                        conditions)))
-        (with-join-alias join-alias))))
+  (if (contains? a-join :alias)
+    ;; if the join clause comes with an alias, keep it and assume that the
+    ;; condition fields have the right join-aliases too
+    a-join
+    (let [stage       (lib.util/query-stage query stage-number)
+          home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
+          cond-fields (mbql.u.match/match (:conditions a-join) :field)
+          home-col    (select-home-column home-cols cond-fields)
+          join-alias  (-> (calculate-join-alias query a-join home-col)
+                          (generate-unique-name (keep :alias (:joins stage))))
+          home-refs   (mapv lib.ref/ref home-cols)
+          join-refs   (mapv lib.ref/ref
+                            (lib.metadata.calculation/returned-columns
+                              (lib.query/query-with-stages query (:stages a-join))))]
+      (-> a-join
+          (update :conditions
+                  (fn [conditions]
+                    (mapv #(add-alias-to-condition query % join-alias home-refs join-refs)
+                          conditions)))
+          (with-join-alias join-alias)))))
 
 (mu/defn join :- ::lib.schema/query
   "Add a join clause to a `query`."
@@ -443,11 +535,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     a-join       :- PartialJoin]
-   (let [a-join (if (contains? a-join :alias)
-                  ;; if the join clause comes with an alias, keep it and assume that the
-                  ;; condition fields have the right join-aliases too
-                  a-join
-                  (add-default-alias query stage-number a-join))]
+   (let [a-join (add-default-alias query stage-number a-join)]
      (lib.util/update-query-stage query stage-number update :joins (fn [joins]
                                                                      (conj (vec joins) a-join))))))
 
@@ -470,15 +558,15 @@
    source-field-id-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__via__%s" table-name source-field-id-name))
 
-(mu/defn join-conditions :- ::lib.schema.join/conditions
+(mu/defn join-conditions :- [:maybe ::lib.schema.join/conditions]
   "Get all join conditions for the given join"
-  [j :- ::lib.schema.join/join]
-  (:conditions j))
+  [a-join :- PartialJoin]
+  (:conditions a-join))
 
 (mu/defn join-fields :- [:maybe ::lib.schema.join/fields]
   "Get all join conditions for the given join"
-  [j :- ::lib.schema.join/join]
-  (:fields j))
+  [a-join :- PartialJoin]
+  (:fields a-join))
 
 (defn- raw-join-strategy->strategy-option [raw-strategy]
   (merge
@@ -490,13 +578,13 @@
 (mu/defn raw-join-strategy :- ::lib.schema.join/strategy
   "Get the raw keyword strategy (type) of a given join, e.g. `:left-join` or `:right-join`. This is either the value
   of the optional `:strategy` key or the default, `:left-join`, if `:strategy` is not specified."
-  [a-join :- ::lib.schema.join/join]
+  [a-join :- PartialJoin]
   (get a-join :strategy :left-join))
 
 (mu/defn join-strategy :- ::lib.schema.join/strategy.option
   "Get the strategy (type) of a given join, as a `:option/join.strategy` map. If `:stategy` is unspecified, returns
   the default, left join."
-  [a-join :- ::lib.schema.join/join]
+  [a-join :- PartialJoin]
   (raw-join-strategy->strategy-option (raw-join-strategy a-join)))
 
 (mu/defn with-join-strategy :- PartialJoin
@@ -523,6 +611,15 @@
            (comp (filter (partial contains? features))
                  (map raw-join-strategy->strategy-option))
            [:left-join :right-join :inner-join :full-join]))))
+
+(mu/defn joined-thing :- [:maybe Joinable]
+  "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
+  [metadata-providerable :- lib.metadata/MetadataProviderable
+   a-join                :- ::lib.schema.join/join]
+  (let [origin (-> a-join :stages first)]
+    (cond
+      (:source-card origin)  (lib.metadata/card metadata-providerable (:source-card origin))
+      (:source-table origin) (lib.metadata/table metadata-providerable (:source-table origin)))))
 
 ;;; Building join conditions:
 ;;;
@@ -566,14 +663,24 @@
                                         columns)]
     (concat pk fk other)))
 
+(defn- mark-selected-column [metadata-providerable existing-column-or-nil columns]
+  (if-not existing-column-or-nil
+    columns
+    (lib.equality/mark-selected-columns metadata-providerable columns [existing-column-or-nil])))
+
 (mu/defn join-condition-lhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
 
-  If you are changing the LHS of a condition for an existing join, pass in that existing join as
-  `existing-join-or-nil` so we can filter out the columns added by it (it doesn't make sense to present the columns
-  added by a join as options for its own LHS) or added by later joins (joins can only depend on things from previous
-  joins). Otherwise pass `nil` when building a new join. See #32005 for more info.
+  If you are changing the LHS of a condition for an existing join, pass in that existing join as `join-or-joinable` so
+  we can filter out the columns added by it (it doesn't make sense to present the columns added by a join as options
+  for its own LHS) or added by later joins (joins can only depend on things from previous joins). Otherwise you can
+  either pass in `nil` or the [[Joinable]] (Table or Card metadata) we're joining against when building a new
+  join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
+  of [[join-condition-rhs-columns]].) See #32005 for more info.
+
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
 
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
@@ -581,14 +688,15 @@
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  ([query existing-join-or-nil rhs-column-or-nil]
-   (join-condition-lhs-columns query -1 existing-join-or-nil rhs-column-or-nil))
+  ([query joinable lhs-column-or-nil rhs-column-or-nil]
+   (join-condition-lhs-columns query -1 joinable lhs-column-or-nil rhs-column-or-nil))
 
-  ([query                :- ::lib.schema/query
-    stage-number         :- :int
-    existing-join-or-nil :- [:maybe ::lib.schema.join/join]
+  ([query              :- ::lib.schema/query
+    stage-number       :- :int
+    join-or-joinable   :- [:maybe JoinOrJoinable]
+    lhs-column-or-nil  :- [:maybe Field]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _rhs-column-or-nil   :- [:maybe lib.metadata/ColumnMetadata]]
+    _rhs-column-or-nil :- [:maybe Field]]
    ;; calculate all the visible columns including the existing join; then filter out any columns that come from the
    ;; existing join and any subsequent joins. The reason for doing things this way rather than removing the joins
    ;; before calculating visible columns is that we don't want to either create possibly-invalid queries, or have to
@@ -597,7 +705,8 @@
    ;;
    ;; e.g. if we have joins [J1 J2 J3 J4] and current join = J2, then we want to ignore the visible columns from J2,
    ;; J3, and J4.
-   (let [existing-join-alias    (current-join-alias existing-join-or-nil)
+   (let [existing-join-alias    (when (join? join-or-joinable)
+                                  (current-join-alias join-or-joinable))
          join-aliases-to-ignore (into #{}
                                       (comp (map current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
@@ -608,30 +717,44 @@
           (remove (fn [col]
                     (when-let [col-join-alias (current-join-alias col)]
                       (contains? join-aliases-to-ignore col-join-alias))))
+          (mark-selected-column query lhs-column-or-nil)
           sort-join-condition-columns))))
 
 (mu/defn join-condition-rhs-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
-  is the one that belongs to the thing being joined, `joinable`, which can be something like a
+  is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
   Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
-  another query, etc. -- anything you can pass to [[join-clause]].
+  another query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
-  If the lhs-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
+  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
+
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  ([query joinable lhs-column-or-nil]
-   (join-condition-rhs-columns query -1 joinable lhs-column-or-nil))
+  ([query joinable lhs-column-or-nil rhs-column-or-nil]
+   (join-condition-rhs-columns query -1 joinable lhs-column-or-nil rhs-column-or-nil))
 
   ([query              :- ::lib.schema/query
     stage-number       :- :int
-    joinable
+    join-or-joinable   :- JoinOrJoinable
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _lhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
+    _lhs-column-or-nil :- [:maybe Field]
+    rhs-column-or-nil  :- [:maybe Field]]
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
    (sort-join-condition-columns
-    (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false}))))
+    (let [joinable   (if (join? join-or-joinable)
+                     (joined-thing query join-or-joinable)
+                     join-or-joinable)
+          join-alias (when (join? join-or-joinable)
+                       (current-join-alias join-or-joinable))]
+      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
+           (map (fn [col]
+                  (cond-> (assoc col :lib/source :source/joins)
+                    join-alias (with-join-alias join-alias))))
+           (mark-selected-column query rhs-column-or-nil))))))
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
@@ -682,18 +805,6 @@
      (when-let [fk-col (fk-column-for query stage-number pk-col)]
        (lib.filter/filter-clause (lib.filter.operator/operator-def :=) fk-col pk-col)))))
 
-(def ^:private Joinable
-  [:or lib.metadata/TableMetadata lib.metadata/CardMetadata])
-
-(mu/defn joined-thing :- [:maybe Joinable]
-  "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
-   a-join                :- ::lib.schema.join/join]
-  (let [origin (-> a-join :stages first)]
-    (cond
-      (:source-card origin)  (lib.metadata/card metadata-providerable (:source-card origin))
-      (:source-table origin) (lib.metadata/table metadata-providerable (:source-table origin)))))
-
 (defn- add-join-alias-to-joinable-columns [cols a-join]
   (let [join-alias     (current-join-alias a-join)
         unique-name-fn (lib.util/unique-name-generator)]
@@ -712,29 +823,7 @@
                         cols)
       (:none nil) (mapv #(assoc % :selected? false)
                         cols)
-      ;; figure out which columns are in `:fields`, and then match them to the closest match out of `all-source-refs`.
-      (let [selected-fields-refs (mapv lib.ref/ref j-fields)
-            ;; pre-calculate refs for all the cols so we can match them up to the ones in `:fields`.
-            cols                 (mapv (fn [col]
-                                         (assoc col ::ref (lib.ref/ref col)))
-                                       cols)
-            all-source-refs      (mapv ::ref cols)
-            selected-source-refs (into #{}
-                                       (map #(lib.equality/find-closest-matching-ref % all-source-refs))
-                                       selected-fields-refs)]
-        (mapv (fn [col]
-                (->  col
-                     (assoc :selected? (contains? selected-source-refs (::ref col)))
-                     (dissoc ::ref)))
-              cols)))))
-
-(def ^:private JoinOrJoinable
-  [:or
-   [:ref ::lib.schema.join/join]
-   Joinable])
-
-(defn- join? [x]
-  (= (lib.dispatch/dispatch-value x) :mbql/join))
+      (lib.equality/mark-selected-columns cols j-fields))))
 
 (mu/defn joinable-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
@@ -793,7 +882,7 @@
 
   ([query             :- ::lib.schema/query
     stage-number      :- :int
-    join-or-joinable  :- JoinOrJoinable]
+    join-or-joinable  :- [:maybe JoinOrJoinable]]
    (if (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
             (first-join? query stage-number join-or-joinable)           ; first join?
             (lib.util/source-table-id query))                           ; query ultimately uses source Table?

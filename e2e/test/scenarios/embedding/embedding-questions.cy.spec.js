@@ -94,9 +94,7 @@ describe("scenarios > embedding > questions ", () => {
 
     assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
 
-    cy.get(".x.axis .tick")
-      .should("have.length", 5)
-      .and("contain", "Apr, 2022");
+    cy.get(".x.axis .tick").should("have.length", 5).and("contain", "Apr 2022");
 
     cy.get(".y.axis .tick").should("contain", "60");
 
@@ -104,7 +102,7 @@ describe("scenarios > embedding > questions ", () => {
     cy.get(".dot").last().realHover();
 
     popover().within(() => {
-      testPairedTooltipValues("Created At", "Aug, 2022");
+      testPairedTooltipValues("Created At", "Aug 2022");
       testPairedTooltipValues("Math", "2");
       testPairedTooltipValues("Count", "79");
     });

@@ -15,7 +15,8 @@ export type SearchModelType =
   | "pulse"
   | "segment"
   | "metric"
-  | "action";
+  | "action"
+  | "snippet";
 
 export interface SearchScore {
   weight: number;

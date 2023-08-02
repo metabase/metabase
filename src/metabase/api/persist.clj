@@ -133,15 +133,15 @@
 (defn- disable-persisting
   "Disables persistence.
   - update all [[PersistedInfo]] rows to be inactive and deletable
-  - remove `:persist-models-enabled` from relevant [[Database]] options
+  - remove `:persist-models-enabled` from relevant [[Database]] settings
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []
   (let [id->db      (m/index-by :id (t2/select Database))
-        enabled-dbs (filter (comp :persist-models-enabled :options) (vals id->db))]
+        enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info (tru "Disabling model persistence"))
     (doseq [db enabled-dbs]
       (t2/update! Database (u/the-id db)
-                  {:options (not-empty (dissoc (:options db) :persist-models-enabled))}))
+                  {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
