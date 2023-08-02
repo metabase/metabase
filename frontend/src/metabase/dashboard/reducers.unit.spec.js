@@ -248,7 +248,7 @@ describe("dashboard reducers", () => {
           },
           {
             type: FETCH_DASHBOARD_CARD_DATA,
-            payload: { currentTime: 100 },
+            payload: { currentTime: 100, loadingIds: dashcardIds },
           },
         ),
       ).toMatchObject({
@@ -261,7 +261,7 @@ describe("dashboard reducers", () => {
       expect(
         reducer(initState, {
           type: FETCH_DASHBOARD_CARD_DATA,
-          payload: {},
+          payload: { currentTime: 100, loadingIds: [] },
         }),
       ).toEqual({
         ...initState,
