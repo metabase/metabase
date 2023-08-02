@@ -66,31 +66,7 @@
                  (assoc rsmd :qp_column_name (field-ref->alias field_ref)))
                result_metadata)))))
 
-(defn- add-inner-query
-  "Produce a SELECT * over the parameterized model with columns aliased to normalized display names.
-  Add this result to the input model along with the generated column aliases.
-  This can be used in a CTE such that an outer query can be called on this query."
-  [{:keys [id result_metadata] :as model}]
-  (let [column-aliases (or
-                        (some->> result_metadata
-                                 (map (comp
-                                       (fn [[column_name column_alias]]
-                                         (cond
-                                           (and column_name column_alias) (format "\"%s\" AS %s" column_name column_alias)
-                                           column_alias column_alias
-                                           :else nil))
-                                       (juxt :qp_column_name :sql_name)))
-                                 (filter identity)
-                                 seq
-                                 (str/join ", "))
-                        "*")]
-    (assoc model
-           :column_aliases column-aliases
-           :inner_query
-           (mdb.query/format-sql
-            (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column-aliases id)))))
-
-(defn add-field-values
+(defn- add-field-values
   "Add enumerated values (if a low-cardinality field) to a field."
   ([{:keys [id base_type] :as field} enum-cardinality-threshold]
    (let [field-vals (when
@@ -108,102 +84,25 @@
     field
     (metabot-settings/enum-cardinality-threshold))))
 
-(defn- denormalize-field
-  "Create a 'denormalized' version of the field which is optimized for querying
-  and prompt engineering. Add in enumerated values (if a low-cardinality field),
-  and remove fields unused in prompt engineering."
+(defn- add-low-cardinality-field-values
+  "Add low cardinality field values to the model's result_metadata.
+  This can be useful data for downstream inferencers."
   ([field enum-cardinality-threshold]
-   (-> field
-       (add-field-values enum-cardinality-threshold)
-       (dissoc :field_ref :id)))
+   (add-field-values field enum-cardinality-threshold))
   ([field]
-   (denormalize-field
+   (add-low-cardinality-field-values
     field
     (metabot-settings/enum-cardinality-threshold))))
 
-(defn- model->enum-ddl
-  "Create the postgres enum for any item in result_metadata that has enumerated/low cardinality values."
-  [{:keys [result_metadata]}]
-  (into {}
-        (for [{:keys [display_name sql_name possible_values]} result_metadata
-              :when (seq possible_values)
-              :let [ddl-str (format "create type %s_t as enum %s;"
-                                    sql_name
-                                    (str/join ", " (map (partial format "'%s'") possible_values)))
-                    nchars  (count ddl-str)]]
-          (do
-            (log/tracef "Pseudo-ddl for field '%s' enumerates %s possible values contains %s chars (~%s tokens)."
-                        display_name
-                        (count possible_values)
-                        nchars
-                        (quot nchars 4))
-            [sql_name ddl-str]))))
+(defn enrich-model
+  "Add data to the model that may be useful for the inferencers
+  that is not available to a backend without db access.
 
-(defn- model->pseudo-ddl
-  "Create an equivalent DDL for this model"
-  [{model-name :name model-id :id :keys [sql_name result_metadata] :as model}]
-  (log/debugf "Creating pseudo-ddl for model '%s'(%s):"
-              model-name
-              model-id)
-  (let [enums   (model->enum-ddl model)
-        [ddl] (sql/format
-               {:create-table sql_name
-                :with-columns (for [{:keys [sql_name base_type]} result_metadata
-                                    :let [k sql_name]]
-                                [k (if (enums k)
-                                     (format "%s_t" k)
-                                     base_type)])}
-               {:dialect :ansi})
-        ddl-str (str/join "\n\n" (conj (vec (vals enums)) (mdb.query/format-sql ddl)))
-        nchars  (count ddl-str)]
-    (log/debugf "Pseudo-ddl for model '%s'(%s) describes %s enum fields and contains %s chars (~%s tokens)."
-                model-name
-                model-id
-                (count enums)
-                nchars
-                (quot nchars 4))
-    ddl-str))
-
-(defn- add-create-table-ddl [model]
-  (assoc model :create_table_ddl (model->pseudo-ddl model)))
-
-(defn- disambiguate
-  "Given a seq of names that are potentially the same, provide a seq of tuples of
-  original name to a non-ambiguous version of the name."
-  [names]
-  (let [uniquifier (metabase.mbql.util/unique-name-generator)
-        [_ new-names] (reduce
-                       (fn [[taken acc] n]
-                         (let [candidate (uniquifier n)]
-                           (if (taken candidate)
-                             (recur [(conj taken candidate) acc] n)
-                             [(conj taken candidate) (conj acc candidate)])))
-                       [#{} []] names)]
-    (map vector names new-names)))
-
-(defn- add-sql-names
-  "Add a distinct SCREAMING_SNAKE_CASE sql name to each field in the result_metadata."
-  [{:keys [result_metadata] :as model}]
-  (update model :result_metadata
-          #(->> %
-                (map (comp normalize-name :display_name))
-                disambiguate
-                (map (fn [rsmd [_ disambiguated-name]]
-                       (assoc rsmd :sql_name disambiguated-name)) result_metadata))))
-
-(defn denormalize-model
-  "Create a 'denormalized' version of the model which is optimized for querying.
-  All foreign keys are resolved as data, sql-friendly names are added, and
-  an inner_query is added that is a 'plain sql' query of the data
-  (with sql friendly column names) that can be used to query this model."
-  [{model-name :name :as model}]
+  Also remove values that are not considered useful for inferencing."
+  [model]
   (-> model
       add-qp-column-aliases
-      add-sql-names
-      add-inner-query
-      (update :result_metadata #(mapv denormalize-field %))
-      (assoc :sql_name (normalize-name model-name))
-      add-create-table-ddl
+      (update :result_metadata #(mapv add-low-cardinality-field-values %))
       (dissoc :creator_id :dataset_query :table_id :collection_position)))
 
 (defn- models->json-summary
@@ -322,7 +221,7 @@
   (let [models (t2/select Card :database_id db_id :dataset true)]
     (-> database
         (assoc :sql_name (normalize-name database-name))
-        (assoc :models (mapv denormalize-model models))
+        (assoc :models (mapv enrich-model models))
         add-model-json-summary)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Pseudo-ddls -> Embeddings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

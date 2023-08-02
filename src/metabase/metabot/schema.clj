@@ -58,7 +58,7 @@
   "The schema used to validate LLM infer input"
   (mc/schema
     [:map
-     [:prompt string?]
+     [:user_prompt string?]
      [:model model-schema]]))
 
 (comment

@@ -5,7 +5,8 @@
     [clojure.walk :as walk]
     [malli.core :as mc]
     [metabase.metabot.settings :as metabot-settings]
-    [metabase.metabot.schema :as metabot-schema]))
+    [metabase.metabot.schema :as metabot-schema]
+    [metabase.util.log :as log]))
 
 (def embeddings-schema
   (mc/schema
@@ -42,7 +43,7 @@
                      x))
                  mbql))
 
-(defn ^:dynamic infer-mbql
+(defn ^:dynamic infer-dataset-query
   "Infer LLM output from a provided prompt and model.
 
   The prompt is the user prompt and the context is a machine-generated
@@ -52,16 +53,17 @@
   to select the best single dataset if it doesn't know how to do joins or that
   it will select and join as desired from the provided datasets to provide the
   final answer."
-  ([endpoint {:keys [prompt model] :as args}]
-   {:pre [prompt (mc/validate metabot-schema/inference-schema args)]}
-   (let [request-body {:prompt prompt :model model}
+  ([endpoint {:keys [user_prompt model] :as args}]
+   {:pre [user_prompt (mc/validate metabot-schema/inference-schema args)]}
+   (let [request-body {:user_prompt user_prompt :model model}
+         url          (format "%s/api/inferDatasetQuery" endpoint)
+         _            (log/infof "Inferring mbql for prompt '%s' at %s" user_prompt url)
          request      (cond->
-                        {:method           :post
-                         :url              (format "%s/api/inferMBQL" endpoint)
-                         :body             (json/write-str request-body)
-                         :as               :json
-                         :content-type     :json
-                         :throw-exceptions false}
+                        {:method       :post
+                         :url          url
+                         :body         (json/write-str request-body)
+                         :as           :json
+                         :content-type :json}
                         (and
                           (metabot-settings/openai-api-key)
                           (metabot-settings/openai-organization))
@@ -71,6 +73,6 @@
      (when (= 200 status)
        (keywordize-types body))))
   ([prompt-data]
-   (infer-mbql
+   (infer-dataset-query
      (metabot-settings/metabot-inference-ws-url)
      prompt-data)))

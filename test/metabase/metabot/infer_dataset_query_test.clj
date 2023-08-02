@@ -1,7 +1,7 @@
-(ns metabase.metabot.mbql-inference-test
+(ns metabase.metabot.infer-dataset-query-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.mbql-inference :as mbql-inference]
+   [metabase.metabot.infer-dataset-query :as mbql-inference]
    [metabase.metabot.protocols :as metabot-protocols]))
 
 (deftest rank-data-by-prompt-test
