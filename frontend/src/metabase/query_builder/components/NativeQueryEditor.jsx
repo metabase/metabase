@@ -298,7 +298,12 @@ export class NativeQueryEditor extends Component {
       showLineNumbers: true,
     });
 
-    this._lastAutoComplete = { timestamp: 0, prefix: null, results: [] };
+    this._lastAutoComplete = {
+      timestamp: 0,
+      prefix: null,
+      query: null,
+      results: [],
+    };
 
     aceLanguageTools.addCompleter({
       getCompletions: async (_editor, _session, _pos, prefix, callback) => {
@@ -306,18 +311,25 @@ export class NativeQueryEditor extends Component {
           return callback(null, []);
         }
 
+        const query = _editor.getValue();
+
         try {
           let { results, timestamp } = this._lastAutoComplete;
           const cacheHit =
             Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
-            this._lastAutoComplete.prefix === prefix;
+            this._lastAutoComplete.prefix === prefix &&
+            this._lastAutoComplete.query === query;
           if (!cacheHit) {
             // Get models and fields from tables
             // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-            const apiResults = await this.props.autocompleteResultsFn(prefix);
+            const apiResults = await this.props.autocompleteResultsFullQueryFn(
+              query,
+              prefix,
+            );
             this._lastAutoComplete = {
               timestamp: Date.now(),
               prefix,
+              query,
               results,
             };
 

@@ -952,6 +952,28 @@ export const getAutocompleteResultsFn = state => {
   };
 };
 
+export const getAutocompleteResultsFullQueryFn = state => {
+  const matchStyle = getSetting(state, "native-query-autocomplete-match-style");
+
+  if (matchStyle === "off") {
+    return null;
+  }
+
+  return function autocompleteResults(query, prefix) {
+    const dbId = state.qb.card?.dataset_query?.database;
+    if (!dbId) {
+      return [];
+    }
+
+    const apiCall = MetabaseApi.db_autocomplete_suggestions_full_query({
+      dbId,
+      query,
+      prefix,
+    });
+    return apiCall;
+  };
+};
+
 export const getDataReferenceStack = createSelector(
   [getUiControls, getDatabaseId],
   (uiControls, dbId) =>
