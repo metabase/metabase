@@ -1,16 +1,16 @@
 /* eslint "react/prop-types": "warn" */
 import { memo } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import cx from "classnames";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.css";
 import { Icon } from "metabase/core/components/Icon";
+import { ListItemLink } from "./ListItem.styled";
 
 const ListItem = ({ name, description, placeholder, url, icon }) => (
   <li className="relative">
-    <Link to={url} className="text-brand-hover">
+    <ListItemLink to={url}>
       <Card hoverable className="mb2 p3 bg-white rounded bordered">
         <div className={cx(S.item)}>
           <div className={S.itemIcons}>
@@ -34,7 +34,7 @@ const ListItem = ({ name, description, placeholder, url, icon }) => (
           </div>
         </div>
       </Card>
-    </Link>
+    </ListItemLink>
   </li>
 );
 
