@@ -32,7 +32,7 @@
     ;; is only supposed to be that initial edge when the dataset is being changed.
     (when (and (:dataset card)
                (public-settings/persisted-models-enabled)
-               (get-in (t2/select-one Database :id (:database_id card)) [:options :persist-models-enabled])
+               (get-in (t2/select-one Database :id (:database_id card)) [:settings :persist-models-enabled])
                (nil? (t2/select-one-fn :id PersistedInfo :card_id (:id card))))
       (persisted-info/turn-on-model! (:actor_id card) card))
     (catch Throwable e

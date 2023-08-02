@@ -41,7 +41,7 @@
 (defn do-with-persist-models [f]
   (let [two-hours-ago (t/minus (t/local-date-time) (t/hours 2))]
     (t2.with-temp/with-temp
-      [Database db {:options {:persist-models-enabled true}}
+      [Database db {:settings {:persist-models-enabled true}}
        Card     creating  {:dataset true :database_id (u/the-id db)}
        Card     deletable {:dataset true :database_id (u/the-id db)}
        Card     off       {:dataset true :database_id (u/the-id db)}
