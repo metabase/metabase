@@ -475,6 +475,14 @@
                         (map :name)
                         (some (partial = "PRICE"))))))))))
 
+(deftest fetch-database-metadata-remove-inactive-test
+  (mt/with-temp* [Database [{db-id :id}]
+                  Table    [_ {:db_id db-id, :active false}]]
+    (testing "GET /api/database/:id/metadata?include_hidden=true"
+        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
+                          :tables)]
+          (is (= () tables))))))
+
 (deftest autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
                     (mt/user-http-request :rasta :get 200
