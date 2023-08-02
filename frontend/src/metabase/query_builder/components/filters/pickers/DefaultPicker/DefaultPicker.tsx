@@ -111,6 +111,7 @@ export function DefaultPicker({
       if (operatorField.type === "hidden") {
         return null;
       } else if (operatorField.type === "select") {
+        // unclear, but this may be a dead code path
         return (
           <SelectPicker
             key={index}
