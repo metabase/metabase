@@ -7,6 +7,18 @@
    #?@(:clj ([malli.experimental.time :as malli.time])))
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
+(defonce ^:private explainer-registry
+  (atom {}))
+
+(defn explainer [schema]
+  (or (get @explainer-registry schema)
+      (let [explainer (mc/explainer schema)]
+        (swap! explainer-registry assoc schema explainer)
+        explainer)))
+
+(defn explain [schema value]
+  ((explainer schema) value))
+
 (defonce ^:private registry*
   (atom (merge (mc/default-schemas)
                (mut/schemas)
@@ -20,6 +32,7 @@
   "Register a spec with our Malli spec "
   [type schema]
   (swap! registry* assoc type schema)
+  (reset! explainer-registry {})
   nil)
 
 #?(:clj
@@ -31,4 +44,5 @@
 (defn resolve-schema
   "For REPL/test usage: get the definition of a registered schema from the registry."
   [k]
+  {:pre [(keyword? k)]}
   (mr/schema registry k))
