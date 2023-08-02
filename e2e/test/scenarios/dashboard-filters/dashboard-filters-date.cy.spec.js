@@ -23,7 +23,7 @@ describe("scenarios > dashboard > filters > date", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
@@ -174,6 +174,7 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
+      DateFilter.setTime({ hours: 11, minutes: 0 });
       cy.findByText("Update filter").click();
       break;
 
