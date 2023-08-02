@@ -2,13 +2,10 @@
   (:require
    [clojure.core.async :as a]
    [java-time :as t]
-   [metabase.api.common :as api]
-   [metabase.db.connection :as mdb.connection]
    [metabase.events :as events]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
