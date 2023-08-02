@@ -401,14 +401,12 @@
 
 (defn- select-home-column
   [home-cols cond-fields]
-  (let [cond->home (into {}
-                         (keep  (fn [home-col]
-                                  (when-let [cond-field (lib.equality/find-closest-matching-ref
-                                                         (lib.ref/ref home-col)
-                                                         cond-fields)]
-                                    [cond-field home-col])))
-                         home-cols)
-        cond-home-cols (map cond->home cond-fields)]
+  (let [matches (lib.equality/find-closest-matches-for-refs
+                  (map lib.ref/ref home-cols) cond-fields)
+        ;; Matches is a map from cond-fields to the corresponding home-cols index.
+        cond-home-cols (->> cond-fields
+                            (keep matches)
+                            (map #(nth home-cols %)))]
     ;; first choice: the leftmost FK or PK in the condition referring to a home column
     (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
         ;; otherwise the leftmost home column in the condition

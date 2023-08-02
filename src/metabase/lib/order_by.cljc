@@ -140,7 +140,9 @@
                               (let [stage (lib.util/query-stage query stage-number)]
                                 (lib.metadata.calculation/visible-columns query stage-number stage)))
          columns            (filter orderable-column? columns)
-         existing-order-bys (order-bys query stage-number)]
+         existing-order-bys (->> (order-bys query stage-number)
+                                 (map (fn [[_tag _opts expr]]
+                                        expr)))]
      (cond
        (empty? columns)
        nil
@@ -149,21 +151,11 @@
        (vec columns)
 
        :else
-       (let [refs          (mapv lib.ref/ref columns)
-             ref->position (into {}
-                                 (map-indexed (fn [pos [_tag _opts expr]]
-                                                (when-let [closest-ref (lib.equality/find-closest-matching-ref
-                                                                        query
-                                                                        (lib.ref/ref expr)
-                                                                        refs)]
-                                                  [closest-ref pos])))
-                                 existing-order-bys)]
-         (mapv (fn [col a-ref]
-                 (let [pos (ref->position a-ref)]
-                   (cond-> col
-                     pos (assoc :order-by-position pos))))
-               columns
-               refs))))))
+       (let [matching (lib.equality/find-closest-matches-for-refs query existing-order-bys columns)]
+         (mapv #(let [pos (matching %)]
+                  (cond-> %
+                    pos (assoc :order-by-position pos)))
+               columns))))))
 
 (def ^:private opposite-direction
   {:asc :desc

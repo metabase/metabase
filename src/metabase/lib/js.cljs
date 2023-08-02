@@ -476,9 +476,13 @@
                      (-> legacy-ref
                          (js->clj :keywordize-keys true)
                          (update 0 keyword)
-                         convert/->pMBQL))]
-    (->> (lib.equality/find-closest-matches-for-refs columns field-refs)
-         (map #(or % -1))
+                         convert/->pMBQL))
+        matches    (lib.equality/find-closest-matches-for-refs columns field-refs)
+        ;; matches is a map of [column index-of-ref]; so flip it around.
+        by-index   (into {} (for [[k v] matches]
+                              [v k]))]
+    (->> (range (count legacy-refs))
+         (map #(by-index % -1))
          to-array)))
 
 (defn ^:export join-strategy

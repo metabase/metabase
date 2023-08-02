@@ -194,40 +194,104 @@
     [[:field {} 1]
      [:field {} 2]
      [:field {} 3]]
-    [2 0]
+    {[:field {} 3] 0
+     [:field {} 1] 1}
 
     [[:field {:base-type :type/Integer} 1]]
     [[:field {:base-type :type/Number} 1]
      [:field {:base-type :type/Integer} 1]]
-    [1]
+    {[:field {:base-type :type/Integer} 1] 0}
 
     [[:field {:join-alias "J"} 1]]
     [[:field {:join-alias "I"} 1]
      [:field {:join-alias "J"} 1]]
-    [1]
+    {[:field {:join-alias "J"} 1] 0}
 
     ;; if no strict match, should ignore type info and return first match
+    ;; note that the key of the returned map is the *original* haystack value
     [[:field {:base-type :type/Float} 1]]
     [[:field {:base-type :type/Number} 1]
      [:field {:base-type :type/Integer} 1]]
-    [0]
+    {[:field {:base-type :type/Number} 1] 0}
 
     ;; if no exact match, ignore :join-alias
     [[:field {} 1]]
     [[:field {:join-alias "J"} 1]
      [:field {:join-alias "J"} 2]]
-    [0]
+    {[:field {:join-alias "J"} 1] 0}
 
     ;; failed to match - ran out of transformations
     [[:field {} 1]]
     [[:field {:join-alias "J"} 2]
      [:field {:join-alias "J"} 3]]
-    [nil]))
+    {}))
 
-(deftest ^:parallel find-closest-matching-ref-3-arity-test
-  (is (= [1]
+(deftest ^:parallel find-closest-matching-ref-test
+  (are [needle haystack expected] (= expected
+                                     (lib.equality/find-closest-matching-ref needle haystack))
+    ;; strict matching
+    [:field {} 3]
+    [[:field {} 1]
+     [:field {} 2]
+     [:field {} 3]]
+    [:field {} 3]
+
+    [:field {:base-type :type/Integer} 1]
+    [[:field {:base-type :type/Number} 1]
+     [:field {:base-type :type/Integer} 1]]
+    [:field {:base-type :type/Integer} 1]
+
+    [:field {:join-alias "J"} 1]
+    [[:field {:join-alias "I"} 1]
+     [:field {:join-alias "J"} 1]]
+    [:field {:join-alias "J"} 1]
+
+    ;; if no strict match, should ignore type info and return first match
+    ;; note that the key of the returned map is the *original* haystack value
+    [:field {:base-type :type/Float} 1]
+    [[:field {:base-type :type/Number} 1]
+     [:field {:base-type :type/Integer} 1]]
+    [:field {:base-type :type/Number} 1]
+
+    ;; if no exact match, ignore :join-alias
+    [:field {} 1]
+    [[:field {:join-alias "J"} 1]
+     [:field {:join-alias "J"} 2]]
+    [:field {:join-alias "J"} 1]
+
+    ;; failed to match - ran out of transformations
+    [:field {} 1]
+    [[:field {:join-alias "J"} 2]
+     [:field {:join-alias "J"} 3]]
+    nil))
+
+(deftest ^:parallel find-closest-matches-for-refs-3-arity-test
+  (is (= {[:field {} "CATEGORY"] 0
+          [:field {} "ID"]       1}
          (lib.equality/find-closest-matches-for-refs
           meta/metadata-provider
-          [[:field {} (meta/id :products :category)]]
+          [[:field {} (meta/id :products :category)]
+           [:field {} "ID"]
+           [:field {} "NAME"]]
+          [[:field {} "ID"]
+           [:field {} "CATEGORY"]]))))
+
+(deftest ^:parallel find-closest-matching-ref-3-arity-test
+  (is (= [:field {} "CATEGORY"]
+         (lib.equality/find-closest-matching-ref
+          meta/metadata-provider
+          [:field {} (meta/id :products :category)]
+          [[:field {} "ID"]
+           [:field {} "CATEGORY"]])))
+  (is (= nil
+         (lib.equality/find-closest-matching-ref
+           meta/metadata-provider
+           [:field {} (meta/id :products :title)]
+           [[:field {} "ID"]
+            [:field {} "CATEGORY"]])))
+  (is (= [:field {} "ID"]
+         (lib.equality/find-closest-matching-ref
+          meta/metadata-provider
+          [:field {} "ID"]
           [[:field {} "ID"]
            [:field {} "CATEGORY"]]))))

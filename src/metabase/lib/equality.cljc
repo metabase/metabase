@@ -98,16 +98,23 @@
 (defn- named-refs-for-integer-refs [metadata-providerable refs]
   (keep (fn [a-ref]
           (mbql.u.match/match-one a-ref
-            [:field opts (field-id :guard integer?)]
-            (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-              [:field opts field-name])))
+                                  [:field opts (field-id :guard integer?)]
+                                  (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
+                                    [:field opts field-name])))
         refs))
 
 (defn find-closest-matches-for-refs
-  "For each ref in `needles`, find the ref in `haystack` that it most closely matches. This is meant to power things
-  like [[metabase.lib.breakout/breakoutable-columns]] which are supposed to include `:breakout-position` for columns
-  that are already present as a breakout; sometimes the column in the breakout does not exactly match what MLv2 would
-  have generated. So try to figure out which column it is referring to.
+  "For each `needles` (which must be a ref) find the column or ref in `haystack` that it most closely matches. This is
+  meant to power things like [[metabase.lib.breakout/breakoutable-columns]] which are supposed to include
+  `:breakout-position` for columns that are already present as a breakout; sometimes the column in the breakout does not
+  exactly match what MLv2 would have generated. So try to figure out which column it is referring to.
+
+  The `haystack` can be either `MetadataColumns` or refs.
+
+  Returns a map with `haystack` values as keys (whether they be columns or refs) and the corresponding index in
+  `needles` as values. If for some `needle` there is no match, that index will not appear in the map.
+
+  If you want to check that a single ref exists in a set of columns, call [[find-closest-matching-ref]] instead.
 
   This first looks for each matching ref with a strict comparison, then in increasingly less-strict comparisons until it
   finds something that matches. This is mostly to work around bugs like #31482 where MLv1 generated queries with
@@ -121,12 +128,12 @@
 
   Note that this currently only works when `needles` contain integer Field IDs. The `haystack` refs must have string
   literal column names. Luckily we currently don't have problems with MLv1/legacy queries accidentally using string
-  `:field` literals where it shouldn't have been doing so.
-
-  Returns a list parallel to `needles`, where each element is either nil (no match) or the index of the most closely
-  matching ref in `haystack`."
+  `:field` literals where it shouldn't have been doing so."
   ([needles haystack]
-   (loop [xforms      [identity ; Start with no transformation at all.
+   (loop [xforms      [;; initial xform (applied before any tests) converts any columns into refs
+                       #(cond-> %
+                          (and (map? %)
+                               (= (:lib/type %) :metadata/column)) lib.ref/ref)
                        ;; ignore irrelevant keys from :binning options
                        #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
                        ;; ignore namespaced keys
@@ -138,45 +145,69 @@
                        ;; ignore join alias
                        #(lib.options/update-options % dissoc :join-alias)]
           haystack-xf haystack
-          ;; The output list of found indexes, all nil to start.
-          results      (vec (repeat (count needles) nil))
           ;; A map of needles left to find. Keys are indexes, values are the refs to find.
-          needles      (into {} (map-indexed vector needles))]
+          ;; Any nil needles are dropped, but their indexes still count. This makes the 3-arity form easy to write.
+          needles     (into {}
+                            (comp (map-indexed vector)
+                                  (filter second))
+                            needles)
+          results     nil]
      (if (or (empty? needles)
-             (empty? xforms)
-             (every? some? results))
+             (empty? xforms))
        results
-       (let [xformed (map (first xforms) haystack-xf)
-             needles (update-vals needles (first xforms))
-             matches (for [[needle-index a-ref] needles
-                           :let [haystack-index (first (keep-indexed #(when (= %2 a-ref) %1) xformed))]
-                           :when haystack-index]
-                       [needle-index haystack-index])
-             finished-needles (set (map first matches))]
-         ;; matches is a list of [index-in-results index-in-haystack] pairs
+       (let [xformed          (map (first xforms) haystack-xf)
+             needles          (update-vals needles (first xforms))
+             matches          (into {}
+                                    (keep (fn [[needle-index a-ref]]
+                                            (when-let [match-index (first (keep-indexed #(when (= %2 a-ref) %1) xformed))]
+                                              [(nth haystack match-index) needle-index])))
+                                    needles)
+             finished-needles (set (vals matches))]
+         ;; matches is a map in the same form as results; merge them.
          (recur (rest xforms)
                 xformed
-                ;; Don't overwrite an already-populated index in the results - if it's already filled in, it was set by
-                ;; an earlier, more precise match. Note that "needles" with integer field refs have the a duplicate with
-                ;; the corresponding :name added as a duplicate needle. The first to match should win.
-                (reduce (fn [res [at to]] (update res at #(or % to))) results matches)
-                (m/remove-keys finished-needles needles))))))
+                (m/remove-keys finished-needles needles)
+                (merge results matches))))))
 
   ([metadata-providerable needles haystack]
    ;; First run with the needles as given.
-   (let [matches (find-closest-matches-for-refs needles haystack)
-         blanks  (keep-indexed #(when-not %2 %1) matches)
-         ;; Then if any of the needles were not found, try converting them to :name refs and search again.
-         by-name (when (seq blanks)
-                   (find-closest-matches-for-refs (map #(nth needles %) blanks) haystack))]
-     (when (seq by-name)
-       (reduce (fn [matches at]
-                 (when-let [named (nth by-name at)]
-                   (update matches at )
-                   )
-                 ))
-       )
-     (find-closest-matches-for-refs (concat needles named-needles) haystack))))
+   (let [matches       (find-closest-matches-for-refs needles haystack)
+         ;; Those that were matched are replaced with nil.
+         blank-matched (reduce #(assoc %1 %2 nil) needles (vals matches))
+         ;; Those that remain are converted to [:field {} "name"] refs if possible, or nil if not.
+         converted     (when (and metadata-providerable
+                                  (some some? blank-matched))
+                         (for [needle blank-matched]
+                           (when needle
+                             (mbql.u.match/match-one needle
+                               [:field opts (field-id :guard integer?)]
+                               (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
+                                 [:field opts field-name])))))]
+     (if converted
+       ;; If any of the needles were not found, and were converted successfully, try to match them again.
+       (merge matches (find-closest-matches-for-refs converted haystack))
+       ;; If we found them all, just return the matches.
+       matches))))
+
+(defn find-closest-matching-ref
+  "Given a target `a-ref` and a list `refs-or-cols` of `MetadataColumns` or refs, and finds the closest match.
+  Returns the value from `refs-or-cols` which most closely corresponds to `a-ref`, or nil if nothing matches.
+
+  See [[find-closest-matches-for-refs]] for details of how the approximate matching works. (Where
+  [[find-closest-matches-for-refs]] would return `{column 0}`, this returns just `column`.)"
+  ([a-ref refs-or-cols]
+   (->> (find-closest-matches-for-refs [a-ref] refs-or-cols)
+        keys
+        first))
+
+  ([metadata-providerable a-ref refs-or-cols]
+   (->> (find-closest-matches-for-refs metadata-providerable [a-ref] refs-or-cols)
+        keys
+        first)))
+
+;; START HERE: Find all existing uses of find-closest-matches-for-refs and refactor them for the new return value.
+;; Then find all uses for `find-closest-matching-ref` refactor to use `find-closest-matches-for-refs` if better.
+;; *Then* write some tests to make sure it works in all the cases we wanted it to, with columns and all.
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching

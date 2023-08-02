@@ -235,10 +235,9 @@
     stage-number :- :int
     a-filter-clause :- ::lib.schema.expression/boolean]
    (let [[op _ first-arg] a-filter-clause
-         stage (lib.util/query-stage query stage-number)
+         stage   (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         ref->col (zipmap (map lib.ref/ref columns) columns)
-         col-ref (lib.equality/find-closest-matching-ref first-arg (keys ref->col))]
+         column  (lib.equality/find-closest-matching-ref first-arg columns)]
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
-                                    (lib.filter.operator/filter-operators (ref->col col-ref)))
+                                    (lib.filter.operator/filter-operators column))
                       (lib.filter.operator/operator-def op)))))
