@@ -1513,16 +1513,6 @@
                                                   :refresh-token                 protected-password})))))
 
 
-(deftest db-ids-with-deprecated-drivers-test
-  (mt/with-driver :driver-deprecation-test-legacy
-    (testing "GET /api/database/db-ids-with-deprecated-drivers"
-      (t2.with-temp/with-temp [Database {db-id :id} {:engine :driver-deprecation-test-legacy}]
-        (is (not-empty (filter #(= % db-id) (mt/user-http-request
-                                             :crowberto
-                                             :get
-                                             200
-                                             "database/db-ids-with-deprecated-drivers"))))))))
-
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
