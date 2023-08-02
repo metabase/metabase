@@ -173,7 +173,7 @@
               {:group-mappings (ldap/ldap-group-mappings)}))))))
 
 (deftest valid-group-mapping
-  (testing "Validating that the LDAP keyword can contain a forward slash (#29629)"
+  (testing "Validating that a group mapping DN can contain a forward slash when set as a keyword (#29629)"
     (mt/with-temporary-setting-values
       [ldap-group-mappings nil]
       (ldap/ldap-group-mappings! {(keyword "CN=People,OU=Security/Distribution Groups,DC=metabase,DC=com") []})
