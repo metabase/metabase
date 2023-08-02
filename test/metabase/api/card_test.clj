@@ -2508,7 +2508,7 @@
         (#'task.sync-databases/job-init)
         (mt/with-temporary-setting-values [:persisted-models-enabled true]
           ;; Use a postgres DB because it supports the :persist-models feature
-          (mt/with-temp* [Database [db {:options {:persist-models-enabled true}, :engine :postgres}]]
+          (mt/with-temp* [Database [db {:settings {:persist-models-enabled true}, :engine :postgres}]]
             (f db)))
         (finally
           (qs/shutdown sched))))))
