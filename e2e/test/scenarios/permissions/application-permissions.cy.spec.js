@@ -175,10 +175,6 @@ describeEE("scenarios > admin > permissions > application", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Sorry, you don’t have permission to see that.");
 
-        cy.visit("/admin/tools/errors");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Sorry, you don’t have permission to see that.");
-
         cy.visit("/admin/troubleshooting/help");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Sorry, you don’t have permission to see that.");

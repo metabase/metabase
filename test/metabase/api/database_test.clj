@@ -7,6 +7,7 @@
    [metabase.api.database :as api.database]
    [metabase.api.table :as api.table]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
@@ -287,7 +288,7 @@
                                         :details {:db "my_db"}}))))))
 
     (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
-      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (mt/user-http-request :crowberto :post 402 "database"
                               {:name      (mt/random-name)
                                :engine    (u/qualified-name ::test-driver)
@@ -295,9 +296,18 @@
                                :cache_ttl 13})))
 
     (testing "should allow setting `cache_ttl` on EE"
-      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
+
+(deftest disallow-creating-h2-database-test
+  (testing "POST /api/database/:id"
+    (mt/with-model-cleanup [Database]
+      (let [db-name (mt/random-name)
+            details (:details (mt/db))]
+        (is (= {:message "H2 is not supported as a data warehouse"}
+               (mt/user-http-request :crowberto :post 400 "database" {:engine :h2, :name db-name, :details details})))
+        (is (not (t2/exists? Database :name db-name)))))))
 
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
@@ -310,6 +320,11 @@
       (t2.with-temp/with-temp [Database db]
         (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))))
 
+(defn- api-update-database! [expected-status-code db-or-id changes]
+  (with-redefs [h2/*allow-testing-h2-connections* true]
+    (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" (u/the-id db-or-id))
+                          changes)))
+
 (deftest update-database-test
   (testing "PUT /api/database/:id"
     (testing "Check that we can update fields in a Database"
@@ -319,9 +334,10 @@
                        :is_full_sync false
                        :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}}
               update! (fn [expected-status-code]
-                        (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
+                        (api-update-database! expected-status-code db-id updates))]
           (testing "Should check that connection details are valid on save"
-            (is (string? (:message (update! 400)))))
+            (is (=? {:errors {:db "check your connection string"}}
+                    (update! 400))))
           (testing "If connection details are valid, we should be able to update the Database"
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
@@ -347,7 +363,7 @@
                  (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
 
     (testing "should not be able to modify `cache_ttl` in OSS"
-      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates {:cache_ttl 13}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
@@ -355,7 +371,7 @@
                  (t2/select-one-fn :cache_ttl Database, :id db-id))))))
 
     (testing "should be able to set and unset `cache_ttl` in EE"
-      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (t2.with-temp/with-temp [Database {db-id :id} {:engine ::test-driver}]
           (let [updates1 {:cache_ttl 1337}
                 updates2 {:cache_ttl nil}
@@ -367,6 +383,27 @@
             (updates2!)
             (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
+
+(deftest disallow-updating-h2-database-details-test
+  (testing "PUT /api/database/:id"
+    (letfn [(update! [db request-body]
+              (mt/user-http-request :crowberto :put 400 (str "database/" (u/the-id db)) request-body))]
+      (t2.with-temp/with-temp [Database db {:name    (mt/random-name)
+                                            :details (:details (mt/db))
+                                            :engine  :postgres}]
+        (testing "Don't allow changing engine to H2"
+          (is (= {:message "H2 is not supported as a data warehouse"}
+                 (update! db {:engine :h2})))
+          (is (= :postgres
+                 (t2/select-one-fn :engine Database (u/the-id db))))))
+      (t2.with-temp/with-temp [Database db {:name    (mt/random-name)
+                                            :details (:details (mt/db))
+                                            :engine  :h2}]
+        (testing "Don't allow editing H2 connection details"
+          (is (= {:message "H2 is not supported as a data warehouse"}
+                 (update! db {:details {:db "mem:test-data;USER=GUEST;PASSWORD=guest;WHATEVER=true"}})))
+          (is (= (:details db)
+                 (t2/select-one-fn :details Database (u/the-id db)))))))))
 
 (deftest enable-model-actions-with-user-controlled-scheduling-test
   (testing "Should be able to enable/disable actions for a database with user-controlled scheduling (metabase#30699)"
@@ -474,6 +511,14 @@
                         :fields
                         (map :name)
                         (some (partial = "PRICE"))))))))))
+
+(deftest fetch-database-metadata-remove-inactive-test
+  (mt/with-temp* [Database [{db-id :id}]
+                  Table    [_ {:db_id db-id, :active false}]]
+    (testing "GET /api/database/:id/metadata?include_hidden=true"
+        (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
+                          :tables)]
+          (is (= () tables))))))
 
 (deftest autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
@@ -846,14 +891,13 @@
       (testing "We cannot if we don't mark `:let-user-control-scheduling`"
         (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
           (is (=? (select-keys (mt/db) [:cache_field_values_schedule :metadata_sync_schedule])
-                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
-                                        (assoc db :schedules attempted))))
+                  (api-update-database! 200 db (assoc db :schedules attempted))))
           (is (not= expected
                     (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "We can if we mark `:let-user-control-scheduling`"
         (t2.with-temp/with-temp [Database db {:engine "h2", :details (:details (mt/db))}]
           (is (=? expected
-                  (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                  (api-update-database! 200 db
                                         (-> (into {} db)
                                             (assoc :schedules attempted)
                                             (assoc-in [:details :let-user-control-scheduling] true)))))
@@ -865,7 +909,7 @@
                                                                                     :let-user-control-scheduling true)}
                                                       original-custom-schedules)]
             (is (=? {:id (u/the-id db)}
-                    (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
+                    (api-update-database! 200 db
                                           (assoc-in db [:details :let-user-control-scheduling] false))))
             (let [schedules (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
               (is (not= original-custom-schedules schedules))
@@ -968,33 +1012,46 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 (format "database/%d/discard_values" (mt/id)))))))
 
+(defn- api-validate-database
+  ([request-body]
+   (api-validate-database nil request-body))
+
+  ([{:keys [expected-status-code user]
+     :or   {expected-status-code 200
+            user                 :crowberto}}
+    request-body]
+   (with-redefs [h2/*allow-testing-h2-connections* true]
+     (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
+
+(defn- test-connection-details [engine details]
+  (with-redefs [h2/*allow-testing-h2-connections* true]
+    (#'api.database/test-connection-details engine details)))
+
 (deftest validate-database-test
   (testing "POST /api/database/validate"
     (testing "Should require superuser permissions"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "database/validate"
-                                   {:details {:engine :h2, :details (:details (mt/db))}}))))
+             (api-validate-database {:user :rasta, :expected-status-code 403}
+                                    {:details {:engine :h2, :details (:details (mt/db))}}))))
 
     (testing "Underlying `test-connection-details` function should work"
       (is (= (:details (mt/db))
-             (#'api.database/test-connection-details "h2" (:details (mt/db))))))
+             (test-connection-details "h2" (:details (mt/db))))))
 
     (testing "Valid database connection details"
       (is (= {:valid true}
-             (mt/user-http-request :crowberto :post 200 "database/validate"
-                                   {:details {:engine :h2, :details (:details (mt/db))}}))))
+             (api-validate-database {:details {:engine :h2, :details (:details (mt/db))}}))))
 
     (testing "invalid database connection details"
       (testing "calling test-connection-details directly"
-        (is (= {:errors {:db "check your connection string"}
+        (is (= {:errors  {:db "check your connection string"}
                 :message "Implicitly relative file paths are not allowed."
                 :valid   false}
-               (#'api.database/test-connection-details "h2" {:db "ABC"}))))
+               (test-connection-details "h2" {:db "ABC"}))))
 
       (testing "via the API endpoint"
         (is (= {:valid false}
-               (mt/user-http-request :crowberto :post 200 "database/validate"
-                                     {:details {:engine :h2, :details {:db "ABC"}}})))))
+               (api-validate-database {:details {:engine :h2, :details {:db "ABC"}}})))))
 
     (let [call-count (atom 0)
           ssl-values (atom [])
@@ -1455,16 +1512,6 @@
                                                   :refresh-token                 protected-password})))))
 
 
-(deftest db-ids-with-deprecated-drivers-test
-  (mt/with-driver :driver-deprecation-test-legacy
-    (testing "GET /api/database/db-ids-with-deprecated-drivers"
-      (t2.with-temp/with-temp [Database {db-id :id} {:engine :driver-deprecation-test-legacy}]
-        (is (not-empty (filter #(= % db-id) (mt/user-http-request
-                                             :crowberto
-                                             :get
-                                             200
-                                             "database/db-ids-with-deprecated-drivers"))))))))
-
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
@@ -1550,8 +1597,11 @@
       (letfn [(settings []
                 (t2/select-one-fn :settings Database :id (mt/id)))
               (set-settings! [m]
-                (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
-                                      {:settings m}))]
+                (with-redefs [h2/*allow-testing-h2-connections* true]
+                  (u/prog1 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
+                                                 {:settings m})
+                    (is (=? {:id (mt/id)}
+                            <>)))))]
         (testing "Should initially be nil"
           (is (nil? (settings))))
         (testing "Set initial value"
@@ -1609,7 +1659,7 @@
               (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
                                                   :database_id db-id
                                                   :card_id     (:id card))))
-              (is (true? (t2/select-one-fn (comp :persist-models-enabled :options)
+              (is (true? (t2/select-one-fn (comp :persist-models-enabled :settings)
                                            Database
                                            :id db-id))))
             (testing "it's okay to trigger persist even though the database is already persisted"
@@ -1630,7 +1680,7 @@
             (testing "should be able to persit an database"
               ;; trigger persist first
               (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist"))
-              (is (nil? (t2/select-one-fn (comp :persist-models-enabled :options)
+              (is (nil? (t2/select-one-fn (comp :persist-models-enabled :settings)
                                           Database
                                           :id db-id))))
             (testing "it's okay to unpersist even though the database is not persisted"

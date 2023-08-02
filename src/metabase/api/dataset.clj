@@ -186,14 +186,13 @@
     (qp.streaming/streaming-response [context :api]
       (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
 
-
 (defn- parameter-field-values
   [field-ids query]
   (when-not (seq field-ids)
     (throw (ex-info (tru "Missing field-ids for parameter")
                     {:status-code 400})))
   (-> (reduce (fn [resp id]
-                (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
+                (let [{values :values more? :has_more_values} (api.field/search-values-from-field-id id query)]
                   (-> resp
                       (update :values concat values)
                       (update :has_more_values #(or % more?)))))
@@ -223,7 +222,7 @@
   [query :as {{:keys [parameter field_ids]} :body}]
   {parameter ms/Parameter
    field_ids [:maybe [:sequential ms/PositiveInt]]
-   query     :string}
+   query     ms/NonBlankString}
   (parameter-values parameter field_ids query))
 
 (api/define-routes)
