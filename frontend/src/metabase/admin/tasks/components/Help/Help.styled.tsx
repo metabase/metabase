@@ -20,7 +20,15 @@ export const InfoBlockRoot = styled.div`
 `;
 
 export const InfoBlockButton = styled.div`
+  position: absolute;
+  top: 0;
+  right: 0;
   margin: 1rem;
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
 `;
 
 export const HelpExternalLink = styled(ExternalLink)`

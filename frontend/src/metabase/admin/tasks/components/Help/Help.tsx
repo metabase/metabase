@@ -82,7 +82,7 @@ interface InfoBlockProps {
 
 const InfoBlock = ({ children }: InfoBlockProps) => (
   <InfoBlockRoot className="bordered rounded bg-light relative">
-    <InfoBlockButton className="absolute top right text-brand-hover cursor-pointer">
+    <InfoBlockButton>
       <CopyButton value={children} />
     </InfoBlockButton>
     <Code>{children}</Code>
