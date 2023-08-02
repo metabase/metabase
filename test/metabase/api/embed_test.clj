@@ -311,6 +311,120 @@
      (testing (format "response-format = %s\n" (pr-str response-format#))
        ~@body)))
 
+(deftest card-query-test
+  (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
+    (do-response-formats [response-format request-options]
+      (testing "check that the endpoint doesn't work if embedding isn't enabled"
+        (mt/with-temporary-setting-values [enable-embedding false]
+          (with-new-secret-key
+            (with-temp-card [card]
+              (is (= "Embedding is not enabled."
+                     (client/client :get 400 (card-query-url card response-format))))))))
+
+      (with-embedding-enabled-and-new-secret-key
+        (let [expected-status (response-format->status-code response-format)]
+          (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
+            (with-temp-card [card {:enable_embedding true}]
+              #_{:clj-kondo/ignore [:deprecated-var]}
+              (test-query-results
+               response-format
+               (client/client :get expected-status (card-query-url card response-format)
+                              {:request-options request-options}))))
+
+          (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
+                        "exception (rather than leaking query info)")
+            (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT * FROM XYZ"}}}]
+              (is (= {:status     "failed"
+                      :error      "An error occurred while running the query."
+                      :error_type "invalid-query"}
+                     (client/client :get expected-status (card-query-url card response-format)))))))
+
+        (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
+          (with-temp-card [card]
+            (is (= "Embedding is not enabled for this object."
+                   (client/client :get 400 (card-query-url card response-format))))))
+
+        (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
+                      "signed with the wrong key")
+          (with-temp-card [card {:enable_embedding true}]
+            (is (= "Message seems corrupt or manipulated."
+                   (client/client :get 400 (with-new-secret-key (card-query-url card response-format)))))))))))
+
+(deftest download-formatted-without-constraints-test
+  (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if "
+                "the query comes in with `add-default-userland-constraints` (as will be the case if the query gets "
+                "saved from one that had it -- see #9831 and #10399)")
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-card [card {:enable_embedding true
+                               :dataset_query    (assoc (mt/mbql-query venues)
+                                                        :middleware
+                                                        {:add-default-userland-constraints? true
+                                                         :userland-query?                   true})}]
+          (let [results (client/client :get 200 (card-query-url card "/csv"))]
+            (is (= 101
+                   (count (csv/read-csv results))))))))))
+
+(deftest card-locked-params-test
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "locked"}}]
+      (do-response-formats [response-format request-options]
+        (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
+                      "missing a `:locked` parameter")
+          (is (= "You must specify a value for :venue_id in the JWT."
+                 (client/client :get 400 (card-query-url card response-format)))))
+
+        (testing "if `:locked` param is present, request should succeed"
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (test-query-results
+           response-format
+           (client/client :get (response-format->status-code response-format)
+                          (card-query-url card response-format {:params {:venue_id 100}})
+                          {:request-options request-options})))
+
+        (testing "If `:locked` parameter is present in URL params, request should fail"
+          (is (= "You can only specify a value for :venue_id in the JWT."
+                 (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100")))))))))
+
+(deftest card-disabled-params-test
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "disabled"}}]
+      (do-response-formats [response-format _request-options]
+        (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
+                      "`:disabled` parameter")
+          (is (= "You're not allowed to specify a value for :venue_id."
+                 (client/client :get 400 (card-query-url card response-format {:params {:venue_id 100}})))))
+
+        (testing "If a `:disabled` param is passed in the URL the request should fail"
+          (is (= "You're not allowed to specify a value for :venue_id."
+                 (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
+
+(deftest card-enabled-params-test
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "enabled"}}]
+      (do-response-formats [response-format request-options]
+        (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
+          (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
+                 (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
+
+        (testing "If an `:enabled` param is present in the JWT, that's ok"
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (test-query-results
+           response-format
+           (client/client :get (response-format->status-code response-format)
+                          (card-query-url card response-format {:params {:venue_id "enabled"}})
+                          {:request-options request-options})))
+
+        (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (test-query-results
+           response-format
+           (client/client :get (response-format->status-code response-format)
+                          (str (card-query-url card response-format) "?venue_id=200")
+                          {:request-options request-options})))))))
+
 (defn- card-with-date-field-filter-default
   []
   {:enable_embedding true
@@ -361,122 +475,6 @@
           (testing "an empty string value is invalid and should result in an error"
             (is (= "You must specify a value for :date in the JWT."
                    (client/client :get 400 (card-query-url card "" {:params {:date ""}}))))))))))
-
-(deftest card-query-test
-  (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
-    (do-response-formats [response-format request-options]
-      (testing "check that the endpoint doesn't work if embedding isn't enabled"
-        (mt/with-temporary-setting-values [enable-embedding false]
-          (with-new-secret-key
-            (with-temp-card [card]
-              (is (= "Embedding is not enabled."
-                     (client/client :get 400 (card-query-url card response-format))))))))
-
-      (with-embedding-enabled-and-new-secret-key
-        (let [expected-status (response-format->status-code response-format)]
-          (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
-            (with-temp-card [card {:enable_embedding true}]
-              #_{:clj-kondo/ignore [:deprecated-var]}
-              (test-query-results
-               response-format
-               (client/client :get expected-status (card-query-url card response-format)
-                              {:request-options request-options}))))
-
-          (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
-                        "exception (rather than leaking query info)")
-            (with-temp-card [card {:enable_embedding true, :dataset_query {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query "SELECT * FROM XYZ"}}}]
-              (is (= {:status     "failed"
-                      :error      "An error occurred while running the query."
-                      :error_type "invalid-query"}
-                     (client/client :get expected-status (card-query-url card response-format)))))))
-
-        (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
-          (with-temp-card [card]
-            (is (= "Embedding is not enabled for this object."
-                   (client/client :get 400 (card-query-url card response-format))))))
-
-        (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
-                      "signed with the wrong key")
-          (with-temp-card [card {:enable_embedding true}]
-            (is (= "Message seems corrupt or manipulated."
-                   (client/client :get 400 (with-new-secret-key (card-query-url card response-format)))))))))))
-
-
-(deftest download-formatted-without-constraints-test
-  (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if "
-                "the query comes in with `add-default-userland-constraints` (as will be the case if the query gets "
-                "saved from one that had it -- see #9831 and #10399)")
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
-      (with-embedding-enabled-and-new-secret-key
-        (with-temp-card [card {:enable_embedding true
-                               :dataset_query    (assoc (mt/mbql-query venues)
-                                                        :middleware
-                                                        {:add-default-userland-constraints? true
-                                                         :userland-query?                   true})}]
-          (let [results (client/client :get 200 (card-query-url card "/csv"))]
-            (is (= 101
-                   (count (csv/read-csv results))))))))))
-
-(deftest card-locked-params-test
-  (with-embedding-enabled-and-new-secret-key
-    (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "locked"}}]
-      (do-response-formats [response-format request-options]
-        (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
-                      "missing a `:locked` parameter")
-          (is (= "You must specify a value for :venue_id in the JWT."
-                 (client/client :get 400 (card-query-url card response-format)))))
-
-        (testing "if `:locked` param is present, request should succeed"
-          #_{:clj-kondo/ignore [:deprecated-var]}
-          (test-query-results
-           response-format
-           (client/client :get (response-format->status-code response-format)
-                          (card-query-url card response-format {:params {:venue_id 100}})
-                          {:request-options request-options})))
-
-        (testing "If `:locked` parameter is present in URL params, request should fail"
-          (is (= "You can only specify a value for :venue_id in the JWT."
-                 (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100")))))))))
-
-
-(deftest card-disabled-params-test
-  (with-embedding-enabled-and-new-secret-key
-    (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "disabled"}}]
-      (do-response-formats [response-format _request-options]
-        (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
-                      "`:disabled` parameter")
-          (is (= "You're not allowed to specify a value for :venue_id."
-                 (client/client :get 400 (card-query-url card response-format {:params {:venue_id 100}})))))
-
-        (testing "If a `:disabled` param is passed in the URL the request should fail"
-          (is (= "You're not allowed to specify a value for :venue_id."
-                 (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
-
-(deftest card-enabled-params-test
-  (with-embedding-enabled-and-new-secret-key
-    (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "enabled"}}]
-      (do-response-formats [response-format request-options]
-        (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
-          (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
-                 (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
-
-        (testing "If an `:enabled` param is present in the JWT, that's ok"
-          #_{:clj-kondo/ignore [:deprecated-var]}
-          (test-query-results
-           response-format
-           (client/client :get (response-format->status-code response-format)
-                          (card-query-url card response-format {:params {:venue_id "enabled"}})
-                          {:request-options request-options})))
-
-        (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
-          #_{:clj-kondo/ignore [:deprecated-var]}
-          (test-query-results
-           response-format
-           (client/client :get (response-format->status-code response-format)
-                          (str (card-query-url card response-format) "?venue_id=200")
-                          {:request-options request-options})))))))
 
 (defn- card-with-date-field-filter []
   {:dataset_query    {:database (mt/id)
