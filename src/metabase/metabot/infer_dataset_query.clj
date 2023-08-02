@@ -37,17 +37,9 @@
   - pMBQL/MBQLv2 needs to be converted to legacy MBQL
   - Native queries need to have template tags added to their results"
   [{:keys [dataset_query]}]
-  (cond
-    (:lib/type dataset_query)
+  (if (:lib/type dataset_query)
     (lib.convert/->legacy-MBQL (lib/normalize dataset_query))
-    (:native dataset_query)
-    (let [{native-query :native} dataset_query
-          {:keys [inner-query]} native-query
-          template-tags (lib-native/extract-template-tags inner-query)]
-      (-> dataset_query
-          (update :native dissoc :inner-query)
-          (assoc-in [:native :template-tags] template-tags)))
-    :else dataset_query))
+    dataset_query))
 
 (defn infer-dataset-query
   "Generate a dataset query from a prompt."
