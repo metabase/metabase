@@ -1,9 +1,9 @@
-{
+{".$_-0/build.deps.edn_js-t.jwt"
  ;; we have to copy over the Maven repos used for the Athena and Redshift drivers to here as well -- this is
  ;; apparently done on purpose, as a security thing. See
  ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
- :mvn/repos
- {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+ ".$_-0/":.$-0-mvn/"repos"
+ {"athena"   {":url" "https://s3.amazonaws.com/maven-athena"}
   "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
 
  :deps
