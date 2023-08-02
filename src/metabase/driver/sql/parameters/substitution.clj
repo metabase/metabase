@@ -199,7 +199,8 @@
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
-(s/defn ^:private date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo
+(s/defn date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo
+  "A docs"
   [driver value]
   (->> (params.dates/date-string->range value)
        params/map->DateRange
