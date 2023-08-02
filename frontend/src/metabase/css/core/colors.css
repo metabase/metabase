@@ -136,15 +136,6 @@
   }
 }
 
-/* common pattern, background brand, text white when hovering or selected */
-.brand-hover:hover {
-  color: var(--color-text-white);
-  background-color: var(--color-brand);
-}
-.brand-hover:hover * {
-  color: var(--color-text-white);
-}
-
 .bg-white,
 :local(.bg-white) {
   background-color: var(--color-bg-white);
