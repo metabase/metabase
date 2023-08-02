@@ -35,9 +35,7 @@
 
 /* brand */
 .text-brand,
-:local(.text-brand),
-.text-brand-hover:hover,
-:local(.text-brand-hover):hover {
+:local(.text-brand) {
   color: var(--color-brand);
 }
 

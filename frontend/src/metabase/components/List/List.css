@@ -62,12 +62,6 @@
   overflow: hidden;
 }
 
-:local(.itemName) {
-  composes: text-brand-hover mr1 from "style";
-  max-width: 100%;
-  overflow: hidden;
-}
-
 :local(.itemSubtitle) {
   color: var(--subtitle-color);
   max-width: 600px;
