@@ -160,6 +160,19 @@ export function DashCardCardParameterMapper({
             />
           ),
         };
+      } else if (target != null) {
+        return {
+          buttonVariant: "invalid",
+          buttonText: t`Unknown Field`,
+          buttonIcon: (
+            <CloseIconButton
+              onClick={e => {
+                handleChangeTarget(null);
+                e.stopPropagation();
+              }}
+            />
+          ),
+        };
       } else {
         return {
           buttonVariant: "default",
@@ -172,6 +185,7 @@ export function DashCardCardParameterMapper({
       hasPermissionsToMap,
       isDisabled,
       selectedMappingOption,
+      target,
       handleChangeTarget,
       isVirtual,
     ]);
