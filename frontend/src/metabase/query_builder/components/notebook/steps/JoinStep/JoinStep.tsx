@@ -323,7 +323,7 @@ function JoinCondition({
 
   return (
     <ConditionContainer>
-      <Flex align="center" gap="4px" h="47px" px="4px">
+      <Flex align="center" gap="4px" mih="47px" p="4px">
         <Box ml={!lhsColumn ? "4px" : undefined}>
           <JoinConditionColumnPicker
             query={query}
