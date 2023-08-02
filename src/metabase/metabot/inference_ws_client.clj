@@ -35,6 +35,10 @@
      (metabot-settings/metabot-inference-ws-url)
      obj-strs->encoddings)))
 
+(comment
+  (bulk-embeddings {"ABC" "123"})
+  )
+
 (defn keywordize-types
   [mbql]
   (walk/postwalk (fn [x]
