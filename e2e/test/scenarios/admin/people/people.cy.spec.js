@@ -95,10 +95,24 @@ describe("scenarios > admin > people", () => {
 
       // should load the members when navigating to the group directly
       cy.visit(`/admin/people/groups/${DATA_GROUP}`);
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("2 members");
 
-      removeUserFromGroup(noCollectionUserName);
+      cy.findByRole("list", { name: "admin-list-items" })
+        .findByRole("link", { name: /people/i })
+        .click();
+
+      showUserOptions(noCollectionUserName);
+
+      popover().findByText("Deactivate user").click();
+
+      clickButton("Deactivate");
+
+      cy.findByRole("link", { name: /group/i }).click();
+
+      cy.findByRole("table").findByRole("link", { name: /data/i }).click();
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1 member");
 
