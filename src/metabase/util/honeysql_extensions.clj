@@ -46,8 +46,8 @@
 
 (defn identifier->components
   "Given an identifer return its component.
-  (identifier->name (identifier :field :metabase :user :email))
-  => \"email\")
+  (identifier->components (identifier :field :metabase :user :email))
+  => (\"metabase\" \"user\" \"email\"))
   "
   [identifier]
   #_{:clj-kondo/ignore [:deprecated-var]}
