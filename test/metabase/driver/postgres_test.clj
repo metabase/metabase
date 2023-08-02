@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [malli.core :as mc]
    [metabase.config :as config]
+   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
@@ -938,6 +939,37 @@
                        (mt/native-query)
                        (qp/process-query)
                        (mt/rows))))))))))
+
+(deftest sync-json-with-composite-pks-test
+  (testing "Make sure sync a table with json columns that have composite pks works"
+    (mt/test-driver :postgres
+      (drop-if-exists-and-create-db! "composite-pks-test")
+      (with-redefs [metadata-queries/nested-field-sample-limit 4]
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
+                                    (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
+                                                                     [2 2 "{\"int_turn_string\":2}"]
+                                                                     [3 3 "{\"int_turn_string\":3}"]
+                                                                     [4 4 "{\"int_turn_string\":4}"]
+                                                                     [4 5 "{\"int_turn_string\":\"x\"}"]
+                                                                     [4 6 "{\"int_turn_string\":5}"]]]
+                                      (format "INSERT INTO PUBLIC.json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
+            (jdbc/execute! spec [statement]))
+          (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+            (mt/with-db database
+              (sync-tables/sync-tables-and-database! database)
+              (is (= #{{:name              "json_val → int_turn_string",
+                        :database-type     "text"
+                        :base-type         :type/Text
+                        :database-position 0
+                        :json-unfolding    false
+                        :visibility-type   :normal
+                        :nfc-path          [:json_val "int_turn_string"]}}
+                     (sql-jdbc.sync/describe-nested-field-columns
+                      :postgres
+                      database
+                      (t2/select-one Table :db_id (mt/id) :name "json_table")))))))))))
 
 (defn- pretty-sql [s]
   (-> s
