@@ -401,6 +401,32 @@
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
+(defn ^:export add-field
+  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage of the query, aggregation or breakout:
+      - Add it to the `:fields` list
+      - If `:fields` is missing, it's implicitly `:all`, so do nothing.
+  - Implicit join: add it to the `:fields` list; query processor will do the right thing with it.
+  - Explicit join: add it to that join's `:fields` list.
+  - Custom expression: Do nothing - expressions are always included."
+  [a-query stage-number column]
+  (lib.core/add-field a-query stage-number column))
+
+(defn ^:export remove-field
+  "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
+  query. Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage, aggregations or breakouts:
+      - If `:fields` is missing, it's implicitly `:all` - populate it with all the columns except the removed one.
+      - Remove the target column from the `:fields` list
+  - Implicit join: remove it from the `:fields` list; do nothing if it's not there.
+      - (An implicit join only exists in the `:fields` clause, so if it's not there then it's not anywhere.)
+  - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables).
+  - Custom expression: Throw! Custom expressions are always returned. To remove a custom expression, the expression
+    itself should be removed from the query."
+  [a-query stage-number column]
+  (lib.core/remove-field a-query stage-number column))
+
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
