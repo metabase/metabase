@@ -8,6 +8,7 @@ import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
 
 import AlertListPopoverContent from "../AlertListPopoverContent";
+import { AlertIcon } from "./QuestionAlertWidget.styled";
 
 export default class QuestionAlertWidget extends Component {
   state = {
@@ -67,11 +68,11 @@ export default class QuestionAlertWidget extends Component {
       );
     } else {
       return (
-        <Icon
+        <AlertIcon
           name="bell"
           tooltip={t`Get alerts`}
           size={20}
-          className={cx(className, "text-brand-hover cursor-pointer")}
+          className={className}
           onClick={onCreateAlert}
         />
       );
