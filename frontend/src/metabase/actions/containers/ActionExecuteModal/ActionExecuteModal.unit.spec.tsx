@@ -9,10 +9,8 @@ import {
 } from "metabase-types/api/mocks";
 import { ActionsApi } from "metabase/services";
 
-import {
-  ActionExecuteModal,
-  type ActionExecuteModalProps,
-} from "./ActionExecuteModal";
+import type { ActionExecuteModalProps } from "./ActionExecuteModal";
+import { ActionExecuteModal } from "./ActionExecuteModal";
 
 const parameter1 = createMockActionParameter({
   id: "parameter_1",
