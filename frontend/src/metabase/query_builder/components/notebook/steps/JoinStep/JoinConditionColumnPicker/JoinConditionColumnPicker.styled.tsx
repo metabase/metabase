@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { Flex } from "metabase/ui";
 import QueryColumnPicker from "metabase/common/components/QueryColumnPicker/QueryColumnPicker";
 import { color, darken } from "metabase/lib/colors";
 
@@ -18,11 +17,12 @@ const hasColumnStyle = css`
   border-radius: 6px;
 `;
 
-export const JoinConditionCellItem = styled(Flex)<{
+export const JoinConditionCellItem = styled.button<{
   hasColumnSelected: boolean;
   isOpen?: boolean;
   readOnly?: boolean;
 }>`
+  display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 2px;
@@ -35,7 +35,8 @@ export const JoinConditionCellItem = styled(Flex)<{
   background: ${props =>
     props.isOpen ? darken("brand", 0.15) : "transparent"};
 
-  &:hover {
+  &:hover,
+  &:focus {
     background: ${darken("brand", 0.15)};
   }
 `;
