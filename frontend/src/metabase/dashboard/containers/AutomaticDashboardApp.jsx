@@ -37,6 +37,7 @@ import { isSegment } from "metabase-lib/queries/utils/filter";
 import {
   ItemContent,
   ItemDescription,
+  ItemLink,
   ListRoot,
   SidebarHeader,
   SidebarRoot,
@@ -274,10 +275,10 @@ const SuggestionsList = ({ suggestions, section }) => (
         </SuggestionSectionHeading>
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
-            <Link
+            <ItemLink
               key={itemIndex}
               to={item.url}
-              className="mb1 block hover-parent hover--visibility text-brand-hover"
+              className="hover-parent hover--visibility"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
             >
               <Card className="p2" hoverable>
@@ -295,7 +296,7 @@ const SuggestionsList = ({ suggestions, section }) => (
                   </ItemDescription>
                 </ItemContent>
               </Card>
-            </Link>
+            </ItemLink>
           ))}
       </li>
     ))}
