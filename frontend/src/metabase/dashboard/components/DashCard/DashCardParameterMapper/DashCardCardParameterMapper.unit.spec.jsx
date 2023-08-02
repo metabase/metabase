@@ -124,6 +124,27 @@ describe("DashCardParameterMapper", () => {
     expect(screen.getByText(/Variable to map to/i)).toBeInTheDocument();
   });
 
+  it("should render an error state when a field is not present in the list of options", () => {
+    const card = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({
+        query: {
+          "source-table": 1,
+        },
+      }),
+      display: "scalar",
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardOrderedCard({
+        card,
+      }),
+      mappingOptions: [["dimension", ["field", 1]]],
+      target: ["dimension", ["field", 2]],
+      isMobile: true,
+    });
+    expect(screen.getByText(/unknown field/i)).toBeInTheDocument();
+  });
+
   it("should show header content when card is more than 2 units high", () => {
     const numberCard = createMockCard({
       dataset_query: createMockStructuredDatasetQuery({}),

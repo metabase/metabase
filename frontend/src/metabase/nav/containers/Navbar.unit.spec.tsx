@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import * as dom from "metabase/lib/dom";
 
 import {
   renderWithProviders,
@@ -15,6 +16,7 @@ import type { User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockAppState,
+  createMockEmbedState,
   createMockState,
 } from "metabase-types/store/mocks";
 
@@ -25,6 +27,7 @@ type SetupOpts = {
   route?: string;
   pathname?: string;
   user?: User | null;
+  embedOptions?: Record<string, string | boolean>;
 };
 
 async function setup({
@@ -32,18 +35,18 @@ async function setup({
   pathname = "/",
   route = pathname,
   user = createMockUser(),
+  embedOptions = {},
 }: SetupOpts = {}) {
   const hasContentToFetch = !!user;
   const isAdminApp = pathname.startsWith("/admin");
 
-  if (hasContentToFetch) {
-    setupCollectionsEndpoints({ collections: [] });
-    setupDatabasesEndpoints([createMockDatabase()]);
-    fetchMock.get("path:/api/bookmark", []);
-  }
+  setupCollectionsEndpoints({ collections: [] });
+  setupDatabasesEndpoints([createMockDatabase()]);
+  fetchMock.get("path:/api/bookmark", []);
 
   const storeInitialState = createMockState({
     app: createMockAppState({ isNavbarOpen: isOpen }),
+    embed: createMockEmbedState(embedOptions),
     currentUser: user,
   });
 
@@ -83,5 +86,89 @@ describe("nav > containers > Navbar > Core App", () => {
   it("should not render when in the admin app", async () => {
     await setup({ pathname: "/admin/" });
     expect(screen.queryByTestId("main-navbar-root")).not.toBeInTheDocument();
+  });
+
+  describe("embedded", () => {
+    let isWithinIframeSpy: jest.SpyInstance;
+
+    beforeAll(() => {
+      isWithinIframeSpy = jest.spyOn(dom, "isWithinIframe");
+      isWithinIframeSpy.mockReturnValue(true);
+    });
+
+    afterAll(() => {
+      isWithinIframeSpy.mockRestore();
+    });
+
+    const normallyHiddenRoutes = ["/model/1", "/dashboard/1", "/question/1"];
+    const normallyVisibleRoutes = ["/"];
+    const allRoutes = [...normallyHiddenRoutes, ...normallyVisibleRoutes];
+
+    allRoutes.forEach(route => {
+      it(`should be visible when embedded and on ${route} top_nav=false&side_nav=true`, async () => {
+        await setup({
+          pathname: route,
+          isOpen: false, // this should be ignored and overridden by the embedding params
+          embedOptions: { top_nav: false, side_nav: true },
+        });
+
+        const navbar = screen.getByTestId("main-navbar-root");
+        expect(navbar).toHaveAttribute("aria-hidden", "false");
+      });
+    });
+
+    normallyVisibleRoutes.forEach(route => {
+      it(`should be visible when embedded and on ${route} top_nav=true&side_nav=true`, async () => {
+        await setup({
+          pathname: route,
+          isOpen: true,
+          embedOptions: { top_nav: true, side_nav: true },
+        });
+
+        const navbar = screen.getByTestId("main-navbar-root");
+        expect(navbar).toHaveAttribute("aria-hidden", "false");
+      });
+    });
+
+    normallyHiddenRoutes.forEach(route => {
+      it(`should not be visible when embedded and on ${route} top_nav=true&side_nav=true`, async () => {
+        await setup({
+          pathname: route,
+          isOpen: false,
+          embedOptions: { top_nav: true, side_nav: true },
+        });
+
+        const navbar = screen.getByTestId("main-navbar-root");
+        expect(navbar).toHaveAttribute("aria-hidden", "true");
+      });
+    });
+
+    normallyHiddenRoutes.forEach(route => {
+      it(`should not be visible when embedded and on ${route} top_nav=true&side_nav=true`, async () => {
+        await setup({
+          pathname: route,
+          isOpen: false,
+          embedOptions: { top_nav: true, side_nav: true },
+        });
+
+        const navbar = screen.getByTestId("main-navbar-root");
+        expect(navbar).toHaveAttribute("aria-hidden", "true");
+      });
+    });
+
+    // the current state of App.tsx is such that this should never even happen because we don't even render the parent component
+    // but this test will cover any future changes in the component tree
+    allRoutes.forEach(route => {
+      it(`should not be visible when embedded and on ${route} with side_nav=false`, async () => {
+        await setup({
+          pathname: route,
+          isOpen: false,
+          embedOptions: { side_nav: false },
+        });
+
+        const navbar = screen.getByTestId("main-navbar-root");
+        expect(navbar).toHaveAttribute("aria-hidden", "true");
+      });
+    });
   });
 });
