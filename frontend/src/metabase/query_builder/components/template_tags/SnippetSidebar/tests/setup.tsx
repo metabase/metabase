@@ -24,7 +24,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { SnippetSidebar } from "../SnippetSidebar";
 
-const ROOT_COLLECTION = createMockCollection({ id: "root" });
+const ROOT_COLLECTION = createMockCollection({ id: "root", can_write: true });
 const MOCK_SNIPPET = createMockNativeQuerySnippet();
 
 export interface SetupOpts {
@@ -39,7 +39,10 @@ export async function setup({
   user = { is_superuser: true },
 }: SetupOpts = {}) {
   setupNativeQuerySnippetEndpoints({ snippets: [MOCK_SNIPPET] });
-  setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
+  setupCollectionsEndpoints({
+    collections: [ROOT_COLLECTION],
+    rootCollection: ROOT_COLLECTION,
+  });
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,
     collectionItems: [
