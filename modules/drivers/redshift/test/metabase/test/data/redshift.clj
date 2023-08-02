@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
@@ -36,7 +37,7 @@
   [_ _]
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
-(def ^:private db-connection-details
+(def db-connection-details
   (delay {:host     (tx/db-test-env-var-or-throw :redshift :host)
           :port     (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
           :db       (tx/db-test-env-var-or-throw :redshift :db)
@@ -47,15 +48,8 @@
   [& _]
   @db-connection-details)
 
-;; Redshift is tested remotely, which means we need to support multiple tests happening against the same remote host
-;; at the same time. Since Redshift doesn't let us create and destroy databases (we must re-use the same database
-;; throughout the tests) we'll just fake it by creating a new schema when tests start running and re-use the same
-;; schema for each test
-(defonce ^:private session-schema-number
-  (rand-int 240)) ; there's a maximum of 256 schemas per DB so make sure we don't go over that limit
-
-(defonce session-schema-name
-  (str "schema_" session-schema-number))
+(defn unique-session-schema []
+  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -63,7 +57,7 @@
 (defmethod sql.tx/pk-sql-type :redshift [_] "INTEGER IDENTITY(1,1)")
 
 (defmethod sql.tx/qualified-name-components :redshift [& args]
-  (apply tx/single-db-qualified-name-components session-schema-name args))
+  (apply tx/single-db-qualified-name-components (unique-session-schema) args))
 
 ;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statment to kill all
 ;; open connections to that DB, which doesn't work with Redshift
@@ -77,16 +71,59 @@
 
 ;;; Create + destroy the schema used for this test session
 
-(defn execute! [format-string & args]
-  (let [sql  (apply format format-string args)
-        spec (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)]
-    (log/info (u/format-color 'blue "[redshift] %s" sql))
-    (jdbc/execute! spec sql))
-  (log/info (u/format-color 'blue "[ok]")))
+(defn- reducible-result-set [^java.sql.ResultSet rset]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (with-open [rset rset]
+        (loop [res init]
+          (if (.next rset)
+            (recur (rf res rset))
+            res))))))
+
+(defn- fetch-schemas [^java.sql.Connection conn]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (reduce ((map (fn [^java.sql.ResultSet rset]
+                      (.getString rset "TABLE_SCHEM"))) rf)
+              init
+              (reducible-result-set (.. conn getMetaData getSchemas))))))
+
+(defn- old-schemas [^java.sql.Connection conn]
+  (filterv sql.tu.unique-prefix/old-dataset-name? (fetch-schemas conn)))
+
+(comment
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details))]
+    (old-schemas conn)))
+
+(defn- delete-old-schemas!
+  "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
+  not have this luxury. Test runs can create schemas where models are persisted and nothing cleans these up, leading
+  to redshift clusters hitting the max number of tables allowed."
+  [^java.sql.Connection conn]
+  (let [old      (old-schemas conn)
+        drop-sql (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
+    ;; don't delete unknown-error and recent.
+    (with-open [stmt (.createStatement conn)]
+      (doseq [schema old]
+        (log/infof "Dropping old data schema: %s" schema)
+        (.execute stmt (drop-sql schema))))))
+
+(comment
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details))]
+    (delete-old-schemas! conn)))
+
+(defn- create-session-schema! [^java.sql.Connection conn]
+  (with-open [stmt (.createStatement conn)]
+    (doseq [^String sql [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" (unique-session-schema))
+                         (format "CREATE SCHEMA \"%s\";"  (unique-session-schema))]]
+      (log/info (u/format-color 'blue "[redshift] %s" sql))
+      (.execute stmt sql))))
 
 (defmethod tx/before-run :redshift
-  [_]
-  (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
+  [driver]
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/connection-details->spec driver @db-connection-details))]
+    (delete-old-schemas! conn)
+    (create-session-schema! conn)))
 
 (defonce ^:private ^{:arglists '([driver connection metadata _ _])}
   original-filtered-syncable-schemas
@@ -103,4 +140,4 @@
   [driver conn metadata schema-inclusion-filters schema-exclusion-filters]
   (if *use-original-filtered-syncable-schemas-impl?*
     (original-filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters)
-    #{session-schema-name "spectrum"}))
+    #{(unique-session-schema) "spectrum"}))
