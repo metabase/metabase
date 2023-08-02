@@ -108,11 +108,12 @@ function ActionVizForm({
 
   const shouldPrefetch = isImplicitUpdateAction(action);
 
-  const { initialValues, prefetchValues } = useActionInitialValues({
-    fetchInitialValues,
-    initialValues: dashcardParamValues,
-    shouldPrefetch,
-  });
+  const { hasPrefetchedValues, initialValues, prefetchValues } =
+    useActionInitialValues({
+      fetchInitialValues,
+      initialValues: dashcardParamValues,
+      shouldPrefetch,
+    });
 
   const handleSubmitSuccess = useCallback(
     (actions: FormikHelpers<ParametersForActionExecution>) => {
@@ -141,7 +142,7 @@ function ActionVizForm({
             initialValues={initialValues}
             prefetchesInitialValues
             title={title}
-            showEmptyState={Object.keys(dashcardParamValues).length === 0}
+            showEmptyState={shouldPrefetch && !hasPrefetchedValues}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
             onEdit={canEditAction ? handleActionEdit : undefined}

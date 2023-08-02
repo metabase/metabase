@@ -26,13 +26,13 @@ export const useActionInitialValues = ({
     [prefetchedInitialValues, initialValuesProp],
   );
 
-  const hasPrefetchedValues = prefetchedInitialValues !== NO_VALUES;
+  const hasPrefetchedValues = Object.keys(prefetchedInitialValues).length > 0;
 
   useEffect(() => {
-    if (shouldPrefetch && fetchInitialValues) {
+    if (shouldPrefetch && !hasPrefetchedValues) {
       prefetchValues();
     }
-  }, [shouldPrefetch, fetchInitialValues, prefetchValues]);
+  }, [shouldPrefetch, hasPrefetchedValues, prefetchValues]);
 
   return {
     error,
