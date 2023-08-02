@@ -221,8 +221,13 @@
   {:in  json-in
    :out json-out-without-keywordization})
 
-(def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
-(def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
+(def encrypted-json-in
+  "Serialize encrypted json."
+  (comp encryption/maybe-encrypt json-in))
+
+(def encrypted-json-out
+  "Deserialize encrypted json."
+  (comp json-out-with-keywordization encryption/maybe-decrypt))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
 ;; cache the decrypted JSON for one hour
@@ -287,13 +292,10 @@
 ;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
 ;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
 
-
 (def transform-visualization-settings
   "Transform for viz-settings."
   {:in  (comp json-in migrate-viz-settings)
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
-
-
 
 (defn- validate-cron-string [s]
   (schema/validate (schema/maybe u.cron/CronScheduleString) s))

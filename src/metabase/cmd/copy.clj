@@ -163,18 +163,33 @@
       (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
-(def ^:private table-select-fragments
-  {;; ensure ID order to ensure that parent fields are inserted before children
-   "metabase_field" "ORDER BY id ASC"})
+(def ^:dynamic *allow-loading-h2-databases*
+  "Whether `load-from-h2` should allow loading H2 databases. Normally disabled for security reasons. This is only here
+  so we can disable this check for tests."
+  false)
+
+(defn- table-select-fragment [table-name]
+  (cond
+    ;; ensure ID order to ensure that parent fields are inserted before children
+    (= table-name (name (t2/table-name Field)))
+    "ORDER BY id ASC"
+
+    ;; don't copy H2 Databases, since we don't allow people to create them for security reasons.
+    (when-not *allow-loading-h2-databases*
+      (= table-name (name (t2/table-name Database))))
+    "WHERE engine <> 'h2'"))
+
+(defn- sql-for-selecting-instances-from-source-db [table-name]
+  (let [fragment (table-select-fragment (u/lower-case-en (name table-name)))]
+    (str "SELECT * FROM "
+         (name table-name)
+         (when fragment (str " " fragment)))))
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
   (with-open [source-conn (.getConnection source-data-source)]
     (doseq [entity entities
             :let   [table-name (t2/table-name entity)
-                    fragment   (table-select-fragments (u/lower-case-en (name table-name)))
-                    sql        (str "SELECT * FROM "
-                                    (name table-name)
-                                    (when fragment (str " " fragment)))
+                    sql        (sql-for-selecting-instances-from-source-db table-name)
                     results    (jdbc/reducible-query {:connection source-conn} sql)]]
       (transduce
        (partition-all chunk-size)

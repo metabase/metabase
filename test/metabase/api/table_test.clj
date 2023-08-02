@@ -46,7 +46,6 @@
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :cache_field_values_schedule "0 50 0 * * ? *"
     :metadata_sync_schedule      "0 50 * * * ? *"
-    :options                     nil
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil

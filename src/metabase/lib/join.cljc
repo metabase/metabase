@@ -335,6 +335,20 @@
        :stages   [mbql-stage]}
       lib.options/ensure-uuid))
 
+(defmethod join-clause-method :metadata/card
+  [card]
+  (-> {:lib/type :mbql/join
+       :stages [{:source-card (:id card)
+                 :lib/type :mbql.stage/mbql}]}
+      lib.options/ensure-uuid))
+
+(defmethod join-clause-method :metadata/table
+  [table]
+  (-> {:lib/type :mbql/join
+       :stages [{:source-table (:id table)
+                 :lib/type :mbql.stage/mbql}]}
+      lib.options/ensure-uuid))
+
 (defn- with-join-conditions-add-alias-to-rhses
   "Add `join-alias` to the RHS of all [[standard-join-condition?]] `conditions` that don't already have a `:join-alias`.
   If an RHS already has a `:join-alias`, don't second guess what was already explicitly specified."
