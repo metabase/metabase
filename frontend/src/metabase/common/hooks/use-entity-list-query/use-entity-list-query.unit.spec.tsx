@@ -36,6 +36,7 @@ const TestComponent = () => {
       getLoading: Databases.selectors.getLoading,
       getLoaded: Databases.selectors.getLoaded,
       getError: Databases.selectors.getError,
+      getListMetadata: Databases.selectors.getListMetadata,
     },
   );
 
@@ -72,6 +73,7 @@ const TestInnerComponent = () => {
       getLoading: Tables.selectors.getLoading,
       getLoaded: Tables.selectors.getLoaded,
       getError: Tables.selectors.getError,
+      getListMetadata: Tables.selectors.getListMetadata,
     },
   );
 

@@ -107,10 +107,11 @@
                               :type     :query
                               :query    {:source-table (meta/id :checkins)
                                          :aggregation  [[:count]]
-                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}]})))
+                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
+              :database-id   (meta/id)}]})))
 
-(def query-with-card-source-table
-  "A query with a `card__<id>` source Table, and a metadata provider that has that Card. Card's name is `My Card`. Card
+(def query-with-source-card
+  "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
   'exports' two columns, `USER_ID` and `count`."
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
@@ -157,7 +158,7 @@
                                  :field_ref      [:aggregation 0]
                                  :effective_type :type/BigInteger}]}]})))
 
-(def query-with-card-source-table-with-result-metadata
+(def query-with-source-card-with-result-metadata
   "A query with a `card__<id>` source Table and a metadata provider that has a Card with `:result_metadata`."
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card-with-result-metadata
@@ -221,3 +222,70 @@
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
+
+(def categories-mbql-card
+  "Mock MBQL query Card against the `CATEGORIES` Table."
+  {:lib/type        :metadata/card
+   :id              1
+   :name            "Tarot Card"
+   :dataset-query   {:database (meta/id)
+                     :type     :query
+                     :query    {:source-table (meta/id :categories)}}
+   :result-metadata [(meta/field-metadata :categories :id)
+                     (meta/field-metadata :categories :name)]})
+
+(def metadata-provider-with-categories-mbql-card
+  "A metadata provider with the [[categories-mbql-card]] as Card 1. Composed with the
+  normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+   meta/metadata-provider
+   (mock-metadata-provider
+    {:cards [categories-mbql-card]})))
+
+(def categories-native-card
+  "Mock native query Card against the `CATEGORIES` Table."
+  {:lib/type        :metadata/card
+   :id              1
+   :name            "Tarot Card"
+   :dataset-query   {:database (meta/id)
+                     :type     :native
+                     :native   {:query "SELECT * FROM CATEGORIES;"}}
+   :result-metadata (mapv #(dissoc % :id :table-id)
+                          [(meta/field-metadata :categories :id)
+                           (meta/field-metadata :categories :name)])})
+
+(def metadata-provider-with-categories-native-card
+  "A metadata provider with the [[categories-native-card]] as Card 1. Composed with the
+  normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+   meta/metadata-provider
+   (mock-metadata-provider
+    {:cards [categories-native-card]})))
+
+(def mock-cards
+  "Map of mock MBQL query Card against the test tables."
+  (into {}
+        (for [[idx table] (m/indexed [:categories
+                                      :checkins
+                                      :users
+                                      :venues
+                                      :products
+                                      :orders
+                                      :people
+                                      :reviews])]
+          [table {:lib/type :metadata/card
+                  :id idx
+                  :name (str "Mock " (name table) " card")
+                  :dataset-query {:database (meta/id)
+                                  :type :query
+                                  :query {:source-table (meta/id table)}}
+                  :result-metadata (for [[[meta-table meta-col] _] (methods meta/field-metadata-method)
+                                         :when (= table meta-table)]
+                                     (dissoc (meta/field-metadata table meta-col) :id :table-id))}])))
+
+(def metadata-provider-with-mock-cards
+  "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+    meta/metadata-provider
+    (mock-metadata-provider
+      {:cards (vals mock-cards)})))

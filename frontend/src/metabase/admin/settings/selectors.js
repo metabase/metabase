@@ -13,6 +13,9 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
+
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+
 import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
@@ -70,7 +73,7 @@ function updateSectionsWithPlugins(sections) {
   }
 }
 
-const SECTIONS = {
+export const ADMIN_SETTINGS_SECTIONS = {
   setup: {
     name: t`Setup`,
     order: 10,
@@ -120,8 +123,8 @@ const SECTIONS = {
         ],
         getProps: setting => ({
           value: setting.value,
-          collectionFilter: collection =>
-            collection.personal_owner_id === null || collection.id === "root",
+          collectionFilter: (collection, index, allCollections) =>
+            !isPersonalCollectionOrChild(collection, allCollections),
         }),
         onChanged: (oldVal, newVal) => {
           if (newVal && !oldVal) {
@@ -203,7 +206,6 @@ const SECTIONS = {
         type: "string",
         required: true,
         autoFocus: true,
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-port",
@@ -212,7 +214,6 @@ const SECTIONS = {
         type: "number",
         required: true,
         validations: [["integer", t`That's not a valid port number`]],
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-security",
@@ -221,7 +222,6 @@ const SECTIONS = {
         type: "radio",
         options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
         defaultValue: "none",
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-username",
@@ -229,7 +229,6 @@ const SECTIONS = {
         description: null,
         placeholder: "nicetoseeyou",
         type: "string",
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-password",
@@ -512,6 +511,12 @@ const SECTIONS = {
         description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
         widget: SecretKeyWidget,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+        props: {
+          confirmation: {
+            header: t`Regenerate embedding key?`,
+            dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
+          },
+        },
       },
       {
         key: "-embedded-dashboards",
@@ -708,7 +713,7 @@ const SECTIONS = {
 };
 
 const getSectionsWithPlugins = _.once(() =>
-  updateSectionsWithPlugins(SECTIONS),
+  updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 
 export const getSettings = createSelector(

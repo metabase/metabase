@@ -776,6 +776,18 @@ describe("scenarios > dashboard", () => {
     closeNavigationSidebar();
     cy.get("header").findByText(NEW_COLLECTION);
   });
+
+  it("should not allow edit on small screens", () => {
+    cy.viewport(480, 800);
+
+    visitDashboard(1);
+
+    cy.icon("pencil").should("not.be.visible");
+
+    cy.viewport(660, 800);
+
+    cy.icon("pencil").should("be.visible");
+  });
 });
 
 describeWithSnowplow("scenarios > dashboard", () => {
@@ -799,7 +811,20 @@ describeWithSnowplow("scenarios > dashboard", () => {
     cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");
 
+    popover().within(() => {
+      cy.findByText(/Loading/i).should("not.exist");
+      cy.findByText("Orders in a dashboard").click();
+    });
+
+    cy.findByTestId("entity-edit-display-link").findByText(
+      /orders in a dashboard/i,
+    );
+
     saveDashboard();
+
+    cy.findByTestId("entity-view-display-link").findByText(
+      /orders in a dashboard/i,
+    );
 
     expectGoodSnowplowEvent({
       event: "new_link_card_created",

@@ -6,8 +6,10 @@ import {
 import { createMockUser, createMockUserInfo } from "metabase-types/api/mocks";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
-import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
-import { setupUsersEndpoints } from "__support__/server-mocks/user";
+import {
+  setupRevisionsEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 
 const REVISIONS = [
   {

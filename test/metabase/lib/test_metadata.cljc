@@ -123,7 +123,8 @@
   {:arglists '([table-name])}
   keyword)
 
-(defmulti ^:private field-metadata-method
+(defmulti field-metadata-method
+  "Metadata for fields"
   {:arglists '([table-name field-name])}
   (fn [table-name field-name]
     [(keyword table-name) (keyword field-name)]))
@@ -2313,7 +2314,8 @@
    :result-metadata card-results-metadata})
 
 (def saved-question-CardMetadata
-  "Mock [[metabase.lib.metadata/CardMetadata]] with a query against `VENUES`."
+  "Mock [[metabase.lib.metadata/CardMetadata]] with a query against `VENUES`. See
+  also [[metabase.lib.test-util/categories-mbql-card]] and [[metabase.lib.test-util/categories-native-card]]."
   (assoc saved-question
          :lib/type :metadata/card
          :id       1

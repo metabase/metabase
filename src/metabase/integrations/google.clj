@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.integrations.google.interface :as google.i]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -18,7 +19,8 @@
    [toucan2.core :as t2]))
 
 ;; Load EE implementation if available
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.enhancements.integrations.google))
 
 (def ^:private non-existant-account-message
   (deferred-tru "You'll need an administrator to create a Metabase account before you can use Google to log in."))
@@ -63,7 +65,7 @@
   :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
               (when (and domain (str/includes? domain ","))
-                ;; Multiple comma-separated domains is EE-only feature
+                ;; Multiple comma-separated domains requires the `:sso-google` premium feature flag
                 (throw (ex-info (tru "Invalid domain") {:status-code 400})))
               (setting/set-value-of-type! :string :google-auth-auto-create-accounts-domain domain)))
 
