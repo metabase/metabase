@@ -82,7 +82,7 @@ interface ColumnNotebookCellItemProps {
 }
 
 const ColumnNotebookCellItem = forwardRef<
-  HTMLDivElement,
+  HTMLButtonElement,
   ColumnNotebookCellItemProps
 >(function ColumnNotebookCellItem(
   { tableName, columnName, label, isOpen, readOnly, onClick },
