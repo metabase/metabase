@@ -13,18 +13,16 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
-   (java.time LocalDate)
-   (java.time.temporal Temporal)))
+   (java.time LocalDate)))
+
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
