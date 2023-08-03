@@ -1,7 +1,8 @@
 ---
 title: Interactive embedding
 redirect_from:
-  - /docs/latest/enterprise-guide/interactive-embedding
+  - /docs/latest/enterprise-guide/full-app-embedding
+  - /docs/latest/embedding/full-app-embedding
 ---
 
 # Interactive embedding
