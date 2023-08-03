@@ -4,7 +4,8 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.config :as search.config]
-   [metabase.search.filter :as search.filter]))
+   [metabase.search.filter :as search.filter]
+   [metabase.test :as mt]))
 
 (def ^:private default-search-ctx
   {:search-string       nil
@@ -56,7 +57,7 @@
   {:select [:*]
    :from   [:table]})
 
-(deftest build-filters-test
+(deftest ^:parallel build-archived-filter-test
   (testing "archived filters"
     (is (= [:= :card.archived false]
            (:where (search.filter/build-filters
@@ -64,8 +65,9 @@
 
     (is (= [:and [:= :table.active true] [:= :table.visibility_type nil]]
            (:where (search.filter/build-filters
-                    base-search-query "table"  default-search-ctx)))))
+                    base-search-query "table"  default-search-ctx))))))
 
+(deftest ^:parallel build-filter-with-search-string-test
   (testing "with search string"
     (is (= [:and
             [:or
@@ -76,26 +78,63 @@
             [:= :card.archived false]]
            (:where (search.filter/build-filters
                     base-search-query "card"
-                    (merge default-search-ctx {:search-string "a string"}))))))
+                    (merge default-search-ctx {:search-string "a string"})))))))
 
+(deftest  build-created-at-filter-test
+  (testing "created-at filter"
+    (mt/with-clock #t "2023-05-04T10:00Z[UTC]"
+      (are [created-at expected-where]
+           (= expected-where
+              (->> (search.filter/build-filters
+                    base-search-query "card"
+                    (merge default-search-ctx {:created-at created-at}))
+               :where
+               ;; drop the first 2 clauses [:and [:= :card.archived false]]
+               (drop 2)))
+           ;; absolute datetime
+           "Q1-2023"                                 [[:>= [:cast :card.created_at :date] #t "2023-01-01"]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-03-31"]]
+           "2016-04-18~2016-04-23"                   [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
+                                                      [:< [:cast :card.created_at :date]  #t "2016-04-23"]]
+           "2016-04-18T10:00:00~2016-04-23T11:00:00" [[:>= :card.created_at #t "2016-04-18T10:00"]
+                                                      [:< :card.created_at  #t "2016-04-23T11:00"]]
+
+           "~2023-05-04"                             [:<  [:cast :card.created_at :date]  #t "2023-05-04"]
+           "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
+
+           ;; relative datetime
+           "past3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-05-03"]]
+           "next3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-05"]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-05-07"]]
+           "thisminute"                              [[:= :card.created_at #t "2023-05-04T10:00"]]
+           "past3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-05-03"]]
+           "lasthour"                                [[:= :card.created_at #t "2023-05-04T09:00"]]
+           "past1months-from-36months"               [[:>= [:cast :card.created_at :date] #t "2020-04-01"]
+                                                      [:< [:cast :card.created_at :date]  #t "2020-04-30"]]
+           "today"                                   [[:= [:cast :card.created_at :date]  #t "2023-05-04"]]))))
+
+(deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"
     (is (= [:and [:= :card.archived false] [:= :card.creator_id 1]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
-                           {:created-by 1}))))))
+                           {:created-by 1})))))))
 
+(deftest build-verified-filter-test
   (testing "verified filter"
     (premium-features-test/with-premium-features #{:content-verification :official-collections}
       (testing "for cards"
         (is (= (merge
                 base-search-query
                 {:where  [:and
-                           [:= :card.archived false]
-                           [:= :moderation_review.status "verified"]
-                           [:= :moderation_review.moderated_item_type "card"]
-                           [:= :moderation_review.most_recent true]]
-                  :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
+                          [:= :card.archived false]
+                          [:= :moderation_review.status "verified"]
+                          [:= :moderation_review.moderated_item_type "card"]
+                          [:= :moderation_review.most_recent true]]
+                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "card"
                 (merge default-search-ctx {:verified true})))))
@@ -104,9 +143,9 @@
         (is (= (merge
                 base-search-query
                 {:where [:and [:= :collection.archived false] [:= :collection.authority_level "official"]]})
-             (search.filter/build-filters
-              base-search-query "collection"
-              (merge default-search-ctx {:verified true}))))))
+               (search.filter/build-filters
+                base-search-query "collection"
+                (merge default-search-ctx {:verified true}))))))
 
     (premium-features-test/with-premium-features #{}
       (testing "for cards without ee features"
@@ -125,17 +164,18 @@
                 {:where [:and [:= :collection.archived false] [:inline [:= 0 1]]]})
                (search.filter/build-filters
                 base-search-query "collection"
-                (merge default-search-ctx {:verified true})))))))
+                (merge default-search-ctx {:verified true}))))))))
 
- (testing "throw error for filtering with unsupport models"
-   (is (thrown-with-msg?
-        clojure.lang.ExceptionInfo
-        #":created-by filter for database is not supported"
-        (search.filter/build-filters
-         base-search-query
-         "database"
-         (merge default-search-ctx
-                {:created-by 1}))))))
+(deftest ^:parallel buidl-filter-throw-error-for-unsuported-filters-test
+  (testing "throw error for filtering with unsupport models"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #":created-by filter for database is not supported"
+         (search.filter/build-filters
+          base-search-query
+          "database"
+          (merge default-search-ctx
+                 {:created-by 1}))))))
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"

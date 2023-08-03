@@ -952,9 +952,8 @@
 
 (deftest created-at-correctness-test
   (let [search-term "created-at-filtering"
-        now           (t/zoned-date-time 2023 05 04 10 0 0 0 (t/zone-id "UTC"))
+        now           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus now (t/years 2))]
-
     (mt/with-clock now
       (t2.with-temp/with-temp
         [:model/Dashboard  {dashboard-now :id}{:name       search-term
