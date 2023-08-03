@@ -176,7 +176,7 @@
 (def ^:private IDs
   [:maybe
    [:or
-    [:set-of ms/PositiveInt]
+    [:set ms/PositiveInt]
     [:sequential ms/PositiveInt]]])
 
 (mu/defn fetch-and-store-tables!
