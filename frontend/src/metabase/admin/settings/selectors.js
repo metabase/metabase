@@ -4,7 +4,6 @@ import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { getWebsiteUrl } from "metabase/selectors/settings";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
@@ -483,15 +482,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Interactive embedding`,
-        embedDescription: jt`With this ${(
-          <ExternalLink
-            href={getWebsiteUrl("product/pro")}
-          >{t`Pro`}</ExternalLink>
-        )}/${(
-          <ExternalLink
-            href={getWebsiteUrl("sales")}
-          >{t`Enterprise`}</ExternalLink>
-        )} feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO—down to the row- or column-level—so people only see what they need to.`,
+        embedDescription: t`With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO—down to the row- or column-level—so people only see what they need to.`,
         embedType: "full-app",
       },
     ],
