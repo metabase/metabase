@@ -474,16 +474,18 @@
   ;; Set up this query stage's `:aggregation` list as the context for [[convert/->pMBQL]] to convert legacy
   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
   (convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (let [columns    (map #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
-          field-refs (for [legacy-ref legacy-refs]
-                       (-> legacy-ref
-                           (js->clj :keywordize-keys true)
-                           (update 0 keyword)
-                           convert/->pMBQL))
-          matches    (lib.equality/find-closest-matches-for-refs a-query columns field-refs)
+    (let [columns       (mapv #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
+          field-refs    (for [legacy-ref legacy-refs]
+                          (-> legacy-ref
+                              (js->clj :keywordize-keys true)
+                              (update 0 keyword)
+                              convert/->pMBQL))
+          matches       (lib.equality/find-closest-matches-for-refs a-query columns field-refs)
           ;; matches is a map of [column index-of-ref]; so flip it around.
-          by-index   (into {} (for [[k v] matches]
-                                [v k]))]
+          column->index (into {} (for [index (range columns)]
+                                  [(nth columns index) index]))
+          by-index      (into {} (for [[column ref-index] matches]
+                                   [ref-index (column->index column)]))]
       (->> (range (count legacy-refs))
            (map #(by-index % -1))
            to-array))))
