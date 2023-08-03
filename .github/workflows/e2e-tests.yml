@@ -8,7 +8,7 @@ on:
     branches:
       - "master"
       - 'release-**'
-      - 'full-cypress-debug'
+      - 'cypress-crash-chrome'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
@@ -42,7 +42,7 @@ jobs:
   e2e-tests:
     needs: [files-changed, test-run-id]
     if: |
-      always() &&
+      !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -131,6 +131,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+      - name: Prepare Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn'
       - name: Download Metabase uberjar from a previously stored artifact
         run: |
           curl -L \
@@ -155,6 +160,7 @@ jobs:
         with:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
+      - run: echo 'NODE_OPTIONS="--dns-result-order=ipv4first"' >> $GITHUB_ENV
       - name: Prepare Cypress environment
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
@@ -180,6 +186,7 @@ jobs:
       - name: Run OSS-specific Cypress tests
         if: matrix.edition == 'oss' && github.event_name != 'schedule'
         run: |
+          DEBUG=cypress:launcher*,cypress:server:browsers* \
           yarn run test-cypress-run \
           --env grepTags=@OSS \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
@@ -190,7 +197,8 @@ jobs:
       - name: Run EE Cypress tests on ${{ matrix.folder }}
         if: matrix.edition == 'ee' && github.event_name != 'schedule'
         run: |
-          DEBUG=cypress:* yarn run test-cypress-run \
+          DEBUG=cypress:launcher*,cypress:server:browsers* \
+          yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
           --folder ${{ matrix.folder }} \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
@@ -229,7 +237,7 @@ jobs:
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
       - name: Upload Replay.io recordings
-        if: github.event_name == 'schedule' && always()
+        if: github.event_name == 'schedule' && !cancelled()
         uses: replayio/action-upload@v0.4.7
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
@@ -248,7 +256,7 @@ jobs:
   e2e-tests-skipped-stub:
     needs: [files-changed]
     if: |
-      always() &&
+      !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'false'
     runs-on: ubuntu-22.04
     timeout-minutes: 5

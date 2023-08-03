@@ -56,6 +56,10 @@ const defaultConfig = {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
       }
 
+      if (browser.name === "chrome" && browser.isHeadless) {
+        launchOptions.args.push("--headless=old");
+      }
+
       // Start browsers with prefers-reduced-motion set to "reduce"
       if (browser.family === "firefox") {
         launchOptions.preferences["ui.prefersReducedMotion"] = 1;
