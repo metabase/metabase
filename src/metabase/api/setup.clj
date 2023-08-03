@@ -177,6 +177,9 @@
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
    engine DBEngineString}
+  (when (setup/has-user-setup)
+    (throw (ex-info (tru "Instance already initialized")
+                    {:status-code 400})))
   (let [engine       (keyword engine)
         error-or-nil (api.database/test-database-connection engine details)]
     (when error-or-nil
