@@ -18,7 +18,7 @@
       ::expression/expression)))
 
 (deftest ^:parallel field-test
-  (testing "Something that is not a :field should return a meaningful error"
+  (testing "Something that is not a :field should return a meaningful error\n"
     (are [arg error] (= error
                         (me/humanize (mc/explain :mbql.clause/field arg)))
       {:lib/type :mbql/join}
@@ -39,5 +39,5 @@
          :cljs [nil nil ["should be an integer" "should be a string"]])
 
       [:field {:lib/uuid "ede8dc3c-de7e-49ec-a78c-bacfb43f2301"} -1]
-      #?(:clj  [nil nil ["should be at least 0" "should be a string" "non-blank string" "should be at least 0"]]
-         :cljs [nil nil ["should be at least 0" "should be a string" "should be at least 0"]]))))
+      #?(:clj  [nil nil ["should be at least 1" "should be a string" "non-blank string" "should be at least 1"]]
+         :cljs [nil nil ["should be at least 1" "should be a string" "should be at least 1"]]))))
