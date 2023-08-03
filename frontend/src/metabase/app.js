@@ -67,7 +67,7 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
-  const cache = createCache({ key: "emotion", nonce: "2726c7f26c" });
+  const emotionCache = createCache({ key: "emotion", nonce: "2726c7f26c" });
 
   let root;
 
@@ -75,9 +75,9 @@ function _init(reducers, getRoutes, callback) {
 
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
-      <CacheProvider value={cache}>
+      <CacheProvider value={emotionCache}>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-          <ThemeProvider>
+          <ThemeProvider emotionCache={emotionCache}>
             <GlobalStyles />
             <Router history={history}>{routes}</Router>
           </ThemeProvider>
