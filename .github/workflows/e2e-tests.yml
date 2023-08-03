@@ -57,7 +57,6 @@ jobs:
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
-      ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
       TZ: US/Pacific # to make node match the instance tz
     strategy:
       fail-fast: false
@@ -155,7 +154,6 @@ jobs:
         with:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
-      - run: echo 'NODE_OPTIONS="--dns-result-order=ipv4first"' >> $GITHUB_ENV
       - name: Prepare Cypress environment
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
