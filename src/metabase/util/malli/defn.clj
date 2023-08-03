@@ -73,5 +73,5 @@
     `(def ~(vary-meta fn-name merge attr-map)
        ~docstring
        ~(macros/case
-          :clj  (mu.fn/instrumented-fn-form parsed)
+          :clj  (mu.fn/instrumented-fn-form parsed (symbol (name (ns-name *ns*)) (name fn-name)))
           :cljs (mu.fn/deparameterized-fn-form parsed)))))

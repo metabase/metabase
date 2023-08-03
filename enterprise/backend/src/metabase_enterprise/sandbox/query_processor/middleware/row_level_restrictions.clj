@@ -157,7 +157,7 @@
 (defn- table-gtap->source [{table-id :table_id, :as gtap}]
   {:source-query {:source-table table-id, :parameters (gtap->parameters gtap)}})
 
-(s/defn ^:private mbql-query-metadata :- (su/non-empty [su/Map])
+(mu/defn ^:private mbql-query-metadata :- [:sequential {:min 1} :map]
   [inner-query]
   (binding [*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor/query->expected-cols)

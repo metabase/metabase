@@ -348,9 +348,9 @@
       (met/with-gtaps-for-user :rasta {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                                        :attributes {"cat" 50}}
         (mt/with-test-user :rasta
-         (mw.session/as-admin
-          (is (= [[100]]
-               (run-venues-count-query)))))))
+          (mw.session/as-admin
+            (is (= [[100]]
+                   (run-venues-count-query)))))))
 
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
@@ -445,11 +445,11 @@
           (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
                  (set
                   (mt/format-rows-by [#(when % (int %)) str int]
-                                     (mt/rows
-                                      (mt/run-mbql-query checkins
-                                        {:aggregation [[:count]]
-                                         :order-by    [[:asc $venue_id->venues.price]]
-                                         :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
+                    (mt/rows
+                     (mt/run-mbql-query checkins
+                       {:aggregation [[:count]]
+                        :order-by    [[:asc $venue_id->venues.price]]
+                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)
@@ -612,8 +612,8 @@
                                       :checkins {}}
                          :attributes {"venue_id" 1}})
         (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
-                                                       :group_id (:id &group)
-                                                       :table_id (mt/id :venues))]
+                                                    :group_id (:id &group)
+                                                    :table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
@@ -656,8 +656,8 @@
                                               :checkins {}}
                                  :attributes {"venue_id" 1}})
                 (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
-                                                               :group_id (:id &group)
-                                                               :table_id (mt/id :venues))]
+                                                            :group_id (:id &group)
+                                                            :table_id (mt/id :venues))]
                   (is (integer? venues-gtap-card-id))
                   (testing "GTAP Card should not yet current have result_metadata"
                     (is (= nil
@@ -855,7 +855,7 @@
                                                           :effective_type :type/Text
                                                           :coercion_strategy nil
                                                           :semantic_type  (t2/select-one-fn :semantic_type Field
-                                                                                               :id (mt/id :products :category))
+                                                                                            :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"
                                                           :name          "CATEGORY"}]]
                                        (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]

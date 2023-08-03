@@ -246,7 +246,7 @@
   returned."
   []
   (or (:database @*store*)
-      (throw (Exception. (tru "Error: Database is not present in the Query Processor Store.")))))
+      (throw (Exception. (tru "Error: no Database is present in the Query Processor Store.")))))
 
 (defn- default-table
   "Default implementation of [[table]]."
@@ -331,13 +331,16 @@
   (reify
     lib.metadata.protocols/MetadataProvider
     (database [_this]
-      (some-> (database) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/database)))
+      (u/ignore-exceptions
+        (some-> (database) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/database))))
 
     (table [_this table-id]
-      (some-> (table table-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/table)))
+      (u/ignore-exceptions
+        (some-> (table table-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/table))))
 
     (field [_this field-id]
-      (some-> (field field-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/column)))
+      (u/ignore-exceptions
+        (some-> (field field-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/column))))
 
     (card [_this _card-id] nil)
     (metric [_this _metric-id] nil)
@@ -352,8 +355,11 @@
 
 (defn metadata-provider
   "Create a new MLv2 metadata provider that uses the QP store."
-  []
-  (cached ::metadata-provider
-    (lib.metadata.composed-provider/composed-metadata-provider
-     (base-metadata-provider)
-     (lib.metadata.jvm/application-database-metadata-provider (:id (database))))))
+  ([]
+   (metadata-provider (u/the-id (database))))
+
+  ([database-id]
+   (cached ::metadata-provider
+     (lib.metadata.composed-provider/composed-metadata-provider
+      (base-metadata-provider)
+      (lib.metadata.jvm/application-database-metadata-provider database-id)))))

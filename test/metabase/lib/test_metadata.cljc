@@ -9,7 +9,10 @@
   (:require
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
+   [metabase.lib.test-util.data-readers]
    [metabase.util.malli :as mu]))
+
+(comment metabase.lib.test-util.data-readers/keep-me)
 
 (defonce ^:private ^{:doc "Generate a random prefix to add to all of the [[id]]s below, so that they change between
   test runs to catch places where people are hardcoding IDs rather than using [[id]]."}

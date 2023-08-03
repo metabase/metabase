@@ -14,6 +14,7 @@
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
+   [metabase.server.middleware.json]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
@@ -37,6 +38,10 @@
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
+
+;;; this has to get loaded because it has the JSON encoding definitions for `java.time` classes and things like Card
+;;; result metadata need those to be loaded in order to serialize them to JSON
+(comment metabase.server.middleware.json/keep-me)
 
 (p/import-vars
  [models.dispatch

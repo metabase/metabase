@@ -212,6 +212,7 @@
 (def LegacyOrPMBQLQuery
   "Schema for a map that is either a legacy query OR a pMBQL query."
   [:or
+   {:error/message "legacy query or pMBQL query"}
    [:map
     {:error/message "legacy query"}
     [:type [:enum :native :query]]]
@@ -289,7 +290,8 @@
   `stage-number` can be a negative index, e.g. `-1` will update the last stage of the query."
   [query        :- LegacyOrPMBQLQuery
    stage-number :- :int
-   f & args]
+   f            :- fn?
+   & args]
   (let [{:keys [stages], :as query} (pipeline query)
         stage-number'               (canonical-stage-index query stage-number)
         stages'                     (apply update (vec stages) stage-number' f args)]
