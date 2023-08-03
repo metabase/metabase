@@ -274,12 +274,12 @@ function disableBasicModelActions(modelId) {
 }
 
 function visitObjectDetail(modelId, objectId) {
-  visitModel(modelId);
+  visitModel(modelId, { hasDataAccess: true });
   cy.findAllByText(objectId).first().click();
 }
 
 function visitModelDetail(modelId) {
-  visitModel(modelId);
+  visitModel(modelId, { hasDataAccess: true });
   cy.icon("info").click();
   cy.findByTestId("sidebar-right").findByText("Model details").click();
 }
