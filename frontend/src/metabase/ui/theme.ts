@@ -173,18 +173,5 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
-    Code: {
-      defaultProps: {
-        fz: "12px",
-        p: 0,
-      },
-      styles(theme) {
-        return {
-          root: {
-            color: theme.colors.text[2],
-          },
-        };
-      },
-    },
   },
 };
