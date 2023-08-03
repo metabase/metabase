@@ -10,29 +10,18 @@ import {
   undoToast,
   visitDashboard,
   visitModel,
+  createModelFromTableName,
 } from "e2e/support/helpers";
 
-const PG_DB_ID = 2;
-const PG_SCOREBOARD_TABLE_ID = 9;
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 const FIRST_SCORE_ROW_ID = 11;
 const SECOND_SCORE_ROW_ID = 12;
 const UPDATED_SCORE = 987654321;
 const UPDATED_SCORE_FORMATTED = "987,654,321";
 
-const SCORES_MODEL = {
-  name: "Scores model",
-  dataset: true,
-  display: "table",
-  database: PG_DB_ID,
-  query: {
-    "source-table": PG_SCOREBOARD_TABLE_ID,
-  },
-};
-
 const DASHBOARD = {
   name: "Test dashboard",
-  database: PG_DB_ID,
+  database: WRITABLE_DB_ID,
 };
 
 describe("scenarios > actions > actions-in-object-detail-view", () => {
@@ -45,18 +34,22 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
 
     resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
     restore("postgres-writable");
+    asAdmin(() => {
+      resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: WRITABLE_TEST_TABLE,
+      });
+
+      createModelFromTableName({
+        tableName: WRITABLE_TEST_TABLE,
+        idAlias: "modelId",
+      });
+    });
   });
 
   describe("in dashboard", () => {
     beforeEach(() => {
       asAdmin(() => {
-        resyncDatabase({
-          dbId: WRITABLE_DB_ID,
-          tableName: WRITABLE_TEST_TABLE,
-        });
-
-        cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
-
         cy.get("@modelId").then(modelId => {
           createBasicModelActions(modelId);
 
@@ -64,7 +57,7 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
             questionDetails: {
               name: "Score detail",
               display: "object",
-              database: PG_DB_ID,
+              database: WRITABLE_DB_ID,
               query: {
                 "source-table": `card__${modelId}`,
               },
@@ -92,16 +85,6 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
   });
 
   describe("in modal", () => {
-    beforeEach(() => {
-      asAdmin(() => {
-        resyncDatabase({
-          dbId: WRITABLE_DB_ID,
-          tableName: WRITABLE_TEST_TABLE,
-        });
-        cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
-      });
-    });
-
     it("should be able to run update and delete actions when enabled", () => {
       cy.get("@modelId").then(modelId => {
         asNormalUser(() => {
