@@ -9,16 +9,16 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { CardApi } from "metabase/services";
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
+import { columnNameToUrl } from "metabase-enterprise/audit_app/lib/mode";
 import Question from "metabase-lib/Question";
-import { columnNameToUrl } from "../../audit_app/lib/mode";
+import { ErrorLink } from "./ErrorDetail.styled";
 
 function idxToUrl(resRow, resCols, nameToResCol, colName) {
   const idVal = resRow[nameToResCol[colName]];
   const urlVal = colName && idVal ? columnNameToUrl[colName](idVal) : "";
-  const linkClass = urlVal === "" ? "" : "text-brand";
-  return [urlVal, linkClass];
+  const isActive = urlVal !== "";
+  return [urlVal, isActive];
 }
 
 function ErrorDetailDisplay(props) {
@@ -52,7 +52,7 @@ function ErrorDetailDisplay(props) {
       "user_name",
       "updated_at",
     ].map((x, idx) => {
-      const [urlVal, linkClass] = idxToUrl(
+      const [urlVal, isLinkActive] = idxToUrl(
         resRow,
         resCols,
         nameToResCol,
@@ -72,9 +72,9 @@ function ErrorDetailDisplay(props) {
           </td>
           <td>
             {
-              <Link to={urlVal} className={linkClass}>
+              <ErrorLink to={urlVal} isActive={isLinkActive}>
                 {formattedVal}
-              </Link>
+              </ErrorLink>
             }
           </td>
         </tr>
@@ -94,7 +94,7 @@ function ErrorDetailDisplay(props) {
         </tr>
       ));
 
-    const [cardUrlVal, cardLinkClass] = idxToUrl(
+    const [cardUrlVal, isLinkActive] = idxToUrl(
       resRow,
       resCols,
       nameToResCol,
@@ -104,9 +104,9 @@ function ErrorDetailDisplay(props) {
     return [
       <h2 className="PageTitle py2" key="card_name">
         {
-          <Link to={cardUrlVal} className={cardLinkClass}>
+          <ErrorLink to={cardUrlVal} isActive={isLinkActive}>
             {resRow[nameToResCol.card_name]}
-          </Link>
+          </ErrorLink>
         }
       </h2>,
       <div
