@@ -1,5 +1,4 @@
 import {
-  main,
   getNotebookStep,
   restore,
   visitQuestionAdhoc,
@@ -51,7 +50,7 @@ describe("issue 32625, issue 31635", () => {
 
     visualize();
 
-    main().within(() => {
+    cy.findByTestId("query-builder-main").within(() => {
       cy.findByTestId("scalar-value").should("have.text", "200");
       cy.findByText("There was a problem with your question").should(
         "not.exist",
