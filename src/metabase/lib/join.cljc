@@ -899,7 +899,7 @@
     option-or-unit :- [:maybe [:or
                                ::lib.schema.temporal-bucketing/option
                                ::lib.schema.temporal-bucketing/unit]]]
-   (let [[_ _ lhs rhs :as join-condition] join-condition]
+   (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
      (assert (standard-join-condition? join-condition)
              (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
      (let [unit (cond-> option-or-unit
