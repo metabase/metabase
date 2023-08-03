@@ -6,6 +6,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [metabase.util.yaml :as yaml]
    [schema.coerce :as sc]

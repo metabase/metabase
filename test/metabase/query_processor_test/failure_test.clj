@@ -5,6 +5,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.test :as mt]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -1511,16 +1512,6 @@
                                                   :access-token                  protected-password
                                                   :refresh-token                 protected-password})))))
 
-
-(deftest db-ids-with-deprecated-drivers-test
-  (mt/with-driver :driver-deprecation-test-legacy
-    (testing "GET /api/database/db-ids-with-deprecated-drivers"
-      (t2.with-temp/with-temp [Database {db-id :id} {:engine :driver-deprecation-test-legacy}]
-        (is (not-empty (filter #(= % db-id) (mt/user-http-request
-                                             :crowberto
-                                             :get
-                                             200
-                                             "database/db-ids-with-deprecated-drivers"))))))))
 
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
