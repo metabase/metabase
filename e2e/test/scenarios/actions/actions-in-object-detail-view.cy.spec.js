@@ -36,7 +36,8 @@ const DASHBOARD = {
 
 describe("scenarios > actions > actions-in-object-detail-view", () => {
   beforeEach(() => {
-    cy.intercept("GET", "**/**").as("allRequests");
+    cy.intercept("GET", "**/**").as("allGetRequests");
+    cy.intercept("POST", "**/**").as("allPostRequests");
     cy.intercept("POST", "/api/action").as("createBasicActions");
     cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
     cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
@@ -248,7 +249,7 @@ function asNormalUser(callback) {
 
 function disableDatabaseActions(databaseId) {
   cy.visit(`/admin/databases/${databaseId}`);
-  cy.wait("@allRequests");
+  cy.wait("@allGetRequests");
   const actionsToggle = cy.findByLabelText("Model actions");
 
   cy.log("actions should be enabled in model page");
@@ -276,7 +277,7 @@ function disableBasicModelActions(modelId) {
 
 function visitModel(modelId) {
   cy.visit(`/model/${modelId}`);
-  cy.wait("@allRequests");
+  cy.wait(["@allPostRequests", "@allGetRequests"]);
 }
 
 function visitObjectDetail(modelId, objectId) {
