@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
+import { AddMappingButton } from "./MappingEditor.styled";
 
 const DefaultRenderInput = ({ value, onChange, placeholder }) => (
   <input
@@ -82,15 +83,14 @@ const MappingEditor = ({
           canAdd && (
             <tr>
               <td colSpan={2}>
-                <Button
+                <AddMappingButton
                   icon="add"
                   type="button" // prevent submit. should be the default but it's not
                   borderless
-                  className="text-brand p0 py1"
                   onClick={() => onChange(addMapping(mapping))}
                 >
                   {addText}
-                </Button>
+                </AddMappingButton>
               </td>
             </tr>
           )}
