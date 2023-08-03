@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const PopoverTrigger = styled.div`
   display: flex;
-  align-content: center;
+  align-items: center;
   cursor: pointer;
   margin: 1rem 0;
   color: ${color("text-medium")};
