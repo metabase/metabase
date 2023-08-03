@@ -56,13 +56,13 @@
 (def ^:private TableID
   [:ref ::lib.schema.id/table])
 
-(def ^:private DateLiteral
+(def ^:private RawDateLiteral
   [:ref ::lib.schema.literal/date])
 
-(def ^:private DateTimeLiteral
+(def ^:private RawDateTimeLiteral
   [:ref ::lib.schema.literal/datetime])
 
-(def ^:private TimeLiteral
+(def ^:private RawTimeLiteral
   [:ref ::lib.schema.literal/time])
 
 ;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
@@ -155,15 +155,15 @@
                   :else                                              :datetime))}
    [:invalid (helpers/clause
               :absolute-datetime
-              "t"    [:or DateLiteral DateTimeLiteral]
+              "t"    [:or RawDateLiteral RawDateTimeLiteral]
               "unit" DateTimeUnit)]
    [:date (helpers/clause
            :absolute-datetime
-           "date" DateLiteral
+           "date" RawDateLiteral
            "unit" DateUnit)]
    [:datetime (helpers/clause
                :absolute-datetime
-               "datetime" DateTimeLiteral
+               "datetime" RawDateTimeLiteral
                "unit"     DateTimeUnit)]])
 
 (def ^:internal ^{:clause-name :absolute-datetime} absolute-datetime
@@ -174,7 +174,7 @@
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
 (defclause ^:internal time
-  time TimeLiteral
+  time RawTimeLiteral
   unit TimeUnit)
 
 (def ^:private DateOrDatetimeLiteral
@@ -185,14 +185,14 @@
    ;; literal datetime strings and Java types will get transformed to [[absolute-datetime]] clauses automatically by
    ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
    ;; `absolute-datetime` clauses.
-   DateTimeLiteral
-   DateLiteral])
+   RawDateTimeLiteral
+   RawDateLiteral])
 
 (mr/def ::TimeLiteral
   [:or
    {:error/message "time literal"}
    time
-   TimeLiteral])
+   RawTimeLiteral])
 
 (def ^:private TimeLiteral
   "Schema for valid time literals."
