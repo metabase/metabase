@@ -25,7 +25,6 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
