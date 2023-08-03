@@ -16,6 +16,7 @@
 
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
+;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
 (defn InstanceOf
   "Helper for creating a schema to check whether something is an instance of `model`.
 
@@ -24,8 +25,17 @@
       ...)"
   [model]
   (mu/with-api-error-message
-   [:fn #(models.dispatch/instance-of? model %)]
-   (deferred-tru "value must be an instance of {0}" (name model))))
+    [:fn
+     {:error/message (format "value must be an instance of %s" (name model))}
+     #(models.dispatch/instance-of? model %)]
+    (deferred-tru "value must be an instance of {0}" (name model))))
+
+(defn InstanceOfClass
+  "Helper for creating schemas to check whether something is an instance of a given class."
+  [^Class klass]
+  [:fn
+   {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+   (partial instance? klass)])
 
 (defn maps-with-unique-key
   "Given a schema of a sequence of maps, returns as chema that do an additional unique check on key `k`."
