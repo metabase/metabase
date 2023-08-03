@@ -5,6 +5,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.db.connection :as mdb.connection]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
    [metabase.models

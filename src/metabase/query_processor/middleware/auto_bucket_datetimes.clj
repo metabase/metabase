@@ -10,6 +10,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))

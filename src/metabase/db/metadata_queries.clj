@@ -13,6 +13,7 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))

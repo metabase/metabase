@@ -29,6 +29,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
