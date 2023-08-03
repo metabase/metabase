@@ -190,7 +190,8 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js'
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser chromium
         env:
           TERM: xterm
 
@@ -199,7 +200,8 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@quarantine" \
-          --folder ${{ matrix.folder }}
+          --folder ${{ matrix.folder }} \
+          --browser chromium
         env:
           TERM: xterm
 
@@ -336,6 +338,6 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Percy Test
-        run: yarn run test-visual-run
+        run: yarn run test-visual-run --browser chromium
         env:
           PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
