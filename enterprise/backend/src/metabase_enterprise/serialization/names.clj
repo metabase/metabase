@@ -319,7 +319,7 @@
                                                                        rest  ; strip the starting :
                                                                        (apply str)))))))
           context (loop [acc-context                   {}
-                         [{:keys [::model-name ::entity-name] :as model-map} & more] components]
+                         [{::keys [model-name entity-name] :as model-map} & more] components]
                     (let [model-attrs (dissoc model-map ::model-name ::entity-name)
                           new-context (path->context acc-context model-name model-attrs (unescape-name entity-name))]
                       (if (empty? more)

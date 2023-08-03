@@ -981,7 +981,7 @@
         link-card-deps      (viz-link-card-deps viz)]
     (->> (concat vis-column-settings [(mbql-deps viz) link-card-deps])
          (filter some?)
-         (reduce set/union))))
+         (reduce set/union #{}))))
 
 (defmacro with-cache
   "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."

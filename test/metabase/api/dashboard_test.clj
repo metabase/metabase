@@ -2517,7 +2517,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
-          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values ["African" "American" "Artisan" "Asian"] :has_more_values false}
                      (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))

@@ -591,7 +591,7 @@
 (defmethod serdes/dependencies "Dashboard"
   [{:keys [collection_id ordered_cards parameters]}]
   (->> (map serdes-deps-dashcard ordered_cards)
-       (reduce set/union)
+       (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps parameters))))
 

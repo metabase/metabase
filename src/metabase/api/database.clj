@@ -291,7 +291,7 @@
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
-(s/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
+(mu/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
   {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
    :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
 

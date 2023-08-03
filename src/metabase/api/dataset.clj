@@ -126,7 +126,7 @@
    export-format          (into [:enum] export-formats)}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
-                         (update-in [:table.columns] mbql.normalize/normalize)
+                         (update :table.columns mbql.normalize/normalize)
                          mb.viz/db->norm)
         query        (-> (assoc query
                                 :async? true

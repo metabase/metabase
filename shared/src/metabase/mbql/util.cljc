@@ -391,7 +391,7 @@
    #?(:clj
       (if (mbql-clause? x)
         (first x)
-        (or (metabase.models.dispatch/model x)
+        (or (models.dispatch/model x)
             (type x)))
       :cljs
       (if (mbql-clause? x)
@@ -624,6 +624,17 @@
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
 
+(defn- safe-min [& args]
+  (transduce
+   (filter some?)
+   (completing
+    (fn [acc n]
+      (if acc
+        (min acc n)
+        n)))
+   nil
+   args))
+
 (defn query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
@@ -644,10 +655,7 @@
   [{{:keys [max-results max-results-bare-rows]}                      :constraints
     {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
     query-type                                                       :type}]
-  (let [safe-min          (fn [& args]
-                            (when-let [args (seq (filter some? args))]
-                              (reduce min args)))
-        mbql-limit        (when (= query-type :query)
+  (let [mbql-limit        (when (= query-type :query)
                             (safe-min items limit))
         constraints-limit (or
                            (when-not aggregations
