@@ -15,12 +15,13 @@ const questionDetails = {
 
 describe("issue 12926", { tags: "@external" }, () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/card/*/query").as("query");
     restore("postgres-12");
     cy.signInAsAdmin();
   });
 
   describe("field source", () => {
-    it("should stop the ongoing query when removing a card from a dashboard", () => {
+    it("should stop the ongoing query when removing a card from a dashboard", done => {
       cy.createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
@@ -39,7 +40,20 @@ describe("issue 12926", { tags: "@external" }, () => {
         cy.findByLabelText("close icon").click();
       });
 
-      cy.get("@xhrAbort").should("have.been.calledOnce");
+      cy.on("fail", err => {
+        if (
+          err.name === "CypressError" &&
+          err.message.includes("query") &&
+          err.message.includes("Timed out")
+        ) {
+          done();
+          return true;
+        }
+        throw err;
+      });
+      cy.wait("@query", { timeout: 2000 }).then(() => {
+        throw new Error("Request wasn't cancelled");
+      });
     });
   });
 });
