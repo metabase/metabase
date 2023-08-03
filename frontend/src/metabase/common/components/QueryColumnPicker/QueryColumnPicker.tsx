@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 
-import AccordionList from "metabase/core/components/AccordionList";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Icon, IconName } from "metabase/core/components/Icon";
 import { singularize } from "metabase/lib/formatting";
@@ -9,7 +8,7 @@ import type { ColorName } from "metabase/lib/colors/types";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
-import { Root } from "./QueryColumnPicker.styled";
+import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -143,22 +142,22 @@ function QueryColumnPicker({
   );
 
   return (
-    <Root className={className} color={color}>
-      <AccordionList
-        sections={sections}
-        maxHeight={maxHeight}
-        alwaysExpanded={false}
-        onChange={handleSelectColumn}
-        itemIsSelected={checkIsColumnSelected}
-        renderItemName={renderItemName}
-        renderItemDescription={omitItemDescription}
-        renderItemIcon={renderItemIcon}
-        renderItemExtra={renderItemExtra}
-        // Compat with E2E tests around MLv1-based components
-        // Prefer using a11y role selectors
-        itemTestId="dimension-list-item"
-      />
-    </Root>
+    <StyledAccordionList
+      className={className}
+      sections={sections}
+      maxHeight={maxHeight}
+      alwaysExpanded={false}
+      onChange={handleSelectColumn}
+      itemIsSelected={checkIsColumnSelected}
+      renderItemName={renderItemName}
+      renderItemDescription={omitItemDescription}
+      renderItemIcon={renderItemIcon}
+      renderItemExtra={renderItemExtra}
+      color={color}
+      // Compat with E2E tests around MLv1-based components
+      // Prefer using a11y role selectors
+      itemTestId="dimension-list-item"
+    />
   );
 }
 
