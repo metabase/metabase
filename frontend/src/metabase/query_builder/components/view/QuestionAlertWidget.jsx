@@ -1,12 +1,7 @@
 /* eslint-disable react/prop-types */
 import { createRef, Component } from "react";
-
-import cx from "classnames";
 import { t } from "ttag";
-
-import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
-
 import AlertListPopoverContent from "../AlertListPopoverContent";
 import { AlertIcon } from "./QuestionAlertWidget.styled";
 
@@ -49,10 +44,7 @@ export default class QuestionAlertWidget extends Component {
     if (question.isSaved() && Object.values(questionAlerts).length > 0) {
       return (
         <span onClick={this.open} ref={this.rootRef}>
-          <Icon
-            name="bell"
-            className={cx(className, "text-brand cursor-pointer")}
-          />
+          <AlertIcon name="bell" className={className} isActive />
           <Popover
             target={this.rootRef.current}
             isOpen={isOpen}
