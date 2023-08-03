@@ -92,11 +92,9 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
-import { Playground } from "metabase/ui/components/typography/Playground";
 
 export const getRoutes = store => (
   <Route title={t`Metabase`} component={App}>
-    <Route component={Playground} path={"/playground"} />
     {/* SETUP */}
     <Route
       path="/setup"
