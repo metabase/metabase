@@ -201,7 +201,7 @@ export const PLUGIN_MODERATION = {
     question?: Question,
     isModerator?: boolean,
     reload?: () => void,
-  ) => ({}),
+  ) => [],
 };
 
 export const PLUGIN_CACHING = {
