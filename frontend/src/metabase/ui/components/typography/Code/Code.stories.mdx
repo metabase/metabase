@@ -1,0 +1,59 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Code } from "./";
+import { Anchor } from "../Anchor";
+
+
+<Meta title="Code" component={Code}
+      args={{
+        children: "Having small touches of colour makes it more colourful than having the whole thing in colour",
+      }}
+/>
+
+export const Template = (args) => <Code {...args} />;
+
+# Code
+
+Our themed wrapper around [Mantine Code](https://mantine.dev/core/code/).
+
+## When to use Code
+
+The Code component allows users to display code snippets. Users can also use the `Anchor` component within the code block, but should consider using the `Anchor` component outside  the code block instead. For displaying text, use the `Text` component.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Foundation-%2F-text?type=design&node-id=5-70&mode=design&t=9Sh3xAM7HsIZIN1z-11)
+- [Mantine Code Docs](https://mantine.dev/core/text/)
+
+## Caveats
+
+N/A
+
+## Usage guidelines
+
+N/A
+
+## General
+
+<Canvas>
+  <Story name="Default"
+  >
+    {Template.bind({})}
+  </Story>
+</Canvas>
+
+
+<Canvas>
+  <Story name="Using anchors in code"
+  >
+    <Code> You can visit our Github page&nbsp;
+      <Anchor href="https://www.github.com/metabase">here</Anchor>
+    </Code>
+  </Story>
+</Canvas>
+
+
+
+## Related components
+
+- Anchor
+- Text
