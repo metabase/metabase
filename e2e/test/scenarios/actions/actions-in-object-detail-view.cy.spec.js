@@ -11,6 +11,8 @@ import {
   visitDashboard,
   visitModel,
   createModelFromTableName,
+  createImplicitActions,
+  setActionsEnabledForDB,
 } from "e2e/support/helpers";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
@@ -26,7 +28,7 @@ const DASHBOARD = {
 
 describe("scenarios > actions > actions-in-object-detail-view", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/action").as("createBasicActions");
+    cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
     cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
       "prefetchValues",
@@ -51,7 +53,7 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
     beforeEach(() => {
       asAdmin(() => {
         cy.get("@modelId").then(modelId => {
-          createBasicModelActions(modelId);
+          createImplicitActions({ modelId });
 
           cy.createQuestionAndDashboard({
             questionDetails: {
@@ -63,8 +65,7 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
               },
             },
             dashboardDetails: DASHBOARD,
-          }).then(({ body: { card_id, dashboard_id } }) => {
-            cy.wrap(card_id).as("modelId");
+          }).then(({ body: { dashboard_id } }) => {
             cy.wrap(dashboard_id).as("dashboardId");
           });
         });
@@ -88,10 +89,6 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
     it("should be able to run update and delete actions when enabled", () => {
       cy.get("@modelId").then(modelId => {
         asNormalUser(() => {
-          cy.log("As normal user: verify database actions are enabled");
-          visitModelDetail(modelId);
-          assertActionsTabExists();
-
           cy.log("As normal user: verify there are no model actions to run");
           visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
           objectDetailModal().within(() => {
@@ -100,18 +97,13 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
         });
 
         asAdmin(() => {
-          cy.log("As admin: verify database actions are enabled");
-          visitModelDetail(modelId);
-          assertActionsTabExists();
-
           cy.log("As admin: Verify that there are no model actions to run");
           visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
           objectDetailModal().within(() => {
             assertActionsDropdownNotExists();
           });
 
-          cy.log("As admin: create basic model actions");
-          createBasicModelActions(modelId);
+          createImplicitActions({ modelId });
 
           cy.log("As admin: verify there are model actions to run");
           visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
@@ -180,10 +172,6 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
         });
 
         asAdmin(() => {
-          cy.log("As admin: verify database actions are enabled");
-          visitModelDetail(modelId);
-          assertActionsTabExists();
-
           cy.log("As admin: disable basic model actions");
           disableBasicModelActions(modelId);
 
@@ -230,22 +218,7 @@ function asNormalUser(callback) {
 }
 
 function disableDatabaseActions(databaseId) {
-  cy.visit(`/admin/databases/${databaseId}`);
-  const actionsToggle = cy.findByLabelText("Model actions");
-
-  cy.log("actions should be enabled in model page");
-  actionsToggle.should("be.checked");
-
-  actionsToggle.click();
-
-  cy.log("actions should be disabled in model page");
-  actionsToggle.should("not.be.checked");
-}
-
-function createBasicModelActions(modelId) {
-  visitModelDetailActions(modelId);
-  cy.findByText("Create basic actions").click();
-  cy.wait("@createBasicActions");
+  setActionsEnabledForDB(databaseId, false);
 }
 
 function disableBasicModelActions(modelId) {
@@ -258,7 +231,8 @@ function disableBasicModelActions(modelId) {
 
 function visitObjectDetail(modelId, objectId) {
   visitModel(modelId);
-  cy.findAllByText(objectId).first().click();
+  cy.wait("@getCard");
+  cy.findByTestId("TableInteractive-root").findByText(objectId).click();
 }
 
 function visitModelDetail(modelId) {
@@ -290,11 +264,6 @@ function assertActionsDropdownExists() {
 function assertActionsDropdownNotExists() {
   cy.log("actions dropdown should not be shown in object detail view");
   cy.findByTestId("actions-menu").should("not.exist");
-}
-
-function assertActionsTabExists() {
-  cy.log("actions tab should be shown in model detail page");
-  cy.findByText("Actions").should("exist");
 }
 
 function assertActionsTabNotExists() {
