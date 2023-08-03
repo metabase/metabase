@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.util.malli.describe-test
-  (:require [clojure.test :refer [deftest is testing]]
-            [metabase.util.malli.describe :as umd]))
+  (:require
+   [clojure.test :refer [deftest is testing]]
+   [metabase.util.malli.describe :as umd]))
 
 (deftest ^:parallel descriptor-test
   (testing "vector"
