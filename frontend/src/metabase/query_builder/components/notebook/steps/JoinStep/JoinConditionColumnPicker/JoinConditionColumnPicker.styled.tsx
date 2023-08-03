@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import QueryColumnPicker from "metabase/common/components/QueryColumnPicker/QueryColumnPicker";
-import { color, darken } from "metabase/lib/colors";
+import { alpha, color, darken } from "metabase/lib/colors";
 
 const noColumnStyle = css`
   min-height: 34px;
   padding: 8px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.51);
+  border: 1px solid ${alpha(color("white"), 0.5)};
   border-radius: 4px;
 `;
 
