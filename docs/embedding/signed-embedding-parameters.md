@@ -4,7 +4,7 @@ title: Parameters for signed embeds
 
 # Parameters for signed embeds
 
-Also known as: parameters for standalone embeds.
+Also known as: parameters for static embeds.
 
 Parameters are pieces of information that are passed between Metabase and your website via the [embedding URL](./signed-embedding.md#adding-the-embedding-url-to-your-website). You can use parameters to specify how Metabase items should look and behave inside the iframe on your website.
 
