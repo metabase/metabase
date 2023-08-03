@@ -89,7 +89,7 @@ const SMART_SCALAR_QUESTION_CARDS = [
  * Every block with JSDoc within "it" callbacks should ideally be a separate "it" call.
  * @see https://github.com/metabase/metabase/pull/31722#discussion_r1246165418
  */
-describe("issue 31628", () => {
+describe("responsive scalars Metbase#31628", { tags: ["@nightly"] }, () => {
   describe("display: scalar", () => {
     const descendantsSelector = [
       "[data-testid='scalar-container']",

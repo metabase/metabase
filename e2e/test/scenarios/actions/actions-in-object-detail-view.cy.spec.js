@@ -35,204 +35,208 @@ const DASHBOARD = {
   database: PG_DB_ID,
 };
 
-describe("scenarios > actions > actions-in-object-detail-view", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/action").as("createBasicActions");
-    cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
-    cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
-      "prefetchValues",
-    );
-
-    resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
-    restore("postgres-writable");
-  });
-
-  describe("in dashboard", () => {
+describe(
+  "scenarios > actions > actions-in-object-detail-view",
+  { tags: ["@nightly"] },
+  () => {
     beforeEach(() => {
-      asAdmin(() => {
-        resyncDatabase({
-          dbId: WRITABLE_DB_ID,
-          tableName: WRITABLE_TEST_TABLE,
-        });
+      cy.intercept("POST", "/api/action").as("createBasicActions");
+      cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
+      cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
+        "prefetchValues",
+      );
 
-        cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
+      resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
+      restore("postgres-writable");
+    });
 
-        cy.get("@modelId").then(modelId => {
-          createBasicModelActions(modelId);
+    describe("in dashboard", () => {
+      beforeEach(() => {
+        asAdmin(() => {
+          resyncDatabase({
+            dbId: WRITABLE_DB_ID,
+            tableName: WRITABLE_TEST_TABLE,
+          });
 
-          cy.createQuestionAndDashboard({
-            questionDetails: {
-              name: "Score detail",
-              display: "object",
-              database: PG_DB_ID,
-              query: {
-                "source-table": `card__${modelId}`,
+          cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
+
+          cy.get("@modelId").then(modelId => {
+            createBasicModelActions(modelId);
+
+            cy.createQuestionAndDashboard({
+              questionDetails: {
+                name: "Score detail",
+                display: "object",
+                database: PG_DB_ID,
+                query: {
+                  "source-table": `card__${modelId}`,
+                },
               },
-            },
-            dashboardDetails: DASHBOARD,
-          }).then(({ body: { card_id, dashboard_id } }) => {
-            cy.wrap(card_id).as("modelId");
-            cy.wrap(dashboard_id).as("dashboardId");
-          });
-        });
-      });
-    });
-
-    it("does not show model actions in model visualization on a dashboard", () => {
-      asAdmin(() => {
-        cy.get("@dashboardId").then(dashboardId => {
-          visitDashboard(dashboardId);
-        });
-
-        cy.findByTestId("dashcard").within(() => {
-          assertActionsDropdownNotExists();
-        });
-      });
-    });
-  });
-
-  describe("in modal", () => {
-    beforeEach(() => {
-      asAdmin(() => {
-        resyncDatabase({
-          dbId: WRITABLE_DB_ID,
-          tableName: WRITABLE_TEST_TABLE,
-        });
-        cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
-      });
-    });
-
-    it("should be able to run update and delete actions when enabled", () => {
-      cy.get("@modelId").then(modelId => {
-        asNormalUser(() => {
-          cy.log("As normal user: verify database actions are enabled");
-          visitModelDetail(modelId);
-          assertActionsTabExists();
-
-          cy.log("As normal user: verify there are no model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-          objectDetailModal().within(() => {
-            assertActionsDropdownNotExists();
-          });
-        });
-
-        asAdmin(() => {
-          cy.log("As admin: verify database actions are enabled");
-          visitModelDetail(modelId);
-          assertActionsTabExists();
-
-          cy.log("As admin: Verify that there are no model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-          objectDetailModal().within(() => {
-            assertActionsDropdownNotExists();
-          });
-
-          cy.log("As admin: create basic model actions");
-          createBasicModelActions(modelId);
-
-          cy.log("As admin: verify there are model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-          objectDetailModal().within(() => {
-            assertActionsDropdownExists();
-          });
-        });
-
-        asNormalUser(() => {
-          cy.log("As normal user: verify there are model actions to run (1)");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-          objectDetailModal().within(() => {
-            assertActionsDropdownExists();
-          });
-
-          cy.log("As normal user: verify update form gets prefilled");
-          openUpdateObjectModal();
-          actionExecuteModal().within(() => {
-            cy.wait("@prefetchValues").then(request => {
-              const firstScoreRow = request.response.body;
-
-              actionForm().within(() => {
-                assertScoreFormPrefilled(firstScoreRow);
-              });
-            });
-
-            cy.icon("close").click();
-          });
-          objectDetailModal().icon("close").click();
-
-          cy.log("As normal user: verify there are model actions to run (2)");
-          visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
-          objectDetailModal().within(() => {
-            assertActionsDropdownExists();
-          });
-
-          cy.log(
-            "As normal user: verify form gets prefilled with values for another entity and run update action",
-          );
-          openUpdateObjectModal();
-          actionExecuteModal().within(() => {
-            cy.wait("@prefetchValues").then(request => {
-              const secondScoreRow = request.response.body;
-
-              actionForm().within(() => {
-                assertScoreFormPrefilled(secondScoreRow);
-
-                cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
-                cy.findByText("Update").click();
-              });
+              dashboardDetails: DASHBOARD,
+            }).then(({ body: { card_id, dashboard_id } }) => {
+              cy.wrap(card_id).as("modelId");
+              cy.wrap(dashboard_id).as("dashboardId");
             });
           });
-          objectDetailModal().icon("close").click();
-          assertSuccessfullUpdateToast();
-          assertUpdatedScoreInTable();
-
-          cy.log("As normal user: run delete action");
-          visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
-          objectDetailModal().within(() => {
-            assertActionsDropdownExists();
-          });
-          openDeleteObjectModal();
-          deleteObjectModal().findByText("Delete forever").click();
-          assertSuccessfullDeleteToast();
-          assertUpdatedScoreNotInTable();
         });
+      });
 
+      it("does not show model actions in model visualization on a dashboard", () => {
         asAdmin(() => {
-          cy.log("As admin: verify database actions are enabled");
-          visitModelDetail(modelId);
-          assertActionsTabExists();
-
-          cy.log("As admin: disable basic model actions");
-          disableBasicModelActions(modelId);
-
-          cy.log("As admin user: verify there are no model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-          objectDetailModal().within(() => {
-            assertActionsDropdownNotExists();
+          cy.get("@dashboardId").then(dashboardId => {
+            visitDashboard(dashboardId);
           });
 
-          cy.log("As admin: disable database actions");
-          disableDatabaseActions(WRITABLE_DB_ID);
-
-          cy.log("As admin: verify database actions are disabled");
-          visitModelDetail(modelId);
-          assertActionsTabNotExists();
-        });
-
-        asNormalUser(() => {
-          cy.log("As normal user: verify database actions are disabled");
-          visitModelDetail(modelId);
-          assertActionsTabNotExists();
-
-          cy.log("As normal user: verify there are no model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-          objectDetailModal().within(() => {
+          cy.findByTestId("dashcard").within(() => {
             assertActionsDropdownNotExists();
           });
         });
       });
     });
-  });
-});
+
+    describe("in modal", () => {
+      beforeEach(() => {
+        asAdmin(() => {
+          resyncDatabase({
+            dbId: WRITABLE_DB_ID,
+            tableName: WRITABLE_TEST_TABLE,
+          });
+          cy.createQuestion(SCORES_MODEL, { wrapId: true, idAlias: "modelId" });
+        });
+      });
+
+      it("should be able to run update and delete actions when enabled", () => {
+        cy.get("@modelId").then(modelId => {
+          asNormalUser(() => {
+            cy.log("As normal user: verify database actions are enabled");
+            visitModelDetail(modelId);
+            assertActionsTabExists();
+
+            cy.log("As normal user: verify there are no model actions to run");
+            visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+            objectDetailModal().within(() => {
+              assertActionsDropdownNotExists();
+            });
+          });
+
+          asAdmin(() => {
+            cy.log("As admin: verify database actions are enabled");
+            visitModelDetail(modelId);
+            assertActionsTabExists();
+
+            cy.log("As admin: Verify that there are no model actions to run");
+            visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+            objectDetailModal().within(() => {
+              assertActionsDropdownNotExists();
+            });
+
+            cy.log("As admin: create basic model actions");
+            createBasicModelActions(modelId);
+
+            cy.log("As admin: verify there are model actions to run");
+            visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+            objectDetailModal().within(() => {
+              assertActionsDropdownExists();
+            });
+          });
+
+          asNormalUser(() => {
+            cy.log("As normal user: verify there are model actions to run (1)");
+            visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+            objectDetailModal().within(() => {
+              assertActionsDropdownExists();
+            });
+
+            cy.log("As normal user: verify update form gets prefilled");
+            openUpdateObjectModal();
+            actionExecuteModal().within(() => {
+              cy.wait("@prefetchValues").then(request => {
+                const firstScoreRow = request.response.body;
+
+                actionForm().within(() => {
+                  assertScoreFormPrefilled(firstScoreRow);
+                });
+              });
+
+              cy.icon("close").click();
+            });
+            objectDetailModal().icon("close").click();
+
+            cy.log("As normal user: verify there are model actions to run (2)");
+            visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
+            objectDetailModal().within(() => {
+              assertActionsDropdownExists();
+            });
+
+            cy.log(
+              "As normal user: verify form gets prefilled with values for another entity and run update action",
+            );
+            openUpdateObjectModal();
+            actionExecuteModal().within(() => {
+              cy.wait("@prefetchValues").then(request => {
+                const secondScoreRow = request.response.body;
+
+                actionForm().within(() => {
+                  assertScoreFormPrefilled(secondScoreRow);
+
+                  cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
+                  cy.findByText("Update").click();
+                });
+              });
+            });
+            objectDetailModal().icon("close").click();
+            assertSuccessfullUpdateToast();
+            assertUpdatedScoreInTable();
+
+            cy.log("As normal user: run delete action");
+            visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
+            objectDetailModal().within(() => {
+              assertActionsDropdownExists();
+            });
+            openDeleteObjectModal();
+            deleteObjectModal().findByText("Delete forever").click();
+            assertSuccessfullDeleteToast();
+            assertUpdatedScoreNotInTable();
+          });
+
+          asAdmin(() => {
+            cy.log("As admin: verify database actions are enabled");
+            visitModelDetail(modelId);
+            assertActionsTabExists();
+
+            cy.log("As admin: disable basic model actions");
+            disableBasicModelActions(modelId);
+
+            cy.log("As admin user: verify there are no model actions to run");
+            visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+            objectDetailModal().within(() => {
+              assertActionsDropdownNotExists();
+            });
+
+            cy.log("As admin: disable database actions");
+            disableDatabaseActions(WRITABLE_DB_ID);
+
+            cy.log("As admin: verify database actions are disabled");
+            visitModelDetail(modelId);
+            assertActionsTabNotExists();
+          });
+
+          asNormalUser(() => {
+            cy.log("As normal user: verify database actions are disabled");
+            visitModelDetail(modelId);
+            assertActionsTabNotExists();
+
+            cy.log("As normal user: verify there are no model actions to run");
+            visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+            objectDetailModal().within(() => {
+              assertActionsDropdownNotExists();
+            });
+          });
+        });
+      });
+    });
+  },
+);
 
 function asAdmin(callback) {
   cy.signInAsAdmin();

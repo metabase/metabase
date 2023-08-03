@@ -89,7 +89,7 @@ const SAMPLE_WRITABLE_QUERY_ACTION = assocIn(
 
 describe(
   "scenarios > models > actions",
-  { tags: ["@external", "@actions"] },
+  { tags: ["@external", "@actions", "@nightly"] },
   () => {
     beforeEach(() => {
       restore("postgres-12");

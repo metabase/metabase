@@ -38,7 +38,7 @@ const MODEL_NAME = "Test Action Model";
 ["mysql", "postgres"].forEach(dialect => {
   describe(
     `Write Actions on Dashboards (${dialect})`,
-    { tags: ["@external", "@actions"] },
+    { tags: ["@external", "@actions", "@nightly"] },
     () => {
       beforeEach(() => {
         cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");

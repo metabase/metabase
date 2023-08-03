@@ -197,7 +197,7 @@ const viewports = [
   [1440, 800],
 ];
 
-describe("scenarios > dashboard card resizing", () => {
+describe("scenarios > dashboard card resizing", { tags: ["@nightly"] }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

@@ -42,130 +42,134 @@ describe("scenarios > embedding > dashboard parameters", () => {
   });
 
   context("UI", () => {
-    it("should be disabled by default but able to be set to editable and/or locked (metabase#20357)", () => {
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+    it(
+      "should be disabled by default but able to be set to editable and/or locked (metabase#20357)",
+      { tags: "@nightly" },
+      () => {
+        cy.get("@dashboardId").then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
 
-      cy.icon("share").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Embed in your application").click();
+        cy.icon("share").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Embed in your application").click();
 
-      cy.findByRole("heading", { name: "Parameters" })
-        .parent()
-        .as("allParameters")
-        .within(() => {
-          // verify that all the parameters on the dashboard are defaulted to disabled
-          cy.findAllByText("Disabled").should("have.length", 4);
+        cy.findByRole("heading", { name: "Parameters" })
+          .parent()
+          .as("allParameters")
+          .within(() => {
+            // verify that all the parameters on the dashboard are defaulted to disabled
+            cy.findAllByText("Disabled").should("have.length", 4);
 
-          // select the dropdown next to the Name parameter so that we can set it to editable
-          cy.findByText("Name")
+            // select the dropdown next to the Name parameter so that we can set it to editable
+            cy.findByText("Name")
+              .parent()
+              .within(() => {
+                cy.findByText("Disabled").click();
+              });
+          });
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Editable").click();
+
+        cy.get("@allParameters").within(() => {
+          cy.findByText("Id")
             .parent()
             .within(() => {
               cy.findByText("Disabled").click();
             });
         });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Editable").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Locked").click();
 
-      cy.get("@allParameters").within(() => {
-        cy.findByText("Id")
+        // set the locked parameter's value
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Preview Locked Parameters")
           .parent()
           .within(() => {
-            cy.findByText("Disabled").click();
+            cy.findByText("Id").click();
           });
-      });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Locked").click();
+        cy.findByPlaceholderText("Search by Name or enter an ID").type(
+          "1{enter}3{enter}",
+        );
 
-      // set the locked parameter's value
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview Locked Parameters")
-        .parent()
-        .within(() => {
-          cy.findByText("Id").click();
+        cy.button("Add filter").click();
+
+        // publish the embedded dashboard so that we can directly navigate to its url
+        publishChanges(({ request }) => {
+          const actual = request.body.embedding_params;
+
+          const expected = {
+            id: "locked",
+            name: "enabled",
+          };
+
+          assert.deepEqual(actual, expected);
         });
 
-      cy.findByPlaceholderText("Search by Name or enter an ID").type(
-        "1{enter}3{enter}",
-      );
+        // directly navigate to the embedded dashboard
+        visitIframe();
 
-      cy.button("Add filter").click();
+        // verify that the Id parameter doesn't show up but that its value is reflected in the dashcard
+        filterWidget().contains("Id").should("not.exist");
 
-      // publish the embedded dashboard so that we can directly navigate to its url
-      publishChanges(({ request }) => {
-        const actual = request.body.embedding_params;
+        cy.get(".ScalarValue").invoke("text").should("eq", "2");
 
-        const expected = {
-          id: "locked",
-          name: "enabled",
-        };
+        // verify that disabled filters don't show up
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Source").should("not.exist");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("User").should("not.exist");
 
-        assert.deepEqual(actual, expected);
-      });
+        // only Name parameter should be visible
+        openFilterOptions("Name");
 
-      // directly navigate to the embedded dashboard
-      visitIframe();
+        cy.findByPlaceholderText("Search by Name").type("L");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Lina Heaney").click();
 
-      // verify that the Id parameter doesn't show up but that its value is reflected in the dashcard
-      filterWidget().contains("Id").should("not.exist");
+        cy.button("Add filter").click();
 
-      cy.get(".ScalarValue").invoke("text").should("eq", "2");
+        cy.get(".ScalarValue").invoke("text").should("eq", "1");
 
-      // verify that disabled filters don't show up
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Source").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("User").should("not.exist");
+        cy.log(
+          "Sanity check: lets make sure we can disable all previously set parameters",
+        );
+        cy.signInAsAdmin();
 
-      // only Name parameter should be visible
-      openFilterOptions("Name");
+        cy.get("@dashboardId").then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
 
-      cy.findByPlaceholderText("Search by Name").type("L");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Lina Heaney").click();
+        cy.icon("share").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Embed in your application").click();
 
-      cy.button("Add filter").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Locked").click();
+        popover().contains("Disabled").click();
 
-      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Editable").click();
+        popover().contains("Disabled").click();
 
-      cy.log(
-        "Sanity check: lets make sure we can disable all previously set parameters",
-      );
-      cy.signInAsAdmin();
+        publishChanges(({ request }) => {
+          const actual = request.body.embedding_params;
 
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
+          const expected = { name: "disabled", id: "disabled" };
 
-      cy.icon("share").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Embed in your application").click();
+          assert.deepEqual(actual, expected);
+        });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Locked").click();
-      popover().contains("Disabled").click();
+        visitIframe();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Editable").click();
-      popover().contains("Disabled").click();
+        filterWidget().should("not.exist");
 
-      publishChanges(({ request }) => {
-        const actual = request.body.embedding_params;
-
-        const expected = { name: "disabled", id: "disabled" };
-
-        assert.deepEqual(actual, expected);
-      });
-
-      visitIframe();
-
-      filterWidget().should("not.exist");
-
-      cy.get(".ScalarValue").invoke("text").should("eq", "2,500");
-    });
+        cy.get(".ScalarValue").invoke("text").should("eq", "2,500");
+      },
+    );
   });
 
   context("API", () => {
