@@ -10,6 +10,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s])
   (:import

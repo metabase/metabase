@@ -24,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
