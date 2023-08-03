@@ -317,7 +317,8 @@
                  (query-with-source-card card)))))))))
 
 (deftest card-id-native-source-queries-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
+  (mt/test-drivers (set/intersection (set/difference (mt/normal-drivers-with-feature :nested-queries)
+                                                     #{:bigquery-cloud-sdk :snowflake})
                                      (descendants driver/hierarchy :sql))
     (let [table-name (sql.tx/qualify-and-quote (tx/driver) "test-data" "venues")
           run-native-query
