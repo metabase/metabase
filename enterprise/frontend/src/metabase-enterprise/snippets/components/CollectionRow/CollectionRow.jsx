@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import cx from "classnames";
 
 import { Icon } from "metabase/core/components/Icon";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
-import CollectionOptionsButton from "./CollectionOptionsButton";
+import CollectionOptionsButton from "../CollectionOptionsButton";
+import { CollectionRowRoot } from "./CollectionRow.styled";
 
 const ICON_SIZE = 16;
 
@@ -16,17 +16,15 @@ class CollectionRow extends Component {
     const onSelectCollection = () => setSnippetCollectionId(collection.id);
 
     return (
-      <div
-        className={cx(
-          { "bg-light-hover cursor-pointer": !collection.archived },
-          "hover-parent hover--visibility flex align-center py2 px3 text-brand",
-        )}
+      <CollectionRowRoot
+        isArchived={collection.archived}
+        className="hover-parent hover--visibility"
         {...(collection.archived ? undefined : { onClick: onSelectCollection })}
       >
         <Icon name="folder" size={ICON_SIZE} style={{ opacity: 0.25 }} />
         <span className="flex-full ml1 text-bold">{collection.name}</span>
         <CollectionOptionsButton {...this.props} collection={collection} />
-      </div>
+      </CollectionRowRoot>
     );
   }
 }
