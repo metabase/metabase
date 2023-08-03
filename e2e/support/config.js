@@ -54,10 +54,7 @@ const defaultConfig = {
       //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
-      }
-
-      if (browser.name === "chrome" && browser.isHeadless) {
-        launchOptions.args.push("--headless=old");
+        launchOptions.args.push("--disable-gpu");
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"
