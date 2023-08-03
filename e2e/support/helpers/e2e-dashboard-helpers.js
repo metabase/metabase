@@ -177,5 +177,5 @@ export function createLinkCard() {
 }
 
 export function openDashboardMenu() {
-  return dashboardHeader().findByLabelText("dashboard-menu-button");
+  return dashboardHeader().findByLabelText("dashboard-menu-button").click();
 }

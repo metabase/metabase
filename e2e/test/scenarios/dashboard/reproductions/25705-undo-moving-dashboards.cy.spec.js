@@ -31,7 +31,7 @@ describe("issue 25705", () => {
   });
 
   it("should allow undo moving dashboard to another collection", () => {
-    openDashboardMenu().click();
+    openDashboardMenu();
 
     popover().findByText("Move").click();
 
