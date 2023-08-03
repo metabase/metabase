@@ -452,9 +452,17 @@
                             (table-fn some-entries)])
                          (split-at (/ (count legend-entries) 2) legend-entries)))])))
 
+(defn- replace-nils [rows]
+  (mapv (fn [row]
+          (if (nil? (first row))
+            (assoc row 0 "(empty)")
+            row))
+        rows))
+
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [viz-settings                (merge viz-settings (:visualization_settings dashcard))
+  (let [rows                        (replace-nils rows)
+        viz-settings                (merge viz-settings (:visualization_settings dashcard))
         [x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
                                          (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
@@ -786,13 +794,6 @@
         settings          (->ts-viz x-col y-col labels viz-settings)
         series-seqs       (map card-result->series (cons {:card card :result {:data data}} multi-res))]
     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series-seqs settings)))))
-
-(defn- replace-nils [rows]
-  (mapv (fn [row]
-          (if (nil? (first row))
-            (assoc row 0 "(empty)")
-            row))
-        rows))
 
 (defn- lab-image-bundle
   "Generate an image-bundle for a Line Area Bar chart (LAB)
