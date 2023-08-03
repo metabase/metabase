@@ -32,6 +32,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
@@ -580,10 +581,11 @@
                         (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
-  [{:keys [card_id parameter_mappings visualization_settings]}]
+  [{:keys [action_id card_id parameter_mappings visualization_settings]}]
   (->> (mapcat serdes/mbql-deps parameter_mappings)
        (concat (serdes/visualization-settings-deps visualization_settings))
-       (concat (when card_id #{[{:model "Card" :id card_id}]}))
+       (concat (when card_id   #{[{:model "Card"   :id card_id}]}))
+       (concat (when action_id #{[{:model "Action" :id action_id}]}))
        set))
 
 (defmethod serdes/dependencies "Dashboard"

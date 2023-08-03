@@ -17,9 +17,9 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -77,7 +77,7 @@
                          :expected    table-col-base-type
                          :actual      (:base_type col)}))))))
 
-(s/defn check-columns-match-table
+(mu/defn check-columns-match-table
   "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
   that's getting GTAPped. It's ok to remove columns, but you cannot add new columns. The base types of the Card
   columns can derive from the respective base types of the columns in the Table itself, but you cannot return an
@@ -89,7 +89,7 @@
      (when-let [result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
-  ([table-id :- su/IntGreaterThanZero result-metadata-columns]
+  ([table-id :- ms/PositiveInt result-metadata-columns]
    ;; prevent circular refs
    (classloader/require 'metabase.query-processor)
    (let [table-cols (table-field-names->cols table-id)]

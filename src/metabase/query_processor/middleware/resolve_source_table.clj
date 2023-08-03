@@ -4,6 +4,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

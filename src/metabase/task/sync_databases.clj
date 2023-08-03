@@ -22,9 +22,11 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.util.malli.schema :as ms])
   (:import
    (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
 
@@ -36,7 +38,7 @@
 
 (declare unschedule-tasks-for-db!)
 
-(s/defn ^:private job-context->database-id :- (s/maybe su/IntGreaterThanZero)
+(mu/defn ^:private job-context->database-id :- [:maybe ms/PositiveInt]
   "Get the Database ID referred to in `job-context`."
   [job-context]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.sql.util :as sql.u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (deftest ^:parallel quote-name-test

@@ -4,7 +4,9 @@
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
    [metabase.test :as mt]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honey-sql-1 :as h1x]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx])
   (:import
    (metabase.util.honey_sql_1 Identifier)))
@@ -235,3 +237,21 @@
                      "int"
                      nil)
                    (h1x/type-info->db-type (h1x/type-info expr))))))))))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(deftest ^:parallel identifier->components-test
+  (is (= ["public" "db" "table" "field"]
+         (h1x/identifier->components
+          (h1x/identifier :field :public :db :table :field))))
+
+  (is (= ["public" "db" "table"]
+         (h1x/identifier->components
+          (h1x/identifier :table :public :db :table))))
+
+  (is (= ["public" "db"]
+         (h1x/identifier->components
+          (h1x/identifier :database :public :db))))
+
+  (is (= ["count"]
+         (h1x/identifier->components
+          (h1x/identifier :field-alias :count)))))

@@ -5,6 +5,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.models :refer [Field]]
    [metabase.test :as mt]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (deftest cast-values-test

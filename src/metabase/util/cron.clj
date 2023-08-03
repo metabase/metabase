@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.util.i18n :as i18n]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s])
   (:import

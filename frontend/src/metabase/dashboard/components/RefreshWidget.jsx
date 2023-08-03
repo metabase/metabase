@@ -59,7 +59,10 @@ export default class RefreshWidget extends Component {
         triggerElement={
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
-              <DashboardHeaderButton icon="clock" />
+              <DashboardHeaderButton
+                icon="clock"
+                aria-label={t`Auto Refresh`}
+              />
             </Tooltip>
           ) : (
             <Tooltip
@@ -80,6 +83,7 @@ export default class RefreshWidget extends Component {
                     percent={Math.min(0.95, (period - elapsed) / period)}
                   />
                 }
+                aria-label={t`Auto Refresh`}
               />
             </Tooltip>
           )
@@ -117,7 +121,6 @@ const RefreshOption = ({ name, period, selected, onClick }) => (
     onClick={onClick}
   >
     <RefreshOptionIcon name="check" />
-    <span>{name.split(" ")[0]}</span>
-    <span>{name.split(" ")[1]}</span>
+    <span>{name}</span>
   </RefreshOptionItem>
 );
