@@ -34,7 +34,7 @@
   (-> s str (.toUpperCase Locale/ENGLISH)))
 
 ;; Add an `:h2` quote style that uppercases the identifier
-(let [{ansi-quote-fn :ansi} @#'honeysql.format/quote-fns]
+(let [{ansi-quote-fn :ansi} @#'hformat/quote-fns]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (alter-var-root #'hformat/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
 
@@ -59,13 +59,13 @@
 ;; with calculated columns with numeric literals -- some SQL databases can't recognize that a calculated field in a
 ;; SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters. Go ahead an use the
 ;; old behavior so we can keep our HoneySQL dependency up to date.
-(extend-protocol honeysql.format/ToSql
+(extend-protocol hformat/ToSql
   Number
   (to-sql [x] (str x)))
 
 ;; Ratios are represented as the division of two numbers which may cause order-of-operation issues when dealing with
 ;; queries. The easiest way around this is to convert them to their decimal representations.
-(extend-protocol honeysql.format/ToSql
+(extend-protocol hformat/ToSql
   clojure.lang.Ratio
   (to-sql [x] (hformat/to-sql (double x))))
 

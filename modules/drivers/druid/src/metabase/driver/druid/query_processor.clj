@@ -755,11 +755,14 @@
 (defn- expression->actual-ags
   "Return a flattened list of actual aggregations that are needed for `expression`."
   [[_ & args]]
-  (vec (reduce concat (for [arg   args
-                            :when (not (number? arg))]
-                        (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-                          (expression->actual-ags arg)
-                          [arg])))))
+  (into []
+        (comp (remove number?)
+              (map (fn [arg]
+                     (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
+                       (expression->actual-ags arg)
+                       [arg])))
+              cat)
+        args))
 
 (defn- unwrap-name
   [x]

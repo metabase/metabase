@@ -95,7 +95,7 @@
     ;; =>
     (fn [x] (inc x))"
   [parsed]
-  `(clojure.core/fn ~@(deparameterized-fn-tail parsed)))
+  `(core/fn ~@(deparameterized-fn-tail parsed)))
 
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
@@ -159,7 +159,7 @@
         schemas   (if (varargs-schema? input-schema)
                     (concat (butlast schemas) [[:maybe (last schemas)]])
                     schemas)]
-    (->> (map (clojure.core/fn [arg-name schema]
+    (->> (map (core/fn [arg-name schema]
                 ;; 1. Skip checks against `:any` schema, there is no situation where it would fail.
                 ;;
                 ;; 2. Skip checks against the default varargs schema, there is no situation where [:maybe [:* :any]] is
@@ -214,7 +214,7 @@
                     (fn [x y] (+ 1 2)))"
   [parsed]
   `(let [~'&f ~(deparameterized-fn-form parsed)]
-     (clojure.core/fn ~@(instrumented-fn-tail (fn-schema parsed)))))
+     (core/fn ~@(instrumented-fn-tail (fn-schema parsed)))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]]. A form like

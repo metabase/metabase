@@ -43,7 +43,7 @@
   "Does the Current User have segmented query permissions for `table`?"
   [table]
   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-    (perms/table-segmented-query-path table)))
+    (perms/table-sandboxed-query-path table)))
 
 (defn- throw-if-no-read-or-segmented-perms
   "Validates that the user either has full read permissions for `field` or segmented permissions on the table

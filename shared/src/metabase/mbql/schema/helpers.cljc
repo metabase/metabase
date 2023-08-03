@@ -50,8 +50,9 @@
   (s/named
    (apply
     s/conditional
-    (reduce concat (for [[clause-name schema] clause-names+schemas]
-                     [(partial is-clause? clause-name) schema])))
+    (mapcat (fn [[clause-name schema]]
+              [(partial is-clause? clause-name) schema])
+            clause-names+schemas))
    (str "Must be a valid instance of one of these clauses: " (str/join ", " (map first clause-names+schemas)))))
 
 (def NonBlankString

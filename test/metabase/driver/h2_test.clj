@@ -335,7 +335,7 @@
           (testing "spec obtained from audit db has no connection string, and that works OK."
             (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
               (is (= audit-db-expected-id audit-db-id))
-              (let [audit-db-pooled-spec (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec audit-db-id)]
+              (let [audit-db-pooled-spec (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
                 (is (= "com.mchange.v2.c3p0.PoolBackedDataSource" (pr-str (type (:datasource audit-db-pooled-spec)))))
                 (let [spec (sql-jdbc.conn/connection-details->spec :h2 audit-db-pooled-spec)]
                   (is (= #{:classname :subprotocol :subname :datasource}

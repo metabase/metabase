@@ -40,10 +40,10 @@
        (map #(.getName ^File %))
        set))
 
-(defn- dir->file-set [dir]
+(defn- dir->file-set [^File dir]
   (dir->contents-set #(.isFile ^File %) dir))
 
-(defn- dir->dir-set [dir]
+(defn- dir->dir-set [^File dir]
   (dir->contents-set #(.isDirectory ^File %) dir))
 
 (defn- subdirs [^File dir]

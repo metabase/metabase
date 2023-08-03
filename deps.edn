@@ -608,7 +608,6 @@
    :exec-fn     dev.h2-shell/shell
    :java-opts   ["-Dfile.encoding=UTF-8"]}
 
-  ;; clojure -M:generate-automagic-dashboards-pot
   :generate-automagic-dashboards-pot
   {:main-opts ["-m" "metabase.automagic-dashboards.rules"]}
 
