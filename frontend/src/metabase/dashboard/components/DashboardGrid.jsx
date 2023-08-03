@@ -32,7 +32,6 @@ import {
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 
-import { cancelFetchCardData } from "../actions/data-fetching";
 import { DashboardCard } from "./DashboardGrid.styled";
 
 import GridLayout from "./grid/GridLayout";
@@ -41,7 +40,7 @@ import { generateMobileLayout } from "./grid/utils";
 import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
 import DashCard from "./DashCard";
 
-const mapDispatchToProps = { addUndo, cancelFetchCardData };
+const mapDispatchToProps = { addUndo };
 
 class DashboardGrid extends Component {
   static contextType = ContentViewportContext;
@@ -295,9 +294,9 @@ class DashboardGrid extends Component {
   };
 
   onDashCardRemove(dc) {
-    this.props.cancelFetchCardData(dc.card_id, dc.id);
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
+      cardId: dc.card_id,
     });
     this.props.addUndo({
       message: t`Removed card`,

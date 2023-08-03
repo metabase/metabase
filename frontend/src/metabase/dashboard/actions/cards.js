@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
-import { createAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import Questions from "metabase/entities/questions";
 
@@ -12,8 +12,8 @@ import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardCreated } from "../analytics";
-import { ADD_CARD_TO_DASH } from "./core";
-import { fetchCardData } from "./data-fetching";
+import { ADD_CARD_TO_DASH, REMOVE_CARD_FROM_DASH } from "./core";
+import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
@@ -70,6 +70,15 @@ export const addCardToDashboard =
 
     dispatch(loadMetadataForDashboard([dashcard]));
   };
+
+export const removeCardFromDashboard = createThunkAction(
+  REMOVE_CARD_FROM_DASH,
+  ({ dashcardId, cardId }) =>
+    (dispatch, _getState) => {
+      dispatch(cancelFetchCardData(cardId, dashcardId));
+      return { dashcardId, cardId };
+    },
+);
 
 export const addDashCardToDashboard = function ({
   dashId,
