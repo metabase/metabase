@@ -211,7 +211,7 @@ jobs:
         if: matrix.edition == 'ee' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine -@nightly" \
+          --env grepTags="-@quarantine+-@nightly" \
           --folder ${{ matrix.folder }} \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:

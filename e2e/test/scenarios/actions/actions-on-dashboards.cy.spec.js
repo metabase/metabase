@@ -963,7 +963,7 @@ const MODEL_NAME = "Test Action Model";
 
 describe(
   "Action Parameters Mapping",
-  { tags: ["@external", "@actions"] },
+  { tags: ["@external", "@actions", "@nightly"] },
   () => {
     beforeEach(() => {
       cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
@@ -987,7 +987,7 @@ describe(
         });
       });
 
-      it("should reflect to updated action on mapping form", () => {
+      it("should reflect updated action on mapping form", () => {
         const ACTION_NAME = "Update Score";
 
         cy.get("@modelId").then(id => {

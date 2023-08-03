@@ -28,224 +28,228 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const PG_DB_ID = 2;
 const PERMISSION_ERROR = "Sorry, you don't have permission to see this card.";
 
-describe("scenarios > dashboard > dashboard back navigation", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-    setActionsEnabledForDB(SAMPLE_DB_ID);
+describe(
+  "scenarios > dashboard > dashboard back navigation",
+  { tags: "@nightly" },
+  () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      setActionsEnabledForDB(SAMPLE_DB_ID);
 
-    cy.intercept("POST", `/api/dataset`).as("dataset");
-    cy.intercept("GET", "/api/card/*").as("card");
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
-    cy.intercept("PUT", `/api/card/*`).as("updateCard");
-    cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
-    cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
-      "dashcardQuery",
-    );
-  });
-
-  it("should display a back to the dashboard button when navigating to a question", () => {
-    const dashboardName = "Orders in a dashboard";
-    const backButtonLabel = `Back to ${dashboardName}`;
-
-    visitDashboard(1);
-    cy.wait("@dashboard");
-    cy.findByTestId("dashcard").findByText("Orders").click();
-    cy.wait("@cardQuery");
-    cy.findByLabelText(backButtonLabel).should("be.visible");
-    cy.icon("notebook").click();
-    summarize({ mode: "notebook" });
-    popover().findByText("Count of rows").click();
-    cy.findByLabelText(backButtonLabel).should("be.visible");
-    visualize();
-    cy.findByLabelText(backButtonLabel).click();
-    cy.findByTestId("dashboard-header")
-      .findByText(dashboardName)
-      .should("be.visible");
-
-    getDashboardCard().realHover();
-    getDashboardCardMenu().click();
-    popover().findByText("Edit question").click();
-    cy.findByLabelText(backButtonLabel).click();
-    cy.findByTestId("dashboard-header")
-      .findByText(dashboardName)
-      .should("be.visible");
-
-    appBar().findByText("Our analytics").click();
-    cy.findByTestId("collection-table").findByText("Orders").click();
-    cy.findByLabelText(backButtonLabel).should("not.exist");
-  });
-
-  it("should expand the native editor when editing a question from a dashboard", () => {
-    createDashboardWithNativeCard();
-    cy.get("@dashboardId").then(visitDashboard);
-    getDashboardCard().realHover();
-    getDashboardCardMenu().click();
-    popover().findByText("Edit question").click();
-    cy.findByTestId("native-query-editor").should("be.visible");
-
-    queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
-    getDashboardCard().findByText("Orders SQL").click();
-    cy.findByTestId("native-query-top-bar")
-      .findByText("This question is written in SQL.")
-      .should("be.visible");
-    cy.findByTestId("native-query-editor").should("not.be.visible");
-  });
-
-  it("should display a back to the dashboard button in table x-ray dashboards", () => {
-    const cardTitle = "Sales per state";
-    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
-    cy.wait("@dataset");
-
-    getDashboardCards()
-      .filter(`:contains("${cardTitle}")`)
-      .findByText(cardTitle)
-      .click();
-    cy.wait("@dataset");
-
-    queryBuilderHeader()
-      .findByLabelText(/Back to .*Orders.*/)
-      .click();
-
-    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
-  });
-
-  it("should display a back to the dashboard button in model x-ray dashboards", () => {
-    const cardTitle = "Orders by Subtotal";
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-    cy.visit("/auto/dashboard/model/1");
-    cy.wait("@dataset");
-
-    getDashboardCards()
-      .filter(`:contains("${cardTitle}")`)
-      .findByText(cardTitle)
-      .click();
-    cy.wait("@dataset");
-
-    queryBuilderHeader()
-      .findByLabelText(/Back to .*Orders.*/)
-      .click();
-
-    getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
-  });
-
-  it("should preserve query results when navigating between the dashboard and the query builder", () => {
-    createDashboardWithCards();
-    cy.get("@dashboardId").then(visitDashboard);
-    cy.wait("@dashboard");
-    cy.wait("@dashcardQuery");
-
-    getDashboardCard().within(() => {
-      cy.findByText("101.04").should("be.visible"); // table data
-      cy.findByText("Orders").click();
-      cy.wait("@cardQuery");
+      cy.intercept("POST", `/api/dataset`).as("dataset");
+      cy.intercept("GET", "/api/card/*").as("card");
+      cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+      cy.intercept("PUT", `/api/card/*`).as("updateCard");
+      cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
+      cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
+        "dashcardQuery",
+      );
     });
 
-    queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
+    it("should display a back to the dashboard button when navigating to a question", () => {
+      const dashboardName = "Orders in a dashboard";
+      const backButtonLabel = `Back to ${dashboardName}`;
 
-    // cached data
-    getDashboardCard(0).findByText("101.04").should("be.visible");
-    getDashboardCard(1).findByText("Text card").should("be.visible");
-    getDashboardCard(2).findByText("Action card").should("be.visible");
+      visitDashboard(1);
+      cy.wait("@dashboard");
+      cy.findByTestId("dashcard").findByText("Orders").click();
+      cy.wait("@cardQuery");
+      cy.findByLabelText(backButtonLabel).should("be.visible");
+      cy.icon("notebook").click();
+      summarize({ mode: "notebook" });
+      popover().findByText("Count of rows").click();
+      cy.findByLabelText(backButtonLabel).should("be.visible");
+      visualize();
+      cy.findByLabelText(backButtonLabel).click();
+      cy.findByTestId("dashboard-header")
+        .findByText(dashboardName)
+        .should("be.visible");
 
-    cy.get("@dashboard.all").should("have.length", 1);
-    cy.get("@dashcardQuery.all").should("have.length", 1);
+      getDashboardCard().realHover();
+      getDashboardCardMenu().click();
+      popover().findByText("Edit question").click();
+      cy.findByLabelText(backButtonLabel).click();
+      cy.findByTestId("dashboard-header")
+        .findByText(dashboardName)
+        .should("be.visible");
 
-    appBar().findByText("Our analytics").click();
+      appBar().findByText("Our analytics").click();
+      cy.findByTestId("collection-table").findByText("Orders").click();
+      cy.findByLabelText(backButtonLabel).should("not.exist");
+    });
 
-    collectionTable().within(() => {
-      cy.findByText("Test Dashboard").click();
+    it("should expand the native editor when editing a question from a dashboard", () => {
+      createDashboardWithNativeCard();
+      cy.get("@dashboardId").then(visitDashboard);
+      getDashboardCard().realHover();
+      getDashboardCardMenu().click();
+      popover().findByText("Edit question").click();
+      cy.findByTestId("native-query-editor").should("be.visible");
+
+      queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
+      getDashboardCard().findByText("Orders SQL").click();
+      cy.findByTestId("native-query-top-bar")
+        .findByText("This question is written in SQL.")
+        .should("be.visible");
+      cy.findByTestId("native-query-editor").should("not.be.visible");
+    });
+
+    it("should display a back to the dashboard button in table x-ray dashboards", () => {
+      const cardTitle = "Sales per state";
+      cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+      cy.wait("@dataset");
+
+      getDashboardCards()
+        .filter(`:contains("${cardTitle}")`)
+        .findByText(cardTitle)
+        .click();
+      cy.wait("@dataset");
+
+      queryBuilderHeader()
+        .findByLabelText(/Back to .*Orders.*/)
+        .click();
+
+      getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+    });
+
+    it("should display a back to the dashboard button in model x-ray dashboards", () => {
+      const cardTitle = "Orders by Subtotal";
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
+      cy.visit("/auto/dashboard/model/1");
+      cy.wait("@dataset");
+
+      getDashboardCards()
+        .filter(`:contains("${cardTitle}")`)
+        .findByText(cardTitle)
+        .click();
+      cy.wait("@dataset");
+
+      queryBuilderHeader()
+        .findByLabelText(/Back to .*Orders.*/)
+        .click();
+
+      getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+    });
+
+    it("should preserve query results when navigating between the dashboard and the query builder", () => {
+      createDashboardWithCards();
+      cy.get("@dashboardId").then(visitDashboard);
       cy.wait("@dashboard");
       cy.wait("@dashcardQuery");
-      cy.get("@dashcardQuery.all").should("have.length", 2);
-    });
-  });
 
-  it("should not preserve query results when the question changes during navigation", () => {
-    visitDashboard(1);
-    cy.wait("@dashboard");
-    cy.wait("@dashcardQuery");
+      getDashboardCard().within(() => {
+        cy.findByText("101.04").should("be.visible"); // table data
+        cy.findByText("Orders").click();
+        cy.wait("@cardQuery");
+      });
 
-    getDashboardCard().within(() => {
-      cy.findByText("101.04").should("be.visible"); // table data
-      cy.findByText("Orders").click();
-      cy.wait("@cardQuery");
-    });
+      queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
-    queryBuilderHeader().within(() => {
-      cy.findByDisplayValue("Orders").clear().type("Orders question").blur();
-      cy.wait("@updateCard");
-      cy.button("Summarize").click();
-    });
+      // cached data
+      getDashboardCard(0).findByText("101.04").should("be.visible");
+      getDashboardCard(1).findByText("Text card").should("be.visible");
+      getDashboardCard(2).findByText("Action card").should("be.visible");
 
-    rightSidebar().within(() => {
-      cy.findByText("Total").click();
-    });
-
-    queryBuilderHeader().within(() => {
-      cy.findByText("Save").click();
-    });
-
-    modal().within(() => {
-      cy.button("Save").click();
-      cy.wait("@updateCard");
-    });
-
-    queryBuilderHeader().within(() => {
-      cy.findByLabelText("Back to Orders in a dashboard").click();
-      cy.wait("@dashcardQuery");
       cy.get("@dashboard.all").should("have.length", 1);
+      cy.get("@dashcardQuery.all").should("have.length", 1);
+
+      appBar().findByText("Our analytics").click();
+
+      collectionTable().within(() => {
+        cy.findByText("Test Dashboard").click();
+        cy.wait("@dashboard");
+        cy.wait("@dashcardQuery");
+        cy.get("@dashcardQuery.all").should("have.length", 2);
+      });
     });
 
-    getDashboardCard().within(() => {
-      cy.findByText("Orders question").should("be.visible");
-      cy.findByText("Count").should("be.visible"); // aggregated data
+    it("should not preserve query results when the question changes during navigation", () => {
+      visitDashboard(1);
+      cy.wait("@dashboard");
+      cy.wait("@dashcardQuery");
+
+      getDashboardCard().within(() => {
+        cy.findByText("101.04").should("be.visible"); // table data
+        cy.findByText("Orders").click();
+        cy.wait("@cardQuery");
+      });
+
+      queryBuilderHeader().within(() => {
+        cy.findByDisplayValue("Orders").clear().type("Orders question").blur();
+        cy.wait("@updateCard");
+        cy.button("Summarize").click();
+      });
+
+      rightSidebar().within(() => {
+        cy.findByText("Total").click();
+      });
+
+      queryBuilderHeader().within(() => {
+        cy.findByText("Save").click();
+      });
+
+      modal().within(() => {
+        cy.button("Save").click();
+        cy.wait("@updateCard");
+      });
+
+      queryBuilderHeader().within(() => {
+        cy.findByLabelText("Back to Orders in a dashboard").click();
+        cy.wait("@dashcardQuery");
+        cy.get("@dashboard.all").should("have.length", 1);
+      });
+
+      getDashboardCard().within(() => {
+        cy.findByText("Orders question").should("be.visible");
+        cy.findByText("Count").should("be.visible"); // aggregated data
+      });
     });
-  });
 
-  it("should navigate back to a dashboard with permission errors", () => {
-    createDashboardWithPermissionError();
-    cy.signInAsNormalUser();
-    cy.get("@dashboardId").then(visitDashboard);
-    cy.wait("@dashboard");
-    cy.wait("@dashcardQuery");
+    it("should navigate back to a dashboard with permission errors", () => {
+      createDashboardWithPermissionError();
+      cy.signInAsNormalUser();
+      cy.get("@dashboardId").then(visitDashboard);
+      cy.wait("@dashboard");
+      cy.wait("@dashcardQuery");
 
-    getDashboardCard(1).findByText(PERMISSION_ERROR);
-    getDashboardCard(0).findByText("Orders 1").click();
-    cy.wait("@card");
-
-    queryBuilderHeader()
-      .findByLabelText("Back to Orders in a dashboard")
-      .click();
-
-    getDashboardCard(1).findByText(PERMISSION_ERROR);
-    cy.get("@dashboard.all").should("have.length", 1);
-    cy.get("@dashcardQuery.all").should("have.length", 1);
-  });
-
-  it("should return to dashboard with specific tab selected", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
-
-    // Add card to second tab
-    cy.icon("pencil").click();
-    openQuestionsSidebar();
-    sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
-    saveDashboard();
-
-    getDashboardCard().within(() => {
-      cy.findByText("Orders, Count").click();
+      getDashboardCard(1).findByText(PERMISSION_ERROR);
+      getDashboardCard(0).findByText("Orders 1").click();
       cy.wait("@card");
+
+      queryBuilderHeader()
+        .findByLabelText("Back to Orders in a dashboard")
+        .click();
+
+      getDashboardCard(1).findByText(PERMISSION_ERROR);
+      cy.get("@dashboard.all").should("have.length", 1);
+      cy.get("@dashcardQuery.all").should("have.length", 1);
     });
 
-    queryBuilderHeader()
-      .findByLabelText("Back to Orders in a dashboard")
-      .click();
+    it("should return to dashboard with specific tab selected", () => {
+      visitDashboardAndCreateTab({ dashboardId: 1, save: false });
 
-    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
-  });
-});
+      // Add card to second tab
+      cy.icon("pencil").click();
+      openQuestionsSidebar();
+      sidebar().within(() => {
+        cy.findByText("Orders, Count").click();
+      });
+      saveDashboard();
+
+      getDashboardCard().within(() => {
+        cy.findByText("Orders, Count").click();
+        cy.wait("@card");
+      });
+
+      queryBuilderHeader()
+        .findByLabelText("Back to Orders in a dashboard")
+        .click();
+
+      cy.findByRole("tab", { selected: true }).should("have.text", "Tab 2");
+    });
+  },
+);
 
 describe(
   "scenarios > dashboard > dashboard back navigation",
