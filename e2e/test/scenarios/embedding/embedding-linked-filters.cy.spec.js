@@ -192,7 +192,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         };
 
         visitEmbeddedPage(payload, {
-          setFilters: "state=AK",
+          setFilters: { state: "AK" },
         });
       });
 
@@ -235,8 +235,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         };
 
         visitEmbeddedPage(payload, {
-          setFilters: "state=AK",
-          hideFilters: "state",
+          setFilters: { state: "AK" },
+          hideFilters: ["state"],
         });
       });
 
@@ -362,7 +362,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         };
 
         cy.log("Make sure we can override the default value");
-        visitEmbeddedPage(payload, { setFilters: "id_filter=4" });
+        visitEmbeddedPage(payload, { setFilters: { id_filter: 4 } });
 
         cy.location("search").should("eq", "?id_filter=4");
 
@@ -384,9 +384,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           .and("contain", "Doohickey");
 
         cy.log("Make sure we can set multiple values");
-        visitEmbeddedPage(payload, {
-          setFilters: "id_filter=4&id_filter=29&category=Widget",
-        });
+        cy.window().then(
+          win =>
+            (win.location.search = "?id_filter=4&id_filter=29&category=Widget"),
+        );
 
         filterWidget()
           .should("have.length", 2)
@@ -435,7 +436,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         };
 
         visitEmbeddedPage(payload, {
-          hideFilters: "id_filter",
+          hideFilters: ["id_filter"],
         });
       });
 

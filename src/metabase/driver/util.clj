@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -145,6 +146,7 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
+        (log/errorf e "Failed to connect to Database")
         (throw (if-let [humanized-message (some->> (.getMessage e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond

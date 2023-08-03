@@ -13,8 +13,6 @@
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -24,13 +22,14 @@
     :as string-extracts-test]
    [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -48,32 +47,36 @@
                                 hx/*honey-sql-version*                   2]
                         (thunk))))
 
+(defn drop-if-exists-and-create-db!
+  "Drop a MySQL database named `db-name` if it already exists; then create a new empty one with that name."
+  [db-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
+    (doseq [sql [(format "DROP DATABASE IF EXISTS %s;" db-name)
+                 (format "CREATE DATABASE %s;" db-name)]]
+      (jdbc/execute! spec [sql]))))
+
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "
                   "when returning them like we asked")
-      (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-        ;; Create the DB
-        (doseq [sql ["DROP DATABASE IF EXISTS all_zero_dates;"
-                     "CREATE DATABASE all_zero_dates;"]]
+      (drop-if-exists-and-create-db! "all_zero_dates")
+      ;; Create Table & add data
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
+            spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
+                        ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
+                        ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
+                        (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
+        (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
+                     "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
           (jdbc/execute! spec [sql]))
-        ;; Create Table & add data
-        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
-              spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
-                          ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
-                          ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
-                          (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
-          (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
-                       "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
-            (jdbc/execute! spec [sql]))
-          ;; create & sync MB DB
-          (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
-            (sync/sync-database! database)
-            (mt/with-db database
-              ;; run the query
-              (is (= [[1 nil]]
-                     (mt/rows
-                      (mt/run-mbql-query exciting-moments-in-history)))))))))))
+        ;; create & sync MB DB
+        (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+          (sync/sync-database! database)
+          (mt/with-db database
+            ;; run the query
+            (is (= [[1 nil]]
+                   (mt/rows
+                    (mt/run-mbql-query exciting-moments-in-history))))))))))
 
 (deftest date-test
   ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
@@ -123,7 +126,9 @@
      ["Toucan"                2]
      ["Empty Vending Machine" 0]]]])
 
-(defn- db->fields [db]
+(defn db->fields
+  "Given a DB return its fields as a set."
+  [db]
   (let [table-ids (t2/select-pks-set Table :db_id (u/the-id db))]
     (set (map (partial into {}) (t2/select [Field :name :base_type :semantic_type] :table_id [:in table-ids])))))
 
@@ -315,44 +320,40 @@
 (deftest system-versioned-tables-test
   (mt/test-driver :mysql
     (testing "system versioned tables appear during a sync"
-      (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-        ;; Create the DB
-        (doseq [sql ["DROP DATABASE IF EXISTS versioned_tables;"
-                     "CREATE DATABASE versioned_tables;"]]
-          (jdbc/execute! spec [sql]))
-        ;; Create Table & add data
-        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
-              spec    (sql-jdbc.conn/connection-details->spec :mysql details)
-              compat  (try
-                        (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
-                                     "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
-                                     "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
-                                     "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
-                                     "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
-                          (jdbc/execute! spec [sql]))
-                        true
-                        (catch java.sql.SQLSyntaxErrorException se
-                          ;; if an error is received with SYSTEM VERSIONING mentioned, the version
-                          ;; of mysql or mariadb being tested against does not support system versioning,
-                          ;; so do not continue
-                          (if (re-matches #".*VERSIONING'.*" (.getMessage se))
-                            false
-                            (throw se))))]
-          (when compat
-            (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
-              (sync/sync-database! database)
-              (is (= [{:name   "src1"
-                       :fields [{:name      "id"
-                                 :base_type :type/Integer}
-                                {:name      "t"
-                                 :base_type :type/Text}]}
-                      {:name   "src2"
-                       :fields [{:name      "id"
-                                 :base_type :type/Integer}
-                                {:name      "t"
-                                 :base_type :type/Text}]}]
-                     (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
-                          (map table-fingerprint)))))))))))
+      (drop-if-exists-and-create-db! "versioned_tables")
+      ;; Create Table & add data
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
+            spec    (sql-jdbc.conn/connection-details->spec :mysql details)
+            compat  (try
+                     (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
+                                  "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
+                                  "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
+                                  "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
+                                  "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
+                       (jdbc/execute! spec [sql]))
+                     true
+                     (catch java.sql.SQLSyntaxErrorException se
+                       ;; if an error is received with SYSTEM VERSIONING mentioned, the version
+                       ;; of mysql or mariadb being tested against does not support system versioning,
+                       ;; so do not continue
+                       (if (re-matches #".*VERSIONING'.*" (.getMessage se))
+                         false
+                         (throw se))))]
+        (when compat
+          (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+            (sync/sync-database! database)
+            (is (= [{:name   "src1"
+                     :fields [{:name      "id"
+                               :base_type :type/Integer}
+                              {:name      "t"
+                               :base_type :type/Text}]}
+                    {:name   "src2"
+                     :fields [{:name      "id"
+                               :base_type :type/Integer}
+                              {:name      "t"
+                               :base_type :type/Text}]}]
+                   (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                        (map table-fingerprint))))))))))
 
 (deftest group-on-time-column-test
   (mt/test-driver :mysql
@@ -423,94 +424,11 @@
 
 (defn is-mariadb?
   "Returns true if the database is MariaDB, false otherwise."
-  [db-id]
-  (str/includes?
-   (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
-   "Maria"))
-
-(deftest nested-field-column-test
-  (mt/test-driver :mysql
-    (mt/dataset json
-      (when (not (is-mariadb? (u/id (mt/db))))
-        (testing "Nested field column listing"
-          (is (= #{{:name "json_bit → 1234123412314",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "1234123412314"]}
-                   {:name "json_bit → boop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "boop"]}
-                   {:name "json_bit → genres",
-                    :database-type "text",
-                    :base-type :type/Array,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "genres"]}
-                   {:name "json_bit → 1234",
-                    :database-type "bigint",
-                    :base-type :type/Integer,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "1234"]}
-                   {:name "json_bit → doop",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "doop"]}
-                   {:name "json_bit → noop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "noop"]}
-                   {:name "json_bit → zoop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "zoop"]}
-                   {:name "json_bit → published",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "published"]}
-                   {:name "json_bit → title",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
-                    :nfc-path [:json_bit "title"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                   :mysql
-                   (mt/db)
-                   {:name "json" :id (mt/id "json")}))))))))
-
-(deftest big-nested-field-column-test
-  (mt/test-driver :mysql
-    (mt/dataset json
-      (when (not (is-mariadb? (u/id (mt/db))))
-        (testing "Nested field column listing, but big"
-          (is (= sql-jdbc.describe-table/max-nested-field-columns
-                 (count (sql-jdbc.sync/describe-nested-field-columns
-                         :mysql
-                         (mt/db)
-                         {:name "big_json" :id (mt/id "big_json")})))))))))
+  [driver db-id]
+  (and (= driver :mysql)
+       (str/includes?
+         (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
+         "Maria")))
 
 (deftest json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
@@ -527,9 +445,42 @@
         (is (= ["JSON_EXTRACT(`boop`.`bleh`, ?)" "$.\"boop\".\"foobar\".\"1234\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
+(deftest sync-json-with-composite-pks-test
+  (testing "Make sure sync a table with json columns that have composite pks works"
+    (mt/test-driver :mysql
+      (when-not (is-mariadb? driver/*driver* (u/id (mt/db)))
+        (drop-if-exists-and-create-db! "composite_pks_test")
+        (with-redefs [metadata-queries/nested-field-sample-limit 4]
+          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
+                spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+            (doseq [statement (concat ["CREATE TABLE `json_table` (`first_id` INT, `second_id` INT, `json_val` JSON, PRIMARY KEY(`first_id`, `second_id`));"]
+                                      (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
+                                                                       [2 2 "{\"int_turn_string\":2}"]
+                                                                       [3 3 "{\"int_turn_string\":3}"]
+                                                                       [4 4 "{\"int_turn_string\":4}"]
+                                                                       [4 5 "{\"int_turn_string\":\"x\"}"]
+                                                                       [4 6 "{\"int_turn_string\":5}"]]]
+                                        (format "INSERT INTO `json_table` (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
+              (jdbc/execute! spec [statement]))
+            (t2.with-temp/with-temp
+              [:model/Database database {:name "composite_pks_test" :engine driver/*driver* :details details}]
+              (mt/with-db database
+                (sync-tables/sync-tables-and-database! database)
+                (is (= #{{:name              "json_val → int_turn_string",
+                          :database-type     "text"
+                          :base-type         :type/Text
+                          :database-position 0
+                          :json-unfolding    false
+                          :visibility-type   :normal
+                          :nfc-path          [:json_val "int_turn_string"]}}
+                       (sql-jdbc.sync/describe-nested-field-columns
+                        driver/*driver*
+                        database
+                        (t2/select-one Table :db_id (mt/id) :name "json_table"))))))))))))
+
 (deftest json-alias-test
   (mt/test-driver :mysql
-    (when (not (is-mariadb? (u/id (mt/db))))
+    (when (not (is-mariadb? driver/*driver* (u/id (mt/db))))
       (testing "json breakouts and order bys have alias coercion"
         (mt/dataset json
           (let [table  (t2/select-one Table :db_id (u/id (mt/db)) :name "json")]
@@ -555,7 +506,7 @@
 
 (deftest complicated-json-identifier-test
   (mt/test-driver :mysql
-    (when (not (is-mariadb? (u/id (mt/db))))
+    (when (not (is-mariadb? driver/*driver* (u/id (mt/db))))
       (testing "Deal with complicated identifier (#22967, but for mysql)"
         (mt/dataset json
           (let [database (mt/db)
@@ -572,45 +523,6 @@
                   (is (= ["((FLOOR(((CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) - 0.75) / 0.75)) * 0.75) + 0.75)"
                           "$.\"1234\""]
                          (sql.qp/format-honeysql :mysql (sql.qp/->honeysql :mysql field-clause)))))))))))))
-
-(tx/defdataset json-unwrap-bigint-and-boolean
-  "Used for testing mysql json value unwrapping"
-  [["bigint-and-bool-table"
-    [{:field-name "jsoncol" :base-type :type/JSON}]
-    [["{\"mybool\":true, \"myint\":1234567890123456789}"]
-     ["{\"mybool\":false,\"myint\":12345678901234567890}"]
-     ["{\"mybool\":true, \"myint\":123}"]]]])
-
-(deftest json-unwrapping-bigint-and-boolean
-  (mt/test-driver :mysql
-    (when-not (is-mariadb? (mt/id))
-      (mt/dataset json-unwrap-bigint-and-boolean
-        (sync/sync-database! (mt/db))
-        (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
-          (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
-                   {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
-                   {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
-                   {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
-                 (db->fields (mt/db)))))
-        (testing "Nested field columns are correct"
-          (is (= #{{:name              "jsoncol → mybool"
-                    :database-type     "boolean"
-                    :base-type         :type/Boolean
-                    :database-position 0
-                    :json-unfolding    false
-                    :visibility-type   :normal
-                    :nfc-path          [:jsoncol "mybool"]}
-                   {:name              "jsoncol → myint"
-                    :database-type     "double precision"
-                    :base-type         :type/Number
-                    :database-position 0
-                    :json-unfolding    false
-                    :visibility-type   :normal
-                    :nfc-path          [:jsoncol "myint"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                  :mysql
-                  (mt/db)
-                  (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
 (deftest ddl-execute-with-timeout-test
   (mt/test-driver :mysql

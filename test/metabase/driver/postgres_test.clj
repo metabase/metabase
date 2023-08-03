@@ -8,14 +8,13 @@
    [honey.sql :as sql]
    [malli.core :as mc]
    [metabase.config :as config]
+   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.models.action :as action]
@@ -32,7 +31,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
@@ -462,91 +461,6 @@
                     "  1048575"]
                    (str/split-lines (mdb.query/format-sql (:query only-order) :postgres))))))))))
 
-(def ^:private describe-json-table-sql
-  (str/join
-   \newline
-   ["CREATE TABLE describe_json_table ("
-    "  coherent_json_val JSON NOT NULL,"
-    "  incoherent_json_val JSONB NOT NULL"
-    ");"
-    "INSERT INTO"
-    "  describe_json_table (coherent_json_val, incoherent_json_val)"
-    "VALUES"
-    "  ("
-    "    '{\"a\": 1, \"b\": 2, \"c\": \"2017-01-13T17:09:22.222\"}',"
-    "    '{\"a\": 1, \"b\": 2, \"c\": 3, \"d\": 44}'"
-    "  );"
-    "INSERT INTO"
-    "  describe_json_table (coherent_json_val, incoherent_json_val)"
-    "VALUES"
-    "  ("
-    "    '{\"a\": 2, \"b\": 3, \"c\": \"2017-01-13T17:09:42.411\"}',"
-    "    '{\"a\": [1, 2], \"b\": \"blurgle\", \"c\": 3.22}'"
-    "  );"]))
-
-(deftest describe-nested-field-columns-test
-  (mt/test-driver :postgres
-    (testing "describes json columns and gives types for ones with coherent schemas only"
-      (drop-if-exists-and-create-db! "describe-json-test")
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"
-                                                                 :json-unfolding true})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (jdbc/execute! spec [describe-json-table-sql])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
-          (mt/with-db database
-            (is (= [:type/JSON :type/SerializedJSON]
-                   (-> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
-                       :fields
-                       first
-                       ((juxt :base-type :semantic-type)))))
-            (sync-tables/sync-tables-and-database! database)
-            (is (= '#{{:name              "incoherent_json_val → b",
-                       :database-type     "text",
-                       :base-type         :type/Text,
-                       :database-position 0,
-                       :json-unfolding    false
-                       :nfc-path          [:incoherent_json_val "b"]
-                       :visibility-type   :normal}
-                      {:name              "coherent_json_val → a",
-                       :database-type     "bigint",
-                       :base-type         :type/Integer,
-                       :database-position 0,
-                       :json-unfolding    false
-                       :nfc-path          [:coherent_json_val "a"]
-                       :visibility-type   :normal}
-                      {:name              "coherent_json_val → b",
-                       :database-type     "bigint",
-                       :base-type         :type/Integer,
-                       :database-position 0,
-                       :json-unfolding    false
-                       :nfc-path          [:coherent_json_val "b"]
-                       :visibility-type   :normal}
-                      {:name "coherent_json_val → c",
-                       :database-type     "timestamp",
-                       :base-type         :type/DateTime,
-                       :database-position 0,
-                       :json-unfolding    false
-                       :visibility-type   :normal,
-                       :nfc-path          [:coherent_json_val "c"]}
-                      {:name              "incoherent_json_val → c",
-                       :database-type     "double precision",
-                       :base-type         :type/Number,
-                       :database-position 0,
-                       :json-unfolding    false
-                       :visibility-type   :normal,
-                       :nfc-path          [:incoherent_json_val "c"]}
-                      {:name              "incoherent_json_val → d",
-                       :database-type     "bigint",
-                       :base-type         :type/Integer,
-                       :database-position 0,
-                       :json-unfolding    false
-                       :visibility-type   :normal,
-                       :nfc-path          [:incoherent_json_val "d"]}}
-                   (sql-jdbc.sync/describe-nested-field-columns
-                    :postgres
-                    database
-                    {:name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
-
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
     (testing "sync goes and runs with identifier if there is a schema other than default public one"
@@ -557,7 +471,7 @@
         (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
                                   "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
                                   "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
@@ -582,7 +496,7 @@
         (jdbc/execute! spec [(str "CREATE SCHEMA \"AAAH_#\";"
                                   "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
                                   "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
+        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
@@ -596,35 +510,6 @@
                     :postgres
                     database
                     {:schema "AAAH_#" :name "dESCribe_json_table_%" :id (mt/id "dESCribe_json_table_%")})))))))))
-
-(deftest describe-big-nested-field-columns-test
-  (mt/test-driver :postgres
-    (testing "limit if huge. limit it and yell warning (#23635)"
-      (drop-if-exists-and-create-db! "big-json-test")
-      (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"
-                                                                  :json-unfolding true})
-            spec     (sql-jdbc.conn/connection-details->spec :postgres details)
-            big-map  (into {} (for [x (range 300)] [x :dobbs]))
-            big-json (json/generate-string big-map)
-            sql      (str "CREATE TABLE big_json_table (big_json JSON NOT NULL);"
-                          (format "INSERT INTO big_json_table (big_json) VALUES ('%s');" big-json))]
-        (jdbc/execute! spec [sql])
-        (t2.with-temp/with-temp [Database database {:engine :postgres, :details details}]
-          (mt/with-db database
-            (sync-tables/sync-tables-and-database! database)
-            (is (= sql-jdbc.describe-table/max-nested-field-columns
-                   (count
-                    (sql-jdbc.sync/describe-nested-field-columns
-                     :postgres
-                     database
-                     {:name "big_json_table" :id (mt/id "big_json_table")}))))
-            (is (str/includes?
-                 (get-in (mt/with-log-messages-for-level :warn
-                           (sql-jdbc.sync/describe-nested-field-columns
-                            :postgres
-                            database
-                            {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
-                 "More nested field columns detected than maximum."))))))))
 
 (mt/defdataset with-uuid
   [["users"
@@ -1054,6 +939,37 @@
                        (mt/native-query)
                        (qp/process-query)
                        (mt/rows))))))))))
+
+(deftest sync-json-with-composite-pks-test
+  (testing "Make sure sync a table with json columns that have composite pks works"
+    (mt/test-driver :postgres
+      (drop-if-exists-and-create-db! "composite-pks-test")
+      (with-redefs [metadata-queries/nested-field-sample-limit 4]
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite-pks-test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (doseq [statement (concat ["CREATE TABLE PUBLIC.json_table(first_id INTEGER, second_id INTEGER, json_val JSON, PRIMARY KEY(first_id, second_id));"]
+                                    (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
+                                                                     [2 2 "{\"int_turn_string\":2}"]
+                                                                     [3 3 "{\"int_turn_string\":3}"]
+                                                                     [4 4 "{\"int_turn_string\":4}"]
+                                                                     [4 5 "{\"int_turn_string\":\"x\"}"]
+                                                                     [4 6 "{\"int_turn_string\":5}"]]]
+                                      (format "INSERT INTO PUBLIC.json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
+            (jdbc/execute! spec [statement]))
+          (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+            (mt/with-db database
+              (sync-tables/sync-tables-and-database! database)
+              (is (= #{{:name              "json_val → int_turn_string",
+                        :database-type     "text"
+                        :base-type         :type/Text
+                        :database-position 0
+                        :json-unfolding    false
+                        :visibility-type   :normal
+                        :nfc-path          [:json_val "int_turn_string"]}}
+                     (sql-jdbc.sync/describe-nested-field-columns
+                      :postgres
+                      database
+                      (t2/select-one Table :db_id (mt/id) :name "json_table")))))))))))
 
 (defn- pretty-sql [s]
   (-> s

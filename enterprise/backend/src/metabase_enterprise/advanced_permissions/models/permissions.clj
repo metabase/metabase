@@ -2,6 +2,7 @@
   (:require
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

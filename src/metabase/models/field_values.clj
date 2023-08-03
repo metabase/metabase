@@ -28,6 +28,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]

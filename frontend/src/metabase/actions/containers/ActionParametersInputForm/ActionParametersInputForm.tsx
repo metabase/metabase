@@ -1,43 +1,34 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 
-import { ActionsApi, PublicApi } from "metabase/services";
-
 import ActionForm from "metabase/actions/components/ActionForm";
-import { getDashboardType } from "metabase/dashboard/utils";
 
 import type {
-  WritebackParameter,
   OnSubmitActionForm,
-  Dashboard,
-  ActionDashboardCard,
   ParametersForActionExecution,
   WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 export interface ActionParametersInputFormProps {
   action: WritebackAction;
-  dashboard?: Dashboard;
-  dashcard?: ActionDashboardCard;
   mappedParameters?: WritebackParameter[];
-  dashcardParamValues?: ParametersForActionExecution;
+  initialValues?: ParametersForActionExecution;
+  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
+  shouldPrefetch?: boolean;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
   onCancel?: () => void;
 }
 
-const shouldPrefetchValues = (action: WritebackAction) =>
-  action.type === "implicit" && action.kind === "row/update";
-
 function ActionParametersInputForm({
   action,
   mappedParameters = [],
-  dashcardParamValues = {},
-  dashboard,
-  dashcard,
+  initialValues = {},
+  fetchInitialValues,
+  shouldPrefetch,
   onCancel,
   onSubmit,
   onSubmitSuccess,
@@ -46,17 +37,10 @@ function ActionParametersInputForm({
     useState<ParametersForActionExecution>({});
 
   const hasPrefetchedValues = Object.keys(prefetchedValues).length > 0;
-  const shouldPrefetch = useMemo(
-    () => shouldPrefetchValues(action) && dashboard && dashcard,
-    [action, dashboard, dashcard],
-  );
 
-  const initialValues = useMemo(
-    () => ({
-      ...prefetchedValues,
-      ...dashcardParamValues,
-    }),
-    [prefetchedValues, dashcardParamValues],
+  const values = useMemo(
+    () => ({ ...prefetchedValues, ...initialValues }),
+    [prefetchedValues, initialValues],
   );
 
   const hiddenFields = useMemo(() => {
@@ -71,39 +55,26 @@ function ActionParametersInputForm({
       .concat(hiddenFieldIds);
   }, [mappedParameters, action.visualization_settings?.fields]);
 
-  const fetchInitialValues = useCallback(async () => {
-    const prefetchEndpoint =
-      getDashboardType(dashboard?.id) === "public"
-        ? PublicApi.prefetchValues
-        : ActionsApi.prefetchValues;
-
-    const fetchedValues = await prefetchEndpoint({
-      dashboardId: dashboard?.id,
-      dashcardId: dashcard?.id,
-      parameters: JSON.stringify(dashcardParamValues),
-    }).catch(_.noop);
-
-    if (fetchedValues) {
-      setPrefetchedValues(fetchedValues);
+  const prefetchValues = useCallback(async () => {
+    if (!fetchInitialValues) {
+      return;
     }
-  }, [dashboard?.id, dashcard?.id, dashcardParamValues]);
+
+    try {
+      const fetchedValues = await fetchInitialValues();
+      setPrefetchedValues(fetchedValues);
+    } catch (error) {
+      // do not show user this error
+      console.error(error);
+    }
+  }, [fetchInitialValues]);
 
   useEffect(() => {
-    const hasValueFromDashboard = Object.keys(dashcardParamValues).length > 0;
-    const canPrefetch = hasValueFromDashboard && dashboard && dashcard;
-
     if (shouldPrefetch && !hasPrefetchedValues) {
       setPrefetchedValues({});
-      canPrefetch && fetchInitialValues();
+      prefetchValues();
     }
-  }, [
-    shouldPrefetch,
-    hasPrefetchedValues,
-    dashboard,
-    dashcard,
-    dashcardParamValues,
-    fetchInitialValues,
-  ]);
+  }, [shouldPrefetch, hasPrefetchedValues, prefetchValues]);
 
   const handleSubmit = useCallback(
     async (parameters, actions) => {
@@ -112,12 +83,17 @@ function ActionParametersInputForm({
       if (success) {
         actions.setErrors({});
         onSubmitSuccess?.();
-        shouldPrefetch ? fetchInitialValues() : actions.resetForm();
+
+        if (shouldPrefetch) {
+          prefetchValues();
+        } else {
+          actions.resetForm();
+        }
       } else {
         throw new Error(error);
       }
     },
-    [shouldPrefetch, onSubmit, onSubmitSuccess, fetchInitialValues],
+    [prefetchValues, shouldPrefetch, onSubmit, onSubmitSuccess],
   );
 
   if (shouldPrefetch && !hasPrefetchedValues) {
@@ -127,7 +103,8 @@ function ActionParametersInputForm({
   return (
     <ActionForm
       action={action}
-      initialValues={initialValues}
+      initialValues={values}
+      prefetchesInitialValues={Boolean(fetchInitialValues)}
       hiddenFields={hiddenFields}
       onSubmit={handleSubmit}
       onClose={onCancel}
