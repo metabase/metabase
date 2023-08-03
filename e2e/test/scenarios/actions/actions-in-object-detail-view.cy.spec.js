@@ -9,6 +9,7 @@ import {
   resyncDatabase,
   undoToast,
   visitDashboard,
+  visitModel,
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
@@ -285,14 +286,12 @@ function disableBasicModelActions(modelId) {
 }
 
 function visitObjectDetail(modelId, objectId) {
-  cy.visit(`/model/${modelId}`);
-  cy.wait("@getDataset", { timeout: 10000 });
+  visitModel(modelId, { hasDataAccess: true });
   cy.findAllByText(objectId).first().click();
 }
 
 function visitModelDetail(modelId) {
-  cy.visit(`/model/${modelId}`);
-  cy.wait("@getDataset", { timeout: 10000 });
+  visitModel(modelId, { hasDataAccess: true });
   cy.icon("info").click();
   cy.findByTestId("sidebar-right").findByText("Model details").click();
 }
