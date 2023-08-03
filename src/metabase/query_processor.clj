@@ -292,22 +292,20 @@
   the core.async channel is closed, the query will be canceled."
   {:arglists '([query] [query context] [query rff context])}
   [{:keys [async?], :as query} & args]
-  (u/profile `process-query
-    (apply (if async? process-query-async process-query-sync)
-           query
-           args)))
+  (apply (if async? process-query-async process-query-sync)
+         query
+         args))
 
 (defn preprocess
   "Return the fully preprocessed form for `query`, the way it would look immediately
   before [[mbql-to-native/mbql->native]] is called."
   [query]
-  (u/profile `preprocess
-    (let [qp (qp.reducible/combine-middleware
-              (conj (vec around-middleware)
-                    prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
-              (fn [query _rff _context]
-                (preprocess* query)))]
-      (qp query nil nil))))
+  (let [qp (qp.reducible/combine-middleware
+            (conj (vec around-middleware)
+                  prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
+            (fn [query _rff _context]
+              (preprocess* query)))]
+    (qp query nil nil)))
 
 (defn query->mlv2-metadata
   "Fast version of [[query->expected-cols]] that uses MLv2 for column calculation. Leaves metadata with MLv2-style
@@ -336,8 +334,7 @@
 
   Check whether you can use [[query->mlv2-metadata]] instead and consume MLv2-style metadata directly."
   [query]
-  (u/profile `query->expected-cols
-    (map ->legacy-column-metadata (query->mlv2-metadata query))))
+  (map ->legacy-column-metadata (query->mlv2-metadata query)))
 
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
