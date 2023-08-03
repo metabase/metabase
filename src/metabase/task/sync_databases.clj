@@ -22,11 +22,9 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
-   [toucan2.core :as t2]
-   [metabase.util.malli.schema :as ms])
+   [toucan2.core :as t2])
   (:import
    (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
 
