@@ -9,7 +9,6 @@ import {
   resyncDatabase,
   undoToast,
   visitDashboard,
-  visitModel,
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
@@ -37,6 +36,7 @@ const DASHBOARD = {
 
 describe("scenarios > actions > actions-in-object-detail-view", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("getDataset");
     cy.intercept("POST", "/api/action").as("createBasicActions");
     cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
     cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
@@ -102,7 +102,7 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
       });
     });
 
-    it("should be able to run update and delete actions when enabled", () => {
+    it("should initially have database actions enabled and model actions disabled", () => {
       cy.get("@modelId").then(modelId => {
         asNormalUser(() => {
           cy.log("As normal user: verify database actions are enabled");
@@ -110,7 +110,8 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
           assertActionsTabExists();
 
           cy.log("As normal user: verify there are no model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+          cy.findByText("Explore").click();
+          cy.findAllByText(FIRST_SCORE_ROW_ID).first().click();
           objectDetailModal().within(() => {
             assertActionsDropdownNotExists();
           });
@@ -122,16 +123,24 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
           assertActionsTabExists();
 
           cy.log("As admin: Verify that there are no model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+          cy.findByText("Explore").click();
+          cy.findAllByText(FIRST_SCORE_ROW_ID).first().click();
           objectDetailModal().within(() => {
             assertActionsDropdownNotExists();
           });
+        });
+      });
+    });
 
+    it("should be able to run update and delete actions when enabled", () => {
+      cy.get("@modelId").then(modelId => {
+        asAdmin(() => {
           cy.log("As admin: create basic model actions");
           createBasicModelActions(modelId);
 
           cy.log("As admin: verify there are model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+          cy.findByText("Explore").click();
+          cy.findAllByText(FIRST_SCORE_ROW_ID).first().click();
           objectDetailModal().within(() => {
             assertActionsDropdownExists();
           });
@@ -160,7 +169,7 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
           objectDetailModal().icon("close").click();
 
           cy.log("As normal user: verify there are model actions to run (2)");
-          visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
+          cy.findAllByText(SECOND_SCORE_ROW_ID).first().click();
           objectDetailModal().within(() => {
             assertActionsDropdownExists();
           });
@@ -186,7 +195,7 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
           assertUpdatedScoreInTable();
 
           cy.log("As normal user: run delete action");
-          visitObjectDetail(modelId, SECOND_SCORE_ROW_ID);
+          cy.findAllByText(SECOND_SCORE_ROW_ID).first().click();
           objectDetailModal().within(() => {
             assertActionsDropdownExists();
           });
@@ -205,7 +214,8 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
           disableBasicModelActions(modelId);
 
           cy.log("As admin user: verify there are no model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+          cy.findByText("Explore").click();
+          cy.findAllByText(FIRST_SCORE_ROW_ID).first().click();
           objectDetailModal().within(() => {
             assertActionsDropdownNotExists();
           });
@@ -224,7 +234,8 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
           assertActionsTabNotExists();
 
           cy.log("As normal user: verify there are no model actions to run");
-          visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+          cy.findByText("Explore").click();
+          cy.findAllByText(FIRST_SCORE_ROW_ID).first().click();
           objectDetailModal().within(() => {
             assertActionsDropdownNotExists();
           });
@@ -274,12 +285,14 @@ function disableBasicModelActions(modelId) {
 }
 
 function visitObjectDetail(modelId, objectId) {
-  visitModel(modelId, { hasDataAccess: true });
+  cy.visit(`/model/${modelId}`);
+  cy.wait("@getDataset", { timeout: 10000 });
   cy.findAllByText(objectId).first().click();
 }
 
 function visitModelDetail(modelId) {
-  visitModel(modelId, { hasDataAccess: true });
+  cy.visit(`/model/${modelId}`);
+  cy.wait("@getDataset", { timeout: 10000 });
   cy.icon("info").click();
   cy.findByTestId("sidebar-right").findByText("Model details").click();
 }
