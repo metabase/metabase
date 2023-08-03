@@ -277,6 +277,28 @@
      [:value_field {:optional true} Field]
      [:label_field {:optional true} Field]]))
 
+(def RemappedFieldValue
+  "Has two components:
+    1. <value-of-field>          (can be anything)
+    2. <value-of-remapped-field> (must be a string)"
+  [:tuple :any :string])
+
+(def NonRemappedFieldValue
+  "Has one component: <value-of-field>"
+  [:tuple :any])
+
+(def FieldValuesList
+  "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
+  [:or
+   [:sequential RemappedFieldValue]
+   [:sequential NonRemappedFieldValue]])
+
+(def FieldValuesResult
+  "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
+  [:map
+   [:has_more_values :boolean]
+   [:values FieldValuesList]])
+
 #_(def ParameterSource
       (mc/schema
         [:multi {:dispatch :values_source_type}

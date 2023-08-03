@@ -70,7 +70,7 @@
                              (mt/user-http-request user :get 200 (api.card-test/param-values-url card-id "abc")))]
             ;; returns much more if not sandboxed
             (is (> (-> (get-values :crowberto) :values count) 3))
-            (is (=? {:values          ["African" "American" "Artisan"]
+            (is (=? {:values          [["African"] ["American"] ["Artisan"]]
                      :has_more_values false}
                     (get-values :rasta)))))
 
@@ -78,7 +78,7 @@
           ;; return BBQ if not sandboxed
           (let [search (fn [user]
                          (mt/user-http-request user :get 200 (api.card-test/param-values-url card-id "abc" "bbq")))]
-            (is (=? {:values          ["BBQ"]
+            (is (=? {:values          [["BBQ"]]
                      :has_more_values false}
                     (search :crowberto)))
 
