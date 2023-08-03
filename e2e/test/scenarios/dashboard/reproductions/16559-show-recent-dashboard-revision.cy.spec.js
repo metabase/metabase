@@ -32,7 +32,8 @@ describe("issue 16559", () => {
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
-      .findByText("You created this.");
+      .findByText("You created this.")
+      .should("be.visible");
 
     cy.log("Edit dashboard");
     editDashboard();
@@ -45,7 +46,8 @@ describe("issue 16559", () => {
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
-      .findByText("You added a card.");
+      .findByText("You added a card.")
+      .should("be.visible");
 
     cy.log("Change dashboard name");
     cy.findByTestId("dashboard-name-heading").click().type(" modified").blur();
@@ -54,7 +56,8 @@ describe("issue 16559", () => {
       .eq(0)
       .findByText(
         'You renamed this Dashboard from "16559 Dashboard" to "16559 Dashboard modified".',
-      );
+      )
+      .should("be.visible");
 
     cy.log("Add description");
     cy.findByPlaceholderText("Add description")
@@ -64,14 +67,16 @@ describe("issue 16559", () => {
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
-      .findByText("You added a description.");
+      .findByText("You added a description.")
+      .should("be.visible");
 
     cy.log("Toggle auto-apply filters");
     cy.findByLabelText("Auto-apply filters").click();
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
-      .findByText("You set auto apply filters to false.");
+      .findByText("You set auto apply filters to false.")
+      .should("be.visible");
 
     cy.log("Move dashboard to another collection");
     dashboardHeader().icon("ellipsis").click();
@@ -83,6 +88,7 @@ describe("issue 16559", () => {
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)
-      .findByText("You moved this Dashboard to First collection.");
+      .findByText("You moved this Dashboard to First collection.")
+      .should("be.visible");
   });
 });
