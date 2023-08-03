@@ -14,6 +14,7 @@ import {
   enableColumnInSettings,
   getAdditionalMetadataColumns,
   getColumnGroups,
+  getColumnSettingsWithRefs,
   getMetadataColumns,
   getQueryColumnSettingItems,
   moveColumnInSettings,
@@ -35,13 +36,17 @@ export interface QueryColumnSelectorProps {
 }
 
 export const QueryColumnSelector = ({
-  value: columnSettings,
+  value,
   query,
   columns: datasetColumns,
   getColumnName,
   onChange,
   onShowWidget,
 }: QueryColumnSelectorProps) => {
+  const columnSettings = useMemo(() => {
+    return getColumnSettingsWithRefs(value);
+  }, [value]);
+
   const metadataColumns = useMemo(() => {
     return getMetadataColumns(query);
   }, [query]);

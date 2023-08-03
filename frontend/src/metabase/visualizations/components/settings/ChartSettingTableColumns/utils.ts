@@ -1,4 +1,4 @@
-import { isNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/core/utils/types";
 import { DatasetColumn, TableColumnOrderSetting } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
@@ -6,12 +6,24 @@ import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/data
 import {
   ColumnGroupItem,
   ColumnMetadataItem,
+  ColumnSetting,
   ColumnSettingItem,
   DragColumnProps,
   EditWidgetConfig,
 } from "./types";
 
 const STAGE_INDEX = -1;
+
+export const getColumnSettingsWithRefs = (
+  columnSettings: TableColumnOrderSetting[],
+): ColumnSetting[] => {
+  return columnSettings
+    .filter(({ fieldRef }) => fieldRef != null)
+    .map(columnSetting => ({
+      ...columnSetting,
+      fieldRef: checkNotNull(columnSetting.fieldRef),
+    }));
+};
 
 export const getMetadataColumns = (query: Lib.Query): Lib.ColumnMetadata[] => {
   return Lib.visibleColumns(query, STAGE_INDEX);
@@ -21,84 +33,69 @@ export const getQueryColumnSettingItems = (
   query: Lib.Query,
   metadataColumns: Lib.ColumnMetadata[],
   datasetColumns: DatasetColumn[],
-  columnSettings: TableColumnOrderSetting[],
+  columnSettings: ColumnSetting[],
 ): ColumnSettingItem[] => {
-  const columnSettingRefs = columnSettings
-    .map(({ fieldRef }) => fieldRef)
-    .filter(isNotNull);
-
-  const metadataColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+  const fieldRefs = columnSettings.map(({ fieldRef }) => fieldRef);
+  const metadataIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     STAGE_INDEX,
     metadataColumns,
-    columnSettingRefs,
+    fieldRefs,
   );
-
-  const datasetColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+  const datasetIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     STAGE_INDEX,
     datasetColumns,
-    columnSettingRefs,
+    fieldRefs,
   );
 
-  const columnSettingItems: ColumnSettingItem[] = [];
-  columnSettings.forEach((columnSetting, columnSettingIndex) => {
-    const metadataColumnIndex = metadataColumnIndexes[columnSettingIndex];
-    const datasetColumnIndex = datasetColumnIndexes[columnSettingIndex];
-
-    if (metadataColumnIndex < 0 || datasetColumnIndex < 0) {
-      return;
-    }
-
-    columnSettingItems.push({
+  return columnSettings
+    .filter((columnSetting, columnIndex) => {
+      const metadataIndex = metadataIndexes[columnIndex];
+      const datasetIndex = datasetIndexes[columnIndex];
+      return metadataIndex >= 0 && datasetIndex >= 0;
+    })
+    .map((columnSetting, columnIndex) => ({
       enabled: columnSetting.enabled,
-      metadataColumn: metadataColumns[metadataColumnIndex],
-      datasetColumn: datasetColumns[datasetColumnIndex],
-      columnSettingIndex,
-    });
-  });
-
-  return columnSettingItems;
+      metadataColumn: metadataColumns[metadataIndexes[columnIndex]],
+      datasetColumn: datasetColumns[datasetIndexes[columnIndex]],
+      columnSettingIndex: columnIndex,
+    }));
 };
 
 export const getDatasetColumnSettingItems = (
   datasetColumns: DatasetColumn[],
-  columnSettings: TableColumnOrderSetting[],
+  columnSettings: ColumnSetting[],
 ): ColumnSettingItem[] => {
-  const columnSettingItems: ColumnSettingItem[] = [];
+  const datasetIndexes = columnSettings.map(columnSetting =>
+    findColumnIndexForColumnSetting(datasetColumns, columnSetting),
+  );
 
-  columnSettings.forEach((columnSetting, columnSettingIndex) => {
-    const datasetColumnIndex = findColumnIndexForColumnSetting(
-      datasetColumns,
-      columnSetting,
-    );
-    if (datasetColumnIndex < 0) {
-      return;
-    }
-
-    columnSettingItems.push({
+  return columnSettings
+    .filter((columnSetting, columnIndex) => {
+      const datasetIndex = datasetIndexes[columnIndex];
+      return datasetIndex >= 0;
+    })
+    .map((columnSetting, columnIndex) => ({
       enabled: columnSetting.enabled,
-      datasetColumn: datasetColumns[datasetColumnIndex],
-      columnSettingIndex,
-    });
-  });
-
-  return columnSettingItems;
+      datasetColumn: datasetColumns[datasetIndexes[columnIndex]],
+      columnSettingIndex: columnIndex,
+    }));
 };
 
 export const getAdditionalMetadataColumns = (
   metadataColumns: Lib.ColumnMetadata[],
   columnSettingItems: ColumnSettingItem[],
 ): Lib.ColumnMetadata[] => {
-  const disabledMetadataColumns = new Set(metadataColumns);
+  const additionalColumns = new Set(metadataColumns);
 
   columnSettingItems.forEach(({ metadataColumn }) => {
     if (metadataColumn) {
-      disabledMetadataColumns.delete(metadataColumn);
+      additionalColumns.delete(metadataColumn);
     }
   });
 
-  return Array.from(disabledMetadataColumns);
+  return Array.from(additionalColumns);
 };
 
 const getColumnGroupName = (
@@ -181,17 +178,13 @@ export const disableColumnInQuery = (
 const findColumnSettingIndex = (
   query: Lib.Query,
   column: Lib.ColumnMetadata,
-  columnSettings: TableColumnOrderSetting[],
+  columnSettings: ColumnSetting[],
 ) => {
-  const columnSettingRefs = columnSettings
-    .map(({ fieldRef }) => fieldRef)
-    .filter(isNotNull);
-
   const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
     query,
     STAGE_INDEX,
     [column],
-    columnSettingRefs,
+    columnSettings.map(({ fieldRef }) => fieldRef),
   );
 
   return columnIndexes.findIndex(index => index >= 0);
@@ -199,9 +192,9 @@ const findColumnSettingIndex = (
 
 export const addColumnInSettings = (
   query: Lib.Query,
-  columnSettings: TableColumnOrderSetting[],
+  columnSettings: ColumnSetting[],
   { column, name }: ColumnMetadataItem,
-): TableColumnOrderSetting[] => {
+): ColumnSetting[] => {
   const settingIndex = findColumnSettingIndex(query, column, columnSettings);
 
   const newSettings = [...columnSettings];
@@ -216,7 +209,7 @@ export const addColumnInSettings = (
 };
 
 export const enableColumnInSettings = (
-  columnSettings: TableColumnOrderSetting[],
+  columnSettings: ColumnSetting[],
   { columnSettingIndex }: ColumnSettingItem,
 ) => {
   const newSettings = [...columnSettings];
@@ -229,7 +222,7 @@ export const enableColumnInSettings = (
 };
 
 export const disableColumnInSettings = (
-  columnSettings: TableColumnOrderSetting[],
+  columnSettings: ColumnSetting[],
   { columnSettingIndex }: ColumnSettingItem,
 ) => {
   const newSettings = [...columnSettings];
@@ -242,7 +235,7 @@ export const disableColumnInSettings = (
 };
 
 export const moveColumnInSettings = (
-  columnSettings: TableColumnOrderSetting[],
+  columnSettings: ColumnSetting[],
   enabledColumnItems: ColumnSettingItem[],
   { oldIndex, newIndex }: DragColumnProps,
 ) => {

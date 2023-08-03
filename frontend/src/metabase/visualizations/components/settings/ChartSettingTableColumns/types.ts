@@ -1,5 +1,13 @@
-import { DatasetColumn } from "metabase-types/api";
+import {
+  DatasetColumn,
+  FieldReference,
+  TableColumnOrderSetting,
+} from "metabase-types/api";
 import * as Lib from "metabase-lib";
+
+export interface ColumnSetting extends TableColumnOrderSetting {
+  fieldRef: FieldReference;
+}
 
 export interface ColumnSettingItem {
   enabled: boolean;

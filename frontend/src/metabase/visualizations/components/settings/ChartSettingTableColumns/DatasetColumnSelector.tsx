@@ -7,6 +7,7 @@ import { TableColumnSelector } from "./TableColumnSelector";
 import {
   disableColumnInSettings,
   enableColumnInSettings,
+  getColumnSettingsWithRefs,
   getDatasetColumnSettingItems,
   moveColumnInSettings,
 } from "./utils";
@@ -21,12 +22,16 @@ export interface DatasetColumnSelectorProps {
 }
 
 export const DatasetColumnSelector = ({
-  value: columnSettings,
+  value,
   columns: datasetColumns,
   getColumnName,
   onChange,
   onShowWidget,
 }: DatasetColumnSelectorProps) => {
+  const columnSettings = useMemo(() => {
+    return getColumnSettingsWithRefs(value);
+  }, [value]);
+
   const columnItems = useMemo(() => {
     return getDatasetColumnSettingItems(datasetColumns, columnSettings);
   }, [datasetColumns, columnSettings]);
