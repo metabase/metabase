@@ -19,6 +19,9 @@ import * as parameters from "metabase/parameters/reducers";
 /* query builder */
 import * as qb from "metabase/query_builder/reducers";
 
+/* data reference */
+import reference from "metabase/reference/reference";
+
 /* revisions */
 import revisions from "metabase/redux/revisions";
 
@@ -43,6 +46,7 @@ export default {
   metabot: combineReducers(metabot),
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),
+  reference,
   revisions,
   setup,
   admin,
