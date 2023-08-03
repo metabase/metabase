@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import AccordionList from "metabase/core/components/AccordionList";
 import { Icon } from "metabase/core/components/Icon";
+import { OptionAccordionList } from "./CollectionOptionsButton.styled";
 
 const ICON_SIZE = 16;
 
@@ -30,8 +30,7 @@ export default class CollectionOptionsButton extends Component {
           triggerContent={<Icon name="ellipsis" size={20} />}
           placement="bottom-end"
           popoverContent={({ closePopover }) => (
-            <AccordionList
-              className="text-brand"
+            <OptionAccordionList
               sections={[{ items }]}
               onChange={item => {
                 item.onClick();
