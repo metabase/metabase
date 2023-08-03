@@ -45,6 +45,11 @@
     (str base-url (when (seq url-params)
                     (str "?" (str/join "&" url-params))))))
 
+(defn- escape-markdown-chars?
+  "Heading cards should not escape characters."
+  [dashcard]
+  (not= "heading" (get-in dashcard [:visualization_settings :virtual_card :display])))
+
 (defn process-virtual-dashcard
   "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
   substituted into connected variables in the text."
@@ -59,4 +64,4 @@
                                        (assoc m tag-name (get param-id->param param-id))))
                                    {}
                                    tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
