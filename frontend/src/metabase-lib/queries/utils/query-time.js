@@ -434,8 +434,8 @@ export function setRelativeDatetimeValue(filter, value) {
   return filter;
 }
 
-const DATE_FORMAT = "YYYY-MM-DD";
-const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
+export const DATE_FORMAT = "YYYY-MM-DD";
+export const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
 export const getTimeComponent = value => {
   let hours = null;
