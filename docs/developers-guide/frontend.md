@@ -361,21 +361,15 @@ When dealing with business logic you don't want to be concerned with the specifi
 ### classic / global CSS with BEM style selectors (deprecated)
 
 ```css
-.Button.Button--primary {
-  color: -var(--color-brand);
+.Button {
+  color: -var(--color-white);
 }
 ```
 
 ### atomic / utility CSS (discouraged)
 
-```css
-.text-brand {
-  color: -var(--color-brand);
-}
-```
-
 ```javascript
-const Foo = () => <div className="text-brand" />;
+const Foo = () => <div className="text-medium" />;
 ```
 
 ### inline style (discouraged)
@@ -389,7 +383,7 @@ const Foo = ({ color ) =>
 
 ```css
 :local(.primary) {
-  color: -var(--color-brand);
+  color: -var(--color-text-medium);
 }
 ```
 
