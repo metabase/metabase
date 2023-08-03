@@ -6,7 +6,11 @@ import _ from "underscore";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
 import { Icon } from "metabase/core/components/Icon";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { OptionItemRoot } from "metabase/dashboard/components/ParametersPopover.styled";
+import {
+  OptionItemDescription,
+  OptionItemRoot,
+  OptionItemTitle,
+} from "metabase/dashboard/components/ParametersPopover.styled";
 
 const PopoverBody = styled.div`
   max-width: 300px;
@@ -59,14 +63,14 @@ export default class ParametersPopover extends Component {
 
 export const ParameterOptionsSection = ({ section, onClick }) => (
   <OptionItemRoot onClick={onClick}>
-    <div
-      className="text-brand text-bold flex align-center"
+    <OptionItemTitle
+      className="text-bold flex align-center"
       style={{ marginBottom: 4 }}
     >
       <Icon size="16" name={getParameterIconName(section.id)} className="mr1" />
       {section.name}
-    </div>
-    <div className="text-medium">{section.description}</div>
+    </OptionItemTitle>
+    <OptionItemDescription>{section.description}</OptionItemDescription>
   </OptionItemRoot>
 );
 
@@ -87,10 +91,10 @@ export const ParameterOptionsSectionsPane = ({ sections, onSelectSection }) => (
 
 export const ParameterOptionItem = ({ option, onClick }) => (
   <OptionItemRoot onClick={onClick}>
-    <div className="text-brand text-bold" style={{ marginBottom: 4 }}>
+    <OptionItemTitle className="text-bold" style={{ marginBottom: 4 }}>
       {option.menuName || option.name}
-    </div>
-    <div className="text-medium">{option.description}</div>
+    </OptionItemTitle>
+    <OptionItemDescription>{option.description}</OptionItemDescription>
   </OptionItemRoot>
 );
 
