@@ -480,10 +480,13 @@
                               (js->clj :keywordize-keys true)
                               (update 0 keyword)
                               convert/->pMBQL))
-          matches       (lib.equality/find-closest-matches-for-refs a-query columns field-refs)
-          ;; matches is a map of [column index-of-ref]; so flip it around.
-          column->index (into {} (for [index (range columns)]
+          matches       (lib.equality/find-closest-matches-for-refs a-query field-refs columns)
+          ;; matches is a map of columns to the corresponding index in field-refs.
+          ;; We want to return a parallel list to field-refs, giving the index of the matching column (or -1).
+          ;; First, map each column to its index (in the column list).
+          column->index (into {} (for [index (range (count columns))]
                                   [(nth columns index) index]))
+          ;; And use that to map each match's ref-index to its column-index.
           by-index      (into {} (for [[column ref-index] matches]
                                    [ref-index (column->index column)]))]
       (->> (range (count legacy-refs))
