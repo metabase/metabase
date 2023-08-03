@@ -12,6 +12,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

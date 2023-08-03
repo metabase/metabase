@@ -19,9 +19,9 @@
 
 (set! *warn-on-reflection* true)
 
-(s/defn date-type?
+(mu/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
-  [param-type :- s/Keyword]
+  [param-type :- :keyword]
   (= (get-in lib.schema.parameter/types [param-type :type]) :date))
 
 (defn not-single-date-type?
@@ -130,7 +130,7 @@
       (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
       [[group-label group-value]])))
 
-(s/defn ^:private regex->parser :- (s/pred fn?)
+(mu/defn ^:private regex->parser :- fn?
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which takes a parameter value,
   validates the value against regex and gives a map of labels and group values. Respects the following special label
   names:
@@ -138,7 +138,7 @@
       :unit – finds a matching date unit and merges date unit operations to the result
       :int-value, :int-value-1 – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
-  [regex :- java.util.regex.Pattern group-labels]
+  [regex :- [:fn {:error/message "regular expression"} m/regexp?] group-labels]
   (fn [param-value]
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
@@ -333,11 +333,14 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
-(s/defn ^:private execute-decoders
+(mu/defn ^:private execute-decoders
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
   dox for [[date-string->range]] for more details."
-  [decoders, decoder-type :- (s/enum :range :filter), decoder-param, date-string :- s/Str]
+  [decoders
+   decoder-type :- [:enum :range :filter]
+   decoder-param
+   date-string :- :string]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
           (when-let [parser-result (and parser-result-decoder (parser date-string))]
             (parser-result-decoder parser-result decoder-param)))

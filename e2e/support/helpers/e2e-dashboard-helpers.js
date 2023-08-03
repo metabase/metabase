@@ -115,6 +115,10 @@ export function createEmptyTextBox() {
 
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
+  addTextBoxWhileEditing(string, options);
+}
+
+export function addTextBoxWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Text").click();
   cy.findByPlaceholderText(
@@ -130,6 +134,10 @@ export function createEmptyHeading() {
 
 export function addHeading(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
+  addHeadingWhileEditing(string, options);
+}
+
+export function addHeadingWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Heading").click();
   cy.findByPlaceholderText("Heading").type(string, options);
