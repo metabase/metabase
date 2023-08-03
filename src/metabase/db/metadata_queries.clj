@@ -14,9 +14,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (defn- qp-query [db-id mbql-query]
@@ -57,15 +54,15 @@
   * Not being too high, which would result in Metabase running out of memory dealing with too many values"
   (int 1000))
 
-(s/defn field-distinct-values
-  "Return the distinct values of `field`.
+(mu/defn field-distinct-values :- [:sequential ms/NonRemappedFieldValue]
+  "Return the distinct values of `field`, each wrapped in a vector.
    This is used to create a `FieldValues` object for `:type/Category` Fields."
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
 
-  ([field max-results :- su/IntGreaterThanZero]
-   (mapv first (field-query field {:breakout [[:field (u/the-id field) nil]]
-                                   :limit    (min max-results absolute-max-distinct-values-limit)}))))
+  ([field max-results :- ms/PositiveInt]
+   (field-query field {:breakout [[:field (u/the-id field) nil]]
+                       :limit    (min max-results absolute-max-distinct-values-limit)})))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."

@@ -2660,44 +2660,46 @@
   (testing "getting values"
     (with-card-param-values-fixtures [{:keys [card param-keys]}]
       (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          ["Brite Spot Family Restaurant"
-                                   "Red Medicine"
-                                   "Stout Burgers & Beers"
-                                   "The Apple Pan"
-                                   "Wurstküche"]
+        (is (=? {:values          [["Brite Spot Family Restaurant"]
+                                   ["Red Medicine"]
+                                   ["Stout Burgers & Beers"]
+                                   ["The Apple Pan"]
+                                   ["Wurstküche"]]
                  :has_more_values false}
                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
       (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-        (is (= {:values          ["Red Medicine"]
+        (is (= {:values          [["Red Medicine"]]
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
 
   (testing "fallback to field-values"
-    (with-redefs [api.card/mapping->field-values (constantly "field-values")]
-      (testing "if value-field not found in source card"
-        (mt/with-temp* [:model/Card [{source-card-id :id}]
-                        :model/Card [card
-                                     {:parameters [{:id                   "abc"
-                                                    :type                 "category"
-                                                    :name                 "CATEGORY"
-                                                    :values_source_type   "card"
-                                                    :values_source_config {:card_id     source-card-id
-                                                                           :value_field (mt/$ids $venues.name)}}]}]]
-          (let [url (param-values-url card "abc")]
-            (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))
+    (let [mock-default-result {:values          [["field-values"]]
+                               :has_more_values false}]
+      (with-redefs [api.card/mapping->field-values (constantly mock-default-result)]
+        (testing "if value-field not found in source card"
+          (mt/with-temp* [:model/Card [{source-card-id :id}]
+                          :model/Card [card
+                                       {:parameters [{:id                   "abc"
+                                                      :type                 "category"
+                                                      :name                 "CATEGORY"
+                                                      :values_source_type   "card"
+                                                      :values_source_config {:card_id     source-card-id
+                                                                             :value_field (mt/$ids $venues.name)}}]}]]
+            (let [url (param-values-url card "abc")]
+              (is (= mock-default-result (mt/user-http-request :rasta :get 200 url))))))
 
-      (testing "if card is archived"
-        (mt/with-temp* [:model/Card [{source-card-id :id} {:archived true}]
-                        :model/Card [card
-                                     {:parameters [{:id                   "abc"
-                                                    :type                 "category"
-                                                    :name                 "CATEGORY"
-                                                    :values_source_type   "card"
-                                                    :values_source_config {:card_id     source-card-id
-                                                                           :value_field (mt/$ids $venues.name)}}]}]]
-          (let [url (param-values-url card "abc")]
-            (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))))
+        (testing "if card is archived"
+          (mt/with-temp* [:model/Card [{source-card-id :id} {:archived true}]
+                          :model/Card [card
+                                       {:parameters [{:id                   "abc"
+                                                      :type                 "category"
+                                                      :name                 "CATEGORY"
+                                                      :values_source_type   "card"
+                                                      :values_source_config {:card_id     source-card-id
+                                                                             :value_field (mt/$ids $venues.name)}}]}]]
+            (let [url (param-values-url card "abc")]
+              (is (= mock-default-result (mt/user-http-request :rasta :get 200 url)))))))))
 
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -2813,7 +2815,7 @@
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
     (testing "we could get the values"
       (is (= {:has_more_values false,
-              :values          ["African" "American" "Asian"]}
+              :values          [["African"] ["American"] ["Asian"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list param-keys)))))
 
@@ -2824,7 +2826,7 @@
 
     (testing "we could search the values"
       (is (= {:has_more_values false,
-              :values          ["African"]}
+              :values          [["African"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list param-keys) "af"))))
 

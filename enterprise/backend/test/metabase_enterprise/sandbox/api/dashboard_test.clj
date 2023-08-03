@@ -63,14 +63,14 @@
           (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
             (testing "GET /api/dashboard/:id/params/:param-key/values"
               (mt/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
-                (is (= {:values          ["African" "American"]
+                (is (= {:values          [["African"] ["American"]]
                         :has_more_values false}
                        (->> url
                             (mt/user-http-request :rasta :get 200)
                             (chain-filter-test/take-n-values 2))))))
             (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
               (mt/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
-                (is (= {:values          ["African" "American"]
+                (is (= {:values          [["African"] ["American"]]
                         :has_more_values false}
                        (mt/user-http-request :rasta :get 200 url)))))))))))
 
@@ -129,7 +129,7 @@
                              (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-values-url dashboard-id "abc")))]
 
             (is (> (-> (get-values :crowberto) :values count) 3))
-            (is (= {:values          ["African" "American" "Artisan"]
+            (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (get-values :rasta)))))
 
@@ -137,7 +137,7 @@
         (testing "when search values"
           (let [search (fn [user]
                          (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-search-url dashboard-id "abc" "bbq")))]
-            (is (= {:values          ["BBQ"]
+            (is (= {:values          [["BBQ"]]
                     :has_more_values false}
                    (search :crowberto)))
 

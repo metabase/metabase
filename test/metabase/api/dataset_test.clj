@@ -442,12 +442,12 @@
                        :type :string/=,
                        :sectionId "string"}]
         (testing "values"
-          (is (partial= {:values ["foo1" "foo2" "bar"]}
+          (is (partial= {:values [["foo1"] ["foo2"] ["bar"]]}
                         (mt/user-http-request :rasta :post 200
                                               "dataset/parameter/values"
                                               {:parameter parameter}))))
         (testing "search"
-          (is (partial= {:values ["foo1" "foo2"]}
+          (is (partial= {:values [["foo1"] ["foo2"]]}
                         (mt/user-http-request :rasta :post 200
                                               "dataset/parameter/search/fo"
                                               {:parameter parameter}))))))
@@ -469,13 +469,13 @@
                                                    "dataset/parameter/values"
                                                    {:parameter parameter})
                              :values set)]
-              (is (= #{"Gizmo" "Widget" "Gadget" "Doohickey"} values))))
+              (is (= #{["Gizmo"] ["Widget"] ["Gadget"] ["Doohickey"]} values))))
           (testing "search"
             (let [values (-> (mt/user-http-request :rasta :post 200
                                                    "dataset/parameter/search/g"
                                                    {:parameter parameter})
                              :values set)]
-              (is (= #{"Gizmo" "Widget" "Gadget"} values)))))))
+              (is (= #{["Gizmo"] ["Widget"] ["Gadget"]} values)))))))
 
     (testing "nil value (current behavior of field values)"
       (let [parameter {:values_query_type "list",
@@ -516,25 +516,27 @@
             (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values))))))
 
     (testing "fallback to field-values"
-      (with-redefs [api.dataset/parameter-field-values (constantly "field-values")]
-        (testing "if value-field not found in source card"
-          (t2.with-temp/with-temp [Card {source-card-id :id}]
-            (is (= "field-values"
-                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
-                                         {:parameter  {:values_source_type   "card"
-                                                       :values_source_config {:card_id     source-card-id
-                                                                              :value_field (mt/$ids $people.source)}
-                                                       :type                 :string/=,
-                                                       :name                 "Text"
-                                                       :id                   "abc"}})))))
+      (let [mock-default-result {:values          [["field-values"]]
+                                 :has_more_values false}]
+        (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
+          (testing "if value-field not found in source card"
+            (t2.with-temp/with-temp [Card {source-card-id :id}]
+              (is (= mock-default-result
+                     (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                           {:parameter  {:values_source_type   "card"
+                                                         :values_source_config {:card_id     source-card-id
+                                                                                :value_field (mt/$ids $people.source)}
+                                                         :type                 :string/=,
+                                                         :name                 "Text"
+                                                         :id                   "abc"}})))))
 
-        (testing "if value-field not found in source card"
-          (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
-            (is (= "field-values"
-                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
-                                         {:parameter  {:values_source_type   "card"
-                                                       :values_source_config {:card_id     source-card-id
-                                                                              :value_field (mt/$ids $people.source)}
-                                                       :type                 :string/=,
-                                                       :name                 "Text"
-                                                       :id                   "abc"}})))))))))
+          (testing "if value-field not found in source card"
+            (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
+              (is (= mock-default-result
+                     (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                           {:parameter  {:values_source_type   "card"
+                                                         :values_source_config {:card_id     source-card-id
+                                                                                :value_field (mt/$ids $people.source)}
+                                                         :type                 :string/=,
+                                                         :name                 "Text"
+                                                         :id                   "abc"}}))))))))))

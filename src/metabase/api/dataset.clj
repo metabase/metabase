@@ -200,7 +200,7 @@
                :values          []}
               field-ids)
       ;; deduplicate the values returned from multiple fields
-      (update :values set)))
+      (update :values (comp vec set))))
 
 (defn parameter-values
   "Fetch parameter values. Parameter should be a full parameter, field-ids is an optional vector of field ids, only
