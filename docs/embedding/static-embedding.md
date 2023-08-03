@@ -1,5 +1,7 @@
 ---
 title: Signed embedding
+redirect_from:
+- /docs/latest/embedding/signed-embedding
 ---
 
 # Signed embedding
