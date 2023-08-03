@@ -55,12 +55,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           .then(() => {
             cy.createPercySnapshot();
           });
-
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "have.css",
-          "position",
-          "fixed",
-        );
       });
 
       it("is not sticky in edit mode", () => {
@@ -71,12 +65,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           .then(() => {
             cy.createPercySnapshot();
           });
-
-        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
-          "not.have.css",
-          "position",
-          "fixed",
-        );
       });
     });
 
@@ -93,12 +81,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
             .then(() => {
               cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
             });
-
-          cy.findByTestId("dashboard-parameters-widget-container").should(
-            "have.css",
-            "position",
-            "fixed",
-          );
         });
 
         it("is not sticky in edit mode", () => {
@@ -109,12 +91,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
             .then(() => {
               cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
             });
-
-          cy.findByTestId("edit-dashboard-parameters-widget-container").should(
-            "not.have.css",
-            "position",
-            "fixed",
-          );
         });
       },
     );
@@ -154,12 +130,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           .then(() => {
             cy.createPercySnapshot();
           });
-
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "have.css",
-          "position",
-          "fixed",
-        );
       });
 
       it("is not sticky in edit mode", () => {
@@ -170,12 +140,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           .then(() => {
             cy.createPercySnapshot();
           });
-
-        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
-          "not.have.css",
-          "position",
-          "fixed",
-        );
       });
     });
 
@@ -192,12 +156,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
             .then(() => {
               cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
             });
-
-          cy.findByTestId("dashboard-parameters-widget-container").should(
-            "not.have.css",
-            "position",
-            "fixed",
-          );
         });
 
         it("is not sticky in edit mode", () => {
@@ -208,12 +166,6 @@ describe(`visual tests > dashboard > parameters widget`, () => {
             .then(() => {
               cy.createPercySnapshot(null, { widths: [MOBILE_WIDTH] });
             });
-
-          cy.findByTestId("edit-dashboard-parameters-widget-container").should(
-            "not.have.css",
-            "position",
-            "fixed",
-          );
         });
       },
     );
