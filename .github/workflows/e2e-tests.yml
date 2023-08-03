@@ -246,11 +246,10 @@ jobs:
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [build, files-changed]
+    needs: [files-changed]
     if: |
       always() &&
-      needs.files-changed.outputs.e2e_all == 'false' &&
-      needs.build.result == 'skipped'
+      needs.files-changed.outputs.e2e_all == 'false'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
