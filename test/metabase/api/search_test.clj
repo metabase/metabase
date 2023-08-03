@@ -138,6 +138,10 @@
                                   :as action}   (merge (data-map "action %s action")
                                                        {:type :query :model_id (u/the-id action-model)
                                                         :creator_id  (mt/user->id :rasta)})]
+                    Database    [{db-id :id
+                                  :as db}       (data-map "database %s database")]
+                    Table       [table          (merge (data-map "database %s database")
+                                                       {:db_id db-id})]
                     QueryAction [_qa (query-action action-id)]
                     Card        [card           (coll-data-map "card %s card" coll)]
                     Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
@@ -148,9 +152,11 @@
       (f {:action     action
           :collection coll
           :card       card
+          :database   db
           :dataset    dataset
           :dashboard  dashboard
           :metric     metric
+          :table      table
           :segment    segment}))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
@@ -290,14 +296,14 @@
   (let [search-term "query-model-set"]
     (with-search-items-in-root-collection search-term
       (testing "should returns a list of models that search result will return"
-        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+        (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term)))))
-      (testing "return a subsets of model for created-by filter"
+      (testing "return a subset of model for created-by filter"
         (is (= #{"dashboard" "dataset" "card" "action"}
                (set (mt/user-http-request :crowberto :get 200 "search/models"
                                           :q search-term
                                           :created_by (mt/user->id :rasta))))))
-      (testing "return a subsets of model for verified filter"
+      (testing "return a subset of model for verified filter"
         (t2.with-temp/with-temp
           [:model/Card       {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
            :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
@@ -317,12 +323,17 @@
                                                   :verified true)))))))
 
           (testing "when has :content-verification feature only"
-           (premium-features-test/with-premium-features #{:content-verification}
-             (mt/with-verified-cards [v-card-id]
-               (is (= #{"card"}
-                      (set (mt/user-http-request :crowberto :get 200 "search/models"
-                                                 :q search-term
-                                                 :verified true))))))))))))
+            (premium-features-test/with-premium-features #{:content-verification}
+              (mt/with-verified-cards [v-card-id]
+                (is (= #{"card"}
+                       (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                                  :q search-term
+                                                  :verified true)))))))))
+      (testing "return a subset of model for created filter"
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                          :q search-term
+                                          :created_at "today"))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
