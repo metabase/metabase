@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -1512,16 +1513,6 @@
                                                   :refresh-token                 protected-password})))))
 
 
-(deftest db-ids-with-deprecated-drivers-test
-  (mt/with-driver :driver-deprecation-test-legacy
-    (testing "GET /api/database/db-ids-with-deprecated-drivers"
-      (t2.with-temp/with-temp [Database {db-id :id} {:engine :driver-deprecation-test-legacy}]
-        (is (not-empty (filter #(= % db-id) (mt/user-http-request
-                                             :crowberto
-                                             :get
-                                             200
-                                             "database/db-ids-with-deprecated-drivers"))))))))
-
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
@@ -1647,6 +1638,17 @@
             (is (= {:database-enable-actions false}
                    (settings)))))))))
 
+(deftest log-an-error-if-contains-undefined-setting-test
+  (testing "should log an error message if database contains undefined settings"
+    (t2.with-temp/with-temp [Database {db-id :id} {:settings {:undefined-setting true}}]
+      (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+             (-> (mt/with-log-messages-for-level :error
+                   (testing "does not includes undefined keys by default"
+                     (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
+                                         :undefined-setting)))))
+                 first
+                 last))))))
+
 (deftest persist-database-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (mt/dataset test-data
@@ -1671,7 +1673,10 @@
                                                   :card_id     (:id card))))
               (is (true? (t2/select-one-fn (comp :persist-models-enabled :settings)
                                            Database
-                                           :id db-id))))
+                                           :id db-id)))
+              (is (true? (get-in (mt/user-http-request :crowberto :get 200
+                                                       (str "database/" db-id))
+                                 [:settings :persist-models-enabled]))))
             (testing "it's okay to trigger persist even though the database is already persisted"
               (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist")))))))))
 

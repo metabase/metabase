@@ -11,6 +11,7 @@
    [+ - / * abs mod inc dec cast concat format second])
   (:require
    [honeysql.core :as hsql]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honey-sql-1 :as h1x]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -43,6 +44,17 @@
   (case (long *honey-sql-version*)
     1 (apply h1x/identifier identifier-type components)
     2 (apply h2x/identifier identifier-type components)))
+
+(defn identifier->components
+  "Given an identifer return its component.
+  (identifier->components (identifier :field :metabase :user :email))
+  => (\"metabase\" \"user\" \"email\"))
+  "
+  [identifier]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (case (long *honey-sql-version*)
+    1 (h1x/identifier->components identifier)
+    2 (h2x/identifier->components identifier)))
 
 (defn identifier?
   "Whether `x` is a valid identifier for the current Honey SQL version."

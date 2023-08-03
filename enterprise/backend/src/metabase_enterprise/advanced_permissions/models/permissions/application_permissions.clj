@@ -7,6 +7,7 @@
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.permissions :as perms]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))

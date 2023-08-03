@@ -38,7 +38,7 @@
    [saml20-clj.core :as saml]
    [schema.core :as s])
   (:import
-   (java.net MalformedURLException URL)
+   (java.net MalformedURLException URI)
    (java.util Base64 UUID)))
 
 (set! *warn-on-reflection* true)
@@ -112,9 +112,9 @@
   (api/check (sso-settings/saml-enabled)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
-(defn- has-host? [url]
+(defn- has-host? [uri]
   (try
-    (some? (.getHost (new URL url)))
+    (-> uri URI. .getHost some?)
     (catch MalformedURLException _ false)))
 
 (defmethod sso.i/sso-get :saml
