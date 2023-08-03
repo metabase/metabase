@@ -14,12 +14,10 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
-
-;; TODO: remove hx from this test
-#_{:clj-kondo/ignore [:discouraged-namespace]}
-(require '[metabase.util.honeysql-extensions :as hx])
 
 (set! *warn-on-reflection* true)
 

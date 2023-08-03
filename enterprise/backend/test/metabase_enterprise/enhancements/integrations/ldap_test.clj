@@ -8,6 +8,7 @@
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
