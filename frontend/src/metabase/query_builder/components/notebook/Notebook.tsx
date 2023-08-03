@@ -51,6 +51,10 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
       Lib.toLegacyQuery(question._getMLv2Query()),
     );
 
+    // MLv2 doesn't clean up redundant stages, so we do it with MLv1 for now
+    const query = cleanQuestion.query() as StructuredQuery;
+    cleanQuestion = cleanQuestion.setQuery(query.cleanEmpty());
+
     if (cleanQuestion.display() === "table") {
       cleanQuestion = cleanQuestion.setDefaultDisplay();
     }
