@@ -68,7 +68,7 @@
    :map
    [:fn
     {:error/message "map with a single key"}
-    #(= (count (keys %)) 1) ]
+    #(= (count %) 1) ]
    [:multi
     {:dispatch (fn [m]
                  (first (keys m)))}
