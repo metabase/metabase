@@ -131,6 +131,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'yarn'
       - name: Download Metabase uberjar from a previously stored artifact
         run: |
           curl -L \
