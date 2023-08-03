@@ -6,7 +6,8 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase.models
-    :refer [Card
+    :refer [Action
+            Card
             Collection
             Dashboard
             DashboardCard
@@ -146,6 +147,16 @@
                                                                                        :filter [:>= [:field field-id nil] 18]
                                                                                        :aggregation [[:count]]}
                                                                                :database db-id}}]
+                       Card       [{model-id  :id}            {:name          "Some Model"
+                                                               :database_id   db-id
+                                                               :table_id      no-schema-id
+                                                               :collection_id coll-id
+                                                               :creator_id    mark-id
+                                                               :dataset       true
+                                                               :dataset_query {:query {:source-table no-schema-id
+                                                                                       :filter [:>= [:field field-id nil] 18]
+                                                                                       :aggregation [[:count]]}
+                                                                               :database db-id}}]
                        Card       [{c2-id  :id
                                     c2-eid :entity_id}        {:name          "Second Question"
                                                                :database_id   db-id
@@ -206,6 +217,11 @@
                                                                         :aggregation [[:count]]}
                                                                 :database db-id}}]
 
+                       Action     [{action-id    :id
+                                    action-eid   :entity_id}  {:name "Some action"
+                                                               :type :query
+                                                               :model_id model-id}]
+
                        Dashboard  [{dash-id  :id
                                     dash-eid :entity_id}      {:name          "Shared Dashboard"
                                                                :collection_id coll-id
@@ -254,7 +270,9 @@
                                                                   :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                                                   :enabled true}]
                                                                 :column_settings
-                                                                {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}]]
+                                                                {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}]
+                       DashboardCard [_                       {:action_id action-id
+                                                               :dashboard_id other-dash-id}]]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one 'Card :id c1-id))]
           (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c1-eid :label "some_question"}])
@@ -383,35 +401,35 @@
 
       (testing "Dashboards include their Dashcards"
         (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one 'Dashboard :id other-dash-id))]
-          (is (schema= {:serdes/meta            (s/eq [{:model "Dashboard" :id other-dash :label "dave_s_dash"}])
-                        :entity_id              (s/eq other-dash)
-                        :ordered_cards
-                        [{:visualization_settings (s/eq {:table.pivot_column "SOURCE"
-                                                         :table.cell_column "sum"
-                                                         :table.columns
-                                                         [{:name "SOME_FIELD"
-                                                           :fieldRef [:field ["My Database" nil "Schemaless Table" "Some Field"] nil]
-                                                           :enabled true}
-                                                          {:name "sum"
-                                                           :fieldRef [:field "sum" {:base-type :type/Float}]
-                                                           :enabled true}
-                                                          {:name "count"
-                                                           :fieldRef [:field "count" {:base-type :type/BigInteger}]
-                                                           :enabled true}
-                                                          {:name "Average order total"
-                                                           :fieldRef [:field "Average order total" {:base-type :type/Float}]
-                                                           :enabled true}]
-                                                         :column_settings
-                                                         {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}})
-                          :created_at             LocalDateTime
-                          s/Keyword               s/Any}]
-                        :created_at             LocalDateTime
-                        s/Keyword               s/Any}
-                       ser))
+          (is (=? {:serdes/meta            [{:model "Dashboard" :id other-dash :label "dave_s_dash"}]
+                   :entity_id              other-dash
+                   :ordered_cards
+                   [{:visualization_settings {:table.pivot_column "SOURCE"
+                                              :table.cell_column "sum"
+                                              :table.columns
+                                              [{:name "SOME_FIELD"
+                                                :fieldRef [:field ["My Database" nil "Schemaless Table" "Some Field"] nil]
+                                                :enabled true}
+                                               {:name "sum"
+                                                :fieldRef [:field "sum" {:base-type :type/Float}]
+                                                :enabled true}
+                                               {:name "count"
+                                                :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                                                :enabled true}
+                                               {:name "Average order total"
+                                                :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                                                :enabled true}]
+                                              :column_settings
+                                              {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
+                     :created_at             LocalDateTime}
+                    {:action_id action-eid}]
+                   :created_at             LocalDateTime}
+                  ser))
           (is (not (contains? ser :id)))
 
-          (testing "and depend on all referenced cards, including those in visualization_settings"
+          (testing "and depend on all referenced cards and actions, including those in visualization_settings"
             (is (= #{[{:model "Card"       :id c2-eid}]
+                     [{:model "Action"     :id action-eid}]
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]
