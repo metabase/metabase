@@ -39,27 +39,27 @@ N/A
     lineClamp: -1,
     align: "unset",
   }}
-         argTypes={
-           {
-             children: {
-               control: {
-                 type: "text"
-               }
-             },
-             size: {
-               options: ["xs", "sm", "md", "lg", "xl"],
-               control: { type: 'inline-radio' }
-             },
-             weight: {
-               options: ["normal", "bold"],
-               control: { type: 'inline-radio' }
-             },
-             align: {
-               options: ["unset", "left", "right", "center"],
-               control: { type: 'select' }
-             }
-           }
-         }
+  argTypes={
+   {
+     children: {
+       control: {
+         type: "text"
+       }
+     },
+     size: {
+       options: ["xs", "sm", "md", "lg", "xl"],
+       control: { type: 'inline-radio' }
+     },
+     weight: {
+       options: ["normal", "bold"],
+       control: { type: 'inline-radio' }
+     },
+     align: {
+       options: ["unset", "left", "right", "center"],
+       control: { type: 'select' }
+     }
+   }
+  }
   >
     {Template.bind({})}
   </Story>
@@ -73,6 +73,7 @@ N/A
     <Text span> You won't regret it!</Text>
   </Story>
 </Canvas>
+
 
 ## Related components
 
