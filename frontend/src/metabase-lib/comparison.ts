@@ -14,13 +14,16 @@ export function areLegacyQueriesEqual(
   return ML.query_EQ_(query1, query2, fieldIds);
 }
 
-export function findColumnIndexFromLegacyRef(
+export function findColumnIndexesFromLegacyRefs(
   query: Query,
   stageIndex: number,
   columns: ColumnMetadata[] | DatasetColumn[],
-  fieldRef: FieldReference,
-): number {
-  return ML.find_column_indexes_from_legacy_refs(query, stageIndex, columns, [
-    fieldRef,
-  ]);
+  fieldRefs: FieldReference[],
+): number[] {
+  return ML.find_column_indexes_from_legacy_refs(
+    query,
+    stageIndex,
+    columns,
+    fieldRefs,
+  );
 }

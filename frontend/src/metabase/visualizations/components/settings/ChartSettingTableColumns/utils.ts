@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/core/utils/types";
 import { DatasetColumn, TableColumnOrderSetting } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
@@ -22,30 +23,30 @@ export const getQueryColumnSettingItems = (
   datasetColumns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
 ): ColumnSettingItem[] => {
+  const columnSettingRefs = columnSettings
+    .map(({ fieldRef }) => fieldRef)
+    .filter(isNotNull);
+
+  const metadataColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    STAGE_INDEX,
+    metadataColumns,
+    columnSettingRefs,
+  );
+
+  const datasetColumnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    STAGE_INDEX,
+    datasetColumns,
+    columnSettingRefs,
+  );
+
   const columnSettingItems: ColumnSettingItem[] = [];
-
   columnSettings.forEach((columnSetting, columnSettingIndex) => {
-    if (!columnSetting.fieldRef) {
-      return;
-    }
+    const metadataColumnIndex = metadataColumnIndexes[columnSettingIndex];
+    const datasetColumnIndex = datasetColumnIndexes[columnSettingIndex];
 
-    const metadataColumnIndex = Lib.findColumnIndexFromLegacyRef(
-      query,
-      STAGE_INDEX,
-      metadataColumns,
-      columnSetting.fieldRef,
-    );
-    if (metadataColumnIndex < 0) {
-      return;
-    }
-
-    const datasetColumnIndex = Lib.findColumnIndexFromLegacyRef(
-      query,
-      STAGE_INDEX,
-      datasetColumns,
-      columnSetting.fieldRef,
-    );
-    if (datasetColumnIndex < 0) {
+    if (metadataColumnIndex < 0 || datasetColumnIndex < 0) {
       return;
     }
 
@@ -182,22 +183,18 @@ const findColumnSettingIndex = (
   column: Lib.ColumnMetadata,
   columnSettings: TableColumnOrderSetting[],
 ) => {
-  const columns = [column];
+  const columnSettingRefs = columnSettings
+    .map(({ fieldRef }) => fieldRef)
+    .filter(isNotNull);
 
-  return columnSettings.findIndex(columnSetting => {
-    if (!columnSetting.fieldRef) {
-      return false;
-    }
+  const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    STAGE_INDEX,
+    [column],
+    columnSettingRefs,
+  );
 
-    const columnIndex = Lib.findColumnIndexFromLegacyRef(
-      query,
-      STAGE_INDEX,
-      columns,
-      columnSetting.fieldRef,
-    );
-
-    return columnIndex >= 0;
-  });
+  return columnIndexes.findIndex(index => index >= 0);
 };
 
 export const addColumnInSettings = (
