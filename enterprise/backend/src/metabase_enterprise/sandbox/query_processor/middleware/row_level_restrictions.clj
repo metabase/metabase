@@ -28,6 +28,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -42,13 +43,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- all-table-ids [m]
-  (set
-   (reduce
-    concat
-    (mbql.u/match m
-      (_ :guard (every-pred map? :source-table (complement ::gtap?)))
-      (let [recursive-ids (all-table-ids (dissoc &match :source-table))]
-        (cons (:source-table &match) recursive-ids))))))
+  (into #{} cat (mbql.u/match m
+                  (_ :guard (every-pred map? :source-table (complement ::gtap?)))
+                  (let [recursive-ids (all-table-ids (dissoc &match :source-table))]
+                    (cons (:source-table &match) recursive-ids)))))
 
 (defn- query->all-table-ids [query]
   (let [ids (all-table-ids query)]
@@ -259,7 +257,7 @@
    (remove nil?)
    set))
 
-(s/defn ^:private sandbox->perms-set :- #{perms/PathSchema}
+(mu/defn ^:private sandbox->perms-set :- [:set perms/PathSchema]
   "Calculate the set of permissions needed to run the query associated with a sandbox; this set of permissions is excluded
   during the normal QP perms check.
 

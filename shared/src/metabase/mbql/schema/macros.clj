@@ -3,11 +3,14 @@
    [metabase.mbql.schema.helpers :as metabase.mbql.schema.helpers]))
 
 (defn- stringify-names [arg-names-and-schemas]
-  (reduce concat (for [[arg-name schema] (partition 2 arg-names-and-schemas)]
-                   [(name arg-name) (if (and (list? schema)
-                                             (#{:optional :rest} (keyword (first schema))))
-                                      (vec (cons (keyword (first schema)) (rest schema)))
-                                      schema)])))
+  (into []
+        (comp (partition-all 2)
+              (mapcat (fn [[arg-name schema]]
+                        [(name arg-name) (if (and (list? schema)
+                                                  (#{:optional :rest} (keyword (first schema))))
+                                           (vec (cons (keyword (first schema)) (rest schema)))
+                                           schema)])))
+        arg-names-and-schemas))
 
 (defmacro defclause
   "Define a new MBQL clause.
