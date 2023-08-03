@@ -191,9 +191,9 @@ Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Ente
 Type: integer<br>
 Default: 0 (Metabase keeps all rows)<br>
 
-Sets the maximum number of days Metabase preserves rows in the `query_execution` table in the application database. 
+Sets the maximum number of days Metabase preserves rows in the `query_execution` table in the application database.
 
-Twice a day, Metabase will delete rows older than this threshold. 
+Twice a day, Metabase will delete rows older than this threshold.
 
 The minimum value is `30` days (Metabase will treat entered values of `1` to `29` the same as `30`). If set to `0`, Metabase will keep all rows.
 
@@ -424,7 +424,7 @@ Default: `null`
 
 URL of origin allowed to embed the full Metabase application.
 
-Related to [MB_SESSION_COOKIE_SAMESITE](#mb_session_cookie_samesite). Read more about [FullApp Embedding](../embedding/full-app-embedding.md).
+Related to [MB_SESSION_COOKIE_SAMESITE](#mb_session_cookie_samesite). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
 
 ### `MB_EMBEDDING_SECRET_KEY`
 
@@ -897,7 +897,7 @@ Type: string<br>
 Default: `null`<br>
 Since: v42.0
 
-The base URL where dashboard notitification links will point to instead of the Metabase base URL. Only applicable for users who utilize FullApp embedding and subscriptions.
+The base URL where dashboard notitification links will point to instead of the Metabase base URL. Only applicable for users who utilize interactive embedding and subscriptions.
 
 ### `MB_NOTIFICATION_RETRY_INITIAL_INTERVAL`
 
@@ -1190,11 +1190,11 @@ Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Ente
 Type: string (`"none"`, `"lax"`, `"strict"`)<br>
 Default: `"lax"`
 
-When using FullApp embedding, and the embedding website is hosted under a domain other than the one your Metabase instance is hosted under, you most likely need to set it to `"none"`.
+When using interactive embedding, and the embedding website is hosted under a domain other than the one your Metabase instance is hosted under, you most likely need to set it to `"none"`.
 
 Setting the variable to `"none"` requires you to use HTTPS, otherwise browsers will reject the request.
 
-Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [FullApp Embedding](../embedding/full-app-embedding.md).
+Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
 
 Learn more about SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
 

@@ -12,15 +12,15 @@ You can embed Metabase tables, charts, and dashboards—even Metabase's query bu
 
 There are three ways to embed Metabase in your app:
 
-- [Full-app embedding](#full-app-embedding)
+- [Interactive embedding](#interactive-embedding)
 - [Signed embedding](#signed-embedding)
 - [Public links and embeds](#public-links-and-embeds)
 
-## Full-app embedding
+## Interactive embedding
 
-Full-app embedding is the only kind of embedding that [integrates with SSO and data permissions](./full-app-embedding.md) to enable true self-service access to the underlying data.
+Interactive embedding is the only kind of embedding that [integrates with SSO and data permissions](./interactive-embedding.md) to enable true self-service access to the underlying data.
 
-**When to use full-app embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With full-app embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
+**When to use interactive embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-interactive-embedding). With interactive embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
 
 ## Signed embedding
 
@@ -36,7 +36,7 @@ If you'd like to share your data with the good people of the internet, you can c
 
 ## Comparison of embedding types
 
-| Action                                                                                                   | [Full-app](./full-app-embedding.md) | [Signed](./signed-embedding.md) | [Public](../questions/sharing/public-links.md) |
+| Action                                                                                                   | [Interactive](./interactive-embedding.md) | [Signed](./signed-embedding.md) | [Public](../questions/sharing/public-links.md) |
 |----------------------------------------------------------------------------------------------------------|-------------------------------------|---------------------------------|------------------------------------------------|
 | Display charts and dashboards                                                                            | ✅                                  | ✅                              | ✅                                             |
 | Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                  | ✅                              | ✅                                             |
