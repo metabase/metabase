@@ -1,14 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
   createSampleDatabase,
-  ORDERS,
-  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
 import {
   fieldRefForColumn,
-  syncTableColumnsToQuery,
   findColumnForColumnSetting,
 } from "metabase-lib/queries/utils/dataset";
 
@@ -16,7 +13,6 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const ordersTable = metadata.table(ORDERS_ID);
 const productsTable = metadata.table(PRODUCTS_ID);
 
 describe("metabase/util/dataset", () => {
@@ -96,151 +92,6 @@ describe("metabase/util/dataset", () => {
         "sum",
       ]);
       expect(newQuestion.query().columns()).toHaveLength(4);
-    });
-  });
-
-  describe("syncTableColumnsToQuery", () => {
-    it("should not modify `fields` if no `table.columns` setting preset", () => {
-      const question = syncTableColumnsToQuery(
-        ordersTable
-          .query({
-            fields: [["field", ["field", ORDERS.TOTAL, null], null]],
-          })
-          .question(),
-      );
-      expect(question.query().query()).toEqual({
-        "source-table": ORDERS_ID,
-        fields: [["field", ["field", ORDERS.TOTAL, null], null]],
-      });
-    });
-    it("should sync included `table.columns` by name", () => {
-      const question = syncTableColumnsToQuery(
-        ordersTable
-          .query()
-          .question()
-          .setSettings({
-            "table.columns": [
-              {
-                name: "TOTAL",
-                enabled: true,
-              },
-            ],
-          }),
-      );
-      expect(question.query().query()).toEqual({
-        "source-table": ORDERS_ID,
-        fields: [["field", ORDERS.TOTAL, null]],
-      });
-    });
-    it("should sync included `table.columns` by fieldRef", () => {
-      const question = syncTableColumnsToQuery(
-        ordersTable
-          .query()
-          .question()
-          .setSettings({
-            "table.columns": [
-              {
-                fieldRef: ["field", ORDERS.TOTAL, null],
-                enabled: true,
-              },
-            ],
-          }),
-      );
-      expect(question.query().query()).toEqual({
-        "source-table": ORDERS_ID,
-        fields: [["field", ORDERS.TOTAL, null]],
-      });
-    });
-    it("should not modify columns if all default columns are enabled", () => {
-      const query = ordersTable.query();
-      const question = syncTableColumnsToQuery(
-        query.question().setSettings({
-          "table.columns": query.columnNames().map(name => ({
-            name,
-            enabled: true,
-          })),
-        }),
-      );
-      expect(question.query().query()).toEqual({
-        "source-table": ORDERS_ID,
-      });
-    });
-
-    describe("with joins", () => {
-      it("should sync included `table.columns` by name to join clauses", () => {
-        const question = syncTableColumnsToQuery(
-          ordersTable
-            .query()
-            .join({
-              alias: "products",
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-            })
-            .question()
-            .setSettings({
-              "table.columns": [
-                {
-                  name: "TOTAL",
-                  enabled: true,
-                },
-                {
-                  name: "PRICE",
-                  enabled: true,
-                },
-              ],
-            }),
-        );
-        expect(question.query().query()).toEqual({
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              alias: "products",
-              "source-table": PRODUCTS_ID,
-              fields: [["field", PRODUCTS.PRICE, { "join-alias": "products" }]],
-            },
-          ],
-          fields: [["field", ORDERS.TOTAL, null]],
-        });
-      });
-      it("should sync included `table.columns` by fieldRef to join clauses", () => {
-        const question = syncTableColumnsToQuery(
-          ordersTable
-            .query()
-            .join({
-              alias: "products",
-              fields: "all",
-              "source-table": PRODUCTS_ID,
-            })
-            .question()
-            .setSettings({
-              "table.columns": [
-                {
-                  fieldRef: ["field", ORDERS.TOTAL, null],
-                  enabled: true,
-                },
-                {
-                  fieldRef: [
-                    "field",
-                    PRODUCTS.PRICE,
-                    { "join-alias": "products" },
-                  ],
-                  enabled: true,
-                },
-              ],
-            }),
-        );
-        expect(question.query().query()).toEqual({
-          "source-table": ORDERS_ID,
-          joins: [
-            {
-              alias: "products",
-              "source-table": PRODUCTS_ID,
-              fields: [["field", PRODUCTS.PRICE, { "join-alias": "products" }]],
-            },
-          ],
-          fields: [["field", ORDERS.TOTAL, null]],
-        });
-      });
     });
   });
 
