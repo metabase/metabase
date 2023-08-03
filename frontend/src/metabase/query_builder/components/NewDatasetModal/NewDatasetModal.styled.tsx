@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import Link from "metabase/core/components/Link";
 
 export const FeatureOverviewContainer = styled.div`
   padding-top: ${space(3)};
@@ -24,4 +25,8 @@ export const DatasetValueProp = styled.li`
   padding-bottom: ${space(2)};
   font-size: 14;
   line-height: 22px;
+`;
+
+export const CancelLink = styled(Link)`
+  color: ${color("brand")};
 `;

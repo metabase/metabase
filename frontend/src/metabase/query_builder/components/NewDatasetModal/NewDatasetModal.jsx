@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
 
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 
 import {
@@ -13,6 +12,7 @@ import {
   DatasetImg,
   DatasetTitle,
   DatasetValueProp,
+  CancelLink,
 } from "./NewDatasetModal.styled";
 
 const propTypes = {
@@ -33,11 +33,7 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
   return (
     <ModalContent
       footer={[
-        <Link
-          className="text-brand"
-          key="cancel"
-          onClick={onClose}
-        >{t`Cancel`}</Link>,
+        <CancelLink key="cancel" onClick={onClose}>{t`Cancel`}</CancelLink>,
         <Button
           key="action"
           primary
