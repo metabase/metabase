@@ -201,7 +201,15 @@
                  (mt/rows (run-query-for-dashcard
                            dashboard-id card-id dashcard-id
                            :parameters [{:id    "5791ff38"
-                                         :value ["Something Else"]}])))))))))
+                                         :value ["Something Else"]}])))))
+        (testing "Providing a nil value should override both defaults and produce an error"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You'll need to pick a value for 'Filter' before this query can run."
+               (run-query-for-dashcard
+                dashboard-id card-id dashcard-id
+                :parameters [{:id    "5791ff38"
+                              :value nil}]))))))))
 
 (deftest do-not-apply-unconnected-filters-for-same-card-test
   (testing (str "If the same Card is added to a Dashboard multiple times but with different filters, only apply the "
@@ -248,7 +256,7 @@
                                                                   :value ["Gadget"]}]))))))))))
 
 (deftest field-filters-should-work-if-no-value-is-specified-test
-  (testing "Field Filters should work if no value is specified (#20493)"
+  (testing "Field Filters should not apply if no value is specified (metabase#20493)"
     (mt/dataset sample-dataset
       (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"
                                     :template-tags {"cat" {:id           "__cat__"
@@ -264,6 +272,55 @@
         (mt/with-temp* [Card          [{card-id :id} {:dataset_query query}]
                         Dashboard     [{dashboard-id :id} {:parameters [{:name      "Text"
                                                                          :slug      "text"
+                                                                         :id        "_TEXT_"
+                                                                         :type      "string/="
+                                                                         :sectionId "string"
+                                                                         :default   ["Doohickey"]}]}]
+                        DashboardCard [{dashcard-id :id} {:parameter_mappings     [{:parameter_id "_TEXT_"
+                                                                                    :card_id      card-id
+                                                                                    :target       [:dimension [:template-tag "cat"]]}]
+                                                          :card_id                card-id
+                                                          :visualization_settings {}
+                                                          :dashboard_id           dashboard-id}]]
+          (testing "if the parameter is not specified"
+            (is (= [[200]]
+                   (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
+          (testing "if the parameter value is specified but has a nil value"
+            (is (= [[200]]
+                   (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                                    :parameters [{:name    "Text"
+                                                                  :slug    "text"
+                                                                  :id      "_TEXT_"
+                                                                  :type    "string/="
+                                                                  :value   nil
+                                                                  :default ["Doohickey"]}]))))))
+        (testing "if the dashboard doesn't have a parameter mapped to the card parameter"
+          (mt/with-temp* [Card          [{card-id :id} {:dataset_query query}]
+                          Dashboard     [{dashboard-id :id} {:parameters []}]
+                          DashboardCard [{dashcard-id :id} {:parameter_mappings     []
+                                                            :card_id                card-id
+                                                            :visualization_settings {}
+                                                            :dashboard_id           dashboard-id}]]
+            (is (= [[200]]
+                   (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))))))
+
+(deftest field-filters-with-default-if-no-value-is-specified-test
+  (testing "Field Filters work differently if a default on the card parameter is specified"
+    (mt/dataset sample-dataset
+      (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"
+                                    :template-tags {"cat" {:id           "__cat__"
+                                                           :name         "cat"
+                                                           :display-name "Cat"
+                                                           :type         :dimension
+                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                           :widget-type  :string/=
+                                                           :default      ["Gizmo"]}}})]
+        (mt/with-native-query-testing-context query
+          (is (= [[51]]
+                 (mt/rows (qp/process-query query)))))
+        (mt/with-temp* [Card          [{card-id :id} {:dataset_query query}]
+                        Dashboard     [{dashboard-id :id} {:parameters [{:name      "Text"
+                                                                         :slug      "text"
                                                                          :id        "_text_"
                                                                          :type      "string/="
                                                                          :sectionId "string"
@@ -274,8 +331,27 @@
                                                           :card_id                card-id
                                                           :visualization_settings {}
                                                           :dashboard_id           dashboard-id}]]
-          (is (= [[200]]
-                 (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))))))
+          (testing "should apply the default if the parameter is not specified"
+            (is (= [[51]]
+                   (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
+          (testing "shouldn't apply the default if the parameter value is specified but with a nil value"
+            (is (= [[200]]
+                   (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                                    :parameters [{:name    "Text"
+                                                                  :slug    "text"
+                                                                  :id      "_text_"
+                                                                  :type    "string/="
+                                                                  :value   nil
+                                                                  :default ["Doohickey"]}]))))))
+        (testing "should apply the default if the dashboard parameter is not mapped to the card parameter"
+          (mt/with-temp* [Card          [{card-id :id} {:dataset_query query}]
+                          Dashboard     [{dashboard-id :id} {:parameters []}]
+                          DashboardCard [{dashcard-id :id} {:parameter_mappings     []
+                                                            :card_id                card-id
+                                                            :visualization_settings {}
+                                                            :dashboard_id           dashboard-id}]]
+            (is (= [[51]]
+                   (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))))))
 
 (deftest ignore-default-values-in-request-parameters-test
   (testing "Parameters passed in from the request with only default values (but no actual values) should get ignored (#20516)"
@@ -311,4 +387,15 @@
                                                         :slug    "category"
                                                         :id      "_CATEGORY_"
                                                         :type    "category"
+                                                        :default ["Gizmo"]}])))))
+        (testing "Request parameters with :default and nil value"
+          (is (= [["1" "Rustic Paper Wallet" "Gizmo"]
+                  ["2" "Small Marble Shoes" "Doohickey"]]
+                 (mt/rows
+                  (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                          :parameters [{:name    "Category"
+                                                        :slug    "category"
+                                                        :id      "_CATEGORY_"
+                                                        :type    "category"
+                                                        :value   nil
                                                         :default ["Gizmo"]}])))))))))
