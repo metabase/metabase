@@ -156,7 +156,10 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
  *
  * @param {number} dashboard_id
  */
-export function visitDashboard(dashboard_id, { params = {} } = {}) {
+export function visitDashboard(
+  dashboard_id,
+  { params = {}, should_wait } = {},
+) {
   // Some users will not have permissions for this request
   cy.request({
     method: "GET",
@@ -201,8 +204,9 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
         url: `/dashboard/${dashboard_id}`,
         qs: params,
       });
-
-      cy.wait(aliases);
+      if (should_wait !== false) {
+        cy.wait(aliases);
+      }
     } else {
       // For a dashboard:
       //  - without questions (can be empty or markdown only) or
