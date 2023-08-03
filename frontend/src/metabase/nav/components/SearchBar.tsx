@@ -196,11 +196,8 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
         />
         <SearchFunnelButton
           icon="filter"
-          data-testid={
-            isFiltered
-              ? "highlighted-search-bar-filter-button"
-              : "search-bar-filter-button"
-          }
+          data-is-filtered={isFiltered}
+          data-testid="search-bar-filter-button"
           isFiltered={isFiltered}
           onClick={e => {
             e.stopPropagation();
