@@ -155,6 +155,8 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
  * Visit a dashboard and wait for the related queries to load.
  *
  * @param {number} dashboard_id
+ * @param {Object} options
+ * @param {boolean} should_wait - if cypress should wait for the cards to load, defaults to true
  */
 export function visitDashboard(
   dashboard_id,
