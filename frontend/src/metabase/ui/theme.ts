@@ -149,5 +149,14 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
+    Text: {
+      styles(theme) {
+        return {
+          root: {
+            color: theme.colors.text[2],
+          },
+        };
+      }
+    }
   },
 };
