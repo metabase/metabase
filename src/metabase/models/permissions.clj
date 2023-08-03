@@ -192,6 +192,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.regex :as u.regex]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
