@@ -7,6 +7,7 @@ import { connect } from "react-redux";
 import { removeAllChildren, parseDataUri } from "metabase/lib/dom";
 
 import { getLogoUrl } from "metabase-enterprise/settings/selectors";
+import { LogoIconRoot } from "./LogoIcon.styled";
 
 const mapStateToProps = state => ({
   url: getLogoUrl(state),
@@ -118,14 +119,10 @@ class LogoIcon extends Component {
   render() {
     const { dark, style, className } = this.props;
     return (
-      <span
+      <LogoIconRoot
         ref={c => (this._container = c)}
-        className={cx(
-          "Icon text-centered",
-          { "text-brand": !dark },
-          { "text-white": dark },
-          className,
-        )}
+        className={cx("Icon", className)}
+        isDark={dark}
         style={style}
         data-testid="main-logo"
       />
