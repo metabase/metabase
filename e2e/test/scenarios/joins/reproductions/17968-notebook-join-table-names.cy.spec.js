@@ -18,7 +18,7 @@ describe("issue 17968", () => {
     popover().findByText("Reviews").click();
 
     popover().within(() => {
-      cy.findByText("Products").click();
+      cy.findByText("Product").click();
       cy.findByText("ID").click();
     });
 
