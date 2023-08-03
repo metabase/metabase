@@ -513,3 +513,19 @@ export const getEventTarget = event => {
 
   return target;
 };
+
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function reload() {
+  window.location.reload();
+}
+
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function redirect(url) {
+  window.location.href = url;
+}

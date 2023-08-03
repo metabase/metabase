@@ -150,7 +150,7 @@
                                :active    (:is_active    user)
                                :admin     (:is_superuser user)
                                :logged_in (:last_login   user)
-                               :sso       (= :google (:sso_source  user))}))})
+                               :sso       (= :google (:sso_source user))}))})
 
 (defn- group-metrics
   "Get metrics based on groups:
