@@ -1312,7 +1312,7 @@
 (mu/defn ^:private update-db-data-access-permissions!
   [group-id :- pos-int?
    db-id :- pos-int?
-   new-db-perms :- metabase.api.permission-graph/StrictDataPerms]
+   new-db-perms :- api.permission-graph/StrictDataPerms]
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-data-access-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
@@ -1437,7 +1437,7 @@
    returns the newly created `PermissionsRevision` entry.
 
   Code for updating the Collection permissions graph is in [[metabase.models.collection.graph]]."
-  ([new-graph :- metabase.api.permission-graph/StrictData]
+  ([new-graph :- api.permission-graph/StrictData]
    (let [old-graph (data-perms-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
          old       (or old {})

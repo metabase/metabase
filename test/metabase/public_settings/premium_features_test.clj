@@ -96,9 +96,9 @@
       (testing "Only attempt the token twice (default and fallback URLs)"
         (let [call-count (atom 0)
               token      (random-token)]
-          (binding [clj-http.client/request (fn [& _]
-                                              (swap! call-count inc)
-                                              (throw (Exception. "no internet")))]
+          (binding [http/request (fn [& _]
+                                   (swap! call-count inc)
+                                   (throw (Exception. "no internet")))]
 
             (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
               (testing "Sanity check"

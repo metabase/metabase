@@ -358,7 +358,7 @@
                                                                           [(:name p) p])) expanded-props)))))
                     {::final-props [] ::props-by-name {}}
                     conn-props)
-        {:keys [::final-props ::props-by-name]} res]
+        {::keys [final-props props-by-name]} res]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
     ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
     ;; should be hidden if y is)

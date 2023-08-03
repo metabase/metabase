@@ -69,7 +69,7 @@
   data)
 
 #?(:clj
-   (clojure.core/defn instrument!
+   (core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]."
      [id]
      (with-out-str (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]

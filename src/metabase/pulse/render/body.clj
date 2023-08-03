@@ -256,7 +256,7 @@
   [date-style unit {::mb.viz/keys [date-abbreviate date-separator]}]
   (let [unit (or unit :default)]
     (cond-> (or (get-in override-date-styles [date-style unit])
-                (get-in default-date-styles [unit])
+                (get default-date-styles unit)
                 date-style)
       date-separator
       (str/replace #"/" date-separator)
@@ -853,7 +853,7 @@
 
 (s/defmethod render :row :- common/RenderedPulseCard
   [_ render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
-  (let [viz-settings (get-in card [:visualization_settings])
+  (let [viz-settings (get card :visualization_settings)
         data {:rows rows
               :cols cols}
         image-bundle   (image-bundle/make-image-bundle

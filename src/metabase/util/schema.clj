@@ -39,7 +39,7 @@
                          {:value value, :error error}))
       value)))
 
-(alter-var-root #'schema.core/validator (constantly schema-core-validator))
+(alter-var-root #'s/validator (constantly schema-core-validator))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

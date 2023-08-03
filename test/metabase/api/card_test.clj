@@ -2796,7 +2796,7 @@
                                        :slug   "ID"}]}]
       (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
         (is (= :type/Name
-               (t2/select-one-fn :semantic_type :model/Field (metabase.test/id :venues :name)))
+               (t2/select-one-fn :semantic_type :model/Field (mt/id :venues :name)))
             "venues.name has semantic_type=type/Name, so it will be searched")
         (testing "without search query"
           (mt/let-url [url (param-values-url card param-key)]

@@ -11,8 +11,7 @@
    [metabase.util.schema :as su]
    [metabase.util.yaml :as yaml]
    [schema.coerce :as sc]
-   [schema.core :as s]
-   [schema.spec.core :as spec])
+   [schema.core :as s])
   (:import
    (java.nio.file Files Path)))
 
@@ -334,50 +333,3 @@
   "Get rule at path `path`."
   [path]
   (get-in @rules (concat path [::leaf])))
-
-(defn- extract-localized-strings
-  [[path rule]]
-  (let [strings (atom [])]
-    ((spec/run-checker
-      (fn [s params]
-        (let [walk (spec/checker (s/spec s) params)]
-          (fn [x]
-            (when (= LocalizedString s)
-              (swap! strings conj x))
-            (walk x))))
-      false
-      Rule)
-     rule)
-    (map vector (distinct @strings) (repeat path))))
-
-(defn- make-pot
-  [strings]
-  (->> strings
-       (group-by first)
-       (mapcat (fn [[s ctxs]]
-                 (concat (for [[_ ctx] ctxs]
-                           (format "#: resources/%s%s.yaml" rules-dir (str/join "/" ctx)))
-                         [(format "msgid \"%s\"\nmsgstr \"\"\n" s)])))
-       (str/join "\n")))
-
-(defn- all-rules
-  ([]
-   (all-rules [] @rules))
-  ([path rules]
-   (when (map? rules)
-     (mapcat (fn [[k v]]
-               (if (= k ::leaf)
-                 [[path v]]
-                 (all-rules (conj path k) v)))
-             rules))))
-
-(defn -main
-  "Entry point for Clojure CLI task `generate-automagic-dashboards-pot`. Run it with
-
-    clojure -M:generate-automagic-dashboards-pot"
-  [& _]
-  (->> (all-rules)
-       (mapcat extract-localized-strings)
-       make-pot
-       (spit "locales/metabase-automatic-dashboards.pot"))
-  (System/exit 0))

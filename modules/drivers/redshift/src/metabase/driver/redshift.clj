@@ -199,7 +199,10 @@
   (->> args
        (map (partial sql.qp/->honeysql driver))
        (reduce (fn [x y]
-                 [:concat x y]))))
+                 (if x
+                   [:concat x y]
+                   y))
+               nil)))
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])

@@ -111,7 +111,11 @@
 (defn- joins->fields
   "Return a flattened list of all `:fields` referenced in `joins`."
   [joins]
-  (reduce concat (filter sequential? (map :fields joins))))
+  (into []
+        (comp (map :fields)
+              (filter sequential?)
+              cat)
+        joins))
 
 (defn- should-add-join-fields?
   "Should we append the `:fields` from `:joins` to the parent-level query's `:fields`? True unless the parent-level

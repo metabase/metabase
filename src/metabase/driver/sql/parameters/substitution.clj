@@ -197,7 +197,7 @@
   "Combine multiple `replacement-snippet-maps` into a single map using a SQL `AND` clause."
   [replacement-snippet-maps :- [ParamSnippetInfo]]
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
-   :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
+   :prepared-statement-args (mapcat :prepared-statement-args replacement-snippet-maps)})
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo

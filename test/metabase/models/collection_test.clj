@@ -693,10 +693,10 @@
   ;; e.g. /123/ would become something like /A/
   ;; Do this by composing together a series of functions that will handle one string replacement for each ID + name
   ;; pair
-  (let [replace-ids-with-names (reduce comp (for [{:keys [id name]} (if (sequential? collections)
-                                                                      collections
-                                                                      (vals collections))]
-                                              #(str/replace % (re-pattern (format "/%d/" id)) (str "/" name "/"))))]
+  (let [replace-ids-with-names (reduce comp identity (for [{:keys [id name]} (if (sequential? collections)
+                                                                               collections
+                                                                               (vals collections))]
+                                                       #(str/replace % (re-pattern (format "/%d/" id)) (str "/" name "/"))))]
     (set (for [perms-path perms-set]
            (replace-ids-with-names perms-path)))))
 

@@ -744,7 +744,7 @@
 (t2/define-after-insert :model/Collection
   [collection]
   (u/prog1 collection
-    (copy-parent-permissions! (toucan2.realize/realize collection))))
+    (copy-parent-permissions! (t2.realize/realize collection))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
