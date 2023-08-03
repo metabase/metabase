@@ -113,6 +113,9 @@
    (fn [_] {:name  (tu.random/random-name)
             :color "#ABCDEF"})
 
+   :model/Action
+   (fn [_] {:creator_id (rasta-id)})
+
    :model/Dashboard
    (fn [_] {:creator_id (rasta-id)
             :name       (tu.random/random-name)})

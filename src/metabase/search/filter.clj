@@ -20,6 +20,7 @@
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate)
@@ -135,7 +136,10 @@
 
 (defn- default-created-at-filter-clause
   [model created-at]
-  (let [{:keys [start end]} (params.dates/date-string->range created-at)
+  (let [{:keys [start end]} (try
+                             (params.dates/date-string->range created-at)
+                             (catch Exception _e
+                               (throw (ex-info (tru "Failed to parse created at param: {0}" created-at) {:status-code 400}))))
         start               (when start (u.date/parse start))
         end                 (when end (u.date/parse end))
         created-at-col      (search.config/column-with-model-alias model :created_at)
@@ -153,7 +157,7 @@
      [:> created-at-col start]
 
      :else
-     [:between created-at-col start end])))
+     [:and [:>= created-at-col start] [:< created-at-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "action"]]
   (defmethod build-optional-filter-query [:created-at model]

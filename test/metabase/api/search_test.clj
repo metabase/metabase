@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.search :as api.search]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -918,3 +919,115 @@
          (premium-features-test/with-premium-features #{}
            (is (= "Content Management or Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                   (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true)))))))))
+
+(deftest created-at-api-test
+  (let [search-term "created-at-filtering"]
+    (with-search-items-in-root-collection search-term
+      (testing "returns only applicable models"
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today")
+                   :available_models
+                   set))))
+
+      (testing "works with others filter too"
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today" :creator_id (mt/user->id :rasta))
+                   :available_models
+                   set))))
+
+      (testing "error if invalids created_at string"
+        (is (= "Failed to parse created at param: today~"
+               (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :creator_id (mt/user->id :rasta))))))))
+
+(deftest created-at-correctness-test
+  (let [search-term "created-at-filtering"
+        now           (t/zoned-date-time 2023 05 04 10 0 0 0 (t/zone-id "UTC"))
+        two-years-ago (t/minus now (t/years 2))]
+
+    (mt/with-clock now
+      (t2.with-temp/with-temp
+        [:model/Dashboard  {dashboard-now :id}{:name       search-term
+                                               :created_at now}
+         :model/Dashboard  {dashboard-old :id}{:name       search-term
+                                               :created_at two-years-ago}
+         :model/Database   {db-now :id}       {:name       search-term
+                                               :created_at now}
+         :model/Database   {db-old :id }      {:name       search-term
+                                               :created_at two-years-ago}
+         :model/Table      {table-now :id}    {:name       search-term
+                                               :db_id      db-now
+                                               :created_at now}
+         :model/Table      {table-old :id}    {:name       search-term
+                                               :db_id      db-old
+                                               :created_at two-years-ago}
+         :model/Collection {coll-now :id}     {:name       search-term
+                                               :created_at now}
+         :model/Collection {coll-old :id}     {:name       search-term
+                                               :created_at two-years-ago}
+         :model/Card       {card-now :id}     {:name       search-term
+                                               :created_at now}
+         :model/Card       {card-old :id}     {:name       search-term
+                                               :created_at two-years-ago}
+         :model/Card       {model-now :id}    {:name       search-term
+                                               :dataset    true
+                                               :created_at now}
+         :model/Card       {model-old :id}    {:name       search-term
+                                               :dataset    true
+                                               :created_at two-years-ago}
+         :model/Action     {action-now :id}   {:name       search-term
+                                               :model_id   model-now
+                                               :type       :http
+                                               :created_at now}
+         :model/Action     {action-old :id}   {:name       search-term
+                                               :model_id   model-old
+                                               :type       :http
+                                               :created_at two-years-ago}
+         :model/Segment    {_segment-now :id} {:name       search-term
+                                               :created_at now}
+         :model/Metric     {_metric-now :id}  {:name       search-term
+                                               :created_at now}]
+        ;; with clock doesn't work if calling via API, so we call the search function directly
+        (let [search     (fn [created-at]
+                           (mt/with-current-user (mt/user->id :crowberto)
+                             (->> (#'api.search/search (#'api.search/search-context
+                                                        {:search-string      search-term
+                                                         :archived           false
+                                                         :models             search.config/all-models
+                                                         :created-at         created-at}))
+                                  :data
+                                  (map (juxt :model :id))
+                                  set)))
+              now-result #{["action"     action-now]
+                           ["card"       card-now]
+                           ["collection" coll-now]
+                           ["database"   db-now]
+                           ["dataset"    model-now]
+                           ["dashboard"  dashboard-now]
+                           ["table"      table-now]}
+              old-result #{["action"     action-old]
+                           ["card"       card-old]
+                           ["collection" coll-old]
+                           ["database"   db-old]
+                           ["dataset"    model-old]
+                           ["dashboard"  dashboard-old]
+                           ["table"      table-old]}]
+
+          ;; absolute datetime
+          (is (= old-result (search "Q2-2021")))
+          (is (= now-result (search "2023-05-04")))
+          (is (= (set/union old-result now-result)
+                 (search "2021-05-03~")))
+          ;; range is inclusive end but exclusive end, so this does not contains now-result
+          (is (= old-result
+                 (search "2021-05-04~2023-05-04")))
+          (is (= old-result
+                 (search "~2023-05-04")))
+          (is (= old-result
+                 (search "2021-05-04T09:00:00~2021-05-04T10:00:10")))
+          ;; relative times
+          (is (= now-result
+                 (search "thisyear")))
+          (is (= old-result
+                 (search "past1years-from-12months")))
+          (is (= now-result
+                 (search "today"))))))))
