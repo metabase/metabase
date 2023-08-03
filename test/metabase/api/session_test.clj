@@ -13,12 +13,14 @@
             PulseChannel Session User]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -434,9 +436,10 @@
         (is (schema= SessionResponse
                      (mt/client :post 200 "session" (mt/user->credentials :crowberto)))))
       (testing "...but not if password login is disabled"
-        (mt/with-temporary-setting-values [enable-password-login false]
-          (is (= "Password login is disabled for this instance."
-                 (mt/client :post 401 "session" (mt/user->credentials :crowberto)))))))
+        (premium-features-test/with-premium-features #{:disable-password-login}
+          (mt/with-temporary-setting-values [enable-password-login false]
+            (is (= "Password login is disabled for this instance."
+                   (mt/client :post 401 "session" (mt/user->credentials :crowberto))))))))
 
     (testing "Test that login will NOT fallback for users in LDAP but with an invalid password"
       ;; NOTE: there's a different password in LDAP for Lucky

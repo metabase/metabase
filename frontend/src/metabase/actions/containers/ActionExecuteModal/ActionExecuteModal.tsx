@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import Actions from "metabase/entities/actions";
@@ -15,8 +14,12 @@ import ActionParametersInputForm from "../ActionParametersInputForm";
 
 interface OwnProps {
   actionId: WritebackActionId;
+  initialValues?: ParametersForActionExecution;
+  fetchInitialValues?: () => Promise<ParametersForActionExecution>;
+  shouldPrefetch?: boolean;
   onSubmit: (opts: ExecuteActionOpts) => Promise<ActionFormSubmitResult>;
   onClose?: () => void;
+  onSuccess?: () => void;
 }
 
 interface ActionLoaderProps {
@@ -31,23 +34,36 @@ const mapDispatchToProps = {
 
 const ActionExecuteModal = ({
   action,
+  initialValues,
+  fetchInitialValues,
+  shouldPrefetch,
   onSubmit,
   onClose,
+  onSuccess,
 }: ActionExecuteModalProps) => {
-  const handleSubmit = useCallback(
-    (parameters: ParametersForActionExecution) => {
-      return onSubmit({ action, parameters });
-    },
-    [action, onSubmit],
-  );
+  const handleSubmit = (parameters: ParametersForActionExecution) => {
+    return onSubmit({ action, parameters });
+  };
+
+  const handleSubmitSuccess = () => {
+    onClose?.();
+    onSuccess?.();
+  };
 
   return (
-    <ModalContent title={action.name} onClose={onClose}>
+    <ModalContent
+      data-testid="action-execute-modal"
+      title={action.name}
+      onClose={onClose}
+    >
       <ActionParametersInputForm
         action={action}
+        initialValues={initialValues}
+        fetchInitialValues={fetchInitialValues}
+        shouldPrefetch={shouldPrefetch}
         onCancel={onClose}
         onSubmit={handleSubmit}
-        onSubmitSuccess={onClose}
+        onSubmitSuccess={handleSubmitSuccess}
       />
     </ModalContent>
   );

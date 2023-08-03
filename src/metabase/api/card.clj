@@ -61,6 +61,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -1045,6 +1046,7 @@ saved later when it is ready."
   query in place of the model's query."
   [card-id]
   {card-id ms/PositiveInt}
+  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [{:keys [dataset database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
@@ -1083,6 +1085,7 @@ saved later when it is ready."
   query rather than the saved version of the query."
   [card-id]
   {card-id ms/PositiveInt}
+  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [_card (t2/select-one Card :id card-id)]
     (api/let-404 [persisted-info (t2/select-one PersistedInfo :card_id card-id)]
       (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
@@ -1095,10 +1098,10 @@ saved later when it is ready."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-      (api.field/field-id->values field-id query))))
+      (api.field/search-values-from-field-id field-id query))))
 
 (mu/defn param-values
-  "Fetch values for a parameter.
+  "Fetch values for a parameter that contain `query`. If `query` is nil or not provided, return all values.
 
   The source of values could be:
   - static-list: user defined values list
@@ -1109,12 +1112,11 @@ saved later when it is ready."
   ([card      :- ms/Map
     param-key :- ms/NonBlankString
     query     :- [:maybe ms/NonBlankString]]
-   (let [param       (get (m/index-by :id (or (seq (:parameters card))
-                                              ;; some older cards or cards in e2e just use the template tags on native
-                                              ;; queries
-                                              (card/template-tag-parameters card)))
-                          param-key)
-         _source-type (:values_source_type param)]
+   (let [param (get (m/index-by :id (or (seq (:parameters card))
+                                        ;; some older cards or cards in e2e just use the template tags on native
+                                        ;; queries
+                                        (card/template-tag-parameters card)))
+                    param-key)]
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
                        {:status-code 400})))

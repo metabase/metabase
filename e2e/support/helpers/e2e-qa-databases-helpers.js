@@ -229,7 +229,10 @@ export function waitForSyncToFinish({
     if (!body.tables.length) {
       waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
     } else if (tableName) {
-      const hasTable = body.tables.some(table => table.name === tableName);
+      const hasTable = body.tables.some(
+        table =>
+          table.name === tableName && table.initial_sync_status === "complete",
+      );
       if (!hasTable) {
         waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
       }

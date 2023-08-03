@@ -6,6 +6,7 @@
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
@@ -639,3 +640,9 @@
   (-> x (expand "orders") symbolize))
 
 ;; tests are in [[dev.debug-qp-test]] (in `./dev/test/dev` dir)
+
+(defn pprint-sql
+  "Pretty print a SQL string."
+  [driver sql]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+   (println (mdb.query/format-sql sql driver)))

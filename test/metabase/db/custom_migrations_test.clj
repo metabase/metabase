@@ -19,6 +19,8 @@
    [metabase.models.interface :as mi]
    [metabase.task :as task]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -318,7 +320,6 @@
                                                                                    :col              0
                                                                                    :size_x           4
                                                                                    :size_y           4})))
-
             tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
                                                                                   default-card
                                                                                   {:dashboard_tab_id tab4-id
@@ -930,3 +931,84 @@
                      :object
                      json/parse-string
                      (get-in ["cards" 0 "visualization_settings"])))))))))
+
+(deftest migrate-database-options-to-database-settings-test
+  (let [do-test
+        (fn [encrypted?]
+          (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
+            (let [default-db                {:name       "DB"
+                                             :engine     "postgres"
+                                             :created_at :%now
+                                             :updated_at :%now}
+                  success-id                (first (t2/insert-returning-pks!
+                                                     :model/Database
+                                                     (merge default-db
+                                                            {:options  (json/generate-string {:persist-models-enabled true})
+                                                             :settings {:database-enable-actions true}})))
+                  options-nil-settings-id   (first (t2/insert-returning-pks!
+                                                     :model/Database
+                                                     (merge default-db
+                                                            {:options  (json/generate-string {:persist-models-enabled true})
+                                                             :settings nil})))
+                  options-empty-settings-id (first (t2/insert-returning-pks!
+                                                     :model/Database
+                                                     (merge default-db
+                                                            {:options  (json/generate-string {:persist-models-enabled true})
+                                                             :settings {}})))
+                  nil-options-id            (first (t2/insert-returning-pks!
+                                                     :model/Database
+                                                     (merge default-db
+                                                            {:options  nil
+                                                             :settings {:database-enable-actions true}})))
+                  empty-options-id          (first (t2/insert-returning-pks!
+                                                     :model/Database
+                                                     (merge default-db
+                                                            {:options  "{}"
+                                                             :settings {:database-enable-actions true}})))]
+              (testing "fowward migration\n"
+                (when encrypted?
+                  (testing "make sure the settings is encrypted before the migration"
+                    (is (true? (encryption/possibly-encrypted-string?
+                                 (:settings (t2/query-one {:select [:settings]
+                                                           :from [:metabase_database]
+                                                           :where [[:= :id success-id]]})))))))
+                (migrate!)
+                (when encrypted?
+                  (testing "make sure the settings is encrypted after the migration"
+                    (is (true? (encryption/possibly-encrypted-string?
+                                 (:settings (t2/query-one {:select [:settings]
+                                                           :from [:metabase_database]
+                                                           :where [[:= :id success-id]]})))))))
+
+                (testing "the options is merged into settings correctly"
+                  (is (= {:persist-models-enabled true
+                          :database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database success-id)))
+                  (testing "even when settings is nil"
+                    (is (= {:persist-models-enabled true}
+                           (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
+                  (testing "even when settings is empty"
+                    (is (= {:persist-models-enabled true}
+                           (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
+
+                (testing "nil or empty options doesn't break migration"
+                  (is (= {:database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database nil-options-id)))
+                  (is (= {:database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database empty-options-id)))))
+
+             (testing "rollback migration"
+               (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
+                 (db.setup/migrate! db-type data-source :down 46)
+                 (testing "the persist-models-enabled is assoced back to options"
+                   (is (= {:options  "{\"persist-models-enabled\":true}"
+                           :settings {:database-enable-actions true}}
+                          (t2/select-one [:model/Database :settings :options] success-id)))
+                   (is (= {:options  nil
+                           :settings {:database-enable-actions true}}
+                          (t2/select-one [:model/Database :settings :options] empty-options-id))))
+
+                 (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
+    (do-test false)
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (do-test true))))

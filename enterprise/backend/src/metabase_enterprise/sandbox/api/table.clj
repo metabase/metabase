@@ -11,6 +11,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.table :as table :refer [Table]]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))

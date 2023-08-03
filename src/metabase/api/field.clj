@@ -8,6 +8,7 @@
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.models.permissions :as perms]
    [metabase.models.table :as table :refer [Table]]
@@ -21,6 +22,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -246,47 +248,35 @@
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
   [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
-  ;; if there's a human-readable remapping, we need to do all sorts of nonsense to make this work and return pairs of
-  ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
-  ;; [[search-values]] without a search term to fetch all values.
-  (if-let [human-readable-field-id (when (= has-field-values-type :list)
-                                     (t2/select-one-fn :human_readable_field_id Dimension :field_id (u/the-id field)))]
+  ;; TODO: explain why using remapped fields is restricted to `has_field_values=list`
+  (if-let [remapped-field-id (when (= has-field-values-type :list)
+                               (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (t2/select-one Field :id human-readable-field-id)))
+                                     (api/check-404 (t2/select-one Field :id remapped-field-id)))
      :field_id        field-id
      :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
-(defn check-perms-and-return-field-values
-  "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
-  so, return its values."
-  [field-id]
-  (let [field (api/check-404 (t2/select-one Field :id field-id))]
-    (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
-    (field->values field)))
-
-;; todo: we need to unify and untangle this stuff
-(defn field-id->values
-  "Fetch values for field id. If query is present, uses `api.field/search-values`, otherwise delegates to
-  `api.field/check-parms-and-return-field-values`."
+(defn search-values-from-field-id
+  "Search for values of a field given by `field-id` that contain `query`."
   [field-id query]
-  (if (str/blank? query)
-    (check-perms-and-return-field-values field-id)
-    (let [field (api/check-404 (t2/select-one Field :id field-id))]
-      ;; matching the output of the other params. [["Foo" "Foo"] ["Bar" "Bar"]] -> [["Foo"] ["Bar"]]. This shape
-      ;; is what the return-field-values returns above
-      {:values (map (comp vector first) (search-values field field query))
-       ;; assume there are more
-       :has_more_values true
-       :field_id field-id})))
+  (let [field        (api/read-check (t2/select-one Field :id field-id))
+        search-field (or (some->> (chain-filter/remapped-field-id field-id)
+                                  (t2/select-one Field :id))
+                         field)]
+    {:values          (search-values field search-field query)
+     ;; assume there are more if doing a search, otherwise there are no more values
+     :has_more_values (not (str/blank? query))
+     :field_id        field-id}))
 
 ;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
 (api/defendpoint GET "/:id/values"
-  "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
+  "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or remapped Field), and (if
   defined by a User) a map of human-readable remapped values."
   [id]
   {id ms/PositiveInt}
-  (check-perms-and-return-field-values id))
+  (let [field (api/read-check (t2/select-one Field :id id))]
+    (field->values field)))
 
 ;; match things like GET /field%2Ccreated_at%2options
 ;; (this is how things like [field,created_at,{:base-type,:type/Datetime}] look when URL-encoded)
@@ -408,6 +398,10 @@
 
       [<value-of-field> <matching-value-of-search-field>].
 
+   If `search-field` and `field` are the same, simply return 1-vectors like
+
+      [<matching-value-of-field>].
+
    For example, with the Sample Database, you could search for the first three IDs & names of People whose name
   contains `Ma` as follows:
 
@@ -423,28 +417,20 @@
    (try
      (let [field   (follow-fks field)
            limit   (or maybe-limit default-max-field-search-limit)
-           results (qp/process-query (search-values-query field search-field value limit))
-           rows    (get-in results [:data :rows])]
-       ;; if the two Fields are different, we'll get results like [[v1 v2] [v1 v2]]. That is the expected format and we can
-       ;; return them as-is
-       (if-not (= (u/the-id field) (u/the-id search-field))
-         rows
-         ;; However if the Fields are both the same results will be in the format [[v1] [v1]] so we need to double the
-         ;; value to get the format the frontend expects
-         (for [[result] rows]
-           [result result])))
+           results (qp/process-query (search-values-query field search-field value limit))]
+       (get-in results [:data :rows]))
      ;; this Exception is usually one that can be ignored which is why I gave it log level debug
      (catch Throwable e
        (log/debug e (trs "Error searching field values"))
        nil))))
 
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/search/:search-id"
+(api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
-  {value su/NonBlankString}
+  {id        ms/PositiveInt
+   search-id ms/PositiveInt
+   value     ms/NonBlankString}
   (let [field        (api/check-404 (t2/select-one Field :id id))
         search-field (api/check-404 (t2/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)

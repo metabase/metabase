@@ -7,6 +7,7 @@
    [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.config :as config]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
@@ -26,6 +27,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [metabase.util.urls :as urls]
    [schema.core :as s]
@@ -35,8 +37,9 @@
 
 (set! *warn-on-reflection* true)
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
-                                          'metabase-enterprise.advanced-permissions.common))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.sandbox.api.util
+                       'metabase-enterprise.advanced-permissions.common))
 
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user

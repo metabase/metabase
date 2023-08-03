@@ -63,7 +63,29 @@
                             :source-table (meta/id :orders)}]
              :lib/options {:lib/uuid string?}
              :fields      :all}
-            (lib/join-clause (meta/table-metadata :orders))))))
+            (lib/join-clause (meta/table-metadata :orders)))))
+  (testing "source-card"
+    (let [query {:lib/type :mbql/query
+                 :lib/metadata lib.tu/metadata-provider-with-mock-cards
+                 :database (meta/id)
+                 :stages [{:lib/type :mbql.stage/mbql
+                           :source-card (:id (lib.tu/mock-cards :orders))}]}
+          product-card (lib.tu/mock-cards :products)
+          [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
+          [products-id] (lib/join-condition-rhs-columns query product-card orders-product-id nil)]
+      (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
+          (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
+  (testing "source-table"
+    (let [query {:lib/type :mbql/query
+                 :lib/metadata lib.tu/metadata-provider-with-mock-cards
+                 :database (meta/id)
+                 :stages [{:lib/type :mbql.stage/mbql
+                           :source-card (:id (lib.tu/mock-cards :orders))}]}
+          product-table (meta/table-metadata :products)
+          [_ orders-product-id] (lib/join-condition-lhs-columns query product-table nil nil)
+          [products-id] (lib/join-condition-rhs-columns query product-table orders-product-id nil)]
+      (is (=? {:stages [{:joins [{:stages [{:source-table (:id product-table)}]}]}]}
+              (lib/join query (lib/join-clause product-table [(lib/= orders-product-id products-id)])))))))
 
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query
@@ -364,8 +386,8 @@
                                                          (meta/id :venues :category-id)]
                                                         [:field
                                                          {:join-alias "Categories"}
-                                                         (meta/id :categories :id)]]],
-                                          :strategy :right-join,
+                                                         (meta/id :categories :id)]]]
+                                          :strategy :right-join
                                           :alias "Categories"}]}]}
                       (-> lib.tu/venues-query
                           (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
@@ -701,13 +723,46 @@
                                                  lhs-for-query-with-join
                                                  rhs-for-query-with-join))))))
 
-(deftest ^:parallel join-condition-rhs-columns-test
-  (are [join-or-joinable] (=? [{:long-display-name "ID"}
-                               {:long-display-name "Name"}]
-                              (map (partial lib/display-info lib.tu/query-with-join)
-                                   (lib/join-condition-rhs-columns lib.tu/venues-query join-or-joinable nil nil)))
-    (meta/table-metadata :categories)
-    join-for-query-with-join))
+(deftest ^:parallel join-condition-rhs-columns-join-table-test
+  (testing "RHS columns when building a join against a Table"
+    (doseq [query [lib.tu/venues-query
+                   lib.tu/query-with-join]]
+      (let [cols (lib/join-condition-rhs-columns query (meta/table-metadata :categories) nil nil)]
+        (is (=? [{:display-name "ID", :lib/source :source/joins, :table-id (meta/id :categories)}
+                 {:display-name "Name", :lib/source :source/joins, :table-id (meta/id :categories)}]
+                cols))
+        (is (=? [{:display-name "ID", :is-from-join true}
+                 {:display-name "Name", :is-from-join true}]
+                (for [col cols]
+                  (lib/display-info query col))))))))
+
+(deftest ^:parallel join-condition-rhs-columns-join-card-test
+  (testing "RHS columns when building a join against"
+    (doseq [query            [lib.tu/venues-query
+                              lib.tu/query-with-join]
+            [card-type card] {"Native" lib.tu/categories-native-card
+                              "MBQL"   lib.tu/categories-mbql-card}]
+      (testing (str "a " card-type " Card")
+        (let [cols (lib/join-condition-rhs-columns query card nil nil)]
+          (is (=? [{:display-name "ID", :lib/source :source/joins, :lib/card-id 1}
+                   {:display-name "Name", :lib/source :source/joins, :lib/card-id 1}]
+                  cols))
+          (is (=? [{:display-name "ID", :is-from-join true}
+                   {:display-name "Name", :is-from-join true}]
+                  (for [col cols]
+                    (lib/display-info query col)))))))))
+
+(deftest ^:parallel join-condition-rhs-columns-existing-join-test
+  (testing "RHS columns for existing join"
+    (let [cols (lib/join-condition-rhs-columns lib.tu/query-with-join join-for-query-with-join nil nil)]
+      (is (=? [{:display-name "ID",   :lib/source :source/joins, ::lib.join/join-alias "Cat"}
+               {:display-name "Name", :lib/source :source/joins, ::lib.join/join-alias "Cat"}]
+              cols))
+      (testing `lib/display-info
+        (is (=? [{:display-name "ID", :is-from-join true}
+                 {:display-name "Name", :is-from-join true}]
+                (for [col cols]
+                  (lib/display-info lib.tu/query-with-join col))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-test-2
   (let [query lib.tu/venues-query]
@@ -726,8 +781,8 @@
 
 (deftest ^:parallel join-condition-rhs-columns-mark-selected-test
   (testing "#32438"
-    (is (=? [{:long-display-name "ID", :selected true}
-             {:long-display-name "Name"}]
+    (is (=? [{:display-name "ID", :selected true}
+             {:display-name "Name"}]
             (map (partial lib/display-info lib.tu/query-with-join)
                  (lib/join-condition-rhs-columns lib.tu/query-with-join
                                                  join-for-query-with-join
@@ -899,30 +954,44 @@
                     (lib/with-join-fields join cols)))))))))
 
 (deftest ^:parallel join-lhs-display-name-test
-  (doseq [[source-table? query]          {true  lib.tu/venues-query
-                                          false lib.tu/query-with-source-card}
-          [num-existing-joins query]     {0 query
-                                          1 (lib.tu/add-joins query "J1")
-                                          2 (lib.tu/add-joins query "J1" "J2")}
-          [first-join? join-or-joinable] (list*
-                                          [(zero? num-existing-joins) (meta/table-metadata :venues)]
-                                          [(zero? num-existing-joins) meta/saved-question-CardMetadata]
-                                          [(zero? num-existing-joins) nil]
-                                          (when-let [[first-join & more] (not-empty (lib/joins query))]
-                                            (cons [true first-join]
-                                                  (for [join more]
-                                                    [false join]))))
-          [num-stages query]             {1 query
-                                          2 (lib/append-stage query)}]
+  (doseq [[source-table? query]                {true  lib.tu/venues-query
+                                                false lib.tu/query-with-source-card}
+          [num-existing-joins query]           {0 query
+                                                1 (lib.tu/add-joins query "J1")
+                                                2 (lib.tu/add-joins query "J1" "J2")}
+          [first-join? join? join-or-joinable] (list*
+                                                [(zero? num-existing-joins) false (meta/table-metadata :venues)]
+                                                [(zero? num-existing-joins) false meta/saved-question-CardMetadata]
+                                                [(zero? num-existing-joins) false nil]
+                                                (when-let [[first-join & more] (not-empty (lib/joins query))]
+                                                  (cons [true true first-join]
+                                                        (for [join more]
+                                                          [false true join]))))
+          [num-stages query]                   {1 query
+                                                2 (lib/append-stage query)}]
     (testing (str "query w/ source table?" source-table?                                              \newline
                   "num-existing-joins = "  num-existing-joins                                         \newline
                   "num-stages = "          num-stages                                                 \newline
                   "join =\n"               (u/pprint-to-str join-or-joinable)                         \newline
                   "existing joins = "      (u/pprint-to-str (map lib.options/uuid (lib/joins query))) \newline
                   "first join? "           first-join?)
-      (is (= (if (and source-table?
-                      (= num-stages 1)
-                      first-join?)
-               "Venues"
-               "Previous results")
-             (lib/join-lhs-display-name query join-or-joinable))))))
+      (testing "When passing an explicit LHS column, use display name for its `:table`"
+        (is (= "Orders"
+               (lib/join-lhs-display-name query join-or-joinable (meta/field-metadata :orders :product-id)))))
+      (testing "existing join should use the display name for condition LHS"
+        (when join?
+          (is (= "Venues"
+                 (lib/join-lhs-display-name query join-or-joinable)))))
+      (testing "The first join should use the display name of the query `:source-table` without explicit LHS"
+        (when (and source-table?
+                   (= num-stages 1)
+                   first-join?)
+          (is (= "Venues"
+                 (lib/join-lhs-display-name query join-or-joinable)))))
+      (testing "When *building* a join that is not the first join, if query does not use `:source-table`, use 'Previous results'"
+        (when (and (not join?)
+                   (or (not source-table?)
+                       (not first-join?)
+                       (> num-stages 1)))
+          (is (= "Previous results"
+                 (lib/join-lhs-display-name query join-or-joinable))))))))

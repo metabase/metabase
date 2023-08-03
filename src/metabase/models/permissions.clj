@@ -192,6 +192,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.regex :as u.regex]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
@@ -577,9 +578,9 @@
   If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the data model
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
   [& path-components]
-  (let [f (u/ignore-exceptions
-           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
+  (let [f (when config/ee-available?
+            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
       (apply f path-components)
       "/")))
@@ -589,9 +590,9 @@
   If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the DB details
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
   [db-id]
-  (let [f (u/ignore-exceptions
-           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
+  (let [f (when config/ee-available?
+            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
       (f db-id)
       "/")))
@@ -1359,7 +1360,7 @@
 
 (defn- update-feature-level-permission!
   [group-id db-id new-perms perm-type]
-  (if-let [update-fn (u/ignore-exceptions
+  (if-let [update-fn (when config/ee-available?
                        (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
                        (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
                                         (str "update-db-" (name perm-type) "-permissions!"))))]

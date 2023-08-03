@@ -62,15 +62,15 @@
    f]
   ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
   (binding [t2.conn/*current-connectable* conn-or-data-source]
-   (if (instance? java.sql.Connection conn-or-data-source)
-     (f (-> conn-or-data-source liquibase-connection database liquibase))
-     ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
-     ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
-     ;; it's safe to assume the caller is managing its lifecycle.
-     (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
-                 liquibase-conn (liquibase-connection conn)
-                 database       (database liquibase-conn)]
-       (f (liquibase database))))))
+    (if (instance? java.sql.Connection conn-or-data-source)
+      (f (-> conn-or-data-source liquibase-connection database liquibase))
+      ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
+      ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
+      ;; it's safe to assume the caller is managing its lifecycle.
+      (with-open [conn           (.getConnection ^javax.sql.DataSource conn-or-data-source)
+                  liquibase-conn (liquibase-connection conn)
+                  database       (database liquibase-conn)]
+        (f (liquibase database))))))
 
 (defmacro with-liquibase
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
