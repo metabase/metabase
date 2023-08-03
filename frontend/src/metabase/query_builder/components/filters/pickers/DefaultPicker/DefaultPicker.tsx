@@ -1,9 +1,10 @@
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
+import type { ReactElement } from "react";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import type { DatasetColumn, FieldId } from "metabase-types/api";
+import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
 
 import { getCurrencySymbol } from "metabase/lib/formatting";
 import type Filter from "metabase-lib/queries/structured/Filter";
@@ -101,11 +102,10 @@ export function DefaultPicker({
       let values, onValuesChange;
       if (operator.multi) {
         values = filter.arguments();
-        onValuesChange = (values: (string | number)[]) => setValues(values);
+        onValuesChange = (values: RowValue[]) => setValues(values);
       } else {
         values = [filter.arguments()[index]];
-        onValuesChange = (values: (string | number)[]) =>
-          setValue(index, values[0]);
+        onValuesChange = (values: RowValue[]) => setValue(index, values[0]);
       }
 
       if (operatorField.type === "hidden") {
@@ -203,7 +203,7 @@ DefaultPicker.propTypes = defaultPickerPropTypes;
 const DefaultLayout = ({
   fieldWidgets,
 }: {
-  fieldWidgets: (JSX.Element | null)[];
+  fieldWidgets: (ReactElement | null)[];
 }) => (
   <div>
     {fieldWidgets.map((fieldWidget, index) => (
@@ -219,7 +219,7 @@ DefaultLayout.propTypes = defaultLayoutPropTypes;
 const BetweenLayout = ({
   fieldWidgets,
 }: {
-  fieldWidgets: (JSX.Element | null)[];
+  fieldWidgets: (ReactElement | null)[];
 }) => {
   const [left, right] = fieldWidgets;
 
