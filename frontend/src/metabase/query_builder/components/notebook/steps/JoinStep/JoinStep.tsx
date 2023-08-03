@@ -46,10 +46,17 @@ export function JoinStep({
 
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
 
+  // Is only needed for `joinLHSDisplayName`
+  // to properly display the LHS table name until the first condition is complete
+  const [selectedLHSColumn, setSelectedLHSColumn] = useState<
+    Lib.ColumnMetadata | undefined
+  >();
+
   const lhsDisplayName = Lib.joinLHSDisplayName(
     query,
     stageIndex,
     join || table,
+    selectedLHSColumn,
   );
 
   const isStartedFromModel = Boolean(sourceQuestion?.isDataset?.());
@@ -114,6 +121,7 @@ export function JoinStep({
             handleAddCondition(nextCondition);
           }
         }}
+        onChangeLHSColumn={setSelectedLHSColumn}
       />
     );
   };
@@ -167,6 +175,7 @@ interface JoinConditionProps {
   readOnly?: boolean;
   color: string;
   onChange: (condition: Lib.JoinConditionClause) => void;
+  onChangeLHSColumn: (column: Lib.ColumnMetadata) => void;
 }
 
 function JoinCondition({
@@ -178,6 +187,7 @@ function JoinCondition({
   readOnly,
   color,
   onChange,
+  onChangeLHSColumn,
 }: JoinConditionProps) {
   const {
     lhsColumn,
@@ -210,6 +220,7 @@ function JoinCondition({
     } else if (!rhsColumn) {
       rhsColumnPicker.current?.open?.();
     }
+    onChangeLHSColumn(lhsColumn);
   };
 
   const handleRHSColumnChange = (rhsColumn: Lib.ColumnMetadata) => {
