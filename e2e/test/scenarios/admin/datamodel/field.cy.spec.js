@@ -17,8 +17,9 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 // [quarantine] - intermittently failing, possibly due to a "flickering" element (re-rendering)
-describe.skip("scenarios > admin > datamodel > field", () => {
+describe("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
+    restore();
     cy.signInAsAdmin();
 
     ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
@@ -60,6 +61,19 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       cy.reload();
       cy.get("@display_name").should("have.value", "new display_name");
       cy.get("@description").should("have.value", "new description");
+    });
+  });
+
+  describe("Formatting", () => {
+    it("should allow you to change field formatting", () => {
+      visitAlias("@ORDERS_QUANTITY_URL");
+      cy.findByRole("link", { name: "Formatting" }).click();
+      cy.findByLabelText("Style").click();
+      popover().findByText("Percent").click();
+      cy.wait("@fieldUpdate");
+      cy.findByRole("list", { name: "undo-list" })
+        .findByText("Updated Quantity")
+        .should("exist");
     });
   });
 

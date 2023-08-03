@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
@@ -34,6 +35,19 @@
   {:style/indent 1}
   [features & body]
   `(do-with-premium-features ~features (fn [] ~@body)))
+
+(defmacro with-additional-premium-features
+  "Execute `body` with the allowed premium features for the Premium-Features token set to the union of `features` and
+  the current feature set. Intended for use testing feature-flagging, if you don't want to override other features
+  that are already enabled.
+
+    (with-additional-premium-features #{:audit-app}
+      ;; audit app will be enabled for body, as well as any that are already enabled
+      ...)"
+  {:style/indent 1}
+  [features & body]
+  `(do-with-premium-features (set/union (premium-features/token-features) ~features)
+                             (fn [] ~@body)))
 
 (defn- token-status-response
   [token premium-features-response]
@@ -96,9 +110,6 @@
                                     #'premium-features/enable-whitelabeling?
                                     #'premium-features/enable-audit-app?
                                     #'premium-features/enable-sandboxes?
-                                    #'premium-features/enable-sso?
-                                    #'premium-features/enable-advanced-config?
-                                    #'premium-features/enable-content-management?
                                     #'premium-features/enable-serialization?]]
                 (testing (format "\n%s is false" (:name (meta has-feature?)))
                   (is (not (has-feature?)))))
@@ -130,12 +141,6 @@
   [username]
   (format "Hi %s, you're an OSS customer!" (name username)))
 
-(defenterprise greeting-with-valid-token
-  "Returns a non-special greeting for OSS users, and EE users who don't have a valid premium token"
-  metabase-enterprise.util-test
-  [username]
-  (format "Hi %s, you're not extra special :(" (name username)))
-
 (defenterprise special-greeting
   "Returns a non-special greeting for OSS users, and EE users who don't have the :special-greeting feature token."
   metabase-enterprise.util-test
@@ -159,15 +164,6 @@
       (testing "a call to a defenterprise function calls the EE version"
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                (greeting :rasta))))
-
-     (testing "if :feature = :any or nil, it will check if any feature exists, and fall back to the OSS version by default"
-       (with-premium-features #{:some-feature}
-         (is (= "Hi rasta, you're an EE customer with a valid token!"
-                (greeting-with-valid-token :rasta))))
-
-       (with-premium-features #{}
-         (is (= "Hi rasta, you're not extra special :("
-                (greeting-with-valid-token :rasta)))))
 
      (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
        (with-premium-features #{:special-greeting}

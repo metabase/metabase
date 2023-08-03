@@ -17,6 +17,7 @@ export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   collection_id: number | null;
 
   result_metadata: Field[];
+  moderation_reviews?: ModerationReview[];
 
   query_average_duration?: number | null;
   last_query_start: string | null;

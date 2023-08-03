@@ -11,7 +11,7 @@
 
 (defenterprise the-parameters
   "OSS way of getting filter parameters for a dashboard subscription"
-  metabase-enterprise.pulse
+  metabase-enterprise.dashboard-subscription-filters.pulse
   [_pulse dashboard]
   (:parameters dashboard))
 

@@ -15,13 +15,15 @@ import {
 } from "metabase-lib/metadata/utils/saved-questions";
 import { PERMISSION_ERROR } from "./constants";
 
+export interface CollectionEndpoints {
+  collections: Collection[];
+  rootCollection?: Collection;
+}
+
 export function setupCollectionsEndpoints({
   collections,
   rootCollection = createMockCollection(ROOT_COLLECTION),
-}: {
-  collections: Collection[];
-  rootCollection?: Collection;
-}) {
+}: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection);
   fetchMock.get(
     {
@@ -72,13 +74,18 @@ export function setupCollectionVirtualSchemaEndpoints(
   fetchMock.get(urls.models, modelVirtualTables);
 }
 
-export function setupCollectionItemsEndpoint(
-  collection: Collection,
-  collectionItems: CollectionItem[] = [],
-) {
+export function setupCollectionItemsEndpoint({
+  collection,
+  collectionItems = [],
+  models: modelsParam,
+}: {
+  collection: Collection;
+  collectionItems: CollectionItem[];
+  models?: string[];
+}) {
   fetchMock.get(`path:/api/collection/${collection.id}/items`, uri => {
     const url = new URL(uri);
-    const models = url.searchParams.getAll("models");
+    const models = modelsParam ?? url.searchParams.getAll("models");
     const matchedItems = collectionItems.filter(({ model }) =>
       models.includes(model),
     );

@@ -19,6 +19,7 @@ import {
   enableTracking,
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvent,
+  closeNavigationSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -755,6 +756,38 @@ describe("scenarios > dashboard", () => {
         });
     });
   });
+
+  it("should create new dashboard inside a collection created on the go", () => {
+    cy.visit("/");
+    appBar().findByText("New").click();
+    popover().findByText("Dashboard").click();
+    const NEW_DASHBOARD = "Foo";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_DASHBOARD);
+      cy.findByTestId("select-button").click();
+    });
+    popover().findByText("New collection").click();
+    const NEW_COLLECTION = "Bar";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+    });
+    saveDashboard();
+    closeNavigationSidebar();
+    cy.get("header").findByText(NEW_COLLECTION);
+  });
+
+  it("should not allow edit on small screens", () => {
+    cy.viewport(480, 800);
+
+    visitDashboard(1);
+
+    cy.icon("pencil").should("not.be.visible");
+
+    cy.viewport(660, 800);
+
+    cy.icon("pencil").should("be.visible");
+  });
 });
 
 describeWithSnowplow("scenarios > dashboard (snowplow)", () => {
@@ -778,7 +811,20 @@ describeWithSnowplow("scenarios > dashboard (snowplow)", () => {
     cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");
 
+    popover().within(() => {
+      cy.findByText(/Loading/i).should("not.exist");
+      cy.findByText("Orders in a dashboard").click();
+    });
+
+    cy.findByTestId("entity-edit-display-link").findByText(
+      /orders in a dashboard/i,
+    );
+
     saveDashboard();
+
+    cy.findByTestId("entity-view-display-link").findByText(
+      /orders in a dashboard/i,
+    );
 
     expectGoodSnowplowEvent({
       event: "new_link_card_created",

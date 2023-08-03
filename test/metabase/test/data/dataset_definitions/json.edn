@@ -1,4 +1,3 @@
-
 [["json"
   [{:field-name    "bloop"
     :base-type     :type/Text}

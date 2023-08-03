@@ -27,7 +27,6 @@ describe("dashboard reducers", () => {
       isNavigatingBackToDashboard: false,
       isEditing: null,
       loadingDashCards: {
-        dashcardIds: [],
         loadingIds: [],
         startTime: null,
         endTime: null,
@@ -234,7 +233,6 @@ describe("dashboard reducers", () => {
     it("should change to running when loading cards", () => {
       const dashcardIds = [1, 2, 3];
       const loadingMatch = {
-        dashcardIds: dashcardIds,
         loadingIds: dashcardIds,
         loadingStatus: "running",
         startTime: expect.any(Number),
@@ -245,13 +243,12 @@ describe("dashboard reducers", () => {
           {
             ...initState,
             loadingDashCards: {
-              dashcardIds: dashcardIds,
               loadingIds: dashcardIds,
             },
           },
           {
             type: FETCH_DASHBOARD_CARD_DATA,
-            payload: { currentTime: 100, dashcardIds },
+            payload: { currentTime: 100, loadingIds: dashcardIds },
           },
         ),
       ).toMatchObject({
@@ -264,12 +261,11 @@ describe("dashboard reducers", () => {
       expect(
         reducer(initState, {
           type: FETCH_DASHBOARD_CARD_DATA,
-          payload: {},
+          payload: { currentTime: 100, loadingIds: [] },
         }),
       ).toEqual({
         ...initState,
         loadingDashCards: {
-          dashcardIds: [],
           loadingIds: [],
           loadingStatus: "idle",
           startTime: null,
@@ -284,7 +280,6 @@ describe("dashboard reducers", () => {
           {
             ...initState,
             loadingDashCards: {
-              dashcardIds: [1, 2, 3],
               loadingIds: [3],
               loadingStatus: "running",
               startTime: 100,
@@ -303,7 +298,6 @@ describe("dashboard reducers", () => {
       ).toEqual({
         ...initState,
         loadingDashCards: {
-          dashcardIds: [1, 2, 3],
           loadingIds: [],
           loadingStatus: "complete",
           startTime: 100,

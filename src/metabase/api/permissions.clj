@@ -50,15 +50,13 @@
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
   metabase-enterprise.sandbox.models.group-table-access-policy
   [_sandboxes]
-  (throw (ex-info (tru "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature.")
-                  {:status-code 402})))
+ (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
 
-(defenterprise upsert-impersonations!
-  "OSS implementation of `upsert-impersonations!`. Errors since this is an enterprise feature."
+(defenterprise insert-impersonations!
+  "OSS implementation of `insert-impersonations!`. Errors since this is an enterprise feature."
   metabase-enterprise.advanced-permissions.models.connection-impersonation
   [_impersonations]
-  (throw (ex-info (tru "Connection impersonation is an Enterprise feature. Please upgrade to a paid plan to use this feature.")
-                  {:status-code 402})))
+  (throw (premium-features/ee-feature-error (tru "Connection impersonation"))))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -97,7 +95,7 @@
                                      (upsert-sandboxes! sandbox-updates))
             impersonation-updates  (:impersonations graph)
             impersonations         (when impersonation-updates
-                                     (upsert-impersonations! impersonation-updates))]
+                                     (insert-impersonations! impersonation-updates))]
         (merge
          (perms/data-perms-graph)
          (when sandboxes {:sandboxes sandboxes})

@@ -9,7 +9,7 @@ import TokenField, {
   parseNumberValue,
   parseStringValue,
 } from "metabase/components/TokenField";
-import ListField from "metabase/components/ListField";
+import { ListField } from "metabase/components/ListField";
 import SingleSelectListField from "metabase/components/SingleSelectListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
