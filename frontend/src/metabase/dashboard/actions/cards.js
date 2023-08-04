@@ -12,7 +12,12 @@ import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardCreated } from "../analytics";
-import { ADD_CARD_TO_DASH, REMOVE_CARD_FROM_DASH } from "./core";
+import { getDashCardById } from "../selectors";
+import {
+  ADD_CARD_TO_DASH,
+  REMOVE_CARD_FROM_DASH,
+  UNDO_REMOVE_CARD_FROM_DASH,
+} from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
 
@@ -76,6 +81,18 @@ export const removeCardFromDashboard = createThunkAction(
   ({ dashcardId, cardId }) =>
     (dispatch, _getState) => {
       dispatch(cancelFetchCardData(cardId, dashcardId));
+      return { dashcardId, cardId };
+    },
+);
+
+export const undoRemoveCardFromDashboard = createThunkAction(
+  UNDO_REMOVE_CARD_FROM_DASH,
+  ({ dashcardId, cardId }) =>
+    (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const card = dashcard.card;
+
+      dispatch(fetchCardData(card, dashcard));
       return { dashcardId, cardId };
     },
 );

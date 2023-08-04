@@ -29,9 +29,6 @@ export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
 
 export const UNDO_REMOVE_CARD_FROM_DASH =
   "metabase/dashboard/UNDO_REMOVE_CARD_FROM_DASH";
-export const undoRemoveCardFromDashboard = createAction(
-  UNDO_REMOVE_CARD_FROM_DASH,
-);
 
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS =
   "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
