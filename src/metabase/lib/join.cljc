@@ -21,6 +21,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.u.match]
@@ -936,3 +938,34 @@
     (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-column-or-nil)
     (join-lhs-display-name-for-first-join-in-first-stage query stage-number join-or-joinable)
     (i18n/tru "Previous results"))))
+
+(mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
+  "Updates the provided join-condition's fields' temporal-bucketing option, returns the updated join-condition.
+   Must be called on a standard join condition as per [[standard-join-condition?]].
+   This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
+   Fields that do not support the provided option will be ignored."
+  ([query :- ::lib.schema/query
+    join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
+    option-or-unit :- [:maybe [:or
+                               ::lib.schema.temporal-bucketing/option
+                               ::lib.schema.temporal-bucketing/unit]]]
+   (join-condition-update-temporal-bucketing query -1 join-condition option-or-unit))
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
+    option-or-unit :- [:maybe [:or
+                               ::lib.schema.temporal-bucketing/option
+                               ::lib.schema.temporal-bucketing/unit]]]
+   (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
+     (assert (standard-join-condition? join-condition)
+             (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
+     (let [unit (cond-> option-or-unit
+                  (not (keyword? option-or-unit)) :unit)
+           stage-number (lib.util/canonical-stage-index query stage-number)
+           available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
+           available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
+           sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
+           sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+       (cond-> join-condition
+         sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
+         sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))

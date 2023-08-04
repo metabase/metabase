@@ -22,6 +22,7 @@
    [metabase.lib.schema.ref :as ref]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli.registry :as mr]))
 
@@ -60,19 +61,6 @@
 (mr/def ::filters
   [:sequential {:min 1} [:ref ::expression/boolean]])
 
-(defn- matching-locations
-  [form pred]
-  (loop [stack [[[] form]], matches []]
-    (if-let [[loc form :as top] (peek stack)]
-      (let [stack (pop stack)
-            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
-        (cond
-          (pred form)        (recur stack                                  (conj matches top))
-          (map? form)        (recur (onto-stack form)                      matches)
-          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
-          :else              (recur stack                                  matches)))
-      matches)))
-
 (defn- bad-ref-clause? [ref-type valid-ids x]
   (and (vector? x)
        (= ref-type (first x))
@@ -80,13 +68,13 @@
 
 (defn- expression-ref-errors-for-stage [stage]
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
-    (matching-locations (dissoc stage :joins :lib/stage-metadata)
-                        #(bad-ref-clause? :expression expression-names %))))
+    (mbql.u/matching-locations (dissoc stage :joins :lib/stage-metadata)
+                               #(bad-ref-clause? :expression expression-names %))))
 
 (defn- aggregation-ref-errors-for-stage [stage]
   (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
-    (matching-locations (dissoc stage :joins :lib/stage-metadata)
-                        #(bad-ref-clause? :aggregation uuids %))))
+    (mbql.u/matching-locations (dissoc stage :joins :lib/stage-metadata)
+                               #(bad-ref-clause? :aggregation uuids %))))
 
 (defn ref-errors-for-stage
   "Return the locations and the clauses with dangling expression or aggregation references.
