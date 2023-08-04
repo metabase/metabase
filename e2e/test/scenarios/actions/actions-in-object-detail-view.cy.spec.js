@@ -82,7 +82,7 @@ describe("scenarios > actions > actions-in-object-detail-view", () => {
     });
   });
 
-  describe("in modal", () => {
+  describe("in modal", { viewportHeight: 1200 }, () => {
     const permissionLevels = [
       {
         name: "admin",
