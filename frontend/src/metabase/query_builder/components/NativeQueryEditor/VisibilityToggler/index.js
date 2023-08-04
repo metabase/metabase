@@ -1,1 +1,1 @@
-export { default } from "./VisibilityToggler";
+export * from "./VisibilityToggler";

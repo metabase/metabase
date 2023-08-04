@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { isMac } from "metabase/lib/browser";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
-import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
-import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
+import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
+import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
+import { SnippetSidebarButton } from "metabase/query_builder/components/view/SnippetSidebarButton";
 import PreviewQueryButton from "metabase/query_builder/components/view/PreviewQueryButton";
 
 import {

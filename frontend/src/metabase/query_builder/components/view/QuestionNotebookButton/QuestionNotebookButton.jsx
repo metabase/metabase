@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import cx from "classnames";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import Button from "metabase/core/components/Button";
+import { ButtonRoot } from "./QuestionNotebookButton.styled";
 
-export default function QuestionNotebookButton({
+export function QuestionNotebookButton({
   className,
   question,
   isShowingNotebook,
@@ -17,13 +16,12 @@ export default function QuestionNotebookButton({
       tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
       placement="top"
     >
-      <Button
+      <ButtonRoot
         borderless={!isShowingNotebook}
         primary={isShowingNotebook}
         medium
-        className={cx(className, isShowingNotebook ? undefined : "text-dark", {
-          "text-brand-hover": !isShowingNotebook,
-        })}
+        isSelected={isShowingNotebook}
+        className={className}
         icon="notebook"
         onClick={() =>
           setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")

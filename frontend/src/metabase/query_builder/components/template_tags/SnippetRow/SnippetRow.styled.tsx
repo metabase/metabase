@@ -12,3 +12,11 @@ export const SnippetButton = styled(Button)`
     background-color: ${color("brand")};
   }
 `;
+
+export const SnippetContent = styled.div`
+  display: flex;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;

@@ -2,8 +2,8 @@
 /* flow */
 import { Component } from "react";
 import { t } from "ttag";
-import CopyButton from "metabase/components/CopyButton";
 import { color } from "metabase/lib/colors";
+import { PasswordCopyButton } from "./PasswordReveal.styled";
 
 const styles = {
   input: {
@@ -59,10 +59,7 @@ export default class PasswordReveal extends Component {
             {visible ? t`Hide` : t`Show`}
           </a>
 
-          <CopyButton
-            className="text-brand-hover cursor-pointer"
-            value={password}
-          />
+          <PasswordCopyButton value={password} />
         </div>
       </div>
     );

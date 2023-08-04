@@ -4,8 +4,6 @@ import { connect } from "react-redux";
 
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
-
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
 import * as Urls from "metabase/lib/urls";
@@ -19,7 +17,8 @@ import {
   deletePublicLink,
   updateEnableEmbedding,
   updateEmbeddingParams,
-} from "../actions";
+} from "../../actions";
+import { TriggerIcon } from "./QuestionEmbedWidget.styled";
 
 const QuestionEmbedWidgetPropTypes = {
   className: PropTypes.string,
@@ -106,10 +105,9 @@ export default connect(
 
 export function QuestionEmbedWidgetTrigger({ onClick }) {
   return (
-    <Icon
+    <TriggerIcon
       name="share"
       tooltip={t`Sharing`}
-      className="mx1 hide sm-show text-brand-hover cursor-pointer"
       onClick={() => {
         MetabaseAnalytics.trackStructEvent(
           "Sharing / Embedding",

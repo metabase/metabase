@@ -1,30 +1,22 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import cx from "classnames";
-
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+import { ButtonRoot } from "./DataReferenceButton.styled";
 
-const DataReferenceButton = ({
+export const DataReferenceButton = ({
   isShowingDataReference,
   toggleDataReference,
   size,
   className,
 }) => (
   <Tooltip tooltip={t`Learn about your data`}>
-    <a
-      className={cx(className, "transition-color text-brand-hover", {
-        "text-brand": isShowingDataReference,
-      })}
-    >
+    <ButtonRoot className={className} isSelected={isShowingDataReference}>
       <Icon name="reference" size={size} onClick={toggleDataReference} />
-    </a>
+    </ButtonRoot>
   </Tooltip>
 );
 
 DataReferenceButton.shouldRender = ({ question }) =>
   question.query() instanceof NativeQuery;
-
-export default DataReferenceButton;

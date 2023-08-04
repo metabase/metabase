@@ -8,6 +8,7 @@ import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
 import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
 import QuestionDataSource from "./QuestionDataSource";
 
@@ -223,5 +224,19 @@ export const ViewHeaderIconButtonContainer = styled.div`
       color: ${color("brand")};
       background-color: ${color("bg-medium")};
     }
+  }
+`;
+
+interface ViewRunButtonWithTooltipProps {
+  isDirty: boolean;
+}
+
+export const ViewRunButtonWithTooltip = styled(
+  RunButtonWithTooltip,
+)<ViewRunButtonWithTooltipProps>`
+  color: ${color("text-dark")};
+
+  &:hover {
+    color: ${props => (props.isDirty ? color("white") : color("brand"))};
   }
 `;

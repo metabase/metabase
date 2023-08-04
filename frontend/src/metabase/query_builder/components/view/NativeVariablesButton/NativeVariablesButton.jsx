@@ -1,26 +1,20 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import cx from "classnames";
-
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
-
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+import { ButtonRoot } from "./NativeVariablesButton.styled";
 
-const NativeVariablesButton = ({
+export const NativeVariablesButton = ({
   toggleTemplateTagsEditor,
   isShowingTemplateTagsEditor,
   className,
   size,
 }) => (
   <Tooltip tooltip={t`Variables`}>
-    <a
-      className={cx(className, "transition-color text-brand-hover", {
-        "text-brand": isShowingTemplateTagsEditor,
-      })}
-    >
+    <ButtonRoot className={className} isSelected={isShowingTemplateTagsEditor}>
       <Icon name="variable" size={size} onClick={toggleTemplateTagsEditor} />
-    </a>
+    </ButtonRoot>
   </Tooltip>
 );
 
@@ -28,5 +22,3 @@ NativeVariablesButton.shouldRender = ({ question }) =>
   question.query() instanceof NativeQuery &&
   question.database() &&
   question.database().hasFeature("native-parameters");
-
-export default NativeVariablesButton;

@@ -35,9 +35,7 @@
 
 /* brand */
 .text-brand,
-:local(.text-brand),
-.text-brand-hover:hover,
-:local(.text-brand-hover):hover {
+:local(.text-brand) {
   color: var(--color-brand);
 }
 
@@ -136,15 +134,6 @@
   .md-text-white {
     color: var(--color-text-white);
   }
-}
-
-/* common pattern, background brand, text white when hovering or selected */
-.brand-hover:hover {
-  color: var(--color-text-white);
-  background-color: var(--color-brand);
-}
-.brand-hover:hover * {
-  color: var(--color-text-white);
 }
 
 .bg-white,

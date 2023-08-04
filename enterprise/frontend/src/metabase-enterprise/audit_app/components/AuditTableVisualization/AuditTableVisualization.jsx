@@ -15,8 +15,12 @@ import EmptyState from "metabase/components/EmptyState";
 import { Icon } from "metabase/core/components/Icon";
 import CheckBox from "metabase/core/components/CheckBox";
 import NoResults from "assets/img/no_results.svg";
-import { getRowValuesByColumns, getColumnName } from "../lib/mode";
-import { RemoveRowButton } from "./AuditTableVisualization.styled";
+import { getRowValuesByColumns, getColumnName } from "../../lib/mode";
+import {
+  HeaderCell,
+  RemoveRowButton,
+  RowCell,
+} from "./AuditTableVisualization.styled";
 
 const propTypes = {
   series: PropTypes.array,
@@ -38,7 +42,7 @@ const propTypes = {
 
 const ROW_ID_IDX = 0;
 
-export default class AuditTableVisualization extends Component {
+export class AuditTableVisualization extends Component {
   static identifier = "audit-table";
   static noHeader = true;
   static hidden = true;
@@ -135,14 +139,12 @@ export default class AuditTableVisualization extends Component {
                 sorting && sorting.column === getColumnName(column);
 
               return (
-                <th
+                <HeaderCell
                   key={colIndex}
+                  isSortable={isSortable}
+                  isSortedByColumn={isSortedByColumn}
+                  isRightAligned={isColumnRightAligned(column)}
                   onClick={() => this.handleColumnHeaderClick(column)}
-                  className={cx("text-nowrap", {
-                    "text-right": isColumnRightAligned(column),
-                    "text-brand": isSortedByColumn,
-                    "cursor-pointer text-brand-hover": isSortable,
-                  })}
                 >
                   {formatColumn(cols[colIndex])}
                   {isSortedByColumn && (
@@ -152,7 +154,7 @@ export default class AuditTableVisualization extends Component {
                       size={10}
                     />
                   )}
-                </th>
+                </HeaderCell>
               );
             })}
           </tr>
@@ -186,12 +188,10 @@ export default class AuditTableVisualization extends Component {
                 };
 
                 return (
-                  <td
+                  <RowCell
                     key={colIndex}
-                    className={cx({
-                      "text-brand cursor-pointer": clickable,
-                      "text-right": isColumnRightAligned(column),
-                    })}
+                    isClickable={clickable}
+                    isRightAligned={isColumnRightAligned(column)}
                     onClick={
                       clickable ? () => onVisualizationClick(clicked) : null
                     }
@@ -212,7 +212,7 @@ export default class AuditTableVisualization extends Component {
                         local: true,
                       })}
                     </div>
-                  </td>
+                  </RowCell>
                 );
               })}
 

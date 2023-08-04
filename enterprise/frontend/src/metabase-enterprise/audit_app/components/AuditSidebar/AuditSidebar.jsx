@@ -1,9 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-
-import { IndexLink } from "react-router";
 import cx from "classnames";
-import Link from "metabase/core/components/Link";
+import { SidebarItemLink, SidebarItemRoot } from "./AuditSidebar.styled";
 
 const AuditSidebarSection = ({ title, children }) => (
   <div className="pb2">
@@ -19,35 +17,21 @@ const AuditSidebarSectionTitle = ({ title }) => (
 );
 
 const AuditSidebarItem = ({ title, path }) => (
-  <div
-    className={cx("my2 cursor-pointer text-brand-hover", {
-      disabled: !path,
-    })}
-  >
-    {path ? (
-      <Link className="no-decoration" activeClassName="text-brand" to={path}>
-        {title}
-      </Link>
-    ) : (
-      <IndexLink
-        className="no-decoration"
-        activeClassName="text-brand"
-        to="/admin/audit"
-      >
-        {title}
-      </IndexLink>
-    )}
-  </div>
+  <SidebarItemRoot isDisabled={!path}>
+    <SidebarItemLink to={path} activeClassName="active">
+      {title}
+    </SidebarItemLink>
+  </SidebarItemRoot>
 );
 
-const AuditSidebar = ({ className, style, children }) => (
+const AuditSidebarContainer = ({ className, style, children }) => (
   <div style={style} className={cx("p4", className)}>
     {children}
   </div>
 );
 
-const AuditAppSidebar = props => (
-  <AuditSidebar {...props}>
+export const AuditSidebar = props => (
+  <AuditSidebarContainer {...props}>
     <AuditSidebarSection title={t`People`}>
       <AuditSidebarItem title={t`Team members`} path="/admin/audit/members" />
     </AuditSidebarSection>
@@ -65,7 +49,5 @@ const AuditAppSidebar = props => (
         path="/admin/audit/subscriptions"
       />
     </AuditSidebarSection>
-  </AuditSidebar>
+  </AuditSidebarContainer>
 );
-
-export default AuditAppSidebar;
