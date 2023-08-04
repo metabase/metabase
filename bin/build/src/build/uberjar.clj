@@ -106,7 +106,7 @@
       (depstar/uber {:class-dir class-dir
                      :uber-file uberjar-filename
                      :basis     basis
-                     :exclude [".*metabase.*.clj[c|s]?$"]})
+                     :exclude   [".*metabase.*.clj[c|s]?$"]})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def manifest-entries
