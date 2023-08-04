@@ -465,6 +465,22 @@
                                %))
       clj->js))
 
+(defn- legacy-ref->pMBQL [legacy-ref]
+  (-> legacy-ref
+      (js->clj :keywordize-keys true)
+      (update 0 keyword)
+      convert/->pMBQL))
+
+(defn- ->column-or-ref [column]
+  (if-let [^js legacy-column (when (object? column) column)]
+    (if (.-field_ref legacy-column)
+      ;; Prefer the attached field_ref if provided.
+      (legacy-ref->pMBQL (.-field_ref legacy-column))
+      ;; Fall back to converting like metadata.
+      (js.metadata/parse-column legacy-column))
+    ;; It's already a :metadata/column map
+    column))
+
 (defn ^:export find-column-indexes-from-legacy-refs
   "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
   corresponding index into the list of columns.
@@ -474,12 +490,8 @@
   ;; Set up this query stage's `:aggregation` list as the context for [[convert/->pMBQL]] to convert legacy
   ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
   (convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (let [columns       (mapv #(cond-> % (object? %) js.metadata/parse-column) legacy-columns)
-          field-refs    (for [legacy-ref legacy-refs]
-                          (-> legacy-ref
-                              (js->clj :keywordize-keys true)
-                              (update 0 keyword)
-                              convert/->pMBQL))
+    (let [columns       (mapv ->column-or-ref legacy-columns)
+          field-refs    (map legacy-ref->pMBQL legacy-refs)
           matches       (lib.equality/find-closest-matches-for-refs a-query field-refs columns)
           ;; matches is a map of columns to the corresponding index in field-refs.
           ;; We want to return a parallel list to field-refs, giving the index of the matching column (or -1).
