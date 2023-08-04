@@ -171,10 +171,10 @@ jobs:
       # - name: check if chrome is installed
       #   run: sudo ls -la /opt/hostedtoolcache/chromium
 
-      # - name: Add hosts to /etc/hosts
-      #   run: |
-      #     sudo echo "127.0.0.1 localhost" | sudo tee -a /etc/hosts
-      #     cat /etc/hosts
+      - name: Add hosts to /etc/hosts
+        run: |
+          # sudo echo "127.0.0.1 localhost" | sudo tee -a /etc/hosts
+          cat /etc/hosts
 
       - name: Get the version info
         run: |
