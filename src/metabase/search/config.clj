@@ -88,7 +88,7 @@
     [:search-string                       [:maybe ms/NonBlankString]]
     [:archived?                           :boolean]
     [:models                              [:set SearchableModel]]
-    [:current-user-perms                  [:set perms/PathMalliSchema]]
+    [:current-user-perms                  [:set perms/PathSchema]]
     [:created-by         {:optional true} ms/PositiveInt]
     [:table-db-id        {:optional true} ms/PositiveInt]
     [:limit-int          {:optional true} ms/Int]

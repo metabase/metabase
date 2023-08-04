@@ -197,9 +197,9 @@
                            *search-request-results-database-id*)]
     (if (:error (:data raw-results))
       raw-results
-      (update-in raw-results [:data]
-                 (fn [raw-data]
-                   (vec (xf (process-raw-data raw-data keep-database-id))))))))
+      (update raw-results :data
+              (fn [raw-data]
+                (vec (xf (process-raw-data raw-data keep-database-id))))))))
 
 (defn- search-request
   [& args]
@@ -745,7 +745,7 @@
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
     (mt/with-current-user (mt/user->id :crowberto)
-      (toucan2.execute/with-call-count [call-count]
+      (t2.execute/with-call-count [call-count]
         (#'api.search/search {:search-string      "count test"
                               :archived?          false
                               :models             search.config/all-models

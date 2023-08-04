@@ -419,36 +419,16 @@
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
-(mu/defn ^:private unremapped-chain-filter
+(mu/defn ^:private unremapped-chain-filter :- ms/FieldValuesResult
   "Chain filtering without all the fancy remapping stuff on top of it."
-  [field-id                                 :- ms/PositiveInt
-   constraints                              :- [:maybe ConstraintsMap]
-   {:keys [original-field-id], :as options} :- [:maybe Options]]
+  [field-id    :- ms/PositiveInt
+   constraints :- [:maybe ConstraintsMap]
+   options     :- [:maybe Options]]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
     (try
       (let [query-limit (get-in mbql-query [:query :limit])
-            values      (qp/process-query
-                         mbql-query
-                         {:rff (constantly (if original-field-id
-                                             ;; if original-field-id is specified (for Field->Field remapping) just return each row,
-                                             ;; which will be [original-value remapped-value], as-is. reducing function is conj, so rff,
-                                             ;; which is of the form
-                                             ;;
-                                             ;;     (f metadata) -> rf
-                                             ;;
-                                             ;; will be (constantly conj).
-                                             conj
-                                             ;; if we're just returning values for a single field with no remapping (or if the mapping
-                                             ;; is human-readable values, which is done in Clojure-land), then just return the first
-                                             ;; value in each row. e.g.
-                                             ;;
-                                             ;;    [v] -> v
-                                             ;;
-                                             ;; Thus rff is
-                                             ;;
-                                             ;;    (f metadata) -> ((map first) conj)
-                                             ((map first) conj)))})]
+            values      (qp/process-query mbql-query {:rff (constantly conj)})]
         {:values          values
          ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
          ;; so that calling chain-filter-search on the same field will search from DB.
@@ -479,32 +459,15 @@
       (zipmap orig remapped))))
 
 (mu/defn ^:private add-human-readable-values
-  "Convert result `values` (a sequence of single values) to a sequence of `[v human-readable]` pairs by finding the
+  "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
-  [values v->human-readable :- HumanReadableRemappingMap]
-  (map vector values (map (fn [v]
-                            (get v->human-readable v (get v->human-readable (str v))))
-                          values)))
-
-(mu/defn ^:private human-readable-values-remapped-chain-filter
-  "Chain filter, but for Fields that have human-readable values defined (e.g. you've went in and specified that enum
-  value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
-  database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
-  [field-id          :- ms/PositiveInt
-   v->human-readable :- HumanReadableRemappingMap
-   constraints       :- [:maybe ConstraintsMap]
-   options           :- [:maybe Options]]
-  (let [result (unremapped-chain-filter field-id constraints options)]
-    (update result :values add-human-readable-values v->human-readable)))
-
-(mu/defn ^:private field-to-field-remapped-chain-filter
-  "Chain filter, but for Field->Field remappings (e.g. 'remap' `venue.category_id` -> `category.name`; search by
-  `category.name` but return tuples of `[venue.category_id category.name]`."
-  [original-field-id :- ms/PositiveInt
-   remapped-field-id :- ms/PositiveInt
-   constraints       :- [:maybe ConstraintsMap]
-   options           :- [:maybe Options]]
-  (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id original-field-id)))
+  [values            :- [:sequential ms/NonRemappedFieldValue]
+   v->human-readable :- HumanReadableRemappingMap]
+  (map vector
+       (map first values)
+       (map (fn [[v]]
+              (get v->human-readable v (get v->human-readable (str v))))
+            values)))
 
 (defn- format-union
   "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
@@ -557,13 +520,13 @@
   (let [{:keys [values has_more_values]} (if (empty? constraints)
                                            (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one Field :id field-id))
                                            (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one Field :id field-id) constraints))]
-    {:values          (cond->> (map first values)
+    {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit
                             (< limit (count values)))
                           has_more_values)}))
 
-(mu/defn chain-filter
+(mu/defn chain-filter :- ms/FieldValuesResult
   "Fetch a sequence of possible values of Field with `field-id` by restricting the possible values to rows that match
   values of other Fields in the `constraints` map. Powers the `GET /api/dashboard/:id/param/:key/values` chain filter
   API endpoint.
@@ -585,13 +548,18 @@
   (assert (even? (count options)))
   (let [{:as options} options]
     (if-let [v->human-readable (human-readable-remapping-map field-id)]
-      (human-readable-values-remapped-chain-filter field-id v->human-readable constraints options)
+      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
+      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
+      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
+      (-> (unremapped-chain-filter field-id constraints options)
+          (update :values add-human-readable-values v->human-readable))
       (if (use-cached-field-values? field-id)
         (cached-field-values field-id constraints options)
         (if-let [remapped-field-id (remapped-field-id field-id)]
-          (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
+          ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
+          ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
+          (unremapped-chain-filter remapped-field-id constraints (assoc options :original-field-id field-id))
           (unremapped-chain-filter field-id constraints options))))))
-
 
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 
@@ -675,18 +643,7 @@
                limit (take limit))
      :has_more_values has_more_values}))
 
-(mu/defn ^:private field-to-field-remapped-chain-filter-search
-  "Chain filter search, but for Field->Field remappings e.g. 'remap' `venue.category_id` -> `category.name`; search by
-  `category.name` but return tuples of `[venue.category_id category.name]`."
-  [original-field-id :- ms/PositiveInt
-   remapped-field-id :- ms/PositiveInt
-   constraints       :- [:maybe ConstraintsMap]
-   query             :- ms/NonBlankString
-   options           :- [:maybe Options]]
-  (unremapped-chain-filter-search remapped-field-id constraints query
-                                  (assoc options :original-field-id original-field-id)))
-
-(mu/defn chain-filter-search
+(mu/defn chain-filter-search :- ms/FieldValuesResult
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
   containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
   [field-id          :- ms/PositiveInt
@@ -702,7 +659,9 @@
         (if (search-cached-field-values? field-id constraints)
           (cached-field-values-search field-id query constraints options)
           (if-let [remapped-field-id (remapped-field-id field-id)]
-            (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
+            ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
+            ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
+            (unremapped-chain-filter-search remapped-field-id constraints query (assoc options :original-field-id field-id))
             (unremapped-chain-filter-search field-id constraints query options)))))))
 
 

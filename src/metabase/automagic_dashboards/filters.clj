@@ -6,6 +6,7 @@
    [metabase.models.field :as field :refer [Field]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
