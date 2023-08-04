@@ -36,8 +36,7 @@ function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
 
   // We need to keep join steps open at all time for MLv1-MLv2 compat
   // This should be reworked once all notebook clauses are using MLv2
-  // Learn more: ...
-  // TODO add PR link
+  // Learn more: https://github.com/metabase/metabase/pull/32911
 
   const steps = getQuestionSteps(question, {});
   const joinSteps = steps.filter(step => step.type === "join");
