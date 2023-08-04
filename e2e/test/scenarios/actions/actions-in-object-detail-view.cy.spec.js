@@ -26,7 +26,6 @@ const DASHBOARD = {
 
 describe("scenarios > actions > actions-in-object-detail-view", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
     cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
       "prefetchValues",
@@ -192,7 +191,6 @@ function asNormalUser(callback) {
 
 function visitObjectDetail(modelId, objectId) {
   visitModel(modelId);
-  cy.wait("@getCard");
   cy.get("main").findByText("Loading...").should("not.exist");
   cy.findByTestId("TableInteractive-root").findByText(objectId).click();
 }
