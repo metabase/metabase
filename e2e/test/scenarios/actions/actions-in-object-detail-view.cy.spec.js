@@ -24,158 +24,164 @@ const DASHBOARD = {
   database: WRITABLE_DB_ID,
 };
 
-describe("scenarios > actions > actions-in-object-detail-view", () => {
-  beforeEach(() => {
-    cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
-    cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
-      "prefetchValues",
-    );
-
-    resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
-    restore("postgres-writable");
-    asAdmin(() => {
-      resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: WRITABLE_TEST_TABLE,
-      });
-
-      createModelFromTableName({
-        tableName: WRITABLE_TEST_TABLE,
-        idAlias: "modelId",
-      });
-    });
-  });
-
-  describe("in dashboard", () => {
+describe(
+  "scenarios > actions > actions-in-object-detail-view",
+  { tags: ["@external", "@actions"] },
+  () => {
     beforeEach(() => {
-      asAdmin(() => {
-        cy.get("@modelId").then(modelId => {
-          createImplicitActions({ modelId });
+      cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
+      cy.intercept("GET", "/api/action/*/execute?parameters=*").as(
+        "prefetchValues",
+      );
 
-          cy.createQuestionAndDashboard({
-            questionDetails: {
-              name: "Score detail",
-              display: "object",
-              database: WRITABLE_DB_ID,
-              query: {
-                "source-table": `card__${modelId}`,
-              },
-            },
-            dashboardDetails: DASHBOARD,
-          }).then(({ body: { dashboard_id } }) => {
-            cy.wrap(dashboard_id).as("dashboardId");
-          });
+      resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
+      restore("postgres-writable");
+      asAdmin(() => {
+        resyncDatabase({
+          dbId: WRITABLE_DB_ID,
+          tableName: WRITABLE_TEST_TABLE,
+        });
+
+        createModelFromTableName({
+          tableName: WRITABLE_TEST_TABLE,
+          idAlias: "modelId",
         });
       });
     });
 
-    it("does not show model actions in model visualization on a dashboard", () => {
-      asAdmin(() => {
-        cy.get("@dashboardId").then(dashboardId => {
-          visitDashboard(dashboardId);
-        });
-
-        cy.findByTestId("dashcard").within(() => {
-          assertActionsDropdownNotExists();
-        });
-      });
-    });
-  });
-
-  describe("in modal", { viewportHeight: 1200 }, () => {
-    const permissionLevels = [
-      {
-        name: "admin",
-        permissionFn: asAdmin,
-      },
-      {
-        name: "normal",
-        permissionFn: asNormalUser,
-      },
-    ];
-
-    permissionLevels.forEach(({ name, permissionFn }) => {
-      it(`should be able to run update and delete actions when enabled for a ${name} user`, () => {
-        cy.get("@modelId").then(modelId => {
-          permissionFn(() => {
-            cy.log(`As ${name} user: verify there are no model actions to run`);
-            visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-            objectDetailModal().within(() => {
-              assertActionsDropdownNotExists();
-            });
-          });
-
-          asAdmin(() => {
+    describe("in dashboard", () => {
+      beforeEach(() => {
+        asAdmin(() => {
+          cy.get("@modelId").then(modelId => {
             createImplicitActions({ modelId });
+
+            cy.createQuestionAndDashboard({
+              questionDetails: {
+                name: "Score detail",
+                display: "object",
+                database: WRITABLE_DB_ID,
+                query: {
+                  "source-table": `card__${modelId}`,
+                },
+              },
+              dashboardDetails: DASHBOARD,
+            }).then(({ body: { dashboard_id } }) => {
+              cy.wrap(dashboard_id).as("dashboardId");
+            });
+          });
+        });
+      });
+
+      it("does not show model actions in model visualization on a dashboard", () => {
+        asAdmin(() => {
+          cy.get("@dashboardId").then(dashboardId => {
+            visitDashboard(dashboardId);
           });
 
-          permissionFn(() => {
-            cy.log(
-              `As ${name} user: verify there are model actions to run (1)`,
-            );
-            visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-            objectDetailModal().within(() => {
-              assertActionsDropdownExists();
-            });
-
-            cy.log(`As ${name} user: verify update form gets prefilled`);
-            openUpdateObjectModal();
-            actionExecuteModal().within(() => {
-              cy.wait("@prefetchValues").then(request => {
-                const firstScoreRow = request.response.body;
-
-                actionForm().within(() => {
-                  assertScoreFormPrefilled(firstScoreRow);
-                });
-              });
-
-              cy.icon("close").click();
-            });
-            objectDetailModal().icon("close").click();
-
-            cy.log(
-              `As ${name} user: verify there are model actions to run (2)`,
-            );
-            openObjectDetailModal(SECOND_SCORE_ROW_ID);
-            objectDetailModal().within(() => {
-              assertActionsDropdownExists();
-            });
-
-            cy.log(
-              `As ${name} user: verify form gets prefilled with values for another entity and run update action`,
-            );
-            openUpdateObjectModal();
-            actionExecuteModal().within(() => {
-              cy.wait("@prefetchValues").then(request => {
-                const secondScoreRow = request.response.body;
-
-                actionForm().within(() => {
-                  assertScoreFormPrefilled(secondScoreRow);
-
-                  cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
-                  cy.findByText("Update").click();
-                });
-              });
-            });
-            objectDetailModal().icon("close").click();
-            assertSuccessfullUpdateToast();
-            assertUpdatedScoreInTable();
-
-            cy.log(`As ${name} user: run delete action`);
-            openObjectDetailModal(SECOND_SCORE_ROW_ID);
-            objectDetailModal().within(() => {
-              assertActionsDropdownExists();
-            });
-            openDeleteObjectModal();
-            deleteObjectModal().findByText("Delete forever").click();
-            assertSuccessfullDeleteToast();
-            assertUpdatedScoreNotInTable();
+          cy.findByTestId("dashcard").within(() => {
+            assertActionsDropdownNotExists();
           });
         });
       });
     });
-  });
-});
+
+    describe("in modal", { viewportHeight: 1200 }, () => {
+      const permissionLevels = [
+        {
+          name: "admin",
+          permissionFn: asAdmin,
+        },
+        {
+          name: "normal",
+          permissionFn: asNormalUser,
+        },
+      ];
+
+      permissionLevels.forEach(({ name, permissionFn }) => {
+        it(`should be able to run update and delete actions when enabled for a ${name} user`, () => {
+          cy.get("@modelId").then(modelId => {
+            permissionFn(() => {
+              cy.log(
+                `As ${name} user: verify there are no model actions to run`,
+              );
+              visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+              objectDetailModal().within(() => {
+                assertActionsDropdownNotExists();
+              });
+            });
+
+            asAdmin(() => {
+              createImplicitActions({ modelId });
+            });
+
+            permissionFn(() => {
+              cy.log(
+                `As ${name} user: verify there are model actions to run (1)`,
+              );
+              visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+              objectDetailModal().within(() => {
+                assertActionsDropdownExists();
+              });
+
+              cy.log(`As ${name} user: verify update form gets prefilled`);
+              openUpdateObjectModal();
+              actionExecuteModal().within(() => {
+                cy.wait("@prefetchValues").then(request => {
+                  const firstScoreRow = request.response.body;
+
+                  actionForm().within(() => {
+                    assertScoreFormPrefilled(firstScoreRow);
+                  });
+                });
+
+                cy.icon("close").click();
+              });
+              objectDetailModal().icon("close").click();
+
+              cy.log(
+                `As ${name} user: verify there are model actions to run (2)`,
+              );
+              openObjectDetailModal(SECOND_SCORE_ROW_ID);
+              objectDetailModal().within(() => {
+                assertActionsDropdownExists();
+              });
+
+              cy.log(
+                `As ${name} user: verify form gets prefilled with values for another entity and run update action`,
+              );
+              openUpdateObjectModal();
+              actionExecuteModal().within(() => {
+                cy.wait("@prefetchValues").then(request => {
+                  const secondScoreRow = request.response.body;
+
+                  actionForm().within(() => {
+                    assertScoreFormPrefilled(secondScoreRow);
+
+                    cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
+                    cy.findByText("Update").click();
+                  });
+                });
+              });
+              objectDetailModal().icon("close").click();
+              assertSuccessfullUpdateToast();
+              assertUpdatedScoreInTable();
+
+              cy.log(`As ${name} user: run delete action`);
+              openObjectDetailModal(SECOND_SCORE_ROW_ID);
+              objectDetailModal().within(() => {
+                assertActionsDropdownExists();
+              });
+              openDeleteObjectModal();
+              deleteObjectModal().findByText("Delete forever").click();
+              assertSuccessfullDeleteToast();
+              assertUpdatedScoreNotInTable();
+            });
+          });
+        });
+      });
+    });
+  },
+);
 
 function asAdmin(callback) {
   cy.signInAsAdmin();
