@@ -235,7 +235,7 @@
   ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
-(s/defn fetch-or-create-user! :- (mi/InstanceOf User)
+(s/defn fetch-or-create-user! :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema User)
   "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- default-impl/UserInfo]
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))

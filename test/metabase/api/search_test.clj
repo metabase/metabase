@@ -195,9 +195,9 @@
                            *search-request-results-database-id*)]
     (if (:error (:data raw-results))
       raw-results
-      (update-in raw-results [:data]
-                 (fn [raw-data]
-                   (vec (xf (process-raw-data raw-data keep-database-id))))))))
+      (update raw-results :data
+              (fn [raw-data]
+                (vec (xf (process-raw-data raw-data keep-database-id))))))))
 
 (defn- search-request
   [& args]
@@ -719,7 +719,7 @@
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
     (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
-      (toucan2.execute/with-call-count [call-count]
+      (t2.execute/with-call-count [call-count]
         (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
