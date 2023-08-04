@@ -69,15 +69,15 @@
   [f]
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
-        orig-log-fn              @#'metabase.sync.util/log-sync-summary
-        orig-store-fn            @#'metabase.sync.util/store-sync-summary!]
-    (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database operation-metadata]
-                                                           (swap! step-info-atom conj operation-metadata)
-                                                           (orig-log-fn operation database operation-metadata))
-                  metabase.sync.util/store-sync-summary! (fn [operation database operation-metadata]
-                                                           (let [result (orig-store-fn operation database operation-metadata)]
-                                                             (swap! created-task-history-ids concat result)
-                                                             result))]
+        orig-log-fn              @#'sync-util/log-sync-summary
+        orig-store-fn            @#'sync-util/store-sync-summary!]
+    (with-redefs [sync-util/log-sync-summary    (fn [operation database operation-metadata]
+                                                  (swap! step-info-atom conj operation-metadata)
+                                                  (orig-log-fn operation database operation-metadata))
+                  sync-util/store-sync-summary! (fn [operation database operation-metadata]
+                                                  (let [result (orig-store-fn operation database operation-metadata)]
+                                                    (swap! created-task-history-ids concat result)
+                                                    result))]
       (f))
     {:operation-results @step-info-atom
      :task-history-ids  @created-task-history-ids}))

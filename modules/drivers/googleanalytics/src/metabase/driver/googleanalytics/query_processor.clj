@@ -308,7 +308,7 @@
                     (count (filter some? (map k filters))))]
     (if (and (< (key-count :start-date) 2)
              (< (key-count :end-date) 2))
-      (reduce merge filters)
+      (into {} filters)
       (throw (ex-info (tru "Multiple date filters are not supported.")
                       {:type    qp.error-type/invalid-query
                        :filters filters})))))

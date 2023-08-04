@@ -103,7 +103,7 @@
   [base-types :- #{su/FieldType}]
   (->> (for [base-type base-types]
          (cons base-type (descendants base-type)))
-       (reduce set/union)
+       (reduce set/union #{})
        (map u/qualified-name)
        set))
 
