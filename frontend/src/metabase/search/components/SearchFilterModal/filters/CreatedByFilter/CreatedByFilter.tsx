@@ -19,6 +19,7 @@ export const CreatedByFilter: SearchFilterComponent<"created_by"> = ({
     <SearchFilterView title="Created by" isLoading={isLoading}>
       {data && (
         <UserPicker
+          canAddItems={value.length === 0}
           value={data.filter(user => value.includes(String(user.id)))}
           onChange={onUserSelect}
           users={data}
