@@ -15,7 +15,6 @@ import {
   DependentMetadataItem,
   ExpressionClause,
   Filter,
-  Join,
   OrderBy,
   TableId,
   StructuredDatasetQuery,
@@ -97,10 +96,6 @@ export interface SegmentOption {
   filter: ["segment", number];
   icon: string;
   query: StructuredQuery;
-}
-
-function unwrapJoin(join: Join | JoinWrapper): Join {
-  return join instanceof JoinWrapper ? join.raw() : join;
 }
 
 /**
@@ -377,12 +372,7 @@ class StructuredQueryInner extends AtomicQuery {
       query = query.setSourceQuery(sourceQuery.clean());
     }
 
-    return query
-      .cleanJoins()
-      .cleanExpressions()
-      .cleanFilters()
-      .cleanFields()
-      .cleanEmpty();
+    return query.cleanExpressions().cleanFilters().cleanFields().cleanEmpty();
   }
 
   /**
@@ -397,14 +387,6 @@ class StructuredQueryInner extends AtomicQuery {
     } else {
       return this;
     }
-  }
-
-  cleanJoins(): StructuredQuery {
-    let query = this;
-    this.joins().forEach((join, index) => {
-      query = query.updateJoin(index, join.clean());
-    });
-    return query._cleanClauseList("joins");
   }
 
   cleanExpressions(): StructuredQuery {
@@ -443,12 +425,7 @@ class StructuredQueryInner extends AtomicQuery {
       return false;
     }
 
-    if (
-      !this._isValidClauseList("joins") ||
-      !this._isValidClauseList("filters") ||
-      !this._isValidClauseList("aggregations") ||
-      !this._isValidClauseList("breakouts")
-    ) {
+    if (!this._isValidClauseList("filters")) {
       return false;
     }
 
@@ -518,8 +495,9 @@ class StructuredQueryInner extends AtomicQuery {
     );
   }
 
-  hasJoins() {
-    return this.joins().length > 0;
+  private hasJoins() {
+    const mlv2Query = this.getMLv2Query();
+    return ML.joins(mlv2Query, -1).length > 0;
   }
 
   hasExpressions() {
@@ -540,7 +518,7 @@ class StructuredQueryInner extends AtomicQuery {
 
   hasSorts() {
     const query = this.getMLv2Query();
-    return ML.orderBys(query).length > 0;
+    return ML.orderBys(query, -1).length > 0;
   }
 
   hasLimit(stageIndex = this.queries().length - 1) {
@@ -583,38 +561,16 @@ class StructuredQueryInner extends AtomicQuery {
     return this.addFilter(filter);
   }
 
-  /**
-   * @returns alias for addJoin
-   */
-  join(join) {
-    return this.addJoin(join);
-  }
-
   // JOINS
 
   /**
    * @returns an array of MBQL @type {Join}s.
    */
   joins(): JoinWrapper[] {
+    // Used by QuestionDataSource
     return Q.getJoins(this.query()).map(
       (join, index) => new JoinWrapper(join, index, this),
     );
-  }
-
-  addJoin(join) {
-    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
-  }
-
-  updateJoin(index, join) {
-    return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
-  }
-
-  removeJoin(index) {
-    return this._updateQuery(Q.removeJoin, arguments);
-  }
-
-  clearJoins() {
-    return this._updateQuery(Q.clearJoins, arguments);
   }
 
   // AGGREGATIONS
@@ -1213,7 +1169,7 @@ class StructuredQueryInner extends AtomicQuery {
     return null;
   }
 
-  _getExplicitJoinsSet(joins) {
+  private _getExplicitJoinsSet(joins) {
     const joinDimensionPairs = joins.map(join => {
       const dimensionPairs = join.getDimensions();
       return dimensionPairs.map(pair => {
@@ -1387,7 +1343,7 @@ class StructuredQueryInner extends AtomicQuery {
     );
   }
 
-  joinedDimensions(): Dimension[] {
+  private joinedDimensions(): Dimension[] {
     return [].concat(...this.joins().map(join => join.fieldsDimensions()));
   }
 

@@ -55,14 +55,6 @@ export const canAddFilter = query => F.canAddFilter(query.filter);
 // JOIN
 
 export const getJoins = query => J.getJoins(query.joins);
-export const addJoin = (query, join) =>
-  setJoinClause(query, J.addJoin(query.joins, join));
-export const updateJoin = (query, index, join) =>
-  setJoinClause(query, J.updateJoin(query.joins, index, join));
-export const removeJoin = (query, index) =>
-  setJoinClause(query, J.removeJoin(query.joins, index));
-export const clearJoins = query =>
-  setJoinClause(query, J.clearJoins(query.joins));
 
 // ORDER_BY
 
@@ -151,9 +143,6 @@ function setBreakoutClause(query, breakoutClause) {
 }
 function setFilterClause(query, filterClause) {
   return setClause("filter", query, filterClause);
-}
-function setJoinClause(query, joinClause) {
-  return setClause("joins", query, joinClause);
 }
 function setOrderByClause(query, orderByClause) {
   return setClause("order-by", query, orderByClause);
