@@ -702,19 +702,22 @@
 (defn- str-match-pattern [field options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
     {$not (str-match-pattern field options prefix (second value) suffix)}
-    {$regexMatch {"input" (->rvalue field)
-                  "regex" (if (= (first value) :value)
-                           (str prefix (->rvalue value) suffix)
-                           {$concat (->> [prefix (->rvalue value) suffix]
-                                         (remove nil?)
-                                         (mapv #(if (char? %) {$literal %} %)))})
-                  "options" (if (get options :case-sensitive true) "" "i")}}))
+    (do
+      (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
+        "Wrong prefix or suffix value.")
+      {$regexMatch {"input" (->rvalue field)
+                    "regex" (if (= (first value) :value)
+                              (str prefix (->rvalue value) suffix)
+                              {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
+                                                               (->rvalue value)
+                                                               (when (some? suffix) {$literal suffix})])})
+                    "options" (if (get options :case-sensitive true) "" "i")}})))
 
 ;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
 ;; native query substitution we need a string and the explicit regex form is better there
 (defmethod compile-filter :contains    [[_ field v opts]] {$expr (str-match-pattern field opts nil v nil)})
-(defmethod compile-filter :starts-with [[_ field v opts]] {$expr (str-match-pattern field opts \^  v nil)})
-(defmethod compile-filter :ends-with   [[_ field v opts]] {$expr (str-match-pattern field opts nil v \$)})
+(defmethod compile-filter :starts-with [[_ field v opts]] {$expr (str-match-pattern field opts "^" v nil)})
+(defmethod compile-filter :ends-with   [[_ field v opts]] {$expr (str-match-pattern field opts nil v "$")})
 
 (defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)

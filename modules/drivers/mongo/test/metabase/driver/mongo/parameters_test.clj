@@ -39,10 +39,13 @@
   ([field-name value-type value]
    (field-filter field-name nil value-type value))
   ([field-name base-type value-type value]
+   (field-filter field-name base-type value-type value nil))
+  ([field-name base-type value-type value options]
    (params/->FieldFilter (cond-> {:name (name field-name)}
                            base-type
                            (assoc :base_type base-type))
-                         {:type value-type, :value value})))
+                         (cond-> {:type value-type, :value value}
+                           (map? options) (assoc :options options)))))
 
 (deftest substitute-test
   (testing "non-parameterized strings should not be substituted"
@@ -173,24 +176,34 @@
            (substitute {:date (params/->FieldFilter {:name "date"} params/no-value)} ["[{$match: " (param :date) "}]"]))))
   (testing "operators"
     (testing "string"
-      (doseq [[operator form input] [[:string/starts-with
-                                      {"$expr" {"$regexMatch" {"input" "$description" "regex" "^foo" "options" ""}}}
-                                      ["foo"]]
-                                     [:string/ends-with
-                                      {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" ""}}}
-                                      ["foo"]]
-                                     [:string/contains
-                                      {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}
-                                      ["foo"]]
-                                     [:string/does-not-contain
-                                      {"$expr"
-                                       {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}}
-                                      ["foo"]]
-                                     [:string/= {"description" "foo"} ["foo"]]]]
+      (doseq [[operator form input options]
+              [[:string/starts-with
+                {"$expr" {"$regexMatch" {"input" "$description" "regex" "^foo" "options" ""}}}
+                ["foo"]]
+               [:string/ends-with
+                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" ""}}}
+                ["foo"]]
+               [:string/ends-with
+                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" "i"}}}
+                ["foo"]
+                {:case-sensitive false}]
+               [:string/contains
+                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}
+                ["foo"]]
+               [:string/does-not-contain
+                {"$expr"
+                 {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}}
+                ["foo"]]
+               [:string/does-not-contain
+                {"$expr"
+                 {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" "i"}}}}
+                ["foo"]
+                {:case-sensitive false}]
+               [:string/= {"description" "foo"} ["foo"]]]]
         (testing operator
           (is (= (strip (to-bson [{:$match form}]))
                  (strip
-                  (substitute {:desc (field-filter "description" :type/Text operator input)}
+                  (substitute {:desc (field-filter "description" :type/Text operator input options)}
                               ["[{$match: " (param :desc) "}]"])))))))
     (testing "numeric"
       (doseq [[operator form input] [[:number/<= {"price" {"$lte" 42}} [42]]
