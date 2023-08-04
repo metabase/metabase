@@ -34,6 +34,17 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti maybe-parse-sql-error
+  "Try to parse the sql error msg."
+  {:arglists '([driver database e]), :added "0.48.0"}
+  (fn [driver error-type]
+   [(driver/dispatch-on-initialized-driver driver) error-type])
+  :hierarchy #'driver/hierarchy)
+
+(defmethod maybe-parse-sql-error :default
+  [_driver _database _e]
+  nil)
+
 (defn- parse-error
   "Returns errors in a way that indicates which column had the problem. Can be used to highlight errors in forms."
   [driver database e]

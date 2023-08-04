@@ -1,5 +1,5 @@
 (ns metabase.driver.mysql.actions
-  "Method impls for [[metabase.driver.sql-jdbc.actions]] for `:mysql"
+  "Method impls for [[metabase.driver.sql-jdbc.actions]] for `:mysql."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -24,7 +24,7 @@
              (re-find #"Column '(.+)' cannot be null" error-message)]
     {:type    :violate-not-null-constraint
      :message (tru "violates not-null constraint")
-     :column  col}))
+     :columns [col]}))
 
 ;;; TODO -- we should probably be TTL caching this information. Otherwise
 ;;; parsing 100 errors for a bulk action will result in 100 identical data
@@ -70,8 +70,8 @@
   (let [[match table constraint _fkey-cols ref-table key-cols]
         (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)
         constraint (remove-backticks constraint)
-        table (remove-backticks table)
-        ref-table (remove-backticks ref-table)]
+        table      (remove-backticks table)
+        ref-table  (remove-backticks ref-table)]
     (when match
       {:type       :violate-foreign-key-constraint
        :message    (tru "violates foreign key constraint {0}" constraint)

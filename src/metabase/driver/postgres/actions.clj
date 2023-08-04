@@ -43,7 +43,6 @@
     (when match?
       (let [columns (constraint->column-names database constraint)]
         {:type       :violate-foreign-key-constraint
-
          :message    (tru "violates foreign key constraint {0}" constraint)
          :table      table
          :ref-table  ref-table
