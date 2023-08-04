@@ -282,7 +282,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Product → Category").should("not.exist");
     });
 
-    it.skip("should be able to show and hide custom expressions for a table", () => {
+    it("should be able to show and hide custom expressions for a table", () => {
       cy.createQuestion(tableQuestionWithExpression, {
         visitQuestion: true,
       });
@@ -310,7 +310,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Math").should("exist");
     });
 
-    it.skip("should be able to show and hide custom expressions for a table with selected fields", () => {
+    it("should be able to show and hide custom expressions for a table with selected fields", () => {
       cy.createQuestion(tableQuestionWithExpressionAndFields, {
         visitQuestion: true,
       });
@@ -335,7 +335,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Math").should("exist");
     });
 
-    it.skip("should be able to show and hide columns from aggregations", () => {
+    it("should be able to show and hide columns from aggregations", () => {
       cy.createQuestion(tableWithAggregations, { visitQuestion: true });
       openSettings();
 
@@ -419,7 +419,7 @@ describe("scenarios > visualizations > table column settings", () => {
   });
 
   describe("nested structured questions", () => {
-    it.skip("should be able to show and hide fields from a nested query", () => {
+    it("should be able to show and hide fields from a nested query", () => {
       cy.createQuestion(tableQuestion).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
@@ -447,7 +447,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Tax").should("exist");
     });
 
-    it.skip("should be able to show and hide fields from a nested query with joins (metabase#32373)", () => {
+    it("should be able to show and hide fields from a nested query with joins (metabase#32373)", () => {
       cy.createQuestion(tableQuestionWithJoin).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
@@ -475,7 +475,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Products → Ean").should("exist");
     });
 
-    it.skip("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
+    it("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
       cy.createQuestion(tableQuestionWithJoinAndFields).then(
         ({ body: card }) => {
           cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
@@ -515,7 +515,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Products → Ean").should("exist");
     });
 
-    it.skip("should be able to show and hide implicitly joinable fields for a nested query", () => {
+    it("should be able to show and hide implicitly joinable fields for a nested query", () => {
       cy.createQuestion(tableQuestion).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
@@ -544,7 +544,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Product → Category").should("not.exist");
     });
 
-    it.skip("should be able to show and hide custom expressions from a nested query", () => {
+    it("should be able to show and hide custom expressions from a nested query", () => {
       cy.createQuestion(tableQuestionWithExpression).then(({ body: card }) => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
@@ -611,7 +611,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Sum of Quantity").should("exist");
     });
 
-    it.skip("should be able to show and hide questions from a nested query with a self join", () => {
+    it("should be able to show and hide questions from a nested query with a self join", () => {
       cy.createQuestion(tableQuestion).then(({ body: card }) => {
         const columnName = "Tax";
         const columnLongName = `Question ${card.id} → ${columnName}`;
@@ -643,7 +643,7 @@ describe("scenarios > visualizations > table column settings", () => {
       });
     });
 
-    it.skip("should be able to show and hide custom expressions from a joined question", () => {
+    it("should be able to show and hide custom expressions from a joined question", () => {
       cy.createQuestion(tableQuestionWithExpression).then(({ body: card }) => {
         cy.createQuestion(tableQuestionWithJoinOnQuestion(card), {
           visitQuestion: true,
