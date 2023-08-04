@@ -23,6 +23,7 @@ describe("QuestionInfoSidebar", () => {
   it("should show caching controls if caching is enabled", async () => {
     const card = createMockCard({
       cache_ttl: 10,
+      can_write: true,
     });
     const settings = createMockSettings({
       "enable-query-caching": true,

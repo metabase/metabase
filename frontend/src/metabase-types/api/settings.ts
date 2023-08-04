@@ -203,6 +203,8 @@ export interface Settings {
   "enable-enhancements?": boolean;
   "enable-nested-queries": boolean;
   "enable-query-caching"?: boolean;
+  "query-caching-ttl-ratio": number;
+  "query-caching-min-ttl": number;
   "enable-password-login": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;

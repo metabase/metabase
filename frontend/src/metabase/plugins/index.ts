@@ -212,6 +212,7 @@ export const PLUGIN_CACHING = {
   DashboardCacheSection: PluginPlaceholder,
   DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
+  hasQuestionCacheSection: (question: Question) => false,
 };
 
 export const PLUGIN_REDUCERS: {
