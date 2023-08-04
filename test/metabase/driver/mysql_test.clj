@@ -12,6 +12,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -21,6 +22,7 @@
     :as string-extracts-test]
    [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -45,32 +47,36 @@
                                 hx/*honey-sql-version*                   2]
                         (thunk))))
 
+(defn drop-if-exists-and-create-db!
+  "Drop a MySQL database named `db-name` if it already exists; then create a new empty one with that name."
+  [db-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
+    (doseq [sql [(format "DROP DATABASE IF EXISTS %s;" db-name)
+                 (format "CREATE DATABASE %s;" db-name)]]
+      (jdbc/execute! spec [sql]))))
+
 (deftest all-zero-dates-test
   (mt/test-driver :mysql
     (testing (str "MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL "
                   "when returning them like we asked")
-      (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-        ;; Create the DB
-        (doseq [sql ["DROP DATABASE IF EXISTS all_zero_dates;"
-                     "CREATE DATABASE all_zero_dates;"]]
+      (drop-if-exists-and-create-db! "all_zero_dates")
+      ;; Create Table & add data
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
+            spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
+                        ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
+                        ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
+                        (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
+        (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
+                     "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
           (jdbc/execute! spec [sql]))
-        ;; Create Table & add data
-        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
-              spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
-                          ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
-                          ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
-                          (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
-          (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
-                       "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
-            (jdbc/execute! spec [sql]))
-          ;; create & sync MB DB
-          (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
-            (sync/sync-database! database)
-            (mt/with-db database
-              ;; run the query
-              (is (= [[1 nil]]
-                     (mt/rows
-                      (mt/run-mbql-query exciting-moments-in-history)))))))))))
+        ;; create & sync MB DB
+        (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+          (sync/sync-database! database)
+          (mt/with-db database
+            ;; run the query
+            (is (= [[1 nil]]
+                   (mt/rows
+                    (mt/run-mbql-query exciting-moments-in-history))))))))))
 
 (deftest date-test
   ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
@@ -314,44 +320,40 @@
 (deftest system-versioned-tables-test
   (mt/test-driver :mysql
     (testing "system versioned tables appear during a sync"
-      (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
-        ;; Create the DB
-        (doseq [sql ["DROP DATABASE IF EXISTS versioned_tables;"
-                     "CREATE DATABASE versioned_tables;"]]
-          (jdbc/execute! spec [sql]))
-        ;; Create Table & add data
-        (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
-              spec    (sql-jdbc.conn/connection-details->spec :mysql details)
-              compat  (try
-                        (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
-                                     "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
-                                     "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
-                                     "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
-                                     "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
-                          (jdbc/execute! spec [sql]))
-                        true
-                        (catch java.sql.SQLSyntaxErrorException se
-                          ;; if an error is received with SYSTEM VERSIONING mentioned, the version
-                          ;; of mysql or mariadb being tested against does not support system versioning,
-                          ;; so do not continue
-                          (if (re-matches #".*VERSIONING'.*" (.getMessage se))
-                            false
-                            (throw se))))]
-          (when compat
-            (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
-              (sync/sync-database! database)
-              (is (= [{:name   "src1"
-                       :fields [{:name      "id"
-                                 :base_type :type/Integer}
-                                {:name      "t"
-                                 :base_type :type/Text}]}
-                      {:name   "src2"
-                       :fields [{:name      "id"
-                                 :base_type :type/Integer}
-                                {:name      "t"
-                                 :base_type :type/Text}]}]
-                     (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
-                          (map table-fingerprint)))))))))))
+      (drop-if-exists-and-create-db! "versioned_tables")
+      ;; Create Table & add data
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
+            spec    (sql-jdbc.conn/connection-details->spec :mysql details)
+            compat  (try
+                     (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
+                                  "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
+                                  "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
+                                  "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
+                                  "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
+                       (jdbc/execute! spec [sql]))
+                     true
+                     (catch java.sql.SQLSyntaxErrorException se
+                       ;; if an error is received with SYSTEM VERSIONING mentioned, the version
+                       ;; of mysql or mariadb being tested against does not support system versioning,
+                       ;; so do not continue
+                       (if (re-matches #".*VERSIONING'.*" (.getMessage se))
+                         false
+                         (throw se))))]
+        (when compat
+          (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
+            (sync/sync-database! database)
+            (is (= [{:name   "src1"
+                     :fields [{:name      "id"
+                               :base_type :type/Integer}
+                              {:name      "t"
+                               :base_type :type/Text}]}
+                    {:name   "src2"
+                     :fields [{:name      "id"
+                               :base_type :type/Integer}
+                              {:name      "t"
+                               :base_type :type/Text}]}]
+                   (->> (t2/hydrate (t2/select Table :db_id (:id database) {:order-by [:name]}) :fields)
+                        (map table-fingerprint))))))))))
 
 (deftest group-on-time-column-test
   (mt/test-driver :mysql
@@ -442,6 +444,39 @@
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
         (is (= ["JSON_EXTRACT(`boop`.`bleh`, ?)" "$.\"boop\".\"foobar\".\"1234\""]
                (sql.qp/format-honeysql :mysql (sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
+
+(deftest sync-json-with-composite-pks-test
+  (testing "Make sure sync a table with json columns that have composite pks works"
+    (mt/test-driver :mysql
+      (when-not (is-mariadb? driver/*driver* (u/id (mt/db)))
+        (drop-if-exists-and-create-db! "composite_pks_test")
+        (with-redefs [metadata-queries/nested-field-sample-limit 4]
+          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "composite_pks_test"})
+                spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+            (doseq [statement (concat ["CREATE TABLE `json_table` (`first_id` INT, `second_id` INT, `json_val` JSON, PRIMARY KEY(`first_id`, `second_id`));"]
+                                      (for [[first-id second-id json] [[1 1 "{\"int_turn_string\":1}"]
+                                                                       [2 2 "{\"int_turn_string\":2}"]
+                                                                       [3 3 "{\"int_turn_string\":3}"]
+                                                                       [4 4 "{\"int_turn_string\":4}"]
+                                                                       [4 5 "{\"int_turn_string\":\"x\"}"]
+                                                                       [4 6 "{\"int_turn_string\":5}"]]]
+                                        (format "INSERT INTO `json_table` (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
+              (jdbc/execute! spec [statement]))
+            (t2.with-temp/with-temp
+              [:model/Database database {:name "composite_pks_test" :engine driver/*driver* :details details}]
+              (mt/with-db database
+                (sync-tables/sync-tables-and-database! database)
+                (is (= #{{:name              "json_val → int_turn_string",
+                          :database-type     "text"
+                          :base-type         :type/Text
+                          :database-position 0
+                          :json-unfolding    false
+                          :visibility-type   :normal
+                          :nfc-path          [:json_val "int_turn_string"]}}
+                       (sql-jdbc.sync/describe-nested-field-columns
+                        driver/*driver*
+                        database
+                        (t2/select-one Table :db_id (mt/id) :name "json_table"))))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :mysql

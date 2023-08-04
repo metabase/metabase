@@ -129,6 +129,14 @@
          :when     (some? component)]
      (u/qualified-name component))))
 
+(defn identifier->components
+  "Given an identifer return its components
+  (identifier->components (identifier :field :metabase :user :email))
+  => (\"metabase\" \"user\" \"email\"))
+  "
+  [identifier]
+  (:components identifier))
+
 (defn identifier?
   "Whether `x` is an instance of `Identifier`."
   {:deprecated "0.46.0"}

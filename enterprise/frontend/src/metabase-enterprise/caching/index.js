@@ -11,6 +11,7 @@ import {
   getQuestionsImplicitCacheTTL,
   validateCacheTTL,
   normalizeCacheTTL,
+  hasQuestionCacheSection,
 } from "./utils";
 
 if (hasPremiumFeature("cache_granular_controls")) {
@@ -29,4 +30,5 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.DashboardCacheSection = DashboardCacheSection;
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
   PLUGIN_CACHING.isEnabled = () => true;
+  PLUGIN_CACHING.hasQuestionCacheSection = hasQuestionCacheSection;
 }

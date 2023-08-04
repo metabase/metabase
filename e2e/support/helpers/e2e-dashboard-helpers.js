@@ -1,5 +1,5 @@
 import { visitDashboard } from "./e2e-misc-helpers";
-import { popover } from "./e2e-ui-elements-helpers";
+import { dashboardHeader, popover } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -115,6 +115,10 @@ export function createEmptyTextBox() {
 
 export function addTextBox(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
+  addTextBoxWhileEditing(string, options);
+}
+
+export function addTextBoxWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Text").click();
   cy.findByPlaceholderText(
@@ -130,6 +134,10 @@ export function createEmptyHeading() {
 
 export function addHeading(string, options = {}) {
   cy.findByLabelText("Edit dashboard").click();
+  addHeadingWhileEditing(string, options);
+}
+
+export function addHeadingWhileEditing(string, options = {}) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Heading").click();
   cy.findByPlaceholderText("Heading").type(string, options);
@@ -174,4 +182,12 @@ export function resizeDashboardCard({ card, x, y }) {
 
 export function createLinkCard() {
   cy.icon("link").click();
+}
+
+export function toggleDashboardInfoSidebar() {
+  dashboardHeader().icon("info").click();
+}
+
+export function openDashboardMenu() {
+  dashboardHeader().findByLabelText("dashboard-menu-button").click();
 }

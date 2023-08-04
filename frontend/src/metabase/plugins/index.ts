@@ -201,7 +201,7 @@ export const PLUGIN_MODERATION = {
     question?: Question,
     isModerator?: boolean,
     reload?: () => void,
-  ) => ({}),
+  ) => [],
 };
 
 export const PLUGIN_CACHING = {
@@ -212,6 +212,7 @@ export const PLUGIN_CACHING = {
   DashboardCacheSection: PluginPlaceholder,
   DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
+  hasQuestionCacheSection: (question: Question) => false,
 };
 
 export const PLUGIN_REDUCERS: {
