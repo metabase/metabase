@@ -1,7 +1,7 @@
 ---
 title: Parameters for static embeds
 redirect_from:
-- /docs/latest/embedding/static-embedding-parameters
+- /docs/latest/embedding/signed-embedding-parameters
 ---
 
 # Parameters for signed embeds
