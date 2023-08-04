@@ -1,5 +1,5 @@
 import { css, Global } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 import { FontFile } from "metabase-types/api";
@@ -14,6 +14,8 @@ const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
     :root {
       --default-font-family: "${font}";
       --color-brand: ${color("brand")};
+      --color-brand-alpha-04: ${alpha("brand", 0.04)};
+      --color-brand-alpha-88: ${alpha("brand", 0.88)};
       --color-focus: ${color("focus")};
     }
 
