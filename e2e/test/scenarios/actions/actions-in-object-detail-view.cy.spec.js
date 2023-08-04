@@ -201,12 +201,12 @@ function openObjectDetailModal(objectId) {
 
 function openUpdateObjectModal() {
   cy.findByTestId("actions-menu").click();
-  popover().findByText("Update").click();
+  popover().findByText("Update").should("be.visible").click();
 }
 
 function openDeleteObjectModal() {
   cy.findByTestId("actions-menu").click();
-  popover().findByText("Delete").click();
+  popover().findByText("Delete").should("be.visible").click();
 }
 
 function assertActionsDropdownExists() {
