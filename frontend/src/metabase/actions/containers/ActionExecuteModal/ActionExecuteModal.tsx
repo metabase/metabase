@@ -1,6 +1,5 @@
 import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
-import { t } from "ttag";
 
 import {
   ParametersForActionExecution,
@@ -9,6 +8,7 @@ import {
 import { useActionQuery } from "metabase/common/hooks/use-action-query";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
+import { checkNotNull } from "metabase/core/utils/types";
 import { useDispatch } from "metabase/lib/redux";
 
 import { executeAction } from "../../actions";
@@ -54,12 +54,12 @@ export const ActionExecuteModal = ({
 
   const handleSubmit = useCallback(
     (parameters: ParametersForActionExecution) => {
-      if (!action) {
-        // TypeScript check - it should never happen
-        throw new Error("Unexpected error: action is undefined");
-      }
-
-      return dispatch(executeAction({ action, parameters }));
+      return dispatch(
+        executeAction({
+          action: checkNotNull(action),
+          parameters,
+        }),
+      );
     },
     [dispatch, action],
   );
@@ -86,19 +86,16 @@ export const ActionExecuteModal = ({
     return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
   }
 
-  if (!action) {
-    // TypeScript check - this should never happen
-    return <LoadingAndErrorWrapper error={t`Failed to load action details`} />;
-  }
+  const loadedAction = checkNotNull(action);
 
   return (
     <ModalContent
       data-testid="action-execute-modal"
-      title={action.name}
+      title={loadedAction.name}
       onClose={onClose}
     >
       <ActionParametersInputForm
-        action={action}
+        action={loadedAction}
         initialValues={initialValues}
         prefetchesInitialValues
         onCancel={onClose}
