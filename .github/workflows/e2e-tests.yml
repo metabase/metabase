@@ -8,7 +8,6 @@ on:
     branches:
       - "master"
       - 'release-**'
-      - 'cypress-crash-chrome'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
