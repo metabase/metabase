@@ -3,6 +3,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time :as t]
+   [metabase.config :as config]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
@@ -34,6 +35,19 @@
 (comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent :sql-jdbc)
+
+(def ^:dynamic *allow-testing-h2-connections*
+  "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
+  H2 databases from the API, but this flag is here to disable that behavior for syncing existing databases, or when
+  needed for tests."
+  ;; you can disable this flag with the env var below, please do not use it under any circumstances, it is only here so
+  ;; existing e2e tests will run without us having to update a million tests. We should get rid of this and rework those
+  ;; e2e tests to use SQLite ASAP.
+  (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
+      false))
+
+;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
+(defmethod driver/superseded-by :h2 [_driver] :deprecated)
 
 (defmethod sql.qp/honey-sql-version :h2
   [_driver]
@@ -106,6 +120,8 @@
 
 (defmethod driver/can-connect? :h2
   [driver {:keys [db] :as details}]
+  (when-not *allow-testing-h2-connections*
+    (throw (ex-info (tru "H2 is not supported as a data warehouse") {:status-code 400})))
   (when (string? db)
     (let [connection-str  (cond-> db
                             (not (str/includes? db "h2:")) (str/replace-first #"^" "h2:")
