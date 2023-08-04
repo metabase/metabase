@@ -670,7 +670,7 @@
     [(_ :guard (every-pred keyword? (complement #{:named :+ :- :* :/})))
      (_ :guard aggregation-subclause?)
      & _]
-    (vec (reduce concat (map wrap-single-aggregations aggregations)))
+    (into [] (mapcat wrap-single-aggregations) aggregations)
 
     ;; something like {:aggregations [:sum 10]} -- MBQL 95 single aggregation
     [(_ :guard keyword?) & _]
@@ -799,10 +799,10 @@
     query
     ;; get a set of all Field clauses (of any type) in the breakout. For temporal-bucketed fields, we'll include both
     ;; the bucketed `[:datetime-field <field> ...]` clause and the `<field>` clause it wraps
-    (let [breakout-fields (set (reduce concat (mbql.match/match breakout
-                                                [:field id-or-name opts]
-                                                [&match
-                                                 [:field id-or-name (dissoc opts :temporal-unit)]])))]
+    (let [breakout-fields (into #{} cat (mbql.match/match breakout
+                                          [:field id-or-name opts]
+                                          [&match
+                                           [:field id-or-name (dissoc opts :temporal-unit)]]))]
       ;; now remove all the Fields in `:fields` that match the ones in the set
       (update-in query [:query :fields] (comp vec (partial remove breakout-fields))))))
 

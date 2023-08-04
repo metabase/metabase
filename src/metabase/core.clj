@@ -195,8 +195,8 @@
 
 ;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
-(defn -main
-  "Launch Metabase in standalone mode."
+(defn entrypoint
+  "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.bootstrap/-main]].)"
   [& [cmd & args]]
   (maybe-enable-tracing)
   (if cmd

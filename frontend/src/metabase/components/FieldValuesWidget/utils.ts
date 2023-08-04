@@ -37,7 +37,7 @@ export async function searchFieldValues(
   },
   cancelled: Promise<unknown>,
 ) {
-  let options: null | FieldValue[] = dedupeValues(
+  const options: null | FieldValue[] = dedupeValues(
     await Promise.all(
       fields.map((field: Field) =>
         MetabaseApi.field_search(
@@ -53,7 +53,6 @@ export async function searchFieldValues(
     ),
   );
 
-  options = options?.map(result => (Array.isArray(result) ? result : [result]));
   return options;
 }
 
