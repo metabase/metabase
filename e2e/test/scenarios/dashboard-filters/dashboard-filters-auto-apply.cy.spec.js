@@ -391,7 +391,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
         .should("be.disabled");
     });
 
-    it("should not display a toast even when a dashboard takes longer than 15s to load", () => {
+    it("should not display a toast even when a dashboard takes longer than 15s to load (metabase#28756)", () => {
       cy.clock();
       openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
