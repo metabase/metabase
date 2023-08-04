@@ -436,7 +436,7 @@ Secret key used to sign JSON Web Tokens for requests to /api/embed endpoints.
 
 The secret should be kept safe (treated like a password) and recommended to be a 64 character string.
 
-This is for Signed Embedding, and has nothing to do with JWT SSO authentication, which is [MB_JWT_*](#mb_jwt_enabled).
+This is for Static embedding, and has nothing to do with JWT SSO authentication, which is [MB_JWT_*](#mb_jwt_enabled).
 
 ### `MB_EMOJI_IN_LOGS`
 
@@ -701,7 +701,7 @@ Default: `false`
 
 When set to `true`, will enable JWT authentication with the options configured in the `MB_JWT_*` variables.
 
-This is for JWT SSO authentication, and has nothing to do with Signed Embedding, which is [MB_EMBEDDING_SECRET_KEY](#mb_embedding_secret_key)
+This is for JWT SSO authentication, and has nothing to do with Static embedding, which is [MB_EMBEDDING_SECRET_KEY](#mb_embedding_secret_key)
 
 ### `MB_JWT_GROUP_MAPPINGS`
 
