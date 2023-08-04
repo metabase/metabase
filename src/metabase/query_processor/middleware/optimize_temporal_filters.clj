@@ -108,7 +108,7 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod optimize-filter :=
-  [[_ field temporal-value]]
+  [[_tag field temporal-value]]
   (let [temporal-unit (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
     (when (field-and-temporal-value-have-compatible-units? field temporal-value)
       (let [field' (change-temporal-unit-to-default field)]
