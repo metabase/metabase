@@ -184,6 +184,10 @@ export function createLinkCard() {
   cy.icon("link").click();
 }
 
+export function toggleDashboardInfoSidebar() {
+  dashboardHeader().icon("info").click();
+}
+
 export function openDashboardMenu() {
-  return dashboardHeader().findByLabelText("dashboard-menu-button").click();
+  dashboardHeader().findByLabelText("dashboard-menu-button").click();
 }
