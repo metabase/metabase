@@ -1,4 +1,3 @@
-import { checkNotNull } from "metabase/core/utils/types";
 import { DatasetColumn, TableColumnOrderSetting } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
@@ -15,14 +14,17 @@ import {
 const STAGE_INDEX = -1;
 
 export const getColumnSettingsWithRefs = (
-  columnSettings: TableColumnOrderSetting[],
+  value: TableColumnOrderSetting[],
 ): ColumnSetting[] => {
-  return columnSettings
-    .filter(({ fieldRef }) => fieldRef != null)
-    .map(columnSetting => ({
-      ...columnSetting,
-      fieldRef: checkNotNull(columnSetting.fieldRef),
-    }));
+  return value.reduce((columnSettings: ColumnSetting[], columnSetting) => {
+    if (columnSetting.fieldRef) {
+      columnSettings.push({
+        ...columnSetting,
+        fieldRef: columnSetting.fieldRef,
+      });
+    }
+    return columnSettings;
+  }, []);
 };
 
 export const getMetadataColumns = (query: Lib.Query): Lib.ColumnMetadata[] => {
@@ -49,18 +51,24 @@ export const getQueryColumnSettingItems = (
     fieldRefs,
   );
 
-  return columnSettings
-    .filter((columnSetting, columnIndex) => {
-      const metadataIndex = metadataIndexes[columnIndex];
-      const datasetIndex = datasetIndexes[columnIndex];
-      return metadataIndex >= 0 && datasetIndex >= 0;
-    })
-    .map((columnSetting, columnIndex) => ({
-      enabled: columnSetting.enabled,
-      metadataColumn: metadataColumns[metadataIndexes[columnIndex]],
-      datasetColumn: datasetColumns[datasetIndexes[columnIndex]],
-      columnSettingIndex: columnIndex,
-    }));
+  return columnSettings.reduce(
+    (settingItems: ColumnSettingItem[], columnSetting, settingIndex) => {
+      const metadataIndex = metadataIndexes[settingIndex];
+      const datasetIndex = datasetIndexes[settingIndex];
+
+      if (metadataIndex >= 0 && datasetIndex >= 0) {
+        settingItems.push({
+          enabled: columnSetting.enabled,
+          metadataColumn: metadataColumns[metadataIndexes[settingIndex]],
+          datasetColumn: datasetColumns[datasetIndexes[settingIndex]],
+          columnSettingIndex: settingIndex,
+        });
+      }
+
+      return settingItems;
+    },
+    [],
+  );
 };
 
 export const getDatasetColumnSettingItems = (
@@ -71,16 +79,22 @@ export const getDatasetColumnSettingItems = (
     findColumnIndexForColumnSetting(datasetColumns, columnSetting),
   );
 
-  return columnSettings
-    .filter((columnSetting, columnIndex) => {
-      const datasetIndex = datasetIndexes[columnIndex];
-      return datasetIndex >= 0;
-    })
-    .map((columnSetting, columnIndex) => ({
-      enabled: columnSetting.enabled,
-      datasetColumn: datasetColumns[datasetIndexes[columnIndex]],
-      columnSettingIndex: columnIndex,
-    }));
+  return columnSettings.reduce(
+    (settingItems: ColumnSettingItem[], columnSetting, settingIndex) => {
+      const datasetIndex = datasetIndexes[settingIndex];
+
+      if (datasetIndex >= 0) {
+        settingItems.push({
+          enabled: columnSetting.enabled,
+          datasetColumn: datasetColumns[datasetIndexes[settingIndex]],
+          columnSettingIndex: settingIndex,
+        });
+      }
+
+      return settingItems;
+    },
+    [],
+  );
 };
 
 export const getAdditionalMetadataColumns = (
