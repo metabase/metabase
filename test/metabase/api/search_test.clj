@@ -329,7 +329,7 @@
                        (set (mt/user-http-request :crowberto :get 200 "search/models"
                                                   :q search-term
                                                   :verified true)))))))))
-      (testing "return a subset of model for created filter"
+      (testing "return a subset of model for created_at filter"
         (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
                (set (mt/user-http-request :crowberto :get 200 "search/models"
                                           :q search-term
@@ -1027,7 +1027,7 @@
           (is (= now-result (search "2023-05-04")))
           (is (= (set/union old-result now-result)
                  (search "2021-05-03~")))
-          ;; range is inclusive end but exclusive end, so this does not contains now-result
+          ;; range is inclusive of the start but exclusive of the end, so this does not contain now-result
           (is (= old-result
                  (search "2021-05-04~2023-05-04")))
           (is (= old-result
