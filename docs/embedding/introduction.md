@@ -20,7 +20,7 @@ There are three ways to embed Metabase in your app:
 
 Interactive embedding is the only kind of embedding that [integrates with SSO and data permissions](./interactive-embedding.md) to enable true self-service access to the underlying data.
 
-**When to use interactive embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-interactive-embedding). With interactive embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
+**When to use interactive embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With interactive embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
 
 ## Static embedding
 
