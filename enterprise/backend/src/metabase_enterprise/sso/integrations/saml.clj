@@ -36,7 +36,9 @@
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
    [schema.core :as s])
-  (:import [java.util Base64 UUID]))
+  (:import
+   (java.net URI URISyntaxException)
+   (java.util Base64 UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -109,14 +111,24 @@
   (api/check (sso-settings/saml-enabled)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
+(defn- has-host? [uri]
+  (try
+    (-> uri URI. .getHost some?)
+    (catch URISyntaxException _ false)))
+
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
   [req]
   (check-saml-enabled)
-  (let [redirect-url (or (get-in req [:params :redirect])
+  (let [redirect (get-in req [:params :redirect])
+        redirect-url (if (nil? redirect)
+                       (do
                          (log/warn (trs "Warning: expected `redirect` param, but none is present"))
-                         (public-settings/site-url))]
+                         (public-settings/site-url))
+                       (if (has-host? redirect)
+                         redirect
+                         (str (public-settings/site-url) redirect)))]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
