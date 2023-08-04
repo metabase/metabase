@@ -434,10 +434,10 @@
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
           (do-with-some-validators-disabled
             (fn []
-              (let [get-response (client :get 400 "/auth/sso"
-                                   {:request-options {:redirect-strategy :none}}
-                                   :redirect redirect-url)]
-                (is (= "SSO is trying to do an open redirect to an untrusted site" get-response))))))))))
+             (let [get-response (client :get 400 "/auth/sso"
+                                  {:request-options {:redirect-strategy :none}}
+                                  :redirect redirect-url)]
+               (is (= "Invalid redirect URL" (:message get-response)))))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"

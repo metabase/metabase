@@ -25,7 +25,7 @@
   ;; slight optimization: for the `field-id->field-values` version we can batched hydrate `:table` to avoid having to
   ;; make a bunch of calls to fetch Table. For `get-or-create-field-values` we don't hydrate `:table` so we can fall
   ;; back to fetching it manually with `field/table`
-  (table/only-segmented-perms? (or table (field/table field))))
+  (table/only-sandboxed-perms? (or table (field/table field))))
 
 (defn- table-id->gtap
   "Find the GTAP for current user that apply to table `table-id`."

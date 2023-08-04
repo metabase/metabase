@@ -1,6 +1,39 @@
 {:config-paths ["macros"]
  :linters
- {:unresolved-symbol
+ {:aliased-namespace-symbol     {:level :warning}
+  :invalid-arity                {:skip-args [metabase.mbql.util.match/match]} ; TODO (cam): can we fix these?
+  :keyword-binding              {:level :warning}
+  :main-without-gen-class       {:level :warning}
+  :misplaced-docstring          {:level :warning}
+  :missing-body-in-when         {:level :warning}
+  :missing-docstring            {:level :warning}
+  :missing-else-branch          {:level :warning}
+  :namespace-name-mismatch      {:level :warning}
+  :non-arg-vec-return-type-hint {:level :warning}
+  :reduce-without-init          {:level :warning}
+  :redundant-fn-wrapper         {:level :warning}
+  :refer-all                    {:level :warning, :exclude [clojure.test]}
+  :single-key-in                {:level :warning}
+  :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
+  :use                          {:level :warning}
+  :warn-on-reflection           {:level :warning}
+
+  ;;
+  ;; disabled linters
+  ;;
+
+  :unexpected-recur         {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
+  :used-underscored-binding {:level :off} ; false positives: see https://github.com/clj-kondo/clj-kondo/issues/2152
+
+  ;;
+  ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
+  ;;
+
+  ;; :docstring-leading-trailing-whitespace {:level :warning}
+  ;; :docstring-no-summary                  {:level :warning}
+  ;; :shadowed-var                          {:level :warning}
+
+  :unresolved-symbol
   {:exclude
    [instaparse.core/transform
     (cljs.test/is [=? malli=])
@@ -24,33 +57,6 @@
     (metabase.util/prog1 [<>])
     (taoensso.nippy/extend-freeze)
     (taoensso.nippy/extend-thaw)]}
-
-  :refer-all                                {:level   :warning
-                                             :exclude [clojure.test]}
-  ;; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
-  :unexpected-recur                         {:level :off}
-  ;; TODO (cam): can we fix these?
-  :unused-referred-var                      {:exclude {compojure.core [GET DELETE POST PUT]}}
-  :missing-else-branch                      {:level :warning}
-  :misplaced-docstring                      {:level :warning}
-  :non-arg-vec-return-type-hint             {:level :warning}
-  :missing-body-in-when                     {:level :warning}
-  :missing-docstring                        {:level :warning}
-  ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
-  :namespace-name-mismatch                  {:level :off}
-  :use                                      {:level :warning}
-  :redundant-fn-wrapper                     {:level :warning}
-  :invalid-arity                            {:skip-args [metabase.mbql.util.match/match]}
-  :warn-on-reflection                       {:level :warning}
-  ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
-  ;; :docstring-no-summary                  {:level :warning}
-  ;; :docstring-leading-trailing-whitespace {:level :warning}
-  ;; :reduce-without-init                   {:level :warning}
-  ;; :used-underscored-binding              {:level :warning}
-  ;; :single-key-in                         {:level :warning}
-  ;; :keyword-binding                       {:level :warning}
-  ;; :main-without-gen-class                {:level :warning}
-  ;; :shadowed-var                          {:level :warning}
 
   :deprecated-var
   {:exclude
@@ -738,9 +744,7 @@
   metabase-lib
   {:linters
    {:docstring-leading-trailing-whitespace                {:level :warning}
-    :reduce-without-init                                  {:level :warning}
     :used-underscored-binding                             {:level :warning}
-    :single-key-in                                        {:level :warning}
     :keyword-binding                                      {:level :warning}
     :shadowed-var                                         {:level :warning}
     :metabase/deftest-not-marked-parallel-or-synchronized {:level :warning}

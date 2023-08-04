@@ -190,7 +190,7 @@
                     :num_cards_per_pulses {(s/required-key "1-5")  (>= 1)
                                            (s/required-key "6-10") (>= 1)
                                            s/Str                   s/Any}}
-                   (#'metabase.analytics.stats/pulse-metrics)))
+                   (#'stats/pulse-metrics)))
       (is (schema= {:alerts               (>= 4)
                     :with_table_cards     (>= 2)
                     :first_time_only      (>= 1)
@@ -204,4 +204,4 @@
                     :num_cards_per_alerts {(s/required-key "1-5")  (>= 1)
                                            (s/required-key "6-10") (>= 1)
                                            s/Str                   s/Any}}
-                   (#'metabase.analytics.stats/alert-metrics))))))
+                   (#'stats/alert-metrics))))))

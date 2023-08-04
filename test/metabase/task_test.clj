@@ -58,7 +58,7 @@
 
 (defn- triggers []
   (set
-   (for [^CronTrigger trigger (qs/get-triggers-of-job (#'metabase.task/scheduler) (.getKey (job)))]
+   (for [^CronTrigger trigger (qs/get-triggers-of-job (#'task/scheduler) (.getKey (job)))]
      {:cron-expression     (.getCronExpression trigger)
       :misfire-instruction (.getMisfireInstruction trigger)})))
 
