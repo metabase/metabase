@@ -18,6 +18,8 @@ describe("issue 12926", () => {
 
   describe("field source", () => {
     it("should stop the ongoing query when removing a card from a dashboard", () => {
+      slowDownQuery();
+
       cy.createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
@@ -34,6 +36,8 @@ describe("issue 12926", () => {
     });
 
     it("should re-fetch the query when doing undo on the removal", () => {
+      slowDownQuery();
+
       cy.createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
@@ -42,18 +46,28 @@ describe("issue 12926", () => {
 
       removeCard();
 
-      // stub the response so that the we can wait the request to see if it has been made
-      // without the stub it would go in timeout as the query is longer than the default timeout
-      cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
-        req.reply({});
-      }).as("cardQuery");
+      restoreQuery();
 
       undo();
 
-      cy.wait("@cardQuery");
+      cy.wait("@cardQueryRestored").then(a => console.log("aa", a));
     });
   });
 });
+
+function slowDownQuery() {
+  cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
+    req.on("response", res => {
+      res.setDelay(10000);
+    });
+  }).as("cardQuerySlowed");
+}
+
+function restoreQuery() {
+  cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
+    req.continue();
+  }).as("cardQueryRestored");
+}
 
 function removeCard() {
   editDashboard();
