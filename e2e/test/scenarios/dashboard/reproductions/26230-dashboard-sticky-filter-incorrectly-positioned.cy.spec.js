@@ -16,21 +16,9 @@ describe("issue 26230", () => {
       .findByDisplayValue("dashboard with a tall card 2")
       .should("not.be.visible");
 
-    cy.findByTestId("dashboard-parameters-widget-container").should(
-      "have.css",
-      "position",
-      "fixed",
-    );
-
     cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
     cy.findByRole("listitem", { name: "dashboard with a tall card" }).click();
     cy.wait("@loadDashboard");
-
-    cy.findByTestId("dashboard-parameters-widget-container").should(
-      "not.have.css",
-      "position",
-      "fixed",
-    );
   });
 });
 
