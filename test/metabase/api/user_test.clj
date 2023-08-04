@@ -271,7 +271,6 @@
                      :first_login                "2021-03-18T19:52:41.808482Z"
                      :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
-                     :has_question_and_dashboard false
                      :is_installer               (= 1 (mt/user->id :rasta))
                      :has_invited_second_user    (= 1 (mt/user->id :rasta))})
                    (dissoc :is_qbnewb :last_login))
