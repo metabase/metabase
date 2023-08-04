@@ -12,7 +12,7 @@ import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardCreated } from "../analytics";
-import { getDashCardById } from "../selectors";
+import { getDashCardById, getSingleDashCardData } from "../selectors";
 import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
@@ -92,7 +92,13 @@ export const undoRemoveCardFromDashboard = createThunkAction(
       const dashcard = getDashCardById(getState(), dashcardId);
       const card = dashcard.card;
 
-      dispatch(fetchCardData(card, dashcard));
+      const cardAlreadyLoaded = Boolean(
+        getSingleDashCardData(getState(), dashcardId),
+      );
+
+      if (!cardAlreadyLoaded) {
+        dispatch(fetchCardData(card, dashcard));
+      }
       return { dashcardId };
     },
 );
