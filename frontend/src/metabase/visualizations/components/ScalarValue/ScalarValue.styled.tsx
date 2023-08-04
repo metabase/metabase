@@ -77,6 +77,7 @@ export const ScalarDescriptionPlaceholder = styled.div`
 
 export const ScalarDescriptionIcon = styled(Icon)`
   cursor: pointer;
+  color: ${color("text-light")};
   &:hover {
     color: ${color("brand")};
   }
