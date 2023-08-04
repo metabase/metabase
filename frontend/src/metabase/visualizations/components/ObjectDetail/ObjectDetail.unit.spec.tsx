@@ -536,6 +536,9 @@ describe("Object Detail", () => {
     expect(action).toBeInTheDocument();
     action?.click();
 
+    expect(
+      screen.queryByText("Choose a record to update"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Loading...")).toBeInTheDocument();
 
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
