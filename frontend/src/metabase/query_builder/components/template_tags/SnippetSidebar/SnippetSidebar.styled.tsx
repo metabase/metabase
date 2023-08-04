@@ -53,6 +53,7 @@ export const AddSnippetIcon = styled(Icon)<AddSnippetIconProps>`
   display: ${props => props.isHidden && "none"};
   color: ${color("brand")};
   cursor: pointer;
+  padding: 0.5rem;
   border-radius: 0.5rem;
 
   &:hover {

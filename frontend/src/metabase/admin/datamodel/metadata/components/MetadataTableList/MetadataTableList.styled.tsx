@@ -26,6 +26,6 @@ export const HideIconButton = styled(IconButtonWrapper)`
   cursor: ${props => props.disabled && "not-allowed"};
 
   &:hover {
-    color: ${color("brand")};
+    color: ${props => !props.disabled && color("brand")};
   }
 `;

@@ -10,6 +10,6 @@ export const ButtonRoot = styled(Button)<ButtonRootProps>`
   color: ${props => !props.isSelected && color("text-dark")};
 
   &:hover {
-    color: ${props => props.isSelected && color("brand")};
+    color: ${props => !props.isSelected && color("brand")};
   }
 `;
