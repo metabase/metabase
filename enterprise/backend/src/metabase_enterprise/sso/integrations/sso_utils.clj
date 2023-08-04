@@ -9,11 +9,12 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (java.net MalformedURLException URL URLDecoder)))
+   (java.net URI URLDecoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,15 +53,15 @@
           (t2/select-one User :id id))))))
 
 (defn check-sso-redirect
-  "Check if open redirect is being exploited in SSO, blurts out a 400 if so"
+  "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
   [redirect-url]
-  (let [decoded-url (some-> redirect-url (URLDecoder/decode))
-                    ;; In this case, this just means that we don't have a specified host in redirect,
-                    ;; meaning it can't be an open redirect
-        no-host     (or (nil? decoded-url) (= (first decoded-url) \/))
-        host        (try
-                      (.getHost (new URL decoded-url))
-                      (catch MalformedURLException _ ""))
-        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
-   (api/check (or no-host (= host our-host))
-     [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))
+  (try
+    (let [decoded-url (some-> ^String redirect-url (URLDecoder/decode "UTF-8"))
+          host        (some-> decoded-url (URI.) (.getHost))
+          our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
+      (api/check-400 (or (nil? decoded-url) (= host our-host))))
+    (catch Exception e
+      (log/error e "Invalid redirect URL")
+      (throw (ex-info (tru "Invalid redirect URL")
+                      {:status-code 400
+                       :redirect-url redirect-url})))))

@@ -579,15 +579,18 @@
       (testing "A non-admin cannot update database metadata if the advanced-permissions feature flag is not present"
         (with-all-users-data-perms {db-id {:details :yes}}
           (premium-features-test/with-premium-features #{}
-            (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"}))))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"}))))))
 
       (testing "A non-admin cannot update database metadata if they do not have DB details permissions"
         (with-all-users-data-perms {db-id {:details :no}}
-          (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"})))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"})))))
 
       (testing "A non-admin can update database metadata if they have DB details permissions"
         (with-all-users-data-perms {db-id {:details :yes}}
-          (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))
+          (is (=? {:id db-id}
+                  (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))))
 
 (deftest delete-database-test
   (t2.with-temp/with-temp [Database {db-id :id}]
@@ -600,7 +603,7 @@
                   Table       [{table-id :id}  {:db_id db-id}]
                   Field       [{field-id :id}  {:table_id table-id}]
                   FieldValues [{values-id :id} {:field_id field-id, :values [1 2 3 4]}]]
-    (with-redefs [metabase.api.database/*rescan-values-async* false]
+    (with-redefs [api.database/*rescan-values-async* false]
       (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
         (with-all-users-data-perms {db-id {:details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))

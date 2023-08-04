@@ -29,7 +29,7 @@
 (defn take-n-values
   "Call `take` on the result of chain-filter function.
 
-  (take-n-values 1 {:values          [1 2 3]
+  (take-n-values 1 {:values          [[1] [2] [3]]
                     :has_more_values false})
   -> {:values          [1]
       :has_more_values false}"
@@ -38,45 +38,45 @@
 
 (deftest chain-filter-test
   (testing "Show me expensive restaurants"
-    (is (= {:values          ["Dal Rae Restaurant"
-                              "Lawry's The Prime Rib"
-                              "Pacific Dining Car - Santa Monica"
-                              "Sushi Nakazawa"
-                              "Sushi Yasuda"
-                              "Tanoshi Sushi & Sake Bar"]
+    (is (= {:values          [["Dal Rae Restaurant"]
+                              ["Lawry's The Prime Rib"]
+                              ["Pacific Dining Car - Santa Monica"]
+                              ["Sushi Nakazawa"]
+                              ["Sushi Yasuda"]
+                              ["Tanoshi Sushi & Sake Bar"]]
             :has_more_values false}
            (chain-filter venues.name {venues.price 4}))))
   (testing "Show me categories that have expensive restaurants"
-    (is (= {:values          ["Japanese" "Steakhouse"]
+    (is (= {:values          [["Japanese"] ["Steakhouse"]]
             :has_more_values false}
            (chain-filter categories.name {venues.price 4})))
     (testing "Should work with string versions of param values"
-      (is (= {:values          ["Japanese" "Steakhouse"]
+      (is (= {:values          [["Japanese"] ["Steakhouse"]]
               :has_more_values false}
              (chain-filter categories.name {venues.price "4"})))))
   (testing "Show me categories starting with s (case-insensitive) that have expensive restaurants"
-    (is (= {:values          ["Steakhouse"]
+    (is (= {:values          [["Steakhouse"]]
             :has_more_values false}
            (chain-filter categories.name {venues.price 4, categories.name [:starts-with "s" {:case-sensitive false}]}))))
   (testing "Show me cheap Thai restaurants"
-    (is (= {:values          ["Kinaree Thai Bistro" "Krua Siri"]
+    (is (= {:values          [["Kinaree Thai Bistro"] ["Krua Siri"]]
             :has_more_values false}
            (chain-filter venues.name {venues.price 1, categories.name "Thai"}))))
   (testing "Show me the categories that have cheap restaurants"
-    (is (= {:values          ["Asian" "BBQ" "Bakery" "Bar" "Burger" "Caribbean"
-                              "Deli" "Karaoke" "Mexican" "Pizza" "Southern" "Thai"]
+    (is (= {:values          [["Asian"] ["BBQ"] ["Bakery"] ["Bar"] ["Burger"] ["Caribbean"] ["Deli"]
+                              ["Karaoke"] ["Mexican"] ["Pizza"] ["Southern"] ["Thai"]]
             :has_more_values false}
            (chain-filter categories.name {venues.price 1}))))
   (testing "Show me cheap restaurants with the word 'taco' in their name (case-insensitive)"
-    (is (= {:values          ["Tacos Villa Corona" "Tito's Tacos"]
+    (is (= {:values          [["Tacos Villa Corona"] ["Tito's Tacos"]]
             :has_more_values false}
            (chain-filter venues.name {venues.price 1, venues.name [:contains "tAcO" {:case-sensitive false}]}))))
   (testing "Show me the first 3 expensive restaurants"
-    (is (= {:values          ["Dal Rae Restaurant" "Lawry's The Prime Rib" "Pacific Dining Car - Santa Monica"]
+    (is (= {:values          [["Dal Rae Restaurant"] ["Lawry's The Prime Rib"] ["Pacific Dining Car - Santa Monica"]]
             :has_more_values true}
            (chain-filter venues.name {venues.price 4} :limit 3))))
   (testing "Oh yeah, we actually support arbitrary MBQL filter clauses. Neat!"
-    (is (= {:values          ["Festa" "Fred 62"]
+    (is (= {:values          [["Festa"] ["Fred 62"]]
             :has_more_values false}
            (chain-filter venues.name {venues.price [:between 2 3]
                                       venues.name  [:starts-with "f" {:case-sensitive false}]})))))
@@ -84,17 +84,17 @@
 (deftest multiple-values-test
   (testing "Chain filtering should support multiple values for a single parameter (as a vector or set of values)"
     (testing "Show me restaurants with price = 1 or 2 with the word 'BBQ' in their name (case-sensitive)"
-      (is (= {:values          ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
+      (is (= {:values          [["Baby Blues BBQ"] ["Beachwood BBQ & Brewing"] ["Bludso's BBQ"]]
               :has_more_values false}
              (chain-filter venues.name {venues.price #{1 2}, venues.name [:contains "BBQ"]}))))
     (testing "Show me the possible values of price for Bakery *or* BBQ restaurants"
-      (is (= {:values          [1 2 3]
+      (is (= {:values          [[1] [2] [3]]
               :has_more_values false}
              (chain-filter venues.price {categories.name ["Bakery" "BBQ"]}))))))
 
 (deftest auto-parse-string-params-test
   (testing "Parameters that come in as strings (i.e., all of them that come in via the API) should work as intended"
-    (is (= {:values          ["Baby Blues BBQ" "Beachwood BBQ & Brewing" "Bludso's BBQ"]
+    (is (= {:values          [["Baby Blues BBQ"] ["Beachwood BBQ & Brewing"] ["Bludso's BBQ"]]
             :has_more_values false}
            (chain-filter venues.name {venues.price ["1" "2"], venues.name [:contains "BBQ"]})))))
 
@@ -102,7 +102,7 @@
   (testing "Parameters that are completely unrelated (don't apply to this Table) should just get ignored entirely"
     ;; there is no way to join from venues -> users so users.id should get ignored
     (binding [chain-filter/*enable-reverse-joins* false]
-      (is (= {:values          [1 2 3]
+      (is (= {:values          [[1] [2] [3]]
               :has_more_values false}
              (chain-filter venues.price {categories.name ["Bakery" "BBQ"]
                                          users.id        [1 2 3]}))))))
@@ -239,42 +239,42 @@
   (mt/dataset airports
     (testing "Should be able to filter against other tables with that require multiple joins\n"
       (testing "single direct join: Airport -> Municipality"
-        (is (= {:values          ["San Francisco International Airport"]
+        (is (= {:values          [["San Francisco International Airport"]]
                 :has_more_values false}
                (chain-filter airport.name {municipality.name ["San Francisco"]}))))
       (testing "2 joins required: Airport -> Municipality -> Region"
-        (is (= {:values          ["Beale Air Force Base"
-                                  "Edwards Air Force Base"
-                                  "John Wayne Airport-Orange County Airport"]
+        (is (= {:values          [["Beale Air Force Base"]
+                                  ["Edwards Air Force Base"]
+                                  ["John Wayne Airport-Orange County Airport"]]
                 :has_more_values false}
                (take-n-values 3 (chain-filter airport.name {region.name ["California"]})))))
       (testing "3 joins required: Airport -> Municipality -> Region -> Country"
-        (is (= {:values          ["Abraham Lincoln Capital Airport"
-                                  "Albuquerque International Sunport"
-                                  "Altus Air Force Base"]
+        (is (= {:values          [["Abraham Lincoln Capital Airport"]
+                                  ["Albuquerque International Sunport"]
+                                  ["Altus Air Force Base"]]
                 :has_more_values false}
                (take-n-values 3 (chain-filter airport.name {country.name ["United States"]})))))
       (testing "4 joins required: Airport -> Municipality -> Region -> Country -> Continent"
-        (is (= {:values          ["Afonso Pena Airport"
-                                  "Alejandro Velasco Astete International Airport"
-                                  "Carrasco International /General C L Berisso Airport"]
+        (is (= {:values          [["Afonso Pena Airport"]
+                                  ["Alejandro Velasco Astete International Airport"]
+                                  ["Carrasco International /General C L Berisso Airport"]]
                 :has_more_values false}
                (take-n-values 3 (chain-filter airport.name {continent.name ["South America"]})))))
       (testing "[backwards]"
         (testing "single direct join: Municipality -> Airport"
-          (is (= {:values          ["San Francisco"]
+          (is (= {:values          [["San Francisco"]]
                   :has_more_values false}
                  (chain-filter municipality.name {airport.name ["San Francisco International Airport"]}))))
         (testing "2 joins required: Region -> Municipality -> Airport"
-          (is (= {:values          ["California"]
+          (is (= {:values          [["California"]]
                   :has_more_values false}
                  (chain-filter region.name {airport.name ["San Francisco International Airport"]}))))
         (testing "3 joins required: Country -> Region -> Municipality -> Airport"
-          (is (= {:values          ["United States"]
+          (is (= {:values          [["United States"]]
                   :has_more_values false}
                  (chain-filter country.name {airport.name ["San Francisco International Airport"]}))))
         (testing "4 joins required: Continent -> Region -> Municipality -> Airport"
-          (is (= {:values          ["North America"]
+          (is (= {:values          [["North America"]]
                   :has_more_values false}
                  (chain-filter continent.name {airport.name ["San Francisco International Airport"]}))))))))
 
@@ -293,11 +293,11 @@
 
 (deftest chain-filter-search-test
   (testing "Show me categories containing 'eak' (case-insensitive) that have expensive restaurants"
-    (is (= {:values          ["Steakhouse"]
+    (is (= {:values          [["Steakhouse"]]
             :has_more_values false}
            (chain-filter-search categories.name {venues.price 4} "eak"))))
   (testing "Show me cheap restaurants including with 'taco' (case-insensitive)"
-    (is (= {:values          ["Tacos Villa Corona" "Tito's Tacos"]
+    (is (= {:values          [["Tacos Villa Corona"] ["Tito's Tacos"]]
             :has_more_values false}
            (chain-filter-search venues.name {venues.price 1} "tAcO"))))
   (testing "search for something crazy = should return empty results"
@@ -467,7 +467,7 @@
           (chain-filter categories.name nil)
           (with-redefs [params.field-values/create-advanced-field-values! (fn [& _args]
                                                                             (assert false "Should not be called"))]
-            (is (= {:values          ["African" "American" "Artisan"]
+            (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (take-n-values 3 (chain-filter categories.name nil))))
             (is (= 1 (t2/count FieldValues :field_id field-id :type :full)))))
@@ -479,18 +479,18 @@
           (chain-filter categories.name {venues.price 4})
           (with-redefs [params.field-values/create-advanced-field-values! (fn [& _args]
                                                                             (assert false "Should not be called"))]
-            (is (= {:values          ["Japanese" "Steakhouse"]
+            (is (= {:values          [["Japanese"] ["Steakhouse"]]
                     :has_more_values false}
                    (chain-filter categories.name {venues.price 4})))
             (is (= 1 (t2/count FieldValues :field_id field-id :type :linked-filter)))))
 
         (testing "should do in-memory search with the cached FieldValues when search without constraints"
           (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
-            (is (= {:values          ["Good"]
+            (is (= {:values          [["Good"]]
                     :has_more_values false}
                    (chain-filter-search categories.name nil "ood")))))
 
-        (testing "search with constraitns"
+        (testing "search with constraints"
           ;; make sure we have a clean start
           (field-values/clear-advanced-field-values-for-field! field-id)
           (testing "should create a linked-filter FieldValues"
@@ -506,14 +506,14 @@
                          ;; in [[params.field-values/fetch-advanced-field-values]]
                          ;; we want this to false to test this case
                          :has_more_values false})
-            (is (= {:values          ["Good"]
+            (is (= {:values          [["Good"]]
                     :has_more_values false}
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
               (t2/update! FieldValues {:field_id field-id
                                        :type     "linked-filter"}
                           {:has_more_values true})
-              (is (= {:values          ["Steakhouse"]
+              (is (= {:values          [["Steakhouse"]]
                       :has_more_values false}
                      (chain-filter-search categories.name {venues.price 4} "o"))))))))))
 
@@ -536,9 +536,9 @@
     (mt/dataset nil-values-dataset
       (mt/$ids tbl
         (letfn [(thunk []
-                  (doseq [[field expected-values] {:mytype  {:values          ["empty" "null" "value"]
+                  (doseq [[field expected-values] {:mytype  {:values          [["empty"] ["null"] ["value"]]
                                                              :has_more_values false}
-                                                   :myfield {:values          [nil "" "value"]
+                                                   :myfield {:values          [[nil] [""] ["value"]]
                                                              :has_more_values false}}]
                     (testing "chain-filter"
                       ;; sorting can differ a bit based on whether we use FieldValues or not... not sure why this is
@@ -546,7 +546,7 @@
                       (is (= expected-values
                              (update (chain-filter/chain-filter (mt/id :tbl field) {}) :values sort))))
                     (testing "chain-filter-search"
-                      (is (= {:values          ["value"]
+                      (is (= {:values          [["value"]]
                               :has_more_values false}
                              (chain-filter/chain-filter-search (mt/id :tbl field) {} "val"))))))]
           (testing "no FieldValues"

@@ -56,7 +56,7 @@
   #?(:clj
      (is (thrown-with-msg?
           Throwable
-          #"Valid Table metadata, received: nil"
+          #"Invalid output:.*Valid Table metadata"
           (lib.metadata/table-or-card lib.tu/metadata-provider-with-card Integer/MAX_VALUE)))
      ;; doesn't currently throw an error in Cljs because we don't have Malli validation enabled... probably fine for
      ;; now.

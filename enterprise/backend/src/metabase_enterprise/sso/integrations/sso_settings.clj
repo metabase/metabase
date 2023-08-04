@@ -9,6 +9,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [saml20-clj.core :as saml]
    [schema.core :as s]))

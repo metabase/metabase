@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
+import { AggregationPicker } from "metabase/common/components/AggregationPicker";
+
 import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
-
-import { AggregationPicker } from "./AggregateStep.styled";
 
 const aggTetherOptions = {
   attachment: "top left",
