@@ -482,7 +482,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Interactive embedding`,
-        embedDescription: t`With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO—down to the row- or column-level—so people only see what they need to.`,
+        embedDescription: t`With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to.`,
         embedType: "full-app",
       },
     ],
