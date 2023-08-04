@@ -162,7 +162,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.findByText(/Paid/i);
         cy.findByText("Interactive embedding");
         cy.findByText(
-          "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO—down to the row- or column-level—so people only see what they need to.",
+          "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to.",
         );
         cy.findByText("More details").click();
         cy.location("pathname").should("eq", fullAppEmbeddingPath);
