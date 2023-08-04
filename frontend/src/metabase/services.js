@@ -340,7 +340,6 @@ export const MetabaseApi = {
   db_discard_values: POST("/api/database/:dbId/discard_values"),
   db_persist: POST("/api/database/:dbId/persist"),
   db_unpersist: POST("/api/database/:dbId/unpersist"),
-  db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),

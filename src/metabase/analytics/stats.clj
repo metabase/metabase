@@ -46,6 +46,7 @@
   considered to add a count of `1`, while non-truthy values do not affect the result count."
   [ms]
   (reduce (partial merge-with +)
+          {}
           (for [m ms]
             (m/map-vals #(cond
                            (number? %) %

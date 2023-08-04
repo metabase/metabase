@@ -57,7 +57,7 @@
 
 ;; Dev only -- disable template caching
 (when config/is-dev?
-  (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
+  (alter-meta! #'stencil/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
 (defn- logo-url []

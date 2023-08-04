@@ -7,6 +7,7 @@
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.adapter.jetty9 :as ring-jetty]
    [schema.core :as s]))

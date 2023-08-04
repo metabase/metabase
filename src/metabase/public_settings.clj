@@ -24,7 +24,7 @@
 (set! *warn-on-reflection* true)
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
-(comment metabase.public-settings.premium-features/keep-me)
+(comment premium-features/keep-me)
 
 (defsetting application-name
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")

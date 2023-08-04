@@ -7,6 +7,7 @@
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
