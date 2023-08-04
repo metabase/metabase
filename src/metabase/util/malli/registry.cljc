@@ -23,7 +23,7 @@
   (let [schema (cond-> schema
                  (ref-schema? schema) last)]
     (or (get @explainer-cache schema)
-        (let [explainer (mc/explainer schema)]
+        (let [explainer #_{:clj-kondo/ignore [:discouraged-var]} (mc/explainer schema)]
           (swap! explainer-cache assoc schema explainer)
           explainer))))
 
