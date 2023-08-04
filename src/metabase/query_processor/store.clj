@@ -120,7 +120,7 @@
    [:semantic_type [:maybe ms/FieldSemanticOrRelationType]]
    [:fingerprint   [:maybe :map]]
    [:parent_id     [:maybe ms/PositiveInt]]
-   [:nfc_path      [:maybe [ms/NonBlankString]]]
+   [:nfc_path      [:maybe [:sequential ms/NonBlankString]]]
    ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
    ;; would make everything just use base_type.
    [:effective_type    {:optional true} [:maybe ms/FieldType]]

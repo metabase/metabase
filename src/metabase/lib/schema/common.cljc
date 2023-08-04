@@ -19,7 +19,7 @@
   [:int {:min 0}])
 
 (mr/def ::positive-int
-  [:int {:min 1}])
+  pos-int?)
 
 (mr/def ::uuid
   ;; TODO -- should this be stricter?

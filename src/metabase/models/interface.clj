@@ -6,7 +6,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -19,6 +18,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
    [schema.core :as schema]
@@ -315,7 +315,7 @@
    [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
 
 (def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (let [explainer (mc/explainer MetricSegmentDefinition)]
+  (let [explainer (mr/explainer MetricSegmentDefinition)]
     (fn [definition]
       (if-let [error (explainer definition)]
         (let [humanized (me/humanize error)]

@@ -44,6 +44,7 @@
   (with-api-error-message
     [:string {:min 1}]
     (deferred-tru \"Must be a string with at least 1 character representing a User ID.\"))"
+  {:style/indent [:form]}
   ([mschema :- Schema error-message :- localized-string-schema]
    (with-api-error-message mschema error-message error-message))
   ([mschema                :- :any
