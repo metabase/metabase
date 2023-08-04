@@ -16,7 +16,7 @@ describe("issue 12926", () => {
     cy.signInAsAdmin();
   });
 
-  describe("field source", () => {
+  describe("card removal while query is in progress", () => {
     it("should stop the ongoing query when removing a card from a dashboard", () => {
       slowDownQuery();
 
