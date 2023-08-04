@@ -9,12 +9,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const questionDetails1 = {
-  name: "Orders question",
-  query: { "source-table": ORDERS_ID },
-};
-
-const questionDetails2 = {
+const questionDetails = {
   name: "Orders count",
   query: {
     "source-table": ORDERS_ID,
@@ -29,13 +24,13 @@ describe("issue 13736", () => {
   });
 
   it("should work even if some cards are broken (metabase#13736)", () => {
-    cy.createQuestion(questionDetails1, {
+    cy.createQuestion(questionDetails, {
       wrapId: true,
-      idAlias: "questionId1",
+      idAlias: "failingQuestionId",
     });
-    cy.createQuestion(questionDetails2, {
+    cy.createQuestion(questionDetails, {
       wrapId: true,
-      idAlias: "questionId2",
+      idAlias: "successfulQuestionId",
     });
     cy.createDashboard({ name: "13736 Dashboard" }).then(
       ({ body: { id: dashboardId } }) => {
@@ -45,12 +40,12 @@ describe("issue 13736", () => {
 
     cy.then(function () {
       const dashboardId = this.dashboardId;
-      const questionId1 = this.questionId1;
-      const questionId2 = this.questionId2;
+      const failingQuestionId = this.failingQuestionId;
+      const successfulQuestionId = this.successfulQuestionId;
 
       cy.intercept(
         "POST",
-        `/api/dashboard/*/dashcard/*/card/${questionId1}/query`,
+        `/api/dashboard/*/dashcard/*/card/${failingQuestionId}/query`,
         {
           statusCode: 500,
           body: {
@@ -65,10 +60,10 @@ describe("issue 13736", () => {
         dashboard_id: dashboardId,
         cards: [
           {
-            card_id: questionId1,
+            card_id: failingQuestionId,
           },
           {
-            card_id: questionId2,
+            card_id: successfulQuestionId,
             col: 11,
           },
         ],
