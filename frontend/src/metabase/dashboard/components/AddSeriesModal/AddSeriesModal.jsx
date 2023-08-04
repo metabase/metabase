@@ -66,11 +66,10 @@ class AddSeriesModal extends Component {
   };
 
   handleRemoveSeries = (_event, removedIndex) => {
-    const { series } = this.state;
     this.setState({
       series: [
-        ...series.slice(0, removedIndex),
-        ...series.slice(removedIndex + 1),
+        ...this.state.series.slice(0, removedIndex),
+        ...this.state.series.slice(removedIndex + 1),
       ],
     });
     MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
