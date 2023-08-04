@@ -1,7 +1,7 @@
 ---
 title: Static embedding
 redirect_from:
-- /docs/latest/embedding/static-embedding
+- /docs/latest/embedding/signed-embedding
 ---
 
 # Static embedding
