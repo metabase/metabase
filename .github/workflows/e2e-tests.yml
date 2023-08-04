@@ -129,9 +129,10 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
-      - name: Install Chrome v114
+      - name: Install Chrome v107
         uses: browser-actions/setup-chrome@v1
         with:
+          # https://chromium.cypress.io/linux/stable/107.0.5304.110
           chrome-version: 1047731
         id: setup-chrome
       - run: |
