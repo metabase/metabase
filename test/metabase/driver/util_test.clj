@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
@@ -11,6 +12,8 @@
    (java.nio.charset StandardCharsets)
    (java.util Base64)
    (javax.net.ssl SSLSocketFactory)))
+
+(comment h2/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -260,3 +263,8 @@
     (is (false? (driver.u/semantic-version-gte [4 0 1] [4 1])))
     (is (false? (driver.u/semantic-version-gte [3 9] [4 0])))
     (is (false? (driver.u/semantic-version-gte [3 1] [4])))))
+
+(deftest ^:parallel mark-h2-superseded-test
+  (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
+   (is (=? {:driver-name "H2", :superseded-by :deprecated}
+           (:h2 (driver.u/available-drivers-info))))))

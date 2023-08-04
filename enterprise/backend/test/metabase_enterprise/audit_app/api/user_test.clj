@@ -12,7 +12,7 @@
     (testing "Should require a token with `:audit-app`"
       (premium-features-test/with-premium-features #{}
         (t2.with-temp/with-temp [User {user-id :id}]
-          (is (= "This API endpoint is only enabled if you have a premium token with the :audit-app feature."
+          (is (= "Audit app is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request user-id
                                        :delete 402
                                        (format "ee/audit-app/user/%d/subscriptions" user-id)))))))

@@ -358,6 +358,7 @@
     metabase.pulse.render.body                                      body
     metabase.pulse.render.common                                    common
     metabase.pulse.render.style                                     style
+    metabase.pulse.parameters                                       params
     metabase.query-processor-test                                   qp.test
     metabase.query-processor.context                                qp.context
     metabase.query-processor.error-type                             qp.error-type
@@ -527,6 +528,7 @@
  :hooks
  {:analyze-call
   {clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
+   metabase-enterprise.advanced-config.caching-test/with-temp-persist-models                                                 hooks.common/with-seven-bindings
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*

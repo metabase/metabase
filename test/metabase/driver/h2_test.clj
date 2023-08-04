@@ -67,11 +67,47 @@
 
 (deftest only-connect-to-existing-dbs-test
   (testing "Make sure we *cannot* connect to a non-existent database by default"
-    (is (= ::exception-thrown
-           (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
-                (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException e
-                  (and (re-matches #"Database .+ not found, .+" (.getMessage e))
-                       ::exception-thrown)))))))
+    (binding [h2/*allow-testing-h2-connections* true]
+      (is (thrown-with-msg?
+           org.h2.jdbc.JdbcSQLNonTransientConnectionException
+           #"Database .+ not found, .+"
+           (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")}))))))
+
+(deftest ^:parallel only-connect-when-non-malicious-properties
+  (testing "Reject connection strings with malicious properties"
+    (let [conn-str (str "jdbc:h2:file:"
+                        (System/getProperty "user.dir")
+                        "/toucan_sightings.db"
+                        ";TRACE_LEVEL_SYSTEM_OUT=1\\;CREATE TRIGGER IAMPWNED BEFORE SELECT ON INFORMATION_SCHEMA.TABLES AS $$//javascript\nnew java.net.URL('http://localhost:3000/api/health').openConnection().getContentLength()\n$$--=x\\;")
+          result (try (binding [h2/*allow-testing-h2-connections* true]
+                        (driver/can-connect? :h2 {:db conn-str}))
+                      ::did-not-throw
+                      (catch Exception e e))]
+      (is (instance? clojure.lang.ExceptionInfo result))
+      (is (partial= {:cause "Malicious keys detected"
+                     :data {:keys ["TRACE_LEVEL_SYSTEM_OUT"]}}
+                    (Throwable->map result)))))
+  (testing "Reject connection details which lie about their driver"
+    (let [conn "mem:fake-h2-db"
+          f (fn f [details]
+              (try (driver/can-connect? :postgres details)
+                   ::did-not-throw
+                   (catch Exception e e)))]
+      (testing "connection-uri"
+        (let [result (f {:connection-uri conn})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"connection-uri"}} (ex-data result)))))
+      (testing "subprotocol"
+        (let [result (f {:db conn, :subprotocol "h2"})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"subprotocol"}} (ex-data result)))))
+      (testing "subprotocol"
+        (let [result (f {:db conn, :classname "org.h2.Driver"})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :h2

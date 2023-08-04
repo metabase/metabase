@@ -12,7 +12,7 @@
     (testing "GET /api/ee/advanced-permissions/application/graph"
       (premium-features-test/with-premium-features #{}
         (testing "Should require a token with `:advanced-permissions`"
-          (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-permissions feature."
+          (is (= "Advanced Permissions is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/application/graph")))))
 
       (premium-features-test/with-premium-features #{:advanced-permissions}
@@ -43,7 +43,7 @@
 
         (premium-features-test/with-premium-features #{}
           (testing "Should require a token with `:advanced-permissions`"
-            (is (= "This API endpoint is only enabled if you have a premium token with the :advanced-permissions feature."
+            (is (= "Advanced Permissions is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                    (mt/user-http-request :crowberto :put 402 "ee/advanced-permissions/application/graph" new-graph)))))
 
         (premium-features-test/with-premium-features #{:advanced-permissions}

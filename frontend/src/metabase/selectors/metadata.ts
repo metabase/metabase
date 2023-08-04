@@ -26,6 +26,7 @@ import {
   getFieldValues,
   getRemappings,
 } from "metabase-lib/queries/utils/field";
+import { getSettings } from "./settings";
 
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;
@@ -88,6 +89,12 @@ const getNormalizedMetrics = (state: State) => state.entities.metrics;
 const getNormalizedSegments = (state: State) => state.entities.segments;
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 
+export const getShallowDatabases = getNormalizedDatabases;
+export const getShallowTables = getNormalizedTables;
+export const getShallowFields = getNormalizedFields;
+export const getShallowMetrics = getNormalizedMetrics;
+export const getShallowSegments = getNormalizedSegments;
+
 export const getMetadata: (
   state: State,
   props?: MetadataSelectorOpts,
@@ -100,9 +107,19 @@ export const getMetadata: (
     getNormalizedSegments,
     getNormalizedMetrics,
     getNormalizedQuestions,
+    getSettings,
   ],
-  (databases, schemas, tables, fields, segments, metrics, questions) => {
-    const metadata = new Metadata();
+  (
+    databases,
+    schemas,
+    tables,
+    fields,
+    segments,
+    metrics,
+    questions,
+    settings,
+  ) => {
+    const metadata = new Metadata({ settings });
 
     metadata.databases = Object.fromEntries(
       Object.values(databases).map(d => [d.id, createDatabase(d, metadata)]),

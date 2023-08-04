@@ -26,7 +26,6 @@
             Database
             Field
             ModerationReview
-            PersistedInfo
             Pulse
             PulseCard
             PulseChannel
@@ -41,6 +40,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision :refer [Revision]]
    [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -2508,7 +2508,8 @@
         (#'task.persist-refresh/job-init!)
         (#'task.sync-databases/job-init)
         (mt/with-temporary-setting-values [:persisted-models-enabled true]
-          (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]]
+          ;; Use a postgres DB because it supports the :persist-models feature
+          (mt/with-temp* [Database [db {:options {:persist-models-enabled true}, :engine :postgres}]]
             (f db)))
         (finally
           (qs/shutdown sched))))))
@@ -2522,12 +2523,13 @@
 (deftest refresh-persistence
   (testing "Can schedule refreshes for models"
     (with-persistence-setup db
-      (mt/with-temp* [:model/Card          [unmodeled {:dataset false :database_id (u/the-id db)}]
-                      :model/Card          [archived {:dataset true :archived true :database_id (u/the-id db)}]
-                      :model/Card          [model {:dataset true :database_id (u/the-id db)}]
-                      PersistedInfo [pmodel  {:card_id (u/the-id model) :database_id (u/the-id db)}]
-                      PersistedInfo [punmodeled  {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]
-                      PersistedInfo [parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]]
+      (t2.with-temp/with-temp
+        [:model/Card          model      {:dataset true :database_id (u/the-id db)}
+         :model/Card          notmodel   {:dataset false :database_id (u/the-id db)}
+         :model/Card          archived   {:dataset true :archived true :database_id (u/the-id db)}
+         :model/PersistedInfo pmodel     {:card_id (u/the-id model) :database_id (u/the-id db)}
+         :model/PersistedInfo pnotmodel  {:card_id (u/the-id notmodel) :database_id (u/the-id db)}
+         :model/PersistedInfo parchived  {:card_id (u/the-id archived) :database_id (u/the-id db)}]
         (testing "Can refresh models"
           (mt/user-http-request :crowberto :post 204 (format "card/%d/refresh" (u/the-id model)))
           (is (contains? (task.persist-refresh/job-info-for-individual-refresh)
@@ -2536,13 +2538,50 @@
         (testing "Won't refresh archived models"
           (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id archived)))
           (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
-                              (u/the-id punmodeled)))
+                              (u/the-id pnotmodel)))
               "Scheduled refresh of archived model"))
         (testing "Won't refresh cards no longer models"
-          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id unmodeled)))
+          (mt/user-http-request :crowberto :post 400 (format "card/%d/refresh" (u/the-id notmodel)))
           (is (not (contains? (task.persist-refresh/job-info-for-individual-refresh)
                               (u/the-id parchived)))
               "Scheduled refresh of archived model"))))))
+
+(deftest unpersist-persist-model-test
+  (with-persistence-setup db
+    (t2.with-temp/with-temp
+      [:model/Card          model     {:database_id (u/the-id db), :dataset true}
+       :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
+      (testing "Can't unpersist models without :cache-granular-controls feature flag enabled"
+        (premium-features-test/with-premium-features #{}
+          (mt/user-http-request :crowberto :post 402 (format "card/%d/unpersist" (u/the-id model)))
+          (is (= "persisted"
+                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
+      (testing "Can unpersist models with the :cache-granular-controls feature flag enabled"
+        (premium-features-test/with-premium-features #{:cache-granular-controls}
+          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id model)))
+          (is (= "off"
+                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
+      (testing "Can't re-persist models with the :cache-granular-controls feature flag enabled"
+        (premium-features-test/with-premium-features #{}
+          (mt/user-http-request :crowberto :post 402 (format "card/%d/persist" (u/the-id model)))
+          (is (= "off"
+                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
+      (testing "Can re-persist models with the :cache-granular-controls feature flag enabled"
+        (premium-features-test/with-premium-features #{:cache-granular-controls}
+          (mt/user-http-request :crowberto :post 204 (format "card/%d/persist" (u/the-id model)))
+          (is (= "creating"
+                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
+    (t2.with-temp/with-temp
+      [:model/Card          notmodel  {:database_id (u/the-id db), :dataset false}
+       :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
+      (premium-features-test/with-premium-features #{:cache-granular-controls}
+        (testing "Allows unpersisting non-model cards"
+          (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel)))
+          (is (= "off"
+                 (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pnotmodel)))))
+        (testing "Can't re-persist non-model cards"
+          (is (= "Card is not a model"
+                 (mt/user-http-request :crowberto :post 400 (format "card/%d/persist" (u/the-id notmodel))))))))))
 
 (defn param-values-url
   "Returns an URL used to get values for parameter of a card.

@@ -63,7 +63,7 @@
   :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
               (when (and domain (str/includes? domain ","))
-                ;; Multiple comma-separated domains is EE-only feature
+                ;; Multiple comma-separated domains requires the `:sso-google` premium feature flag
                 (throw (ex-info (tru "Invalid domain") {:status-code 400})))
               (setting/set-value-of-type! :string :google-auth-auto-create-accounts-domain domain)))
 
