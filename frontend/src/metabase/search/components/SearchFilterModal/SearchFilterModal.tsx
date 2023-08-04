@@ -10,11 +10,13 @@ import {
 } from "metabase/search/types";
 import Button from "metabase/core/components/Button";
 import { Title, Flex } from "metabase/ui";
+import { CreatedByFilter } from "metabase/search/components/SearchFilterModal/filters/CreatedByFilter/CreatedByFilter";
 import { TypeFilter } from "./filters/TypeFilter";
 import { SearchFilterWrapper } from "./SearchFilterModal.styled";
 
 const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
   [SearchFilterKeys.Type]: TypeFilter,
+  [SearchFilterKeys.CreatedBy]: CreatedByFilter,
 };
 
 export const SearchFilterModal = ({
@@ -51,7 +53,7 @@ export const SearchFilterModal = ({
   // we can use this field to control which filters are available
   // - we can enable the 'verified' filter here
   const availableFilters: FilterTypeKeys[] = useMemo(() => {
-    return [SearchFilterKeys.Type];
+    return [SearchFilterKeys.Type, SearchFilterKeys.CreatedBy];
   }, []);
 
   return isOpen ? (
