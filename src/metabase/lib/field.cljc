@@ -202,40 +202,49 @@
     (string? table-id)  (lib.metadata/card query (lib.util/legacy-string-table-id->card-id table-id))
     (integer? table-id) (lib.metadata/table query table-id)))
 
-;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
-;;; and moving this there would cause circular references.
+(mu/defn ^:private join-long-display-name :- [:maybe ::lib.schema.common/non-blank-string]
+  [query stage-number {field-display-name :display-name
+                       join-alias         :source-alias
+                       fk-field-id        :fk-field-id
+                       table-id           :table-id
+                       source             :lib/source
+                       :as                field-metadata}]
+  (when (and ;; don't prepend a join display name if `:display-name` already contains one!
+         ;; Legacy result metadata might include it for joined Fields, don't want to add
+         ;; it twice. Otherwise we'll end up with display names like
+         ;;
+         ;;    Products → Products → Category
+         (not (str/includes? field-display-name " → "))
+         ;; don't prepend a join display name if this column comes from a source
+         ;; Card (#32803)
+         (not (= source :source/card)))
+    (or
+     (when fk-field-id
+       ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+       ;; "ID" dropped instead.
+       ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+       ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+       ;; See #30109 for more details.
+       (if-let [field (lib.metadata/field query fk-field-id)]
+         (-> (lib.metadata.calculation/display-info query stage-number field)
+             :display-name
+             lib.util/strip-id)
+         (let [table (table-metadata query table-id)]
+           (lib.metadata.calculation/display-name query stage-number table :long))))
+     (or join-alias (lib.join/current-join-alias field-metadata)))))
+
 (defmethod lib.metadata.calculation/display-name-method :metadata/column
   [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
                        binning            ::binning
-                       join-alias         :source-alias
-                       fk-field-id        :fk-field-id
-                       table-id           :table-id
                        :as                field-metadata} style]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
-        join-display-name  (when (and (= style :long)
-                                      ;; don't prepend a join display name if `:display-name` already contains one!
-                                      ;; Legacy result metadata might include it for joined Fields, don't want to add
-                                      ;; it twice. Otherwise we'll end up with display names like
-                                      ;;
-                                      ;;    Products → Products → Category
-                                      (not (str/includes? field-display-name " → ")))
-                             (or
-                              (when fk-field-id
-                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                 ;; "ID" dropped instead.
-                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                 ;; See #30109 for more details.
-                                (if-let [field (lib.metadata/field query fk-field-id)]
-                                  (-> (lib.metadata.calculation/display-info query stage-number field)
-                                      :display-name
-                                      lib.util/strip-id)
-                                  (let [table (table-metadata query table-id)]
-                                    (lib.metadata.calculation/display-name query stage-number table style))))
-                              (or join-alias (lib.join/current-join-alias field-metadata))))
+        join-display-name  (when (= style :long)
+                             (join-long-display-name query
+                                                     stage-number
+                                                     (assoc field-metadata :display-name field-display-name)))
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]

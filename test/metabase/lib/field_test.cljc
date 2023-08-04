@@ -148,12 +148,13 @@
           card-def        {:id            1
                            :name          "Card 1"
                            :dataset-query card-query}
+          result-metadata (lib.metadata.calculation/returned-columns
+                           (lib/saved-question-query
+                            meta/metadata-provider
+                            {:dataset-query card-query}))
           ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
           ;; sure we're not including it twice.
-          result-metadata (for [col (lib.metadata.calculation/returned-columns
-                                     (lib/saved-question-query
-                                      meta/metadata-provider
-                                      {:dataset-query card-query}))]
+          legacy-metadata (for [col result-metadata]
                             (cond-> col
                               (:source-alias col)
                               (update :display-name (fn [display-name]
@@ -162,7 +163,10 @@
                                   card-def
 
                                   "Card with result metadata"
-                                  (assoc card-def :result-metadata result-metadata)}]
+                                  (assoc card-def :result-metadata result-metadata)
+
+                                  "Card with legacy result metadata"
+                                  (assoc card-def :result-metadata legacy-metadata)}]
         (testing (str \newline message)
           (let [metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
                                    (lib.tu/mock-metadata-provider
@@ -171,6 +175,7 @@
                 legacy-query      {:database (meta/id)
                                    :type     :query
                                    :query    {:source-card 1}}
+                legacy-metadata?  (= (:result-metadata card-def) legacy-metadata)
                 query             (lib/query metadata-provider legacy-query)
                 breakoutable-cols (lib/breakoutable-columns query)
                 breakout-col      (m/find-first (fn [col]
@@ -179,7 +184,7 @@
             (testing (str "\nbreakoutable-cols =\n" (u/pprint-to-str breakoutable-cols))
               (is (some? breakout-col)))
             (when breakout-col
-              (is (=? {:long-display-name "Products → Category"}
+              (is (=? {:long-display-name (if legacy-metadata? "Products → Category" "Category")}
                       (lib/display-info query breakout-col)))
               (let [query' (lib/breakout query breakout-col)]
                 (is (=? {:stages
@@ -190,10 +195,8 @@
                                           "CATEGORY"]]}]}
                         query'))
                 (is (=? [{:name              "CATEGORY"
-                          :display-name      (if (:result-metadata card-def)
-                                               "Products → Category"
-                                               "Category")
-                          :long-display-name "Products → Category"
+                          :display-name      (if legacy-metadata? "Products → Category" "Category")
+                          :long-display-name (if legacy-metadata? "Products → Category" "Category")
                           :effective-type    :type/Text}]
                         (map #(lib/display-info query' %)
                              (lib/breakouts query'))))))
@@ -205,11 +208,11 @@
                 (let [query' (lib/breakout query [:field {:lib/uuid (str (random-uuid))} (meta/id :products :category)])]
                   (is (=? [{:name              "CATEGORY"
                             :display-name      "Category"
-                            :long-display-name "Products → Category"
+                            :long-display-name "Category"
                             :effective-type    :type/Text}]
                           (map (partial lib/display-info query')
                                (lib/breakouts query'))))
-                  (is (=? {:display-name      "Products → Category"
+                  (is (=? {:display-name      (if legacy-metadata? "Products → Category" "Category")
                            :breakout-position 0}
                           (m/find-first #(= (:id %) (meta/id :products :category))
                                         (lib/breakoutable-columns query')))))))))))))

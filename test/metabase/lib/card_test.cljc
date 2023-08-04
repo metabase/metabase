@@ -1,8 +1,12 @@
 (ns metabase.lib.card-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [malli.core :as mc]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.composed-provider
+    :as lib.metadata.composed-provider]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
@@ -82,3 +86,30 @@
                {:lib/type :metadata/column
                 :name     "count"}]
               (lib.metadata.calculation/returned-columns query))))))
+
+(deftest ^:parallel dont-include-join-aliases-in-long-display-names-for-columns-from-card-test
+  (testing "Long display name for a column coming from a join in a Saved Question should not include join alias (#32803)"
+    (let [card              {:lib/type        :metadata/card
+                             :name            "My Card"
+                             :id              1
+                             :dataset-query   lib.tu/query-with-join
+                             :result-metadata (lib.metadata.calculation/returned-columns lib.tu/query-with-join)}
+          _                 (is (mc/validate lib.metadata/CardMetadata card))
+          metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+                             (lib.tu/mock-metadata-provider
+                              {:cards [card]})
+                             meta/metadata-provider)
+          query             (lib/query metadata-provider {:lib/type :mbql/query
+                                                          :database (meta/id)
+                                                          :stages   [{:lib/type    :mbql.stage/mbql
+                                                                      :source-card 1}]})]
+      (is (= ["ID"
+              "Name"
+              "Category ID"
+              "Latitude"
+              "Longitude"
+              "Price"
+              "ID"
+              "Name"]
+             (map #(lib.metadata.calculation/display-name query -1 % :long)
+                  (lib.metadata.calculation/returned-columns query)))))))
