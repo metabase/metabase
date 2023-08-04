@@ -2,6 +2,7 @@ import { Location } from "history";
 import { FC } from "react";
 import { Collection, SearchModelType, SearchResult } from "metabase-types/api";
 import { IconName } from "metabase/core/components/Icon";
+import { SearchFilterKeys } from "metabase/search/constants";
 
 export interface WrappedResult extends SearchResult {
   getUrl: () => string;
@@ -13,10 +14,6 @@ export interface WrappedResult extends SearchResult {
   };
   getCollection: () => Partial<Collection>;
 }
-
-export const SearchFilterKeys = {
-  Type: "type",
-} as const;
 
 export type TypeFilterProps = SearchModelType[];
 

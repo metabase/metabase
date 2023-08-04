@@ -67,7 +67,7 @@ export const TypeSearchSidebar = ({
 }) => {
   const searchModels = [
     {
-      name: t`All items`,
+      name: t`All results`,
       icon: "search",
       filter: null,
     },

@@ -4,7 +4,8 @@ import {
   isSearchPageLocation,
 } from "metabase/search/utils";
 
-import { SearchAwareLocation, SearchFilterKeys } from "metabase/search/types";
+import { SearchAwareLocation } from "metabase/search/types";
+import { SearchFilterKeys } from "metabase/search/constants";
 
 describe("isSearchPageLocation", () => {
   it('should return true when the last component of pathname is "search"', () => {

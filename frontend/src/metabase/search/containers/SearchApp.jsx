@@ -9,6 +9,7 @@ import Search from "metabase/entities/search";
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
 import Subhead from "metabase/components/type/Subhead";
+import { Flex } from "metabase/ui";
 
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -17,10 +18,10 @@ import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
 } from "metabase/search/utils";
-import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar";
+import { TypeSearchSidebar } from "metabase/search/components/TypeSearchSidebar";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { SearchFilterKeys } from "metabase/search/types";
 import { SearchResult } from "metabase/search/components/SearchResult";
+import { SearchFilterKeys } from "metabase/search/constants";
 import {
   SearchBody,
   SearchControls,
@@ -48,20 +49,24 @@ export default function SearchApp({ location }) {
     setSelectedSidebarType(null);
   }, [searchText, searchFilters]);
 
-  const query = useMemo(
-    () => ({
-      q: searchText,
-      ..._.omit(searchFilters, SearchFilterKeys.Type),
-      models: selectedSidebarType ?? searchFilters[SearchFilterKeys.Type],
-      limit: PAGE_SIZE,
-      offset: PAGE_SIZE * page,
-    }),
-    [searchText, searchFilters, selectedSidebarType, page],
-  );
+  const query = {
+    q: searchText,
+    ..._.omit(searchFilters, SearchFilterKeys.Type),
+    models: selectedSidebarType ?? searchFilters[SearchFilterKeys.Type],
+    limit: PAGE_SIZE,
+    offset: PAGE_SIZE * page,
+  };
 
   const onChangeSelectedType = filter => {
     setSelectedSidebarType(filter);
     setPage(0);
+  };
+
+  const getAvailableModels = availableModels => {
+    const models = availableModels || [];
+    return models.filter(
+      filter => !searchFilters?.type || searchFilters.type.includes(filter),
+    );
   };
 
   return (
@@ -73,33 +78,31 @@ export default function SearchApp({ location }) {
       )}
       <Search.ListLoader query={query} wrapped>
         {({ list, metadata }) =>
-          list && list.length > 0 ? (
+          list.length > 0 ? (
             <SearchBody>
               <SearchMain>
                 <SearchResultSection items={list} />
-                <PaginationControls
-                  showTotal
-                  pageSize={PAGE_SIZE}
-                  page={page}
-                  itemsLength={list.length}
-                  total={metadata.total}
-                  onNextPage={handleNextPage}
-                  onPreviousPage={handlePreviousPage}
-                />
-              </SearchMain>
-              {searchFilters?.type || metadata.available_models ? (
-                <SearchControls>
-                  <TypeSearchSidebar
-                    availableModels={metadata.available_models.filter(
-                      filter =>
-                        !searchFilters?.type ||
-                        searchFilters.type.includes(filter),
-                    )}
-                    selectedType={selectedSidebarType}
-                    onSelectType={onChangeSelectedType}
+                <Flex justify="flex-end" align="center" my="1rem">
+                  <PaginationControls
+                    showTotal
+                    pageSize={PAGE_SIZE}
+                    page={page}
+                    itemsLength={list.length}
+                    total={metadata.total}
+                    onNextPage={handleNextPage}
+                    onPreviousPage={handlePreviousPage}
                   />
-                </SearchControls>
-              ) : null}
+                </Flex>
+              </SearchMain>
+              <SearchControls>
+                <TypeSearchSidebar
+                  availableModels={getAvailableModels(
+                    metadata.available_models,
+                  )}
+                  selectedType={selectedSidebarType}
+                  onSelectType={onChangeSelectedType}
+                />
+              </SearchControls>
             </SearchBody>
           ) : (
             <SearchEmptyState>

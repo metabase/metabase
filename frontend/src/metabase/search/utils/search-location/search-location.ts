@@ -1,10 +1,7 @@
 import _ from "underscore";
 
-import {
-  SearchAwareLocation,
-  SearchFilterKeys,
-  SearchFilters,
-} from "metabase/search/types";
+import { SearchAwareLocation, SearchFilters } from "metabase/search/types";
+import { SearchFilterKeys } from "metabase/search/constants";
 
 export function isSearchPageLocation(location: SearchAwareLocation): boolean {
   const components = location.pathname.split("/");
