@@ -163,8 +163,8 @@ jobs:
       - name: Install Chrome v111
         uses: browser-actions/setup-chrome@v1
         with:
-          # https://chromium.cypress.io/linux/stable/114.0.5735.133
-          chrome-version: 1135580
+          # https://chromium.cypress.io/linux/stable/111.0.5563.146
+          chrome-version: 1097615
         id: setup-chrome
       - run: |
           echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
