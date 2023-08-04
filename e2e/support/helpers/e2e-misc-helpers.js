@@ -155,13 +155,8 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
  * Visit a dashboard and wait for the related queries to load.
  *
  * @param {number} dashboard_id
- * @param {Object} options
- * @param {boolean} should_wait - if cypress should wait for the cards to load, defaults to true
  */
-export function visitDashboard(
-  dashboard_id,
-  { params = {}, should_wait } = {},
-) {
+export function visitDashboard(dashboard_id, { params = {} } = {}) {
   // Some users will not have permissions for this request
   cy.request({
     method: "GET",
@@ -206,9 +201,8 @@ export function visitDashboard(
         url: `/dashboard/${dashboard_id}`,
         qs: params,
       });
-      if (should_wait !== false) {
-        cy.wait(aliases);
-      }
+
+      cy.wait(aliases);
     } else {
       // For a dashboard:
       //  - without questions (can be empty or markdown only) or

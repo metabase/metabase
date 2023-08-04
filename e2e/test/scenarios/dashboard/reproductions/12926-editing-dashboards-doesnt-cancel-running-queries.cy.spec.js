@@ -3,20 +3,16 @@ import {
   restore,
   showDashboardCardActions,
   undo,
-  visitDashboard,
 } from "e2e/support/helpers";
-
-const PG_DB_ID = 2;
 
 const questionDetails = {
   name: "Q1",
-  native: { query: "SELECT 1, pg_sleep(600)" },
-  database: PG_DB_ID,
+  native: { query: "SELECT 1" },
 };
 
-describe("issue 12926", { tags: "@external" }, () => {
+describe("issue 12926", () => {
   beforeEach(() => {
-    restore("postgres-12");
+    restore();
     cy.signInAsAdmin();
   });
 
@@ -25,7 +21,7 @@ describe("issue 12926", { tags: "@external" }, () => {
       cy.createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id, { should_wait: false });
+        cy.visit(`/dashboard/${dashboard_id}`);
       });
 
       cy.window().then(win => {
@@ -41,7 +37,7 @@ describe("issue 12926", { tags: "@external" }, () => {
       cy.createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id, { should_wait: false });
+        cy.visit(`/dashboard/${dashboard_id}`);
       });
 
       removeCard();
