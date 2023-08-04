@@ -24,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -433,7 +434,7 @@
       updated-db)))
 
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
-  [_driver {:keys [:details] :as database}]
+  [_driver {:keys [details] :as database}]
   (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
     (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
                      " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"

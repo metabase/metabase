@@ -744,7 +744,7 @@
           (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint temp-fingerprint}
             (is (= []
                    (-> (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))
-                       (get-in [:fields])
+                       (get :fields)
                        first
                        :dimension_options)))))))))
 

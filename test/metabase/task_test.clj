@@ -9,6 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s])
   (:import
@@ -57,7 +58,7 @@
 
 (defn- triggers []
   (set
-   (for [^CronTrigger trigger (qs/get-triggers-of-job (#'metabase.task/scheduler) (.getKey (job)))]
+   (for [^CronTrigger trigger (qs/get-triggers-of-job (#'task/scheduler) (.getKey (job)))]
      {:cron-expression     (.getCronExpression trigger)
       :misfire-instruction (.getMisfireInstruction trigger)})))
 

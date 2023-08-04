@@ -140,18 +140,21 @@
                  (t2/select-one-fn :login_attributes User :email "rasta@metabase.com"))))))))
 
 (deftest no-open-redirect-test
-  (testing "Check a JWT with bad (open redirect)"
+  (testing "Check that we prevent open redirects to untrusted sites"
     (with-jwt-default-setup
-      (is (= "SSO is trying to do an open redirect to an untrusted site"
-             (saml-test/client
-               :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
-               :return_to "https://evilsite.com"
-               :jwt (jwt/sign {:email      "rasta@metabase.com"
-                               :first_name "Rasta"
-                               :last_name  "Toucan"
-                               :extra      "keypairs"
-                               :are        "also present"}
-                              default-jwt-secret)))))))
+      (doseq [redirect-uri ["https://badsite.com"
+                            "//badsite.com"]]
+        (is (= "Invalid redirect URL"
+               (-> (saml-test/client
+                    :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                    :return_to redirect-uri
+                    :jwt (jwt/sign {:email      "rasta@metabase.com"
+                                    :first_name "Rasta"
+                                    :last_name  "Toucan"
+                                    :extra      "keypairs"
+                                    :are        "also present"}
+                                   default-jwt-secret))
+                   :message)))))))
 
 (deftest expired-jwt-test
   (testing "Check an expired JWT"

@@ -20,6 +20,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

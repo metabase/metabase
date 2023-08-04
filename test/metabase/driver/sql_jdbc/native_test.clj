@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.query-processor :as qp]
    [metabase.test.data :as data]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
