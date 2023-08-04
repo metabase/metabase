@@ -12,6 +12,7 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -110,7 +111,11 @@
 (defn- joins->fields
   "Return a flattened list of all `:fields` referenced in `joins`."
   [joins]
-  (reduce concat (filter sequential? (map :fields joins))))
+  (into []
+        (comp (map :fields)
+              (filter sequential?)
+              cat)
+        joins))
 
 (defn- should-add-join-fields?
   "Should we append the `:fields` from `:joins` to the parent-level query's `:fields`? True unless the parent-level

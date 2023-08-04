@@ -389,7 +389,7 @@
 
 (deftest virtual-card-heading-test
   (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
-         "Dashboard subscription that includes a virtual card. For heading cards we escape markdown and add a heading markdown."
+         "Dashboard subscription that includes a virtual card. For heading cards we escape markdown, add a heading markdown, and don't subsitute tags."
          {:card (pulse.test-util/checkins-query-card {})
 
           :fixture
@@ -397,7 +397,7 @@
             (t2.with-temp/with-temp [DashboardCard _ {:dashboard_id dashboard-id
                                                       :row 1
                                                       :col 1
-                                                      :visualization_settings {:text "# header" :virtual_card {:display "heading"}}}]
+                                                      :visualization_settings {:text "# header, quote isn't escaped" :virtual_card {:display "heading"}}}]
               (mt/with-temporary-setting-values [site-name "Metabase Test"]
                 (thunk))))
 
@@ -405,11 +405,11 @@
           {:email
            (fn [_ _]
              (testing "Markdown cards are included in email subscriptions"
-               (is (= (rasta-pulse-email {:body [{"Aviary KPIs" true
-                                                  "header"      true}
+               (is (= (rasta-pulse-email {:body [{"Aviary KPIs"                 true
+                                                  "header, quote isn't escaped" true}
                                                  pulse.test-util/png-attachment]})
                       (mt/summarize-multipart-email #"Aviary KPIs"
-                                                    #"header")))))
+                                                    #"header, quote isn't escaped")))))
 
            :slack
            (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -425,7 +425,7 @@
                          :attachment-name "image.png"
                          :channel-id      "FOO"
                          :fallback        pulse.test-util/card-name}
-                        {:blocks [{:type "section" :text {:type "mrkdwn" :text "*# header*"}}]}
+                        {:blocks [{:type "section" :text {:type "mrkdwn" :text "*# header, quote isn't escaped*"}}]}
                         {:blocks [{:type "divider"}
                                   {:type "context"
                                    :elements [{:type "mrkdwn"

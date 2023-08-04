@@ -24,6 +24,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [monger.operators :refer [$add $addToSet $and $avg $cond
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
@@ -530,9 +531,12 @@
   [[_ & [_ & divisors :as args]]]
   ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
   (let [division (reduce
-                   (fn [accum head]
-                     {"$divide" [accum head]})
-                   (map ->rvalue args))
+                  (fn [accum head]
+                    (if accum
+                      {"$divide" [accum head]}
+                      head))
+                  nil
+                  (map ->rvalue args))
         literal-zero? (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
     (cond

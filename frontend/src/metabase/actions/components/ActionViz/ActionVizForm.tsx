@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
-import { getFormTitle } from "metabase/actions/utils";
+import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 
 import type {
   ActionDashboardCard,
@@ -16,11 +16,13 @@ import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreat
 import Modal from "metabase/components/Modal";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
-} from "../../containers/ActionParametersInputForm";
-import ActionButtonView from "./ActionButtonView";
-import { shouldShowConfirmation } from "./utils";
+} from "metabase/actions/containers/ActionParametersInputForm";
+import { getDashboardType } from "metabase/dashboard/utils";
+import { ActionsApi, PublicApi } from "metabase/services";
 
-import { FormWrapper, FormTitle } from "./ActionForm.styled";
+import ActionButtonView from "./ActionButtonView";
+import { FormTitle, FormWrapper } from "./ActionForm.styled";
+import { shouldShowConfirmation } from "./utils";
 
 interface ActionFormProps {
   action: WritebackAction;
@@ -83,6 +85,27 @@ function ActionVizForm({
     setShowEditModal(false);
   };
 
+  const fetchInitialValues = useCallback(async () => {
+    const prefetchDashcardValues =
+      getDashboardType(dashboard.id) === "public"
+        ? PublicApi.prefetchDashcardValues
+        : ActionsApi.prefetchDashcardValues;
+
+    const canPrefetch = Object.keys(dashcardParamValues).length > 0;
+
+    if (!canPrefetch) {
+      return {};
+    }
+
+    return prefetchDashcardValues({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+      parameters: JSON.stringify(dashcardParamValues),
+    });
+  }, [dashboard.id, dashcard.id, dashcardParamValues]);
+
+  const shouldPrefetch = isImplicitUpdateAction(action);
+
   if (shouldDisplayButton) {
     return (
       <>
@@ -95,10 +118,10 @@ function ActionVizForm({
         {showFormModal && (
           <ActionParametersInputModal
             action={action}
-            dashboard={dashboard}
-            dashcard={dashcard}
             mappedParameters={mappedParameters}
-            dashcardParamValues={dashcardParamValues}
+            initialValues={dashcardParamValues}
+            fetchInitialValues={fetchInitialValues}
+            shouldPrefetch={shouldPrefetch}
             title={title}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
@@ -134,10 +157,10 @@ function ActionVizForm({
       <FormTitle>{title}</FormTitle>
       <ActionParametersInputForm
         action={action}
-        dashboard={dashboard}
-        dashcard={dashcard}
         mappedParameters={mappedParameters}
-        dashcardParamValues={dashcardParamValues}
+        initialValues={dashcardParamValues}
+        fetchInitialValues={fetchInitialValues}
+        shouldPrefetch={shouldPrefetch}
         onSubmit={onSubmit}
       />
     </FormWrapper>

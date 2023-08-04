@@ -23,6 +23,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [pretty.core :as pretty]
    [schema.core :as s]
@@ -74,7 +75,8 @@
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both
-   (mi/InstanceOf Database)
+   #_{:clj-kondo/ignore [:deprecated-var]}
+   (mi/InstanceOf:Schema Database)
    {:id       su/IntGreaterThanZero
     :engine   s/Keyword
     :name     su/NonBlankString
@@ -91,7 +93,8 @@
 
 (def ^:private TableInstanceWithRequiredStoreKeys
   (s/both
-   (mi/InstanceOf Table)
+   #_{:clj-kondo/ignore [:deprecated-var]}
+   (mi/InstanceOf:Schema Table)
    {:schema (s/maybe s/Str)
     :name   su/NonBlankString
     s/Any   s/Any}))
@@ -119,7 +122,8 @@
 
 (def ^:private FieldInstanceWithRequiredStorekeys
   (s/both
-   (mi/InstanceOf Field)
+   #_{:clj-kondo/ignore [:deprecated-var]}
+   (mi/InstanceOf:Schema Field)
    {:name                               su/NonBlankString
     :table_id                           su/IntGreaterThanZero
     :display_name                       su/NonBlankString

@@ -124,3 +124,9 @@
                              (diff-string k (k before) (k after)
                                           (if (zero? i) (deferred-tru "this {0}" model-name) (deferred-tru "it"))))
                            ks)))))
+:used-underscored-binding
+
+(let [x 1 y 2]
+  (clojure.core.match/match [:name x y]
+    [:name _ _]
+    "Ok"))
