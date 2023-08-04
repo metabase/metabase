@@ -340,7 +340,7 @@ export function ObjectDetailView({
   }, [actionId, zoomedRowID]);
 
   const initialValues = useMemo(
-    () => ({ id: zoomedRowID || null }),
+    () => ({ id: zoomedRowID ?? null }),
     [zoomedRowID],
   );
 
