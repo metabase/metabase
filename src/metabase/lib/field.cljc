@@ -543,13 +543,12 @@
 (defn- populate-fields-for-stage
   "Given a query and stage, sets the `:fields` list to be the fields which would be selected by default.
   This is exactly [[lib.metadata.calculation/returned-columns]] filtered by the `:lib/source`.
-  Fields from explicit joins are listed on the join itself; custom expressions are always included and should not be
-  listed in `:fields`."
+  Fields from explicit joins are listed on the join itself and should not be listed in `:fields`."
   [query stage-number]
   (lib.util/update-query-stage query stage-number
                                (fn [stage]
                                  (assoc stage :fields
-                                        (into [] (comp (remove (comp #{:source/joins :source/expressions}
+                                        (into [] (comp (remove (comp #{:source/joins}
                                                                      :lib/source))
                                                        (map lib.ref/ref))
                                               (lib.metadata.calculation/returned-columns query stage-number stage))))))
@@ -596,29 +595,32 @@
 (mu/defn add-field :- ::lib.schema/query
   "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
-  - Source table/card, previous stage of the query, aggregation or breakout:
+  - Source table/card, previous stage of the query, custom expression, aggregation or breakout:
       - Add it to the `:fields` list
       - If `:fields` is missing, it's implicitly `:all`, so do nothing.
   - Implicit join: add it to the `:fields` list; query processor will do the right thing with it.
-  - Explicit join: add it to that join's `:fields` list.
-  - Custom expression: Do nothing - expressions are always included."
+  - Explicit join: add it to that join's `:fields` list."
   [query      :- ::lib.schema/query
    stage-number :- :int
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (case (:lib/source column)
+  (let [stage  (lib.util/query-stage query stage-number)
+        source (:lib/source column)]
+    (case source
       (:source/table-defaults
        :source/card
        :source/previous-stage
+       :source/expressions
        :source/aggregations
        :source/breakouts)         (cond-> query
                                     (contains? stage :fields) (include-field stage-number column))
       :source/joins               (add-field-to-join query stage-number column)
       :source/implicitly-joinable (include-field query stage-number column)
       :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
-      ;; Default case - for columns from a native query or a custom expression - these are always returned and cannot be
-      ;; selected off and on.
-      query)))
+      ;; Default case - do nothing if we don't know about the incoming value.
+      ;; Generates a warning, as we should aim to capture all the :source/* values here.
+      (do
+        (log/warn (i18n/tru "Cannot add-field with unknown source " (pr-str source)))
+        query))))
 
 (defn- remove-matching-ref [query a-ref refs]
   (let [match (lib.equality/find-closest-matching-ref query a-ref refs)]
@@ -657,22 +659,22 @@
 (mu/defn remove-field :- ::lib.schema/query
   "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
   query. Exactly what this means depends on the source of the field:
-  - Source table/card, previous stage, aggregations or breakouts:
+  - Source table/card, previous stage, custom expression, aggregations or breakouts:
       - If `:fields` is missing, it's implicitly `:all` - populate it with all the columns except the removed one.
       - Remove the target column from the `:fields` list
   - Implicit join: remove it from the `:fields` list; do nothing if it's not there.
       - (An implicit join only exists in the `:fields` clause, so if it's not there then it's not anywhere.)
-  - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables).
-  - Custom expression: Throw! Custom expressions are always returned. To remove a custom expression, the expression
-    itself should be removed from the query."
+  - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables)."
   [query      :- ::lib.schema/query
    stage-number :- :int
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (case (:lib/source column)
+  (let [stage  (lib.util/query-stage query stage-number)
+        source (:lib/source column)]
+    (case source
       (:source/table-defaults
        :source/breakouts
        :source/aggregations
+       :source/expressions
        :source/card
        :source/previous-stage)    (exclude-field query stage-number column)
       :source/implicitly-joinable (cond-> query
@@ -680,10 +682,9 @@
                                     ;; If :fields is implied, then there can't be any implicitly joined fields in it.
                                     (:fields stage) (exclude-field stage-number column))
       :source/joins               (remove-field-from-join query stage-number column)
-      :source/expressions         (throw (ex-info (i18n/tru "Custom expressions cannot be de-selected. Delete the expression instead.")
-                                                  {:query      query
-                                                   :stage      stage-number
-                                                   :expression column}))
       :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
       ;; Default case: do nothing and return the query unchaged.
-      query)))
+      ;; Generate a warning - we should aim to capture every `:source/*` value above.
+      (do
+        (log/warn (i18n/tru "Cannot remove-field with unknown source " (pr-str source)))
+        query))))
