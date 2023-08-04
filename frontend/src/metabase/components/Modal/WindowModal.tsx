@@ -43,7 +43,7 @@ export class WindowModal extends Component<WindowModalProps> {
     this._modalElement.className = "ModalContainer";
 
     if (props.zIndex != null) {
-      this._modalElement.setAttribute("style", `z-index:${props.zIndex}`);
+      this._modalElement.style.zIndex = String(props.zIndex);
     }
     document.body.appendChild(this._modalElement);
   }
