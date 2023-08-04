@@ -1062,38 +1062,36 @@
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (defn- like-clause
-  [field arg options]
+  [field pattern {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
+  ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
+  ;; LIKE clauses? That's what we're doing with Druid... (Cam)
+  ;;
   ;; TODO - Postgres supports `ILIKE`. Does that make a big enough difference performance-wise that we should do a
-  ;; custom implementation?
-  (if (get options :case-sensitive true)
-    [:like field                  arg]
-    [:like (hx/call :lower field) (hx/call :lower arg)]))
+  ;; custom implementation? (Cam)
+  [:like (cond->> field (not case-sensitive) (hx/call :lower)) pattern])
 
-;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
-;; LIKE clauses? That's what we're doing with Druid... (Cam)
-(defmulti ^:private generate-pattern
-  (fn [_driver _pre [type :as _arg] _post]
-    (if (= :value type) :clj-str-concat :sql-str-concat)))
-
-(defmethod generate-pattern :clj-str-concat
-  [driver pre arg post]
-  (->honeysql driver (update arg 1 #(str pre % post))))
-
-(defmethod generate-pattern :sql-str-concat
-  [driver pre arg post]
-  (apply hx/call :concat (filterv boolean [pre (->honeysql driver arg) post])))
+(defn- generate-pattern
+  "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
+  [driver pre [type _ :as arg] post {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
+  (if (= :value type)
+    (->honeysql driver (update arg 1 #(cond-> (str pre % post)
+                                        (not case-sensitive) u/lower-case-en)))
+    (cond->> (->> [pre (->honeysql driver arg) post]
+                  (filterv some?)
+                  (apply hx/call :concat))
+      (not case-sensitive) (hx/call :lower))))
 
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver nil arg "%") options))
+  (like-clause (->honeysql driver field) (generate-pattern driver nil arg "%" options) options))
 
 (defmethod ->honeysql [:sql :contains]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg "%") options))
+  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg "%" options) options))
 
 (defmethod ->honeysql [:sql :ends-with]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg nil) options))
+  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg nil options) options))
 
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]

@@ -276,7 +276,7 @@
                   [3 "The Apple Pan" 11 34.0406 -118.428 2]]
                  (mt/formatted-rows :venues
                                     (mt/run-mbql-query venues
-                                      {:filter   [:starts-with $name [:substring $name 1 3] {:case-sensitive false}]
+                                      {:filter   [:starts-with $name [:lower [:substring $name 1 3]] {:case-sensitive false}]
                                        :order-by [[:asc $id]]
                                        :limit 3})))))
 
@@ -338,7 +338,7 @@
                   [3 "The Apple Pan" 11 34.0406 -118.428 2]]
                  (mt/formatted-rows :venues
                                     (mt/run-mbql-query venues
-                                      {:filter   [:ends-with $name [:substring $name 2] {:case-sensitive false}]
+                                      {:filter   [:ends-with $name [:upper $name] {:case-sensitive false}]
                                        :order-by [[:asc $id]]
                                        :limit 3})))))
 
@@ -396,7 +396,7 @@
                   [3 "The Apple Pan" 11 34.0406 -118.428 2]]
                  (mt/formatted-rows :venues
                                     (mt/run-mbql-query venues
-                                      {:filter   [:contains $name [:substring $name 2 3] {:case-sensitive false}]
+                                      {:filter   [:contains $name [:lower [:substring $name 1 3]] {:case-sensitive false}]
                                        :order-by [[:asc $id]]
                                        :limit 3})))))
 

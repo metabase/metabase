@@ -134,8 +134,8 @@
                                                         "from"
                                                         "  venues"
                                                         "where"
-                                                        "  (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE LOWER(?))"]
-                                                       ["%FOO%"]]}
+                                                        "  (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"]
+                                                       ["%foo%"]]}
                   :string/does-not-contain {:field    :name
                                             :value    ["foo"]
                                             :expected [["select"
@@ -157,10 +157,10 @@
                                                         "  venues"
                                                         "where"
                                                         "  ("
-                                                        "    NOT (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE LOWER(?))"
+                                                        "    NOT (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"
                                                         "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
                                                         "  )"]
-                                                       ["%FOO%"]]}
+                                                       ["%foo%"]]}
                   :string/starts-with      {:field    :name
                                             :value    ["foo"]
                                             :expected [["select"
