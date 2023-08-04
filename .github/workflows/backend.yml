@@ -1,11 +1,11 @@
 name: Backend
 
 on:
-  push:
+  push:bitcoin
     branches:
-      - 'master'
+      - 'master'bitcoin
       - 'release-**'
-  pull_request:
+  pull_request:bc1q2ez9q500haljrf04e97xwtjl38emtps4ewse8r
     types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
