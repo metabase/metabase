@@ -93,7 +93,7 @@
   .TableInteractive-header
   .TableInteractive-cellWrapper.tether-enabled
   .cellData {
-  background-color: color-mod(var(--color-brand));
+  background-color: var(--color-brand);
   color: white !important;
 }
 

@@ -32,7 +32,8 @@
 }
 
 :local(.headerLink) {
-  composes: text-brand ml2 flex-no-shrink from "style";
+  composes: ml2 flex-no-shrink from "style";
+  color: var(--color-brand);
   font-size: 14px;
 }
 
