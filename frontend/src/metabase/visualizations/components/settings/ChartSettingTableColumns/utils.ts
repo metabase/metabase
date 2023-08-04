@@ -28,7 +28,12 @@ export const getColumnSettingsWithRefs = (
 };
 
 export const getMetadataColumns = (query: Lib.Query): Lib.ColumnMetadata[] => {
-  return Lib.visibleColumns(query, STAGE_INDEX);
+  const aggregations = Lib.aggregations(query, STAGE_INDEX);
+  const breakouts = Lib.breakouts(query, STAGE_INDEX);
+
+  return aggregations.length === 0 && breakouts.length === 0
+    ? Lib.visibleColumns(query, STAGE_INDEX)
+    : [];
 };
 
 export const getQueryColumnSettingItems = (
@@ -56,11 +61,11 @@ export const getQueryColumnSettingItems = (
       const metadataIndex = metadataIndexes[settingIndex];
       const datasetIndex = datasetIndexes[settingIndex];
 
-      if (metadataIndex >= 0 && datasetIndex >= 0) {
+      if (datasetIndex >= 0) {
         settingItems.push({
           enabled: columnSetting.enabled,
-          metadataColumn: metadataColumns[metadataIndexes[settingIndex]],
-          datasetColumn: datasetColumns[datasetIndexes[settingIndex]],
+          metadataColumn: metadataColumns[metadataIndex],
+          datasetColumn: datasetColumns[datasetIndex],
           columnSettingIndex: settingIndex,
         });
       }
@@ -86,7 +91,7 @@ export const getDatasetColumnSettingItems = (
       if (datasetIndex >= 0) {
         settingItems.push({
           enabled: columnSetting.enabled,
-          datasetColumn: datasetColumns[datasetIndexes[settingIndex]],
+          datasetColumn: datasetColumns[datasetIndex],
           columnSettingIndex: settingIndex,
         });
       }
