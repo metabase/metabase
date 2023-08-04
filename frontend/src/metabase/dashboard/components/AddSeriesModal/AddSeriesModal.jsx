@@ -66,10 +66,12 @@ class AddSeriesModal extends Component {
   };
 
   handleRemoveSeries = (_event, removedIndex) => {
+    const { series } = this.state;
     this.setState({
-      series: this.state.series.filter(
-        (_card, cardIndex) => cardIndex !== removedIndex,
-      ),
+      series: [
+        ...series.slice(0, removedIndex),
+        ...series.slice(removedIndex + 1),
+      ],
     });
     MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
   };
