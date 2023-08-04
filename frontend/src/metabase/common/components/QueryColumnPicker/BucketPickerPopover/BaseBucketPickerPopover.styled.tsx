@@ -39,9 +39,8 @@ export const SelectListItem = styled(BaseSelectList.Item)<{
   }
 `;
 
-export const SelectList = styled(BaseSelectList)`
+export const Content = styled.div`
   overflow-y: auto;
-  max-height: 390px;
   padding: 0.5rem 1rem;
 
   ${SelectListItem} {
