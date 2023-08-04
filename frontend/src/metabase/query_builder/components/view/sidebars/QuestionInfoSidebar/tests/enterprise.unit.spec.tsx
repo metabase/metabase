@@ -18,6 +18,7 @@ describe("QuestionInfoSidebar", () => {
       const card = createMockCard({
         cache_ttl: 10,
         description: "abc",
+        can_write: true,
       });
       await setupEnterprise({ card });
       expect(screen.getByText(card.description ?? "")).toBeInTheDocument();

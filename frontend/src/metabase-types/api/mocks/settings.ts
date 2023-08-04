@@ -148,6 +148,8 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "enable-enhancements?": false,
   "enable-nested-queries": true,
   "enable-query-caching": undefined,
+  "query-caching-ttl-ratio": 10,
+  "query-caching-min-ttl": 60,
   "enable-password-login": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
