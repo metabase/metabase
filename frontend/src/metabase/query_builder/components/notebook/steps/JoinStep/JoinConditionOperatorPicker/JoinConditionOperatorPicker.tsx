@@ -13,6 +13,7 @@ interface JoinConditionOperatorPickerProps {
   operator?: Lib.FilterOperator;
   operators: Lib.FilterOperator[];
   disabled?: boolean;
+  isConditionComplete: boolean;
   onChange: (operator: Lib.FilterOperator) => void;
 }
 
@@ -22,6 +23,7 @@ export function JoinConditionOperatorPicker({
   operator: selectedOperator,
   operators,
   disabled,
+  isConditionComplete,
   onChange,
 }: JoinConditionOperatorPickerProps) {
   const selectedOperatorInfo = selectedOperator
@@ -36,6 +38,7 @@ export function JoinConditionOperatorPicker({
           onClick={onClick}
           disabled={disabled}
           aria-label={t`Change operator`}
+          isConditionComplete={isConditionComplete}
         >
           {selectedOperatorInfo?.shortName}
         </OperatorPickerButton>
