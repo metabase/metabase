@@ -565,9 +565,9 @@
   (testing "Redirect URL (RelayState) should work correctly end-to-end (#13666)"
     (with-saml-default-setup
       ;; The test HTTP client will automatically URL encode these for us.
-      (doseq [redirect-url ["/collection/root"
+      (doseq [redirect-url ["http://localhost:3001/collection/root"
                             default-redirect-uri
-                            "/"]]
+                            "http://localhost:3001/"]]
         (testing (format "\nredirect URL = %s" redirect-url)
           (let [result     (client-full-response :get 302 "/auth/sso"
                                                  {:request-options {:redirect-strategy :none}}
