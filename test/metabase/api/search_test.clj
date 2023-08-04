@@ -952,50 +952,50 @@
 
 (deftest created-at-correctness-test
   (let [search-term "created-at-filtering"
-        now           #t "2023-05-04T10:00Z[UTC]"
-        two-years-ago (t/minus now (t/years 2))]
-    (mt/with-clock now
+        new          #t "2023-05-04T10:00Z[UTC]"
+        two-years-ago (t/minus new (t/years 2))]
+    (mt/with-clock new
       (t2.with-temp/with-temp
-        [:model/Dashboard  {dashboard-now :id}{:name       search-term
-                                               :created_at now}
+        [:model/Dashboard  {dashboard-new :id}{:name       search-term
+                                               :created_at new}
          :model/Dashboard  {dashboard-old :id}{:name       search-term
                                                :created_at two-years-ago}
-         :model/Database   {db-now :id}       {:name       search-term
-                                               :created_at now}
+         :model/Database   {db-new :id}       {:name       search-term
+                                               :created_at new}
          :model/Database   {db-old :id }      {:name       search-term
                                                :created_at two-years-ago}
-         :model/Table      {table-now :id}    {:name       search-term
-                                               :db_id      db-now
-                                               :created_at now}
+         :model/Table      {table-new :id}    {:name       search-term
+                                               :db_id      db-new
+                                               :created_at new}
          :model/Table      {table-old :id}    {:name       search-term
                                                :db_id      db-old
                                                :created_at two-years-ago}
-         :model/Collection {coll-now :id}     {:name       search-term
-                                               :created_at now}
+         :model/Collection {coll-new :id}     {:name       search-term
+                                               :created_at new}
          :model/Collection {coll-old :id}     {:name       search-term
                                                :created_at two-years-ago}
-         :model/Card       {card-now :id}     {:name       search-term
-                                               :created_at now}
+         :model/Card       {card-new :id}     {:name       search-term
+                                               :created_at new}
          :model/Card       {card-old :id}     {:name       search-term
                                                :created_at two-years-ago}
-         :model/Card       {model-now :id}    {:name       search-term
+         :model/Card       {model-new :id}    {:name       search-term
                                                :dataset    true
-                                               :created_at now}
+                                               :created_at new}
          :model/Card       {model-old :id}    {:name       search-term
                                                :dataset    true
                                                :created_at two-years-ago}
-         :model/Action     {action-now :id}   {:name       search-term
-                                               :model_id   model-now
+         :model/Action     {action-new :id}   {:name       search-term
+                                               :model_id   model-new
                                                :type       :http
-                                               :created_at now}
+                                               :created_at new}
          :model/Action     {action-old :id}   {:name       search-term
                                                :model_id   model-old
                                                :type       :http
                                                :created_at two-years-ago}
-         :model/Segment    {_segment-now :id} {:name       search-term
-                                               :created_at now}
-         :model/Metric     {_metric-now :id}  {:name       search-term
-                                               :created_at now}]
+         :model/Segment    {_segment-new :id} {:name       search-term
+                                               :created_at new}
+         :model/Metric     {_metric-new :id}  {:name       search-term
+                                               :created_at new}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
         (let [search     (fn [created-at]
                            (mt/with-current-user (mt/user->id :crowberto)
@@ -1007,13 +1007,13 @@
                                   :data
                                   (map (juxt :model :id))
                                   set)))
-              now-result #{["action"     action-now]
-                           ["card"       card-now]
-                           ["collection" coll-now]
-                           ["database"   db-now]
-                           ["dataset"    model-now]
-                           ["dashboard"  dashboard-now]
-                           ["table"      table-now]}
+              new-result #{["action"     action-new]
+                           ["card"       card-new]
+                           ["collection" coll-new]
+                           ["database"   db-new]
+                           ["dataset"    model-new]
+                           ["dashboard"  dashboard-new]
+                           ["table"      table-new]}
               old-result #{["action"     action-old]
                            ["card"       card-old]
                            ["collection" coll-old]
@@ -1024,10 +1024,10 @@
 
           ;; absolute datetime
           (is (= old-result (search "Q2-2021")))
-          (is (= now-result (search "2023-05-04")))
-          (is (= (set/union old-result now-result)
+          (is (= new-result (search "2023-05-04")))
+          (is (= (set/union old-result new-result)
                  (search "2021-05-03~")))
-          ;; range is inclusive of the start but exclusive of the end, so this does not contain now-result
+          ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
           (is (= old-result
                  (search "2021-05-04~2023-05-04")))
           (is (= old-result
@@ -1035,9 +1035,9 @@
           (is (= old-result
                  (search "2021-05-04T09:00:00~2021-05-04T10:00:10")))
           ;; relative times
-          (is (= now-result
+          (is (= new-result
                  (search "thisyear")))
           (is (= old-result
                  (search "past1years-from-12months")))
-          (is (= now-result
+          (is (= new-result
                  (search "today"))))))))
