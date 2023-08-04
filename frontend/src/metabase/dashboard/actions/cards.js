@@ -87,13 +87,13 @@ export const removeCardFromDashboard = createThunkAction(
 
 export const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
-  ({ dashcardId, cardId }) =>
+  ({ dashcardId }) =>
     (dispatch, getState) => {
       const dashcard = getDashCardById(getState(), dashcardId);
       const card = dashcard.card;
 
       dispatch(fetchCardData(card, dashcard));
-      return { dashcardId, cardId };
+      return { dashcardId };
     },
 );
 
