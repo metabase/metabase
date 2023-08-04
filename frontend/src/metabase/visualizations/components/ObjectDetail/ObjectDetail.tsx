@@ -12,7 +12,7 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
-import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
+import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import {
   useActionListQuery,
   useDatabaseListQuery,
@@ -339,7 +339,10 @@ export function ObjectDetailView({
     });
   }, [actionId, zoomedRowID]);
 
-  const initialValues = useMemo(() => ({ id: zoomedRowID }), [zoomedRowID]);
+  const initialValues = useMemo(
+    () => ({ id: zoomedRowID ?? null }),
+    [zoomedRowID],
+  );
 
   const dispatch = useDispatch();
 
