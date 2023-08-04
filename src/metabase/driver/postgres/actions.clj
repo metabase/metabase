@@ -12,8 +12,9 @@
 (defn- maybe-parse-not-null-error [_database error-message]
   (when-let [[_ _value column]
              (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
-    [{:message (tru "violates not-null constraint")
-      :column column}]))
+    {:type    :violate-not-null-constraint
+     :message (tru "violates not-null constraint")
+     :columns [column]}))
 
   ;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
   ;; result in 100 identical data warehouse queries. It's not like constraint columns are something we would expect to
@@ -31,27 +32,23 @@
   (let [[match? constraint _value]
         (re-find #"ERROR:\s+duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
     (when match?
-      (let [columns (constraint->column-names database constraint)]
-        (mapv
-         (fn [column]
-           {:message (tru "violates unique constraint {0}" constraint)
-            :constraint constraint
-            :column column})
-         columns)))))
+      {:type       :violate-unique-constraint
+       :message    (tru "violates unique constraint {0}" constraint)
+       :constraint constraint
+       :columns    (constraint->column-names database constraint)})))
 
 (defn- maybe-parse-fk-constraint-error [database error-message]
   (let [[match? table constraint ref-table _columns _value]
         (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
     (when match?
       (let [columns (constraint->column-names database constraint)]
-        (mapv
-         (fn [column]
-           {:message    (tru "violates foreign key constraint {0}" constraint)
-            :table      table
-            :ref-table  ref-table
-            :constraint constraint
-            :column     column})
-         columns)))))
+        {:type       :violate-foreign-key-constraint
+
+         :message    (tru "violates foreign key constraint {0}" constraint)
+         :table      table
+         :ref-table  ref-table
+         :constraint constraint
+         :columns    columns}))))
 
 (defmethod sql-jdbc.actions/parse-sql-error :postgres
   [_driver database message]

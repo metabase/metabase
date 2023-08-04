@@ -22,8 +22,9 @@
 (defn- maybe-parse-not-null-error [_database error-message]
   (when-let [[_ col]
              (re-find #"Column '(.+)' cannot be null" error-message)]
-    [{:message (tru "violates not-null constraint")
-      :column  col}]))
+    {:type    :violate-not-null-constraint
+     :message (tru "violates not-null constraint")
+     :column  col}))
 
 ;;; TODO -- we should probably be TTL caching this information. Otherwise
 ;;; parsing 100 errors for a bulk action will result in 100 identical data
@@ -52,53 +53,50 @@
       [[] nil nil]
       (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
 
+;; TODO: maybe we need to convert into defmethods
 (defn- maybe-parse-unique-constraint-error [database error-message]
   (let [[match table constraint]
         (re-find #"Duplicate entry '.+' for key '(.+)\.(.+)'" error-message)
         constraint (remove-backticks constraint)
         table (remove-backticks table)]
     (when match
-      (some->> (constraint->column-names database table constraint)
-               (mapv (fn [col]
-                       {:message    (tru "violates unique constraint {0}" constraint)
-                        :table      table
-                        :constraint constraint
-                        :column     col}))))))
+      {:type       :violate-unique-constraint
+       :message    (tru "violates unique constraint {0}" constraint)
+       :table      table
+       :constraint constraint
+       :columns    (constraint->column-names database table constraint)})))
 
 (defn- maybe-parse-fk-constraint-error [_database error-message]
-  (let [[match table constraint fkey-cols ref-table key-cols]
+  (let [[match table constraint _fkey-cols ref-table key-cols]
         (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)
         constraint (remove-backticks constraint)
         table (remove-backticks table)
         ref-table (remove-backticks ref-table)]
     (when match
-      (mapv
-       (fn [fkey-col key-col]
-         {:message     (tru "violates foreign key constraint {0}" constraint)
-          :table       table
-          :ref-table   ref-table
-          :constraint  constraint
-          :foreign-key (remove-backticks fkey-col)
-          :column      (remove-backticks key-col)})
-       (str/split fkey-cols #", ")
-       (str/split key-cols #", ")))))
+      {:type       :violate-foreign-key-constraint
+       :message    (tru "violates foreign key constraint {0}" constraint)
+       :table      table
+       :ref-table  ref-table
+       :constraint constraint
+       :columns    (map remove-backticks (str/split key-cols #", "))})))
 
 (defn- maybe-parse-incorrect-type [_database error-message]
   (when-let [[_ expected-type value database table column row]
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]
-    [(cond-> {:message       (tru "incorrect value: {0}" value)
-              :column        (-> column
-                                 (str/replace #"^'(.*)'$" "$1")
-                                 remove-backticks)
-              :expected-type expected-type
-              :value         value
-              :row           (parse-long row)}
-       table    (assoc :table (remove-backticks table))
-       database (assoc :database (remove-backticks database)))]))
+    (cond-> {:type          :incorrect-type
+             :message       (tru "incorrect value: {0}" value)
+             :column        (-> column
+                                (str/replace #"^'(.*)'$" "$1")
+                                remove-backticks)
+             :expected-type expected-type
+             :value         value
+             :row           (parse-long row)}
+      table    (assoc :table (remove-backticks table))
+      database (assoc :database (remove-backticks database)))))
 
 (comment
   (maybe-parse-fk-constraint-error nil "Cannot delete or update a parent row: a foreign key constraint fails (`food`.`y`, CONSTRAINT `y_ibfk_1` FOREIGN KEY (`x_id1`, `x_id2`) REFERENCES `x` (`id1`, `id2`))")
-  (maybe-parse-unique-constraint-error {:id 480} "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")
+  (maybe-parse-unique-constraint-error {:id 1} "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")
   (maybe-parse-not-null-error nil "Column 'f1' cannot be null")
   (maybe-parse-incorrect-type nil "Incorrect integer value: 'not boolean' for column `G__168815`.`types`.`boolean` at row 1")
   (maybe-parse-incorrect-type nil "(conn=183) Incorrect integer value: 'STRING' for column 'id' at row 1")

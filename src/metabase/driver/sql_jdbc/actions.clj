@@ -48,7 +48,7 @@
                                    (catch Throwable e
                                      (log/error e (trs "Error parsing SQL error message {0}: {1}" (pr-str message) (ex-message e)))
                                      nil)))]
-          {:errors (into {} (map (juxt :column :message)) parsed-errors)}
+          {:errors  parsed-errors}
           {:message (or message (pr-str e))})))))
 
 (defn- catch-throw [e status-code & [more-info]]

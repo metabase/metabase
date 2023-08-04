@@ -51,3 +51,21 @@
                                             (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))
+
+#_(mt/defdataset action-error-handling
+    [["group"
+      [{:field-name "name" :base-type :type/Text}]
+      [["admin"]
+       ["user"]]]
+     ["user"
+      [{:field-name "name" :base-type :type/Text}
+       {:field-name "group-id" :base-type :type/Integer :fk "group"}]
+      [["crowberto" 1]
+       ["rasta"     2]
+       ["lucky"     1]]]])
+
+
+#_(mt/test-driver :postgres
+   (mt/dataset action-error-handling
+     (mt/with-actions-enabled
+       (actions/perform-action! :row/delete (mt/mbql-query group {:filter [:= $id 1]})))))
