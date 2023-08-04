@@ -36,7 +36,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (org.apache.commons.io FileUtils)))
 
@@ -156,6 +157,30 @@
         (is (true? col-enabled))
         (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
         (is (= "category_id" (-> (db/select-one-field :name Field :id col-field-id)
+                                 u/lower-case-en))))))))
+
+(defn- test-loaded-card [card card-name]
+  (when (= "My Nested Card" card-name)
+    (testing "Visualization settings for a Card were persisted correctly"
+      (let [vs (:visualization_settings card)
+            col (-> (:column_settings vs)
+                    first)
+            [col-key col-val] col
+            col-ref (mb.viz/parse-db-column-ref col-key)
+            {:keys [::mb.viz/field-id]} col-ref
+            [{col-name :name col-field-ref :fieldRef col-enabled :enabled :as _tbl-col} & _] (:table.columns vs)
+            [_ col-field-id _] col-field-ref]
+        (is (some? (:table.columns vs)))
+        (is (some? (:column_settings vs)))
+        (is (integer? field-id))
+        (is (= "latitude" (-> (t2/select-one-fn :name Field :id field-id)
+                              u/lower-case-en)))
+        (is (= {:show_mini_bar true
+                :column_title "Parallel"} col-val))
+        (is (= "Venue Category" col-name))
+        (is (true? col-enabled))
+        (is (integer? col-field-id) "fieldRef within table.columns was properly serialized and loaded")
+        (is (= "category_id" (-> (t2/select-one-fn :name Field :id col-field-id)
                                  u/lower-case-en)))))))
 
 (defn- test-pivot-card [card card-name]
