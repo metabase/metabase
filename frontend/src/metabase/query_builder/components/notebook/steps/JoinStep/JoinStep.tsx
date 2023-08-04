@@ -297,6 +297,8 @@ function JoinCondition({
   const lhsColumnGroup = Lib.groupColumns(lhsColumns);
   const rhsColumnGroup = Lib.groupColumns(rhsColumns);
 
+  const isComplete = Boolean(lhsColumn && rhsColumn && operator);
+
   const handleOperatorChange = (operator: Lib.FilterOperator) => {
     const nextCondition = setOperator(operator);
     if (nextCondition) {
@@ -322,7 +324,7 @@ function JoinCondition({
   };
 
   return (
-    <ConditionContainer>
+    <ConditionContainer isComplete={isComplete}>
       <Flex align="center" gap="4px" mih="47px" p="4px">
         <Box ml={!lhsColumn ? "4px" : undefined}>
           <JoinConditionColumnPicker
@@ -343,6 +345,7 @@ function JoinCondition({
           operator={operator}
           operators={operators}
           disabled={readOnly}
+          isConditionComplete={isComplete}
           onChange={handleOperatorChange}
         />
         <Box mr={!rhsColumn ? "4px" : undefined}>
@@ -362,9 +365,10 @@ function JoinCondition({
       {!readOnly && canRemove && (
         <RemoveConditionButton
           onClick={onRemove}
+          isConditionComplete={isComplete}
           aria-label={t`Remove condition`}
         >
-          <Icon name="close" size={16} color="white" />
+          <Icon name="close" size={16} />
         </RemoveConditionButton>
       )}
     </ConditionContainer>

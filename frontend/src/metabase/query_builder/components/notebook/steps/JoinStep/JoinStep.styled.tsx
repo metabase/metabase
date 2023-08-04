@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { alpha, color, darken } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/lib/colors";
 import { Flex } from "metabase/ui";
 import { NotebookCell } from "../../NotebookCell";
 
@@ -8,9 +8,12 @@ export const TablesNotebookCell = styled(NotebookCell)`
   align-self: start;
 `;
 
-export const ConditionContainer = styled(Flex)`
-  background-color: ${color("brand")};
+export const ConditionContainer = styled(Flex)<{ isComplete: boolean }>`
   border-radius: 8px;
+  transition: background-color 300ms linear;
+
+  background-color: ${props =>
+    props.isComplete ? color("brand") : alpha("brand", 0.15)};
 `;
 
 export const ConditionNotebookCell = styled(NotebookCell)`
@@ -29,7 +32,9 @@ export const ConditionUnionLabel = styled.span`
   color: ${color("text-dark")};
 `;
 
-export const RemoveConditionButton = styled.button`
+export const RemoveConditionButton = styled.button<{
+  isConditionComplete: boolean;
+}>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -46,8 +51,12 @@ export const RemoveConditionButton = styled.button`
 
   transition: background-color 300ms linear;
 
+  color: ${props =>
+    props.isConditionComplete ? color("white") : color("brand")};
+
   &:hover,
   &:focus {
-    background-color: ${darken("brand", 0.15)};
+    background-color: ${props =>
+      props.isConditionComplete ? lighten("brand", 0.1) : alpha("brand", 0.2)};
   }
 `;

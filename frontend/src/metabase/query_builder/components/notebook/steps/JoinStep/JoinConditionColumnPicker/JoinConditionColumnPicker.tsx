@@ -113,9 +113,9 @@ const ColumnNotebookCellItem = forwardRef<
       )}
       <Text
         display="block"
-        color="white"
+        color={columnName ? "white" : "brand"}
         align="left"
-        weight={hasColumnSelected ? 600 : 400}
+        weight={700}
         lh={1}
       >
         {columnName || t`Pick a column…`}
