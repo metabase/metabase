@@ -53,10 +53,15 @@
           (t2/select-one User :id id))))))
 
 (defn check-sso-redirect
-  "Check if open redirect is being exploited in SSO, blurts out a 400 if so"
+  "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
   [redirect-url]
-  (let [decoded-url (some-> redirect-url (URLDecoder/decode))
-        host        (some-> decoded-url (URI.) (.getHost))
-        our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
-    (api/check (or (nil? decoded-url) (= host our-host))
-               [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))
+  (try
+    (let [decoded-url (some-> ^String redirect-url (URLDecoder/decode "UTF-8"))
+          host        (some-> decoded-url (URI.) (.getHost))
+          our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
+      (api/check-400 (or (nil? decoded-url) (= host our-host))))
+    (catch Exception e
+      (log/error e "Invalid redirect URL")
+      (throw (ex-info (tru "Invalid redirect URL")
+                      {:status-code 400
+                       :redirect-url redirect-url})))))

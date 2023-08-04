@@ -38,7 +38,7 @@
    [saml20-clj.core :as saml]
    [schema.core :as s])
   (:import
-   (java.net MalformedURLException URI)
+   (java.net URI URISyntaxException)
    (java.util Base64 UUID)))
 
 (set! *warn-on-reflection* true)
@@ -115,7 +115,7 @@
 (defn- has-host? [uri]
   (try
     (-> uri URI. .getHost some?)
-    (catch MalformedURLException _ false)))
+    (catch URISyntaxException _ false)))
 
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
