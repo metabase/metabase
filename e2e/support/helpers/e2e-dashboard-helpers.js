@@ -187,3 +187,7 @@ export function createLinkCard() {
 export function toggleDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
 }
+
+export function openDashboardMenu() {
+  dashboardHeader().findByLabelText("dashboard-menu-button").click();
+}
