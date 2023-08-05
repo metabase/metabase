@@ -23,7 +23,6 @@
 
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
-
   {:name                                        su/NonBlankString
    :database-type                               (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
    :base-type                                   su/FieldType

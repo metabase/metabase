@@ -8,7 +8,7 @@
 (mr/def ::int
   :int)
 
-(deftest explainer-test
+(deftest ^:parallel explainer-test
   (is (= ["should be an integer"]
          (me/humanize (mc/explain ::int "1"))
          (me/humanize ((mr/explainer ::int) "1"))))
