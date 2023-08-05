@@ -6,7 +6,7 @@ import * as Yup from "yup";
 import ModalContent from "metabase/components/ModalContent";
 import FormProvider from "metabase/core/components/FormProvider/FormProvider";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import { CreateCollectionOnTheGoModal } from "metabase/containers/CreateCollectionOnTheGo";
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import Form from "metabase/core/components/Form";
 import FormInput from "metabase/core/components/FormInput";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -169,7 +169,7 @@ export const SaveQuestionModal = ({
       : t`What is the name of your model?`;
 
   return (
-    <CreateCollectionOnTheGoModal>
+    <CreateCollectionOnTheGo>
       {resumedValues => (
         <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
           <FormProvider
@@ -234,6 +234,6 @@ export const SaveQuestionModal = ({
           </FormProvider>
         </ModalContent>
       )}
-    </CreateCollectionOnTheGoModal>
+    </CreateCollectionOnTheGo>
   );
 };

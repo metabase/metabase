@@ -1,19 +1,21 @@
-import { useState } from "react";
+import { useState, createContext, useContext, Children } from "react";
 import { useFormikContext } from "formik";
 import { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { NewCollectionButton } from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 
-export function CreateCollectionOnTheGoModal(props) {
-  const [enabled, setEnabled] = useState(false);
-  const [resumedValues, setResumedValues] = useState(null);
+const CreateCollectionContext = createContext<any>({
+  openModal: null,
+});
 
-  // TODO: use in FormCollectionPicker via context
+export function CreateCollectionOnTheGo(props: any) {
+  const [enabled, setEnabled] = useState(false);
+  const [resumedValues, setResumedValues] = useState<any>(null);
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>();
 
-  // TODO: use in CreateCollectionOnTheGoButton via context
-  const openNewCollModal = _resumedValues => {
+  const openModal = (_resumedValues: any, _openCollectionId) => {
     setResumedValues(_resumedValues);
+    setOpenCollectionId(_openCollectionId);
     setEnabled(true);
   };
 
@@ -33,12 +35,18 @@ export function CreateCollectionOnTheGoModal(props) {
     );
   }
 
-  // TODO: ensure that this props.children[0] is a function
-  return props.children[0](resumedValues);
+  const child = Children.only(props.children);
+  const context = { setOpenCollectionId, openModal };
+  return (
+    <CreateCollectionContext.Provider value={context}>
+      {child(resumedValues)}
+    </CreateCollectionContext.Provider>
+  );
 }
 
-export function CreateCollectionOnTheGoButton(props) {
-  // TODO: use context to get CreateCollectionOnTheGoModal’s openNewCollModal function
+export function CreateCollectionOnTheGoButton(props: any) {
+  const { openModal } = useContext(CreateCollectionContext);
   const { values } = useFormikContext();
-  return <NewCollectionButton onClick={() => openNewCollModal(values)} />;
+  // TODO: figure out how to have FormCollectionPicker and CollectionPicker share current open collection, probably with prop
+  return <NewCollectionButton onClick={() => openModal(values)} />;
 }
