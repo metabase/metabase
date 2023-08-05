@@ -7,6 +7,7 @@
    [malli.error :as me]
    [malli.experimental :as mx]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
 (defn- add-default-map-schemas
@@ -53,7 +54,7 @@
                                                 (cons '&f fn-tail)))]
     (when (= parsed ::mc/invalid)
       (let [error     (mc/explain mx/SchematizedParams fn-tail)
-            humanized (me/humanize error)]
+            humanized (mu.humanize/humanize error)]
         (throw (ex-info (format "Invalid function tail: %s" humanized)
                         {:fn-tail   fn-tail
                          :error     error
@@ -102,33 +103,32 @@
   use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
   true)
 
-(defn validate-input
-  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
-  explainer and throws an exception if the check fails."
-  [schema value]
+(defn- validate [schema value error-type]
   (when *enforce*
-    (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)]
-        (throw (ex-info (i18n/tru "Invalid input: {0}" (pr-str humanized))
-                        {:type      ::invalid-input
+    ;; `validate` is significantly faster than `explain` if `value` is actually valid.
+    (when-not (mr/validate schema value)
+      (let [error     (mr/explain schema value)
+            humanized (me/humanize error)]
+        (throw (ex-info (case error-type
+                          ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
+                          ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                        {:type      error-type
                          :error     error
                          :humanized humanized
                          :schema    schema
                          :value     value}))))))
 
+(defn validate-input
+  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
+  explainer and throws an exception if the check fails."
+  [schema value]
+  (validate schema value ::invalid-input))
+
 (defn validate-output
   "Impl for [[metabase.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
   and throws an exception if the check fails. Returns validated value."
   [schema value]
-  (when *enforce*
-    (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)]
-        (throw (ex-info (i18n/tru "Invalid output: {0}" (pr-str humanized))
-                        {:type      ::invalid-output
-                         :error     error
-                         :humanized humanized
-                         :schema    schema
-                         :value     value})))))
+  (validate schema value ::invalid-output)
   value)
 
 (defn- varargs-schema? [[_cat & args :as _input-schema]]

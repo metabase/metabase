@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata
   (:require
+   [malli.core :as mc]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -51,19 +52,7 @@
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
    :source/implicitly-joinable])
 
-(def ColumnMetadata
-  "Malli schema for a valid map of column metadata, which can mean one of two things:
-
-  1. Metadata about a particular Field in the application database. This will always have an `:id`
-
-  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor
-     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns
-     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`
-     and thus will not have an `:id`.
-
-  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides
-  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
-  to differentiate between the two versions."
+(mr/def :lib.metadata/Column
   [:map
    {:error/message "Valid column metadata"}
    [:lib/type  [:= :metadata/column]]
@@ -101,12 +90,22 @@
    ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
    [:selected? {:optional true} :boolean]])
 
-(def CardMetadata
-  "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
-  a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted to
-  pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
-  massaged into a sequence of `ColumnMetadata`s just yet. See [[metabase.lib.card/card-metadata-columns]] that
-  converts these as needed."
+(def ColumnMetadata
+  "Malli schema for a valid map of column metadata, which can mean one of two things:
+
+  1. Metadata about a particular Field in the application database. This will always have an `:id`
+
+  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor
+     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns
+     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`
+     and thus will not have an `:id`.
+
+  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides
+  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
+  to differentiate between the two versions."
+  [:ref :lib.metadata/Column])
+
+(mr/def :lib.metadata/Card
   [:map
    {:error/message "Valid Card metadata"}
    [:lib/type [:= :metadata/card]]
@@ -129,19 +128,26 @@
    ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
    [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]])
 
-(def SegmentMetadata
-  "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
+(def CardMetadata
+  "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
+  a [[metabase.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily converted to
+  pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably not quite
+  massaged into a sequence of `ColumnMetadata`s just yet. See [[metabase.lib.card/card-metadata-columns]] that
+  converts these as needed."
+  [:ref :lib.metadata/Card])
+
+(mr/def :lib.metadata/Segment
   [:map
    {:error/message "Valid Segment metadata"}
    [:lib/type [:= :metadata/segment]]
    [:id       ::lib.schema.id/segment]
    [:name     ::lib.schema.common/non-blank-string]])
 
-(def MetricMetadata
-  "Malli schema for a legacy v1 [[metabase.models.metric]], but with kebab-case keys. A Metric defines an MBQL snippet
-  with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations` in an
-  MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
-  see [[metabase.query-processor.middleware.expand-macros]]."
+(def SegmentMetadata
+  "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
+  [:ref :lib.metadata/Segment])
+
+(mr/def :lib.metadata/Metric
   [:map
    {:error/message "Valid Metric metadata"}
    [:lib/type   [:= :metadata/metric]]
@@ -153,9 +159,14 @@
    [:definition :map]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(def TableMetadata
-  "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
-  but with kebab-case keys."
+(def MetricMetadata
+  "Malli schema for a legacy v1 [[metabase.models.metric]], but with kebab-case keys. A Metric defines an MBQL snippet
+  with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations` in an
+  MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
+  see [[metabase.query-processor.middleware.expand-macros]]."
+  [:ref :lib.metadata/Metric])
+
+(mr/def :lib.metadata/Table
   [:map
    {:error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]
@@ -164,9 +175,12 @@
    [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(def DatabaseMetadata
-  "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
-  the frontend Query Builder."
+(def TableMetadata
+  "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
+  but with kebab-case keys."
+  [:ref :lib.metadata/Table])
+
+(mr/def :lib.metadata/Database
   [:map
    {:error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
@@ -177,20 +191,31 @@
    ;; Clj mode
    [:features {:optional true} [:set :keyword]]])
 
-(def MetadataProvider
-  "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
+(def DatabaseMetadata
+  "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
+  the frontend Query Builder."
+  [:ref :lib.metadata/Database])
+
+(mr/def ::MetadataProvider
   [:fn
    {:error/message "Valid MetadataProvider"}
    #'lib.metadata.protocols/metadata-provider?])
 
-(def MetadataProviderable
-  "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
-  the key `:lib/metadata` (i.e., a query)."
+(def MetadataProvider
+  "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
+  [:ref ::MetadataProvider])
+
+(mr/def ::MetadataProviderable
   [:or
    MetadataProvider
    [:map
     {:error/message "map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
     [:lib/metadata MetadataProvider]]])
+
+(def MetadataProviderable
+  "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
+  the key `:lib/metadata` (i.e., a query)."
+  [:ref ::MetadataProviderable])
 
 (mu/defn ->metadata-provider :- MetadataProvider
   "Get a MetadataProvider from something that can provide one."
@@ -229,6 +254,11 @@
 
 ;;;; Stage metadata
 
+(mr/def :lib.metadata/stage
+  [:map
+   [:lib/type [:= :metadata/results]]
+   [:columns [:sequential ColumnMetadata]]])
+
 (def StageMetadata
   "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
   like
@@ -257,9 +287,7 @@
   Frontend actually *merges* these together -- see `applyMetadataDiff` in
   `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in
   `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
-  [:map
-   [:lib/type [:= :metadata/results]]
-   [:columns [:sequential ColumnMetadata]]])
+  [:ref :lib.metadata/stage])
 
 (mu/defn stage :- [:maybe StageMetadata]
   "Get metadata associated with a particular `stage-number` of the query, if any. `stage-number` can be a negative

@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [distinct])
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.types]
    [metabase.util.malli.registry :as mr]))
 
@@ -24,17 +25,6 @@
         :rest     [:* (wrap-clause-arg-schema arg-schema)]
         (wrap-clause-arg-schema vector-arg-schema)))))
 
-(defn clause
-  "Impl of [[metabase.mbql.schema.macros/defclause]] macro. Creates a Malli schema."
-  [tag & arg-schemas]
-  (into
-   [:catn
-    {:error/message (str "Valid " tag " clause")}
-    ["tag" [:= tag]]]
-   (for [[arg-name arg-schema] (partition 2 arg-schemas)]
-     [arg-name (clause-arg-schema arg-schema)])))
-
-
 ;; TODO - this is a copy of the one in the [[metabase.mbql.util]] namespace. We need to reorganize things a bit so we
 ;; can use the same fn and avoid circular refs
 (defn is-clause?
@@ -50,6 +40,23 @@
      ((set k-or-ks) (first x))
      (= k-or-ks (first x)))))
 
+(defn clause
+  "Impl of [[metabase.mbql.schema.macros/defclause]] macro. Creates a Malli schema."
+  [tag & arg-schemas]
+  [:multi
+   {:error/message (str "valid " tag " clause")
+    :dispatch      (fn [x]
+                     (when-not (is-clause? tag x)
+                       :invalid))}
+   [:invalid [:fn
+              {:error/message (str "not a " tag " clause")}
+              (constantly false)]]
+   [::mc/default (into
+                  [:catn
+                   ["tag" [:= tag]]]
+                  (for [[arg-name arg-schema] (partition 2 arg-schemas)]
+                    [arg-name (clause-arg-schema arg-schema)]))]])
+
 (defn- clause-tag [clause]
   (when (and (vector? clause)
              (keyword? (first clause)))
@@ -60,7 +67,7 @@
   [& tags+schemas]
   (into
    [:multi {:dispatch      clause-tag
-            :error/message (str "Must be a valid instance of one of these clauses: " (str/join ", " (map first tags+schemas)))}]
+            :error/message (str "valid instance of one of these MBQL clauses: " (str/join ", " (map first tags+schemas)))}]
    (for [[tag schema] tags+schemas]
      [tag (if (qualified-keyword? schema)
             [:ref schema]

@@ -4,7 +4,8 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.mbql.schema :as mbql.s]))
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.util.malli.humanize :as mu.humanize]))
 
 (deftest ^:parallel temporal-literal-test
   (testing "Make sure our schema validates temporal literal clauses correctly"
@@ -117,3 +118,37 @@
                               :template-tags {"date_range" template-tag}
                               :parameters    [parameter]}}]
         (is (nil? (me/humanize (mc/explain mbql.s/Query query))))))))
+
+(deftest ^:paralell value-test
+  (let [value [:value
+               "192.168.1.1"
+               {:base_type         :type/IPAddress
+                :effective_type    :type/IPAddress
+                :coercion_strategy nil
+                :semantic_type     :type/IPAddress
+                :database_type     "inet"
+                :name              "ip"}]]
+    (are [schema] (not (me/humanize (mc/explain schema value)))
+      mbql.s/value
+      @#'mbql.s/EqualityComparable
+      [:or mbql.s/absolute-datetime mbql.s/value])))
+
+(deftest ^:parallel or-test
+  (are [schema expected] (= expected
+                            (mu.humanize/humanize (mc/explain schema [:value "192.168.1.1" {:base_type :type/FK}])))
+    mbql.s/absolute-datetime
+    '[("valid :absolute-datetime clause" "not an :absolute-datetime clause")]
+
+    [:or mbql.s/absolute-datetime]
+    '[("valid :absolute-datetime clause" "not an :absolute-datetime clause")]
+
+    mbql.s/value
+    '[("valid :value clause" [nil nil {:base_type "Not a valid base type: :type/FK"}])]
+
+    [:or mbql.s/value]
+    '[("valid :value clause" [nil nil {:base_type "Not a valid base type: :type/FK"}])]
+
+    [:or mbql.s/absolute-datetime :string mbql.s/value]
+    '[("valid :absolute-datetime clause" "not an :absolute-datetime clause")
+      "should be a string"
+      ("valid :value clause" [nil nil {:base_type "Not a valid base type: :type/FK"}])]))
