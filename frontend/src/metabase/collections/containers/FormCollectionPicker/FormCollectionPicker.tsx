@@ -125,6 +125,9 @@ function FormCollectionPicker({
 
       const entity = type === "collections" ? Collections : SnippetCollections;
 
+      // TODO: if CreateCollectionOnTheGoModal context is available
+      //    add onOpenCollectionChange to send to context state
+      //    replace `children` below with CreateCollectionOnTheGoButton
       return (
         <PopoverItemPicker
           value={{ id: value, model: "collection" }}
