@@ -218,6 +218,7 @@ export const SaveQuestionModal = ({
                         <FormCollectionPicker
                           name="collection_id"
                           title={t`Which collection should this go in?`}
+                          canCreateNew={true}
                         />
                       </div>
                     </CSSTransition>

@@ -38,6 +38,7 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
+  canCreateNew?: boolean;
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
 }
@@ -79,6 +80,7 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
+  canCreateNew = false,
   initialOpenCollectionId,
   onOpenCollectionChange,
   children,
@@ -125,7 +127,7 @@ function FormCollectionPicker({
 
       const entity = type === "collections" ? Collections : SnippetCollections;
 
-      // TODO: if CreateCollectionOnTheGoModal context is available
+      // TODO: if canCreateNew
       //    add onOpenCollectionChange to send to context state
       //    replace `children` below with CreateCollectionOnTheGoButton
       return (
