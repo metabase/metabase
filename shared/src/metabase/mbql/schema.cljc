@@ -1869,10 +1869,3 @@
           (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
                           {:error    humanized
                            :original error})))))))
-
-(defn x []
-  (dotimes [_ 100000]
-    (validate-query {:database 1, :type :query, :query {:source-table 1}})))
-
-;; (clojure.core/time (x))
-;; => "Elapsed time: 50.275575 msecs"
