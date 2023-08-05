@@ -54,7 +54,7 @@
                           ;; override generic description in api docs and :errors key in API's response
                           :description description-message
                           ;; override generic description in :specific-errors key in API's response
-                          :error/fn    (fn [_ _] specific-error-message))))
+                          :error/fn    (constantly specific-error-message))))
 
 #?(:clj
    (defmacro disable-enforcement

@@ -8,7 +8,7 @@
 (mr/def ::int
   :int)
 
-(deftest explainer-test
+(deftest ^:parallel explainer-test
   (is (= ["should be an integer"]
          (me/humanize (mc/explain ::int "1"))
          (me/humanize ((mr/explainer ::int) "1"))))
@@ -18,3 +18,9 @@
     (testing "should unwrap top-level :refs"
       (is (identical? (mr/explainer ::int)
                       (mr/explainer [:ref ::int]))))))
+
+(deftest ^:parallel resolve-test
+  (is (mc/schema? (mr/resolve-schema :int)))
+  (is (mc/schema? (mr/resolve-schema ::int)))
+  (is (= (mr/resolve-schema ::int)
+         (mr/resolve-schema [:ref ::int]))))

@@ -147,16 +147,15 @@
 ;; becomes:
 ;; [:= [:field 10 {:temporal-unit :day}] [:absolute-datetime #inst "2018-10-02" :day]]
 (mr/def ::absolute-datetime
-  [:multi
-   {:dispatch (fn [x]
-                (cond
-                  (core/not (is-clause? :absolute-datetime x))       :invalid
-                  (mc/validate ::lib.schema.literal/date (second x)) :date
-                  :else                                              :datetime))}
-   [:invalid (helpers/clause
-              :absolute-datetime
-              "t"    [:or RawDateLiteral RawDateTimeLiteral]
-              "unit" DateTimeUnit)]
+  [:multi {:error/message "valid :absolute-datetime clause"
+           :dispatch      (fn [x]
+                            (cond
+                              (core/not (is-clause? :absolute-datetime x))       :invalid
+                              (mc/validate ::lib.schema.literal/date (second x)) :date
+                              :else                                              :datetime))}
+   [:invalid [:fn
+              {:error/message "not an :absolute-datetime clause"}
+              (constantly false)]]
    [:date (helpers/clause
            :absolute-datetime
            "date" RawDateLiteral
@@ -440,7 +439,7 @@
   "Schema for the definition of an string expression."
   [:ref ::StringExpression])
 
-(def ^:private StringExpressionArg
+(mr/def ::StringExpressionArg
   [:multi
    {:dispatch (fn [x]
                 (cond
@@ -452,6 +451,9 @@
    [:string-expression StringExpression]
    [:value             value]
    [:else              Field]])
+
+(def ^:private StringExpressionArg
+  [:ref ::StringExpressionArg])
 
 (def numeric-functions
   "Functions that return numeric values. Should match [[NumericExpression]]."
@@ -489,7 +491,7 @@
   "Schema for anything that is a valid `:aggregation` clause."
   [:ref ::Aggregation])
 
-(def ^:private NumericExpressionArg
+(mr/def ::NumericExpressionArg
   [:multi
    {:error/message "numeric expression argument"
     :dispatch      (fn [x]
@@ -505,7 +507,10 @@
    [:value              value]
    [:field              Field]])
 
-(def ^:private DateTimeExpressionArg
+(def ^:private NumericExpressionArg
+  [:ref ::NumericExpressionArg])
+
+(mr/def ::DateTimeExpressionArg
   [:multi
    {:error/message "datetime expression argument"
     :dispatch      (fn [x]
@@ -519,7 +524,10 @@
    [:datetime-expression DatetimeExpression]
    [:else                [:or DateOrDatetimeLiteral Field]]])
 
-(def ^:private ExpressionArg
+(def ^:private DateTimeExpressionArg
+  [:ref ::DateTimeExpressionArg])
+
+(mr/def ::ExpressionArg
   [:multi
    {:error/message "expression argument"
     :dispatch      (fn [x]
@@ -543,13 +551,19 @@
    [:value               value]
    [:else                Field]])
 
-(def ^:private NumericExpressionArgOrInterval
+(def ^:private ExpressionArg
+  [:ref ::ExpressionArg])
+
+(mr/def ::NumericExpressionArgOrInterval
   [:or
    {:error/message "numeric expression arg or interval"}
    interval
    NumericExpressionArg])
 
-(def ^:private IntGreaterThanZeroOrNumericExpression
+(def ^:private NumericExpressionArgOrInterval
+  [:ref ::NumericExpressionArgOrInterval])
+
+(mr/def ::IntGreaterThanZeroOrNumericExpression
   [:multi
    {:error/message "int greater than zero or numeric expression"
     :dispatch      (fn [x]
@@ -558,6 +572,9 @@
                        :else))}
    [:number PositiveInt]
    [:else   NumericExpression]])
+
+(def ^:private IntGreaterThanZeroOrNumericExpression
+  [:ref ::IntGreaterThanZeroOrNumericExpression])
 
 (defclause ^{:requires-features #{:expressions}} coalesce
   a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
@@ -719,6 +736,7 @@
 (def ^:private FieldOrExpressionRefOrRelativeDatetime
   [:multi
    {:error/message ":field or :expression reference or :relative-datetime"
+    :error/fn      (constantly ":field or :expression reference or :relative-datetime")
     :dispatch      (fn [x]
                      (if (is-clause? :relative-datetime x)
                        :relative-datetime
@@ -726,21 +744,24 @@
    [:relative-datetime relative-datetime]
    [:else              Field]])
 
-(def ^:private EqualityComparable
-  "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
+(mr/def ::EqualityComparable
   [:maybe
    {:error/message "equality comparable"}
    [:or
+    absolute-datetime ; NOCOMMIT
     :boolean
     number?
     :string
     TemporalLiteral
-    FieldOrExpressionRefOrRelativeDatetime
-    ExpressionArg
+    #_FieldOrExpressionRefOrRelativeDatetime
+    #_ExpressionArg
     value]])
 
-(def ^:private OrderComparable
-  "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
+(def ^:private EqualityComparable
+  "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
+  [:ref ::EqualityComparable])
+
+(mr/def ::OrderComparable
   [:multi
    {:error/message "order comparable"
     :dispatch      (fn [x]
@@ -754,6 +775,10 @@
            TemporalLiteral
            ExpressionArg
            FieldOrExpressionRefOrRelativeDatetime]]])
+
+(def ^:private OrderComparable
+  "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted."
+  [:ref ::OrderComparable])
 
 ;; For all of the non-compound Filter clauses below the first arg is an implicit Field ID
 
@@ -1192,8 +1217,6 @@
   "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
   `:type` (see comments above)."
   [:ref ::TemplateTag])
-
-TemplateTag
 
 (def ^:private TemplateTagMap
   "Schema for the `:template-tags` map passed in as part of a native query."
@@ -1831,22 +1854,25 @@ TemplateTag
       check-keys-for-query-type
       check-query-does-not-have-source-metadata))
 
-(defn can-parse-datetime?
-  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
-  [s]
-  (mc/validate ::lib.schema.literal/string.datetime s))
-
 (def ^{:arglists '([query])} valid-query?
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
-  (complement (mr/explainer Query)))
+  (mr/validator Query))
 
 (def ^{:arglists '([query])} validate-query
   "Validator for an outer query; throw an Exception explaining why the query is invalid if it is."
   (let [explainer (mr/explainer Query)]
     (fn [query]
-      (if-let [error (explainer query)]
-        (let [humanized (me/humanize error)]
+      (if (valid-query? query)
+        query
+        (let [error     (explainer query)
+              humanized (me/humanize error)]
           (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
                           {:error    humanized
-                           :original error})))
-        query))))
+                           :original error})))))))
+
+(defn x []
+  (dotimes [_ 100000]
+    (validate-query {:database 1, :type :query, :query {:source-table 1}})))
+
+;; (clojure.core/time (x))
+;; => "Elapsed time: 50.275575 msecs"

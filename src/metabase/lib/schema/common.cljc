@@ -51,9 +51,7 @@
    [:ref ::relation-type]])
 
 (defn- base-type? [x]
-  (and (isa? x :type/*)
-       (not (semantic-type? x))
-       (not (relation-type? x))))
+  (isa? x :type/*))
 
 (mr/def ::base-type
   [:fn
