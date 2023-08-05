@@ -1076,9 +1076,7 @@
   (if (= :value type)
     (->honeysql driver (update arg 1 #(cond-> (str pre % post)
                                         (not case-sensitive) u/lower-case-en)))
-    (cond->> (->> [pre (->honeysql driver arg) post]
-                  (filterv some?)
-                  (apply hx/call :concat))
+    (cond->> (->honeysql driver (into [:concat] (remove nil?) [pre arg post]))
       (not case-sensitive) (hx/call :lower))))
 
 (defmethod ->honeysql [:sql :starts-with]
