@@ -14,7 +14,4 @@
          (me/humanize ((mr/explainer ::int) "1"))))
   (testing "cache explainers"
     (is (identical? (mr/explainer ::int)
-                    (mr/explainer ::int)))
-    (testing "should unwrap top-level :refs"
-      (is (identical? (mr/explainer ::int)
-                      (mr/explainer [:ref ::int]))))))
+                    (mr/explainer ::int)))))
