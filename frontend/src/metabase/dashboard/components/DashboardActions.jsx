@@ -16,6 +16,7 @@ export const getDashboardActions = (
     dashboard,
     isAdmin,
     canManageSubscriptions,
+    formInput,
     isEditing = false,
     isEmpty = false,
     isFullscreen,
@@ -46,9 +47,19 @@ export const getDashboardActions = (
   const canShareDashboard = hasCards;
   const canCreateSubscription = hasDataCards && canManageSubscriptions;
 
+  const emailConfigured = formInput?.channels?.email?.configured || false;
+  const slackConfigured = formInput?.channels?.slack?.configured || false;
+
+  const shouldShowSubscriptionsButton =
+    emailConfigured || slackConfigured || isAdmin;
+
   if (!isEditing && !isEmpty && !isPublic) {
     // Getting notifications with static text-only cards doesn't make a lot of sense
-    if (canCreateSubscription && !isFullscreen) {
+    if (
+      shouldShowSubscriptionsButton &&
+      canCreateSubscription &&
+      !isFullscreen
+    ) {
       buttons.push(
         <Tooltip tooltip={t`Subscriptions`} key="dashboard-subscriptions">
           <DashboardHeaderButton
