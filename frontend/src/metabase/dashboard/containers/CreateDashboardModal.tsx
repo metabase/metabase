@@ -51,7 +51,7 @@ function CreateDashboardModal({
 
   return (
     <CreateCollectionOnTheGo>
-      {resumedValues => (
+      {(resumedValues: any) => (
         <ModalContent title={t`New dashboard`} onClose={onClose}>
           <CreateDashboardForm
             {...props}

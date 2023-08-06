@@ -1,69 +1,59 @@
-import { useState, createContext, Children, useCallback } from "react";
+import { useState, createContext, useCallback, ReactElement } from "react";
 import { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { NewCollectionButton } from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 
-// TODO: learn about templated types in TypeScript
-
-// TODO: only context should be the button, which encapsulates access to internal state needed to open the model and update state
-
-export const CreateCollectionOnTheGoButtonContext =
-  createContext<Function | null>(null);
-
 interface State {
-  enabled?: boolean;
-  resumedValues?: any;
+  enabled: boolean;
+  resumedValues: any;
   openCollectionId?: CollectionId;
 }
 
-export function CreateCollectionOnTheGo(props: any) {
-  const [state, setState] = useState<State>({});
+interface Props {
+  children: (resumedValues: any) => ReactElement;
+}
+
+interface ButtonProps {
+  resumedValues: any;
+  openCollectionId?: CollectionId;
+}
+
+type ButtonType = (buttonProps: ButtonProps) => ReactElement;
+export const CreateCollectionOnTheGoButtonContext = createContext<ButtonType>(
+  (buttonProps: ButtonProps) => <div />,
+);
+
+export function CreateCollectionOnTheGo({ children }: Props) {
+  const [state, setState] = useState<State>({
+    enabled: false,
+    resumedValues: {},
+  });
   const { enabled, openCollectionId, resumedValues } = state;
 
-  const CreateCollectionOnTheGoButton = useCallback(
-    ({
-      resumedValues,
-      openCollectionId,
-    }: {
-      resumedValues: any;
-      openCollectionId: CollectionId;
-    }) => (
+  const EnablingButton = useCallback(
+    (buttonProps: ButtonProps) => (
       <NewCollectionButton
-        onClick={() =>
-          setState({
-            ...state,
-            enabled: true,
-            resumedValues,
-            openCollectionId,
-          })
-        }
+        onClick={() => setState({ ...state, ...buttonProps, enabled: true })}
       />
     ),
     [state, setState],
   );
 
-  if (enabled) {
-    return (
-      <CreateCollectionModal
-        collectionId={openCollectionId}
-        onClose={() => setState({ ...state, enabled: false })}
-        onCreate={(collection: Collection) => {
-          setState({
-            ...state,
-            resumedValues: { ...resumedValues, collection_id: collection.id },
-            enabled: false,
-          });
-        }}
-      />
-    );
-  }
-
-  const child = Children.only(props.children);
-  return (
-    <CreateCollectionOnTheGoButtonContext.Provider
-      value={CreateCollectionOnTheGoButton}
-    >
-      {child(resumedValues)}
+  return enabled ? (
+    <CreateCollectionModal
+      collectionId={openCollectionId}
+      onClose={() => setState({ ...state, enabled: false })}
+      onCreate={(collection: Collection) => {
+        setState({
+          ...state,
+          resumedValues: { ...resumedValues, collection_id: collection.id },
+          enabled: false,
+        });
+      }}
+    />
+  ) : (
+    <CreateCollectionOnTheGoButtonContext.Provider value={EnablingButton}>
+      {children(resumedValues)}
     </CreateCollectionOnTheGoButtonContext.Provider>
   );
 }

@@ -121,10 +121,10 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
-  const [openCollectionId, setOpenCollectionId] = useState<CollectionId | null>(
-    null,
-  );
   const formik = useFormikContext();
+  const [openCollectionId, setOpenCollectionId] = useState<
+    CollectionId | undefined
+  >(undefined);
   const CreateCollectionOnTheGoButton = useContext(
     CreateCollectionOnTheGoButtonContext,
   );
@@ -155,8 +155,8 @@ function FormCollectionPicker({
         >
           {canCreateNew && (
             <CreateCollectionOnTheGoButton
-              openCollectionId={openCollectionId}
               resumedValues={formik.values}
+              openCollectionId={openCollectionId}
             />
           )}
         </PopoverItemPicker>
@@ -168,7 +168,11 @@ function FormCollectionPicker({
       width,
       setValue,
       initialOpenCollectionId,
+      openCollectionId,
+      formik.values,
       onOpenCollectionChange,
+      canCreateNew,
+      CreateCollectionOnTheGoButton,
     ],
   );
 
