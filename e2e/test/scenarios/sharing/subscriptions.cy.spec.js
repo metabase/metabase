@@ -157,9 +157,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions(1);
         openPulseSubscription();
 
-        cy.findByLabelText("subscriptions sidebar")
-          .findByText(nonUserEmail)
-          .should("not.exist");
+        sidebar().findByText(nonUserEmail).should("not.exist");
       });
 
       it("should allow non-user to undo-unsubscribe from subscription", () => {
@@ -193,9 +191,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions(1);
         openPulseSubscription();
 
-        cy.findByLabelText("subscriptions sidebar")
-          .findByText(nonUserEmail)
-          .should("exist");
+        sidebar().findByText(nonUserEmail).should("exist");
       });
 
       it("should show 404 page when missing required parameters", () => {

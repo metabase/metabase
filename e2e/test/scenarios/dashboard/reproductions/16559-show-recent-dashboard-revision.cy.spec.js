@@ -5,6 +5,7 @@ import {
   openQuestionsSidebar,
   popover,
   restore,
+  sidebar,
   toggleDashboardInfoSidebar,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -38,9 +39,7 @@ describe("issue 16559", () => {
     cy.log("Edit dashboard");
     editDashboard();
     openQuestionsSidebar();
-    cy.findByLabelText("subscriptions sidebar")
-      .findByText("Orders, Count")
-      .click();
+    sidebar().findByText("Orders, Count").click();
     cy.button("Save").click();
     toggleDashboardInfoSidebar();
     cy.findByTestId("dashboard-history-list")
