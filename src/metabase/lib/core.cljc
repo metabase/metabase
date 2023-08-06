@@ -176,6 +176,7 @@
    join-condition-lhs-columns
    join-condition-operators
    join-condition-rhs-columns
+   join-condition-update-temporal-bucketing
    join-conditions
    join-fields
    join-lhs-display-name

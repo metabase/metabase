@@ -26,6 +26,6 @@
 (System/setProperty "clojure.tools.logging.factory" "clojure.tools.logging.impl/log4j2-factory")
 
 (defn -main
-  "Main entrypoint. Invokes [[metabase.core/-main]]"
+  "Main entrypoint. Invokes [[metabase.core/entrypoint]]"
   [& args]
-  (apply (requiring-resolve 'metabase.core/-main) args))
+  (apply (requiring-resolve 'metabase.core/entrypoint) args))

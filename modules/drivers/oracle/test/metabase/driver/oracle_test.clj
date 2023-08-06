@@ -386,7 +386,7 @@
           (testing "Oracle can-connect? with SSL connection"
             (is (driver/can-connect? :oracle ssl-details)))
           (testing "Sync works with SSL connection"
-            (binding [metabase.sync.util/*log-exceptions-and-continue?* false
+            (binding [sync-util/*log-exceptions-and-continue?* false
                       api/*current-user-id* (mt/user->id :crowberto)]
               (doseq [[details variant] [[ssl-details "SSL with Truststore Path"]
                                          ;; in the file upload scenario, the truststore bytes are base64 encoded

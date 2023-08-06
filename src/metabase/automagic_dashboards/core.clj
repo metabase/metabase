@@ -47,7 +47,7 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(s/defn ->field :- (s/maybe (mi/InstanceOf Field))
+(s/defn ->field :- (s/maybe #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field))
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root}
    field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString mbql.s/Field)]
@@ -1105,7 +1105,7 @@
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(s/defn ^:private collect-metrics :- (s/maybe [(mi/InstanceOf Metric)])
+(s/defn ^:private collect-metrics :- (s/maybe [#_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Metric)])
   [root question]
   (map (fn [aggregation-clause]
          (if (-> aggregation-clause
@@ -1120,7 +1120,7 @@
                                   :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
-(s/defn ^:private collect-breakout-fields :- (s/maybe [(mi/InstanceOf Field)])
+(s/defn ^:private collect-breakout-fields :- (s/maybe [#_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field)])
   [root question]
   (for [breakout     (get-in question [:dataset_query :query :breakout])
         field-clause (take 1 (filters/collect-field-references breakout))

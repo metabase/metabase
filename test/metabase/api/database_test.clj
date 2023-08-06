@@ -788,11 +788,11 @@
             (check-tables-not-included response (virtual-table-for-card bad-card)))))
 
       (testing "should work when there are no DBs that support nested queries"
-        (with-redefs [metabase.driver/database-supports? (constantly false)]
+        (with-redefs [driver/database-supports? (constantly false)]
           (is (nil? (fetch-virtual-database)))))
 
       (testing "should work when there are no DBs that support nested queries"
-        (with-redefs [metabase.driver/database-supports? (constantly false)]
+        (with-redefs [driver/database-supports? (constantly false)]
           (is (nil? (fetch-virtual-database)))))
 
       (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"

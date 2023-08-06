@@ -1,66 +1,103 @@
-import { connect } from "react-redux";
-import _ from "underscore";
-import Actions from "metabase/entities/actions";
-import ModalContent from "metabase/components/ModalContent";
+import type { FormikHelpers } from "formik";
+import { useCallback } from "react";
+
 import {
-  ActionFormSubmitResult,
   ParametersForActionExecution,
-  WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import { executeAction, ExecuteActionOpts } from "../../actions";
+import { useActionQuery } from "metabase/common/hooks/use-action-query";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ModalContent from "metabase/components/ModalContent";
+import { checkNotNull } from "metabase/core/utils/types";
+import { useDispatch } from "metabase/lib/redux";
+
+import { executeAction } from "../../actions";
+import { useActionInitialValues } from "../../hooks/use-action-initial-values";
 import ActionParametersInputForm from "../ActionParametersInputForm";
 
-interface OwnProps {
-  actionId: WritebackActionId;
+export interface ActionExecuteModalProps {
+  actionId: WritebackActionId | undefined;
   initialValues?: ParametersForActionExecution;
   fetchInitialValues?: () => Promise<ParametersForActionExecution>;
   shouldPrefetch?: boolean;
-  onSubmit: (opts: ExecuteActionOpts) => Promise<ActionFormSubmitResult>;
   onClose?: () => void;
   onSuccess?: () => void;
 }
 
-interface ActionLoaderProps {
-  action: WritebackAction;
-}
-
-type ActionExecuteModalProps = OwnProps & ActionLoaderProps;
-
-const mapDispatchToProps = {
-  onSubmit: executeAction,
-};
-
-const ActionExecuteModal = ({
-  action,
-  initialValues,
+export const ActionExecuteModal = ({
+  actionId,
+  initialValues: initialValuesProp,
   fetchInitialValues,
   shouldPrefetch,
-  onSubmit,
   onClose,
   onSuccess,
 }: ActionExecuteModalProps) => {
-  const handleSubmit = (parameters: ParametersForActionExecution) => {
-    return onSubmit({ action, parameters });
-  };
+  const dispatch = useDispatch();
 
-  const handleSubmitSuccess = () => {
-    onClose?.();
-    onSuccess?.();
-  };
+  const {
+    error: errorAction,
+    isLoading: isLoadingAction,
+    data: action,
+  } = useActionQuery({ id: actionId });
+
+  const {
+    error: errorInitialValues,
+    hasPrefetchedValues,
+    initialValues,
+    isLoading: isLoadingInitialValues,
+    prefetchValues,
+  } = useActionInitialValues({
+    fetchInitialValues,
+    initialValues: initialValuesProp,
+    shouldPrefetch,
+  });
+
+  const handleSubmit = useCallback(
+    (parameters: ParametersForActionExecution) => {
+      return dispatch(
+        executeAction({
+          action: checkNotNull(action),
+          parameters,
+        }),
+      );
+    },
+    [dispatch, action],
+  );
+
+  const handleSubmitSuccess = useCallback(
+    (actions: FormikHelpers<ParametersForActionExecution>) => {
+      onClose?.();
+      onSuccess?.();
+
+      if (shouldPrefetch) {
+        prefetchValues();
+      } else {
+        actions.resetForm();
+      }
+    },
+    [onClose, onSuccess, shouldPrefetch, prefetchValues],
+  );
+
+  const error = errorAction || errorInitialValues;
+  const isLoading =
+    isLoadingAction || (isLoadingInitialValues && !hasPrefetchedValues);
+
+  if (error || isLoading) {
+    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  }
+
+  const loadedAction = checkNotNull(action);
 
   return (
     <ModalContent
       data-testid="action-execute-modal"
-      title={action.name}
+      title={loadedAction.name}
       onClose={onClose}
     >
       <ActionParametersInputForm
-        action={action}
+        action={loadedAction}
         initialValues={initialValues}
-        fetchInitialValues={fetchInitialValues}
-        shouldPrefetch={shouldPrefetch}
+        prefetchesInitialValues
         onCancel={onClose}
         onSubmit={handleSubmit}
         onSubmitSuccess={handleSubmitSuccess}
@@ -68,11 +105,3 @@ const ActionExecuteModal = ({
     </ModalContent>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Actions.load({
-    id: (state: State, props: OwnProps) => props.actionId,
-  }),
-  connect(null, mapDispatchToProps),
-)(ActionExecuteModal);

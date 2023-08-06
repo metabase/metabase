@@ -1,7 +1,7 @@
 import { restore, modal } from "e2e/support/helpers";
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 
-describe("scenarios > embedding > standalone embedding", () => {
+describe("scenarios > embedding > static embedding", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -9,8 +9,8 @@ describe("scenarios > embedding > standalone embedding", () => {
 
   it("should allow you to set and regenerate an embedding token", () => {
     cy.visit(embeddingPage);
-    cy.findByTestId("-standalone-embeds-setting")
-      .findByText("Standalone embeds")
+    cy.findByTestId("-static-embedding-setting")
+      .findByText("Static embedding")
       .click();
     cy.findByRole("button", { name: "Regenerate key" }).click();
 

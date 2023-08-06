@@ -15,11 +15,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- file-set [dir]
+(defn- file-set [^java.io.File dir]
   (let [base (.toPath dir)]
-    (set (for [file (file-seq dir)
-               :when (.isFile file)
-               :let [rel (.relativize base (.toPath file))]]
+    (set (for [^java.io.File file (file-seq dir)
+               :when              (.isFile file)
+               :let               [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
 
 (deftest basic-dump-test
