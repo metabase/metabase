@@ -4,9 +4,10 @@ import {
   useState,
   useRef,
   HTMLAttributes,
+  useContext,
 } from "react";
 import { t } from "ttag";
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
@@ -16,6 +17,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+import { CreateCollectionOnTheGoButtonContext } from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -83,7 +85,6 @@ function FormCollectionPicker({
   canCreateNew = false,
   initialOpenCollectionId,
   onOpenCollectionChange,
-  children,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -120,6 +121,14 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId | null>(
+    null,
+  );
+  const formik = useFormikContext();
+  const CreateCollectionOnTheGoButton = useContext(
+    CreateCollectionOnTheGoButtonContext,
+  );
+
   const renderContent = useCallback(
     ({ closePopover }) => {
       // Search API doesn't support collection namespaces yet
@@ -127,8 +136,6 @@ function FormCollectionPicker({
 
       const entity = type === "collections" ? Collections : SnippetCollections;
 
-      // TODO: if canCreateNew
-      //    replace `children` below with CreateCollectionOnTheGoButton
       return (
         <PopoverItemPicker
           value={{ id: value, model: "collection" }}
@@ -141,9 +148,17 @@ function FormCollectionPicker({
           showSearch={hasSearch}
           width={width}
           initialOpenCollectionId={initialOpenCollectionId}
-          onOpenCollectionChange={onOpenCollectionChange}
+          onOpenCollectionChange={(id: CollectionId) => {
+            onOpenCollectionChange?.(id);
+            setOpenCollectionId(id);
+          }}
         >
-          {children}
+          {canCreateNew && (
+            <CreateCollectionOnTheGoButton
+              openCollectionId={openCollectionId}
+              resumedValues={formik.values}
+            />
+          )}
         </PopoverItemPicker>
       );
     },
@@ -152,7 +167,6 @@ function FormCollectionPicker({
       type,
       width,
       setValue,
-      children,
       initialOpenCollectionId,
       onOpenCollectionChange,
     ],

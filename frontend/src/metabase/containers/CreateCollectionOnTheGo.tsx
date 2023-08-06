@@ -1,52 +1,69 @@
-import { useState, createContext, useContext, Children } from "react";
-import { useFormikContext } from "formik";
+import { useState, createContext, Children, useCallback } from "react";
 import { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { NewCollectionButton } from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 
-const CreateCollectionContext = createContext<any>({
-  openModal: null,
-});
+// TODO: learn about templated types in TypeScript
+
+// TODO: only context should be the button, which encapsulates access to internal state needed to open the model and update state
+
+export const CreateCollectionOnTheGoButtonContext =
+  createContext<Function | null>(null);
+
+interface State {
+  enabled?: boolean;
+  resumedValues?: any;
+  openCollectionId?: CollectionId;
+}
 
 export function CreateCollectionOnTheGo(props: any) {
-  const [enabled, setEnabled] = useState(false);
-  const [resumedValues, setResumedValues] = useState<any>(null);
-  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>();
+  const [state, setState] = useState<State>({});
+  const { enabled, openCollectionId, resumedValues } = state;
 
-  const openModal = (_resumedValues: any, _openCollectionId) => {
-    setResumedValues(_resumedValues);
-    setOpenCollectionId(_openCollectionId);
-    setEnabled(true);
-  };
+  const CreateCollectionOnTheGoButton = useCallback(
+    ({
+      resumedValues,
+      openCollectionId,
+    }: {
+      resumedValues: any;
+      openCollectionId: CollectionId;
+    }) => (
+      <NewCollectionButton
+        onClick={() =>
+          setState({
+            ...state,
+            enabled: true,
+            resumedValues,
+            openCollectionId,
+          })
+        }
+      />
+    ),
+    [state, setState],
+  );
 
   if (enabled) {
     return (
       <CreateCollectionModal
         collectionId={openCollectionId}
-        onClose={() => setEnabled(false)}
+        onClose={() => setState({ ...state, enabled: false })}
         onCreate={(collection: Collection) => {
-          setResumedValues({
-            ...resumedValues,
-            collection_id: collection.id,
+          setState({
+            ...state,
+            resumedValues: { ...resumedValues, collection_id: collection.id },
+            enabled: false,
           });
-          setEnabled(false);
         }}
       />
     );
   }
 
   const child = Children.only(props.children);
-  const context = { setOpenCollectionId, openModal };
   return (
-    <CreateCollectionContext.Provider value={context}>
+    <CreateCollectionOnTheGoButtonContext.Provider
+      value={CreateCollectionOnTheGoButton}
+    >
       {child(resumedValues)}
-    </CreateCollectionContext.Provider>
+    </CreateCollectionOnTheGoButtonContext.Provider>
   );
-}
-
-export function CreateCollectionOnTheGoButton(props: any) {
-  const { openModal } = useContext(CreateCollectionContext);
-  const { values } = useFormikContext();
-  // TODO: figure out how to have FormCollectionPicker and CollectionPicker share current open collection, probably with prop
-  return <NewCollectionButton onClick={() => openModal(values)} />;
 }
