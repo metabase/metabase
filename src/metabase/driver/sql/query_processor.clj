@@ -25,6 +25,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [schema.core :as s])
   (:import
    (metabase.util.honey_sql_1 Identifier TypedHoneySQLForm)))
@@ -1074,8 +1075,13 @@
     [:like field                    (->honeysql driver value)]
     [:like (hx/call :lower field) (->honeysql driver (update value 1 u/lower-case-en))]))
 
-(s/defn ^:private update-string-value :- mbql.s/value
-  [value :- (s/constrained mbql.s/value #(string? (second %)) "string value"), f]
+(def ^:private StringValue
+  [:and
+   mbql.s/value
+   [:fn {:error/message "string value"} #(string? (second %))]])
+
+(mu/defn ^:private update-string-value :- mbql.s/value
+  [value :- StringValue f]
   (update value 1 f))
 
 (defmethod ->honeysql [:sql :starts-with]
@@ -1184,13 +1190,17 @@
 
 (def ^:private HoneySQLJoin
   "Schema for HoneySQL for a single JOIN. Used to validate that our join-handling code generates correct clauses."
-  [(s/one
-    [(s/one (s/pred some?) "join source")
-     (s/one (s/pred some?) "join alias")]
-    "join source and alias")
-   (s/one (s/pred sequential?) "join condition")])
+  [:tuple
+   ;;join source and alias
+   [:tuple
+    ;; join source
+    :some
+    ;; join alias
+    :some]
+   ;; join condition
+   [:sequential :any]])
 
-(s/defmethod join->honeysql :sql :- HoneySQLJoin
+(mu/defmethod join->honeysql :sql :- HoneySQLJoin
   [driver {:keys [condition], join-alias :alias, :as join} :- mbql.s/Join]
   [[(join-source driver join)
     (let [table-alias (->honeysql driver (hx/identifier :table-alias join-alias))]
