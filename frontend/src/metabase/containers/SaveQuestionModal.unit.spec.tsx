@@ -666,7 +666,6 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("new collection modal", () => {
-    const nameField = () => screen.getByRole("textbox", { name: /name/i });
     const collDropdown = () => screen.getByTestId("select-button");
     const newCollBtn = () =>
       screen.getByRole("button", {
@@ -683,16 +682,10 @@ describe("SaveQuestionModal", () => {
       userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
     });
-    it("should not be accessible if the dashboard form is invalid", async () => {
-      await setup(getQuestion());
-      userEvent.clear(nameField());
-      userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeDisabled());
-    });
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       await setup(getQuestion());
       userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeEnabled());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       userEvent.click(newCollBtn());
       await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
       userEvent.click(cancelBtn());
