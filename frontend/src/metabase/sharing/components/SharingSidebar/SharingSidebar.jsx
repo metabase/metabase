@@ -23,7 +23,7 @@ import {
 
 import { getEditingPulse, getPulseFormInput } from "metabase/pulse/selectors";
 
-import { getUser } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
 import {
   updateEditingPulse,
@@ -93,6 +93,7 @@ const getEditingPulseWithDefaults = (state, props) => {
 };
 
 const mapStateToProps = (state, props) => ({
+  isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
   formInput: getPulseFormInput(state, props),
   user: getUser(state),
@@ -120,6 +121,7 @@ class SharingSidebarInner extends Component {
     fetchPulseFormInput: PropTypes.func.isRequired,
     formInput: PropTypes.object.isRequired,
     initialCollectionId: PropTypes.number,
+    isAdmin: PropTypes.bool,
     pulse: PropTypes.object.isRequired,
     saveEditingPulse: PropTypes.func.isRequired,
     testPulse: PropTypes.func.isRequired,
@@ -133,6 +135,42 @@ class SharingSidebarInner extends Component {
   componentDidMount() {
     this.props.fetchPulseFormInput();
     this.fetchUsers();
+  }
+
+  componentDidUpdate() {
+    const { editingMode } = this.state;
+    const { formInput, isAdmin, pulses } = this.props;
+
+    const emailConfigured = formInput?.channels?.email?.configured || false;
+    const slackConfigured = formInput?.channels?.slack?.configured || false;
+
+    const shouldForwardNonAdmins =
+      !isAdmin &&
+      (editingMode === "new-pulse" ||
+        (editingMode === "list-pulses" && pulses?.length === 0));
+
+    const forwardToAddEmail = emailConfigured && !slackConfigured;
+    const forwardToAddSlack = slackConfigured && !emailConfigured;
+
+    if (shouldForwardNonAdmins) {
+      if (forwardToAddEmail) {
+        this.setState(() => {
+          return {
+            editingMode: "add-edit-email",
+          };
+        });
+        this.setPulseWithChannel("email");
+      }
+
+      if (forwardToAddSlack) {
+        this.setState(() => {
+          return {
+            editingMode: "add-edit-slack",
+          };
+        });
+        this.setPulseWithChannel("slack");
+      }
+    }
   }
 
   fetchUsers = async () => {
@@ -257,7 +295,7 @@ class SharingSidebarInner extends Component {
 
   render() {
     const { editingMode, users } = this.state;
-    const { pulse, pulses, formInput, testPulse, dashboard } = this.props;
+    const { dashboard, formInput, pulse, pulses, testPulse } = this.props;
 
     const isLoading = !pulses || !users || !pulse || !formInput?.channels;
 
@@ -366,10 +404,8 @@ class SharingSidebarInner extends Component {
     }
 
     if (editingMode === "new-pulse" || pulses.length === 0) {
-      const { configured: emailConfigured = false } =
-        formInput.channels.email || {};
-      const { configured: slackConfigured = false } =
-        formInput.channels.slack || {};
+      const emailConfigured = formInput?.channels?.email?.configured || false;
+      const slackConfigured = formInput?.channels?.slack?.configured || false;
 
       return (
         <NewPulseSidebar
