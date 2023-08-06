@@ -1,7 +1,8 @@
 import { useState, createContext, useCallback, ReactElement } from "react";
+import { t } from "ttag";
 import { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import { NewCollectionButton } from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import { NewCollectionButton } from "./CreateCollectionOnTheGo.styled";
 
 interface State {
   enabled: boolean;
@@ -30,11 +31,15 @@ export function CreateCollectionOnTheGo({ children }: Props) {
   });
   const { enabled, openCollectionId, resumedValues } = state;
 
-  const EnablingButton = useCallback(
+  const CreateCollectionOnTheGoButton = useCallback(
     (buttonProps: ButtonProps) => (
       <NewCollectionButton
+        light
+        icon="add"
         onClick={() => setState({ ...state, ...buttonProps, enabled: true })}
-      />
+      >
+        {t`New collection`}
+      </NewCollectionButton>
     ),
     [state, setState],
   );
@@ -52,7 +57,9 @@ export function CreateCollectionOnTheGo({ children }: Props) {
       }}
     />
   ) : (
-    <CreateCollectionOnTheGoButtonContext.Provider value={EnablingButton}>
+    <CreateCollectionOnTheGoButtonContext.Provider
+      value={CreateCollectionOnTheGoButton}
+    >
       {children(resumedValues)}
     </CreateCollectionOnTheGoButtonContext.Provider>
   );
