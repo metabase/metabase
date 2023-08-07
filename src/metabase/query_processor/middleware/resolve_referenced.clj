@@ -10,7 +10,7 @@
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]
    [weavejester.dependency :as dep])
   (:import
@@ -23,7 +23,7 @@
                     {:referenced-query     query
                      :expected-database-id database-id}))))
 
-(s/defn ^:private resolve-referenced-card-resources* :- clojure.lang.IPersistentMap
+(mu/defn ^:private resolve-referenced-card-resources* :- :map
   [query]
   (doseq [referenced-card (qp.u.tag-referenced-cards/tags-referenced-cards query)
           :let [referenced-query (:dataset_query referenced-card)

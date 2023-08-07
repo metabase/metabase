@@ -19,7 +19,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.database :refer [Database]]
@@ -50,7 +50,7 @@
 (s/defn ->field :- (s/maybe #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field))
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root}
-   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString mbql.s/Field)]
+   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString (s/pred mbql.preds/Field? ":field or :expression"))]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (filters/field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]

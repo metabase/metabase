@@ -10,9 +10,9 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [monger.conversion :as m.conversion]
-   [monger.util :as m.util]
-   [schema.core :as s])
+   [monger.util :as m.util])
   (:import
    (com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject)
    (java.util.concurrent TimeUnit)
@@ -23,7 +23,7 @@
 ;;; ---------------------------------------------------- Metadata ----------------------------------------------------
 
 ;; projections will be something like `[:_id :date~~~default :user_id :venue_id]`
-(s/defn ^:private result-columns-unescape-map :- {s/Str s/Str}
+(mu/defn ^:private result-columns-unescape-map :- [:map-of :string :string]
   "Returns a map of column name in result row -> unescaped column name to return in metadata e.g.
 
     {\"date_field~~~month\" \"date_field\"}"
@@ -70,10 +70,14 @@
                              (cons "_id")))]
     (into projected-vec (remove (conj projected-set "_id")) first-row-col-names)))
 
-(s/defn ^:private result-col-names :- {:row [s/Str], :unescaped [s/Str]}
+(mu/defn ^:private result-col-names :- [:map
+                                        [:row [:maybe [:sequential :string]]]
+                                        [:unescaped [:maybe [:sequential :string]]]]
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
-  [{:keys [mbql? projections]} query first-row-col-names]
+  [{:keys [mbql? projections]} :- :map
+   query
+   first-row-col-names]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
   ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
   (if-not (and mbql? projections)
