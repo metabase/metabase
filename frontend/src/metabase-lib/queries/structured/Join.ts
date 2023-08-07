@@ -672,31 +672,6 @@ export default class Join extends MBQLObjectClause {
         isFieldLiteral(dimension.mbql()),
     );
   }
-
-  clean() {
-    if (!this.condition || !this.hasGaps()) {
-      return this;
-    }
-
-    let join = this;
-    let invalidDimensionIndex = this.parentDimensions().findIndex(
-      dimension => dimension == null,
-    );
-
-    if (invalidDimensionIndex >= 0) {
-      join = this.removeCondition(invalidDimensionIndex);
-    }
-
-    invalidDimensionIndex = this.joinDimensions().findIndex(
-      dimension => dimension == null,
-    );
-
-    if (invalidDimensionIndex >= 0) {
-      join = this.removeCondition(invalidDimensionIndex);
-    }
-
-    return join.clean();
-  }
 }
 
 function setTemporalUnit(fieldRef, value) {

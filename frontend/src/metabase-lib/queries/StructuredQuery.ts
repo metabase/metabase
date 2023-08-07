@@ -400,11 +400,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   cleanJoins(): StructuredQuery {
-    let query = this;
-    this.joins().forEach((join, index) => {
-      query = query.updateJoin(index, join.clean());
-    });
-    return query._cleanClauseList("joins");
+    return this._cleanClauseList("joins");
   }
 
   cleanExpressions(): StructuredQuery {
