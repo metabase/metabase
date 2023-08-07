@@ -70,7 +70,7 @@ class AddSeriesModal extends Component<Props, State> {
       this.setState({ state: "loading" });
       await this.props.fetchCardData(card, dashcard, {
         reload: false,
-        clear: true,
+        clearCache: true,
       });
     }
 
