@@ -69,7 +69,7 @@ describe("scenarios > embedding > smoke tests", () => {
       cy.findByText("Enabled");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Standalone embeds").click();
+      cy.findByText("Static embedding").click();
       if (isOSS) {
         cy.contains(
           "In order to remove the Metabase logo from embeds, you can always upgrade to one of our paid plans.",
@@ -191,7 +191,7 @@ describe("scenarios > embedding > smoke tests", () => {
 
         cy.visit(embeddingPage);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Standalone embeds").click();
+        cy.findByText("Static embedding").click();
         cy.wait("@currentlyEmbeddedObject");
 
         const sectionName = new RegExp(`Embedded ${object}s`, "i");
@@ -223,7 +223,7 @@ describe("scenarios > embedding > smoke tests", () => {
 
         cy.visit(embeddingPage);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Standalone embeds").click();
+        cy.findByText("Static embedding").click();
         cy.wait("@currentlyEmbeddedObject");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
