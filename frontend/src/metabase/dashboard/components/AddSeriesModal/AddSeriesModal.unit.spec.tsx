@@ -1,5 +1,5 @@
 import { renderWithProviders, screen } from "__support__/ui";
-
+import { getNextId } from "__support__/utils";
 import {
   createMockCard,
   createMockColumn,
@@ -8,7 +8,6 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { getNextId } from "__support__/utils";
 import type { Props as AddSeriesModalProps } from "./AddSeriesModal";
 import { AddSeriesModal } from "./AddSeriesModal";
 
@@ -24,8 +23,22 @@ const card2 = createMockCard({
 
 const dataset = createMockDataset({
   data: createMockDatasetData({
-    rows: [["Davy Crocket"], ["Daniel Boone"]],
-    cols: [createMockColumn()],
+    rows: [
+      ["1958-04-01T00:00:00+07:00", 2],
+      ["1958-05-01T00:00:00+07:00", 8],
+      ["1958-06-01T00:00:00+07:00", 3],
+      ["1958-07-01T00:00:00+07:00", 10],
+    ],
+    cols: [
+      createMockColumn({
+        base_type: "type/Date",
+        display_name: "Birthday",
+      }),
+      createMockColumn({
+        base_type: "type/BigInteger",
+        display_name: "Count",
+      }),
+    ],
   }),
 });
 
@@ -34,13 +47,13 @@ const dashcard = createMockDashboardOrderedCard({
   card: createMockCard({
     id: getNextId(),
     name: "Base card",
+    display: "bar",
   }),
   series: [card1, card2],
 });
 
 const dashcardData = {
   [dashcard.id]: {
-    [dashcard.card.id]: dataset,
     [card1.id]: dataset,
     [card2.id]: dataset,
   },
