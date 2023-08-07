@@ -6,6 +6,7 @@
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase.actions :as actions]
+   [metabase.actions.error :as actions.error]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -27,6 +28,10 @@
 
 (set! *warn-on-reflection* true)
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Error handling                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (defmulti parse-sql-error
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
   of maps with a :column and :message key indicating what went wrong."
@@ -36,14 +41,26 @@
 
 (defmulti maybe-parse-sql-error
   "Try to parse the sql error msg."
-  {:arglists '([driver database e]), :added "0.48.0"}
-  (fn [driver error-type]
+  {:arglists '([driver error-type database error-message]), :added "0.48.0"}
+  (fn [driver error-type _database _error-message]
    [(driver/dispatch-on-initialized-driver driver) error-type])
   :hierarchy #'driver/hierarchy)
 
 (defmethod maybe-parse-sql-error :default
   [_driver _database _e]
   nil)
+
+(defn- parse-error*
+  [driver database e]
+  (if-let [error (and (ex-message e)
+                      (some #(maybe-parse-sql-error driver % database (ex-message e))
+                            [actions.error/violate-unique-constraint
+                             actions.error/violate-foreign-key-constraint
+                             actions.error/violate-not-null-constraint
+                             actions.error/incorrect-type]))]
+    ;; TODO :should be sth simpler, no need to wrap it with :errors
+    {:errors error}
+    (ex-data e)))
 
 (defn- parse-error
   "Returns errors in a way that indicates which column had the problem. Can be used to highlight errors in forms."
@@ -69,6 +86,11 @@
                     :status-code status-code}
                    more-info)
             e)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Action Execution                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 
 (defmulti base-type->sql-type-map
   "Return a map of [[metabase.types]] type to SQL string type name. Used for casting. Looks like we're just copypasting

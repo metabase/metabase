@@ -9,6 +9,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.user :as user]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
@@ -17,6 +18,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures
+  :once
+  (fixtures/initialize :db :web-server))
 
 (comment api.action/keep-me)
 
@@ -633,3 +638,36 @@
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
                  (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
+
+(mt/defdataset action-error-handling
+  [["group"
+    [{:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "ranking" :base-type :type/Integer :not-null? true}]
+    [["admin" 1]
+     ["user" 2]]]
+   ["user"
+    [{:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "group-id" :base-type :type/Integer :fk "group" :not-null? true}]
+    [["crowberto" 1]
+     ["rasta"     2]
+     ["lucky"     1]]]])
+
+(deftest action-error-handling-test
+ (mt/test-driver :postgres
+   (mt/dataset action-error-handling
+     (mt/with-actions-enabled
+       (mt/with-current-user (mt/user->id :crowberto)
+         (mt/with-actions [{card-id :id}              {:dataset_query (mt/mbql-query group) :dataset true}
+                           {create-action :action-id} {:type :implicit
+                                                       :kind "row/create"}
+                           {update-action :action-id} {:type :implicit
+                                                       :kind "row/update"}
+                           {delete-action :action-id} {:type :implicit
+                                                       :kind "row/delete"}]
+           #_(is (=? {:errors {:ranking "incorrect value: S"}}
+                     (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
+                                           {:parameters {"name" "new" "ranking" "S"}})))
+
+           (is (=? {:errors {:id #"violates foreign key constraint .*"}}
+                   (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-action)
+                                         {:parameters {"id" 1}})))))))))

@@ -3,6 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.actions.error :as actions.error]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -19,10 +20,11 @@
         (str/replace "``" "`")
         (str/replace #"^`?(.+?)`?$" "$1"))))
 
-(defn- maybe-parse-not-null-error [_database error-message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-not-null-constraint]
+  [_driver error-type _database error-message]
   (when-let [[_ col]
              (re-find #"Column '(.+)' cannot be null" error-message)]
-    {:type    :violate-not-null-constraint
+    {:type    error-type
      :message (tru "violates not-null constraint")
      :columns [col]}))
 
@@ -53,37 +55,39 @@
       [[] nil nil]
       (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
 
-;; TODO: maybe we need to convert into defmethods
-(defn- maybe-parse-unique-constraint-error [database error-message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
+  [_driver error-type database error-message]
   (let [[match table constraint]
         (re-find #"Duplicate entry '.+' for key '(.+)\.(.+)'" error-message)
         constraint (remove-backticks constraint)
         table (remove-backticks table)]
     (when match
-      {:type       :violate-unique-constraint
+      {:type       error-type
        :message    (tru "violates unique constraint {0}" constraint)
        :table      table
        :constraint constraint
        :columns    (constraint->column-names database table constraint)})))
 
-(defn- maybe-parse-fk-constraint-error [_database error-message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
+  [_driver error-type _database error-message]
   (let [[match table constraint _fkey-cols ref-table key-cols]
         (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)
         constraint (remove-backticks constraint)
         table      (remove-backticks table)
         ref-table  (remove-backticks ref-table)]
     (when match
-      {:type       :violate-foreign-key-constraint
+      {:type       error-type
        :message    (tru "violates foreign key constraint {0}" constraint)
        :table      table
        :ref-table  ref-table
        :constraint constraint
        :columns    (map remove-backticks (str/split key-cols #", "))})))
 
-(defn- maybe-parse-incorrect-type [_database error-message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-type]
+  [_driver error-type _database error-message]
   (when-let [[_ expected-type value database table column row]
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]
-    (cond-> {:type          :incorrect-type
+    (cond-> {:type          error-type
              :message       (tru "incorrect value: {0}" value)
              :column        (-> column
                                 (str/replace #"^'(.*)'$" "$1")
@@ -99,17 +103,9 @@
   (maybe-parse-unique-constraint-error {:id 1} "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")
   (maybe-parse-not-null-error nil "Column 'f1' cannot be null")
   (maybe-parse-incorrect-type nil "Incorrect integer value: 'not boolean' for column `G__168815`.`types`.`boolean` at row 1")
-  (maybe-parse-incorrect-type nil "(conn=183) Incorrect integer value: 'STRING' for column 'id' at row 1")
+  (sql-jdbc.actions/maybe-parse-sql-error :mysql :incorrect-type  nil "(conn=183) Incorrect integer value: 'STRING' for column 'id' at row 1")
   (maybe-parse-incorrect-type nil "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")
   nil)
-
-(defmethod sql-jdbc.actions/parse-sql-error :mysql
-  [_driver database message]
-  (some #(% database message)
-        [maybe-parse-not-null-error
-         maybe-parse-unique-constraint-error
-         maybe-parse-fk-constraint-error
-         maybe-parse-incorrect-type]))
 
 ;;; There is a huge discrepancy between the types used in DDL statements and
 ;;; types that can be used in CAST:

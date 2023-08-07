@@ -2,6 +2,7 @@
   "Method impls for [[metabase.driver.sql-jdbc.actions]] for `:postgres`."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [metabase.actions.error :as actions.error]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.util :as u]
@@ -9,16 +10,17 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- maybe-parse-not-null-error [_database error-message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-not-null-constraint]
+  [_driver error-type _database error-message]
   (when-let [[_ _value column]
              (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
-    {:type    :violate-not-null-constraint
+    {:type    error-type
      :message (tru "violates not-null constraint")
      :columns [column]}))
 
-  ;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
-  ;; result in 100 identical data warehouse queries. It's not like constraint columns are something we would expect to
-  ;; change regularly anyway.
+;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
+;; result in 100 identical data warehouse queries. It's not like constraint columns are something we would expect to
+;; change regularly anyway.
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database constraint-name]
@@ -28,33 +30,28 @@
           (map :column_name)
           (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false}))))
 
-(defn- maybe-parse-unique-constraint-error [database error-message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-unique-constraint]
+  [_driver error-type database error-message]
   (let [[match? constraint _value]
         (re-find #"ERROR:\s+duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
     (when match?
-      {:type       :violate-unique-constraint
+      {:type       error-type
        :message    (tru "violates unique constraint {0}" constraint)
        :constraint constraint
        :columns    (constraint->column-names database constraint)})))
 
-(defn- maybe-parse-fk-constraint-error [database error-message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
+  [_driver error-type database error-message]
   (let [[match? table constraint ref-table _columns _value]
         (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
     (when match?
       (let [columns (constraint->column-names database constraint)]
-        {:type       :violate-foreign-key-constraint
+        {:type       error-type
          :message    (tru "violates foreign key constraint {0}" constraint)
          :table      table
          :ref-table  ref-table
          :constraint constraint
          :columns    columns}))))
-
-(defmethod sql-jdbc.actions/parse-sql-error :postgres
-  [_driver database message]
-  (some #(% database message)
-        [maybe-parse-not-null-error
-         maybe-parse-unique-constraint-error
-         maybe-parse-fk-constraint-error]))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres
   [_driver]

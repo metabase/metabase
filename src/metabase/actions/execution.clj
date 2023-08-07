@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions :as actions]
+   [metabase.actions.error :as actions.error]
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -146,6 +147,21 @@
                                     :type "id"
                                     :value [(get simple-parameters pk-field-name)]}]))))
 
+(defn- implicit-action-error->message
+  [e-type column-or-columns & additional-info]
+  (case e-type
+    actions.error/violate-unique-constraint
+    (format (tru "value for columns {0} is duplicated" column-or-columns))
+
+    actions.error/violate-not-null-constraint
+    (format (tru "value for columns {0} must be not null" column-or-columns))
+
+    actions.error/violate-foreign-key-constraint
+    (format (tru "columns {0} is referenced by {1}" column-or-columns (:ref-table additional-info)))
+
+    actions.error/incorrect-type
+    (format (tru "value for columns {0} should be of type {1}" column-or-columns (:expected-type additional-info)))))
+
 (defn- execute-implicit-action
   [action request-parameters]
   (let [implicit-action (keyword (:kind action))
@@ -160,10 +176,19 @@
                   (= implicit-action :row/update)
                   (assoc :update-row row-parameters))]
     (try
-      (binding [qp.perms/*card-id* (:model_id action)]
-        (actions/perform-action! implicit-action arg-map))
-      (catch Exception e
-        (handle-action-execution-error e)))))
+     (binding [qp.perms/*card-id* (:model_id action)]
+       (actions/perform-action! implicit-action arg-map))
+     (catch Exception e
+       (if-let [e-type (:type (ex-data e))]
+         (let [e-data (ex-data e)]
+           (throw (ex-info
+                   (implicit-action-error->message e-type (:columns e-data) e-data)
+                   {:stauts-code 400
+                    :errors      (reduce (fn [acc col]
+                                           (assoc acc col (implicit-action-error->message e-type col e-data)))
+                                         {}
+                                         (:columns e-data))})))
+         (throw e))))))
 
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
