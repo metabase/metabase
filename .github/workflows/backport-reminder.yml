@@ -15,3 +15,4 @@ jobs:
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           valid-labels: 'backport, no-backport'
+          disable-reviews: true
