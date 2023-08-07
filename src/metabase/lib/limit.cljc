@@ -19,13 +19,13 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    n            :- [:maybe ::lib.schema.common/int-greater-than-zero]]
+    n            :- [:maybe ::lib.schema.common/positive-int]]
    (lib.util/update-query-stage query stage-number (fn [stage]
                                                      (if n
                                                        (assoc stage :limit n)
                                                        (dissoc stage :limit))))))
 
-(mu/defn ^:export current-limit :- [:maybe ::lib.schema.common/int-greater-than-zero]
+(mu/defn ^:export current-limit :- [:maybe ::lib.schema.common/positive-int]
   "Get the maximum number of rows to be returned by a stage of a query. `nil` indicates there is no limit"
   ([query :- ::lib.schema/query]
    (current-limit query -1))
