@@ -74,7 +74,7 @@ function removeCard() {
 
   showDashboardCardActions();
 
-  cy.findByTestId("dashboardcard-actions-panel").within(() => {
-    cy.findByLabelText("close icon").click();
-  });
+  cy.findByTestId("dashboardcard-actions-panel")
+    .findByLabelText("close icon")
+    .click();
 }
