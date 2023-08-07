@@ -63,7 +63,7 @@
                                           ;; parameter validation exception), just return the `other-info` from the
                                           ;; ex-data.
                                           (and status-code (:errors other-info))
-                                          other-info
+                                          (merge {:message (.getMessage e)} other-info)
 
                                           ;; Otherwise return the full `Throwable->map` representation with Stacktrace
                                           ;; and ex-data

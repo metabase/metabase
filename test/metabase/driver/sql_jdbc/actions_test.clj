@@ -33,7 +33,7 @@
 
 (def ^:private parse-sql-error-called? (atom false))
 
-(defmethod sql-jdbc.actions/parse-sql-error ::parse-sql-error-exception
+(defmethod sql-jdbc.actions/parse-sql-errorold ::parse-sql-error-exception
   [_driver _database message]
   (reset! parse-sql-error-called? true)
   (throw (ex-info "OOPS I THREW AN EXCEPTION!" {:message message})))

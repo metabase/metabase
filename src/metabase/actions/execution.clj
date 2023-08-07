@@ -159,7 +159,7 @@
     actions.error/violate-foreign-key-constraint
     (format (tru "columns {0} is referenced by {1}" column-or-columns (:ref-table additional-info)))
 
-    actions.error/incorrect-type
+    actions.error/incorrect-value-type
     (format (tru "value for columns {0} should be of type {1}" column-or-columns (:expected-type additional-info)))
 
     actions.error/incorrect-affected-rows
@@ -193,7 +193,7 @@
          (let [e-data (ex-data e)]
            (throw (ex-info
                    (implicit-action-error->message e-type (:columns e-data) e-data)
-                   {:stauts-code 400
+                   {:status-code 400
                     :errors      (reduce (fn [acc col]
                                            (assoc acc col (implicit-action-error->message e-type col e-data)))
                                          {}

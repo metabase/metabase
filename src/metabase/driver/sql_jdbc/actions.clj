@@ -32,7 +32,7 @@
 ;;; |                                               Error handling                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti parse-sql-error
+(defmulti parse-sql-errorold
   "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
   of maps with a :column and :message key indicating what went wrong."
   {:arglists '([driver database e]), :added "0.44.0"}
@@ -50,34 +50,30 @@
   [_driver _database _e]
   nil)
 
-(defn- parse-sql-error*
+(defn- parse-sql-error
   [driver database e]
-  (if-let [error (and (ex-message e)
-                      (some #(maybe-parse-sql-error driver % database (ex-message e))
-                            [actions.error/violate-unique-constraint
-                             actions.error/violate-foreign-key-constraint
-                             actions.error/violate-not-null-constraint
-                             actions.error/incorrect-value-type]))]
-    ;; TODO :should be sth simpler, no need to wrap it with :errors
-    {:errors error}
-    (ex-data e)))
+  (or (and (ex-message e)
+           (some #(maybe-parse-sql-error driver % database (ex-message e))
+                 [actions.error/violate-unique-constraint
+                  actions.error/violate-foreign-key-constraint
+                  actions.error/violate-not-null-constraint
+                  actions.error/incorrect-value-type]))
+      (ex-data e)))
 
-(defn- parse-error
-  "Returns errors in a way that indicates which column had the problem. Can be used to highlight errors in forms."
-  [driver database e]
-  (let [default-method? (= (get-method parse-sql-error driver)
-                           (get-method parse-sql-error :default))]
-    (if default-method?
-      (ex-data e)
-      (let [message (ex-message e)]
-        (if-let [parsed-errors (when message
-                                 (try
-                                   (parse-sql-error driver database message)
-                                   (catch Throwable e
-                                     (log/error e (trs "Error parsing SQL error message {0}: {1}" (pr-str message) (ex-message e)))
-                                     nil)))]
-          {:errors  parsed-errors}
-          {:message (or message (pr-str e))})))))
+(defn- do-with-auto-parse-sql-error
+  [driver database thunk]
+  (try
+   (thunk)
+   (catch Exception e
+     ;; if has custom error handling, use that
+     (if (= (:type (ex-data e)) actions.error/incorrect-affected-rows)
+       (throw e)
+       (throw (ex-info (or (ex-message e) "Failed to execute action")
+                       (or (parse-sql-error driver database e) {})))))))
+
+(defmacro ^:private with-auto-parse-sql-error
+  [driver database & body]
+  `(do-with-auto-parse-sql-error ~driver ~database (fn [] ~@body)))
 
 (defn- catch-throw [e status-code & [more-info]]
   (throw
@@ -195,21 +191,6 @@
 
 (defn- prepare-query [hsql-query driver action]
   (prepare-query* driver action hsql-query))
-
-(defn- do-with-auto-parse-sql-error
-  [driver database thunk]
-  (try
-   (thunk)
-   (catch Exception e
-     ;; if has custom error handling, use that
-     (if (= (:type (ex-data e)) actions.error/incorrect-affected-rows)
-       (throw e)
-       (throw (ex-info "Failed to execute action"
-                       (or (parse-sql-error* driver database e) {})))))))
-
-(defmacro ^:private with-auto-parse-sql-error
-  [driver database & body]
-  `(do-with-auto-parse-sql-error ~driver ~database (fn [] ~@body)))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
