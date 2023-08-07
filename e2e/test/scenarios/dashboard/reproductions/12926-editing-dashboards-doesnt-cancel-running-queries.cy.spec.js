@@ -1,5 +1,6 @@
 import {
   editDashboard,
+  getDashboardCard,
   restore,
   showDashboardCardActions,
   undo,
@@ -7,7 +8,7 @@ import {
 
 const questionDetails = {
   name: "Q1",
-  native: { query: "SELECT 1" },
+  native: { query: "SELECT  '42' as ANSWER" },
 };
 
 describe("issue 12926", () => {
@@ -51,6 +52,8 @@ describe("issue 12926", () => {
       undo();
 
       cy.wait("@cardQueryRestored");
+
+      getDashboardCard().findByText("42");
     });
   });
 });
