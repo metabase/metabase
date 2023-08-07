@@ -183,7 +183,12 @@ describe("scenarios > search", () => {
         });
 
         getSearchBar().should("have.value", "orders");
-        cy.findByTestId("highlighted-search-bar-filter-button").should("exist");
+        // cy.findByTestId("highlighted-search-bar-filter-button").should("exist");
+        cy.findByTestId("search-bar-filter-button").should(
+          "have.attr",
+          "data-is-filtered",
+          "true",
+        );
 
         cy.findByTestId("search-app").within(() => {
           cy.findByText('Results for "orders"').should("exist");
@@ -193,7 +198,7 @@ describe("scenarios > search", () => {
         cy.findByTestId("type-sidebar").within(() => {
           cy.findByText(sidebarLabel).should("exist");
         });
-        cy.findAllByTestId("result-link-text-container").each(result => {
+        cy.findAllByTestId("search-result-item").each(result => {
           cy.wrap(result).should("contain.text", resultInfoText);
         });
       });
@@ -259,7 +264,7 @@ describe("scenarios > search", () => {
               expect(request.query.q).to.eq("e");
             });
 
-            cy.findAllByTestId("result-link-text-container").each(result => {
+            cy.findAllByTestId("search-result-item").each(result => {
               cy.wrap(result).should("contain.text", resultInfoText);
             });
 
@@ -275,7 +280,7 @@ describe("scenarios > search", () => {
         cy.visit("/search?q=order&type=card");
 
         cy.findAllByTestId("search-result-item-name");
-        cy.findByTestId("highlighted-search-bar-filter-button").click();
+        cy.findByTestId("search-bar-filter-button").click();
 
         getSearchModalContainer().within(() => {
           cy.findByText("Clear all filters").click();
@@ -283,7 +288,7 @@ describe("scenarios > search", () => {
 
         getSearchBar().clear().type("e{enter}");
 
-        cy.intercept("GET", "/api/search*").as("search");
+        cy.intercept("GET", "/api/search?q=*").as("search");
         cy.wait("@search").then(({ request, response }) => {
           expect(request.query.models).to.be.undefined;
           // we've inserted one of each entity type, so we should have
