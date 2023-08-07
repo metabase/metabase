@@ -229,7 +229,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.log("should accept url parameters");
 
-      cy.url().then(url => cy.visit(url + "?id=1&id=3"));
+      cy.location().then(location =>
+        cy.visit(`${location.origin}${location.pathname}?id=1&id=3`),
+      );
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(".ScalarValue", "2");
     });
