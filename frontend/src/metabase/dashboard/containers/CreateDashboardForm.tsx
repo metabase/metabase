@@ -104,7 +104,7 @@ function CreateDashboardForm({
       validationSchema={DASHBOARD_SCHEMA}
       onSubmit={handleCreate}
     >
-      {({ dirty, values }) => (
+      {() => (
         <Form>
           <FormInput
             name="name"
@@ -128,7 +128,7 @@ function CreateDashboardForm({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+            <FormSubmitButton title={t`Create`} primary />
           </FormFooter>
         </Form>
       )}
