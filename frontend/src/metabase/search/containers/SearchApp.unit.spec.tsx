@@ -157,19 +157,20 @@ describe("SearchApp", () => {
   });
 
   describe("filtering search results with the sidebar", () => {
-    it("should reload with filtered searches when a type on the right sidebar is clicked without changing URL", async () => {
-      const { history } = await setup({
-        searchText: "Test",
-      });
+    it.each(TEST_SEARCH_RESULTS)(
+      "should reload with filtered searches when type=$model on the right sidebar is clicked without changing URL",
+      async ({ model, name }) => {
+        const { history } = await setup({
+          searchText: "Test",
+        });
 
-      let url = history?.getCurrentLocation();
-      const { pathname: prevPathname, search: prevSearch } = url ?? {};
+        let url = history?.getCurrentLocation();
+        const { pathname: prevPathname, search: prevSearch } = url ?? {};
 
-      const sidebarItems = screen.getAllByTestId("type-sidebar-item");
-      expect(sidebarItems).toHaveLength(10);
-      expect(sidebarItems[0]).toHaveTextContent(ALL_RESULTS_SIDEBAR_NAME);
+        const sidebarItems = screen.getAllByTestId("type-sidebar-item");
+        expect(sidebarItems).toHaveLength(10);
+        expect(sidebarItems[0]).toHaveTextContent(ALL_RESULTS_SIDEBAR_NAME);
 
-      for (const { model, name } of TEST_SEARCH_RESULTS) {
         const sidebarItem = screen.getByText(SIDEBAR_NAMES[model]);
         userEvent.click(sidebarItem);
         url = history?.getCurrentLocation();
@@ -182,8 +183,8 @@ describe("SearchApp", () => {
         );
         expect(searchResultItem).toBeInTheDocument();
         expect(searchResultItem).toHaveTextContent(name);
-      }
-    });
+      },
+    );
   });
 
   describe("hydrating search filters from URL", () => {
