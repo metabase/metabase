@@ -94,7 +94,6 @@
 
 (defn copy-resources! [edition basis]
   (u/step "Copy resources"
-    ;; technically we don't NEED to copy the Clojure source files but it doesn't really hurt anything IMO.
     (doseq [path (all-paths basis)]
       (when (not (#{"src" "shared/src" "enterprise/backend/src"} path))
         (u/step (format "Copy %s" path)
