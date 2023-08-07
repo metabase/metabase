@@ -47,7 +47,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod maybe-parse-sql-error :default
-  [_driver _database _e]
+  [_driver _error-type _database _e]
   nil)
 
 (defn- parse-sql-error
