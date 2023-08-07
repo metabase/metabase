@@ -2,7 +2,6 @@
  * NOTE: KEEP SYNCRONIZED WITH COLORS.JS
  */
 :root {
-  --color-brand: #509ee3;
   --color-admin-navbar: #7172ad;
   --color-white: #ffffff;
   --color-black: #2e353b;
@@ -19,7 +18,6 @@
   --color-bg-light: #f9fbfc;
   --color-bg-white: #ffffff;
   --color-bg-yellow: #fffcf2;
-  --color-focus: #cbe2f7;
   --color-shadow: rgba(0, 0, 0, 0.13);
   --color-border: #eeecec;
 }
