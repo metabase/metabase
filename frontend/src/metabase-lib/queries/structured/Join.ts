@@ -10,7 +10,6 @@ import type {
   JoinAlias,
   JoinCondition,
   JoinedFieldReference,
-  TableId,
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
 import {
@@ -48,11 +47,6 @@ export default class Join extends MBQLObjectClause {
    */
   replace(join: Join | JoinObject): StructuredQuery {
     return this._query.updateJoin(this._index, join);
-  }
-
-  // SOURCE TABLE
-  joinSourceTableId(): TableId | null | undefined {
-    return this["source-table"];
   }
 
   // SOURCE QUERY
@@ -461,7 +455,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   joinedQuery() {
-    const sourceTable = this.joinSourceTableId();
+    const sourceTable = this["source-table"];
     const sourceQuery = this.joinSourceQuery();
     return sourceTable
       ? new StructuredQuery(this.query().question().setDataset(false), {
