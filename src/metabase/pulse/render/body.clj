@@ -213,14 +213,25 @@
   {:arglists '([chart-type render-type timezone-id card dashcard data])}
   (fn [chart-type _ _ _ _ _] chart-type))
 
+(defn- filter-columns [filtered-column-names rows]
+  (let [filtered-headers-idx
+        (keep-indexed (fn [idx header-cell] (when (some #{(h header-cell)} filtered-column-names) idx))
+                      (:row (first rows)))
+        keep-filtered-idx #(keep-indexed (fn [idx header-call] (when (some #{idx} filtered-headers-idx) header-call)) %)
+        filtered-rows (map #(update % :row keep-filtered-idx) rows)]
+    filtered-rows))
+
 (s/defmethod render :table :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows viz-settings] :as data}]
   (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
+        filtered-columns-names (mapv :name (filter :enabled (:table.columns viz-settings)))
+        filtered-rows (filter-columns filtered-columns-names (prep-for-html-rendering timezone-id card data))
         table-body   [:div
                       (table/render-table
                        (color/make-color-selector data viz-settings)
-                       (mapv :name (:cols data))
-                       (prep-for-html-rendering timezone-id card data))
+                       (mapv :name (filter :enabled (:table.columns viz-settings)))
+                       filtered-columns-names
+                       filtered-rows)
                       (render-truncation-warning rows-limit (count rows))]]
     {:attachments
      nil
