@@ -143,7 +143,7 @@ describe("scenarios > question > joined questions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A_COLUMN");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question 5 → B Column");
+    cy.findByText("Question 5 - A_COLUMN → B Column");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
