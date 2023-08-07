@@ -84,7 +84,7 @@
       :bootstrapJSON        (escape-script (json/generate-string public-settings))
       :userLocalizationJSON (escape-script (load-localization (:locale params)))
       :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
-      :nonceJSON            (escape-script (json/generate-string "2726c7f26c"))
+      :nonceJSON            (escape-script (json/generate-string "<dynamic_nonce>"))
       :language             (hiccup.util/escape-html (public-settings/site-locale))
       :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
       :applicationName      (hiccup.util/escape-html (public-settings/application-name))

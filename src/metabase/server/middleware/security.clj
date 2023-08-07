@@ -71,7 +71,7 @@
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 "'nonce-2726c7f26c'"
+                                 "'nonce-<dynamic_nonce>'"
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
                                    "http://localhost:8080")
