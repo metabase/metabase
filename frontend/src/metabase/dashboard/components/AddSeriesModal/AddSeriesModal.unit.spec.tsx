@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import {
@@ -11,14 +12,22 @@ import {
 import type { Props as AddSeriesModalProps } from "./AddSeriesModal";
 import { AddSeriesModal } from "./AddSeriesModal";
 
-const card1 = createMockCard({
+const baseCard = createMockCard({
   id: getNextId(),
-  name: "Card 1",
+  name: "Base card",
+  display: "bar",
 });
 
-const card2 = createMockCard({
+const firstCard = createMockCard({
   id: getNextId(),
-  name: "Card 2",
+  name: "First card",
+  display: "bar",
+});
+
+const secondCard = createMockCard({
+  id: getNextId(),
+  name: "Second card",
+  display: "bar",
 });
 
 const dataset = createMockDataset({
@@ -44,43 +53,89 @@ const dataset = createMockDataset({
 
 const dashcard = createMockDashboardOrderedCard({
   id: getNextId(),
-  card: createMockCard({
-    id: getNextId(),
-    name: "Base card",
-    display: "bar",
-  }),
-  series: [card1, card2],
+  card: baseCard,
+  series: [firstCard, secondCard],
 });
 
 const dashcardData = {
   [dashcard.id]: {
-    [dashcard.card.id]: dataset,
-    [card1.id]: dataset,
-    [card2.id]: dataset,
+    [baseCard.id]: dataset,
+    [firstCard.id]: dataset,
+    [secondCard.id]: dataset,
   },
 };
 
+const defaultProps = {
+  dashcard,
+  dashcardData,
+  fetchCardData: jest.fn(),
+  setDashCardAttributes: jest.fn(),
+  onClose: jest.fn(),
+};
+
 const setup = (options?: Partial<AddSeriesModalProps>) => {
-  renderWithProviders(
-    <AddSeriesModal
-      dashcard={dashcard}
-      dashcardData={dashcardData}
-      fetchCardData={jest.fn()}
-      setDashCardAttributes={jest.fn()}
-      onClose={jest.fn()}
-      {...options}
-    />,
-  );
+  return renderWithProviders(<AddSeriesModal {...defaultProps} {...options} />);
 };
 
 describe("AddSeriesModal", () => {
-  it("does not render the 'x' button next to the base series in visualization legend", () => {
+  it("shows the 'x' button in all legend items in visualization legend except for the base series", () => {
     setup();
 
-    const legendItem = screen.getByTestId("legend-item");
+    const [baseSeriesLegendItem, ...legendItems] =
+      screen.getAllByTestId("legend-item");
 
     expect(
-      within(legendItem).queryByRole("img", { name: "close icon" }),
+      within(baseSeriesLegendItem).queryByRole("img", { name: "close icon" }),
     ).not.toBeInTheDocument();
+
+    expect(legendItems.length).toBe(2);
+
+    for (const legendItem of legendItems) {
+      expect(
+        within(legendItem).getByRole("img", { name: "close icon" }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("can remove first series by clicking the 'x' button in visualization legend items", async () => {
+    setup();
+
+    expect(getLegendLabels()).toEqual([
+      baseCard.name,
+      firstCard.name,
+      secondCard.name,
+    ]);
+
+    const firstSeriesLegendItem = screen.getAllByTestId("legend-item")[1];
+
+    userEvent.click(
+      within(firstSeriesLegendItem).getByRole("img", { name: "close icon" }),
+    );
+
+    expect(getLegendLabels()).toEqual([baseCard.name, secondCard.name]);
+  });
+
+  it("can remove second series by clicking the 'x' button in visualization legend items", async () => {
+    setup();
+
+    expect(getLegendLabels()).toEqual([
+      baseCard.name,
+      firstCard.name,
+      secondCard.name,
+    ]);
+
+    const secondSeriesLegendItem = screen.getAllByTestId("legend-item")[2];
+
+    userEvent.click(
+      within(secondSeriesLegendItem).getByRole("img", { name: "close icon" }),
+    );
+
+    expect(getLegendLabels()).toEqual([baseCard.name, firstCard.name]);
   });
 });
+
+function getLegendLabels() {
+  return screen
+    .getAllByTestId("legend-item")
+    .map(element => element.textContent);
+}
