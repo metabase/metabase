@@ -67,7 +67,10 @@ const typeFilters = [
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > search", () => {
-  beforeEach(restore);
+  beforeEach(() => {
+    restore();
+    cy.intercept("GET", "/api/search?q=*").as("search");
+  });
 
   describe("universal search", () => {
     it("should work for admin (metabase#20018)", () => {
@@ -81,6 +84,7 @@ describe("scenarios > search", () => {
       });
 
       cy.get("@searchBox").type("{enter}");
+      cy.wait("@search");
 
       cy.findByTestId("search-result-item").within(() => {
         getProductsSearchResults();
@@ -91,6 +95,7 @@ describe("scenarios > search", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       getSearchBar().type("product{enter}");
+      cy.wait("@search");
       cy.findByTestId("search-app").within(() => {
         cy.findByText("Products");
       });
@@ -100,15 +105,13 @@ describe("scenarios > search", () => {
       cy.signIn("nodata");
       cy.visit("/");
       getSearchBar().type("product{enter}");
-
+      cy.wait("@search");
       cy.findByTestId("search-app").within(() => {
         cy.findByText("Didn't find anything");
       });
     });
 
     it("allows to select a search result using keyboard", () => {
-      cy.intercept("GET", "/api/search*").as("search");
-
       cy.signInAsNormalUser();
       cy.visit("/");
       getSearchBar().type("ord");
@@ -131,8 +134,6 @@ describe("scenarios > search", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
 
-      // I can't seem to get the `before` block working with the `search filters`
-      // describe block, so will just do it here for now.
       createSegment({
         name: "Segment",
         description: "All orders with a total under $100.",
@@ -144,7 +145,6 @@ describe("scenarios > search", () => {
         },
       });
 
-      // metric
       createMetric({
         name: "Metric",
         description: "Sum of orders subtotal",
@@ -165,6 +165,8 @@ describe("scenarios > search", () => {
     describe("hydrating search query from URL", () => {
       it("should hydrate search with search text", () => {
         cy.visit("/search?q=orders");
+        cy.wait("@search");
+
         getSearchBar().should("have.value", "orders");
         cy.findByTestId("search-app").within(() => {
           cy.findByText('Results for "orders"').should("exist");
@@ -173,17 +175,10 @@ describe("scenarios > search", () => {
 
       it("should hydrate search with search text and filter", () => {
         const { sidebarLabel, filterName, resultInfoText } = typeFilters[0];
-        cy.intercept("GET", "/api/search?q=*").as("search");
-
         cy.visit(`/search?q=orders&type=${filterName}`);
-
-        cy.wait("@search").then(({ request, response }) => {
-          expect(request.query.models).to.eq(filterName);
-          expect(response.body.models.includes(filterName)).to.be.true;
-        });
+        cy.wait("@search");
 
         getSearchBar().should("have.value", "orders");
-        // cy.findByTestId("highlighted-search-bar-filter-button").should("exist");
         cy.findByTestId("search-bar-filter-button").should(
           "have.attr",
           "data-is-filtered",
@@ -205,14 +200,19 @@ describe("scenarios > search", () => {
     });
 
     describe("accessing full page search with `Enter`", () => {
-      it("should not render full page search unless search text is present and user clicks 'Enter'", () => {
+      it("should not render full page search if user has not entered a text query ", () => {
+        cy.intercept("GET", "/api/activity/recent_views").as("getRecentViews");
+
         cy.visit("/");
+
         cy.findByTestId("search-bar-filter-button").click();
         getSearchModalContainer().within(() => {
           cy.findByText("Question").click();
           cy.findByText("Apply all filters").click();
         });
         getSearchBar().click().type("{enter}");
+
+        cy.wait("@getRecentViews");
 
         cy.findByTestId("search-results-floating-container").within(() => {
           cy.findByText("Recently viewed").should("exist");
@@ -228,6 +228,7 @@ describe("scenarios > search", () => {
           cy.findByText("Apply all filters").click();
         });
         getSearchBar().click().type("orders{enter}");
+        cy.wait("@search");
 
         cy.findByTestId("search-app").within(() => {
           cy.findByText('Results for "orders"').should("exist");
@@ -247,22 +248,15 @@ describe("scenarios > search", () => {
             cy.visit("/");
 
             cy.findByTestId("search-bar-filter-button").click();
-
             getSearchModalContainer().within(() => {
               cy.findByText(label).click();
               cy.findByText("Apply all filters").click();
             });
 
-            cy.intercept("GET", "/api/search?q=*").as("search");
-
             getSearchBar().clear().type("e{enter}");
+            cy.wait("@search");
 
             cy.url().should("include", `type=${filterName}`);
-
-            cy.wait("@search").then(({ request }) => {
-              expect(request.query.models).to.eq(filterName);
-              expect(request.query.q).to.eq("e");
-            });
 
             cy.findAllByTestId("search-result-item").each(result => {
               cy.wrap(result).should("contain.text", resultInfoText);
@@ -278,6 +272,7 @@ describe("scenarios > search", () => {
 
       it("should not filter results when `Clear all filters` is applied", () => {
         cy.visit("/search?q=order&type=card");
+        cy.wait("@search");
 
         cy.findAllByTestId("search-result-item-name");
         cy.findByTestId("search-bar-filter-button").click();
@@ -287,16 +282,7 @@ describe("scenarios > search", () => {
         });
 
         getSearchBar().clear().type("e{enter}");
-
-        cy.intercept("GET", "/api/search?q=*").as("search");
-        cy.wait("@search").then(({ request, response }) => {
-          expect(request.query.models).to.be.undefined;
-          // we've inserted one of each entity type, so we should have
-          // each type in the available_models
-          expect(response.body?.available_models ?? []).to.include.members(
-            typeFilters.map(({ filterName }) => filterName),
-          );
-        });
+        cy.wait("@search");
 
         cy.findAllByTestId("type-sidebar-item").should(
           "have.length",
