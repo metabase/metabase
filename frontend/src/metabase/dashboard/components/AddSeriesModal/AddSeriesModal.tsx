@@ -95,9 +95,9 @@ class AddSeriesModal extends Component<Props, State> {
   handleRemoveSeries = (_event: MouseEvent, removedIndex: number) => {
     /**
      * The first series is the base dashcard.card - it's not included
-     * in the this.state.series arrray.
+     * in the this.state.series array.
      *
-     * @see `series` definition in render() function
+     * @see "series" definition in "render" function
      */
     const actualRemovedIndex = removedIndex - 1;
 
