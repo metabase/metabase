@@ -168,7 +168,7 @@ class SharingSidebarInner extends Component {
 
     // prevent forwarding to add-pulse editingMode after creating a new pulse
     // when none existed previously
-    if (newPulses.length > 0 && prevPulses.length === 0) {
+    if (newPulses?.length > 0 && prevPulses?.length === 0) {
       this.setState(() => {
         return {
           editingMode: EDITING_MODES.LIST_PULSES,
