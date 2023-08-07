@@ -1,6 +1,26 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+import Draggable from "react-draggable";
 import Button from "metabase/core/components/Button";
 import { color, lighten } from "metabase/lib/colors";
+
+interface TableDraggableProps {
+  enableCustomUserSelectHack?: boolean;
+}
+
+export const TableDraggable = styled(Draggable)<TableDraggableProps>`
+  ${props =>
+    props.enableCustomUserSelectHack &&
+    css`
+      .react-draggable-transparent-selection *::-moz-selection {
+        all: inherit;
+      }
+
+      .react-draggable-transparent-selection *::selection {
+        all: inherit;
+      }
+    `}
+`;
 
 export const HeaderCell = styled.div`
   color: ${color("text-medium")};
