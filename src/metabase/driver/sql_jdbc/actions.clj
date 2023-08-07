@@ -32,13 +32,6 @@
 ;;; |                                               Error handling                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti parse-sql-errorold
-  "Parses the raw error message returned after an error in the driver database occurs, and converts it into a sequence
-  of maps with a :column and :message key indicating what went wrong."
-  {:arglists '([driver database e]), :added "0.44.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (defmulti maybe-parse-sql-error
   "Try to parse the sql error msg."
   {:arglists '([driver error-type database error-message]), :added "0.48.0"}
