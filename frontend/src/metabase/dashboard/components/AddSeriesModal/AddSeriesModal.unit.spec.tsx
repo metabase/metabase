@@ -2,6 +2,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 
 import {
   createMockCard,
+  createMockColumn,
   createMockDashboardOrderedCard,
   createMockDataset,
   createMockDatasetData,
@@ -14,7 +15,6 @@ import { AddSeriesModal } from "./AddSeriesModal";
 const card1 = createMockCard({
   id: getNextId(),
   name: "Card 1",
-  dataset: true,
 });
 
 const card2 = createMockCard({
@@ -22,30 +22,27 @@ const card2 = createMockCard({
   name: "Card 2",
 });
 
+const dataset = createMockDataset({
+  data: createMockDatasetData({
+    rows: [["Davy Crocket"], ["Daniel Boone"]],
+    cols: [createMockColumn()],
+  }),
+});
+
 const dashcard = createMockDashboardOrderedCard({
-  card_id: card1.id,
   id: getNextId(),
-  card: createMockCard({ id: getNextId(), name: "Base card" }),
+  card: createMockCard({
+    id: getNextId(),
+    name: "Base card",
+  }),
   series: [card1, card2],
 });
 
 const dashcardData = {
   [dashcard.id]: {
-    [dashcard.card.id]: createMockDataset({
-      data: createMockDatasetData({
-        rows: [["Davy Crocket"], ["Daniel Boone"]],
-      }),
-    }),
-    [card1.id]: createMockDataset({
-      data: createMockDatasetData({
-        rows: [["Davy Crocket"], ["Daniel Boone"]],
-      }),
-    }),
-    [card2.id]: createMockDataset({
-      data: createMockDatasetData({
-        rows: [["Davy Crocket"], ["Daniel Boone"]],
-      }),
-    }),
+    [dashcard.card.id]: dataset,
+    [card1.id]: dataset,
+    [card2.id]: dataset,
   },
 };
 
@@ -59,7 +56,6 @@ const setup = (options?: Partial<AddSeriesModalProps>) => {
       onClose={jest.fn()}
       {...options}
     />,
-    // { storeInitialState: state },
   );
 };
 
