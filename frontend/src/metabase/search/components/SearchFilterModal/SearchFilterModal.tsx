@@ -5,11 +5,11 @@ import { SearchFilterModalFooter } from "metabase/search/components/SearchFilter
 import {
   FilterTypeKeys,
   SearchFilterComponent,
-  SearchFilterKeys,
   SearchFilters,
 } from "metabase/search/types";
 import Button from "metabase/core/components/Button";
 import { Title, Flex } from "metabase/ui";
+import { SearchFilterKeys } from "metabase/search/constants";
 import { TypeFilter } from "./filters/TypeFilter";
 import { SearchFilterWrapper } from "./SearchFilterModal.styled";
 

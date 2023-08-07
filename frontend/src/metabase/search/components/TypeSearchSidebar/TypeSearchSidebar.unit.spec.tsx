@@ -57,7 +57,7 @@ const TEST_TYPES: {
 ];
 
 const TEST_ALL_ITEMS_TYPE = {
-  name: "All items",
+  name: "All results",
   filter: null,
   icon: "search",
 };

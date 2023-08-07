@@ -150,7 +150,15 @@ export function SearchResult({
           )}
           <Score scores={result.scores} />
         </div>
-        {loading && <ResultSpinner size={24} borderWidth={3} />}
+        {loading && (
+          // SearchApp also uses `loading-spinner`, using a different test ID
+          // to not confuse unit tests waiting for loading-spinner to disappear
+          <ResultSpinner
+            data-testid="search-result-loading-spinner"
+            size={24}
+            borderWidth={3}
+          />
+        )}
       </ResultLinkContent>
       {compact || <Context context={result.context} />}
     </ResultContainer>
