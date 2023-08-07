@@ -1,6 +1,39 @@
 {:config-paths ["macros"]
  :linters
- {:unresolved-symbol
+ {:aliased-namespace-symbol     {:level :warning}
+  :invalid-arity                {:skip-args [metabase.mbql.util.match/match]} ; TODO (cam): can we fix these?
+  :keyword-binding              {:level :warning}
+  :main-without-gen-class       {:level :warning}
+  :misplaced-docstring          {:level :warning}
+  :missing-body-in-when         {:level :warning}
+  :missing-docstring            {:level :warning}
+  :missing-else-branch          {:level :warning}
+  :namespace-name-mismatch      {:level :warning}
+  :non-arg-vec-return-type-hint {:level :warning}
+  :reduce-without-init          {:level :warning}
+  :redundant-fn-wrapper         {:level :warning}
+  :refer-all                    {:level :warning, :exclude [clojure.test]}
+  :single-key-in                {:level :warning}
+  :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
+  :use                          {:level :warning}
+  :warn-on-reflection           {:level :warning}
+
+  ;;
+  ;; disabled linters
+  ;;
+
+  :unexpected-recur         {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
+  :used-underscored-binding {:level :off} ; false positives: see https://github.com/clj-kondo/clj-kondo/issues/2152
+
+  ;;
+  ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
+  ;;
+
+  ;; :docstring-leading-trailing-whitespace {:level :warning}
+  ;; :docstring-no-summary                  {:level :warning}
+  ;; :shadowed-var                          {:level :warning}
+
+  :unresolved-symbol
   {:exclude
    [instaparse.core/transform
     (cljs.test/is [=? malli=])
@@ -24,33 +57,6 @@
     (metabase.util/prog1 [<>])
     (taoensso.nippy/extend-freeze)
     (taoensso.nippy/extend-thaw)]}
-
-  :refer-all                                {:level   :warning
-                                             :exclude [clojure.test]}
-  ;; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
-  :unexpected-recur                         {:level :off}
-  ;; TODO (cam): can we fix these?
-  :unused-referred-var                      {:exclude {compojure.core [GET DELETE POST PUT]}}
-  :missing-else-branch                      {:level :warning}
-  :misplaced-docstring                      {:level :warning}
-  :non-arg-vec-return-type-hint             {:level :warning}
-  :missing-body-in-when                     {:level :warning}
-  :missing-docstring                        {:level :warning}
-  ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
-  :namespace-name-mismatch                  {:level :off}
-  :use                                      {:level :warning}
-  :redundant-fn-wrapper                     {:level :warning}
-  :invalid-arity                            {:skip-args [metabase.mbql.util.match/match]}
-  :warn-on-reflection                       {:level :warning}
-  ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
-  ;; :docstring-no-summary                  {:level :warning}
-  ;; :docstring-leading-trailing-whitespace {:level :warning}
-  ;; :reduce-without-init                   {:level :warning}
-  ;; :used-underscored-binding              {:level :warning}
-  ;; :single-key-in                         {:level :warning}
-  ;; :keyword-binding                       {:level :warning}
-  ;; :main-without-gen-class                {:level :warning}
-  ;; :shadowed-var                          {:level :warning}
 
   :deprecated-var
   {:exclude
@@ -123,21 +129,24 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print                   {:message "Use clojure.tools.logging instead of clojure.core/print"}
-   clojure.core/println                 {:message "Use clojure.tools.logging instead of clojure.core/println"}
-   clojure.core/printf                  {:message "Use clojure.tools.logging instead of clojure.core/printf"}
-   clojure.core/prn                     {:message "Use clojure.tools.logging instead of clojure.core/prn"}
-   clojure.core/pr                      {:message "Use clojure.tools.logging instead of clojure.core/pr"}
+  {clojure.core/print                   {:message "Use metabase.util.log instead of clojure.core/print"}
+   clojure.core/println                 {:message "Use metabase.util.log instead of clojure.core/println"}
+   clojure.core/printf                  {:message "Use metabase.util.log instead of clojure.core/printf"}
+   clojure.core/prn                     {:message "Use metabase.util.log instead of clojure.core/prn"}
+   clojure.core/pr                      {:message "Use metabase.util.log instead of clojure.core/pr"}
+   clojure.core/tap>                    {:message "Don't use tap> is source code"}
+   clojure.core/time                    {:message "Don't use time in source code"}
    clojure.java.jdbc/get-connection     {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
    clojure.java.jdbc/with-db-connection {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata   {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
-   clojure.pprint/pprint                {:message "Use clojure.tools.logging instead of clojure.pprint/pprint"}
+   clojure.pprint/pprint                {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
    clojure.string/lower-case            {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case            {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    honeysql.core/call                   {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                    {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock                 {:message "Use mt/with-clock"}
    java.util.UUID/randomUUID            {:message "Use clojure.core/random-uuid instead of java.util.UUID/randomUUID"}
+   malli.core/explainer                 {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
    medley.core/random-uuid              {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.test/with-temp              {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp"}
    ;; metabase.test/with-temp*             {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp*"}
@@ -520,6 +529,8 @@
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.malli/defmethod                                                        schema.core/defmethod
   metabase.util.malli/defn                                                             schema.core/defn
+  metabase.util.malli.defn/defn                                                        schema.core/defn
+  metabase.util.malli.fn/fn                                                            schema.core/fn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
@@ -736,9 +747,7 @@
   metabase-lib
   {:linters
    {:docstring-leading-trailing-whitespace                {:level :warning}
-    :reduce-without-init                                  {:level :warning}
     :used-underscored-binding                             {:level :warning}
-    :single-key-in                                        {:level :warning}
     :keyword-binding                                      {:level :warning}
     :shadowed-var                                         {:level :warning}
     :metabase/deftest-not-marked-parallel-or-synchronized {:level :warning}

@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field FieldValues Secret Table]]
+   [metabase.models.humanization :as humanization]
    [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
    [metabase.sync :as sync]
@@ -94,6 +95,35 @@
 (defonce ^:private reference-sync-durations
   (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
+(defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
+  (assert (= (humanization/humanization-strategy) :simple)
+          "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
+  (try
+    (u/with-timeout sync-timeout-ms
+      (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
+                                   "NONE")
+            full-sync?         (#{"test-data" "sample-dataset"} database-name)]
+        (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
+                           (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
+          ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+          (binding [sync-util/*log-exceptions-and-continue?* false]
+            (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
+          ;; add extra metadata for fields
+          (try
+            (add-extra-metadata! database-definition db)
+            (catch Throwable e
+              (log/error e "Error adding extra metadata"))))))
+    (catch Throwable e
+      (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
+            e       (ex-info message
+                             {:driver             driver
+                              :database-name      database-name
+                              :connection-details connection-details}
+                             e)]
+        (log/error e message)
+        (t2/delete! Database :id (u/the-id db))
+        (throw e)))))
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
@@ -108,33 +138,9 @@
                                                                     :name    database-name
                                                                     :engine  (u/qualified-name driver)
                                                                     :details connection-details))]
-      (try
-        ;; sync newly added DB
-        (u/with-timeout sync-timeout-ms
-          (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
-                                       "NONE")
-                full-sync? (#{"test-data" "sample-dataset"} database-name)]
-            (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                               (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
-              ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              (binding [sync-util/*log-exceptions-and-continue?* false]
-                (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
-              ;; add extra metadata for fields
-              (try
-                (add-extra-metadata! database-definition db)
-                (catch Throwable e
-                  (log/error e "Error adding extra metadata"))))))
-        ;; make sure we're returing an up-to-date copy of the DB
-        (t2/select-one Database :id (u/the-id db))
-        (catch Throwable e
-          (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
-                           {:driver             driver
-                            :database-name      database-name
-                            :connection-details connection-details}
-                           e)]
-            (log/error e "Failed to create test database")
-            (t2/delete! Database :id (u/the-id db))
-            (throw e)))))
+      (sync-newly-created-database! driver database-definition connection-details db)
+      ;; make sure we're returing an up-to-date copy of the DB
+      (t2/select-one Database :id (u/the-id db)))
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)
@@ -366,6 +372,5 @@
                                  (assert (t2/exists? Database :id (u/the-id db)))
                                  db))))]
     (binding [*get-db* (fn []
-                         (locking do-with-dataset
-                           (get-db-for-driver (tx/driver))))]
+                         (get-db-for-driver (tx/driver)))]
       (f))))
