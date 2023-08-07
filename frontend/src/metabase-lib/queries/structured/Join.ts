@@ -632,13 +632,6 @@ export default class Join extends MBQLObjectClause {
       : [];
   }
 
-  /**
-   * Removes the aggregation in the parent query and returns the new StructuredQuery
-   */
-  remove(): StructuredQuery {
-    return this._query.removeJoin(this._index);
-  }
-
   isValid() {
     return !!this.joinedTable();
   }
