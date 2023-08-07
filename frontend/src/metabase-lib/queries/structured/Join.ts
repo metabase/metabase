@@ -11,53 +11,60 @@ import Dimension, { FieldDimension } from "metabase-lib/Dimension";
 import StructuredQuery from "../StructuredQuery";
 import { MBQLObjectClause } from "./MBQLClause";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Join extends MBQLObjectClause {
-  strategy: JoinStrategy | null | undefined;
-  alias: JoinAlias | null | undefined;
-  condition: JoinCondition | null | undefined;
-  fields: JoinFields | null | undefined;
+/**
+ * @deprecated — use metabase-lib to manage joins whenever possible
+ */
+class Join extends MBQLObjectClause {
+  strategy?: JoinStrategy | null;
+  alias?: JoinAlias | null;
+  condition?: JoinCondition | null;
+  fields?: JoinFields | null;
 
-  displayName() {
-    return this.alias;
-  }
-
-  joinedQuery() {
+  private joinedQuery() {
     const sourceTable = this["source-table"];
     const sourceQuery = this["source-query"];
-    return sourceTable
-      ? new StructuredQuery(this.query().question().setDataset(false), {
-          type: "query",
-          query: {
-            "source-table": sourceTable,
-          },
-        })
-      : sourceQuery
-      ? new StructuredQuery(this.query().question().setDataset(false), {
-          type: "query",
-          query: sourceQuery,
-        })
-      : null;
+
+    if (sourceTable) {
+      const question = this.query().question().setDataset(false);
+      return new StructuredQuery(question, {
+        type: "query",
+        query: {
+          "source-table": sourceTable,
+        },
+      });
+    }
+
+    if (sourceQuery) {
+      const question = this.query().question().setDataset(false);
+      return new StructuredQuery(question, {
+        type: "query",
+        query: sourceQuery,
+      });
+    }
+
+    return null;
   }
 
-  joinedTable() {
+  private joinedTable() {
     const joinedQuery = this.joinedQuery();
     return joinedQuery && joinedQuery.table();
   }
 
-  /**
-   * All possible joined dimensions
-   */
-  joinedDimensions() {
+  private joinedDimension(dimension: Dimension) {
+    if (dimension instanceof FieldDimension) {
+      return dimension.withJoinAlias(this.alias).setQuery(this.query());
+    }
+    console.warn("Don't know how to create joined dimension with:", dimension);
+    return dimension;
+  }
+
+  private joinedDimensions() {
     const table = this.joinedTable();
     return table
       ? table.dimensions().map(dimension => this.joinedDimension(dimension))
       : [];
   }
 
-  /**
-   * Currently selected joined dimensions
-   */
   fieldsDimensions() {
     if (this.fields === "all") {
       return this.joinedDimensions();
@@ -73,7 +80,7 @@ export default class Join extends MBQLObjectClause {
   ) {
     const dimensions = this.joinedDimensions().filter(dimensionFilter);
     return new DimensionOptions({
-      name: this.displayName(),
+      name: this.alias,
       icon: "join_left_outer",
       dimensions: dimensions,
       fks: [],
@@ -81,25 +88,18 @@ export default class Join extends MBQLObjectClause {
     });
   }
 
-  joinedDimension(dimension: Dimension) {
-    if (dimension instanceof FieldDimension) {
-      return dimension.withJoinAlias(this.alias).setQuery(this.query());
-    }
-
-    console.warn("Don't know how to create joined dimension with:", dimension);
-    return dimension;
-  }
-
   dependentMetadata() {
     const joinedQuery = this.joinedQuery();
-    return joinedQuery
-      ? joinedQuery.dependentMetadata({
-          foreignTables: false,
-        })
-      : [];
+    if (joinedQuery) {
+      return joinedQuery.dependentMetadata({ foreignTables: false });
+    }
+    return [];
   }
 
   isValid() {
     return !!this.joinedTable();
   }
 }
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Join;
