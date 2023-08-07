@@ -111,17 +111,6 @@ export function getFieldTarget(fieldClause, tableDef, path = []) {
   return info;
 }
 
-export function getDatetimeUnit(fieldClause) {
-  if (isLocalField(fieldClause)) {
-    const dimension = FieldDimension.parseMBQLOrWarn(fieldClause);
-    return dimension && dimension.temporalUnit();
-  }
-}
-
-export function isDateTimeField(fieldClause) {
-  return Boolean(getDatetimeUnit(fieldClause));
-}
-
 export function hasSourceField(fieldClause) {
   return (
     isLocalField(fieldClause) &&
