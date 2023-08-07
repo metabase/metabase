@@ -46,8 +46,10 @@ export default function SearchApp({ location }) {
   const [selectedSidebarType, setSelectedSidebarType] = useState(null);
 
   useEffect(() => {
-    setSelectedSidebarType(null);
-  }, [searchText, searchFilters]);
+    if (location.search) {
+      setSelectedSidebarType(null);
+    }
+  }, [location.search]);
 
   const query = {
     q: searchText,
