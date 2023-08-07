@@ -114,7 +114,7 @@
       ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
       (when (seq alerts-or-ids)
         (doseq [alert (t2/select Pulse :id [:in (set (map u/the-id alerts-or-ids))])
-                :let  [card (#'metabase.models.pulse/alert->card alert)]]
+                :let  [card (#'pulse/alert->card alert)]]
           (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})))
       (f))))
 

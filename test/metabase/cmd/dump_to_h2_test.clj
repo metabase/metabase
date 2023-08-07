@@ -78,7 +78,7 @@
                                                        (persistent-data-source driver/*driver* db-name))]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
-              (binding [copy/*allow-loading-h2-databases* true]
+              (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file)
                 (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
                   (t2/insert! Setting {:key "my-site-admin", :value "baz"})

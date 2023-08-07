@@ -6,6 +6,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.walk :as walk]
+   [malli.error :as me]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -17,6 +18,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
    [schema.core :as schema]
@@ -36,11 +38,13 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  instance-of?
   InstanceOf
+  InstanceOf:Schema
+  instance-of?
   model
   instance])
 
@@ -306,12 +310,19 @@
    :out identity})
 
 (def ^:private MetricSegmentDefinition
-  {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
-   (schema/optional-key :aggregation) (schema/maybe [mbql.s/Aggregation])
-   schema/Keyword                     schema/Any})
+  [:map
+   [:filter      {:optional true} [:maybe mbql.s/Filter]]
+   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
 
 (def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (schema/validator MetricSegmentDefinition))
+  (let [explainer (mr/explainer MetricSegmentDefinition)]
+    (fn [definition]
+      (if-let [error (explainer definition)]
+        (let [humanized (me/humanize error)]
+          (throw (ex-info (tru "Invalid Metric or Segment: {0}" (pr-str humanized))
+                          {:error     error
+                           :humanized humanized})))
+        definition))))
 
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]

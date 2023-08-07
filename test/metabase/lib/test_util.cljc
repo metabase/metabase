@@ -274,7 +274,7 @@
                                       :people
                                       :reviews])]
           [table {:lib/type :metadata/card
-                  :id idx
+                  :id (inc idx)
                   :name (str "Mock " (name table) " card")
                   :dataset-query {:database (meta/id)
                                   :type :query

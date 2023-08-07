@@ -7,6 +7,7 @@
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -37,8 +38,8 @@
   (testing "Card should be valid"
     (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
       (testing "Card query should be valid"
-        (is (schema= mbql.s/Query
-                     (mbql.normalize/normalize query)))))))
+        (is (malli= mbql.s/Query
+                    (mbql.normalize/normalize query)))))))
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?

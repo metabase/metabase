@@ -7,6 +7,7 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))

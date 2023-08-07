@@ -33,23 +33,23 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- dir->contents-set [p dir]
+(defn- dir->contents-set [p ^File dir]
   (->> dir
        .listFiles
        (filter p)
-       (map #(.getName %))
+       (map #(.getName ^File %))
        set))
 
-(defn- dir->file-set [dir]
-  (dir->contents-set #(.isFile %) dir))
+(defn- dir->file-set [^File dir]
+  (dir->contents-set #(.isFile ^File %) dir))
 
-(defn- dir->dir-set [dir]
-  (dir->contents-set #(.isDirectory %) dir))
+(defn- dir->dir-set [^File dir]
+  (dir->contents-set #(.isDirectory ^File %) dir))
 
-(defn- subdirs [dir]
+(defn- subdirs [^File dir]
   (->> dir
        .listFiles
-       (remove #(.isFile %))))
+       (remove #(.isFile ^File %))))
 
 (defn- by-model [entities model-name]
   (filter #(-> % :serdes/meta last :model (= model-name))

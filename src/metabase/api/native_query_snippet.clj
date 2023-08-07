@@ -10,31 +10,33 @@
     :refer [NativeQuerySnippet]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(s/defn ^:private hydrated-native-query-snippet :- (s/maybe (mi/InstanceOf NativeQuerySnippet))
-  [id :- su/IntGreaterThanZero]
+(mu/defn ^:private hydrated-native-query-snippet :- [:maybe (mi/InstanceOf NativeQuerySnippet)]
+  [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one NativeQuerySnippet :id id))
       (t2/hydrate :creator)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch all snippets"
   [archived]
-  {archived (s/maybe su/BooleanString)}
+  {archived [:maybe ms/BooleanString]}
   (let [snippets (t2/select NativeQuerySnippet
                             :archived (Boolean/parseBoolean archived)
                             {:order-by [[:%lower.name :asc]]})]
     (t2/hydrate (filter mi/can-read? snippets) :creator)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch native query snippet with ID."
   [id]
+  {id ms/PositiveInt}
   (hydrated-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
