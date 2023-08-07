@@ -320,6 +320,7 @@ function JoinCondition({
         columnGroups={lhsColumnGroup}
         label={t`Left column`}
         isInitiallyVisible={!condition}
+        withDefaultBucketing={!rhsColumn}
         readOnly={readOnly}
         color={color}
         onSelect={handleLHSColumnChange}
@@ -337,6 +338,7 @@ function JoinCondition({
         column={rhsColumn}
         columnGroups={rhsColumnGroup}
         label={t`Right column`}
+        withDefaultBucketing={!lhsColumn}
         readOnly={readOnly}
         color={color}
         popoverRef={rhsColumnPicker}
