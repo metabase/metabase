@@ -16,11 +16,23 @@ const propTypes = {
   users: PropTypes.array.isRequired,
   onChange: PropTypes.func,
   canAddItems: PropTypes.bool,
+  className: PropTypes.string,
+  style: PropTypes.object,
+  placeholder: PropTypes.string,
 };
 
-const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
+const UserPicker = ({
+  value,
+  validateValue,
+  users,
+  canAddItems,
+  onChange,
+  style,
+  className,
+  placeholder: customPlaceholder,
+}) => {
   const placeholder = !value.length
-    ? t`Enter user names or email addresses`
+    ? customPlaceholder || t`Enter user names or email addresses`
     : null;
 
   const options = useMemo(() => {
@@ -58,7 +70,7 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
   }, []);
 
   return (
-    <UserPickerRoot>
+    <UserPickerRoot style={style} className={className}>
       <TokenField
         idKey={idKey}
         value={value}

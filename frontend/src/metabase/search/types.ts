@@ -17,14 +17,17 @@ export interface WrappedResult extends SearchResult {
 export const SearchFilterKeys = {
   Type: "type",
   CreatedBy: "created_by",
+  CreatedAt: "created_at",
 } as const;
 
 export type TypeFilterProps = SearchModelType[];
 export type CreatedByFilterProps = string[];
+export type CreatedAtFilterProps = string[];
 
 type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
+  [SearchFilterKeys.CreatedAt]: CreatedAtFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
