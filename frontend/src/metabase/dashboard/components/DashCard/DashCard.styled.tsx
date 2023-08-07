@@ -55,7 +55,8 @@ export const DashboardCardActionsPanel = styled.div`
   opacity: 0;
   pointer-events: none;
 
-  .Card:hover & {
+  .Card:hover,
+  .Card:focus-within & {
     opacity: 1;
     pointer-events: all;
   }
