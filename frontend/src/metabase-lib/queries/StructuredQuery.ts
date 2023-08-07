@@ -593,7 +593,7 @@ class StructuredQueryInner extends AtomicQuery {
   // JOINS
 
   /**
-   * @returns an array of MBQL @type {Join}s.
+   * @deprecated use metabase-lib v2 to manage joins
    */
   joins(): JoinWrapper[] {
     return Q.getJoins(this.query()).map(
