@@ -1468,6 +1468,13 @@
                         :entity_id       (:entity_id collection)
                         :color           "#ABCDEF"
                         :location        "/"
+                        :effective_ancestors [{:metabase.models.collection.root/is-root? true
+                                               :name                                     "Our analytics"
+                                               :id                                       "root"
+                                               :authority_level                          nil
+                                               :can_write                                true}]
+                        :effective_location  "/"
+
                         :parent_id       nil})
                       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
                                             {:name "My Beautiful Collection" :color "#ABCDEF"})))))

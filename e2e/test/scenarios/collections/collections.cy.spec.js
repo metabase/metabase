@@ -9,11 +9,11 @@ import {
   getCollectionIdFromSlug,
   openNavigationSidebar,
   closeNavigationSidebar,
-  openCollectionMenu,
   visitCollection,
   dragAndDrop,
   openUnpinnedItemMenu,
   getPinnedSection,
+  moveOpenedCollectionTo,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -652,19 +652,6 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
         });
       });
   }
-}
-
-function moveOpenedCollectionTo(newParent) {
-  openCollectionMenu();
-  popover().within(() => cy.findByText("Move").click());
-
-  cy.findAllByTestId("item-picker-item").contains(newParent).click();
-
-  modal().within(() => {
-    cy.button("Move").click();
-  });
-  // Make sure modal closed
-  modal().should("not.exist");
 }
 
 function moveItemToCollection(itemName, collectionName) {
