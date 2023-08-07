@@ -32,6 +32,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import Dimension from "metabase-lib/Dimension";
@@ -257,27 +258,30 @@ class TableInteractive extends Component {
     } = this.props;
 
     ReactDOM.render(
-      <div style={{ display: "flex" }}>
-        {cols.map((column, columnIndex) => (
-          <div className="fake-column" key={"column-" + columnIndex}>
-            {this.tableHeaderRenderer({
-              columnIndex,
-              rowIndex: 0,
-              key: "header",
-              style: {},
-              isVirtual: true,
-            })}
-            {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
-              this.cellRenderer({
-                rowIndex,
+      <EmotionCacheProvider>
+        <div style={{ display: "flex" }}>
+          {cols.map((column, columnIndex) => (
+            <div className="fake-column" key={"column-" + columnIndex}>
+              {this.tableHeaderRenderer({
                 columnIndex,
-                key: "row-" + rowIndex,
+                rowIndex: 0,
+                key: "header",
                 style: {},
-              }),
-            )}
-          </div>
-        ))}
-      </div>,
+                isVirtual: true,
+              })}
+              {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+                this.cellRenderer({
+                  rowIndex,
+                  columnIndex,
+                  key: "row-" + rowIndex,
+                  style: {},
+                }),
+              )}
+            </div>
+          ))}
+        </div>
+        ,
+      </EmotionCacheProvider>,
       this._div,
       () => {
         const contentWidths = [].map.call(
