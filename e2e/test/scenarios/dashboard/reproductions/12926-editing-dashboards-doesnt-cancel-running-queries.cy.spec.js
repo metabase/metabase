@@ -65,6 +65,7 @@ function slowDownQuery() {
 
 function restoreQuery() {
   cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
+    // calling req.continue() will make cypress skip all previously added intercepts
     req.continue();
   }).as("cardQueryRestored");
 }
