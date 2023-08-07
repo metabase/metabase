@@ -31,6 +31,7 @@ export const VisibilityToggler = ({
         isReadOnly={readOnly}
         onClick={toggleEditor}
         data-testid="visibility-toggler"
+        aria-hidden={readOnly}
       >
         <ToggleText>{text}</ToggleText>
         <Icon name={icon} />
