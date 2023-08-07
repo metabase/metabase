@@ -137,44 +137,69 @@ class SharingSidebarInner extends Component {
     this.fetchUsers();
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
+    const { isAdmin } = this.props;
+
+    if (!isAdmin) {
+      this.forwardNonAdmins({ prevProps });
+    }
+  }
+
+  fetchUsers = async () => {
+    this.setState({ users: (await UserApi.list()).data });
+  };
+
+  forwardNonAdmins = ({ prevProps }) => {
     const { editingMode } = this.state;
-    const { formInput, isAdmin, pulses } = this.props;
+    const { formInput, pulses: newPulses } = this.props;
+    const { pulses: prevPulses } = prevProps;
 
-    const emailConfigured = formInput?.channels?.email?.configured || false;
-    const slackConfigured = formInput?.channels?.slack?.configured || false;
+    // prevent forwarding to add-pulse editingMode after creating a new pulse
+    // when none existed previously
+    if (newPulses.length > 0 && prevPulses.length === 0) {
+      this.setState(() => {
+        return {
+          editingMode: "list-pulses",
+          returnMode: [],
+        };
+      });
 
-    const shouldForwardNonAdmins =
-      !isAdmin &&
-      (editingMode === "new-pulse" ||
-        (editingMode === "list-pulses" && pulses?.length === 0));
+      return;
+    }
 
-    const forwardToAddEmail = emailConfigured && !slackConfigured;
-    const forwardToAddSlack = slackConfigured && !emailConfigured;
+    const isEditingModeForwardable =
+      editingMode === "new-pulse" ||
+      (editingMode === "list-pulses" && newPulses?.length === 0);
 
-    if (shouldForwardNonAdmins) {
-      if (forwardToAddEmail) {
+    if (isEditingModeForwardable) {
+      const emailConfigured = formInput?.channels?.email?.configured || false;
+      const slackConfigured = formInput?.channels?.slack?.configured || false;
+
+      const shouldForwardToAddEmail = emailConfigured && !slackConfigured;
+      const shouldForwardToAddSlack = slackConfigured && !emailConfigured;
+
+      if (shouldForwardToAddEmail) {
         this.setState(() => {
           return {
             editingMode: "add-edit-email",
           };
         });
         this.setPulseWithChannel("email");
+
+        return;
       }
 
-      if (forwardToAddSlack) {
+      if (shouldForwardToAddSlack) {
         this.setState(() => {
           return {
             editingMode: "add-edit-slack",
           };
         });
         this.setPulseWithChannel("slack");
+
+        return;
       }
     }
-  }
-
-  fetchUsers = async () => {
-    this.setState({ users: (await UserApi.list()).data });
   };
 
   setPulse = pulse => {
