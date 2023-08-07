@@ -190,10 +190,12 @@
        (actions/perform-action! implicit-action arg-map))
      (catch Exception e
        (if-let [e-type (:type (ex-data e))]
-         (let [e-data (ex-data e)]
+         (let [e-data    (ex-data e)
+               error-msg (implicit-action-error->message e-type (:columns e-data) e-data)]
            (throw (ex-info
-                   (implicit-action-error->message e-type (:columns e-data) e-data)
+                   error-msg
                    {:status-code 400
+                    :message     error-msg
                     :errors      (reduce (fn [acc col]
                                            (assoc acc col (implicit-action-error->message e-type col e-data)))
                                          {}
