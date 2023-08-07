@@ -59,11 +59,6 @@ export default class Join extends MBQLObjectClause {
     return conditions;
   }
 
-  // STRATEGY
-  setStrategy(strategy: JoinStrategy) {
-    return this.set({ ...this, strategy });
-  }
-
   // CONDITIONS
   isSingleConditionJoin() {
     const { condition } = this;
