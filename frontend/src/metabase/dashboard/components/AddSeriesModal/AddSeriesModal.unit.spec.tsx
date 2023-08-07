@@ -12,6 +12,8 @@ import {
 import type { Props as AddSeriesModalProps } from "./AddSeriesModal";
 import { AddSeriesModal } from "./AddSeriesModal";
 
+const displayColumnName = "Birthday";
+
 const baseCard = createMockCard({
   id: getNextId(),
   name: "Base card",
@@ -41,7 +43,7 @@ const dataset = createMockDataset({
     cols: [
       createMockColumn({
         base_type: "type/Date",
-        display_name: "Birthday",
+        display_name: displayColumnName,
       }),
       createMockColumn({
         base_type: "type/BigInteger",
@@ -97,7 +99,7 @@ describe("AddSeriesModal", () => {
     }
   });
 
-  it("can remove first series by clicking the 'x' button in visualization legend items", async () => {
+  it("can remove first series by clicking the 'x' button in visualization legend items (metabase#12794)", async () => {
     setup();
 
     expect(getLegendLabels()).toEqual([
@@ -115,7 +117,7 @@ describe("AddSeriesModal", () => {
     expect(getLegendLabels()).toEqual([baseCard.name, secondCard.name]);
   });
 
-  it("can remove second series by clicking the 'x' button in visualization legend items", async () => {
+  it("can remove second series by clicking the 'x' button in visualization legend items (metabase#12794)", async () => {
     setup();
 
     expect(getLegendLabels()).toEqual([
@@ -131,6 +133,32 @@ describe("AddSeriesModal", () => {
     );
 
     expect(getLegendLabels()).toEqual([baseCard.name, firstCard.name]);
+  });
+
+  it("can remove all series by clicking the 'x' button in visualization legend items (metabase#12794)", async () => {
+    setup();
+
+    expect(getLegendLabels()).toEqual([
+      baseCard.name,
+      firstCard.name,
+      secondCard.name,
+    ]);
+
+    const firstSeriesLegendItem = screen.getAllByTestId("legend-item")[1];
+
+    userEvent.click(
+      within(firstSeriesLegendItem).getByRole("img", { name: "close icon" }),
+    );
+
+    expect(getLegendLabels()).toEqual([baseCard.name, secondCard.name]);
+
+    const secondSeriesLegendItem = screen.getAllByTestId("legend-item")[1];
+
+    userEvent.click(
+      within(secondSeriesLegendItem).getByRole("img", { name: "close icon" }),
+    );
+
+    expect(getLegendLabels()).toEqual([displayColumnName]);
   });
 });
 
