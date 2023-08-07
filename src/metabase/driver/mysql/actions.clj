@@ -83,7 +83,7 @@
        :constraint constraint
        :columns    (map remove-backticks (str/split key-cols #", "))})))
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-type]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
   [_driver error-type _database error-message]
   (when-let [[_ expected-type value database table column row]
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]

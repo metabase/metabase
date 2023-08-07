@@ -149,7 +149,7 @@
 
 (defn- implicit-action-error->message
   [e-type column-or-columns & additional-info]
-  (case e-type
+  (condp = e-type
     actions.error/violate-unique-constraint
     (format (tru "value for columns {0} is duplicated" column-or-columns))
 
@@ -160,7 +160,17 @@
     (format (tru "columns {0} is referenced by {1}" column-or-columns (:ref-table additional-info)))
 
     actions.error/incorrect-type
-    (format (tru "value for columns {0} should be of type {1}" column-or-columns (:expected-type additional-info)))))
+    (format (tru "value for columns {0} should be of type {1}" column-or-columns (:expected-type additional-info)))
+
+    actions.error/incorrect-affected-rows
+    (let [{:keys [action-type number-affected]} additional-info]
+      (case action-type
+        :row/delete (if (zero? number-affected)
+                      (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                      (tru "Sorry, this would delete {0} rows, but you can only act on 1" number-affected))
+        :row/update (if (zero? number-affected)
+                      (tru "Sorry, the row you''re trying to update doesn''t exist")
+                      (tru "Sorry, this would update {0} rows, but you can only act on 1" number-affected))))))
 
 (defn- execute-implicit-action
   [action request-parameters]

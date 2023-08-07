@@ -50,14 +50,14 @@
   [_driver _database _e]
   nil)
 
-(defn- parse-error*
+(defn- parse-sql-error*
   [driver database e]
   (if-let [error (and (ex-message e)
                       (some #(maybe-parse-sql-error driver % database (ex-message e))
                             [actions.error/violate-unique-constraint
                              actions.error/violate-foreign-key-constraint
                              actions.error/violate-not-null-constraint
-                             actions.error/incorrect-type]))]
+                             actions.error/incorrect-value-type]))]
     ;; TODO :should be sth simpler, no need to wrap it with :errors
     {:errors error}
     (ex-data e)))
@@ -196,50 +196,56 @@
 (defn- prepare-query [hsql-query driver action]
   (prepare-query* driver action hsql-query))
 
+(defn- do-with-auto-parse-sql-error
+  [driver database thunk]
+  (try
+   (thunk)
+   (catch Exception e
+     ;; if has custom error handling, use that
+     (if (= (:type (ex-data e)) actions.error/incorrect-affected-rows)
+       (throw e)
+       (throw (ex-info "Failed to execute action"
+                       (or (parse-sql-error* driver database e) {})))))))
+
+(defmacro ^:private with-auto-parse-sql-error
+  [driver database & body]
+  `(do-with-auto-parse-sql-error ~driver ~database (fn [] ~@body)))
+
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
   (let [raw-hsql    (qp.store/with-store
                       (try
-                        (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
-                        (sql.qp/mbql->honeysql driver query)
-                        (catch Exception e
-                          (catch-throw e 404))))
+                       (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
+                       (sql.qp/mbql->honeysql driver query)
+                       (catch Exception e
+                         (catch-throw e 404))))
         delete-hsql (-> raw-hsql
                         (dissoc :select)
                         (assoc :delete [])
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver delete-hsql)]
     (with-jdbc-transaction [conn database-id]
-      (try
+      (with-auto-parse-sql-error driver database
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-deleted (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-deleted 1)
             (throw (ex-info (if (zero? rows-deleted)
                               (tru "Sorry, the row you''re trying to delete doesn''t exist")
                               (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
-                            {::incorrect-number-deleted true
-                             :number-deleted            rows-deleted
-                             :query                     query
-                             :sql                       (sql.qp/format-honeysql driver delete-hsql)
-                             :status-code               400})))
-          {:rows-deleted [1]})
-        (catch Exception e
-          (let [e-data (if (::incorrect-number-deleted (ex-data e))
-                         (ex-data e)
-                         (parse-error driver database e))]
-            (throw
-             (ex-info (or (ex-message e) "Delete action error.")
-                      (assoc e-data :status-code 400)))))))))
+                            {:type            actions.error/incorrect-affected-rows
+                             :action-type     :row/delete
+                             :number-affected rows-deleted})))
+          {:rows-deleted [1]})))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
   (let [update-row   (update-keys update-row keyword)
         raw-hsql     (qp.store/with-store
                        (try
-                         (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
-                         (sql.qp/mbql->honeysql driver query)
-                         (catch Exception e
-                           (catch-throw e 404))))
+                        (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
+                        (sql.qp/mbql->honeysql driver query)
+                        (catch Exception e
+                          (catch-throw e 404))))
         target-table (first (:from raw-hsql))
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
@@ -248,26 +254,17 @@
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
-      (try
+      (with-auto-parse-sql-error driver database
         ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
         (let [rows-updated (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
           (when-not (= rows-updated 1)
             (throw (ex-info (if (zero? rows-updated)
                               (tru "Sorry, the row you''re trying to update doesn''t exist")
                               (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
-                            {::incorrect-number-updated true
-                             :number-updated            rows-updated
-                             :query                     query
-                             :sql                       (sql.qp/format-honeysql driver update-hsql)
-                             :status-code               400})))
-          {:rows-updated [1]})
-        (catch Exception e
-          (let [e-data (if (::incorrect-number-updated (ex-data e))
-                         (ex-data e)
-                         (parse-error driver database e))]
-            (throw
-             (ex-info (or (ex-message e) "Update action error.")
-                      (assoc e-data :status-code 400)))))))))
+                            {:type            actions.error/incorrect-affected-rows
+                             :action-type     :row/update
+                             :number-affected rows-updated})))
+          {:rows-updated [1]})))))
 
 (defmulti select-created-row
   "Multimethod for converting the result of an insert into the created row.
@@ -302,10 +299,10 @@
   (let [create-row  (update-keys create-row keyword)
         raw-hsql    (qp.store/with-store
                       (try
-                        (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
-                        (sql.qp/mbql->honeysql driver query)
-                        (catch Exception e
-                          (catch-throw e 404))))
+                       (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                       (sql.qp/mbql->honeysql driver query)
+                       (catch Exception e
+                         (catch-throw e 404))))
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
                         (assoc :values [(cast-values driver create-row (get-in query [:query :source-table]))])
@@ -315,17 +312,12 @@
     (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
     (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn database-id]
-      (try
+      (with-auto-parse-sql-error driver database
         (let [result (jdbc/execute! {:connection conn} sql-args {:return-keys true, :identifiers identity, :transaction? false})
               _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
               row    (select-created-row driver create-hsql conn result)]
           (log/tracef ":row/create returned row %s" (pr-str row))
-          {:created-row row})
-        (catch Exception e
-          (let [e-data (parse-error driver database e)]
-            (throw (ex-info (or (ex-message e) "Create action error.")
-                            (assoc e-data :status-code 400)
-                            e))))))))
+          {:created-row row})))))
 
 ;;;; Bulk actions
 
