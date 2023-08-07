@@ -15,6 +15,13 @@ import Visualization from "metabase/visualizations/components/Visualization";
 
 import { QuestionList } from "./QuestionList";
 
+/**
+ * The first series is the base dashcard.card.
+ * It does not make sense to remove it in this modal as it
+ * represents the dashboard card the modal was opened for.
+ */
+const CAN_REMOVE_SERIES = (seriesIndex: number) => seriesIndex > 0;
+
 interface Props {
   dashcard: DashboardOrderedCard;
   dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
@@ -86,10 +93,18 @@ class AddSeriesModal extends Component<Props, State> {
   };
 
   handleRemoveSeries = (_event: MouseEvent, removedIndex: number) => {
+    /**
+     * The first series is the base dashcard.card - it's not included
+     * in the this.state.series arrray.
+     *
+     * @see `series` definition in render() function
+     */
+    const actualRemovedIndex = removedIndex - 1;
+
     this.setState({
       series: [
-        ...this.state.series.slice(0, removedIndex),
-        ...this.state.series.slice(removedIndex + 1),
+        ...this.state.series.slice(0, actualRemovedIndex),
+        ...this.state.series.slice(actualRemovedIndex + 1),
       ],
     });
     MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
@@ -127,6 +142,7 @@ class AddSeriesModal extends Component<Props, State> {
           </div>
           <div className="flex-full ml2 mr1 relative">
             <Visualization
+              canRemoveSeries={CAN_REMOVE_SERIES}
               className="spread"
               rawSeries={series}
               showTitle
