@@ -47,7 +47,7 @@ interface State {
   series: NonNullable<DashboardOrderedCard["series"]>;
 }
 
-class AddSeriesModal extends Component<Props, State> {
+export class AddSeriesModal extends Component<Props, State> {
   constructor(props: Props, context: unknown) {
     super(props, context);
 
@@ -195,6 +195,3 @@ class AddSeriesModal extends Component<Props, State> {
     );
   }
 }
-
-// eslint-disable-next-line import/no-default-export
-export default AddSeriesModal;
