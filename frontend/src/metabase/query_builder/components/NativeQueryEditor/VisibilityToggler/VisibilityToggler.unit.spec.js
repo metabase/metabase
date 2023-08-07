@@ -43,7 +43,7 @@ describe("VisibilityToggler", () => {
     expect(screen.getByTestId("visibility-toggler")).toHaveClass(testClassName);
   });
 
-  it("should render hide class when set to read only", () => {
+  it("should render hidden when set to read only", () => {
     render(
       <VisibilityToggler
         isOpen={false}
@@ -51,7 +51,10 @@ describe("VisibilityToggler", () => {
         toggleEditor={() => null}
       />,
     );
-    expect(screen.getByTestId("visibility-toggler")).toHaveClass("hide");
+    expect(screen.getByTestId("visibility-toggler")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 
   it("should fire toggleEditor function on click", () => {
