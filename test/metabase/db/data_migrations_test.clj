@@ -4,6 +4,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.db.data-migrations :as migrations]
    [metabase.models :refer [Card Dashboard DashboardCard Setting]]
    [metabase.models.permissions-group :as perms-group]

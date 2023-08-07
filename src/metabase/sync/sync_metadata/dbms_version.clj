@@ -4,6 +4,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
    [metabase.sync.interface :as i]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))

@@ -6,6 +6,7 @@
   (:require
    [java-time :as t]
    [metabase.server.request.util :as request.u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.response :as response]
    [schema.core :as s]))

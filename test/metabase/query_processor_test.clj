@@ -401,12 +401,9 @@
     (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
-(defn do-with-bigquery-fks [driver-or-drivers thunk]
-  {:pre [((some-fn keyword? coll?) driver-or-drivers)]}
+(defn do-with-bigquery-fks! [thunk]
   (letfn [(add-fks? [driver]
-            (if (coll? driver-or-drivers)
-              (contains? (set driver-or-drivers) driver)
-              (= driver driver-or-drivers)))]
+            (= driver :bigquery-cloud-sdk))]
     (if-not (add-fks? driver/*driver*)
       (thunk)
       (let [database-supports? driver/database-supports?]
@@ -432,14 +429,15 @@
                           [:venues :category_id] [:categories :id]}))]
             (thunk)))))))
 
-(defmacro with-bigquery-fks
+(defmacro with-bigquery-fks!
   "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` (for `test-data`) or
   other relevant columns (for `sample-database`) marked as foreign keys and with `:foreign-keys` a supported feature
   when testing against BigQuery, for the BigQuery based driver `driver-or-drivers`. BigQuery does not support Foreign Key
   constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody has
   manually marked FK relationships for BigQuery."
-  [driver-or-drivers & body]
-  `(do-with-bigquery-fks ~driver-or-drivers (fn [] ~@body)))
+  {:style/indent 0}
+  [& body]
+  `(do-with-bigquery-fks! (fn [] ~@body)))
 
 (deftest preprocess-caching-test
   (testing "`preprocess` should work the same even if query has cached results (#18579)"
