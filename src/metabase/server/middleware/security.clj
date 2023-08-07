@@ -12,9 +12,19 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [ring.util.codec :refer [base64-encode]])
   (:import
-   (java.security MessageDigest)))
+   (java.security MessageDigest SecureRandom)))
 
 (set! *warn-on-reflection* true)
+
+(defn- generate-nonce
+  "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only scripts and
+   inline style elements with the same nonce will be allowed to run. The server generates a unique nonce value each
+   time it sends a response. For more information see
+   https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src."
+  []
+  (let [chars         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        secure-random (SecureRandom.)]
+    (apply str (take 10 (repeatedly #(nth chars (.nextInt secure-random (count chars))))))))
 
 (defonce ^:private ^:const inline-js-hashes
   (letfn [(file-hash [resource-filename]
@@ -47,7 +57,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  []
+  [nonce]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -71,7 +81,8 @@
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 "'nonce-<dynamic_nonce>'"
+                                 ;; See [[generate-nonce]]
+                                 (format "'nonce-%s'" nonce)
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
                                    "http://localhost:8080")
@@ -102,8 +113,8 @@
     (public-settings/embedding-app-origin)))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [allow-iframes?]
-  (update (content-security-policy-header)
+  [allow-iframes? nonce]
+  (update (content-security-policy-header nonce)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
@@ -124,14 +135,14 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [allow-iframes? allow-cache?]
+  [& {:keys [nonce allow-iframes? allow-cache?]
       :or   {allow-iframes? false, allow-cache? false}}]
   (merge
    (if allow-cache?
      (cache-far-future-headers)
      (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors allow-iframes?)
+   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if (embedding-app-origin)
@@ -146,14 +157,15 @@
 
 (defn- add-security-headers* [request response]
   (update response :headers merge (security-headers
+                                   :nonce          (:nonce request)
                                    :allow-iframes? ((some-fn request.u/public? request.u/embed?) request)
                                    :allow-cache?   (request.u/cacheable? request))))
 
 (defn add-security-headers
-  "Add HTTP security and cache-busting headers."
+  "Middleware that adds HTTP security and cache-busting headers."
   [handler]
   (fn [request respond raise]
     (handler
-     request
+     (assoc request :nonce (generate-nonce))
      (comp respond (partial add-security-headers* request))
      raise)))
