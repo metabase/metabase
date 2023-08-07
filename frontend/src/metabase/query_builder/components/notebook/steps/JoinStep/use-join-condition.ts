@@ -57,17 +57,52 @@ export function useJoinCondition(
     }
   };
 
+  const maybeSyncTemporalUnit = (
+    condition: Lib.JoinConditionClause,
+    col1: Lib.ColumnMetadata,
+    col2: Lib.ColumnMetadata,
+  ) => {
+    const bucket = Lib.temporalBucket(col1) || Lib.temporalBucket(col2);
+
+    if (bucket) {
+      return Lib.joinConditionUpdateTemporalBucketing(
+        query,
+        stageIndex,
+        condition,
+        bucket,
+      );
+    }
+
+    return condition;
+  };
+
   const setLHSColumn = (lhsColumn: Lib.ColumnMetadata) => {
-    _setLHSColumn(lhsColumn);
     if (operator && lhsColumn && rhsColumn) {
-      return Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      let condition = Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      condition = maybeSyncTemporalUnit(condition, lhsColumn, rhsColumn);
+
+      const [nextLHSColumn, nextRHSColumn] = Lib.externalOp(condition).args;
+      _setLHSColumn(nextLHSColumn);
+      _setRHSColumn(nextRHSColumn);
+
+      return condition;
+    } else {
+      _setLHSColumn(lhsColumn);
     }
   };
 
   const setRHSColumn = (rhsColumn: Lib.ColumnMetadata) => {
-    _setRHSColumn(rhsColumn);
     if (operator && lhsColumn && rhsColumn) {
-      return Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      let condition = Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      condition = maybeSyncTemporalUnit(condition, rhsColumn, lhsColumn);
+
+      const [nextLHSColumn, nextRHSColumn] = Lib.externalOp(condition).args;
+      _setLHSColumn(nextLHSColumn);
+      _setRHSColumn(nextRHSColumn);
+
+      return condition;
+    } else {
+      _setRHSColumn(rhsColumn);
     }
   };
 
