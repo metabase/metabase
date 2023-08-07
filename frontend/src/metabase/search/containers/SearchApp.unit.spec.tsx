@@ -15,6 +15,7 @@ import {
 import { SearchResult } from "metabase-types/api";
 
 import { SearchFilters } from "metabase/search/types";
+import { checkNotNull } from "metabase/core/utils/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({
@@ -92,7 +93,7 @@ const setup = async ({
   });
 
   return {
-    history,
+    history: checkNotNull(history),
   };
 };
 
@@ -164,7 +165,7 @@ describe("SearchApp", () => {
           searchText: "Test",
         });
 
-        let url = history?.getCurrentLocation();
+        let url = history.getCurrentLocation();
         const { pathname: prevPathname, search: prevSearch } = url ?? {};
 
         const sidebarItems = screen.getAllByTestId("type-sidebar-item");
@@ -173,7 +174,7 @@ describe("SearchApp", () => {
 
         const sidebarItem = screen.getByText(SIDEBAR_NAMES[model]);
         userEvent.click(sidebarItem);
-        url = history?.getCurrentLocation();
+        url = history.getCurrentLocation();
         const { pathname, search } = url ?? {};
         expect(pathname).toEqual(prevPathname);
         expect(search).toEqual(prevSearch);
