@@ -3,6 +3,8 @@ name: Backport Reminder
 on:
   pull_request:
     types: [auto_merge_enabled, review_requested, unlabeled]
+    branches:
+      - "master"
 
 jobs:
   backport-reminder:
