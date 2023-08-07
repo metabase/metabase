@@ -2,7 +2,7 @@ name: Backport Reminder
 
 on:
   pull_request:
-    types: [auto_merge_enabled, review_requested, unlabeled]
+    types: [auto_merge_enabled, review_requested, labeled, unlabeled]
     branches:
       - "master"
 
