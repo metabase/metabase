@@ -7,7 +7,7 @@ import {
   CardId,
   DashCardId,
   DashboardOrderedCard,
-  DatasetData,
+  Dataset,
 } from "metabase-types/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
@@ -24,7 +24,7 @@ const CAN_REMOVE_SERIES = (seriesIndex: number) => seriesIndex > 0;
 
 interface Props {
   dashcard: DashboardOrderedCard;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
   fetchCardData: (
     card: Card,
     dashcard: DashboardOrderedCard,
