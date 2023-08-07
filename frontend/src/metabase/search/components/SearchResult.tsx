@@ -142,7 +142,7 @@ export function SearchResult({
               size={12}
             />
           </TitleWrapper>
-          <Text>
+          <Text data-testid="result-link-info-text">
             <InfoText result={result} />
           </Text>
           {hasDescription && result.description && (

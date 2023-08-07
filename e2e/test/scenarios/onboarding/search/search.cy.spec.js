@@ -193,7 +193,7 @@ describe("scenarios > search", () => {
         cy.findByTestId("type-sidebar").within(() => {
           cy.findByText(sidebarLabel).should("exist");
         });
-        cy.findAllByTestId("search-result-item").each(result => {
+        cy.findAllByTestId("result-link-info-text").each(result => {
           cy.wrap(result).should("contain.text", resultInfoText);
         });
       });
@@ -258,7 +258,7 @@ describe("scenarios > search", () => {
 
             cy.url().should("include", `type=${filterName}`);
 
-            cy.findAllByTestId("search-result-item").each(result => {
+            cy.findAllByTestId("result-link-info-text").each(result => {
               cy.wrap(result).should("contain.text", resultInfoText);
             });
 
