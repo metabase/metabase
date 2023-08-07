@@ -22,7 +22,7 @@ import { QuestionList } from "./QuestionList";
  */
 const CAN_REMOVE_SERIES = (seriesIndex: number) => seriesIndex > 0;
 
-interface Props {
+export interface Props {
   dashcard: DashboardOrderedCard;
   dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
   fetchCardData: (
