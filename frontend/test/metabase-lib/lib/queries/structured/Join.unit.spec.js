@@ -8,7 +8,6 @@ import {
   REVIEWS,
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
-import Join from "metabase-lib/queries/structured/Join";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -91,21 +90,6 @@ const ORDERS_REVIEWS_JOIN_CONDITION = [
 ];
 
 describe("Join", () => {
-  describe("setJoinSourceTableId", () => {
-    it("should pick an alias based on the source table name by default", () => {
-      const query = ordersTable.query();
-      const join = new Join({}, 0, query).setJoinSourceTableId(PRODUCTS_ID);
-      expect(join.alias).toEqual("Products");
-    });
-
-    it("should deduplicate aliases", () => {
-      const join = new Join({}, 1, getOrdersJoinQuery()).setJoinSourceTableId(
-        PRODUCTS_ID,
-      );
-      expect(join.alias).toEqual("Products_2");
-    });
-  });
-
   describe("setDefaultCondition", () => {
     it("should set default condition to be fk relationship", () => {
       let join = getJoin();
