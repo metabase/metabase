@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models :refer [Card Collection Dimension Field]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -11,6 +11,7 @@
    [metabase.sync.analyze.query-results :as qr]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -97,7 +98,7 @@
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
     (t2.with-temp/with-temp [Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                                         :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
-      (let [result (qp/process-userland-query {:database mbql.s/saved-questions-virtual-database-id
+      (let [result (qp/process-userland-query {:database lib.schema.id/saved-questions-virtual-database-id
                                                :type     :query
                                                :query    {:source-table (str "card__" (u/the-id card))}})]
         (is (partial= {:status :completed}
@@ -111,7 +112,7 @@
                                       :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                                       :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-      (mt/user-http-request :rasta :post 202 "dataset" {:database mbql.s/saved-questions-virtual-database-id
+      (mt/user-http-request :rasta :post 202 "dataset" {:database lib.schema.id/saved-questions-virtual-database-id
                                                         :type     :query
                                                         :query    {:source-table (str "card__" (u/the-id card))}})
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]

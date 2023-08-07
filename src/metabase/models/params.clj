@@ -8,8 +8,7 @@
   There are 3 mains ways to provide values to a parameter:
   - chain-filter: see [metabase.models.params.chain-filter]
   - field-values: see [metabase.models.params.field-values]
-  - custom-values: see [metabase.models.params.custom-values]
-  "
+  - custom-values: see [metabase.models.params.custom-values]"
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -22,6 +21,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -45,7 +46,7 @@
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
-(s/defn unwrap-field-clause :- mbql.s/field
+(mu/defn unwrap-field-clause :- mbql.s/field
   "Unwrap something that contains a `:field` clause, such as a template tag, Also handles unwrapped integers for
   legacy compatibility.
 
@@ -98,7 +99,7 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(s/defn param-target->field-clause :- (s/maybe mbql.s/field)
+(mu/defn param-target->field-clause :- [:maybe mbql.s/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
@@ -212,7 +213,7 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private dashcards->parameter-mapping-field-clauses :- (s/maybe #{mbql.s/field})
+(mu/defn ^:private dashcards->parameter-mapping-field-clauses :- [:maybe [:set mbql.s/field]]
   "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
   looking at the appropriate `:parameter_mappings` entries for its Dashcards."
   [dashcards]
@@ -229,7 +230,7 @@
   "Return the IDs of any Fields referenced in the 'implicit' template tag field filter parameters for native queries in
   `cards`."
   [cards]
-  (reduce set/union (map card->template-tag-field-ids cards)))
+  (reduce set/union #{} (map card->template-tag-field-ids cards)))
 
 (s/defn dashcards->param-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This
@@ -262,7 +263,7 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn card->template-tag-field-clauses :- #{mbql.s/field}
+(mu/defn card->template-tag-field-clauses :- [:set mbql.s/field]
   "Return a set of `:field` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])

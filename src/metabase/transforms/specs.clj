@@ -6,6 +6,7 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [metabase.util.yaml :as yaml]
    [schema.coerce :as sc]
@@ -27,9 +28,13 @@
 
 (def ^:private Limit su/IntGreaterThanZero)
 
+(def ^:private JoinStrategy
+  (apply s/enum mbql.s/join-strategies))
+
 (def ^:private Joins [{(s/required-key :source)    Source
                        (s/required-key :condition) MBQL
-                       (s/optional-key :strategy)  mbql.s/JoinStrategy}])
+
+                       (s/optional-key :strategy)  JoinStrategy}])
 
 (def ^:private TransformName s/Str)
 
@@ -79,25 +84,25 @@
 (def ^:private transform-spec-parser
   (sc/coercer!
    TransformSpec
-   {MBQL                     mbql.normalize/normalize
-    Steps                    (fn [steps]
-                               (->> steps
-                                    stringify-keys
-                                    (u/topological-sort (fn [{:keys [source joins]}]
-                                                          (conj (map :source joins) source)))))
-    Breakout                 (fn [breakouts]
-                               (for [breakout (u/one-or-many breakouts)]
-                                 (if (s/check MBQL breakout)
-                                   [:dimension breakout]
-                                   breakout)))
-    FieldType                (partial keyword "type")
-    [DomainEntity]           u/one-or-many
-    mbql.s/JoinStrategy       keyword
+   {MBQL             mbql.normalize/normalize
+    Steps            (fn [steps]
+                       (->> steps
+                            stringify-keys
+                            (u/topological-sort (fn [{:keys [source joins]}]
+                                                  (conj (map :source joins) source)))))
+    Breakout         (fn [breakouts]
+                       (for [breakout (u/one-or-many breakouts)]
+                         (if (s/check MBQL breakout)
+                           [:dimension breakout]
+                           breakout)))
+    FieldType        (partial keyword "type")
+    [DomainEntity]   u/one-or-many
+    JoinStrategy     keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
-    {Dimension MBQL}         (comp (partial u/topological-sort extract-dimensions)
-                                   stringify-keys)
+    {Dimension MBQL} (comp (partial u/topological-sort extract-dimensions)
+                           stringify-keys)
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
-    s/Str                    name}))
+    s/Str            name}))
 
 (def ^:private transforms-dir "transforms/")
 
