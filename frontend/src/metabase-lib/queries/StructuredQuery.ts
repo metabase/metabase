@@ -514,7 +514,10 @@ class StructuredQueryInner extends AtomicQuery {
     );
   }
 
-  hasJoins() {
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
+  private hasJoins() {
     return this.joins().length > 0;
   }
 
@@ -580,10 +583,11 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   /**
+   * @deprecated use metabase-lib v2 to manage joins
    * @returns alias for addJoin
    */
   join(join) {
-    return this.addJoin(join);
+    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
   }
 
   // JOINS
@@ -595,22 +599,6 @@ class StructuredQueryInner extends AtomicQuery {
     return Q.getJoins(this.query()).map(
       (join, index) => new JoinWrapper(join, index, this),
     );
-  }
-
-  addJoin(join) {
-    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
-  }
-
-  updateJoin(index, join) {
-    return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
-  }
-
-  removeJoin(index) {
-    return this._updateQuery(Q.removeJoin, arguments);
-  }
-
-  clearJoins() {
-    return this._updateQuery(Q.clearJoins, arguments);
   }
 
   // AGGREGATIONS
@@ -1383,7 +1371,7 @@ class StructuredQueryInner extends AtomicQuery {
     );
   }
 
-  joinedDimensions(): Dimension[] {
+  private joinedDimensions(): Dimension[] {
     return [].concat(...this.joins().map(join => join.fieldsDimensions()));
   }
 
