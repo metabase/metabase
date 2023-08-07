@@ -9,7 +9,6 @@ import type {
   JoinFields,
   JoinAlias,
   JoinCondition,
-  JoinedFieldReference,
 } from "metabase-types/api";
 import {
   getDatetimeUnit,
@@ -69,25 +68,6 @@ export default class Join extends MBQLObjectClause {
         return alias;
       }
     }
-  }
-
-  // FIELDS
-  setFields(fields: JoinFields) {
-    return this.set({ ...this, fields });
-  }
-
-  addField(field: JoinedFieldReference) {
-    if (Array.isArray(this.fields)) {
-      return this.setFields([...this.fields, field]);
-    } else if (this.fields === "none") {
-      return this.setFields([field]);
-    } else {
-      return this;
-    }
-  }
-
-  clearFields() {
-    return this.setFields("none");
   }
 
   // ALIAS
