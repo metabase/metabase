@@ -50,7 +50,7 @@ describe("issue 12926", () => {
 
       undo();
 
-      cy.wait("@cardQueryRestored").then(a => console.log("aa", a));
+      cy.wait("@cardQueryRestored");
     });
   });
 });
