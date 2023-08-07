@@ -30,7 +30,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -386,7 +386,7 @@
           (testing "Oracle can-connect? with SSL connection"
             (is (driver/can-connect? :oracle ssl-details)))
           (testing "Sync works with SSL connection"
-            (binding [metabase.sync.util/*log-exceptions-and-continue?* false
+            (binding [sync-util/*log-exceptions-and-continue?* false
                       api/*current-user-id* (mt/user->id :crowberto)]
               (doseq [[details variant] [[ssl-details "SSL with Truststore Path"]
                                          ;; in the file upload scenario, the truststore bytes are base64 encoded

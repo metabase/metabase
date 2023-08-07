@@ -1,7 +1,10 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
-const ANSI_COLORS = {
+const LOG_PREFIX = ".react-ansi-style";
+
+const LOG_COLORS = {
   black: color("text-dark"),
   white: color("text-white"),
   gray: color("text-medium"),
@@ -11,10 +14,6 @@ const ANSI_COLORS = {
   blue: color("saturated-blue"),
   magenta: color("saturated-purple"),
   cyan: "cyan",
-};
-
-const getColorRule = (name: string, color: string) => {
-  return `.react-ansi-style-${name} { color: ${color} !important }`;
 };
 
 export const LogsContainer = styled.div`
@@ -27,7 +26,40 @@ export const LogsContainer = styled.div`
   padding: 1em;
   overflow-x: scroll;
 
-  ${Object.entries(ANSI_COLORS)
-    .map(([name, color]) => getColorRule(name, color))
-    .join(" ")}
+  ${LOG_PREFIX}-bold {
+    font-weight: bold;
+  }
+
+  ${LOG_PREFIX}-dim {
+    font-weight: lighter;
+  }
+
+  ${LOG_PREFIX}-italic {
+    font-style: italic;
+  }
+
+  ${LOG_PREFIX}-underline {
+    text-decoration: underline;
+  }
+
+  ${LOG_PREFIX}-inverse {
+    color: ${color("black")};
+    background-color: ${color("white")};
+  }
+
+  ${LOG_PREFIX}-hidden {
+    color: transparent;
+  }
+
+  ${LOG_PREFIX}-strikethrough {
+    text-decoration: line-through;
+  }
+
+  ${Object.entries(LOG_COLORS).map(
+    ([key, color]) => css`
+      ${LOG_PREFIX}-${key} {
+        color: ${color};
+      }
+    `,
+  )};
 `;

@@ -82,7 +82,7 @@
                                                     :is_qbnewb    true
                                                     :is_active    active}))))))
 
-(s/defn fetch-user :- (mi/InstanceOf User)
+(s/defn fetch-user :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"

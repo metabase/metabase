@@ -4,6 +4,7 @@
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
   (:require
+   [malli.core :as mc]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
@@ -14,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [redux.core :as redux]
    [schema.core :as s]))
@@ -37,12 +39,10 @@
    (s/optional-key :fingerprint)        (s/maybe i/Fingerprint)
    (s/optional-key :id)                 (s/maybe su/IntGreaterThanZero)
    ;; only optional because it's not present right away, but it should be present at the end.
-   (s/optional-key :field_ref)          (s/cond-pre
-                                          mbql.s/FieldOrAggregationReference
-                                          (s/pred
-                                            (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
-                                                  mbql.normalize/normalize-tokens)
-                                            "Field or aggregation reference as it comes in to the API"))
+   (s/optional-key :field_ref)          (s/pred
+                                         (comp (mc/validator mbql.s/FieldOrAggregationReference)
+                                               mbql.normalize/normalize-tokens)
+                                         "Field or aggregation reference as it comes in to the API")
    ;; the timezone in which the column was converted to using `:convert-timezone` expression
    (s/optional-key :converted_timezone) (s/pred mbql.preds/TimezoneId?)
    s/Keyword                            s/Any})

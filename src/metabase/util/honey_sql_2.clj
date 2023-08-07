@@ -141,6 +141,14 @@
               :when     (some? component)]
           (u/qualified-name component)))])
 
+(mu/defn identifier->components :- [:sequential string?]
+  "Given an identifer return its components
+  (identifier->components (identifier :field :metabase :user :email))
+  => (\"metabase\" \"user\" \"email\"))
+  "
+  [identifier :- [:fn identifier?]]
+  (last identifier))
+
 ;;; Single-quoted string literal
 
 (defn- escape-and-quote-literal [s]
