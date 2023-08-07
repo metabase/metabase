@@ -6,6 +6,8 @@
    [metabase.models.field :as field :refer [Field]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -15,7 +17,7 @@
   [clause]
   (mbql.u/match-one clause [:field id _] id))
 
-(s/defn collect-field-references :- [mbql.s/field]
+(mu/defn collect-field-references :- [:maybe [:sequential mbql.s/field]]
   "Collect all `:field` references from a given form."
   [form]
   (mbql.u/match form :field &match))

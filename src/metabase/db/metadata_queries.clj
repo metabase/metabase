@@ -11,10 +11,9 @@
    [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.sync.interface :as i]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- qp-query [db-id mbql-query]
@@ -55,15 +54,15 @@
   * Not being too high, which would result in Metabase running out of memory dealing with too many values"
   (int 1000))
 
-(s/defn field-distinct-values
-  "Return the distinct values of `field`.
+(mu/defn field-distinct-values :- [:sequential ms/NonRemappedFieldValue]
+  "Return the distinct values of `field`, each wrapped in a vector.
    This is used to create a `FieldValues` object for `:type/Category` Fields."
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
 
-  ([field max-results :- su/IntGreaterThanZero]
-   (mapv first (field-query field {:breakout [[:field (u/the-id field) nil]]
-                                   :limit    (min max-results absolute-max-distinct-values-limit)}))))
+  ([field max-results :- ms/PositiveInt]
+   (field-query field {:breakout [[:field (u/the-id field) nil]]
+                       :limit    (min max-results absolute-max-distinct-values-limit)})))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."
@@ -87,12 +86,14 @@
   "Number of rows to sample for tables with nested (e.g., JSON) columns."
   500)
 
-(def TableRowsSampleOptions
+(def ^:private TableRowsSampleOptions
   "Schema for `table-rows-sample` options"
-  (s/maybe {(s/optional-key :truncation-size)  s/Int
-            (s/optional-key :limit)            s/Int
-            (s/optional-key :order-by)         (helpers/distinct (helpers/non-empty [mbql.s/OrderBy]))
-            (s/optional-key :rff)              s/Any}))
+  [:maybe
+   [:map
+    [:truncation-size {:optional true} :int]
+    [:limit           {:optional true} :int]
+    [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential mbql.s/OrderBy]))]
+    [:rff             {:optional true} :any]]])
 
 (defn- text-field?
   "Identify text fields which can accept our substring optimization.
@@ -129,7 +130,7 @@
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
-(s/defn table-rows-sample
+(mu/defn table-rows-sample
   "Run a basic MBQL query to fetch a sample of rows of FIELDS belonging to a TABLE.
 
   Options: a map of
@@ -137,11 +138,17 @@
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
   {:style/indent 1}
-  ([table :- i/TableInstance, fields :- [i/FieldInstance], rff]
+  ([table  :- (ms/InstanceOf :model/Table)
+    fields :- [:sequential (ms/InstanceOf :model/Field)]
+    rff]
    (table-rows-sample table fields rff nil))
-  ([table :- i/TableInstance, fields :- [i/FieldInstance], rff, opts :- TableRowsSampleOptions]
+
+  ([table  :- (ms/InstanceOf :model/Table)
+    fields :- [:sequential (ms/InstanceOf :model/Field)]
+    rff
+    opts   :- TableRowsSampleOptions]
    (let [query (table-rows-sample-query table fields opts)
-         qp    (resolve 'metabase.query-processor/process-query)]
+         qp    (requiring-resolve 'metabase.query-processor/process-query)]
      (qp query {:rff rff}))))
 
 (defmethod driver/table-rows-sample :default

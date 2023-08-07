@@ -1,6 +1,7 @@
-import { useState } from "react";
+import type { FormikHelpers } from "formik";
+import { useCallback, useState } from "react";
 
-import { getFormTitle } from "metabase/actions/utils";
+import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 
 import type {
   ActionDashboardCard,
@@ -16,13 +17,16 @@ import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreat
 import Modal from "metabase/components/Modal";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
-} from "../../containers/ActionParametersInputForm";
+} from "metabase/actions/containers/ActionParametersInputForm";
+import { getDashboardType } from "metabase/dashboard/utils";
+import { ActionsApi, PublicApi } from "metabase/services";
+
+import { useActionInitialValues } from "metabase/actions/hooks/use-action-initial-values";
 import ActionButtonView from "./ActionButtonView";
+import { FormTitle, FormWrapper } from "./ActionForm.styled";
 import { shouldShowConfirmation } from "./utils";
 
-import { FormWrapper, FormTitle } from "./ActionForm.styled";
-
-interface ActionFormProps {
+export interface ActionFormProps {
   action: WritebackAction;
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
@@ -83,6 +87,45 @@ function ActionVizForm({
     setShowEditModal(false);
   };
 
+  const fetchInitialValues = useCallback(async () => {
+    const prefetchDashcardValues =
+      getDashboardType(dashboard.id) === "public"
+        ? PublicApi.prefetchDashcardValues
+        : ActionsApi.prefetchDashcardValues;
+
+    const canPrefetch = Object.keys(dashcardParamValues).length > 0;
+
+    if (!canPrefetch) {
+      return {};
+    }
+
+    return prefetchDashcardValues({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+      parameters: JSON.stringify(dashcardParamValues),
+    });
+  }, [dashboard.id, dashcard.id, dashcardParamValues]);
+
+  const shouldPrefetch = isImplicitUpdateAction(action);
+
+  const { hasPrefetchedValues, initialValues, prefetchValues } =
+    useActionInitialValues({
+      fetchInitialValues,
+      initialValues: dashcardParamValues,
+      shouldPrefetch,
+    });
+
+  const handleSubmitSuccess = useCallback(
+    (actions: FormikHelpers<ParametersForActionExecution>) => {
+      if (shouldPrefetch) {
+        prefetchValues();
+      } else {
+        actions.resetForm();
+      }
+    },
+    [shouldPrefetch, prefetchValues],
+  );
+
   if (shouldDisplayButton) {
     return (
       <>
@@ -95,15 +138,16 @@ function ActionVizForm({
         {showFormModal && (
           <ActionParametersInputModal
             action={action}
-            dashboard={dashboard}
-            dashcard={dashcard}
             mappedParameters={mappedParameters}
-            dashcardParamValues={dashcardParamValues}
+            initialValues={initialValues}
+            prefetchesInitialValues
             title={title}
+            showEmptyState={shouldPrefetch && !hasPrefetchedValues}
             showConfirmMessage={showConfirmMessage}
             confirmMessage={action.visualization_settings?.confirmMessage}
             onEdit={canEditAction ? handleActionEdit : undefined}
             onSubmit={onModalSubmit}
+            onSubmitSuccess={handleSubmitSuccess}
             onClose={() => setShowFormModal(false)}
             onCancel={() => setShowFormModal(false)}
           />
@@ -134,11 +178,11 @@ function ActionVizForm({
       <FormTitle>{title}</FormTitle>
       <ActionParametersInputForm
         action={action}
-        dashboard={dashboard}
-        dashcard={dashcard}
         mappedParameters={mappedParameters}
-        dashcardParamValues={dashcardParamValues}
+        initialValues={initialValues}
+        prefetchesInitialValues
         onSubmit={onSubmit}
+        onSubmitSuccess={handleSubmitSuccess}
       />
     </FormWrapper>
   );

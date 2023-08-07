@@ -27,7 +27,7 @@
 
               ;; returns much more if not sandboxed
               (is (> (-> (get-values :crowberto) :values count) 3))
-              (is (=? {:values          ["African" "American" "Artisan"]
+              (is (=? {:values          [["African"] ["American"] ["Artisan"]]
                        :has_more_values false}
                       (get-values :rasta)))))
 
@@ -42,7 +42,7 @@
                                                                                      :value_field (mt/$ids $categories.name)}}}))]
 
               ;; returns `BBQ` if not sandboxed
-              (is (=? {:values          ["BBQ"]
+              (is (=? {:values          [["BBQ"]]
                        :has_more_values false}
                       (search :crowberto)))
 

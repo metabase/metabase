@@ -39,10 +39,11 @@
   [^Column column, attribute-name]
   (get (.getAttributes column) (name attribute-name)))
 
-(defn- column-has-attributes? ^Boolean [^Column column, ^Map attributes-map]
+(defn- column-has-attributes? ^Boolean [^Column column ^Map attributes-map]
   (or (empty? attributes-map)
-      (reduce #(and %1 %2) (for [[k v] attributes-map]
-                             (= (column-attribute column k) v)))))
+      (every? (fn [[k v]]
+                (= (column-attribute column k) v))
+              attributes-map)))
 
 (defn columns
   "Return a set of `Column`s for this database. Each table in a Google Analytics database has the same columns."
