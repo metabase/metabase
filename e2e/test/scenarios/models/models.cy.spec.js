@@ -281,7 +281,7 @@ describe("scenarios > models", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
-      selectFromDropdown("Products", { force: true });
+      selectFromDropdown("Product", { force: true });
       selectFromDropdown("Price", { force: true });
       selectFromDropdown("Equal to");
       selectFromDropdown("Less than");
