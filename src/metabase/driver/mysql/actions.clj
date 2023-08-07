@@ -62,39 +62,28 @@
         constraint (remove-backticks constraint)
         table (remove-backticks table)]
     (when match
-      {:type       error-type
-       :message    (tru "violates unique constraint {0}" constraint)
-       :table      table
-       :constraint constraint
-       :columns    (constraint->column-names database table constraint)})))
+      {:type    error-type
+       :columns (constraint->column-names database table constraint)})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
   [_driver error-type _database error-message]
-  (let [[match table constraint _fkey-cols ref-table key-cols]
+  (let [[match table _constraint _fkey-cols ref-table key-cols]
         (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)
-        constraint (remove-backticks constraint)
-        table      (remove-backticks table)
         ref-table  (remove-backticks ref-table)]
     (when match
       {:type       error-type
-       :message    (tru "violates foreign key constraint {0}" constraint)
-       :table      table
        :ref-table  ref-table
-       :constraint constraint
        :columns    (map remove-backticks (str/split key-cols #", "))})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
   [_driver error-type _database error-message]
-  (when-let [[_ expected-type value database table column row]
+  (when-let [[_ expected-type _value database table column _row]
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]
     (cond-> {:type          error-type
-             :message       (tru "incorrect value: {0}" value)
-             :column        (-> column
-                                (str/replace #"^'(.*)'$" "$1")
-                                remove-backticks)
-             :expected-type expected-type
-             :value         value
-             :row           (parse-long row)}
+             :columns       [(-> column
+                                 (str/replace #"^'(.*)'$" "$1")
+                                 remove-backticks)]
+             :expected-type expected-type}
       table    (assoc :table (remove-backticks table))
       database (assoc :database (remove-backticks database)))))
 

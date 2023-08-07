@@ -5,8 +5,7 @@
    [metabase.actions.error :as actions.error]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,7 +14,6 @@
   (when-let [[_ _value column]
              (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
     {:type    error-type
-     :message (tru "violates not-null constraint")
      :columns [column]}))
 
 ;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
@@ -35,22 +33,17 @@
   (let [[match? constraint _value]
         (re-find #"ERROR:\s+duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
     (when match?
-      {:type       error-type
-       :message    (tru "violates unique constraint {0}" constraint)
-       :constraint constraint
-       :columns    (constraint->column-names database constraint)})))
+      {:type    error-type
+       :columns (constraint->column-names database constraint)})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-foreign-key-constraint]
   [_driver error-type database error-message]
-  (let [[match? table constraint ref-table _columns _value]
+  (let [[match? _table constraint ref-table _columns _value]
         (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
     (when match?
       (let [columns (constraint->column-names database constraint)]
         {:type       error-type
-         :message    (tru "violates foreign key constraint {0}" constraint)
-         :table      table
          :ref-table  ref-table
-         :constraint constraint
          :columns    columns}))))
 
 (defmethod sql-jdbc.actions/base-type->sql-type-map :postgres
