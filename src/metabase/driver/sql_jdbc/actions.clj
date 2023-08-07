@@ -52,12 +52,18 @@
 
 (defn- parse-sql-error
   [driver database e]
-  (or (some #(maybe-parse-sql-error driver % database (ex-message e))
-            [actions.error/violate-unique-constraint
-             actions.error/violate-foreign-key-constraint
-             actions.error/violate-not-null-constraint
-             actions.error/incorrect-value-type])
-      (ex-data e)))
+  (try
+   (or (some #(maybe-parse-sql-error driver % database (ex-message e))
+             [actions.error/violate-unique-constraint
+              actions.error/violate-foreign-key-constraint
+              actions.error/violate-not-null-constraint
+              actions.error/incorrect-value-type])
+       (ex-data e))
+   ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
+   ;; We'll still get the original unparsed error message.
+   (catch Throwable new-e
+     (log/error new-e (trs "Error parsing SQL error message {0}: {1}" (pr-str (ex-message e)) (ex-message new-e)))
+     nil)))
 
 (defn- do-with-auto-parse-sql-error
   [driver database thunk]

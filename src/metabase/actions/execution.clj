@@ -45,22 +45,6 @@
                          :parameters request-parameters}
                         e))))))
 
-(defn- handle-action-execution-error [ex]
-  (log/error ex (tru "Error executing action."))
-  (if-let [ed (ex-data ex)]
-    (let [ed (cond-> ed
-               (and (nil? (:status-code ed))
-                    (= (:type ed) :missing-required-permissions))
-               (assoc :status-code 403)
-
-               (nil? (:message ed))
-               (assoc :message (ex-message ex)))]
-      (if (= (ex-data ex) ed)
-        (throw ex)
-        (throw (ex-info (ex-message ex) ed ex))))
-    {:body {:message (or (ex-message ex) (tru "Error executing action."))}
-     :status 500}))
-
 (defn- implicit-action-table
   [card_id]
   (let [card (t2/select-one Card :id card_id)
@@ -76,14 +60,27 @@
         (actions/check-actions-enabled-for-database!
          (t2/select-one Database :id (:database_id action)))))
     (try
-      (case action-type
-        :query
-        (execute-query-action! action request-parameters)
+     (case action-type
+       :query
+       (execute-query-action! action request-parameters)
 
-        :http
-        (http-action/execute-http-action! action request-parameters))
-      (catch Exception e
-        (handle-action-execution-error e)))))
+       :http
+       (http-action/execute-http-action! action request-parameters))
+     (catch Exception e
+       (log/error e (tru "Error executing action."))
+       (if-let [ed (ex-data e)]
+         (let [ed (cond-> ed
+                    (and (nil? (:status-code ed))
+                         (= (:type ed) :missing-required-permissions))
+                    (assoc :status-code 403)
+
+                    (nil? (:message ed))
+                    (assoc :message (ex-message e)))]
+           (if (= (ex-data e) ed)
+             (throw e)
+             (throw (ex-info (ex-message e) ed e))))
+         {:body {:message (or (ex-message e) (tru "Error executing action."))}
+          :status 500})))))
 
 (defn- check-no-extra-parameters
   "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
@@ -205,7 +202,6 @@
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
-  (tap> action)
   (let [;; if a value is supplied for a hidden parameter, it should raise an error
         field-settings         (get-in action [:visualization_settings :fields])
         hidden-param-ids       (->> (vals field-settings)

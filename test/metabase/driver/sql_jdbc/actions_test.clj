@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
+   [metabase.actions.error :as actions.error]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
@@ -33,39 +34,21 @@
 
 (def ^:private parse-sql-error-called? (atom false))
 
-(defmethod sql-jdbc.actions/parse-sql-errorold ::parse-sql-error-exception
-  [_driver _database message]
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [::parse-sql-error-exception actions.error/incorrect-value-type]
+  [_driver _error-type _database message]
   (reset! parse-sql-error-called? true)
   (throw (ex-info "OOPS I THREW AN EXCEPTION!" {:message message})))
 
-#_(deftest parse-sql-error-catch-exceptions-test
-    (testing "If parse-sql-error throws an Exception, log it and return the unparsed exception instead of failing entirely (#24021)"
-      (driver/with-driver ::parse-sql-error-exception
-        (mt/with-actions-test-data-tables #{"venues" "categories"}
-          (mt/with-actions-test-data-and-actions-enabled
-            (reset! parse-sql-error-called? false)
-            ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
-            ;; this `category_id` -- it's an FK constraint violation.
-            (binding [*current-user-permissions-set* (delay #{"/"})]
-              (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
-                                              (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
-            (testing "Make sure our impl was actually called."
-              (is @parse-sql-error-called?)))))))
-
-#_(mt/defdataset action-error-handling
-    [["group"
-      [{:field-name "name" :base-type :type/Text}]
-      [["admin"]
-       ["user"]]]
-     ["user"
-      [{:field-name "name" :base-type :type/Text}
-       {:field-name "group-id" :base-type :type/Integer :fk "group"}]
-      [["crowberto" 1]
-       ["rasta"     2]
-       ["lucky"     1]]]])
-
-
-#_(mt/test-driver :postgres
-   (mt/dataset action-error-handling
-     (mt/with-actions-enabled
-       (actions/perform-action! :row/delete (mt/mbql-query group {:filter [:= $id 1]})))))
+(deftest parse-sql-error-catch-exceptions-test
+  (testing "If parse-sql-error throws an Exception, log it and return the unparsed exception instead of failing entirely (#24021)"
+    (driver/with-driver ::parse-sql-error-exception
+      (mt/with-actions-test-data-tables #{"venues" "categories"}
+        (mt/with-actions-test-data-and-actions-enabled
+          (reset! parse-sql-error-called? false)
+          ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
+          ;; this `category_id` -- it's an FK constraint violation.
+          (binding [*current-user-permissions-set* (delay #{"/"})]
+            (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
+                                            (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
+          (testing "Make sure our impl was actually called."
+            (is @parse-sql-error-called?)))))))

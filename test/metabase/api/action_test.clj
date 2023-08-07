@@ -664,9 +664,9 @@
                                                        :kind "row/update"}
                            {delete-action :action-id} {:type :implicit
                                                        :kind "row/delete"}]
-           #_(is (=? {:errors {:ranking "incorrect value: S"}}
-                     (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
-                                           {:parameters {"name" "new" "ranking" "S"}})))
+           (is (=? {:errors {:ranking "incorrect value: S"}}
+                   (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
+                                         {:parameters {"name" "new" "ranking" "S"}})))
 
            (is (=? {:errors {:id #"violates foreign key constraint .*"}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-action)
