@@ -1,4 +1,4 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import {
   createMockCard,
@@ -54,6 +54,7 @@ const dashcard = createMockDashboardOrderedCard({
 
 const dashcardData = {
   [dashcard.id]: {
+    [dashcard.card.id]: dataset,
     [card1.id]: dataset,
     [card2.id]: dataset,
   },
@@ -73,9 +74,13 @@ const setup = (options?: Partial<AddSeriesModalProps>) => {
 };
 
 describe("AddSeriesModal", () => {
-  it("renders anything", () => {
+  it("does not render the 'x' button next to the base series in visualization legend", () => {
     setup();
 
-    expect(screen.queryByText("Button properties")).not.toBeInTheDocument();
+    const legendItem = screen.getByTestId("legend-item");
+
+    expect(
+      within(legendItem).queryByRole("img", { name: "close icon" }),
+    ).not.toBeInTheDocument();
   });
 });
