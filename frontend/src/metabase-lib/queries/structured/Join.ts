@@ -65,6 +65,9 @@ class Join extends MBQLObjectClause {
       : [];
   }
 
+  /**
+   * @deprecated — use metabase-lib v2 to manage joins whenever possible
+   */
   fieldsDimensions() {
     if (this.fields === "all") {
       return this.joinedDimensions();
@@ -75,6 +78,9 @@ class Join extends MBQLObjectClause {
     }
   }
 
+  /**
+   * @deprecated — use metabase-lib v2 to manage joins whenever possible
+   */
   joinedDimensionOptions(
     dimensionFilter: (d: Dimension) => boolean = () => true,
   ) {
@@ -88,6 +94,9 @@ class Join extends MBQLObjectClause {
     });
   }
 
+  /**
+   * @deprecated — use metabase-lib v2 to manage joins whenever possible
+   */
   dependentMetadata() {
     const joinedQuery = this.joinedQuery();
     if (joinedQuery) {
@@ -96,6 +105,9 @@ class Join extends MBQLObjectClause {
     return [];
   }
 
+  /**
+   * @deprecated — use metabase-lib v2 to manage joins whenever possible
+   */
   isValid() {
     return !!this.joinedTable();
   }
