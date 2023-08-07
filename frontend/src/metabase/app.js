@@ -35,8 +35,6 @@ import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { createHistory } from "history";
 import { syncHistoryWithStore } from "react-router-redux";
-import createCache from "@emotion/cache";
-import { CacheProvider } from "@emotion/react";
 
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
@@ -51,6 +49,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 
 import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getStore } from "./store";
 
 // remove trailing slash
@@ -67,7 +66,6 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const history = syncHistoryWithStore(browserHistory, store);
-  const emotionCache = createCache({ key: "emotion", nonce: "2726c7f26c" });
 
   let root;
 
@@ -75,14 +73,14 @@ function _init(reducers, getRoutes, callback) {
 
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
-      <CacheProvider value={emotionCache}>
+      <EmotionCacheProvider>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
           <ThemeProvider>
             <GlobalStyles />
             <Router history={history}>{routes}</Router>
           </ThemeProvider>
         </DragDropContextProvider>
-      </CacheProvider>
+      </EmotionCacheProvider>
     </Provider>,
     document.getElementById("root"),
   );
