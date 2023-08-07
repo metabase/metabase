@@ -25,16 +25,6 @@ const EXAMPLE_JOIN = {
 };
 
 describe("StructuredQuery nesting", () => {
-  describe("parentDimension", () => {
-    it("should return the correct dimension", () => {
-      const j = ordersTable.query().join(EXAMPLE_JOIN).joins()[0];
-      expect(j.parentDimensions()[0].mbql()).toEqual([
-        "field",
-        ORDERS.PRODUCT_ID,
-        null,
-      ]);
-    });
-  });
   describe("joinDimension", () => {
     it("should return the correct dimension", () => {
       const j = ordersTable.query().join(EXAMPLE_JOIN).joins()[0];
@@ -42,24 +32,6 @@ describe("StructuredQuery nesting", () => {
         "field",
         PRODUCTS.ID,
         { "join-alias": "join0" },
-      ]);
-    });
-  });
-  describe("parentDimensionOptions", () => {
-    it("should return correct dimensions for a source-table", () => {
-      const j = ordersTable.query().join({ alias: "join0" }).joins()[0];
-      const options = j.parentDimensionOptions();
-      expect(options.count).toBe(9);
-      expect(options.dimensions[0].mbql()).toEqual(["field", ORDERS.ID, null]);
-    });
-    it("should return correct dimensions for a source-query", () => {
-      const j = ordersTable.query().nest().join({ alias: "join0" }).joins()[0];
-      const options = j.parentDimensionOptions();
-      expect(options.count).toBe(9);
-      expect(options.dimensions[0].mbql()).toEqual([
-        "field",
-        "ID",
-        { "base-type": "type/BigInteger" },
       ]);
     });
   });

@@ -129,53 +129,6 @@ export default class Join extends MBQLObjectClause {
     );
   }
 
-  // simplified "=" join condition helpers:
-  // NOTE: parentDimension refers to the left-hand side of the join,
-  // and joinDimension refers to the right-hand side
-  // TODO: should we rename them to lhsDimension/rhsDimension etc?
-  _getParentDimensionFromCondition(condition) {
-    const [, parentDimension] = condition;
-    return parentDimension && this.query().parseFieldReference(parentDimension);
-  }
-
-  _getParentDimensionsFromMultipleConditions() {
-    const [, ...conditions] = this.condition;
-    return conditions.map(condition =>
-      this._getParentDimensionFromCondition(condition),
-    );
-  }
-
-  parentDimensions() {
-    if (!this.condition) {
-      return [];
-    }
-
-    return this.isSingleConditionJoin()
-      ? [this._getParentDimensionFromCondition(this.condition)]
-      : this._getParentDimensionsFromMultipleConditions();
-  }
-
-  parentDimensionOptions() {
-    const query = this.query();
-    const dimensions = query.dimensions();
-    const options = {
-      count: dimensions.length,
-      dimensions: dimensions,
-      fks: [],
-      preventNumberSubDimensions: true,
-    };
-    // add all previous joined fields
-    const joins = query.joins();
-
-    for (let i = 0; i < this.index(); i++) {
-      const fkOptions = joins[i].joinedDimensionOptions();
-      options.count += fkOptions.count;
-      options.fks.push(fkOptions);
-    }
-
-    return new DimensionOptions(options);
-  }
-
   joinDimensions() {
     if (!this.condition) {
       return [];
@@ -283,15 +236,6 @@ export default class Join extends MBQLObjectClause {
   joinedTable() {
     const joinedQuery = this.joinedQuery();
     return joinedQuery && joinedQuery.table();
-  }
-
-  parentQuery() {
-    return this.query();
-  }
-
-  parentTable() {
-    const parentQuery = this.parentQuery();
-    return parentQuery && parentQuery.table();
   }
 
   /**
