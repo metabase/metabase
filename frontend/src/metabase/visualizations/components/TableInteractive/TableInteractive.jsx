@@ -280,7 +280,6 @@ class TableInteractive extends Component {
             </div>
           ))}
         </div>
-        ,
       </EmotionCacheProvider>,
       this._div,
       () => {
