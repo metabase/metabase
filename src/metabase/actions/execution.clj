@@ -148,7 +148,7 @@
                                     :value [(get simple-parameters pk-field-name)]}]))))
 
 (defn- implicit-action-error->message
-  [e-type column-or-columns & additional-info]
+  [e-type column-or-columns & [additional-info]]
   (condp = e-type
     actions.error/violate-unique-constraint
     (format (tru "value for columns {0} is duplicated" column-or-columns))

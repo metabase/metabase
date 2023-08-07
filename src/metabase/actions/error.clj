@@ -10,7 +10,7 @@
 
 (def violate-foreign-key-constraint
   "Error type for SQL foreign key constraint violation."
-  ::violate-unique-constraint)
+  ::violate-foreign-key-constraint)
 
 (def incorrect-value-type
   "Error type for SQL incorrect type."

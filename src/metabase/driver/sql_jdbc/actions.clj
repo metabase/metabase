@@ -52,12 +52,11 @@
 
 (defn- parse-sql-error
   [driver database e]
-  (or (and (ex-message e)
-           (some #(maybe-parse-sql-error driver % database (ex-message e))
-                 [actions.error/violate-unique-constraint
-                  actions.error/violate-foreign-key-constraint
-                  actions.error/violate-not-null-constraint
-                  actions.error/incorrect-value-type]))
+  (or (some #(maybe-parse-sql-error driver % database (ex-message e))
+            [actions.error/violate-unique-constraint
+             actions.error/violate-foreign-key-constraint
+             actions.error/violate-not-null-constraint
+             actions.error/incorrect-value-type])
       (ex-data e)))
 
 (defn- do-with-auto-parse-sql-error
