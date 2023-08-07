@@ -368,7 +368,12 @@ describe("scenarios > question > filter", () => {
     cy.get("@formula").type("p");
 
     // only "P" (of Products etc) should be highlighted, and not "Pr"
-    popover().get("span.text-dark").contains("Pr").should("not.exist");
+    popover()
+      .last()
+      .within(() => {
+        cy.findAllByText("P").should("have.length.above", 1);
+        cy.findByText("Pr").should("not.exist");
+      });
   });
 
   it("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
