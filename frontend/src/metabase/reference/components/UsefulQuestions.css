@@ -1,4 +1,5 @@
 :local(.usefulQuestions) {
-  composes: text-brand mt1 from "style";
+  composes: mt1 from "style";
+  color: var(--color-brand);
   font-size: 16px;
 }

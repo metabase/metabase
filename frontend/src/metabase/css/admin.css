@@ -52,7 +52,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: color-mod(var(--color-brand) alpha(-96%));
+  background-color: var(--color-brand-alpha-04);
 }
 
 .ContentTable tr:hover .Table-actions {

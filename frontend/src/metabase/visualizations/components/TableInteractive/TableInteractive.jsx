@@ -43,6 +43,7 @@ import {
   ExpandButton,
   HeaderCell,
   ResizeHandle,
+  TableInteractiveRoot,
 } from "./TableInteractive.styled";
 
 // approximately 120 chars
@@ -992,7 +993,7 @@ class TableInteractive extends Component {
             mainGridProps.scrollLeft = scrollLeft;
           }
           return (
-            <div
+            <TableInteractiveRoot
               className={cx(className, "TableInteractive relative", {
                 "TableInteractive--pivot": this.props.isPivoted,
                 "TableInteractive--ready": this.state.contentWidths,
@@ -1104,7 +1105,7 @@ class TableInteractive extends Component {
                 tabIndex={null}
                 overscanRowCount={20}
               />
-            </div>
+            </TableInteractiveRoot>
           );
         }}
       </ScrollSync>
