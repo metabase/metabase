@@ -1,19 +1,48 @@
-import { Component } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import { getIn } from "icepick";
-import { connect } from "react-redux";
+import { Component } from "react";
+import { t } from "ttag";
 
-import Visualization from "metabase/visualizations/components/Visualization";
-
+import {
+  Card,
+  CardId,
+  DashCardId,
+  DashboardOrderedCard,
+  DatasetData,
+} from "metabase-types/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
+import Visualization from "metabase/visualizations/components/Visualization";
 
 import { QuestionList } from "./QuestionList";
 
-class AddSeriesModal extends Component {
-  constructor(props, context) {
+interface Props {
+  dashcard: DashboardOrderedCard;
+  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  fetchCardData: (
+    card: Card,
+    dashcard: DashboardOrderedCard,
+    options: {
+      clearCache?: boolean;
+      ignoreCache?: boolean;
+      reload?: boolean;
+    },
+  ) => Promise<unknown>;
+  setDashCardAttributes: (options: {
+    id: DashCardId;
+    attributes: Partial<DashboardOrderedCard>;
+  }) => void;
+  onClose: () => void;
+}
+
+interface State {
+  error: unknown;
+  isLoadingMetadata: boolean;
+  series: NonNullable<DashboardOrderedCard["series"]>;
+  state?: "loading" | null;
+}
+
+class AddSeriesModal extends Component<Props, State> {
+  constructor(props: Props, context: unknown) {
     super(props, context);
 
     this.state = {
@@ -23,17 +52,9 @@ class AddSeriesModal extends Component {
     };
   }
 
-  static propTypes = {
-    dashcard: PropTypes.object.isRequired,
-    dashcardData: PropTypes.object.isRequired,
-    fetchCardData: PropTypes.func.isRequired,
-    setDashCardAttributes: PropTypes.func.isRequired,
-    loadMetadataForQueries: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired,
-  };
   static defaultProps = {};
 
-  handleQuestionSelectedChange = async (card, selected) => {
+  handleQuestionSelectedChange = async (card: Card, selected: boolean) => {
     const { dashcard, dashcardData } = this.props;
 
     if (!selected) {
@@ -65,7 +86,7 @@ class AddSeriesModal extends Component {
     );
   };
 
-  handleRemoveSeries = (_event, removedIndex) => {
+  handleRemoveSeries = (_event: MouseEvent, removedIndex: number) => {
     this.setState({
       series: [
         ...this.state.series.slice(0, removedIndex),
@@ -86,12 +107,6 @@ class AddSeriesModal extends Component {
       "Edit Series Modal",
       "done",
     );
-  };
-
-  handleLoadMetadata = async queries => {
-    this.setState({ isLoadingMetadata: true });
-    await this.props.loadMetadataForQueries(queries);
-    this.setState({ isLoadingMetadata: false });
   };
 
   render() {
@@ -172,4 +187,5 @@ class AddSeriesModal extends Component {
   }
 }
 
-export default connect(null, { loadMetadataForQueries })(AddSeriesModal);
+// eslint-disable-next-line import/no-default-export
+export default AddSeriesModal;
