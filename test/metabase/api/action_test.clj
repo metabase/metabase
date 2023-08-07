@@ -653,7 +653,7 @@
      ["lucky"     1]]]])
 
 (deftest action-error-handling-test
- (mt/test-driver :postgres
+ (mt/test-driver :mysql
    (mt/dataset action-error-handling
      (mt/with-actions-enabled
        (mt/with-current-user (mt/user->id :crowberto)
@@ -664,10 +664,12 @@
                                                        :kind "row/update"}
                            {delete-action :action-id} {:type :implicit
                                                        :kind "row/delete"}]
-           (is (=? {:errors {:ranking "incorrect value: S"}}
-                   (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
-                                         {:parameters {"name" "new" "ranking" "S"}})))
+           (is (= {:message "value for column(s) ranking should be of type integer",
+                   :errors {:ranking "value for column(s) ranking should be of type integer"}}
+                  (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
+                                        {:parameters {"name" "new" "ranking" "S"}})))
 
-           (is (=? {:errors {:id #"violates foreign key constraint .*"}}
-                   (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-action)
-                                         {:parameters {"id" 1}})))))))))
+           (is (= {:message "column(s) id is referenced by group"
+                   :errors {:id "column(s) id is referenced by group"}}
+                  (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-action)
+                                        {:parameters {"id" 1}})))))))))

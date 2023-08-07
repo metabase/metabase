@@ -1,6 +1,7 @@
 (ns metabase.actions.execution
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions :as actions]
    [metabase.actions.error :as actions.error]
@@ -146,28 +147,31 @@
 
 (defn- implicit-action-error->message
   [e-type column-or-columns & [additional-info]]
-  (condp = e-type
-    actions.error/violate-unique-constraint
-    (format (tru "value for columns {0} is duplicated" column-or-columns))
+  (let [column-name (if (sequential? column-or-columns)
+                      (str/join ", " column-or-columns)
+                      column-or-columns)]
+    (condp = e-type
+      actions.error/violate-unique-constraint
+      (tru "value for column(s) {0} is duplicated" column-name)
 
-    actions.error/violate-not-null-constraint
-    (format (tru "value for columns {0} must be not null" column-or-columns))
+      actions.error/violate-not-null-constraint
+      (tru "value for column(s) {0} must be not null" column-name)
 
-    actions.error/violate-foreign-key-constraint
-    (format (tru "columns {0} is referenced by {1}" column-or-columns (:ref-table additional-info)))
+      actions.error/violate-foreign-key-constraint
+      (tru "column(s) {0} is referenced by {1}" column-name (:ref-table additional-info))
 
-    actions.error/incorrect-value-type
-    (format (tru "value for columns {0} should be of type {1}" column-or-columns (:expected-type additional-info)))
+      actions.error/incorrect-value-type
+      (tru "value for column(s) {0} should be of type {1}" column-name (:expected-type additional-info))
 
-    actions.error/incorrect-affected-rows
-    (let [{:keys [action-type number-affected]} additional-info]
-      (case action-type
-        :row/delete (if (zero? number-affected)
-                      (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                      (tru "Sorry, this would delete {0} rows, but you can only act on 1" number-affected))
-        :row/update (if (zero? number-affected)
-                      (tru "Sorry, the row you''re trying to update doesn''t exist")
-                      (tru "Sorry, this would update {0} rows, but you can only act on 1" number-affected))))))
+      actions.error/incorrect-affected-rows
+      (let [{:keys [action-type number-affected]} additional-info]
+        (case action-type
+          :row/delete (if (zero? number-affected)
+                        (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                        (tru "Sorry, this would delete {0} rows, but you can only act on 1" number-affected))
+          :row/update (if (zero? number-affected)
+                        (tru "Sorry, the row you''re trying to update doesn''t exist")
+                        (tru "Sorry, this would update {0} rows, but you can only act on 1" number-affected)))))))
 
 (defn- execute-implicit-action
   [action request-parameters]
