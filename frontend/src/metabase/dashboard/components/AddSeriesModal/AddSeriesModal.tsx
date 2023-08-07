@@ -36,9 +36,8 @@ interface Props {
 
 interface State {
   error: unknown;
-  isLoadingMetadata: boolean;
+  isLoading: boolean;
   series: NonNullable<DashboardOrderedCard["series"]>;
-  state?: "loading" | null;
 }
 
 class AddSeriesModal extends Component<Props, State> {
@@ -48,7 +47,7 @@ class AddSeriesModal extends Component<Props, State> {
     this.state = {
       error: null,
       series: props.dashcard.series || [],
-      isLoadingMetadata: false,
+      isLoading: false,
     };
   }
 
@@ -67,7 +66,7 @@ class AddSeriesModal extends Component<Props, State> {
     }
 
     if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
-      this.setState({ state: "loading" });
+      this.setState({ isLoading: true });
       await this.props.fetchCardData(card, dashcard, {
         reload: false,
         clearCache: true,
@@ -75,7 +74,7 @@ class AddSeriesModal extends Component<Props, State> {
     }
 
     this.setState({
-      state: null,
+      isLoading: false,
       series: this.state.series.concat(card),
     });
 
@@ -135,20 +134,14 @@ class AddSeriesModal extends Component<Props, State> {
               isMultiseries
               onRemoveSeries={this.handleRemoveSeries}
             />
-            {this.state.state && (
+            {this.state.isLoading && (
               <div
                 className="spred flex layout-centered"
                 style={{ backgroundColor: color("bg-white") }}
               >
-                {this.state.state === "loading" ? (
-                  <div className="h3 rounded bordered p3 bg-white shadowed">
-                    {t`Applying Question`}
-                  </div>
-                ) : this.state.state === "incompatible" ? (
-                  <div className="h3 rounded bordered p3 bg-error border-error text-white">
-                    {t`That question isn't compatible`}
-                  </div>
-                ) : null}
+                <div className="h3 rounded bordered p3 bg-white shadowed">
+                  {t`Applying Question`}
+                </div>
               </div>
             )}
           </div>
