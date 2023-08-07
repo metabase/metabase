@@ -77,7 +77,7 @@ function _init(reducers, getRoutes, callback) {
     <Provider store={store} ref={ref => (root = ref)}>
       <CacheProvider value={emotionCache}>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-          <ThemeProvider emotionCache={emotionCache}>
+          <ThemeProvider>
             <GlobalStyles />
             <Router history={history}>{routes}</Router>
           </ThemeProvider>
