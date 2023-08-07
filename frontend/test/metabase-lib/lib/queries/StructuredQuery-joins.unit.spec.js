@@ -63,37 +63,6 @@ describe("StructuredQuery nesting", () => {
       ]);
     });
   });
-  describe("joinDimensionOptions", () => {
-    it("should return correct dimensions with a source-table", () => {
-      const j = ordersTable
-        .query()
-        .join({ alias: "join0", "source-table": ORDERS_ID })
-        .joins()[0];
-      const options = j.joinDimensionOptions();
-      expect(options.count).toBe(9);
-      expect(options.dimensions[0].mbql()).toEqual([
-        "field",
-        ORDERS.ID,
-        { "join-alias": "join0" },
-      ]);
-    });
-    it("should return correct dimensions with a source-query", () => {
-      const j = ordersTable
-        .query()
-        .join({
-          alias: "join0",
-          "source-query": { "source-table": ORDERS_ID },
-        })
-        .joins()[0];
-      const options = j.joinDimensionOptions();
-      expect(options.count).toBe(9);
-      expect(options.dimensions[0].mbql()).toEqual([
-        "field",
-        ORDERS.ID,
-        { "join-alias": "join0" },
-      ]);
-    });
-  });
   describe("dimensionOptions", () => {
     it("should include joined table's fields", () => {
       const q = productsTable.query().join({
