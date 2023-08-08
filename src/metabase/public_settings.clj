@@ -201,6 +201,10 @@
     (application-name-for-setting-descriptions))
   :default    "en"
   :visibility :public
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :string :site-locale)]
+                  (when (i18n/available-locale? value)
+                    value)))
   :setter     (fn [new-value]
                 (when new-value
                   (when-not (i18n/available-locale? new-value)
