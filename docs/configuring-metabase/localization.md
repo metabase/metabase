@@ -34,6 +34,7 @@ The languages you can currently pick from are:
 - Italian
 - Japanese
 - Korean
+- Latvian
 - Norwegian Bokmål
 - Polish
 - Portuguese
