@@ -1063,6 +1063,8 @@
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (defn- like-clause
+  "Generate honeysql like clause used in `:starts-with`, `:contains` or `:ends-with.
+  If matching case insensitively, `pattern` is lowercased earlier in [[generate-pattern]]."
   [field pattern {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
   ;; LIKE clauses? That's what we're doing with Druid... (Cam)
@@ -1071,7 +1073,7 @@
   ;; custom implementation? (Cam)
   [:like (cond->> field (not case-sensitive) (hx/call :lower)) pattern])
 
-(def ^:private ValueFieldExpression
+(def ^:private StringValueOrFieldOrExpression
   [:or
    [:and mbql.s/value
     [:fn {:error/message "string value"} #(string? (second %))]]
@@ -1081,7 +1083,7 @@
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
-   [type _ :as arg] :- ValueFieldExpression
+   [type _ :as arg] :- StringValueOrFieldOrExpression
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
