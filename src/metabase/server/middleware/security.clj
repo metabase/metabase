@@ -62,27 +62,28 @@
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
-                                  ["'self'"
-                                   "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
-                                   "https://maps.google.com"
-                                   "https://accounts.google.com"
-                                   (when (public-settings/anon-tracking-enabled)
-                                     "https://www.google-analytics.com")
+                                 ["'self'"
+                                  "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
+                                  "https://maps.google.com"
+                                  "https://accounts.google.com"
+                                  (when (public-settings/anon-tracking-enabled)
+                                    "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
-                                   (when config/is-dev?
-                                     "http://localhost:8080")
+                                  (when config/is-dev?
+                                    "http://localhost:8080")
                                    ;; for react dev tools to work in Firefox until resolution of
                                    ;; https://github.com/facebook/react/issues/17997
-                                   (when config/is-dev?
-                                     "'unsafe-inline'")]
-                                  (when-not config/is-dev?
-                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
+                                  (when config/is-dev?
+                                    "'unsafe-inline'")]
+                                 (when-not config/is-dev?
+                                   (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
                                  ;; See [[generate-nonce]]
-                                 (format "'nonce-%s'" nonce)
+                                 (when nonce
+                                   (format "'nonce-%s'" nonce))
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
                                    "http://localhost:8080")
