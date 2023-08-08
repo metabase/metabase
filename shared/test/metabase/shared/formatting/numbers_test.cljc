@@ -185,7 +185,7 @@
                   ;; TODO Override this in the JS side? This is the only spot where the names from Intl.NumberFormat and
                   ;; metabase.shared.util.currency differ.
                   "BTC" #?(:clj "Bitcoins" :cljs "BTC")
-                  "CNY" "Chinese renminbi"
+                  "CNY" "Chinese yuan"
                   "JPY" "Japanese yen"}]
       (are [s n c] (= (str s " " (get labels c))
                       (numbers/format-number n {:number-style "currency" :currency c :currency-style "name"}))
