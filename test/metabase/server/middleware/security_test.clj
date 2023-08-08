@@ -1,11 +1,15 @@
 (ns metabase.server.middleware.security-test
   (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clojure.data.xml :as xml]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.security :as mw.security]
-   [metabase.test.util :as tu]))
+   [metabase.test.util :as tu]
+   [stencil.core :as stencil]))
 
 (defn- csp-directive
   [directive]
@@ -64,3 +68,21 @@
                                            embedding-app-origin (str/join " " embedding-app-origins)]
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))
+
+(deftest nonce-test
+  (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
+    (let [nonceJSON (atom nil)
+          render-file stencil/render-file]
+      (with-redefs [stencil/render-file (fn [template-name variables]
+                                          (reset! nonceJSON (:nonceJSON variables))
+                                          (render-file template-name variables))]
+        (let [response (http/get (str "http://localhost:" (config/config-str :mb-jetty-port)))
+              csp      (get-in response [:headers "Content-Security-Policy"])
+              nonce    (json/parse-string @nonceJSON)]
+          (is (re-matches #"^[a-zA-Z0-9]{10}$" nonce))
+          (is (str/includes? (->> (str/split csp #"; *")
+                                  (filter #(str/starts-with? % (str "style-src" " ")))
+                                  first)
+                             (str "nonce-" nonce)))
+          (testing "Sanity check: the nonce is in the HTML"
+            (is (str/includes? (:body response) nonce))))))))

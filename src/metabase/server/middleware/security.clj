@@ -165,7 +165,8 @@
   "Middleware that adds HTTP security and cache-busting headers."
   [handler]
   (fn [request respond raise]
-    (handler
-     (assoc request :nonce (generate-nonce))
-     (comp respond (partial add-security-headers* request))
-     raise)))
+    (let [request (assoc request :nonce (generate-nonce))]
+      (handler
+       request
+       (comp respond (partial add-security-headers* request))
+       raise))))
