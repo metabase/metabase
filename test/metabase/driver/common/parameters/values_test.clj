@@ -572,32 +572,34 @@
                     :card-id      (u/the-id card)}
                    nil))))))))
 
-(deftest ^:parallel prefer-template-tag-default-test
-  (testing "Default values in a template tag should take precedence over default values passed in as part of the request"
-    ;; Dashboard parameter mappings can have their own defaults specified, and those get passed in as part of the
-    ;; request parameter. If the template tag also specifies a default, we should prefer that.
+(deftest ^:parallel no-value-template-tag-defaults-test
+  (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
     (mt/dataset sample-dataset
       (testing "Field filters"
-        (is (=? {"filter" {:value {:type  :category
-                                   :value ["Gizmo" "Gadget"]}}}
-                (query->params-map
-                 {:template-tags {"filter"
-                                  {:id           "xyz456"
-                                   :name         "filter"
-                                   :display-name "Filter"
-                                   :type         :dimension
-                                   :dimension    [:field (mt/id :products :category) nil]
-                                   :widget-type  :category
-                                   :default      ["Gizmo" "Gadget"]
-                                   :required     true}}
-                  :parameters    [{:type    :string/=
-                                   :id      "abc123"
-                                   :default ["Widget"]
-                                   :target  [:dimension [:template-tag "filter"]]}]})))))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You'll need to pick a value for 'Filter' before this query can run."
+             (query->params-map
+              {:template-tags {"filter"
+                               {:id           "xyz456"
+                                :name         "filter"
+                                :display-name "Filter"
+                                :type         :dimension
+                                :dimension    [:field (mt/id :products :category) nil]
+                                :widget-type  :category
+                                :default      ["Gizmo" "Gadget"]
+                                :required     true}}
+               :parameters    [{:type    :string/=
+                                :id      "abc123"
+                                :default ["Widget"]
+                                :target  [:dimension [:template-tag "filter"]]}]})))))))
 
-(deftest ^:parallel prefer-template-tag-default-raw-value-test
-  (testing "Raw value template tags"
-    (is (= {"filter" "Foo"}
+(deftest ^:parallel no-value-template-tag-defaults-raw-value-test
+  (testing "should throw an Exception if no :value is specified for a required parameter, even if defaults are provided"
+    (testing "Raw value template tags"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"You'll need to pick a value for 'Filter' before this query can run."
            (query->params-map
             {:template-tags {"filter"
                              {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
@@ -609,14 +611,13 @@
              :parameters    [{:type    :string/=
                               :id      "5791ff38"
                               :default "Bar"
-                              :target  [:variable [:template-tag "filter"]]}]})))))
+                              :target  [:variable [:template-tag "filter"]]}]}))))))
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-test
   (testing "Default values passed in as part of the request should not apply when the value is nil"
     (mt/dataset sample-dataset
       (testing "Field filters"
-        (is (=? {"filter" {:value {:type  :category
-                                   :value ::params/no-value}}}
+        (is (=? {"filter" {:value ::params/no-value}}
                 (query->params-map
                  {:template-tags {"filter"
                                   {:id           "xyz456"
@@ -634,14 +635,13 @@
 
 (deftest ^:parallel nil-value-parameter-template-tag-default-raw-value-test
   (testing "Raw value template tags"
-    (is (= {"filter" "Foo"}
+    (is (= {"filter" ::params/no-value}
            (query->params-map
             {:template-tags {"filter"
                              {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
                               :name         "filter"
                               :display-name "Filter"
                               :type         :text
-                              :required     true
                               :default      "Foo"}}
              :parameters    [{:type    :string/=
                               :id      "5791ff38"
