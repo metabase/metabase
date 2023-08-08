@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
@@ -24,7 +23,7 @@
                 :lib/source               :source/card
                 :lib/source-column-alias  "count"
                 :lib/desired-column-alias "count"}]
-              (lib.metadata.calculation/returned-columns query)))
+              (lib/returned-columns query)))
       (testing `lib/display-info
         (is (=? [{:name                   "USER_ID"
                   :display-name           "User ID"
@@ -45,7 +44,7 @@
                   :is-from-join           false
                   :is-calculated          false
                   :is-implicitly-joinable false}]
-                (for [col (lib.metadata.calculation/returned-columns query)]
+                (for [col (lib/returned-columns query)]
                   (lib/display-info query col))))))))
 
 (deftest ^:parallel card-source-query-metadata-test
@@ -69,7 +68,7 @@
                                    :source-card 1}]}]
         (is (=? (for [col meta/card-results-metadata]
                   (assoc col :lib/source :source/card))
-                (lib.metadata.calculation/returned-columns query)))))))
+                (lib/returned-columns query)))))))
 
 (deftest ^:parallel card-results-metadata-merge-metadata-provider-metadata-test
   (testing "Merge metadata from the metadata provider into result-metadata (#30046)"
@@ -81,4 +80,4 @@
                 :lib/desired-column-alias "USER_ID"}
                {:lib/type :metadata/column
                 :name     "count"}]
-              (lib.metadata.calculation/returned-columns query))))))
+              (lib/returned-columns query))))))

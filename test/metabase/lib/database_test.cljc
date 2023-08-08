@@ -2,8 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.composed-provider
-    :as lib.metadata.composed-provider]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.mbql.schema :as mbql.s]))
@@ -26,7 +24,7 @@
             (let [query (assoc query :lib/metadata meta/metadata-provider)]
               (is (nil? (lib/database-id query)))))
           (testing "CardMetadata is missing `:database-id`"
-            (let [metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+            (let [metadata-provider (lib/composed-metadata-provider
                                      meta/metadata-provider
                                      (lib.tu/mock-metadata-provider
                                       {:cards [{:name          "My Card"

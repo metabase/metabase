@@ -2,15 +2,15 @@
   "Misc test utils for Metabase lib."
   (:require
    [clojure.core.protocols]
-   [clojure.test :refer [is]]
+   [clojure.test :refer [deftest is]]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.composed-provider
-    :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -98,7 +98,7 @@
 
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [{:name          "My Card"
@@ -121,7 +121,7 @@
 
 (def metadata-provider-with-card-with-result-metadata
   "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [{:name            "My Card"
@@ -237,7 +237,7 @@
 (def metadata-provider-with-categories-mbql-card
   "A metadata provider with the [[categories-mbql-card]] as Card 1. Composed with the
   normal [[meta/metadata-provider]]."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [categories-mbql-card]})))
@@ -257,7 +257,7 @@
 (def metadata-provider-with-categories-native-card
   "A metadata provider with the [[categories-native-card]] as Card 1. Composed with the
   normal [[meta/metadata-provider]]."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
    meta/metadata-provider
    (mock-metadata-provider
     {:cards [categories-native-card]})))
@@ -285,7 +285,49 @@
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
-  (lib.metadata.composed-provider/composed-metadata-provider
+  (lib/composed-metadata-provider
     meta/metadata-provider
     (mock-metadata-provider
-      {:cards (vals mock-cards)})))
+     {:cards (vals mock-cards)})))
+
+(defn query-with-source-card
+  "Create a query using a `:source-card` with a [[mock-metadata-provider]] that has a Card with `source-card-query` and
+  metadata calculated for it."
+  ([source-card-query]
+   (query-with-source-card source-card-query nil))
+
+  ([source-card-query card-properties]
+   (let [card-metadata     (lib/returned-columns source-card-query)
+         card              (merge {:id              1
+                                   :name            "Birthday Card"
+                                   :dataset-query   source-card-query
+                                   :result-metadata card-metadata}
+                                  card-properties)
+         metadata-provider (lib/composed-metadata-provider
+                            (mock-metadata-provider {:cards [card]})
+                            meta/metadata-provider)]
+     (lib/query metadata-provider {:lib/type :mbql/query
+                                   :database (meta/id)
+                                   :stages   [{:lib/type    :mbql.stage/mbql
+                                               :source-card (:id card)}]}))))
+
+(deftest ^:parallel query-with-source-card-test
+  (is (= ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]
+         (->> (query-with-source-card (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+              lib/returned-columns
+              (map :name)))))
+
+(mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
+  "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
+  with `column-name` returned by a `query`. This only makes sense for queries with multiple stages, or ones with a
+  source Card."
+  [query       :- ::lib.schema/query
+   column-name :- ::lib.schema.common/non-blank-string]
+  (let [cols     (lib/visible-columns query)
+        metadata (or (m/find-first #(= (:name %) column-name)
+                                   cols)
+                     (let [col-names (vec (sort (map :name cols)))]
+                       (throw (ex-info (str "No column named " (pr-str column-name) "; found: " (pr-str col-names))
+                                       {:column column-name
+                                        :found  col-names}))))]
+    (lib/ref metadata)))
