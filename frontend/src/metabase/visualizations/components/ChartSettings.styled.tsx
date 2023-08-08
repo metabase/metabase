@@ -51,6 +51,7 @@ export const ChartSettingsMenu = styled.div`
   flex: 1 0 0;
   display: flex;
   flex-direction: column;
+  width: 100%;
 `;
 
 export const ChartSettingsListContainer = styled.div`
