@@ -1,4 +1,9 @@
-import { editDashboard, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  editDashboard,
+  restore,
+  visitDashboard,
+  createLinkCard,
+} from "e2e/support/helpers";
 
 const baseTextDashcardDetails = {
   col: 0,
@@ -57,7 +62,7 @@ describe("issue 31274", () => {
         visibleActionsPanel().should("have.length", 1);
 
         cy.log(
-          "Make sure cypress can click, so element is not covered by another",
+          "Make sure cypress can click the element, which means it is not covered by another",
         );
 
         visibleActionsPanel().within(() => {
@@ -65,6 +70,28 @@ describe("issue 31274", () => {
             position: "top",
           });
         });
+      });
+    },
+  );
+
+  it(
+    "renders cross icon on the link card without clipping",
+    { scrollBehavior: false },
+    () => {
+      cy.createDashboard().then(({ body: dashboard }) => {
+        visitDashboard(dashboard.id);
+        editDashboard(dashboard.id);
+      });
+
+      createLinkCard();
+      cy.findByPlaceholderText("https://example.com").realHover();
+
+      cy.log(
+        "Make sure cypress can click the element, which means it is not covered by another",
+      );
+
+      cy.findByTestId("dashboardcard-actions-panel").within(() => {
+        cy.icon("close").click({ position: "bottom" });
       });
     },
   );
