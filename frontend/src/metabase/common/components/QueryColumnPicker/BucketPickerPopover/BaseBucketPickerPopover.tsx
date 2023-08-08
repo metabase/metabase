@@ -75,10 +75,10 @@ function _BaseBucketPickerPopover({
     : undefined;
 
   const canExpand = items.length > INITIALLY_VISIBLE_ITEMS_COUNT;
-  const visibleItems =
-    isExpanded || !canExpand
-      ? items
-      : items.slice(0, INITIALLY_VISIBLE_ITEMS_COUNT);
+  const hasMoreButton = canExpand && !isExpanded;
+  const visibleItems = hasMoreButton
+    ? items.slice(0, INITIALLY_VISIBLE_ITEMS_COUNT)
+    : items;
 
   return (
     <PopoverWithTrigger
@@ -114,7 +114,7 @@ function _BaseBucketPickerPopover({
               />
             ))}
           </SelectList>
-          {canExpand && !isExpanded && (
+          {hasMoreButton && (
             <MoreButton onClick={handleExpand}>{t`More…`}</MoreButton>
           )}
         </Content>
