@@ -775,63 +775,6 @@ describe("Join", () => {
     });
   });
 
-  describe("isValid", () => {
-    it("should return 'true' for complete one-fields pair join", () => {
-      const join = getJoin({
-        query: getOrdersJoinQuery({
-          condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        }),
-      });
-      expect(join.isValid()).toBe(true);
-    });
-
-    it("should return 'true' for complete multi-fields join", () => {
-      const join = getJoin({
-        query: getOrdersJoinQuery({
-          condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-        }),
-      });
-      expect(join.isValid()).toBe(true);
-    });
-
-    it("should return 'false' if references unavailable field", () => {
-      const join = getJoin({
-        query: getOrdersJoinQuery({
-          condition: [
-            "and",
-            ORDERS_PRODUCT_JOIN_CONDITION,
-            ["=", ["field", 111222333444, null], PRODUCTS_CREATED_AT_FIELD_REF],
-          ],
-        }),
-      });
-
-      expect(join.isValid()).toBe(false);
-    });
-
-    it("should ignore field literals not present in dimension options for backward compatibility", () => {
-      const join = getJoin({
-        query: getOrdersJoinQuery({
-          condition: [
-            "=",
-            ORDERS_PRODUCT_ID_FIELD_REF,
-            ["field", "USER_ID", { "base-type": "type/Integer" }],
-          ],
-        }),
-      });
-
-      expect(join.isValid()).toBe(true);
-    });
-
-    invalidTestCases.forEach(([invalidReason, queryOpts]) => {
-      it(`should return 'false' when ${invalidReason}`, () => {
-        const join = getJoin({
-          query: getOrdersJoinQuery(queryOpts),
-        });
-        expect(join.isValid()).toBe(false);
-      });
-    });
-  });
-
   describe("clean", () => {
     describe("for single dimensions pair join", () => {
       it("does nothing if valid", () => {
