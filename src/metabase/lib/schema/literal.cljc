@@ -133,23 +133,23 @@
 
 (mr/def ::date
   #?(:clj  [:or
-            :time/local-date
+            [:time/local-date {:error/message "instance of java.time.LocalDate"}]
             ::string.date]
      :cljs ::string.date))
 
 (mr/def ::time
   #?(:clj [:or
            ::string.time
-           :time/local-time
-           :time/offset-time]
+           [:time/local-time {:error/message "instance of java.time.LocalTime"}]
+           [:time/offset-time {:error/message "instance of java.time.OffsetTime"}]]
      :cljs ::string.time))
 
 (mr/def ::datetime
   #?(:clj [:or
            ::string.datetime
-           :time/local-date-time
-           :time/offset-date-time
-           :time/zoned-date-time]
+           [:time/local-date-time {:error/message "instance of java.time.LocalDateTime"}]
+           [:time/offset-date-time {:error/message "instance of java.time.OffsetDateTime"}]
+           [:time/zoned-date-time {:error/message "instance of java.time.ZonedDateTime"}]]
      :cljs ::string.datetime))
 
 (mr/def ::temporal

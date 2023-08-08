@@ -3,7 +3,7 @@
   (:require
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 ;;;; Pre-processing
 
@@ -17,7 +17,7 @@
        (filter identity)
        set))
 
-(s/defn ^:private replace-cumulative-ags :- mbql.s/Query
+(mu/defn ^:private replace-cumulative-ags :- mbql.s/Query
   "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
   [query]
   (mbql.u/replace-in query [:query :aggregation]

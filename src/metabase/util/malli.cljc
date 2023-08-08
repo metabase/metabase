@@ -44,6 +44,7 @@
   (with-api-error-message
     [:string {:min 1}]
     (deferred-tru \"Must be a string with at least 1 character representing a User ID.\"))"
+  {:style/indent [:form]}
   ([mschema :- Schema error-message :- localized-string-schema]
    (with-api-error-message mschema error-message error-message))
   ([mschema                :- :any
@@ -53,7 +54,7 @@
                           ;; override generic description in api docs and :errors key in API's response
                           :description description-message
                           ;; override generic description in :specific-errors key in API's response
-                          :error/fn    (fn [_ _] specific-error-message))))
+                          :error/fn    (constantly specific-error-message))))
 
 #?(:clj
    (defmacro disable-enforcement

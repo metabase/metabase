@@ -296,6 +296,7 @@ class DashboardGrid extends Component {
   onDashCardRemove(dc) {
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
+      cardId: dc.card_id,
     });
     this.props.addUndo({
       message: t`Removed card`,
