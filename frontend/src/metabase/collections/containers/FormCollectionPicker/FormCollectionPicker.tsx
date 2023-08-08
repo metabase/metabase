@@ -102,7 +102,7 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
-  const formik = useFormikContext();
+  const { values } = useFormikContext();
   const [openCollectionId, setOpenCollectionId] = useState<
     CollectionId | undefined
   >(undefined);
@@ -136,7 +136,7 @@ function FormCollectionPicker({
         >
           {canCreateNew && (
             <CreateCollectionOnTheGoButton
-              resumedValues={formik.values}
+              resumedValues={values}
               openCollectionId={openCollectionId}
             />
           )}
@@ -150,7 +150,7 @@ function FormCollectionPicker({
       setValue,
       initialOpenCollectionId,
       openCollectionId,
-      formik.values,
+      values,
       onOpenCollectionChange,
       canCreateNew,
       CreateCollectionOnTheGoButton,
