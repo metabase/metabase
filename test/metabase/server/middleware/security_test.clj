@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
-   [clojure.data.xml :as xml]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
