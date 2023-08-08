@@ -7,6 +7,8 @@ import {
   visitQuestion,
   visitDashboard,
   setTokenFeatures,
+  setupSMTP,
+  sidebar,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -81,18 +83,17 @@ describeEE("scenarios > admin > permissions > application", () => {
     });
 
     describe("granted", () => {
-      beforeEach(() => {
-        cy.signInAsNormalUser();
-      });
-
       it("gives ability to create dashboard subscriptions", () => {
+        setupSMTP();
+        cy.signInAsNormalUser();
         visitDashboard(1);
-        cy.icon("subscription").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Create a dashboard subscription");
+        cy.findByLabelText("subscriptions").click();
+
+        sidebar().findByText("Email this dashboard").should("exist");
       });
 
       it("gives ability to create question alerts", () => {
+        cy.signInAsNormalUser();
         visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").click();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
