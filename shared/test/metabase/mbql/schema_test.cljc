@@ -137,18 +137,18 @@
   (are [schema expected] (= expected
                             (mu.humanize/humanize (mc/explain schema [:value "192.168.1.1" {:base_type :type/FK}])))
     mbql.s/absolute-datetime
-    '[("valid :absolute-datetime clause" "not an :absolute-datetime clause")]
+    "not an :absolute-datetime clause"
 
     [:or mbql.s/absolute-datetime]
-    '[("valid :absolute-datetime clause" "not an :absolute-datetime clause")]
+    "not an :absolute-datetime clause"
 
     mbql.s/value
-    '[("valid :value clause" [nil nil {:base_type "Not a valid base type: :type/FK"}])]
+    [nil nil {:base_type "Not a valid base type: :type/FK"}]
 
     [:or mbql.s/value]
-    '[("valid :value clause" [nil nil {:base_type "Not a valid base type: :type/FK"}])]
+    [nil nil {:base_type "Not a valid base type: :type/FK"}]
 
     [:or mbql.s/absolute-datetime :string mbql.s/value]
-    '[("valid :absolute-datetime clause" "not an :absolute-datetime clause")
-      "should be a string"
-      ("valid :value clause" [nil nil {:base_type "Not a valid base type: :type/FK"}])]))
+    ["not an :absolute-datetime clause"
+     "should be a string"
+     [nil nil {:base_type "Not a valid base type: :type/FK"}]]))
