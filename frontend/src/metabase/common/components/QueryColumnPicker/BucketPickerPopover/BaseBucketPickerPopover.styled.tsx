@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import BaseSelectList from "metabase/components/SelectList";
 import { alpha, color } from "metabase/lib/colors";
@@ -47,3 +48,9 @@ export const Content = styled.div`
     margin: 2px 0;
   }
 `;
+
+export const MoreButton = styled(Button)`
+  padding: 8px 16px;
+`;
+
+MoreButton.defaultProps = { onlyText: true };

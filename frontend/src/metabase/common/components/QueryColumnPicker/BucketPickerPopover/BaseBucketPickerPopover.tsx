@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
 import SelectList from "metabase/components/SelectList";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import type { ColorName } from "metabase/lib/colors/types";
 import * as Lib from "metabase-lib";
 import {
   Content,
+  MoreButton,
   TriggerButton,
   TriggerIcon,
   SelectListItem,
@@ -115,11 +115,7 @@ function _BaseBucketPickerPopover({
             ))}
           </SelectList>
           {canExpand && !isExpanded && (
-            <Button
-              onlyText
-              onClick={handleExpand}
-              style={{ padding: "8px 16px" }}
-            >{t`More…`}</Button>
+            <MoreButton onClick={handleExpand}>{t`More…`}</MoreButton>
           )}
         </Content>
       )}
