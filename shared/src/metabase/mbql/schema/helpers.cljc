@@ -43,19 +43,15 @@
 (defn clause
   "Impl of [[metabase.mbql.schema.macros/defclause]] macro. Creates a Malli schema."
   [tag & arg-schemas]
-  [:multi
-   {:error/message (str "valid " tag " clause")
-    :dispatch      (fn [x]
-                     (when-not (is-clause? tag x)
-                       :invalid))}
-   [:invalid [:fn
-              {:error/message (str "not a " tag " clause")}
-              (constantly false)]]
-   [::mc/default (into
-                  [:catn
-                   ["tag" [:= tag]]]
-                  (for [[arg-name arg-schema] (partition 2 arg-schemas)]
-                    [arg-name (clause-arg-schema arg-schema)]))]])
+  [:and
+   [:fn
+    {:error/message (str "not a " tag " clause")}
+    (partial is-clause? tag)]
+   (into
+    [:catn
+     ["tag" [:= tag]]]
+    (for [[arg-name arg-schema] (partition 2 arg-schemas)]
+      [arg-name (clause-arg-schema arg-schema)]))])
 
 (defn- clause-tag [clause]
   (when (and (vector? clause)

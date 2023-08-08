@@ -150,9 +150,9 @@
   [:multi {:error/message "valid :absolute-datetime clause"
            :dispatch      (fn [x]
                             (cond
-                              (core/not (is-clause? :absolute-datetime x))       :invalid
-                              (mc/validate ::lib.schema.literal/date (second x)) :date
-                              :else                                              :datetime))}
+                              (core/not (is-clause? :absolute-datetime x)) :invalid
+                              (mr/validate RawDateLiteral (second x))      :date
+                              :else                                        :datetime))}
    [:invalid [:fn
               {:error/message "not an :absolute-datetime clause"}
               (constantly false)]]

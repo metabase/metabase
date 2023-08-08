@@ -995,3 +995,49 @@
                        (> num-stages 1)))
           (is (= "Previous results"
                  (lib/join-lhs-display-name query join-or-joinable))))))))
+
+(deftest ^:parallel join-condition-update-temporal-bucketing-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        products-created-at (meta/field-metadata :products :created-at)
+        orders-created-at (meta/field-metadata :orders :created-at)]
+    (is (=? [:= {}
+             [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+             [:field {:temporal-unit :year} (meta/id :products :created-at)]]
+            (lib.join/join-condition-update-temporal-bucketing
+              query
+              -1
+              (lib/= orders-created-at
+                     products-created-at)
+              :year)))
+    (is (=? [:= {}
+             [:field (complement :temporal-unit) (meta/id :orders :id)]
+             [:field {:temporal-unit :year} (meta/id :products :created-at)]]
+            (lib.join/join-condition-update-temporal-bucketing
+              query
+              -1
+              (lib/= (meta/field-metadata :orders :id)
+                     products-created-at)
+              :year)))
+    (testing "removing with nil"
+      (is (=? [:= {}
+               [:field (complement :temporal-unit) (meta/id :orders :created-at)]
+               [:field (complement :temporal-unit) (meta/id :products :created-at)]]
+              (lib.join/join-condition-update-temporal-bucketing
+                query
+                -1
+                (lib.join/join-condition-update-temporal-bucketing
+                  query
+                  -1
+                  (lib/= orders-created-at
+                         products-created-at)
+                  :year)
+                nil))))
+    (is (thrown-with-msg?
+          #?(:clj AssertionError :cljs :default)
+          #"Non-standard join condition."
+          (lib.join/join-condition-update-temporal-bucketing
+            query
+            -1
+            (lib/= (lib/+ (meta/field-metadata :orders :id) 1)
+                   products-created-at)
+            :year)))))

@@ -729,6 +729,20 @@
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
 
+(defn matching-locations
+  "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."
+  [form pred]
+  (loop [stack [[[] form]], matches []]
+    (if-let [[loc form :as top] (peek stack)]
+      (let [stack (pop stack)
+            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
+        (cond
+          (pred form)        (recur stack                                  (conj matches top))
+          (map? form)        (recur (onto-stack form)                      matches)
+          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
+          :else              (recur stack                                  matches)))
+      matches)))
+
 #?(:clj
    (p/import-vars
     [mbql.match

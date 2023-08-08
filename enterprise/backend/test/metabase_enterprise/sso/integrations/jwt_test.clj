@@ -144,16 +144,17 @@
     (with-jwt-default-setup
       (doseq [redirect-uri ["https://badsite.com"
                             "//badsite.com"]]
-        (is (= "SSO is trying to do an open redirect to an untrusted site"
-               (saml-test/client
-                 :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
-                 :return_to redirect-uri
-                 :jwt (jwt/sign {:email      "rasta@metabase.com"
-                                 :first_name "Rasta"
-                                 :last_name  "Toucan"
-                                 :extra      "keypairs"
-                                 :are        "also present"}
-                                default-jwt-secret))))))))
+        (is (= "Invalid redirect URL"
+               (-> (saml-test/client
+                    :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                    :return_to redirect-uri
+                    :jwt (jwt/sign {:email      "rasta@metabase.com"
+                                    :first_name "Rasta"
+                                    :last_name  "Toucan"
+                                    :extra      "keypairs"
+                                    :are        "also present"}
+                                   default-jwt-secret))
+                   :message)))))))
 
 (deftest expired-jwt-test
   (testing "Check an expired JWT"

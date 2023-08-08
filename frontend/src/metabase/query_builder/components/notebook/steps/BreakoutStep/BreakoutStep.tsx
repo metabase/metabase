@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import QueryColumnPicker from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
-import { BreakoutColumnPicker } from "./BreakoutStep.styled";
 
 const breakoutTetherOptions = {
   attachment: "top left",
@@ -91,12 +91,13 @@ function BreakoutStep({
       tetherOptions={breakoutTetherOptions}
       renderName={renderBreakoutName}
       renderPopover={(breakout, breakoutIndex) => (
-        <BreakoutColumnPicker
+        <QueryColumnPicker
           query={topLevelQuery}
           stageIndex={stageIndex}
           columnGroups={getColumnGroups(breakoutIndex)}
           hasBinning
           hasTemporalBucketing
+          color="summarize"
           checkIsColumnSelected={item =>
             checkColumnSelected(item, breakoutIndex)
           }
