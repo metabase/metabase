@@ -69,8 +69,9 @@ describe("BucketPickerPopover", () => {
     const buckets = Lib.availableBinningStrategies(query, 0, numericColumn);
     await setupBinningPicker({ column: numericColumn });
 
-    // +1 for the "Don't bin" option
-    expect(screen.getAllByRole("menuitem")).toHaveLength(buckets.length + 1);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(
+      ["Don't bin", ...buckets].length,
+    );
     expect(screen.queryByText("More…")).not.toBeInTheDocument();
   });
 
