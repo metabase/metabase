@@ -9,7 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Collection Database Field FieldValues Metric Segment Table]]
    [metabase.models.database :as database :refer [protected-password]]
@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -666,7 +667,7 @@
                                            :result_metadata [{:name "col_name"}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
-                :id                 mbql.s/saved-questions-virtual-database-id
+                :id                 lib.schema.id/saved-questions-virtual-database-id
                 :features           ["basic-aggregations"]
                 :is_saved_questions true}
                (last (:data (mt/user-http-request :lucky :get 200 "database?saved=true")))))))
@@ -787,11 +788,11 @@
             (check-tables-not-included response (virtual-table-for-card bad-card)))))
 
       (testing "should work when there are no DBs that support nested queries"
-        (with-redefs [metabase.driver/database-supports? (constantly false)]
+        (with-redefs [driver/database-supports? (constantly false)]
           (is (nil? (fetch-virtual-database)))))
 
       (testing "should work when there are no DBs that support nested queries"
-        (with-redefs [metabase.driver/database-supports? (constantly false)]
+        (with-redefs [driver/database-supports? (constantly false)]
           (is (nil? (fetch-virtual-database)))))
 
       (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
@@ -814,7 +815,7 @@
     (t2.with-temp/with-temp [Card card (assoc (card-with-native-query "Birthday Card")
                                               :result_metadata [{:name "age_in_bird_years"}])]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))]
+                                           (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (schema= {:name               (s/eq "Saved Questions")
                       :id                 (s/eq -1337)
                       :is_saved_questions (s/eq true)
@@ -841,12 +842,12 @@
     (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
       (with-redefs [api.database/cards-virtual-tables (constantly [])]
         (is (= {:name               "Saved Questions"
-                :id                 mbql.s/saved-questions-virtual-database-id
+                :id                 lib.schema.id/saved-questions-virtual-database-id
                 :features           ["basic-aggregations"]
                 :is_saved_questions true
                 :tables             []}
                (mt/user-http-request :crowberto :get 200
-                                     (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))))
+                                     (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1117,7 +1118,7 @@
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
-        (let [schemas (set (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id)))]
+        (let [schemas (set (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" lib.schema.id/saved-questions-virtual-database-id)))]
           (is (contains? schemas "Everything else"))
           (is (contains? schemas "My Collection")))))
     (testing "null and empty schemas should both come back as blank strings"
@@ -1256,11 +1257,11 @@
                    :schema           "My Collection"
                    :description      nil}]
                  (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/schema/My Collection" mbql.s/saved-questions-virtual-database-id)))))
+                                       (format "database/%d/schema/My Collection" lib.schema.id/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
-                                               (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
+                                               (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
             (is (schema= [{:id               #"^card__\d+$"
                            :db_id            s/Int
                            :display_name     s/Str
@@ -1280,7 +1281,7 @@
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
+                                       (format "database/%d/schema/Coin Collection" lib.schema.id/saved-questions-virtual-database-id)))))))
     (testing "should work for the datasets in the 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1")
@@ -1303,11 +1304,11 @@
                    :schema           "My Collection"
                    :description      nil}]
                  (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/datasets/My Collection" mbql.s/saved-questions-virtual-database-id)))))
+                                       (format "database/%d/datasets/My Collection" lib.schema.id/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
-                                               (format "database/%d/datasets/%s" mbql.s/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
+                                               (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
             (is (schema= [{:id               #"^card__\d+$"
                            :db_id            s/Int
                            :display_name     s/Str
@@ -1326,7 +1327,7 @@
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
+                                       (format "database/%d/schema/Coin Collection" lib.schema.id/saved-questions-virtual-database-id)))))))
 
     (mt/with-temp* [Database [{db-id :id}]
                     Table    [_ {:db_id db-id, :schema nil, :name "t1"}]
@@ -1512,16 +1513,6 @@
                                                   :refresh-token                 protected-password})))))
 
 
-(deftest db-ids-with-deprecated-drivers-test
-  (mt/with-driver :driver-deprecation-test-legacy
-    (testing "GET /api/database/db-ids-with-deprecated-drivers"
-      (t2.with-temp/with-temp [Database {db-id :id} {:engine :driver-deprecation-test-legacy}]
-        (is (not-empty (filter #(= % db-id) (mt/user-http-request
-                                             :crowberto
-                                             :get
-                                             200
-                                             "database/db-ids-with-deprecated-drivers"))))))))
-
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
@@ -1647,6 +1638,17 @@
             (is (= {:database-enable-actions false}
                    (settings)))))))))
 
+(deftest log-an-error-if-contains-undefined-setting-test
+  (testing "should log an error message if database contains undefined settings"
+    (t2.with-temp/with-temp [Database {db-id :id} {:settings {:undefined-setting true}}]
+      (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+             (-> (mt/with-log-messages-for-level :error
+                   (testing "does not includes undefined keys by default"
+                     (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
+                                         :undefined-setting)))))
+                 first
+                 last))))))
+
 (deftest persist-database-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (mt/dataset test-data
@@ -1671,7 +1673,10 @@
                                                   :card_id     (:id card))))
               (is (true? (t2/select-one-fn (comp :persist-models-enabled :settings)
                                            Database
-                                           :id db-id))))
+                                           :id db-id)))
+              (is (true? (get-in (mt/user-http-request :crowberto :get 200
+                                                       (str "database/" db-id))
+                                 [:settings :persist-models-enabled]))))
             (testing "it's okay to trigger persist even though the database is already persisted"
               (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist")))))))))
 

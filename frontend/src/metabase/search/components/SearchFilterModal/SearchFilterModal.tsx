@@ -1,15 +1,17 @@
 import { t } from "ttag";
 import { useEffect, useMemo, useState } from "react";
+import _ from "underscore";
 import Modal from "metabase/components/Modal";
 import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter";
 import {
   FilterTypeKeys,
   SearchFilterComponent,
-  SearchFilterKeys,
   SearchFilters,
+  SearchFilterPropTypes,
 } from "metabase/search/types";
 import Button from "metabase/core/components/Button";
 import { Title, Flex } from "metabase/ui";
+import { SearchFilterKeys } from "metabase/search/constants";
 import {
   CreatedByFilter,
   CreatedAtFilter,
@@ -35,6 +37,20 @@ export const SearchFilterModal = ({
   onChangeFilters: (filters: SearchFilters) => void;
 }) => {
   const [output, setOutput] = useState<SearchFilters>(value);
+
+  const onOutputChange = (
+    key: FilterTypeKeys,
+    val: SearchFilterPropTypes[FilterTypeKeys],
+  ) => {
+    if (!val || val.length === 0) {
+      setOutput(_.omit(output, key));
+    } else {
+      setOutput({
+        ...output,
+        [key]: val,
+      });
+    }
+  };
 
   useEffect(() => {
     setOutput(value);
@@ -78,12 +94,7 @@ export const SearchFilterModal = ({
               key={key}
               data-testid={`${key}-search-filter`}
               value={output[key]}
-              onChange={val =>
-                setOutput({
-                  ...output,
-                  [key]: val,
-                })
-              }
+              onChange={value => onOutputChange(key, value)}
             />
           );
         })}

@@ -71,7 +71,7 @@ export function withJoinConditions(
  * Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
  * is the one that comes from the source Table/Card/previous stage of the query or a previous join.
  *
- * If you are changing the LHS of a condition for an existing join, pass in that existing join as `join-or-joinable` so
+ * If you are changing the LHS of a condition for an existing join, pass in that existing join as `joinOrJoinable` so
  * we can filter out the columns added by it (it doesn't make sense to present the columns added by a join as options
  * for its own LHS) or added by later joins (joins can only depend on things from previous joins). Otherwise you can
  * either pass in `nil` or the `Joinable` (Table or Card metadata) we're joining against when building a new
@@ -106,7 +106,7 @@ export function joinConditionLHSColumns(
 
 /**
  * Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
- * is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
+ * is the one that belongs to the thing being joined, `joinOrJoinable`, which can be something like a
  * TableMetadata, Saved Question/Model (CardMetadata), another query, etc. -- anything you can pass to `join-clause`.
  * You can also pass in an existing join.
  *
@@ -202,14 +202,50 @@ export function joinableColumns(
 }
 
 /**
- * Get the display name to use when rendering a join for whatever we are joining against (e.g. a Table or Card of some
- * sort). See #32015 for screenshot examples. For an existing join, pass in the join clause. When constructing a join,
- * pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata.
+ * Get the display name for whatever we are joining. See #32015 and #32764 for screenshot examples.
+ *
+ * The rules, copied from MLv1, are as follows:
+ *
+ * 1. If we have the LHS column for the first join condition, we should use display name for wherever it comes from.
+ *    E.g. if the join is
+ *
+ *    ```
+ *    JOIN whatever ON orders.whatever_id = whatever.id
+ *    ```
+ *
+ *    then we should display the join like this:
+ *
+ *   ```
+ *   +--------+   +----------+    +-------------+    +----------+
+ *   | Orders | + | Whatever | on | Orders      | =  | Whatever |
+ *   |        |   |          |    | Whatever ID |    | ID       |
+ *   +--------+   +----------+    +-------------+    +----------+
+ *   ```
+ *
+ *   1a. If `joinOrJoinable` is a join, we can take the condition LHS column from the join itself, since a join will
+ *       always have a condition.
+ *
+ *   1b. When building a join, you can optionally pass in `conditionLHSColumn` yourself.
+ *
+ * 2. If the condition LHS column is unknown, and this is the first join in the first stage of a query, and the query
+ *    uses a source Table, then use the display name for the source Table.
+ *
+ * 3. Otherwise use `Previous results`.
+ *
+ * This function needs to be usable while we are in the process of constructing a join in the context of a given stage,
+ * but also needs to work for rendering existing joins. Pass a join in for existing joins, or something [[Joinable]]
+ * for ones we are currently building.
  */
 export function joinLHSDisplayName(
   query: Query,
   stageIndex: number,
   joinOrJoinable?: JoinOrJoinable,
+  conditionLHSColumn?: ColumnMetadata,
 ): string {
-  return ML.join_lhs_display_name(query, stageIndex, joinOrJoinable);
+  return ML.join_lhs_display_name(
+    query,
+    stageIndex,
+    joinOrJoinable,
+    conditionLHSColumn,
+  );
 }

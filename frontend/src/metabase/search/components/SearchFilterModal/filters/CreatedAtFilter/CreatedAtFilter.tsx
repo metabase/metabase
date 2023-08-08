@@ -11,9 +11,8 @@ export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
   const [filter, setFilter] = useState(
     value != null ? dateParameterValueToMBQL(value, null) || [] : [],
   );
-  const onChangeThings = (balls, hello) => {
-    // console.log(balls, filterToUrlEncoded(hello));
-    console.log(balls, hello);
+  const onChangeThings = (test, hello) => {
+    console.log(test, hello);
   };
 
   return (

@@ -1,5 +1,6 @@
 (ns metabase.automagic-dashboards.rules
   "Validation, transformation to canonical form, and loading of heuristics."
+  (:gen-class)
   (:require
    [clojure.string :as str]
    [metabase.automagic-dashboards.populate :as populate]
@@ -7,6 +8,7 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [metabase.util.yaml :as yaml]
    [schema.coerce :as sc]

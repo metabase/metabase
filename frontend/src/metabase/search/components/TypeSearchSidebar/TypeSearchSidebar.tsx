@@ -1,60 +1,8 @@
 import { t } from "ttag";
 import { Flex } from "@mantine/core";
-import { IconName } from "metabase/core/components/Icon";
 import { TypeSidebarButton } from "metabase/search/components/TypeSearchSidebar/TypeSearchSidebar.styled";
 import { SearchModelType } from "metabase-types/api";
-
-const SEARCH_FILTERS: {
-  name: string;
-  icon: IconName;
-  filter: SearchModelType;
-}[] = [
-  {
-    name: t`Dashboards`,
-    filter: "dashboard",
-    icon: "dashboard",
-  },
-  {
-    name: t`Collections`,
-    filter: "collection",
-    icon: "folder",
-  },
-  {
-    name: t`Databases`,
-    filter: "database",
-    icon: "database",
-  },
-  {
-    name: t`Models`,
-    filter: "dataset",
-    icon: "model",
-  },
-  {
-    name: t`Raw Tables`,
-    filter: "table",
-    icon: "table",
-  },
-  {
-    name: t`Questions`,
-    filter: "card",
-    icon: "bar",
-  },
-  {
-    name: t`Pulses`,
-    filter: "pulse",
-    icon: "pulse",
-  },
-  {
-    name: t`Metrics`,
-    filter: "metric",
-    icon: "sum",
-  },
-  {
-    name: t`Segments`,
-    filter: "segment",
-    icon: "segment",
-  },
-];
+import { SEARCH_FILTERS } from "metabase/search/constants";
 
 export const TypeSearchSidebar = ({
   availableModels,
@@ -67,7 +15,7 @@ export const TypeSearchSidebar = ({
 }) => {
   const searchModels = [
     {
-      name: t`All items`,
+      name: t`All results`,
       icon: "search",
       filter: null,
     },

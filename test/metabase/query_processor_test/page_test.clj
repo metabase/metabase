@@ -5,7 +5,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
-(deftest page-test
+(deftest ^:parallel page-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Test that we can get \"pages\" of results."
       (letfn [(page-is [expected page-num]

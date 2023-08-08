@@ -8,6 +8,7 @@ import { SearchFilterView } from "metabase/search/components/SearchFilterModal/f
 
 import type { SearchFilterComponent } from "metabase/search/types";
 import { TypeCheckboxGroupWrapper } from "metabase/search/components/SearchFilterModal/filters/TypeFilter.styled";
+import { enabledSearchTypes } from "metabase/search/constants";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 
@@ -21,6 +22,9 @@ export const TypeFilter: SearchFilterComponent<"type"> = ({
   });
 
   const availableModels = (metadata && metadata.available_models) ?? [];
+  const typeFilters = availableModels.filter(model =>
+    enabledSearchTypes.includes(model),
+  );
 
   return isLoading ? (
     <LoadingSpinner />
@@ -34,7 +38,7 @@ export const TypeFilter: SearchFilterComponent<"type"> = ({
           <TypeCheckboxGroupWrapper>{children}</TypeCheckboxGroupWrapper>
         )}
       >
-        {availableModels.map(model => (
+        {typeFilters.map(model => (
           <Checkbox
             key={model}
             value={model}

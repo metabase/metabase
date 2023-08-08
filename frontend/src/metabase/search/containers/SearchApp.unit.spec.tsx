@@ -1,4 +1,3 @@
-import querystring from "querystring";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import SearchApp from "metabase/search/containers/SearchApp";
@@ -6,22 +5,26 @@ import { Route } from "metabase/hoc/Title";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupTableEndpoints,
 } from "__support__/server-mocks";
 import {
   createMockDatabase,
   createMockSearchResult,
+  createMockTable,
 } from "metabase-types/api/mocks";
 import { SearchResult } from "metabase-types/api";
 
 import { SearchFilters } from "metabase/search/types";
+import { checkNotNull } from "metabase/core/utils/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({
   PAGE_SIZE: 3,
 }));
 
-const TRANSLATED_SIDEBAR_NAMES: Record<string, string> = {
-  "All results": "All results",
+const ALL_RESULTS_SIDEBAR_NAME = "All results";
+
+const SIDEBAR_NAMES: Record<string, string> = {
   collection: "Collections",
   dashboard: "Dashboards",
   database: "Databases",
@@ -34,15 +37,15 @@ const TRANSLATED_SIDEBAR_NAMES: Record<string, string> = {
 };
 
 const TEST_ITEMS: Partial<SearchResult>[] = [
-  { name: "Card", model: "card" },
-  { name: "Collection", model: "collection" },
-  { name: "Dashboard", model: "dashboard" },
-  { name: "Database", model: "database" },
-  { name: "Dataset", model: "dataset" },
-  { name: "Table", model: "table" },
-  { name: "Pulse", model: "pulse" },
-  { name: "Segment", model: "segment" },
-  { name: "Metric", model: "metric" },
+  { name: "Test Card", model: "card" },
+  { name: "Test Collection", model: "collection" },
+  { name: "Test Dashboard", model: "dashboard" },
+  { name: "Test Database", model: "database" },
+  { name: "Test Dataset", model: "dataset" },
+  { name: "Test Table", model: "table" },
+  { name: "Test Pulse", model: "pulse" },
+  { name: "Test Segment", model: "segment" },
+  { name: "Test Metric", model: "metric" },
 ];
 
 const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
@@ -50,25 +53,31 @@ const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
 );
 
 const TEST_DATABASE = createMockDatabase();
+const TEST_TABLE = createMockTable();
 
 const setup = async ({
   searchText,
   searchFilters = {},
   searchItems = TEST_SEARCH_RESULTS,
 }: {
-  searchText?: string;
+  searchText: string;
   searchFilters?: SearchFilters;
   searchItems?: SearchResult[];
 }) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems);
+  setupTableEndpoints(TEST_TABLE);
 
   // for testing the hydration of search text and filters on page load
   const params = {
     ...searchFilters,
     q: searchText,
   };
-  const searchParams = querystring.stringify(params);
+
+  const searchParams = new URLSearchParams(
+    params as unknown as Record<string, string>,
+  ).toString();
+
   const initialRoute = searchParams ? `/search?${searchParams}` : `/search`;
 
   const { history } = renderWithProviders(
@@ -84,7 +93,7 @@ const setup = async ({
   });
 
   return {
-    history,
+    history: checkNotNull(history),
   };
 };
 
@@ -149,38 +158,34 @@ describe("SearchApp", () => {
   });
 
   describe("filtering search results with the sidebar", () => {
-    it("should reload with filtered searches when a type on the right sidebar is clicked without changing URL", async () => {
-      const { history } = await setup({
-        searchText: "Card",
-      });
+    it.each(TEST_SEARCH_RESULTS)(
+      "should reload with filtered searches when type=$model on the right sidebar is clicked without changing URL",
+      async ({ model, name }) => {
+        const { history } = await setup({
+          searchText: "Test",
+        });
 
-      let url = history?.getCurrentLocation();
-      const { pathname: prevPathname, search: prevSearch } = url ?? {};
+        let url = history.getCurrentLocation();
+        const { pathname: prevPathname, search: prevSearch } = url ?? {};
 
-      expect(screen.getAllByTestId("type-sidebar-item")).toHaveLength(2);
+        const sidebarItems = screen.getAllByTestId("type-sidebar-item");
+        expect(sidebarItems).toHaveLength(10);
+        expect(sidebarItems[0]).toHaveTextContent(ALL_RESULTS_SIDEBAR_NAME);
 
-      const expectedSidebarLabels = ["All items", "Questions"];
-      screen.getAllByTestId("type-sidebar-item").forEach(item => {
-        expect(expectedSidebarLabels).toContain(item.textContent);
-      });
+        const sidebarItem = screen.getByText(SIDEBAR_NAMES[model]);
+        userEvent.click(sidebarItem);
+        url = history.getCurrentLocation();
+        const { pathname, search } = url ?? {};
+        expect(pathname).toEqual(prevPathname);
+        expect(search).toEqual(prevSearch);
 
-      userEvent.click(screen.getByText("Questions"));
-
-      await waitFor(() => {
-        expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-      });
-
-      expect(screen.getByText('Results for "Card"')).toBeInTheDocument();
-      expect(screen.getByTestId("search-result-item")).toBeInTheDocument();
-      expect(screen.getByTestId("search-result-item-name")).toHaveTextContent(
-        "Card",
-      );
-
-      url = history?.getCurrentLocation();
-      const { pathname, search } = url ?? {};
-      expect(pathname).toEqual(prevPathname);
-      expect(search).toEqual(prevSearch);
-    });
+        const searchResultItem = await screen.findByTestId(
+          "search-result-item",
+        );
+        expect(searchResultItem).toBeInTheDocument();
+        expect(searchResultItem).toHaveTextContent(name);
+      },
+    );
   });
 
   describe("hydrating search filters from URL", () => {
@@ -199,13 +204,12 @@ describe("SearchApp", () => {
         expect(screen.getByTestId("search-result-item-name")).toHaveTextContent(
           name,
         );
-        expect(screen.getAllByTestId("type-sidebar-item")).toHaveLength(2);
-        expect(screen.getByTestId("type-sidebar")).toHaveTextContent(
-          "All items",
-        );
-        expect(screen.getByTestId("type-sidebar")).toHaveTextContent(
-          TRANSLATED_SIDEBAR_NAMES[model],
-        );
+
+        const sidebarItems = screen.getAllByTestId("type-sidebar-item");
+
+        expect(sidebarItems).toHaveLength(2);
+        expect(sidebarItems[0]).toHaveTextContent(ALL_RESULTS_SIDEBAR_NAME);
+        expect(sidebarItems[1]).toHaveTextContent(SIDEBAR_NAMES[model]);
       },
     );
   });

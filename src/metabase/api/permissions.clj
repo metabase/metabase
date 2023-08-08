@@ -24,8 +24,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -136,8 +134,7 @@
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/group"
+(api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
   Group manager is only available if `advanced-permissions` is enabled and returns only groups that user
@@ -158,29 +155,28 @@
     (-> (ordered-groups mw.offset-paging/*limit* mw.offset-paging/*offset* query)
         (t2/hydrate :member_count))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/group/:id"
+(api/defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."
   [id]
+  {id ms/PositiveInt}
   (validation/check-group-manager id)
   (api/check-404
    (-> (t2/select-one PermissionsGroup :id id)
        (t2/hydrate :members))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/group"
+(api/defendpoint POST "/group"
   "Create a new `PermissionsGroup`."
   [:as {{:keys [name]} :body}]
-  {name su/NonBlankString}
+  {name ms/NonBlankString}
   (api/check-superuser)
   (first (t2/insert-returning-instances! PermissionsGroup
                                          :name name)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/group/:group-id"
+(api/defendpoint PUT "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
-  {name su/NonBlankString}
+  {group-id ms/PositiveInt
+   name     ms/NonBlankString}
   (validation/check-manager-of-group group-id)
   (api/check-404 (t2/exists? PermissionsGroup :id group-id))
   (t2/update! PermissionsGroup group-id
@@ -188,10 +184,10 @@
   ;; return the updated group
   (t2/select-one PermissionsGroup :id group-id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/group/:group-id"
+(api/defendpoint DELETE "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [group-id]
+  {group-id ms/PositiveInt}
   (validation/check-manager-of-group group-id)
   (t2/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
@@ -283,8 +279,7 @@
 
 ;;; ------------------------------------------- Execution Endpoints -------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/execution/graph"
+(api/defendpoint GET "/execution/graph"
   "Fetch a graph of execution permissions."
   []
   (api/check-superuser)
