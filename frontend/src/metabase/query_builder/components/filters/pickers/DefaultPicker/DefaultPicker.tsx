@@ -44,8 +44,8 @@ const defaultLayoutPropTypes = {
 
 export interface DefaultPickerProps {
   filter: Filter;
-  setValue: (index: number, value: any) => void;
-  setValues: (values: any[]) => void;
+  setValue: (index: number, value: RowValue) => void;
+  setValues: (values: RowValue[]) => void;
   onCommit: (filter: Filter) => void;
   className?: string;
   minWidth?: number | null;
