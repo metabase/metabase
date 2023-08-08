@@ -14,7 +14,7 @@ The solution to self-service customer analytics: embed the full Metabase app in 
 
 ## [Static embedding](./static-embedding.md)
 
-Also known as Static Embedding, Static embedding offers drill-through with custom destinations, so you can define what happens when people click on a chart, like sending people to another chart or URL–all while securing the underlying data.
+Also known as Signed Embedding, Static embedding offers drill-through with custom destinations, so you can define what happens when people click on a chart, like sending people to another chart or URL–all while securing the underlying data.
 
 ## [Parameters for signed embeds](./static-embedding-parameters.md)
 

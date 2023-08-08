@@ -12,7 +12,7 @@ In general, embedding works by displaying a Metabase URL inside an iframe on you
 
 Signed embeds can't be used with [data sandboxes](../permissions/data-sandboxes.md) or [auditing tools](../usage-and-performance-tools/audit.md) because signed JWTs don't create user sessions (server-side sessions).
 
-To restrict data in signed embeds for specific people or groups, set up [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-signed-embed) instead.
+To restrict data in static embeds for specific people or groups, set up [locked parameters](./static-embedding-parameters.md#restricting-data-in-a-signed-embed) instead.
 
 ## How static embedding works
 
@@ -148,7 +148,7 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 
 ## Further reading
 
-- [Parameters for signed embeds](./static-embedding-parameters.md).
+- [Parameters for static embeds](./static-embedding-parameters.md).
 - [Reference apps repo](https://github.com/metabase/embedding-reference-apps).
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
 - [Publishing data visualizations to the web](https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards).
