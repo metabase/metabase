@@ -12,7 +12,7 @@ import { ChartGoal } from "../../types/settings";
 import { ContinuousScaleType, Range } from "../../types/scale";
 
 import { RowChartTheme, Series, StackOffset } from "./types";
-import { getComboChartOptions } from "./options";
+import { getComboChartOptions, getStackedDataValue } from "./options";
 
 const MIN_BAR_HEIGHT = 24;
 
@@ -67,7 +67,7 @@ export const ComboChart2 = <TDatum,>({
     return getComboChartOptions();
   }, []);
 
-  const chartRef = useRef<any>(null);
+  const chartRef = useRef<echarts.EChartsType | null>(null);
 
   useEffect(() => {
     chartRef.current = echarts.init(chartRoot.current, null, {
@@ -83,7 +83,44 @@ export const ComboChart2 = <TDatum,>({
     });
 
     chartRef.current.on("mouseover", e => {
+      console.log("mouseover", e);
+      if (e.componentType !== "series") {
+        return;
+      }
+
+      console.log("data", e.name, e.data);
+
+      const [x, y] = chartRef.current?.convertToPixel(
+        { seriesName: e.seriesName },
+        [
+          e.name,
+          getStackedDataValue({
+            seriesIndex: e.seriesIndex,
+            dataIndex: e.dataIndex,
+          }),
+        ],
+      );
+      console.log("convertToPixel", x, y);
+
+      chartRef.current.setOption({
+        graphic: {
+          type: "circle",
+          shape: {
+            cx: x,
+            cy: y,
+            r: 10,
+          },
+          style: {
+            fill: "red",
+          },
+        },
+      });
+
       onHover(e.event.event);
+    });
+
+    chartRef.current.getZr().on("mousemove", e => {
+      console.log("zrender event", e);
     });
 
     chartRef.current.on("mouseout", e => {
@@ -115,6 +152,28 @@ export const ComboChart2 = <TDatum,>({
 
     chartRef.current.resize({ width, height });
   }, [width, height]);
+
+  // if (chartRef.current) {
+  //   const [x, y] = chartRef.current.convertToPixel(
+  //     { seriesId: "1" },
+  //     [500, 1000],
+  //   );
+  //   chartRef.current.setOption({
+  //     series: [
+  //       {
+  //         id: "1",
+  //         markPoint: {
+  //           symbol: "circle",
+  //           symbolSize: 5,
+  //           style: { color: "red" },
+  //           data: [{ coord: [x, y] }],
+  //         },
+  //       },
+  //     ],
+  //   });
+
+  //   // console.log("convertToPixel", x, y);
+  // }
 
   return <div ref={chartRoot} />;
 };
