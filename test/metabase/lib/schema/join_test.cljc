@@ -10,12 +10,10 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel join-schema-test
-  (is (=? {:stages [["end of input"]]}
+  (is (=? {:stages ["end of input"]}
           (mu.humanize/humanize (mc/explain ::lib.schema.join/join {:stages []}))))
   ;; not sure why these errors are repeated.
   (is (=? {:stages [{:joins [{:stages [{:lib/type ["missing required key"
-                                                   "invalid dispatch value"
-                                                   "missing required key"
                                                    "invalid dispatch value"]}]}]}]}
           (mu.humanize/humanize (mc/explain ::lib.schema/query {:stages [{:lib/type :mbql.stage/mbql
                                                                           :joins    [{:lib/type :mbql/join

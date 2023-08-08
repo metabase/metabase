@@ -7,9 +7,11 @@
    [clojure.data :as data]
    [clojure.test :as t]
    [clojure.walk :as walk]
+   [metabase.test-runner.assert-exprs.approximately-equal-clj]
    [metabase.test-runner.assert-exprs.malli-equals]))
 
-(comment metabase.test-runner.assert-exprs.malli-equals/keep-me)
+(comment metabase.test-runner.assert-exprs.approximately-equal-clj/keep-me
+         metabase.test-runner.assert-exprs.malli-equals/keep-me)
 
 (defn derecordize
   "Convert all record types in `form` to plain maps, so tests won't fail."
