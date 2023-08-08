@@ -175,7 +175,7 @@ export const SaveQuestionModal = ({
 
   return (
     <CreateCollectionOnTheGo>
-      {(resumedValues: any, onClickNewCollection: OnClickNewCollection) => (
+      {(resumedValues, onClickNewCollection) => (
         <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
           <FormProvider
             initialValues={{ ...initialValues, ...resumedValues }}

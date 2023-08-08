@@ -1,34 +1,40 @@
 import { useState, useCallback, ReactElement } from "react";
+import type { FormikValues } from "formik";
 import { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 
+export interface Values extends FormikValues {
+  collection_id: CollectionId;
+}
+
 interface State {
   enabled: boolean;
-  resumedValues: any;
+  resumedValues?: Values;
   openCollectionId?: CollectionId;
 }
 
 export type OnClickNewCollection = (
-  resumedValues: any,
+  resumedValues: Values,
   openCollectionId: CollectionId,
 ) => void;
 
-interface Props {
-  children: (
-    resumedValues: any,
-    onClickNewCollection: OnClickNewCollection,
-  ) => ReactElement;
-}
+type RenderChildFn = (
+  resumedValues: Values | undefined,
+  onClickNewCollection: OnClickNewCollection,
+) => ReactElement;
 
-export function CreateCollectionOnTheGo({ children }: Props) {
+export function CreateCollectionOnTheGo({
+  children,
+}: {
+  children: RenderChildFn;
+}) {
   const [state, setState] = useState<State>({
     enabled: false,
-    resumedValues: {},
   });
   const { enabled, openCollectionId, resumedValues } = state;
 
   const onClickNewCollection = useCallback<OnClickNewCollection>(
-    (resumedValues: any, openCollectionId: CollectionId) =>
+    (resumedValues, openCollectionId) =>
       setState({ ...state, enabled: true, resumedValues, openCollectionId }),
     [state, setState],
   );

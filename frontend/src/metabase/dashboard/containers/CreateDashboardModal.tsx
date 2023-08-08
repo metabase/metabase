@@ -4,10 +4,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import type { LocationDescriptor } from "history";
 
-import {
-  CreateCollectionOnTheGo,
-  OnClickNewCollection,
-} from "metabase/containers/CreateCollectionOnTheGo";
+import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
 import ModalContent from "metabase/components/ModalContent";
 
 import * as Urls from "metabase/lib/urls";
@@ -54,7 +51,7 @@ function CreateDashboardModal({
 
   return (
     <CreateCollectionOnTheGo>
-      {(resumedValues: any, onClickNewCollection: OnClickNewCollection) => (
+      {(resumedValues, onClickNewCollection) => (
         <ModalContent title={t`New dashboard`} onClose={onClose}>
           <CreateDashboardForm
             {...props}

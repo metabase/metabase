@@ -16,7 +16,10 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
-import type { OnClickNewCollection } from "metabase/containers/CreateCollectionOnTheGo";
+import type {
+  OnClickNewCollection,
+  Values,
+} from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -104,7 +107,7 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
-  const { values } = useFormikContext();
+  const { values } = useFormikContext<Values>();
   const [openCollectionId, setOpenCollectionId] =
     useState<CollectionId>("root");
 
