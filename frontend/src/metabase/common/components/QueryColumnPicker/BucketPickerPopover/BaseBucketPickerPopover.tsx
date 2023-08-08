@@ -12,7 +12,7 @@ import {
   SelectListItem,
 } from "./BaseBucketPickerPopover.styled";
 
-const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
+export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
 
 type NoBucket = null;
 
