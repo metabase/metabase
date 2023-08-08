@@ -4,18 +4,19 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.common :as api]
    [metabase.api.search :as api.search]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
             DashboardCard Database Metric PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
+   [metabase.models.collection :as collection]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.search.config :as search-config]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.search.config :as search.config]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -63,7 +64,7 @@
   (merge
    {:table_id true, :database_id true}
    (t2/select-one [Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
-     :id (mt/id :checkins))))
+                  :id (mt/id :checkins))))
 
 (defn- sorted-results [results]
   (->> results
@@ -134,7 +135,8 @@
                                                   (assoc action-model-params :collection_id (u/the-id coll)))]
                     Action      [{action-id :id
                                   :as action}   (merge (data-map "action %s action")
-                                                 {:type :query, :model_id (u/the-id action-model)})]
+                                                       {:type :query :model_id (u/the-id action-model)
+                                                        :creator_id  (mt/user->id :rasta)})]
                     QueryAction [_qa (query-action action-id)]
                     Card        [card           (coll-data-map "card %s card" coll)]
                     Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
@@ -239,7 +241,7 @@
                (search-request-data :crowberto :q "test"))))))
   (testing "It prioritizes exact matches"
     (with-search-items-in-root-collection "test"
-      (with-redefs [search-config/*db-max-results* 1]
+      (with-redefs [search.config/*db-max-results* 1]
         (is (= [test-collection]
                (search-request-data :crowberto :q "test collection"))))))
   (testing "It limits matches properly"
@@ -271,7 +273,7 @@
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3")))))))
 
-(deftest query-model-set
+(deftest archived-models-test
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
@@ -282,6 +284,44 @@
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
       (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
+
+(deftest query-model-set-test
+  (let [search-term "query-model-set"]
+    (with-search-items-in-root-collection search-term
+      (testing "should returns a list of models that search result will return"
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term)))))
+      (testing "return a subsets of model for created-by filter"
+        (is (= #{"dashboard" "dataset" "card" "action"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                          :q search-term
+                                          :created_by (mt/user->id :rasta))))))
+      (testing "return a subsets of model for verified filter"
+        (t2.with-temp/with-temp
+          [:model/Card       {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
+           :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+          (testing "when has both :official-collections and :content-verification features"
+            (premium-features-test/with-premium-features #{:official-collections :content-verification}
+              (mt/with-verified-cards [v-card-id]
+                (is (= #{"collection" "card"}
+                       (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                                  :q search-term
+                                                  :verified true)))))))
+          (testing "when has :official-collections feature only"
+            (premium-features-test/with-premium-features #{:official-collections}
+              (mt/with-verified-cards [v-card-id]
+                (is (= #{"collection"}
+                       (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                                  :q search-term
+                                                  :verified true)))))))
+
+          (testing "when has :content-verification feature only"
+           (premium-features-test/with-premium-features #{:content-verification}
+             (mt/with-verified-cards [v-card-id]
+               (is (= #{"card"}
+                      (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                                 :q search-term
+                                                 :verified true))))))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
@@ -359,69 +399,69 @@
                         (update row :name #(str/replace % "test" "test2"))))))
                    (search-request-data :rasta :q "test"))))))))
 
-  (testing "Users with access to multiple collections should see results from all collections they have access to"
-    (with-search-items-in-collection {coll-1 :collection} "test"
-      (with-search-items-in-collection {coll-2 :collection} "test2"
-        (mt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
-          (perms/grant-collection-read-permissions! group (u/the-id coll-1))
-          (perms/grant-collection-read-permissions! group (u/the-id coll-2))
-          (is (= (sorted-results
-                  (reverse
-                   (into
-                    (default-results-with-collection)
-                    (map (fn [row] (update row :name #(str/replace % "test" "test2")))
-                         (default-results-with-collection)))))
-                 (search-request-data :rasta :q "test")))))))
+ (testing "Users with access to multiple collections should see results from all collections they have access to"
+   (with-search-items-in-collection {coll-1 :collection} "test"
+     (with-search-items-in-collection {coll-2 :collection} "test2"
+       (mt/with-temp* [PermissionsGroup           [group]
+                       PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
+         (perms/grant-collection-read-permissions! group (u/the-id coll-1))
+         (perms/grant-collection-read-permissions! group (u/the-id coll-2))
+         (is (= (sorted-results
+                 (reverse
+                  (into
+                   (default-results-with-collection)
+                   (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+                        (default-results-with-collection)))))
+                (search-request-data :rasta :q "test")))))))
 
-  (testing "User should only see results in the collection they have access to"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (with-search-items-in-collection {coll-1 :collection} "test"
-        (with-search-items-in-collection _ "test2"
-          (mt/with-temp* [PermissionsGroup           [group]
-                          PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
-            (perms/grant-collection-read-permissions! group (u/the-id coll-1))
-            (is (= (sorted-results
-                    (reverse
-                     (into
-                      (default-results-with-collection)
-                      (map #(merge default-search-row % (table-search-results))
-                           [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-                            {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
-                   (search-request-data :rasta :q "test"))))))))
+ (testing "User should only see results in the collection they have access to"
+   (mt/with-non-admin-groups-no-root-collection-perms
+     (with-search-items-in-collection {coll-1 :collection} "test"
+       (with-search-items-in-collection _ "test2"
+         (mt/with-temp* [PermissionsGroup           [group]
+                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
+           (perms/grant-collection-read-permissions! group (u/the-id coll-1))
+           (is (= (sorted-results
+                   (reverse
+                    (into
+                     (default-results-with-collection)
+                     (map #(merge default-search-row % (table-search-results))
+                          [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
+                           {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
+                  (search-request-data :rasta :q "test"))))))))
 
-  (testing "Metrics on tables for which the user does not have access to should not show up in results"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [{table-id :id} {:db_id  db-id
-                                              :schema nil}]
-                    Metric   [_ {:table_id table-id
-                                 :name     "test metric"}]]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id)
-      (is (= []
-             (search-request-data :rasta :q "test")))))
+ (testing "Metrics on tables for which the user does not have access to should not show up in results"
+   (mt/with-temp* [Database [{db-id :id}]
+                   Table    [{table-id :id} {:db_id  db-id
+                                             :schema nil}]
+                   Metric   [_ {:table_id table-id
+                                :name     "test metric"}]]
+     (perms/revoke-data-perms! (perms-group/all-users) db-id)
+     (is (= []
+            (search-request-data :rasta :q "test")))))
 
-  (testing "Segments on tables for which the user does not have access to should not show up in results"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [{table-id :id} {:db_id  db-id
-                                              :schema nil}]
-                    Segment  [_ {:table_id table-id
-                                 :name     "test segment"}]]
-      (perms/revoke-data-perms! (perms-group/all-users) db-id)
-      (is (= []
-             (search-request-data :rasta :q "test")))))
+ (testing "Segments on tables for which the user does not have access to should not show up in results"
+   (mt/with-temp* [Database [{db-id :id}]
+                   Table    [{table-id :id} {:db_id  db-id
+                                             :schema nil}]
+                   Segment  [_ {:table_id table-id
+                                :name     "test segment"}]]
+     (perms/revoke-data-perms! (perms-group/all-users) db-id)
+     (is (= []
+            (search-request-data :rasta :q "test")))))
 
-  (testing "Databases for which the user does not have access to should not show up in results"
-    (mt/with-temp* [Database [db-1 {:name "db-1"}]
-                    Database [_db-2 {:name "db-2"}]]
-      (is (set/subset? #{"db-2" "db-1"}
-                       (->> (search-request-data-with sorted-results :rasta :q "db")
-                            (map :name)
-                            set)))
-      (perms/revoke-data-perms! (perms-group/all-users) (:id db-1))
-      (is (nil? ((->> (search-request-data-with sorted-results :rasta :q "db")
-                      (map :name)
-                      set)
-                 "db-1"))))))
+ (testing "Databases for which the user does not have access to should not show up in results"
+   (mt/with-temp* [Database [db-1 {:name "db-1"}]
+                   Database [_db-2 {:name "db-2"}]]
+     (is (set/subset? #{"db-2" "db-1"}
+                      (->> (search-request-data-with sorted-results :rasta :q "db")
+                           (map :name)
+                           set)))
+     (perms/revoke-data-perms! (perms-group/all-users) (:id db-1))
+     (is (nil? ((->> (search-request-data-with sorted-results :rasta :q "db")
+                     (map :name)
+                     set)
+                "db-1"))))))
 
 (deftest bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
@@ -500,21 +540,7 @@
                                  :model_id      (:id model)
                                  :model_name    (:name model)}}
                       (into {} (comp relevant (map (juxt :name normalize)))
-                            (search! "rom"))))))))))
-
-  (testing "Sandboxing inhibits searching indexes"
-    (binding [api/*current-user-id* (mt/user->id :rasta)]
-      (is (= [:and
-              [:inline [:= 1 1]]
-              [:or [:like [:lower :model-index-value.name] "%foo%"]]]
-             (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
-                                                                         :search-string "foo"
-                                                                         :current-user-perms #{"/"}})))
-      (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-        (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
-               (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
-                                                                           :search-string "foo"
-                                                                           :current-user-perms #{"/"}})))))))
+                            (search! "rom")))))))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
@@ -718,13 +744,17 @@
                                :name     "segment count test 2"}
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
-    (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (t2.execute/with-call-count [call-count]
-        (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
+        (#'api.search/search {:search-string      "count test"
+                              :archived?          false
+                              :models             search.config/all-models
+                              :current-user-perms #{"/"}
+                              :limit-int          100})
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
-        (is (= 7 (call-count)))))))
+        (is (= 10 (call-count)))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
@@ -744,3 +774,147 @@
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
+
+;; ------------------------------------------------ Filter Tests ------------------------------------------------ ;;
+
+(deftest filter-by-creator-test
+  (let [search-term "Created by Filter"]
+    (with-search-items-in-root-collection search-term
+      (t2.with-temp/with-temp
+        [:model/User      {user-id :id}      {:first_name "Explorer" :last_name "Curious"}
+         :model/Card      {card-id :id}      {:name (format "%s Card 1" search-term) :creator_id user-id}
+         :model/Card      {card-id-2 :id}    {:name (format "%s Card 2" search-term) :creator_id user-id
+                                              :collection_id (:id (collection/user->personal-collection user-id))}
+         :model/Card      {card-id-3 :id}    {:name (format "%s Card 3" search-term) :creator_id user-id :archived true}
+         :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :dataset true :creator_id user-id}
+         :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
+         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
+
+        (testing "sanity check that without search by created_by we have more results than if a filter is provided"
+          (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
+                 5)))
+
+        (testing "Able to filter by creator"
+          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id)]
+
+            (testing "only a subset of models are applicable"
+              (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
+
+            (testing "results contains only entities with the specified creator"
+              (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
+                       [card-id      "card"      "Created by Filter Card 1"]
+                       [card-id-2    "card"      "Created by Filter Card 2"]
+                       [model-id     "dataset"   "Created by Filter Dataset 1"]
+                       [action-id    "action"    "Created by Filter Action 1"]}
+                     (->> (:data resp)
+                          (map (juxt :id :model :name))
+                          set))))))
+
+        (testing "Works with archived filter"
+          (is (=? [{:model "card"
+                    :id     card-id-3
+                    :archived true}]
+                  (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :archived true)))))
+
+        (testing "Works with models filter"
+          (testing "return intersections of supported models with provided models"
+            (is (= #{"dashboard" "card"}
+                   (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "card" :models "dashboard")
+                        :data
+                        (map :model)
+                        set))))
+
+          (testing "return nothing if there is no intersection"
+            (is (= #{}
+                   (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "table" :models "database")
+                        :data
+                        (map :model)
+                        set)))))
+
+
+       (testing "respect the read permissions"
+         (let [resp (mt/user-http-request :rasta :get 200 "search" :q search-term :created_by user-id)]
+           (is (not (contains?
+                     (->> (:data resp)
+                          (filter #(= (:model %) "card"))
+                          (map :id)
+                          set)
+                     card-id-2)))))
+
+       (testing "error if creator_id is not an integer"
+         (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
+           (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))
+
+(deftest verified-filter-test
+  (let [search-term "Verified filter"]
+    (t2.with-temp/with-temp
+      [:model/Card       {v-card-id :id}     {:name (format "%s Verified Card" search-term)}
+       :model/Card       {_card-id :id}      {:name (format "%s Normal Card" search-term)}
+       :model/Card       {_un-v-card-id :id} {:name (format "%s Unverified Card" search-term)}
+       :model/Collection {v-coll-id :id}     {:name (format "%s Verified Collection" search-term) :authority_level "official"}
+       :model/Collection {_coll-id :id}      {:name (format "%s Normal Collection" search-term)}]
+
+      (mt/with-verified-cards [v-card-id]
+        (premium-features-test/with-premium-features #{:official-collections :content-verification}
+          (testing "Able to filter only verified items"
+            (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
+
+              (testing "do not returns duplicated verified cards"
+                (is (= 1 (->> resp
+                              :data
+                              (filter #(= {:model "card" :id v-card-id} (select-keys % [:model :id])))
+                              count))))
+
+              (testing "only a subset of models are applicable"
+                (is (= #{"card" "collection"} (set (:available_models resp)))))
+
+              (testing "results contains only verified entities"
+                (is (= #{[v-coll-id  "collection" "Verified filter Verified Collection"]
+                         [v-card-id  "card"       "Verified filter Verified Card"]}
+                       (->> (:data resp)
+                            (map (juxt :id :model :name))
+                            set))))))
+
+          (testing "Returns schema error if attempt to serach for non-verified items"
+            (is (= {:verified "nullable true"}
+                   (:errors (mt/user-http-request :crowberto :get 400 "search" :q "x" :verified false)))))
+
+          (testing "Works with models filter"
+            (testing "return intersections of supported models with provided models"
+              (is (= #{"card"}
+                     (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true :models "card" :models "dashboard")
+                          :data
+                          (map :model)
+                          set))))))
+
+        (premium-features-test/with-premium-features #{:official-collections}
+          (testing "Returns verified collection only if only :official-collections is enabled"
+            (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
+
+              (testing "only a subset of models are applicable"
+                (is (= #{"collection"} (set (:available_models resp)))))
+
+              (testing "results contains only verified entities"
+                (is (= #{[v-coll-id  "collection" "Verified filter Verified Collection"]}
+                       (->> (:data resp)
+                            (map (juxt :id :model :name))
+                            set)))))))
+
+        (premium-features-test/with-premium-features #{:content-verification}
+          (testing "Returns verified cards only if only :content-verification is enabled"
+            (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
+
+              (testing "only a subset of models are applicable"
+                (is (= #{"card"} (set (:available_models resp)))))
+
+              (testing "results contains only verified entities"
+                (is (= #{[v-card-id  "card"       "Verified filter Verified Card"]}
+                       (->> (:data resp)
+                            (map (juxt :id :model :name))
+                            set)))))))
+
+
+       (testing "error if doesn't have premium-features"
+         (premium-features-test/with-premium-features #{}
+           (is (= "Content Management or Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                  (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true)))))))))

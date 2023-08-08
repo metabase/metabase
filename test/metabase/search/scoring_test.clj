@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time :as t]
-   [metabase.search.config :as search-config]
+   [metabase.search.config :as search.config]
    [metabase.search.scoring :as scoring]))
 
 (defn- result-row
@@ -136,7 +136,7 @@
         (is (= (map :result items)
                (scoring/top-results items large xf)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (->> (+ small search-config/max-filtered-results)
+      (let [sorted-items (->> (+ small search.config/max-filtered-results)
                               range
                               reverse ;; descending order
                               (map (fn [i]
@@ -217,7 +217,7 @@
                   reverse
                   (map :id)))))
     (testing "it treats stale items as being equally old"
-      (let [stale search-config/stale-time-in-days]
+      (let [stale search.config/stale-time-in-days]
         (is (= [1 2 3 4]
                (->> [(item 1 (days-ago (+ stale 1)))
                      (item 2 (days-ago (+ stale 50)))

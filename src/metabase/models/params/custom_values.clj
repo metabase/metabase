@@ -11,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
-   [metabase.search.util :as search]
+   [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -26,13 +26,11 @@
   - [[value1], [value2]]
   - [[value2, label2], [value2, label2]] - we search using label in this case"
   [query values]
-  (let [normalized-query (search/normalize query)]
-    (filter (fn [v]
-              (str/includes? (search/normalize (if (= (count v) 1)
-                                                 (first v)
-                                                 (second v)))
-                             normalized-query))
-            values)))
+  (let [normalized-query (search.util/normalize query)]
+    (filter (fn [v] (str/includes? (search.util/normalize (if (= (count v) 1)
+                                                            (first v)
+                                                            (second v)))
+                                   normalized-query)) values)))
 
 (defn- static-list-values
   [{values-source-options :values_source_config :as _param} query]
