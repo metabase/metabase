@@ -52,17 +52,15 @@
 
   `wrap-result-forms?` will wrap the results parts of the pairs in a vector, so we do something like `(reduce concat)`
   on all of the results to return a sequence of matches for `match`."
-  {:style/indent 1}
   [fn-name patterns-and-results & {:keys [wrap-result-forms?]}]
-  (reduce
-   concat
-   (for [[pattern result] (partition 2 2 ['&match] patterns-and-results)]
-     [(generate-pattern pattern) (let [result (rewrite-recurs fn-name result)]
-                                   (if (or (not wrap-result-forms?)
-                                           (and (seq? result)
-                                                (= fn-name (first result))))
-                                     result
-                                     [result]))])))
+  (mapcat (fn [[pattern result]]
+            [(generate-pattern pattern) (let [result (rewrite-recurs fn-name result)]
+                                          (if (or (not wrap-result-forms?)
+                                                  (and (seq? result)
+                                                       (= fn-name (first result))))
+                                            result
+                                            [result]))])
+          (partition 2 2 ['&match] patterns-and-results)))
 
 (defn- skip-else-clause?
   "If the last pattern passed in was `_`, we can skip generating the default `:else` clause, because it will never
@@ -94,9 +92,9 @@
        some?
        ((fn ~match-fn-symb [~'&parents ~'&match]
           (match** [~'&match]
-            ~@(generate-patterns-and-results match-fn-symb patterns-and-results, :wrap-result-forms? true)
-            ~@(when-not (skip-else-clause? patterns-and-results)
-                [:else `(metabase.mbql.util.match.impl/match-in-collection ~match-fn-symb ~'&parents ~'&match)])))
+                   ~@(generate-patterns-and-results match-fn-symb patterns-and-results, :wrap-result-forms? true)
+                   ~@(when-not (skip-else-clause? patterns-and-results)
+                       [:else `(metabase.mbql.util.match.impl/match-in-collection ~match-fn-symb ~'&parents ~'&match)])))
         []
         ~form)))))
 
@@ -220,9 +218,9 @@
   (let [replace-fn-symb (gensym "replace-")]
     `((fn ~replace-fn-symb [~'&parents ~'&match]
         (match** [~'&match]
-          ~@(generate-patterns-and-results replace-fn-symb patterns-and-results, :wrap-result-forms? false)
-          ~@(when-not (skip-else-clause? patterns-and-results)
-              [:else `(metabase.mbql.util.match.impl/replace-in-collection ~replace-fn-symb ~'&parents ~'&match)])))
+                 ~@(generate-patterns-and-results replace-fn-symb patterns-and-results, :wrap-result-forms? false)
+                 ~@(when-not (skip-else-clause? patterns-and-results)
+                     [:else `(metabase.mbql.util.match.impl/replace-in-collection ~replace-fn-symb ~'&parents ~'&match)])))
       []
       ~form)))
 

@@ -1086,7 +1086,7 @@
                      :thursday
                      :friday
                      :saturday]]
-          (metabase.test/with-temporary-setting-values [start-of-week day]
+          (mt/with-temporary-setting-values [start-of-week day]
             (sql.qp/with-driver-honey-sql-version driver/*driver*
               (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
                                  vec

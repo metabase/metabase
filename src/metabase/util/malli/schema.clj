@@ -9,8 +9,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.password :as u.password]
-   [schema.core :as s]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
@@ -161,7 +160,7 @@
   "Schema for a valid Field for API usage."
   (mu/with-api-error-message
     [:fn (fn [k]
-           ((comp (complement (s/checker mbql.s/Field))
+           ((comp (mc/validator mbql.s/Field)
                   mbql.normalize/normalize-tokens) k))]
     (deferred-tru "value must an array with :field id-or-name and an options map")))
 
@@ -276,6 +275,28 @@
      [:card_id {:optional true} PositiveInt]
      [:value_field {:optional true} Field]
      [:label_field {:optional true} Field]]))
+
+(def RemappedFieldValue
+  "Has two components:
+    1. <value-of-field>          (can be anything)
+    2. <value-of-remapped-field> (must be a string)"
+  [:tuple :any :string])
+
+(def NonRemappedFieldValue
+  "Has one component: <value-of-field>"
+  [:tuple :any])
+
+(def FieldValuesList
+  "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
+  [:or
+   [:sequential RemappedFieldValue]
+   [:sequential NonRemappedFieldValue]])
+
+(def FieldValuesResult
+  "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
+  [:map
+   [:has_more_values :boolean]
+   [:values FieldValuesList]])
 
 #_(def ParameterSource
       (mc/schema

@@ -95,40 +95,39 @@
     ;; =>
     (fn [x] (inc x))"
   [parsed]
-  `(clojure.core/fn ~@(deparameterized-fn-tail parsed)))
+  `(core/fn ~@(deparameterized-fn-tail parsed)))
 
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
   use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
   true)
 
-(defn validate-input
-  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
-  explainer and throws an exception if the check fails."
-  [schema value]
+(defn- validate [schema value error-type]
   (when *enforce*
-    (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)]
-        (throw (ex-info (i18n/tru "Invalid input: {0}" (pr-str humanized))
-                        {:type      ::invalid-input
+    ;; `validate` is significantly faster than `explain` if `value` is actually valid.
+    (when-not (mr/validate schema value)
+      (let [error     (mr/explain schema value)
+            humanized (me/humanize error)]
+        (throw (ex-info (case error-type
+                          ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
+                          ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                        {:type      error-type
                          :error     error
                          :humanized humanized
                          :schema    schema
                          :value     value}))))))
 
+(defn validate-input
+  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
+  explainer and throws an exception if the check fails."
+  [schema value]
+  (validate schema value ::invalid-input))
+
 (defn validate-output
   "Impl for [[metabase.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
   and throws an exception if the check fails. Returns validated value."
   [schema value]
-  (when *enforce*
-    (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)]
-        (throw (ex-info (i18n/tru "Invalid output: {0}" (pr-str humanized))
-                        {:type      ::invalid-output
-                         :error     error
-                         :humanized humanized
-                         :schema    schema
-                         :value     value})))))
+  (validate schema value ::invalid-output)
   value)
 
 (defn- varargs-schema? [[_cat & args :as _input-schema]]
@@ -159,7 +158,7 @@
         schemas   (if (varargs-schema? input-schema)
                     (concat (butlast schemas) [[:maybe (last schemas)]])
                     schemas)]
-    (->> (map (clojure.core/fn [arg-name schema]
+    (->> (map (core/fn [arg-name schema]
                 ;; 1. Skip checks against `:any` schema, there is no situation where it would fail.
                 ;;
                 ;; 2. Skip checks against the default varargs schema, there is no situation where [:maybe [:* :any]] is
@@ -214,7 +213,7 @@
                     (fn [x y] (+ 1 2)))"
   [parsed]
   `(let [~'&f ~(deparameterized-fn-form parsed)]
-     (clojure.core/fn ~@(instrumented-fn-tail (fn-schema parsed)))))
+     (core/fn ~@(instrumented-fn-tail (fn-schema parsed)))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]]. A form like
