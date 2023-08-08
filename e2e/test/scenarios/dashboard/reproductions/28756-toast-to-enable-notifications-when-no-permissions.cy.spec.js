@@ -4,11 +4,17 @@ import _ from "underscore";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { restore, undoToast, visitDashboard } from "e2e/support/helpers";
 
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
+
 const UNRESTRICTED_COLLECTION_NAME = "Unrestricted collection";
 const RESTRICTED_COLLECTION_NAME = "Restricted collection";
+
 const ADMIN_GROUP_ID = "2";
-const TOAST_TIMEOUT = 20000;
+
+const TOAST_TIMEOUT_SAFETY_MARGIN = 1000;
+const TOAST_TIMEOUT = DASHBOARD_SLOW_TIMEOUT + TOAST_TIMEOUT_SAFETY_MARGIN;
 const TOAST_MESSAGE =
   "Would you like to be notified when this dashboard is done loading?";
 
