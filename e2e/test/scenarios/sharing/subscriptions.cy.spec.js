@@ -71,7 +71,12 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByRole("link", { name: /configure Slack/i });
     });
 
-    it("should not show subscriptions button for non-admin users", () => {
+    it("should not show subscriptions button for non-admin users, but should show for admin users", () => {
+      // should show for admins
+      openDashboardSubscriptions();
+      cy.findByLabelText("subscriptions").should("exist");
+
+      // should not show for non-admins
       cy.signInAsNormalUser();
       visitDashboard(1);
 
@@ -121,7 +126,15 @@ describe("scenarios > dashboard > subscriptions", () => {
         popover().isRenderedWithinViewport();
       });
 
-      it("should forward non-admin users to add email form", () => {
+      it("should forward non-admin users to add email form, but should not forward for admin users", () => {
+        // should show options for admin
+        openDashboardSubscriptions();
+        sidebar().within(() => {
+          cy.findByText("Email it").should("exist");
+          cy.findByText("Send it to Slack").should("exist");
+        });
+
+        // should forward to email form for non-admins
         cy.signInAsNormalUser();
         openDashboardSubscriptions();
 
@@ -149,7 +162,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       it("should forward non-admin users to add email form when clicking add", () => {
         cy.signInAsNormalUser();
-
         openDashboardSubscriptions(1);
         sidebar()
           .findByPlaceholderText("Enter user names or email addresses")
@@ -159,7 +171,6 @@ describe("scenarios > dashboard > subscriptions", () => {
         clickButton("Done");
 
         sidebar().findByLabelText("add icon").click();
-
         sidebar().findByText("Email this dashboard").should("exist");
       });
     });
@@ -413,11 +424,38 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
     });
 
-    it("should forward non-admin users to add slack form", () => {
+    it("should forward non-admin users to add slack form, but should not forward admin users", () => {
+      // should show options for admin
+      openDashboardSubscriptions();
+      sidebar().within(() => {
+        cy.findByText("Email it").should("exist");
+        cy.findByText("Send it to Slack").should("exist");
+      });
+
+      // should forward for non-admins
       cy.signInAsNormalUser();
       openDashboardSubscriptions();
 
       sidebar().findByText("Send this dashboard to Slack").should("exist");
+    });
+  });
+
+  describe("with slack and email set up", { tags: "@external" }, () => {
+    describe("with no existing subscriptions", () => {
+      beforeEach(() => {
+        setupSMTP();
+        mockSlackConfigured();
+      });
+
+      it("should not forward non-admins to creation form ", () => {
+        cy.signInAsNormalUser();
+        openDashboardSubscriptions();
+
+        sidebar().within(() => {
+          cy.findByText("Email it").should("exist");
+          cy.findByText("Send it to Slack").should("exist");
+        });
+      });
     });
   });
 
