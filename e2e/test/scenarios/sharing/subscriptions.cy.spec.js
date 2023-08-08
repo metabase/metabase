@@ -11,7 +11,6 @@ import {
   addOrUpdateDashboardCard,
   addTextBox,
   setTokenFeatures,
-  main,
   emailSubscriptionRecipients,
   openEmailPage,
   setupSubscriptionWithRecipient,
@@ -599,10 +598,9 @@ function openRecipientsWithUserVisibilitySetting(setting) {
   cy.signInAsNormalUser();
   openDashboardSubscriptions();
 
-  main().within(() => {
-    cy.findByText("Email it").click();
-    cy.findByPlaceholderText("Enter user names or email addresses").click();
-  });
+  sidebar()
+    .findByPlaceholderText("Enter user names or email addresses")
+    .click();
 }
 
 function addParametersToDashboard() {
