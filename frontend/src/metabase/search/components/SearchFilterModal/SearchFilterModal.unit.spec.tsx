@@ -29,7 +29,6 @@ const TestSearchFilterModal = ({
 };
 
 const TEST_TYPES: Array<SearchModelType> = [
-  "action",
   "card",
   "collection",
   "dashboard",
@@ -84,6 +83,21 @@ describe("SearchFilterModal", () => {
       .forEach(checkbox => {
         expect(checkbox).toBeChecked();
       });
+  });
+
+  it("should not populate filter object with key if key has no value", async () => {
+    const { onChangeFilters } = await setup({
+      initialFilters: TEST_INITIAL_FILTERS,
+    });
+    const typeFilter = screen.getByTestId("type-search-filter");
+    within(typeFilter)
+      .getAllByRole("checkbox")
+      .forEach(checkbox => {
+        userEvent.click(checkbox);
+      });
+    userEvent.click(screen.getByText("Apply all filters"));
+
+    expect(onChangeFilters).toHaveBeenCalledWith({});
   });
 
   it("should return all selected filters when `Apply all filters` is clicked", async () => {

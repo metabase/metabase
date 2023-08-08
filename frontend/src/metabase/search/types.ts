@@ -17,7 +17,7 @@ export interface WrappedResult extends SearchResult {
 
 export type TypeFilterProps = SearchModelType[];
 
-type SearchFilterPropTypes = {
+export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
 };
 
