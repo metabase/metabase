@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [distinct])
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.types]
    [metabase.util.malli.registry :as mr]))
 

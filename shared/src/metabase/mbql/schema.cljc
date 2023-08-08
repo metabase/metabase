@@ -748,13 +748,12 @@
   [:maybe
    {:error/message "equality comparable"}
    [:or
-    absolute-datetime ; NOCOMMIT
     :boolean
     number?
     :string
     TemporalLiteral
-    #_FieldOrExpressionRefOrRelativeDatetime
-    #_ExpressionArg
+    FieldOrExpressionRefOrRelativeDatetime
+    ExpressionArg
     value]])
 
 (def ^:private EqualityComparable
