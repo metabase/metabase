@@ -42,7 +42,8 @@ export const SelectListItem = styled(BaseSelectList.Item)<{
 
 export const Content = styled.div`
   overflow-y: auto;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
+  min-width: 160px;
 
   ${SelectListItem} {
     margin: 2px 0;
