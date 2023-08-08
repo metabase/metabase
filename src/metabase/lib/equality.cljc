@@ -120,6 +120,8 @@
                                        update-options-remove-namespaced-keys
                                        ;; ignore type info
                                        #(lib.options/update-options % dissoc :base-type :effective-type)
+                                       ;; ignore binning and bucketing
+                                       #(lib.options/update-options % dissoc :binning :temporal-unit)
                                        ;; ignore join alias
                                        #(lib.options/update-options % dissoc :join-alias)]]
      (or (let [a-ref (xform a-ref)]

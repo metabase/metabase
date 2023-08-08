@@ -215,7 +215,32 @@
     [:field {} 1]
     [[:field {:join-alias "J"} 1]
      [:field {:join-alias "J"} 2]]
-    [:field {:join-alias "J"} 1]))
+    [:field {:join-alias "J"} 1]
+
+    ;; prefer matching binning settings
+    [:field {:binning {:strategy :bin-width :bin-width 1.0}} 1]
+    [[:field {:binning {:strategy :bin-width :bin-width 1.0}} 1]
+     [:field {} 1]]
+    [:field {:binning {:strategy :bin-width :bin-width 1.0}} 1]
+
+    ;; but ignore binning settings if necessary
+    [:field {:binning {:strategy :bin-width :bin-width 1.0}} 1]
+    [[:field {:binning {:strategy :bin-width :bin-width 1.0}} 2]
+     [:field {} 1]]
+    [:field {} 1]
+
+    ;; prefer matching temporal-unit
+    [:field {:temporal-unit :month} 1]
+    [[:field {:temporal-unit :month} 1]
+     [:field {:temporal-unit :week} 1]
+     [:field {} 1]]
+    [:field {:temporal-unit :month} 1]
+
+    ;; but ignore temporal-unit if necessary
+    [:field {:temporal-unit :month} 1]
+    [[:field {:temporal-unit :month} 2]
+     [:field {} 1]]
+    [:field {} 1]))
 
 (deftest ^:parallel find-closest-matching-ref-3-arity-test
   (is (= [:field {} "CATEGORY"]
