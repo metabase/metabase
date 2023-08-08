@@ -69,7 +69,7 @@ describe("scenarios > embedding > smoke tests", () => {
       cy.findByText("Enabled");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Standalone embeds").click();
+      cy.findByText("Static embedding").click();
       if (isOSS) {
         cy.contains(
           "In order to remove the Metabase logo from embeds, you can always upgrade to one of our paid plans.",
@@ -100,15 +100,15 @@ describe("scenarios > embedding > smoke tests", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No questions have been embedded yet.");
 
-      // Full app embedding section (available only for EE version and in PRO hosted plans)
+      // Interactive embedding section (available only for EE version and in PRO hosted plans)
       if (isEE) {
         sidebar().within(() => {
           cy.findByText("Embedding").click();
         });
-        cy.findByText("Full-app embedding").click();
+        cy.findByText("Interactive embedding").click();
         cy.findByText(/Embedding the entire Metabase app/i);
         cy.contains(
-          "With some of our paid plans, you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
+          "With some of our paid plans, you can embed the full Metabase app to allow people to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
         );
         cy.contains(
           "Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the exact specifications for what can be entered.",
@@ -191,7 +191,7 @@ describe("scenarios > embedding > smoke tests", () => {
 
         cy.visit(embeddingPage);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Standalone embeds").click();
+        cy.findByText("Static embedding").click();
         cy.wait("@currentlyEmbeddedObject");
 
         const sectionName = new RegExp(`Embedded ${object}s`, "i");
@@ -223,7 +223,7 @@ describe("scenarios > embedding > smoke tests", () => {
 
         cy.visit(embeddingPage);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Standalone embeds").click();
+        cy.findByText("Static embedding").click();
         cy.wait("@currentlyEmbeddedObject");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
