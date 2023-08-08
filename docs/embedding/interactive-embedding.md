@@ -105,7 +105,7 @@ Note that `SameSite=None` is incompatible with most Safari and iOS browser versi
 
 ## Securing interactive embeds
 
-Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Interactive embedding with SSO](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds#interactive-embedding-with-sso).
+Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Interactive embedding with SSO](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds).
 
 To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
 
