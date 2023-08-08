@@ -145,34 +145,6 @@
                                     :type "id"
                                     :value [(get simple-parameters pk-field-name)]}]))))
 
-(defn- implicit-action-error->message
-  [e-type column-or-columns & [additional-info]]
-  (let [column-name (if (sequential? column-or-columns)
-                      (str/join ", " column-or-columns)
-                      column-or-columns)]
-    (condp = e-type
-      actions.error/violate-unique-constraint
-      (tru "value for column(s) {0} is duplicated" column-name)
-
-      actions.error/violate-not-null-constraint
-      (tru "value for column(s) {0} must be not null" column-name)
-
-      actions.error/violate-foreign-key-constraint
-      (tru "column(s) {0} is referenced by {1}" column-name (:ref-table additional-info))
-
-      actions.error/incorrect-value-type
-      (tru "value for column(s) {0} should be of type {1}" column-name (:expected-type additional-info))
-
-      actions.error/incorrect-affected-rows
-      (let [{:keys [action-type number-affected]} additional-info]
-        (case action-type
-          :row/delete (if (zero? number-affected)
-                        (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                        (tru "Sorry, this would delete {0} rows, but you can only act on 1" number-affected))
-          :row/update (if (zero? number-affected)
-                        (tru "Sorry, the row you''re trying to update doesn''t exist")
-                        (tru "Sorry, this would update {0} rows, but you can only act on 1" number-affected)))))))
-
 (defn- execute-implicit-action
   [action request-parameters]
   (let [implicit-action (keyword (:kind action))
@@ -190,17 +162,12 @@
      (binding [qp.perms/*card-id* (:model_id action)]
        (actions/perform-action! implicit-action arg-map))
      (catch Exception e
-       (if-let [e-type (:type (ex-data e))]
-         (let [e-data    (ex-data e)
-               error-msg (implicit-action-error->message e-type (:columns e-data) e-data)]
+       ;; handle custom error if exists
+       (if (:type (ex-data e))
+         (let [error-info (actions.error/->error-info #p (ex-data e))]
            (throw (ex-info
-                   error-msg
-                   {:status-code 400
-                    :message     error-msg
-                    :errors      (reduce (fn [acc col]
-                                           (assoc acc col (implicit-action-error->message e-type col e-data)))
-                                         {}
-                                         (:columns e-data))})))
+                   (:message error-info)
+                   (assoc error-info :status-code 400))))
          (throw e))))))
 
 (defn execute-action!
