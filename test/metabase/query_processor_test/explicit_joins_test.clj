@@ -620,7 +620,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
       (mt/dataset sample-dataset
-        (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
+        (mt/with-bigquery-fks!
           (let [query (mt/mbql-query products
                         {:joins    [{:source-query {:source-table $$orders}
                                      :alias        "Q 1"
@@ -861,7 +861,7 @@
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
                            ;; mongodb doesn't support foreign keys required by this test
                            :mongo)
-      (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
+      (mt/with-bigquery-fks!
         (mt/dataset sample-dataset
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders

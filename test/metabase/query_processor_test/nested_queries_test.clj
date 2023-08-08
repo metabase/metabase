@@ -9,7 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models :refer [Dimension Field Metric Segment Table]]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -245,7 +245,7 @@
 (defn- query-with-source-card
   {:style/indent 1}
   ([card]
-   {:database mbql.s/saved-questions-virtual-database-id
+   {:database lib.schema.id/saved-questions-virtual-database-id
     :type     :query
     :query    {:source-table (str "card__" (u/the-id card))}})
 
@@ -1376,7 +1376,7 @@
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
       (mt/dataset sample-dataset
-        (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
+        (mt/with-bigquery-fks!
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
                                         :breakout     [!month.product_id->products.created_at]

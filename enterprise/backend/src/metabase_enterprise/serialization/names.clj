@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -157,7 +157,7 @@
 (defmethod path->context* "databases"
   [context _ _ db-name]
   (assoc context :database (if (= db-name "__virtual")
-                             mbql.s/saved-questions-virtual-database-id
+                             lib.schema.id/saved-questions-virtual-database-id
                              (t2/select-one-pk Database :name db-name))))
 
 (defmethod path->context* "schemas"
