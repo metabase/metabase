@@ -65,7 +65,7 @@ describe("BucketPickerPopover", () => {
     expect(screen.getAllByRole("menuitem")).toHaveLength(buckets.length);
   });
 
-  it("shouldn't show the More button if there're a few buckets", async () => {
+  it("shouldn't show the More button if there are a few buckets", async () => {
     const buckets = Lib.availableBinningStrategies(query, 0, numericColumn);
     await setupBinningPicker({ column: numericColumn });
 
@@ -101,7 +101,7 @@ describe("BucketPickerPopover", () => {
     );
   });
 
-  it("shouldn't collapsed after popover is closed if the selected bucket is in the hidden part", async () => {
+  it("shouldn't collapse after popover is closed if the selected bucket is in the hidden part", async () => {
     const buckets = Lib.availableTemporalBuckets(query, 0, dateColumn);
     const lastBucket = buckets[buckets.length - 1];
     const column = Lib.withTemporalBucket(dateColumn, lastBucket);
