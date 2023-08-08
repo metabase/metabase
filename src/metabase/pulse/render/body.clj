@@ -224,15 +224,17 @@
 (s/defmethod render :table :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [rows viz-settings] :as data}]
   (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
-        filtered-columns-names (if (some? (:table.columns viz-settings))
+        has-column-filters (some? (:table.columns viz-settings))
+        filtered-columns-names (if has-column-filters
                                  (mapv :name (filter :enabled (:table.columns viz-settings)))
                                  (mapv :name (:cols data)))
-        filtered-rows (filter-columns filtered-columns-names (prep-for-html-rendering timezone-id card data))
+        filtered-columns (cond-> (prep-for-html-rendering timezone-id card data)
+                           has-column-filters (filter-columns filtered-columns-names))
         table-body   [:div
                       (table/render-table
                        (color/make-color-selector data viz-settings)
                        filtered-columns-names
-                       filtered-rows)
+                       filtered-columns)
                       (render-truncation-warning rows-limit (count rows))]]
     {:attachments
      nil
