@@ -1,8 +1,6 @@
-import { useState, createContext, useCallback, ReactElement } from "react";
-import { t } from "ttag";
+import { useState, useCallback, ReactElement } from "react";
 import { Collection, CollectionId } from "metabase-types/api";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import { NewCollectionButton } from "./CreateCollectionOnTheGo.styled";
 
 interface State {
   enabled: boolean;
@@ -10,19 +8,17 @@ interface State {
   openCollectionId?: CollectionId;
 }
 
+export type OnClickNewCollection = (
+  resumedValues: any,
+  openCollectionId: CollectionId,
+) => void;
+
 interface Props {
-  children: (resumedValues: any) => ReactElement;
+  children: (
+    resumedValues: any,
+    onClickNewCollection: OnClickNewCollection,
+  ) => ReactElement;
 }
-
-interface ButtonProps {
-  resumedValues: any;
-  openCollectionId?: CollectionId;
-}
-
-type ButtonType = (buttonProps: ButtonProps) => ReactElement;
-export const CreateCollectionOnTheGoButtonContext = createContext<ButtonType>(
-  (buttonProps: ButtonProps) => <div />,
-);
 
 export function CreateCollectionOnTheGo({ children }: Props) {
   const [state, setState] = useState<State>({
@@ -31,16 +27,9 @@ export function CreateCollectionOnTheGo({ children }: Props) {
   });
   const { enabled, openCollectionId, resumedValues } = state;
 
-  const CreateCollectionOnTheGoButton = useCallback(
-    (buttonProps: ButtonProps) => (
-      <NewCollectionButton
-        light
-        icon="add"
-        onClick={() => setState({ ...state, ...buttonProps, enabled: true })}
-      >
-        {t`New collection`}
-      </NewCollectionButton>
-    ),
+  const onClickNewCollection = useCallback<OnClickNewCollection>(
+    (resumedValues: any, openCollectionId: CollectionId) =>
+      setState({ ...state, enabled: true, resumedValues, openCollectionId }),
     [state, setState],
   );
 
@@ -57,10 +46,6 @@ export function CreateCollectionOnTheGo({ children }: Props) {
       }}
     />
   ) : (
-    <CreateCollectionOnTheGoButtonContext.Provider
-      value={CreateCollectionOnTheGoButton}
-    >
-      {children(resumedValues)}
-    </CreateCollectionOnTheGoButtonContext.Provider>
+    children(resumedValues, onClickNewCollection)
   );
 }

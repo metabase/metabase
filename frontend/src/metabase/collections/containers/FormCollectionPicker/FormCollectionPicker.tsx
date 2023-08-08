@@ -4,7 +4,6 @@ import {
   useState,
   useRef,
   HTMLAttributes,
-  useContext,
 } from "react";
 import { t } from "ttag";
 import { useField, useFormikContext } from "formik";
@@ -17,7 +16,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
-import { CreateCollectionOnTheGoButtonContext } from "metabase/containers/CreateCollectionOnTheGo";
+import type { OnClickNewCollection } from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -29,6 +28,7 @@ import type { CollectionId } from "metabase-types/api";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
+  NewCollectionButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -40,6 +40,7 @@ export interface FormCollectionPickerProps
   canCreateNew?: boolean;
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  onClickNewCollection?: OnClickNewCollection;
 }
 
 function ItemName({
@@ -66,6 +67,7 @@ function FormCollectionPicker({
   canCreateNew = false,
   initialOpenCollectionId,
   onOpenCollectionChange,
+  onClickNewCollection,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -103,12 +105,8 @@ function FormCollectionPicker({
   );
 
   const { values } = useFormikContext();
-  const [openCollectionId, setOpenCollectionId] = useState<
-    CollectionId | undefined
-  >(undefined);
-  const CreateCollectionOnTheGoButton = useContext(
-    CreateCollectionOnTheGoButtonContext,
-  );
+  const [openCollectionId, setOpenCollectionId] =
+    useState<CollectionId>("root");
 
   const renderContent = useCallback(
     ({ closePopover }) => {
@@ -135,10 +133,13 @@ function FormCollectionPicker({
           }}
         >
           {canCreateNew && (
-            <CreateCollectionOnTheGoButton
-              resumedValues={values}
-              openCollectionId={openCollectionId}
-            />
+            <NewCollectionButton
+              light
+              icon="add"
+              onClick={() => onClickNewCollection?.(values, openCollectionId)}
+            >
+              {t`New collection`}
+            </NewCollectionButton>
           )}
         </PopoverItemPicker>
       );
@@ -153,7 +154,7 @@ function FormCollectionPicker({
       values,
       onOpenCollectionChange,
       canCreateNew,
-      CreateCollectionOnTheGoButton,
+      onClickNewCollection,
     ],
   );
 
