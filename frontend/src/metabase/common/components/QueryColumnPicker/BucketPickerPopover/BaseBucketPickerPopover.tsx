@@ -134,11 +134,11 @@ function isInitiallyExpanded(
     return false;
   }
 
-  const isSelectedBucketVisibleWhenCollapsed = items
-    .slice(0, INITIALLY_VISIBLE_ITEMS_COUNT)
-    .some(item => checkBucketIsSelected(item));
+  const isSelectedBucketAmongHiddenItems =
+    items.findIndex(item => checkBucketIsSelected(item)) >=
+    INITIALLY_VISIBLE_ITEMS_COUNT;
 
-  return !isSelectedBucketVisibleWhenCollapsed;
+  return isSelectedBucketAmongHiddenItems;
 }
 
 export function getBucketListItem(
