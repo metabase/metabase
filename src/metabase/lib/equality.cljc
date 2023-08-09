@@ -120,6 +120,8 @@
                                        update-options-remove-namespaced-keys
                                        ;; ignore type info
                                        #(lib.options/update-options % dissoc :base-type :effective-type)
+                                       ;; ignore temporal-unit
+                                       #(lib.options/update-options % dissoc :temporal-unit)
                                        ;; ignore join alias
                                        #(lib.options/update-options % dissoc :join-alias)]]
      (or (let [a-ref (xform a-ref)]
@@ -156,6 +158,7 @@
                                       (map (fn [selected-ref]
                                              (find-closest-matching-ref metadata-providerable selected-ref refs)))
                                       selected-refs)]
+     (println "(pr-str matching-selected-refs):" (pr-str matching-selected-refs)) ; NOCOMMIT
      (mapv (fn [col a-ref]
              (assoc col :selected? (contains? matching-selected-refs a-ref)))
            columns
