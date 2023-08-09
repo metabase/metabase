@@ -74,6 +74,12 @@
    (defmacro defmethod
      "Like [[schema.core/defmethod]], but for Malli."
      [multifn dispatch-value & fn-tail]
-     `(.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
-                  ~dispatch-value
-                  ~(mu.fn/instrumented-fn-form (mu.fn/parse-fn-tail fn-tail)))))
+     (let [dispatch-value-symb (gensym "dispatch-value-")
+           error-context-symb  (gensym "error-context-")]
+       `(let [~dispatch-value-symb ~dispatch-value
+              ~error-context-symb  {:fn-name        '~multifn
+                                    :dispatch-value ~dispatch-value-symb}
+              f#                   ~(mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))]
+          (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
+                      ~dispatch-value-symb
+                      f#)))))
