@@ -290,33 +290,6 @@
     (mock-metadata-provider
      {:cards (vals mock-cards)})))
 
-(defn query-with-source-card
-  "Create a query using a `:source-card` with a [[mock-metadata-provider]] that has a Card with `source-card-query` and
-  metadata calculated for it."
-  ([source-card-query]
-   (query-with-source-card source-card-query nil))
-
-  ([source-card-query card-properties]
-   (let [card-metadata     (lib/returned-columns source-card-query)
-         card              (merge {:id              1
-                                   :name            "Birthday Card"
-                                   :dataset-query   source-card-query
-                                   :result-metadata card-metadata}
-                                  card-properties)
-         metadata-provider (lib/composed-metadata-provider
-                            (mock-metadata-provider {:cards [card]})
-                            meta/metadata-provider)]
-     (lib/query metadata-provider {:lib/type :mbql/query
-                                   :database (meta/id)
-                                   :stages   [{:lib/type    :mbql.stage/mbql
-                                               :source-card (:id card)}]}))))
-
-(deftest ^:parallel query-with-source-card-test
-  (is (= ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY"]
-         (->> (query-with-source-card (lib/query meta/metadata-provider (meta/table-metadata :orders)))
-              lib/returned-columns
-              (map :name)))))
-
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
   with `column-name` returned by a `query`. This only makes sense for queries with multiple stages, or ones with a
