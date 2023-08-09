@@ -143,7 +143,6 @@
 
 /* ITEM ICON */
 :local(.itemIcon) {
-  composes: icon;
   visibility: visible !important;
   composes: relative from "style";
 }
@@ -154,7 +153,6 @@
 
 /* CHART ICON */
 :local(.chartIcon) {
-  composes: icon;
   visibility: visible !important;
   composes: relative from "style";
 }

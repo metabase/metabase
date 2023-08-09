@@ -5,7 +5,6 @@
 .Button {
   display: inline-block;
   box-sizing: border-box;
-  text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
   border: 1px solid color-mod(var(--color-border) blackness(5%));

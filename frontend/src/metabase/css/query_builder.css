@@ -499,7 +499,6 @@
 
 .QuestionTooltipTarget {
   color: var(--color-text-light);
-  display: inline-block;
   border: 2px solid currentColor;
   border-radius: 99px;
   width: 20px;
