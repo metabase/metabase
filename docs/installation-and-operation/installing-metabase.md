@@ -32,7 +32,6 @@ To run a development branch of Metabase, check out our [developer's guide](../de
 
 ## Other installation options
 
-- [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
 
