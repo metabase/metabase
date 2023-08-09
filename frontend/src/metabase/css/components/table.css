@@ -1,7 +1,6 @@
 :root {
   --table-border-color: color-mod(var(--color-border) alpha(-70%));
   --table-alt-bg-color: color-mod(var(--color-bg-black) alpha(-98%));
-
   --entity-image-small-size: 24px;
   --entity-image-large-size: 64px;
 }

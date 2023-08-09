@@ -2,7 +2,6 @@
   --card-border-color: var(--color-border);
   --card-text-color: var(--color-text-medium);
   --card-border-radius: 4px;
-
   --card-scalar-text-lg: 2.4em;
   --card-scalar-text-xl: 3.4em;
 }
