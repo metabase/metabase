@@ -58,7 +58,11 @@ import DataSourceSelectors from "./DataSourceSelectors";
 
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
-import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
+import {
+  NativeQueryEditorRoot,
+  DragHandleContainer,
+  DragHandle,
+} from "./NativeQueryEditor.styled";
 import "./NativeQueryEditor.css";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
@@ -572,9 +576,9 @@ export class NativeQueryEditor extends Component {
     const parameters = query.question().parameters();
 
     const dragHandle = resizable ? (
-      <div className="NativeQueryEditorDragHandleWrapper">
-        <div className="NativeQueryEditorDragHandle" />
-      </div>
+      <DragHandleContainer>
+        <DragHandle />
+      </DragHandleContainer>
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(

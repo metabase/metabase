@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 
 const aceEditorStyle = css`
   .ace_editor {
@@ -94,4 +94,25 @@ const aceEditorStyle = css`
 
 export const NativeQueryEditorRoot = styled.div`
   ${aceEditorStyle}
+`;
+
+export const DragHandleContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  width: 100%;
+  height: 8px;
+
+  position: absolute;
+  bottom: -4px;
+
+  cursor: row-resize;
+`;
+
+export const DragHandle = styled.div`
+  width: 100px;
+  height: 5px;
+  background-color: ${darken("border", 0.03)};
+  border-radius: 4px;
 `;

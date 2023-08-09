@@ -381,24 +381,6 @@
   border-right: none;
 }
 
-.NativeQueryEditorDragHandleWrapper {
-  position: absolute;
-  height: 8px;
-  width: 100%;
-  bottom: -4px;
-  cursor: row-resize;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.NativeQueryEditorDragHandle {
-  background: color-mod(var(--color-border) blackness(3%));
-  width: 100px;
-  height: 5px;
-  border-radius: 4px;
-}
-
 /* VISUALIZATION SETTINGS */
 
 .VisualizationSettings .GuiBuilder-section {
