@@ -10,7 +10,12 @@ describe("SharingSidebar Premium Features", () => {
 
   describe("Email Subscription sidebar", () => {
     it("should show advanced filtering options with the correct feature flag", async () => {
-      setup({ email: true, tokenFeatures, hasEnterprisePlugins: true });
+      setup({
+        isAdmin: true,
+        email: true,
+        tokenFeatures,
+        hasEnterprisePlugins: true,
+      });
 
       userEvent.click(await screen.findByText("Email it"));
 
@@ -22,7 +27,12 @@ describe("SharingSidebar Premium Features", () => {
 
   describe("Slack Subscription sidebar", () => {
     it("should show advanced filtering options with the correct feature flag", async () => {
-      setup({ slack: true, tokenFeatures, hasEnterprisePlugins: true });
+      setup({
+        isAdmin: true,
+        slack: true,
+        tokenFeatures,
+        hasEnterprisePlugins: true,
+      });
 
       userEvent.click(await screen.findByText("Send it to Slack"));
 

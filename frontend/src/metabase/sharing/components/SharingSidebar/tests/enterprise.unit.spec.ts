@@ -6,7 +6,7 @@ import { setup, hasBasicFilterOptions } from "./setup";
 describe("SharingSidebar Enterprise Bundle", () => {
   describe("Email Subscription sidebar", () => {
     it("should not show advanced filtering options without the feature flag", async () => {
-      setup({ email: true, hasEnterprisePlugins: true });
+      setup({ isAdmin: true, email: true, hasEnterprisePlugins: true });
 
       userEvent.click(await screen.findByText("Email it"));
 
@@ -18,7 +18,7 @@ describe("SharingSidebar Enterprise Bundle", () => {
 
   describe("Slack Subscription sidebar", () => {
     it("should not show advanced filtering options without the feature flag", async () => {
-      setup({ slack: true, hasEnterprisePlugins: true });
+      setup({ isAdmin: true, slack: true, hasEnterprisePlugins: true });
 
       userEvent.click(await screen.findByText("Send it to Slack"));
 

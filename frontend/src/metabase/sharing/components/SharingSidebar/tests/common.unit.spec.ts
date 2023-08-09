@@ -6,21 +6,21 @@ import { setup, dashcard, user, hasBasicFilterOptions } from "./setup";
 
 describe("SharingSidebar", () => {
   it("should have options for email and slack", async () => {
-    setup({ email: true });
+    setup({ isAdmin: true, email: true });
 
     expect(await screen.findByText("Email it")).toBeInTheDocument();
     expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
   });
 
   it("should disable slack option when slack is not configured", async () => {
-    setup({ email: true, slack: false });
+    setup({ isAdmin: true, email: true, slack: false });
 
     expect(await screen.findByText(/First, you'll have to/i)).toBeVisible();
     expect(await screen.findByText(/configure Slack/i)).toBeVisible();
   });
 
   it("should disable email option when email is not configured", async () => {
-    setup({ email: false, slack: true });
+    setup({ isAdmin: true, email: false, slack: true });
 
     expect(await screen.findByText(/you'll need to/i)).toBeVisible();
     expect(await screen.findByText(/set up Email/i)).toBeVisible();
