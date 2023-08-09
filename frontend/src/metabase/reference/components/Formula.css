@@ -22,7 +22,7 @@
 }
 
 .formulaDefinition-enter {
-  max-height: 0px;
+  max-height: 0;
 }
 .formulaDefinition-enter.formulaDefinition-enter-active {
   /* using 100% max-height breaks the transition */
@@ -33,6 +33,6 @@
   max-height: 150px;
 }
 .formulaDefinition-exit.formulaDefinition-exit-active {
-  max-height: 0px;
+  max-height: 0;
   transition: max-height 300ms ease-out;
 }

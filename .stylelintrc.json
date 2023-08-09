@@ -23,7 +23,6 @@
     "declaration-block-no-duplicate-properties": null,
     "custom-property-empty-line-before": null,
     "alpha-value-notation": null,
-    "length-zero-no-unit": null,
     "property-no-vendor-prefix": null,
     "shorthand-property-no-redundant-values": null,
     "import-notation": null,

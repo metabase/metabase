@@ -3,7 +3,7 @@
 }
 
 .saveQuestionModalFields-enter {
-  max-height: 0px;
+  max-height: 0;
 }
 .saveQuestionModalFields-enter.saveQuestionModalFields-enter-active {
   /* using 100% max-height breaks the transition */
@@ -14,6 +14,6 @@
   max-height: 300px;
 }
 .saveQuestionModalFields-exit.saveQuestionModalFields-exit-active {
-  max-height: 0px;
+  max-height: 0;
   transition: max-height 500ms ease-out;
 }

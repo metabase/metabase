@@ -366,7 +366,7 @@
 /* SORT/LIMIT SECTION */
 
 .GuiBuilder-sort-limit {
-  min-width: 0px;
+  min-width: 0;
 }
 
 .EllipsisButton {
