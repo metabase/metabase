@@ -64,14 +64,20 @@
    ns-decls))
 
 (defn metabase-namespaces-in-topo-order [basis]
-  (let [ns-decls   (mapcat
-                    (comp ns.find/find-ns-decls-in-dir io/file)
-                    (all-paths basis))
-        ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
-    (->> (dependencies-graph ns-decls)
-         ns.deps/topo-sort
-         (filter ns-symbols)
-         (cons 'metabase.bootstrap))))
+  (let [ns-decls   (into []
+                         (comp (map io/file)
+                               (mapcat ns.find/find-ns-decls-in-dir))
+                         (all-paths basis))
+        ns-symbols (into #{} (map ns.parse/name-from-ns-decl) ns-decls)
+        sorted     (->> (dependencies-graph ns-decls)
+                        ns.deps/topo-sort
+                        (filter ns-symbols))
+        orphans    (remove (set sorted) ns-symbols)
+        all        (concat orphans sorted)]
+    (assert (contains? (set all) 'metabase.bootstrap))
+    (when (contains? ns-symbols 'metabase-enterprise.core)
+      (assert (contains? (set all) 'metabase-enterprise.core)))
+    all))
 
 (defn compile-sources! [basis]
   (u/step "Compile Clojure source files"

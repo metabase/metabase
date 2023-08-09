@@ -1,40 +1,65 @@
-import { Component } from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import { getIn } from "icepick";
-import { connect } from "react-redux";
+import { Component } from "react";
+import { t } from "ttag";
 
-import Visualization from "metabase/visualizations/components/Visualization";
-
+import {
+  Card,
+  CardId,
+  DashCardId,
+  DashboardOrderedCard,
+  Dataset,
+} from "metabase-types/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
+import Visualization from "metabase/visualizations/components/Visualization";
 
 import { QuestionList } from "./QuestionList";
 
-class AddSeriesModal extends Component {
-  constructor(props, context) {
-    super(props, context);
+/**
+ * The first series is the base dashcard.card.
+ * It does not make sense to remove it in this modal as it
+ * represents the dashboard card the modal was opened for.
+ */
+const CAN_REMOVE_SERIES = (seriesIndex: number) => seriesIndex > 0;
 
+export interface Props {
+  dashcard: DashboardOrderedCard;
+  dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
+  fetchCardData: (
+    card: Card,
+    dashcard: DashboardOrderedCard,
+    options: {
+      clearCache?: boolean;
+      ignoreCache?: boolean;
+      reload?: boolean;
+    },
+  ) => Promise<unknown>;
+  setDashCardAttributes: (options: {
+    id: DashCardId;
+    attributes: Partial<DashboardOrderedCard>;
+  }) => void;
+  onClose: () => void;
+}
+
+interface State {
+  error: unknown;
+  isLoading: boolean;
+  series: NonNullable<DashboardOrderedCard["series"]>;
+}
+
+export class AddSeriesModal extends Component<Props, State> {
+  constructor(props: Props, context: unknown) {
+    super(props, context);
     this.state = {
       error: null,
       series: props.dashcard.series || [],
-      isLoadingMetadata: false,
+      isLoading: false,
     };
   }
 
-  static propTypes = {
-    dashcard: PropTypes.object.isRequired,
-    dashcardData: PropTypes.object.isRequired,
-    fetchCardData: PropTypes.func.isRequired,
-    fetchDatabaseMetadata: PropTypes.func.isRequired,
-    setDashCardAttributes: PropTypes.func.isRequired,
-    loadMetadataForQueries: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired,
-  };
   static defaultProps = {};
 
-  handleQuestionSelectedChange = async (card, selected) => {
+  handleQuestionSelectedChange = async (card: Card, selected: boolean) => {
     const { dashcard, dashcardData } = this.props;
 
     if (!selected) {
@@ -47,15 +72,15 @@ class AddSeriesModal extends Component {
     }
 
     if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
-      this.setState({ state: "loading" });
+      this.setState({ isLoading: true });
       await this.props.fetchCardData(card, dashcard, {
         reload: false,
-        clear: true,
+        clearCache: true,
       });
     }
 
     this.setState({
-      state: null,
+      isLoading: false,
       series: this.state.series.concat(card),
     });
 
@@ -66,10 +91,23 @@ class AddSeriesModal extends Component {
     );
   };
 
-  handleRemoveSeries(card) {
-    this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
+  handleRemoveSeries = (_event: MouseEvent, removedIndex: number) => {
+    /**
+     * The first series is the base dashcard.card - it's not included
+     * in the this.state.series array.
+     *
+     * @see "series" definition in "render" function
+     */
+    const actualRemovedIndex = removedIndex - 1;
+
+    this.setState({
+      series: [
+        ...this.state.series.slice(0, actualRemovedIndex),
+        ...this.state.series.slice(actualRemovedIndex + 1),
+      ],
+    });
     MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
-  }
+  };
 
   handleDone = () => {
     this.props.setDashCardAttributes({
@@ -82,12 +120,6 @@ class AddSeriesModal extends Component {
       "Edit Series Modal",
       "done",
     );
-  };
-
-  handleLoadMetadata = async queries => {
-    this.setState({ isLoadingMetadata: true });
-    await this.props.loadMetadataForQueries(queries);
-    this.setState({ isLoadingMetadata: false });
   };
 
   render() {
@@ -109,6 +141,7 @@ class AddSeriesModal extends Component {
           </div>
           <div className="flex-full ml2 mr1 relative">
             <Visualization
+              canRemoveSeries={CAN_REMOVE_SERIES}
               className="spread"
               rawSeries={series}
               showTitle
@@ -116,20 +149,14 @@ class AddSeriesModal extends Component {
               isMultiseries
               onRemoveSeries={this.handleRemoveSeries}
             />
-            {this.state.state && (
+            {this.state.isLoading && (
               <div
                 className="spred flex layout-centered"
                 style={{ backgroundColor: color("bg-white") }}
               >
-                {this.state.state === "loading" ? (
-                  <div className="h3 rounded bordered p3 bg-white shadowed">
-                    {t`Applying Question`}
-                  </div>
-                ) : this.state.state === "incompatible" ? (
-                  <div className="h3 rounded bordered p3 bg-error border-error text-white">
-                    {t`That question isn't compatible`}
-                  </div>
-                ) : null}
+                <div className="h3 rounded bordered p3 bg-white shadowed">
+                  {t`Applying Question`}
+                </div>
               </div>
             )}
           </div>
@@ -167,5 +194,3 @@ class AddSeriesModal extends Component {
     );
   }
 }
-
-export default connect(null, { loadMetadataForQueries })(AddSeriesModal);

@@ -562,4 +562,16 @@
                                  :fields [[:xfield 2 nil]]}]
                         :source-table 4}}
                lib.convert/->pMBQL
-               (get-in [:stages 0 :joins 0 :fields]))))))
+               (get-in [:stages 0 :joins 0 :fields]))))
+    (testing "references to missing expressions are removed (#32625)"
+      (let [query {:database 2762
+                   :type     :query
+                   :query    {:aggregation [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+                              :expressions {"custom" [:+ 1 1]}
+                              :breakout    [[:expression "expr1" nil] [:expression "expr2" nil]]
+                              :order-by    [[:expression "expr2" nil]]
+                              :limit       4
+                              :source-table 33674}}
+            converted (lib.convert/->pMBQL query)]
+        (is (empty? (get-in converted [:stages 0 :breakout])))
+        (is (empty? (get-in converted [:stages 0 :group-by])))))))
