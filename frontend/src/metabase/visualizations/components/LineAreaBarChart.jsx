@@ -260,6 +260,7 @@ export default class LineAreaBarChart extends Component {
       onHoverChange,
       onRemoveSeries,
       settings,
+      canRemoveSeries,
     } = this.props;
 
     // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
@@ -297,6 +298,7 @@ export default class LineAreaBarChart extends Component {
           />
         )}
         <LegendLayout
+          canRemoveSeries={canRemoveSeries}
           labels={labels}
           colors={colors}
           hovered={hovered}
