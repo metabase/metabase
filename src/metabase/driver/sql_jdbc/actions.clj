@@ -33,7 +33,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti maybe-parse-sql-error
-  "Try to parse the sql error msg."
+  "Try to parse the error message returned by JDBC driver.
+
+  The methods should returns a map of:
+  - type: the error type. Check [[metabase.actions.error]] for the full list
+  - message: a nice message summarized of what went wrong
+  - errors: a map from field-name => sepcific error message. This is used by UI to display per fields error."
   {:arglists '([driver error-type database error-message]), :added "0.48.0"}
   (fn [driver error-type _database _error-message]
    [(driver/dispatch-on-initialized-driver driver) error-type])
@@ -63,13 +68,13 @@
   (try
    (thunk)
    (catch Exception e
-     ;; if has custom error handling, use that
      (if (= (:type (ex-data e)) actions.error/incorrect-affected-rows)
        (throw e)
        (throw (ex-info (or (ex-message e) "Failed to execute action")
                        (or (parse-sql-error driver database e) {})))))))
 
 (defmacro ^:private with-auto-parse-sql-error
+  "Execute body and if there is an exception, try to parse the error message to search for known sql error message."
   [driver database & body]
   `(do-with-auto-parse-sql-error ~driver ~database (fn [] ~@body)))
 

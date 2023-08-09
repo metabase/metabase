@@ -58,6 +58,7 @@
    ;; datasets e.g. [[mt/with-actions-test-data]]
    ;; default is nullable
    (s/optional-key :not-null?)         (s/maybe s/Bool)
+   (s/optional-key :unique?)           (s/maybe s/Bool)
    (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)

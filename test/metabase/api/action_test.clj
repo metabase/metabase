@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
+   [metabase.driver :as driver]
    [metabase.models :refer [Action Card Database]]
    [metabase.models.collection :as collection]
    [metabase.models.user :as user]
@@ -642,7 +643,7 @@
 (mt/defdataset action-error-handling
   [["group"
     [{:field-name "name" :base-type :type/Text :not-null? true}
-     {:field-name "ranking" :base-type :type/Integer :not-null? true}]
+     {:field-name "ranking" :base-type :type/Integer :not-null? true :unique? true}]
     [["admin" 1]
      ["user" 2]]]
    ["user"
@@ -653,23 +654,57 @@
      ["lucky"     1]]]])
 
 (deftest action-error-handling-test
- (mt/test-driver :mysql
-   (mt/dataset action-error-handling
-     (mt/with-actions-enabled
-       (mt/with-current-user (mt/user->id :crowberto)
-         (mt/with-actions [{card-id :id}              {:dataset_query (mt/mbql-query group) :dataset true}
-                           {create-action :action-id} {:type :implicit
-                                                       :kind "row/create"}
-                           {update-action :action-id} {:type :implicit
-                                                       :kind "row/update"}
-                           {delete-action :action-id} {:type :implicit
-                                                       :kind "row/delete"}]
-           (is (= {:message "value for column(s) ranking should be of type integer",
-                   :errors {:ranking "value for column(s) ranking should be of type integer"}}
-                  (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
-                                        {:parameters {"name" "new" "ranking" "S"}})))
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
+    (mt/dataset action-error-handling
+      (mt/with-actions-enabled
+        (mt/with-current-user (mt/user->id :crowberto)
+          (mt/with-actions [{_card-id :id}             {:dataset_query (mt/mbql-query group) :dataset true}
+                            {create-action :action-id} {:type :implicit
+                                                        :kind "row/create"}
+                            {update-action :action-id} {:type :implicit
+                                                        :kind "row/update"}
+                            {delete-action :action-id} {:type :implicit
+                                                        :kind "row/delete"}]
+            (when-not (= driver/*driver* :mysql)
+              (testing "violate not-null constraint"
+                (testing "when creating"
+                  (is (= {:message "Value for column ranking must be not null"
+                          :errors {:ranking "The value must be not null"}}
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
+                                               {:parameters {"name" "admin" "ranking" nil}}))))))
 
-           (is (= {:message "column(s) id is referenced by group"
-                   :errors {:id "column(s) id is referenced by group"}}
-                  (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-action)
-                                        {:parameters {"id" 1}})))))))))
+            (testing "violate unique constraint"
+              (testing "when creating"
+                (is (= {:message "Value for column(s) ranking is duplicated",
+                        :errors {:ranking "This column has unique constraint and this value is existed"}}
+                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
+                                             {:parameters {"name" "new" "ranking" 1}}))))
+              (testing "when updating"
+                (is (= {:message "Value for column(s) ranking is duplicated",
+                        :errors {:ranking "This column has unique constraint and this value is existed"}}
+                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
+                                             {:parameters {"id" 1 "ranking" 2}})))))
+            (testing "incorrect type"
+              (testing "when creating"
+                (is (= (if (= driver/*driver* :postgres)
+                         {:message "Invalid value \"S\", expect type: integer"
+                          :errors {}}
+                         {:message "Value for column ranking should be of type integer",
+                          :errors {:ranking "The value should be of type integer"}})
+                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
+                                             {:parameters {"name" "new" "ranking" "S"}}))))
+
+              (testing "when updating"
+                (is (= (if (= driver/*driver* :postgres)
+                         {:message "Invalid value \"S\", expect type: integer"
+                          :errors {}}
+                         {:message "Value for column ranking should be of type integer",
+                          :errors {:ranking "The value should be of type integer"}})
+                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
+                                             {:parameters {"id" 1 "ranking" "S"}})))))
+
+            (testing "violate fk constraint"
+              (is (=? {:message "Column(s) id is referenced from user table"
+                       :errors {:id "The value is referenced from user table"}}
+                      (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-action)
+                                            {:parameters {"id" 1}}))))))))))

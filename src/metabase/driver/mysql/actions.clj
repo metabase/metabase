@@ -22,11 +22,11 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-not-null-constraint]
   [_driver error-type _database error-message]
-  (when-let [[_ col]
+  (when-let [[_ column]
              (re-find #"Column '(.+)' cannot be null" error-message)]
     {:type    error-type
-     :message (tru "violates not-null constraint")
-     :columns [col]}))
+     :message (tru "Value for column {0} must be not null" column)
+     :errors  {column (tru "The value must be not null")}}))
 
 ;;; TODO -- we should probably be TTL caching this information. Otherwise
 ;;; parsing 100 errors for a bulk action will result in 100 identical data
@@ -57,43 +57,51 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
   [_driver error-type database error-message]
-  (let [[match table constraint]
-        (re-find #"Duplicate entry '.+' for key '(.+)\.(.+)'" error-message)
-        constraint (remove-backticks constraint)
-        table (remove-backticks table)]
-    (when match
-      {:type    error-type
-       :columns (constraint->column-names database table constraint)})))
+  (when-let [[match table constraint]
+             (re-find #"Duplicate entry '.+' for key '(.+)\.(.+)'" error-message)]
+    (let [constraint (remove-backticks constraint)
+          table      (remove-backticks table)
+          columns    (constraint->column-names database table constraint)]
+      (when match
+        {:type    error-type
+         :message (tru "Value for column(s) {0} is duplicated" (str/join ", " columns))
+         :errors  (reduce (fn [acc col]
+                            (assoc acc col (tru "This column has unique constraint and this value is existed")))
+                          {}
+                          columns)}))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
   [_driver error-type _database error-message]
-  (let [[match table _constraint _fkey-cols ref-table key-cols]
-        (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)
-        ref-table  (remove-backticks ref-table)]
-    (when match
-      {:type       error-type
-       :ref-table  ref-table
-       :columns    (map remove-backticks (str/split key-cols #", "))})))
+  (when-let [[match ref-table _constraint _fkey-cols _table key-cols]
+             (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
+    (let [ref-table  (-> ref-table (str/split #"\.") last remove-backticks)
+          columns    (map remove-backticks (str/split key-cols #", "))]
+      (when match
+        {:type       error-type
+         :message (tru "Column(s) {0} is referenced from {1} table" (str/join ", " columns) ref-table)
+         :errors  (reduce (fn [acc col]
+                            (assoc acc col (tru "The value is referenced from {0} table" ref-table)))
+                          {}
+                          columns)}))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
   [_driver error-type _database error-message]
-  (when-let [[_ expected-type _value database table column _row]
-             (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]
-    (cond-> {:type          error-type
-             :columns       [(-> column
-                                 (str/replace #"^'(.*)'$" "$1")
-                                 remove-backticks)]
-             :expected-type expected-type}
-      table    (assoc :table (remove-backticks table))
-      database (assoc :database (remove-backticks database)))))
+  (when-let [[_ expected-type _value _database _table column _row]
+             (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)"  error-message)]
+    (let [column (-> column (str/replace #"^'(.*)'$" "$1") remove-backticks)]
+      {:type    error-type
+       :message (tru "Value for column {0} should be of type {1}" column expected-type)
+       :errors  {column (tru "The value should be of type {0}" expected-type)}})))
 
 (comment
-  (maybe-parse-fk-constraint-error nil "Cannot delete or update a parent row: a foreign key constraint fails (`food`.`y`, CONSTRAINT `y_ibfk_1` FOREIGN KEY (`x_id1`, `x_id2`) REFERENCES `x` (`id1`, `id2`))")
-  (maybe-parse-unique-constraint-error {:id 1} "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")
-  (maybe-parse-not-null-error nil "Column 'f1' cannot be null")
-  (maybe-parse-incorrect-type nil "Incorrect integer value: 'not boolean' for column `G__168815`.`types`.`boolean` at row 1")
-  (sql-jdbc.actions/maybe-parse-sql-error :mysql :incorrect-type  nil "(conn=183) Incorrect integer value: 'STRING' for column 'id' at row 1")
-  (maybe-parse-incorrect-type nil "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")
+  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-foreign-key-constraint nil
+                                          "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")
+  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-unique-constraint {:id 3}
+                                          "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")
+  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-not-null-constraint nil
+                                          "Column 'f1' cannot be null")
+  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/incorrect-value-type nil
+                                          "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")
   nil)
 
 ;;; There is a huge discrepancy between the types used in DDL statements and

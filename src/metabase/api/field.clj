@@ -425,7 +425,7 @@
        (get-in results [:data :rows]))
      ;; this Exception is usually one that can be ignored which is why I gave it log level debug
      (catch Throwable e
-       (log/debug e (trs "Error searching field values"))
+       (log/error e (trs "Error searching field values"))
        nil))))
 
 (api/defendpoint GET "/:id/search/:search-id"

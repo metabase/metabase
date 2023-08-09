@@ -163,12 +163,13 @@
        (actions/perform-action! implicit-action arg-map))
      (catch Exception e
        ;; handle custom error if exists
-       (if (:type (ex-data e))
-         (let [error-info (actions.error/->error-info #p (ex-data e))]
+       (let [e-data (ex-data e)]
+         (if (and (:type e-data)
+                  (:message e-data))
            (throw (ex-info
-                   (:message error-info)
-                   (assoc error-info :status-code 400))))
-         (throw e))))))
+                   (:message e-data)
+                   (assoc e-data :status-code 400)))
+           (throw e)))))))
 
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
