@@ -57,20 +57,21 @@
   (query driver database table {:select [:*]}))
 
 (defn- has-method? [driver multifn]
+  {:pre [(keyword? driver)]}
   (when-let [driver-method (get-method multifn driver)]
     (and driver-method
          (not= driver-method (get-method multifn :sql-jdbc))
          (not= driver-method (get-method multifn :default)))))
 
+;; TODO - this implementation should itself be deprecated! And have drivers implement it directly instead.
 (defmethod driver/database-supports? [:sql-jdbc :set-timezone]
   [driver _feature _db]
-  (or (has-method? driver driver/db-default-timezone)
-      (has-method? driver sql-jdbc.sync/db-default-timezone)))
+  (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
   ;; if the driver has a non-default implementation of [[sql-jdbc.sync/db-default-timezone]], use that.
-  (when (has-method? sql-jdbc.sync/db-default-timezone driver)
+  (when (has-method? driver sql-jdbc.sync/db-default-timezone)
     (sql-jdbc.sync/db-default-timezone driver (sql-jdbc.conn/db->pooled-connection-spec database))))
 
 (defmethod driver/execute-reducible-query :sql-jdbc
