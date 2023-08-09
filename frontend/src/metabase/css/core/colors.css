@@ -185,9 +185,6 @@
 .text-light-blue-hover:hover {
   color: var(--color-text-light);
 }
-.text-slate {
-  color: var(--color-text-medium);
-}
 
 .bg-transparent {
   background-color: transparent;

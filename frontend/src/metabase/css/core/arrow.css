@@ -15,6 +15,9 @@
   border-right: 10px solid transparent;
   border-top: 10px solid transparent;
   border-bottom: 10px solid transparent;
+  /* move our arrows to the center */
+  top: 50%;
+  margin-top: -10px;
 }
 
 /* create a slightly larger arrow on the right for border purposes */
@@ -27,11 +30,4 @@
 .arrow-right::after {
   right: -19px;
   border-left-color: var(--color-white);
-}
-
-/* move our arrows to the center */
-.arrow-right::before,
-.arrow-right::after {
-  top: 50%;
-  margin-top: -10px;
 }

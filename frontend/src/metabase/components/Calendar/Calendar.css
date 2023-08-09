@@ -21,12 +21,8 @@
   opacity: 0.12;
 }
 
-.Calendar-day,
-.Calendar-day-name {
-  flex: 1;
-}
-
 .Calendar-day {
+  flex: 1;
   color: var(--color-text-light);
   position: relative;
   border-radius: 99px;
@@ -37,15 +33,13 @@
 }
 
 .Calendar-day-name {
+  flex: 1;
   cursor: inherit;
+  color: inherit !important;
 }
 
 .Calendar-day--this-month {
   color: currentcolor;
-}
-
-.Calendar-day-name {
-  color: inherit !important;
 }
 
 .Calendar--range .Calendar-day--selected {

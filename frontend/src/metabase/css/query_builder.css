@@ -301,9 +301,6 @@
 .GuiBuilder-row:last-child {
   border-bottom-color: transparent;
 }
-.GuiBuilder-data {
-  border-right: 1px solid var(--color-border);
-}
 .GuiBuilder-filtered-by {
   border-right: 1px solid transparent;
 }
@@ -312,6 +309,7 @@
 }
 .GuiBuilder-sort-limit {
   border-left: 1px solid var(--color-border);
+  min-width: 0;
 }
 
 /* expanded */
@@ -351,6 +349,7 @@
 /* DATA SECTION */
 
 .GuiBuilder-data {
+  border-right: 1px solid var(--color-border);
   z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
@@ -362,10 +361,6 @@
 }
 
 /* SORT/LIMIT SECTION */
-
-.GuiBuilder-sort-limit {
-  min-width: 0;
-}
 
 .EllipsisButton {
   font-size: 3em;

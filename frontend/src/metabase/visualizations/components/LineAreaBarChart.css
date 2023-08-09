@@ -179,10 +179,6 @@
   transition: opacity 0.25s linear;
 }
 
-.LineAreaBarChart .dc-chart .event-line {
-  transition: stroke 0.15s linear;
-}
-
 /* .mute-* selectors dynamically generated in LineAreaBarChart.js */
 
 .LineAreaBarChart.mute-yl .dc-chart .axis.y,
@@ -230,9 +226,6 @@
 
 text.value-label {
   pointer-events: none;
-}
-
-text.value-label {
   fill: var(--color-text-dark);
   font-size: 12px;
   font-weight: 800;
@@ -277,6 +270,7 @@ text.value-label-white {
 }
 
 .LineAreaBarChart .dc-chart .event-line {
+  transition: stroke 0.15s linear;
   stroke: color-mod(var(--color-text-medium) alpha(-80%));
   stroke-width: 2;
   pointer-events: none;
