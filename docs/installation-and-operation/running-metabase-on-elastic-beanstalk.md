@@ -20,7 +20,7 @@ We recommend [Metabase Cloud](/pricing) (obviously).
 
 ### Self-hosted setups
 
-We recommend setting up Metabase with either PostgreSQL or MySQL as its application database, and running Metabase on a server you can monitor, either on your hardware or with a cloud provider.
+You can set up Metabase with either PostgreSQL or MySQL as its application database, and run Metabase on a server you can monitor, either on your hardware or with a cloud provider.
 
 At a minimum, make sure you back up your application database regularly (and always before upgrading). Follow your organization's requirements for security, monitoring, and availability.
 
