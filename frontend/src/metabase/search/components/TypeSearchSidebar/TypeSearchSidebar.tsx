@@ -25,10 +25,10 @@ export const TypeSearchSidebar = ({
   return (
     <Flex
       data-testid="type-sidebar"
-      gap={"sm"}
       align={"flex-start"}
       justify={"center"}
       direction={"column"}
+      pt="1rem"
     >
       {searchModels.map(({ name, icon, filter }) => {
         return (
