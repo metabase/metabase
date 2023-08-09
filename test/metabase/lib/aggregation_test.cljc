@@ -786,4 +786,4 @@
               (is (string? ag-uuid))
               (is (=? [[:field {} (meta/id :venues :category-id)]
                        [:aggregation {} ag-uuid]]
-                      (mapv lib/ref (lib/returned-columns query)))))))))))
+                      (mapv lib/ref (lib.metadata.calculation/returned-columns query)))))))))))

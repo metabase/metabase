@@ -3,9 +3,7 @@
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [schema.core :as s]))
