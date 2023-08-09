@@ -1,0 +1,36 @@
+{
+  "extends": [
+    "stylelint-config-standard",
+    "stylelint-config-css-modules"
+  ],
+  "rules": {
+    "selector-class-pattern": null,
+    "function-no-unknown": [true, {"ignoreFunctions": ["color-mod", "alpha", "blackness"]}],
+    "value-keyword-case": null,
+    "no-descending-specificity": null,
+    "custom-property-pattern": null,
+    "selector-id-pattern": null,
+    "color-function-notation": null,
+    "selector-pseudo-element-colon-notation": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "rule-empty-line-before": null,
+    "no-duplicate-selectors": null,
+    "declaration-empty-line-before": null,
+    "comment-whitespace-inside": null,
+    "comment-empty-line-before": null,
+    "media-feature-range-notation": null,
+    "selector-no-vendor-prefix": null,
+    "declaration-block-no-duplicate-properties": null,
+    "custom-property-empty-line-before": null,
+    "alpha-value-notation": null,
+    "length-zero-no-unit": null,
+    "property-no-vendor-prefix": null,
+    "shorthand-property-no-redundant-values": null,
+    "import-notation": null,
+    "font-family-name-quotes": null,
+    "at-rule-empty-line-before": null,
+    "media-query-no-invalid": null,
+    "color-hex-length": null,
+    "declaration-block-no-shorthand-property-overrides": null
+  }
+}
