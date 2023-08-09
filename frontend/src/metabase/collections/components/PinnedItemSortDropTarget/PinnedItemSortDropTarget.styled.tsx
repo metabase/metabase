@@ -21,10 +21,7 @@ export const StyledPinDropTarget = styled(
   PinnedItemSortDropTarget,
 )<PinDropTargetProps>`
   position: absolute !important;
-  top: 0;
-  bottom: 0;
-  left: -${(GAP_REM * 5) / 8}rem;
-  right: -${(GAP_REM * 5) / 8}rem;
+  inset: 0 -${(GAP_REM * 5) / 8}rem 0 -${(GAP_REM * 5) / 8}rem;
   pointer-events: none;
   background-color: transparent;
 
@@ -36,10 +33,7 @@ export const StyledPinDropTarget = styled(
 export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   z-index: 1;
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  inset: 0;
   border-left: ${props =>
     props.isFrontTarget &&
     `4px solid ${props.hovered ? color("brand") : color("bg-medium")}`};

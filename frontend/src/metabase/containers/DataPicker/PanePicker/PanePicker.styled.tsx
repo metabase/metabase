@@ -39,10 +39,8 @@ export const BackButton = styled.button`
   display: flex;
   align-items: center;
   cursor: pointer;
-
   color: ${color("text-dark")};
   font-weight: 700;
-
   padding-bottom: 1rem;
 
   &:hover {

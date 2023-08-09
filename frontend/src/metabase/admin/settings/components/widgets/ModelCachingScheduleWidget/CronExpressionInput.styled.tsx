@@ -12,7 +12,6 @@ export const CustomScheduleLabel = styled.span`
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.5rem;
-
   margin-bottom: 6px;
 `;
 
@@ -34,7 +33,6 @@ export const InfoIcon = styled(Icon)`
   position: absolute;
   right: 1rem;
   top: 33%;
-
   color: ${color("text-medium")};
 
   &:hover {
@@ -45,7 +43,6 @@ export const InfoIcon = styled(Icon)`
 export const PopoverContent = styled.div`
   background-color: #222;
   padding: 18px;
-
   color: ${color("text-white")};
 `;
 

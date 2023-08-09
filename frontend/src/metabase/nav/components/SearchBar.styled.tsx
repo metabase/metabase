@@ -30,13 +30,10 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   flex: 1 1 auto;
   align-items: center;
   position: relative;
-
   background-color: ${props =>
     props.isActive ? color("bg-medium") : color("bg-light")};
   border: 1px solid ${color("border")};
-
   overflow: hidden;
-
   transition: background 150ms, width 0.2s;
 
   &:hover {
@@ -50,7 +47,6 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   ${breakpointMaxSmall} {
     justify-content: center;
     margin-left: auto;
-
     width: 2rem;
     height: 2rem;
     border-radius: 99px;
@@ -74,7 +70,6 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   border: none;
   color: ${color("text-dark")};
   font-weight: 700;
-
   width: 100%;
 
   &:focus {
@@ -126,12 +121,9 @@ export const CloseSearchButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 3rem;
   height: 100%;
-
   color: ${color("text-light")};
-
   cursor: pointer;
 
   &:hover {
@@ -143,7 +135,6 @@ export const SearchResultsFloatingContainer = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-
   color: ${color("text-dark")};
 
   ${breakpointMaxSmall} {
@@ -159,10 +150,8 @@ export const SearchResultsContainer = styled.div`
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
   overflow-y: auto;
-
   background-color: ${color("bg-white")};
   line-height: 24px;
-
   box-shadow: 0 20px 20px ${color("shadow")};
 
   ${breakpointMaxSmall} {
@@ -171,7 +160,6 @@ export const SearchResultsContainer = styled.div`
 
   ${breakpointMinSmall} {
     max-height: 400px;
-
     border: 1px solid ${color("border")};
     border-radius: 6px;
     box-shadow: 0 7px 20px ${color("shadow")};

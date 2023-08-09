@@ -39,7 +39,7 @@ export const SearchMain = styled.div`
 `;
 
 export const SearchControls = styled.div`
-  padding: 1rem 1rem 0 1rem;
+  padding: 1rem 1rem 0;
   margin-left: 0.5rem;
 
   ${breakpointMinSmall} {

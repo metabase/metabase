@@ -25,5 +25,5 @@ export const SavedQuestionListEmptyState = styled.div`
 
 export const LoadingWrapper = styled(LoadingAndErrorWrapper)`
   min-height: unset;
-  heigth: 100%;
+  height: 100%;
 `;

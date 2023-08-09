@@ -48,7 +48,6 @@ export const ItemTitle = styled.h4`
 export const ExpandButton = styled(IconButtonWrapper)<{ canSelect: boolean }>`
   padding: 0.5rem;
   margin-left: auto;
-
   color: ${color("text-light")};
   border: 1px solid ${color("border")};
 

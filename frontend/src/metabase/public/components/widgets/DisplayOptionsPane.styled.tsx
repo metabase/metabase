@@ -3,6 +3,7 @@ import { space } from "metabase/styled-components/theme";
 
 export const StyleContainer = styled.div`
   display: flex;
+
   & > * {
     flex-grow: 1;
   }

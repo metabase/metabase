@@ -44,7 +44,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   transition: background-color 0.3s;
   flex-shrink: 0;
 
-  &:after {
+  &::after {
     content: "";
     width: ${props => (props.small ? "13px" : "20px")};
     height: ${props => (props.small ? "13px" : "20px")};

@@ -104,7 +104,6 @@ type SegmentedItemProps = BorderStyleProps &
 export const SegmentedItem = styled.li<SegmentedItemProps>`
   display: flex;
   flex-grow: ${props => (props.fullWidth ? 1 : 0)};
-
   background-color: ${props => COLORS[props.variant].background(props)};
   border: 1px solid ${props => COLORS[props.variant].border(props)};
 

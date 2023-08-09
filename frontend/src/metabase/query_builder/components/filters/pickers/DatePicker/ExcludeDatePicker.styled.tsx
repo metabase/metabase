@@ -15,6 +15,7 @@ export const OptionButton = styled(Button)<OptionButtonProps>`
   color: ${({ primaryColor = color("brand"), selected }) =>
     selected ? primaryColor : undefined};
   border: none;
+
   &:hover {
     color: ${props => props.primaryColor || color("brand")};
     background: none;
@@ -47,7 +48,6 @@ export const ExcludeContainer = styled.div`
 
 export const ExcludeColumn = styled.div`
   display: flex;
-  flex-wrap: no-wrap;
-  flex-direction: column;
+  flex-flow: column no-wrap;
   grid-gap: ${space(1)};
 `;

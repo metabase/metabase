@@ -55,7 +55,6 @@ export const SettingsButton = styled(Button)`
   right: -0.75rem;
   padding: 0.375rem;
   border: 1px solid ${color("border")};
-
   border-radius: 50px;
   background-color: ${color("white")};
   opacity: 0;
@@ -73,6 +72,7 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   border: 1px solid ${color("border")};
   cursor: pointer;
   padding: 0.875rem;
+
   &:hover {
     color: ${color("brand")};
     background-color: ${lighten("brand", 0.55)};
@@ -94,6 +94,6 @@ export const OptionLabel = styled.h4`
 
 export const OptionList = styled.div`
   display: flex;
-  margin: 1rem 1rem 3rem 1rem;
+  margin: 1rem 1rem 3rem;
   flex-wrap: wrap;
 `;

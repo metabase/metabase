@@ -38,14 +38,14 @@ export const ActionSettingsLeft = styled.div`
   width: 20rem;
   overflow-y: auto;
 
-  &:before {
+  &::before {
     ${fade("top")}
     top: 0;
     left: 0;
     width: 19rem;
   }
 
-  &:after {
+  &::after {
     ${fade("bottom")}
     bottom: 0;
     left: 0;
@@ -67,10 +67,7 @@ export const ParameterMapperContainer = styled.div`
   flex-direction: column;
   overflow-y: auto;
   flex: 1;
-  padding-top: ${space(1)};
-  padding-bottom: ${space(3)};
-  padding-left: ${space(3)};
-  padding-right: ${space(3)};
+  padding: ${space(1)} ${space(3)} ${space(3)} ${space(3)};
 `;
 
 export const ModalActions = styled.div`
@@ -85,7 +82,6 @@ export const ModalActions = styled.div`
 export const ExplainerText = styled.p`
   margin-left: ${space(3)};
   margin-right: ${space(3)};
-
   color: ${color("text-medium")};
 `;
 

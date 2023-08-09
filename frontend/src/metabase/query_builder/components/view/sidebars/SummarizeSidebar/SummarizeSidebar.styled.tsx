@@ -5,10 +5,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 export const SidebarView = styled(SidebarContent)`
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
 `;
 
 const Section = styled.section`
@@ -24,7 +21,6 @@ export const AggregationsContainer = styled(Section)`
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-
   padding-top: 0;
 `;
 

@@ -33,7 +33,7 @@ export const ToasterMessage = styled.p`
   width: 250px;
   line-height: 24px;
   font-size: 14px;
-  margin: 0px;
+  margin: 0;
 `;
 
 export const ToasterButton = styled.button`
@@ -58,6 +58,7 @@ export const ToasterDismiss = styled.button`
   cursor: pointer;
   transition: color 200ms ease;
   color: ${color("bg-dark")};
+
   &:hover {
     color: ${lighten("bg-dark", 0.3)};
   }

@@ -8,7 +8,6 @@ import { Icon } from "metabase/core/components/Icon";
 export const FieldTypeIcon = styled(Icon)`
   color: ${props =>
     props.name === "ellipsis" ? color("text-white") : color("brand")};
-
   margin-right: 6px;
 
   ${props =>

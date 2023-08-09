@@ -82,11 +82,14 @@ export const HeaderButton = styled(Button)<{ active: boolean }>`
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
   color: ${({ active }) => (active ? "white" : color("text-dark"))};
+
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
     color: ${({ color }) => color};
   }
+
   transition: background 300ms linear, border 300ms linear;
+
   > .Icon {
     opacity: 0.6;
   }
@@ -108,10 +111,12 @@ export const FilterHeaderButton = styled(Button)<{ active: boolean }>`
   border-radius: 99px;
   padding-top: ${space(0.5)};
   padding-bottom: ${space(0.5)};
+
   &:hover {
     background-color: ${color("filter")};
     color: white;
   }
+
   transition: background 300ms linear, border 300ms linear;
 
   @media (prefers-reduced-motion) {
@@ -128,7 +133,6 @@ export const FilterHeaderContainer = styled.div`
 
 export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
   color: ${color("text-light")};
-  //margin-left: 4px;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
@@ -167,7 +171,7 @@ export const SavedQuestionLeftSideRoot = styled.div<{ showSubHeader: boolean }>`
   &:hover,
   &:focus-within {
     ${SavedQuestionHeaderButtonContainer} {
-      top: 0px;
+      top: 0;
     }
 
     ${ViewHeaderLeftSubHeading} {
@@ -179,7 +183,7 @@ export const SavedQuestionLeftSideRoot = styled.div<{ showSubHeader: boolean }>`
     padding: 0 1.25rem;
 
     ${SavedQuestionHeaderButtonContainer} {
-      top: 0px;
+      top: 0;
     }
 
     ${ViewHeaderLeftSubHeading} {

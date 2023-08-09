@@ -31,7 +31,7 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
   ${({ isEditingMarkdown }) =>
     isEditingMarkdown &&
     css`
-      &:after {
+      &::after {
         content: attr(data-value);
         visibility: hidden;
         white-space: pre-wrap;

@@ -22,7 +22,6 @@ export const NodeListItemIcon = styled(Icon)`
 
 export const NodeListItemLink = styled.a`
   border-radius: 8px;
-  display: flex;
   align-items: center;
   color: ${color("brand")};
   font-weight: 700;
@@ -32,6 +31,7 @@ export const NodeListItemLink = styled.a`
   display: flex;
   padding: ${space(1)};
   text-decoration: none;
+
   :hover {
     background-color: ${color("bg-medium")};
   }

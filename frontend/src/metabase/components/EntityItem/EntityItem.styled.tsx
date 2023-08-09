@@ -35,7 +35,6 @@ export const EntityIconWrapper = styled(IconButtonWrapper)<{
   background-color: transparent;
   padding: 12px;
   cursor: ${props => (props.disabled ? "default" : "pointer")};
-
   color: ${props =>
     props.isPinned
       ? getPinnedForeground(props.disabled)

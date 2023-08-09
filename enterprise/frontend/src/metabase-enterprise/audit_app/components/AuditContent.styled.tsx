@@ -8,7 +8,7 @@ export const AuditContentRoot = styled.div`
 `;
 
 export const AuditContentHeading = styled.div`
-  padding: 2rem 2rem 0 2rem;
+  padding: 2rem 2rem 0;
 `;
 
 export const AuditContentTabs = styled.div`

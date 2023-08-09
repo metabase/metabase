@@ -28,9 +28,7 @@ const BackButtonContainer = styled.div`
 const BackButtonLabel = styled.span`
   font-size: 16px;
   color: ${color("text-dark")};
-
   margin-left: ${space(1)};
-
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
@@ -64,7 +62,6 @@ Object.assign(CollectionDatasetSelectList, { Item: SelectList.Item });
 
 export const CollectionDatasetAllDataLink = styled(SelectList.BaseItem)`
   padding: 0.5rem;
-
   color: ${color("text-light")};
   font-weight: bold;
   cursor: pointer;

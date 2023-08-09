@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const EmptyStateContainer = styled.div`
-  padding: 2rem 2rem 0 2rem;
+  padding: 2rem 2rem 0;
 `;
 
 interface OptionListProps {

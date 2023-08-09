@@ -10,6 +10,7 @@ type ShortcutButtonProps = {
 export const ShortcutButton = styled(Button)<ShortcutButtonProps>`
   display: block;
   border: none;
+
   &:hover {
     color: ${props => props.primaryColor || color("brand")};
     background: none;

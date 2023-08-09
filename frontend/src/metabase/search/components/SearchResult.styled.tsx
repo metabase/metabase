@@ -74,6 +74,7 @@ export const ResultButton = styled.button<ResultStylesProps>`
   text-align: left;
   cursor: pointer;
   width: 100%;
+
   &:hover {
     ${Title} {
       color: ${color("brand")};

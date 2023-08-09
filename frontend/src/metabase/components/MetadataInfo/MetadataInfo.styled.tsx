@@ -17,10 +17,7 @@ export const Container = styled.div`
 
 export const AbsoluteContainer = styled.div`
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   display: flex;
   justify-content: center;
   align-items: center;

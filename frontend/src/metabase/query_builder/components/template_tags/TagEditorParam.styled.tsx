@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 export const TagContainer = styled.div`
-  padding: 1.5rem 1.5rem 0 1.5rem;
+  padding: 1.5rem 1.5rem 0;
   margin-bottom: 1.5rem;
   border-top: 1px solid ${color("border")};
 `;

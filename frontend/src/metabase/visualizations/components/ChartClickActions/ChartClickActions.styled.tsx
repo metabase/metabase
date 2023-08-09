@@ -6,9 +6,7 @@ export const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-
-  padding: 1rem 1.5rem 1rem;
-
+  padding: 1rem 1.5rem;
   font-weight: 700;
 `;
 
@@ -22,5 +20,5 @@ export const FlexTippyPopover = styled(TippyPopover)`
 export const Divider = styled.div`
   height: 1px;
   background-color: ${color("border")};
-  margin: 0.5rem -1.5rem 0.5rem;
+  margin: 0.5rem -1.5rem;
 `;

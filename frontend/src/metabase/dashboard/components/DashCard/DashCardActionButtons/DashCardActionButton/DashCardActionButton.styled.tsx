@@ -11,6 +11,7 @@ export const StyledAnchor = styled.a`
   align-items: center;
   justify-content: center;
   padding: 4px;
+
   &:hover {
     color: ${color("text-dark")};
   }

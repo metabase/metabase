@@ -38,6 +38,7 @@ export const AdminMobileNavbar = styled.div`
   ${breakpointMaxMedium} {
     display: block;
   }
+
   display: none;
 `;
 

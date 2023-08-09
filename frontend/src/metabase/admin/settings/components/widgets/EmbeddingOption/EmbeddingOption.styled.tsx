@@ -16,7 +16,6 @@ export const Label = styled.span`
   margin-bottom: ${space(2)};
   padding: ${space(0)} ${space(1)};
   display: inline-block;
-
   line-height: 1.3;
   font-size: 0.75rem;
   font-weight: 700;

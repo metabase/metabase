@@ -38,7 +38,7 @@ export const PermissionsTableCell = styled.td`
     padding-left: 0;
     padding-right: 1.5rem;
 
-    &:after {
+    &::after {
       position: absolute;
       right: 0;
       top: 0;
@@ -61,7 +61,8 @@ export const PermissionTableHeaderCell = styled(
   &:first-of-type {
     background: ${headerBackground};
     z-index: 2;
-    &:after {
+
+    &::after {
       display: none;
     }
   }

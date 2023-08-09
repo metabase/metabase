@@ -7,9 +7,11 @@ export const ActionCreatorBodyContainer = styled.div`
   display: grid;
   grid-template-columns: 4fr 3fr;
   border-top: 1px solid ${color("border")};
+
   .react-resizable-handle {
     display: none;
   }
+
   flex: 1;
   overflow-y: auto;
 `;
@@ -63,7 +65,7 @@ export const ModalRight = styled.div`
   ${SidebarContent.Header.Root} {
     position: sticky;
     top: 0;
-    padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+    padding: 1.5rem 1.5rem 0.5rem;
     margin: 0;
     background-color: ${color("white")};
     z-index: 5;

@@ -24,11 +24,7 @@ export const StyledFieldValuesWidget = styled(FieldValuesWidget)`
   ${TokenField.FieldItem} {
     background-color: transparent;
     color: ${color("text-dark")};
-
-    padding-left: 12px;
-    padding-top: 0;
-    padding-right: 0;
-    padding-bottom: 0;
+    padding: 0 0 0 12px;
     margin: 0;
 
     span {

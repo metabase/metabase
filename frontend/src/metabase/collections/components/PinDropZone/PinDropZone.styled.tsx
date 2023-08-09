@@ -17,10 +17,7 @@ export type PinDropTargetRenderArgs = PinDropTargetProps & {
 
 export const StyledPinDropTarget = styled(PinDropTarget)<PinDropTargetProps>`
   position: absolute !important;
-  top: 0;
-  bottom: 0;
-  left: -1rem;
-  right: -1rem;
+  inset: 0 -1rem;
   pointer-events: none;
   background-color: transparent !important;
 
@@ -33,10 +30,7 @@ export const StyledPinDropTarget = styled(PinDropTarget)<PinDropTargetProps>`
 export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   z-index: 1;
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  inset: 0;
   border-left: ${props =>
     `4px solid ${props.hovered ? color("brand") : color("bg-medium")}`};
   display: ${props => !(props.hovered || props.highlighted) && "none"};

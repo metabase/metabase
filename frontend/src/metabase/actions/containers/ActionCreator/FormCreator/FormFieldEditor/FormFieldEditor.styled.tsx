@@ -39,7 +39,6 @@ export const Column = styled.div<{ full?: boolean }>`
   display: flex;
   flex-direction: column;
   flex: ${props => (props.full ? 1 : "unset")};
-
   min-width: ${DRAG_HANDLE_SIZE}px;
 `;
 
@@ -58,7 +57,6 @@ export const Subtitle = styled.div`
   color: ${color("text-medium")};
   font-size: 0.85rem;
   font-weight: 700;
-
   margin-top: 1.2rem;
 `;
 
@@ -72,8 +70,7 @@ DragHandle.defaultProps = { size: DRAG_HANDLE_SIZE };
 export const PreviewContainer = styled(ContentContainer)`
   background-color: ${color("bg-light")};
   border-top: 1px solid ${darken("bg-light", 0.1)};
-
-  padding: 1rem 1rem 2rem 1rem;
+  padding: 1rem 1rem 2rem;
 
   ${FormField.Root} {
     margin-bottom: 0;

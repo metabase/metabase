@@ -54,7 +54,7 @@ export const NativeCardLink = styled(ExternalLink)`
 export const CardLabel = styled.div`
   font-size: 0.83em;
   margin-bottom: ${space(1)};
-  text-weight: bold;
+  font-weight: bold;
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -74,7 +74,7 @@ export const TargetButton = styled.div<{ variant: string }>`
   align-items: center;
   justify-content: space-between;
   background-color: ${color("white")};
-  text-weight: bold;
+  font-weight: bold;
   cursor: pointer;
   border: 2px solid ${color("brand")};
   border-radius: 8px;

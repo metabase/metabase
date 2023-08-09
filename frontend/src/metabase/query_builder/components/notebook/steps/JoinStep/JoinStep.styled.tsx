@@ -51,7 +51,6 @@ export const JoinTypeOptionRoot = styled.div<{ isSelected: boolean }>`
   margin-bottom: ${space(1)};
   cursor: pointer;
   border-radius: ${space(1)};
-
   color: ${props => props.isSelected && color("text-white")};
   background-color: ${props => props.isSelected && color("brand")};
 
@@ -76,7 +75,6 @@ export const JoinDimensionControlsContainer = styled.div<{ isFirst: boolean }>`
   display: flex;
   flex: 1;
   align-items: center;
-
   margin-top: ${props => (props.isFirst ? 0 : space(1))};
 
   ${breakpointMaxMedium} {
