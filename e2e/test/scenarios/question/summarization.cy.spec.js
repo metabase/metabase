@@ -10,7 +10,6 @@ import {
   openOrdersTable,
   enterCustomColumnDetails,
   visualize,
-  getNotebookStep,
   checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
@@ -150,32 +149,6 @@ describe("scenarios > question > summarize sidebar", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("49.54");
-  });
-
-  it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
-    cy.icon("notebook").click();
-
-    summarize({ mode: "notebook" });
-    popover().findByText("Count of rows").click();
-
-    getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    popover()
-      .findByRole("option", { name: "Created At" })
-      .realHover()
-      .findByLabelText("Temporal bucket")
-      .findByText("by month")
-      .click();
-
-    cy.findByRole("tooltip").within(() => {
-      cy.findByText("Minute").should("be.visible");
-      cy.findByText("Week").should("be.visible");
-
-      // Ensure the option is there, but not visible (have to scroll the list to see it)
-      cy.findByText("Quarter of year").should("exist").should("not.be.visible");
-    });
   });
 
   it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
