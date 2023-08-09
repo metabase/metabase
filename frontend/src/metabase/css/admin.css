@@ -95,7 +95,7 @@
 }
 
 .AdminList-item {
-  padding: 0.75em 1em 0.75em 1em;
+  padding: 0.75em 1em;
   border: var(--border-size) var(--border-style) transparent;
   border-radius: var(--default-border-radius);
   margin-bottom: 0.25em;
@@ -118,7 +118,7 @@
 
 .AdminList-section {
   margin-top: 1em;
-  padding: 0.5em 1em 0.5em 1em;
+  padding: 0.5em 1em;
   text-transform: uppercase;
   color: var(--color-text-light);
   font-weight: 700;
