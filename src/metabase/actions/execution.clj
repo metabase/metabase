@@ -1,10 +1,8 @@
 (ns metabase.actions.execution
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions :as actions]
-   [metabase.actions.error :as actions.error]
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -158,18 +156,8 @@
 
                   (= implicit-action :row/update)
                   (assoc :update-row row-parameters))]
-    (try
-     (binding [qp.perms/*card-id* (:model_id action)]
-       (actions/perform-action! implicit-action arg-map))
-     (catch Exception e
-       ;; handle custom error if exists
-       (let [e-data (ex-data e)]
-         (if (and (:type e-data)
-                  (:message e-data))
-           (throw (ex-info
-                   (:message e-data)
-                   (assoc e-data :status-code 400)))
-           (throw e)))))))
+    (binding [qp.perms/*card-id* (:model_id action)]
+      (actions/perform-action! implicit-action arg-map))))
 
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."

@@ -51,12 +51,11 @@
 (defn- parse-sql-error
   [driver database e]
   (try
-   (or (some #(maybe-parse-sql-error driver % database (ex-message e))
-             [actions.error/violate-unique-constraint
-              actions.error/violate-foreign-key-constraint
-              actions.error/violate-not-null-constraint
-              actions.error/incorrect-value-type])
-       (ex-data e))
+   (some #(maybe-parse-sql-error driver % database (ex-message e))
+          [actions.error/violate-unique-constraint
+           actions.error/violate-foreign-key-constraint
+           actions.error/violate-not-null-constraint
+           actions.error/incorrect-value-type])
    ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
    ;; We'll still get the original unparsed error message.
    (catch Throwable new-e
@@ -70,8 +69,9 @@
    (catch Exception e
      (if (= (:type (ex-data e)) actions.error/incorrect-affected-rows)
        (throw e)
-       (throw (ex-info (or (ex-message e) "Failed to execute action")
-                       (or (parse-sql-error driver database e) {})))))))
+       (throw (ex-info (or (ex-message e) "Error executing action.")
+                       (or (some-> (parse-sql-error driver database e) (assoc :status-code 400))
+                           (ex-data e))))))))
 
 (defmacro ^:private with-auto-parse-sql-error
   "Execute body and if there is an exception, try to parse the error message to search for known sql error message."
@@ -202,7 +202,7 @@
                        (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                        (sql.qp/mbql->honeysql driver query)
                        (catch Exception e
-                         (catch-throw e 404))))
+                         (catch-throw e 400))))
         delete-hsql (-> raw-hsql
                         (dissoc :select)
                         (assoc :delete [])
@@ -229,7 +229,7 @@
                         (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                         (sql.qp/mbql->honeysql driver query)
                         (catch Exception e
-                          (catch-throw e 404))))
+                          (catch-throw e 400))))
         target-table (first (:from raw-hsql))
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
@@ -286,7 +286,7 @@
                        (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
                        (sql.qp/mbql->honeysql driver query)
                        (catch Exception e
-                         (catch-throw e 404))))
+                         (catch-throw e 400))))
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
                         (assoc :values [(cast-values driver create-row (get-in query [:query :source-table]))])
