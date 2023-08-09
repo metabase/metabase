@@ -43,7 +43,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   }
 
   /* the download icon should be optically aligned with the x-height of the text */
-  > .icon.icon-download: {
+  > .Icon.Icon-download {
     transform: translateY(1px);
   }
 
