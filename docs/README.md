@@ -156,9 +156,9 @@ Metabase's reference documentation.
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
-- [Full-app embedding](./embedding/full-app-embedding.md)
-- [Signed embedding](./embedding/signed-embedding.md)
-- [Parameters for signed embeds](./embedding/signed-embedding-parameters.md)
+- [Interactive embedding](./embedding/interactive-embedding.md)
+- [Static embedding](./embedding/static-embedding.md)
+- [Parameters for static embeds](./embedding/static-embedding-parameters.md)
 
 ### Configuration
 
