@@ -36,25 +36,25 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import Questions from "metabase/entities/questions";
 import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
-import { ResponsiveParametersList } from "./ResponsiveParametersList";
-import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
-import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
-import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
-import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
-import {
-  ACE_ELEMENT_ID,
-  SCROLL_MARGIN,
-  MIN_HEIGHT_LINES,
-} from "./NativeQueryEditor/constants";
+
+import { ResponsiveParametersList } from "../ResponsiveParametersList";
+
+import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 import {
   calcInitialEditorHeight,
   getEditorLineHeight,
   getMaxAutoSizeLines,
-} from "./NativeQueryEditor/utils";
+} from "./utils";
+
+import NativeQueryEditorSidebar from "./NativeQueryEditorSidebar";
+import VisibilityToggler from "./VisibilityToggler";
+import RightClickPopover from "./RightClickPopover";
+import DataSourceSelectors from "./DataSourceSelectors";
+
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
-import "./NativeQueryEditor.css";
 import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
+import "./NativeQueryEditor.css";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
