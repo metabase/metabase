@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.driver :as driver]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.format-rows :as format-rows]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -52,7 +52,7 @@
                     [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]]
 
                    ;; TIMEZONE FIXME -- the value of this changes based on whether we are in DST. This is B R O K E N
-                   (qp.test/supports-report-timezone? driver/*driver*)
+                   (qp.test-util/supports-report-timezone? driver/*driver*)
                    [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" "08:30:00-08:00"]
                     [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" "15:15:00-08:00"]
                     [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" "16:15:00-08:00"]

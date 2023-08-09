@@ -16,7 +16,6 @@
    [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -66,7 +65,6 @@
   metabase.test.redefs/keep-me
   mw.session/keep-me
   qp.test-util/keep-me
-  qp.test/keep-me
   qp/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
@@ -155,7 +153,8 @@
   preprocess
   process-query]
 
- [qp.test
+ [qp.test-util
+  card-with-source-metadata-for-query
   col
   cols
   first-row
@@ -168,11 +167,8 @@
   normal-drivers-without-feature
   rows
   rows+column-names
-  with-bigquery-fks!]
-
- [qp.test-util
-  card-with-source-metadata-for-query
   store-contents
+  with-bigquery-fks!
   with-database-timezone-id
   with-everything-store
   with-report-timezone-id

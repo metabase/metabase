@@ -34,11 +34,9 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(use-fixtures :each (fn [thunk]
-                      ;; reset login throtllers
-                      (doseq [throttler (vals @#'api.session/login-throttlers)]
-                        (reset! (:attempts throttler) nil))
-                      (thunk)))
+(defn- reset-throttlers! []
+  (doseq [throttler (vals @#'api.session/login-throttlers)]
+    (reset! (:attempts throttler) nil)))
 
 (def ^:private SessionResponse
   {:id (s/pred mt/is-uuid-string? "session")})
@@ -46,6 +44,7 @@
 (def ^:private session-cookie @#'mw.session/metabase-session-cookie)
 
 (deftest login-test
+  (reset-throttlers!)
   (testing "POST /api/session"
     (testing "Test that we can login"
       (is (schema= SessionResponse
@@ -87,7 +86,8 @@
                         (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
                         first))))))
 
-(deftest ^:parallel login-validation-test
+(deftest login-validation-test
+  (reset-throttlers!)
   (testing "POST /api/session"
     (testing "Test for required params"
       (is (= {:errors {:username "value must be a non-blank string."}}
@@ -107,6 +107,7 @@
                                              (assoc :password "something else"))))))))
 
 (deftest login-throttling-test
+  (reset-throttlers!)
   (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"
                 " throttling works at the API level -- more tests in the throttle library itself:"
                 " https://github.com/metabase/throttle)")
@@ -148,6 +149,7 @@
     (reduce clean-key throttlers ks)))
 
 (deftest failure-threshold-throttling-test
+  (reset-throttlers!)
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
@@ -168,6 +170,7 @@
                  (error)))))))
 
 (deftest failure-threshold-per-request-source
+  (reset-throttlers!)
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
@@ -192,6 +195,7 @@
                  (error)))))))
 
 (deftest logout-test
+  (reset-throttlers!)
   (testing "DELETE /api/session"
     (testing "Test that we can logout"
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
@@ -219,6 +223,7 @@
                        (t2/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
+  (reset-throttlers!)
   (testing "POST /api/session/forgot_password"
     ;; deref forgot-password-impl for the tests since it returns a future
     (with-redefs [api.session/forgot-password-impl
@@ -257,6 +262,7 @@
                (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
 
 (deftest forgot-password-throttling-test
+  (reset-throttlers!)
   (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
     (letfn [(send-password-reset! [& [expected-status & _more]]
               (mt/client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
@@ -275,6 +281,7 @@
                  (error))))))))
 
 (deftest reset-password-test
+  (reset-throttlers!)
   (testing "POST /api/session/reset_password"
     (testing "Test that we can reset password from token (AND after token is used it gets removed)"
       (mt/with-fake-inbox
@@ -307,6 +314,7 @@
                        (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))))
 
 (deftest reset-password-validation-test
+  (reset-throttlers!)
   (testing "POST /api/session/reset_password"
     (testing "Test that token and password are required"
       (is (= {:errors {:token "value must be a non-blank string."}}
@@ -332,6 +340,7 @@
                                                               :password "whateverUP12!!"})))))))
 
 (deftest check-reset-token-valid-test
+  (reset-throttlers!)
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
@@ -350,6 +359,7 @@
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
 (deftest properties-test
+  (reset-throttlers!)
   (testing "GET /session/properties"
     (testing "Unauthenticated"
       (is (= (set (keys (setting/user-readable-values-map #{:public})))
@@ -384,6 +394,7 @@
                    :test-session-api-setting)))))))
 
 (deftest properties-i18n-test
+  (reset-throttlers!)
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
       (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
@@ -395,6 +406,7 @@
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
 (deftest google-auth-test
+  (reset-throttlers!)
   (testing "POST /google_auth"
     (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
@@ -423,6 +435,7 @@
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 
 (deftest ldap-login-test
+  (reset-throttlers!)
   (ldap.test/with-ldap-server
     (testing "Test that we can login with LDAP"
       (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
@@ -492,6 +505,7 @@
               (is (t2/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
+  (reset-throttlers!)
   (testing "A user with no password should not be able to do password-based login"
     (t2.with-temp/with-temp [User user]
       (t2/update! User (u/the-id user) {:password nil, :password_salt nil})
@@ -508,6 +522,7 @@
 ;;; ------------------------------------------- TESTS FOR UNSUBSCRIBING NONUSERS STUFF --------------------------------------------
 
 (deftest unsubscribe-test
+  (reset-throttlers!)
   (testing "POST /pulse/unsubscribe"
     (let [email "test@metabase.com"]
       (testing "Invalid hash"
@@ -535,6 +550,7 @@
                                                                    :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))
 
 (deftest unsubscribe-undo-test
+  (reset-throttlers!)
   (testing "POST /pulse/unsubscribe/undo"
     (let [email "test@metabase.com"]
       (testing "Invalid hash"

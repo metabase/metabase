@@ -12,7 +12,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -71,7 +70,7 @@
                :base_type    :type/Integer
                :effective_type :type/Integer
                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
-             (qp.test/cols
+             (mt/cols
                (qp/process-query
                 {:native   {:query (with-test-db-name
                                      (str "SELECT `v3_test_data.checkins`.`venue_id` AS `venue_id`, "
@@ -112,14 +111,14 @@
     (testing (str "make sure queries with two or more of the same aggregation type still work. Aggregations used to be "
                   "deduplicated here in the BigQuery driver; now they are deduplicated as part of the main QP "
                   "middleware, but no reason not to keep a few of these tests just to be safe")
-      (let [{:keys [rows columns]} (qp.test/rows+column-names
+      (let [{:keys [rows columns]} (mt/rows+column-names
                                     (mt/run-mbql-query checkins
                                       {:aggregation [[:sum $user_id] [:sum $user_id]]}))]
         (is (= ["sum" "sum_2"]
                columns))
         (is (= [[7929 7929]]
                rows)))
-      (let [{:keys [rows columns]} (qp.test/rows+column-names
+      (let [{:keys [rows columns]} (mt/rows+column-names
                                     (mt/run-mbql-query checkins
                                       {:aggregation [[:sum $user_id] [:sum $user_id] [:sum $user_id]]}))]
         (is (= ["sum" "sum_2" "sum_3"]
@@ -255,7 +254,7 @@
 (deftest unprepare-params-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= [["Red Medicine"]]
-           (qp.test/rows
+           (mt/rows
              (qp/process-query
               (mt/native-query
                 {:query  (with-test-db-name

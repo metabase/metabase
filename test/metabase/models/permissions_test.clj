@@ -910,20 +910,20 @@
     (is (= ["/data/db/1/schema/PUBLIC/table/1/" "/query/db/1/schema/PUBLIC/table/1/"]
            (#'perms/->v2-path "/db/1/schema/PUBLIC/table/1/query/segmented/")))))
 
-(defn- check-fn! [fn-var & [iterations]]
+(defn- check-fn [fn-var & [iterations]]
   (let [iterations (or iterations 5000)]
     (if-let [result ((mg/function-checker (:schema (meta fn-var)) {::mg/=>iterations iterations}) @fn-var)]
       result
       {:pass? true :iterations iterations})))
 
 (deftest ^:parallel quickcheck-perm-path-classification-test
-  (is (:pass? (check-fn! #'perms/classify-path))))
+  (is (:pass? (check-fn #'perms/classify-path))))
 
 (deftest ^:parallel quickcheck-data-path-classification-test
-  (is (:pass? (check-fn! #'perms/classify-data-path))))
+  (is (:pass? (check-fn #'perms/classify-data-path))))
 
 (deftest ^:parallel quickcheck-->v2-path-test
-  (is (:pass? (check-fn! #'perms/->v2-path))))
+  (is (:pass? (check-fn #'perms/->v2-path))))
 
 (deftest ^:parallel generate-graph-test
   (are [db-ids group-id->paths expected] (= expected

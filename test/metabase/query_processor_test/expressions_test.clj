@@ -13,7 +13,7 @@
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Do a basic query including an expression"
       (is (= [[1 "Red Medicine"                 4  10.0646 -165.374 3 5.0]
@@ -27,7 +27,7 @@
                   :limit       5
                   :order-by    [[:asc $id]]})))))))
 
-(deftest floating-point-division-test
+(deftest ^:parallel floating-point-division-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Make sure FLOATING POINT division is done"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 1.5] ; 3 / 2 SHOULD BE 1.5, NOT 1 (!)
@@ -51,7 +51,7 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(deftest nested-expressions-test
+(deftest ^:parallel nested-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we do NESTED EXPRESSIONS ?"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 3.0]
@@ -63,7 +63,7 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(deftest multiple-expressions-test
+(deftest ^:parallel multiple-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we have MULTIPLE EXPRESSIONS?"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 2.0 4.0]
@@ -76,7 +76,7 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(deftest expressions-in-fields-test
+(deftest ^:parallel expressions-in-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we refer to expressions inside a FIELDS clause?"
       (is (= [[4] [4] [5]]
@@ -87,7 +87,7 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(deftest dont-return-expressions-if-fields-is-explicit-test
+(deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     ;; bigquery doesn't let you have hypthens in field, table, etc names
     (let [priceplusone (if (= driver/*driver* :bigquery-cloud-sdk) "price_plus_1" "Price + 1")
@@ -121,7 +121,7 @@
                     :order-by    [[:asc [:expression priceplusone]]]
                     :limit       3}))))))))
 
-(deftest expressions-in-order-by-test
+(deftest ^:parallel expressions-in-order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we refer to expressions inside an ORDER BY clause?"
       (is (= [[100 "Mohawk Bend"         46 34.0777 -118.265 2 102.0]
@@ -142,7 +142,7 @@
                   :limit       3
                   :order-by    [[:desc $price] [:desc [:expression :x]]]})))))))
 
-(deftest aggregate-breakout-expression-test
+(deftest ^:parallel aggregate-breakout-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we AGGREGATE + BREAKOUT by an EXPRESSION?"
       (is (= [[2 22] [4 59] [6 13] [8 6]]
@@ -152,7 +152,7 @@
                   :aggregation [[:count]]
                   :breakout    [[:expression :x]]})))))))
 
-(deftest expressions-should-include-type-test
+(deftest ^:parallel expressions-should-include-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Custom aggregation expressions should include their type"
       (let [cols (mt/cols
@@ -298,7 +298,7 @@
 ;;; |                                                     JOINS                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest expressions+joins-test
+(deftest ^:parallel expressions+joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join :date-arithmetics)
     (testing "Do calculated columns play well with joins"
       (is (= "Simcha Yan"
@@ -348,7 +348,7 @@
 ;; Make sure no part of query compilation is lazy as that won't play well with dynamic bindings.
 ;; This is not an issue limited to expressions, but using expressions is the most straightforward
 ;; way to reproducing it.
-(deftest no-lazyness-test
+(deftest ^:parallel no-lazyness-test
   ;; Sometimes Kondo thinks this is unused, depending on the state of the cache -- see comments in
   ;; [[hooks.metabase.test.data]] for more information. It's definitely used to.
   #_{:clj-kondo/ignore [:unused-binding]}
@@ -376,7 +376,7 @@
             (testing "# of app DB calls should not be some insane number"
               (is (< (call-count-fn) 20)))))))))
 
-(deftest expression-with-slashes
+(deftest ^:parallel expression-with-slashes
   (mt/test-drivers (disj
                      (mt/normal-drivers-with-feature :expressions)
                      ;; Slashes documented as not allowed in BQ
@@ -392,7 +392,7 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(deftest expression-using-aggregation-test
+(deftest ^:parallel expression-using-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use aggregations from previous steps in expressions (#12762)"
       (is (= [["20th Century Cafe" 2 2 0]
@@ -409,7 +409,7 @@
                                                [:field "max" {:base-type :type/Number}]
                                                [:field "min" {:base-type :type/Number}]]}})))))))
 
-(deftest expression-with-duplicate-column-name
+(deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
       (mt/dataset sample-dataset
@@ -424,7 +424,7 @@
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
 
-(deftest fk-field-and-duplicate-names-test
+(deftest ^:parallel fk-field-and-duplicate-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
     (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
       (mt/dataset sample-dataset
@@ -441,7 +441,7 @@
                  (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
                    results))))))))
 
-(deftest string-operations-from-subquery
+(deftest ^:parallel string-operations-from-subquery
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
     (testing "regex-match-first and replace work when evaluated against a subquery (#14873)"
       (mt/dataset test-data
@@ -460,7 +460,7 @@
                   ["Rush Street" "Rush" "RushStreet"]]
                  (mt/formatted-rows [str str str] results))))))))
 
-(deftest expression-name-weird-characters-test
+(deftest ^:parallel expression-name-weird-characters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "An expression whose name contains weird characters works properly"
       (let [query (mt/mbql-query venues
@@ -472,7 +472,7 @@
                  (mt/formatted-rows [int str int 4.0 4.0 int int]
                    (qp/process-query query)))))))))
 
-(deftest join-table-on-itself-with-custom-column-test
+(deftest ^:parallel join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :left-join)
       (mt/dataset sample-dataset
@@ -500,7 +500,7 @@
                    (mt/formatted-rows [str int int str int int]
                      (qp/process-query query))))))))))
 
-(deftest nested-expressions-with-existing-names-test
+(deftest ^:parallel nested-expressions-with-existing-names-test
   (testing "Expressions with the same name as existing columns should work correctly in nested queries (#21131)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions)
       (mt/dataset sample-dataset

@@ -59,7 +59,7 @@
                   (map (fn [[k v]]
                          [(long k) (double v)]))))))))
 
-(deftest test-case-aggregations+expressions
+(deftest ^:parallel test-case-aggregations+expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (testing "Can we use case in metric expressions"
       (is (= 90.5  (test-case [:+ [:/ [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 4] [:field (mt/id :venues :price) nil]]]
@@ -68,12 +68,12 @@
       (is (= 194.5 (test-case [:sum [:case [[[:< [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]
                                             [[:< [:field (mt/id :venues :price) nil] 4] [:+ [:/ [:field (mt/id :venues :price) nil] 2] 1]]]]]))))))
 
-(deftest test-case-normalization
+(deftest ^:parallel test-case-normalization
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 116.0 (test-case ["sum" ["case" [[["<" ["field-id" (mt/id :venues :price)] 2] 2]
                                             [["<" ["field-id" (mt/id :venues :price)] 4] 1]]]])))))
 
-(deftest test-case-expressions
+(deftest ^:parallel test-case-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= [nil -2.0 -1.0]
            (->> {:expressions {"case_test" [:case [[[:< [:field (mt/id :venues :price) nil] 2] -1.0]
@@ -85,16 +85,16 @@
                 distinct
                 sort)))))
 
-(deftest two-case-functions-test
+(deftest ^:parallel two-case-functions-test
   (testing "We should support expressions with two case statements (#15107)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
       (mt/dataset sample-dataset
         (is (= [[1] [0]]
                (mt/formatted-rows [int]
-                (mt/run-mbql-query products
-                  {:fields      [[:expression "two-cases"]]
-                   :expressions {"two-cases" [:+
-                                              [:case [[[:= $category "Widget"] 1]] {:default 0}]
-                                              [:case [[[:> $rating 4] 1]] {:default 0}]]}
-                   :limit    2
-                   :order-by [[:asc $id]]}))))))))
+                 (mt/run-mbql-query products
+                   {:fields      [[:expression "two-cases"]]
+                    :expressions {"two-cases" [:+
+                                               [:case [[[:= $category "Widget"] 1]] {:default 0}]
+                                               [:case [[[:> $rating 4] 1]] {:default 0}]]}
+                    :limit    2
+                    :order-by [[:asc $id]]}))))))))

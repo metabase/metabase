@@ -23,8 +23,8 @@
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
@@ -106,7 +106,7 @@
 (defn ^:deprecated test-query-results
   "DEPRECATED -- you should use `schema=` instead"
   ([actual]
-   (is (=? {:data       {:cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+   (is (=? {:data       {:cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                          :rows             [[100]]
                          :insights         nil
                          :results_timezone "UTC"}

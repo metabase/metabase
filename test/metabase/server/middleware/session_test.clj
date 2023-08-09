@@ -29,9 +29,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fn [thunk]
-                      (init-status/set-complete!)
-                      (thunk)))
 
 (def ^:private session-cookie @#'mw.session/metabase-session-cookie)
 (def ^:private session-timeout-cookie @#'mw.session/metabase-session-timeout-cookie)
@@ -109,6 +106,7 @@
         (is (= expected actual))))))
 
 (deftest session-expired-test
+  (init-status/set-complete!)
   (testing "Session expiration time = 1 minute"
     (with-redefs [env/env (assoc env/env :max-session-age "1")]
       (doseq [[created-at expected msg]
@@ -122,8 +120,7 @@
               (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
                 (if expected
-                  (is (= nil
-                         session))
+                  (is (nil? session))
                   (is (some? session)))))))))))
 
 

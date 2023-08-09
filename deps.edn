@@ -644,6 +644,8 @@
   {:exec-args {:only ["test/metabase/lib"]}}
 
   ;; test the Query Processor
+  ;;
+  ;;    clj -X:dev:ee:ee-dev:test:test/qp
   :test/qp
   {:exec-args {:only ["test/metadata/driver"
                       "test/metabase/query_processor"
@@ -651,6 +653,8 @@
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.mbql` code, and the QP
+  ;;
+  ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
   {:exec-args {:only ["shared/test/mbql"
                       "test/metabase/lib"

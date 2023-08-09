@@ -10,7 +10,7 @@
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
-(deftest compile-test
+(deftest ^:parallel compile-test
   (testing "Can we convert an MBQL query to a native query?"
     (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
                          " \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\","
@@ -23,7 +23,7 @@
             :params nil}
            (qp/compile (mt/mbql-query venues))))))
 
-(deftest already-native-test
+(deftest ^:parallel already-native-test
   (testing "If query is already native, `compile` should still do stuff like parsing parameters"
     (is (= {:query  "SELECT * FROM VENUES WHERE price = 3;"
             :params []}
@@ -55,7 +55,7 @@
                                                         native-perms? (conj (perms/adhoc-native-query-path database-id))))]
     (qp/compile query)))
 
-(deftest permissions-test
+(deftest ^:parallel permissions-test
   (testing "If user permissions are bound, we should still NOT do permissions checking when you call `compile`"
     (testing "Should work if you have the right perms"
       (is (compile-with-user-perms
@@ -66,7 +66,7 @@
            (mt/mbql-query venues)
            {:object-perms? false, :native-perms? true})))))
 
-(deftest error-test
+(deftest ^:parallel error-test
   (testing "If the query is bad in some way it should return a relevant error (?)"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

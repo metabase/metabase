@@ -5,7 +5,6 @@
    [metabase.models.metric :refer [Metric]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -15,7 +14,7 @@
   {:database 1, :type :query, :query (merge {:source-table 1}
                                             inner-query)})
 
-(deftest basic-expansion-test
+(deftest ^:parallel basic-expansion-test
   (testing "no Segment or Metric should yield exact same query"
     (is (= (mbql-query
             {:filter   [:> [:field 4 nil] 1]
@@ -154,12 +153,12 @@
         (is (= [[2 118]
                 [3  39]
                 [4  24]]
-               (qp.test/formatted-rows [int int]
+               (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:metric (u/the-id metric)]]
                     :breakout    [$price]}))))))))
 
-(deftest dont-expand-ga-metrics-test
+(deftest ^:parallel dont-expand-ga-metrics-test
   (testing "make sure that we don't try to expand GA \"metrics\" (#6104)"
     (doseq [metric ["ga:users" "gaid:users"]]
       (is (= (mbql-query {:aggregation [[:metric metric]]})
@@ -173,7 +172,7 @@
             (mbql-query {:aggregation [[:metric "ga:users"]
                                        [:metric "ga:1dayUsers"]]}))))))
 
-(deftest dont-expand-ga-segments-test
+(deftest ^:parallel dont-expand-ga-segments-test
   (testing "make sure we don't try to expand GA 'segments'"
     (is (= (mbql-query {:filter [:segment "gaid:-11"]})
            (#'expand-macros/expand-metrics-and-segments
