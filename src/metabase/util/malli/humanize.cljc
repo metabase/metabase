@@ -1,11 +1,58 @@
 (ns metabase.util.malli.humanize
+  (:refer-clojure :exclude [resolve])
   (:require
+   [malli.core :as mc]
    [malli.error :as me]))
+
+(defn- resolve-schema [?schema]
+  (when-let [?schema (some-> ?schema mc/schema)]
+    (if (and (mc/-ref-schema? ?schema)
+             (keyword? (mc/form ?schema)))
+      (mc/deref ?schema)
+      ?schema)))
+
+(defn- find-schema [?schema [k & more :as path]]
+  (when-let [?schema (resolve-schema ?schema)]
+    (if (empty? path)
+      ?schema
+      (recur (mc/-get ?schema k nil) more))))
+
+(defn- parent-paths [path]
+  (cons '() (reverse (take-while seq (iterate butlast (butlast path))))))
+
+(defn- error-message-for-schema [schema error options]
+  (let [{error-fn :error/fn, error-message :error/message} (mc/properties (mc/schema schema))]
+    (cond
+      error-fn      (error-fn error options)
+      error-message (str error-message)
+      :else         nil)))
+
+(defn- ancestor-explicit-error
+  "If one of the ancestor schemas of the erroring schema has `:error/message` or `:error/fn`, return that error."
+  [explanation {:keys [path], :as error} options]
+  (some (fn [parent-path]
+          (when-let [parent-schema (find-schema (:schema explanation) parent-path)]
+            (when-let [message (error-message-for-schema parent-schema error options)]
+              ;; determine how much of the initial part of the path is irrelevant e.g. if this is an `:or` schema than
+              ;; the first part of path is just the index into the appropriate schema, and we want to drop it. Use the
+              ;; same function Malli uses -- [[me/error-path]] -- to calculate the original error path; determine how
+              ;; much was dropped and then drop the same amount from the parent path.
+              (let [error-path        (me/error-path error options)
+                    error-parent-path (drop (- (count path)
+                                               (count error-path))
+                                            parent-path)]
+                [error-parent-path
+                 message]))))
+        (parent-paths path)))
+
+(defn- resolve [explanation error options]
+  (or (ancestor-explicit-error explanation error options)
+      (me/-resolve-direct-error explanation error options)))
 
 (defn- resolve-error
   "This is the same behavior as what [[malli.error/humanize]] does to resolve errors."
   [explanation error]
-  (me/-resolve-direct-error explanation error {:wrap :message, :resolve me/-resolve-direct-error}))
+  (resolve explanation error {:wrap :message, :resolve resolve}))
 
 (defn- flatten-error
   "Given a `[path message]` pair like

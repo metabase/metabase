@@ -12,6 +12,16 @@
 
   #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)))
 
+(deftest ^:parallel resolve-error-test
+  (is (= [[:a] "map with :b"]
+         (#'mu.humanize/resolve-error
+          {:schema [:map [:a [:map {:error/message "map with :b"}
+                              [:b [:map {:error/message "map with :c"}
+                                   [:c string?]]]]]]
+           :value  {:a {:b {:c 1}}}
+           :errors [{:path [:a :b :c], :in [:a :b :c], :schema string?, :value 1}]}
+          {:path [:a :b :c], :in [:a :b :c], :schema string?, :value 1}))))
+
 (deftest ^:parallel merge-errors-test
   (are [x y expected] (= expected
                          (#'mu.humanize/merge-errors x y))
@@ -100,8 +110,7 @@
 
       mu.humanize/humanize
       '["should be a string"
-        #_(":value clause" [nil nil "invalid type"])
-        [nil nil "invalid type"]
+        ":value clause"
         "should be a number"])))
 
 (mr/def ::absolute-datetime
@@ -119,8 +128,9 @@
     me/humanize
     ["not an :absolute-datetime clause"]
 
+    ;; this is the top-level error for ::absolute-datetime
     mu.humanize/humanize
-    "not an :absolute-datetime clause"))
+    "valid :absolute-datetime clause"))
 
 (deftest ^:parallel ref-test-2
   (are [f expected] (= expected
@@ -132,23 +142,32 @@
     [nil nil {:base_type "Not a valid base type: :type/FK"}]))
 
 (deftest ^:parallel map-test
-  (let [error (mc/explain
-               [:map
-                {:error/message "map with :a"}
-                [:a
-                 [:map
-                  {:error/message "map with :b"}
-                  [:b
-                   [:map
-                    {:error/fn (constantly "map with :c")}
-                    [:c string?]]]]]]
-               {:a {:b {:c 1}}})]
-    (are [f expected] (= expected
-                         (f error))
-      me/humanize
-      {:a {:b {:c ["should be a string"]}}}
+  (let [c [:map {:error/fn (constantly "map with :c")}
+           [:c string?]]
+        b [:map {:error/message "map with :b"}
+           [:b c]]
+        a [:map {:error/message "map with :a"}
+           [:a b]]]
+    (let [error (mc/explain a {:a {:b {:c 1}}})]
+      (are [f expected] (= expected
+                           (f error))
+        me/humanize
+        {:a {:b {:c ["should be a string"]}}}
 
-      mu.humanize/humanize
+        mu.humanize/humanize
+        "map with :a"))
+    (are [schema expected] (= expected
+                              (mu.humanize/humanize (mc/explain schema {:a {:b {:c 1}}})))
+      a
+      "map with :a"
+
+      [:map [:a b]]
+      {:a "map with :b"}
+
+      [:map [:a [:map [:b c]]]]
+      {:a {:b "map with :c"}}
+
+      [:map [:a [:map [:b [:map [:c string?]]]]]]
       {:a {:b {:c "should be a string"}}})))
 
 (deftest ^:parallel map-test-2
