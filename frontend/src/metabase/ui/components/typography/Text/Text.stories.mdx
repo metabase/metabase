@@ -1,0 +1,73 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Text } from "./";
+
+
+<Meta title="Typography/Text" component={Text}
+      args={{
+        children: "Having small touches of colour makes it more colourful than having the whole thing in colour",
+        underline: false,
+        italic: false,
+        strikethrough: false,
+        weight: "normal",
+        lineClamp: -1,
+        align: "unset",
+      }}
+      argTypes={
+        {
+          children: {
+            control: {
+              type: "text"
+            }
+          },
+          size: {
+            options: ["xs", "sm", "md", "lg", "xl"],
+            control: { type: 'inline-radio' }
+          },
+          weight: {
+            options: ["normal", "bold"],
+            control: { type: 'inline-radio' }
+          },
+          align: {
+            options: ["unset", "left", "right", "center"],
+            control: { type: 'select' }
+          }
+        }
+      }
+/>
+
+export const Template = (args) => <Text {...args} />;
+
+# Text
+
+Our themed wrapper around [Mantine Text](https://mantine.dev/core/text/).
+
+## When to use Text
+
+The Text component allows users to display text with themed styles, and replaces the usage of `<div>text</div>` or  `<span>text</span>`. This component also handles sizing, line clamps, text decoration, and font weight. For links, use the `Anchor` component, and for code, use the `Code` component.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Foundation-%2F-text?type=design&node-id=5-70&mode=design&t=9Sh3xAM7HsIZIN1z-11)
+- [Mantine Text Docs](https://mantine.dev/core/text/)
+
+## Caveats
+
+N/A
+
+## Usage guidelines
+
+N/A
+
+## General
+
+<Canvas>
+  <Story name="Default"
+  >
+    {Template.bind({})}
+  </Story>
+</Canvas>
+
+## Related components
+
+- Anchor
+- Code
