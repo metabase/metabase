@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import UserPicker from "metabase/components/UserPicker";
+import { color } from "metabase/lib/colors";
 
 export const CreatedByUserPicker = styled(UserPicker)`
   border: none;
@@ -13,4 +14,9 @@ export const CreatedByUserPicker = styled(UserPicker)`
       height: 1.5rem;
     }
   }
-`
+
+  & [class*="-TokenFieldItem"] {
+    background: transparent;
+    color: ${color("text-dark")};
+  }
+`;

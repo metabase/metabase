@@ -16,7 +16,7 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = SearchModelType[];
-export type CreatedByFilterProps = string[];
+export type CreatedByFilterProps = number[];
 export type CreatedAtFilterProps = string[];
 
 export type SearchFilterPropTypes = {

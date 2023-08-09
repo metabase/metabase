@@ -20,7 +20,7 @@ export const SearchFilterView = ({
   return (
     <Grid data-testid={dataTestId}>
       <Grid.Col span={2} p={0}>
-        <Title order={5}>{title}</Title>
+        <Title order={6}>{title}</Title>
         {tooltip && (
           <Tooltip tooltip={tooltip}>
             <Icon name="info_outline" />

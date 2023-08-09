@@ -1,29 +1,12 @@
 import { t } from "ttag";
-import { useEffect, useMemo, useState } from "react";
-import _ from "underscore";
+import { useEffect, useState } from "react";
 import Modal from "metabase/components/Modal";
 import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter";
-import {
-  FilterTypeKeys,
-  SearchFilterComponent,
-  SearchFilters,
-  SearchFilterPropTypes,
-} from "metabase/search/types";
+import { SearchFilters } from "metabase/search/types";
 import Button from "metabase/core/components/Button";
-import { Title, Flex } from "metabase/ui";
-import { SearchFilterKeys } from "metabase/search/constants";
-import {
-  CreatedByFilter,
-  CreatedAtFilter,
-  TypeFilter,
-} from "metabase/search/components/SearchFilterModal/filters";
+import { Flex, Title } from "metabase/ui";
+import { SearchFilterDisplay } from "metabase/search/components/SearchFilterDisplay";
 import { SearchFilterWrapper } from "./SearchFilterModal.styled";
-
-const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
-  [SearchFilterKeys.Type]: TypeFilter,
-  [SearchFilterKeys.CreatedBy]: CreatedByFilter,
-  [SearchFilterKeys.CreatedAt]: CreatedAtFilter,
-};
 
 export const SearchFilterModal = ({
   isOpen,
@@ -37,20 +20,6 @@ export const SearchFilterModal = ({
   onChangeFilters: (filters: SearchFilters) => void;
 }) => {
   const [output, setOutput] = useState<SearchFilters>(value);
-
-  const onOutputChange = (
-    key: FilterTypeKeys,
-    val: SearchFilterPropTypes[FilterTypeKeys],
-  ) => {
-    if (!val || val.length === 0) {
-      setOutput(_.omit(output, key));
-    } else {
-      setOutput({
-        ...output,
-        [key]: val,
-      });
-    }
-  };
 
   useEffect(() => {
     setOutput(value);
@@ -70,16 +39,6 @@ export const SearchFilterModal = ({
     setIsOpen(false);
   };
 
-  // we can use this field to control which filters are available
-  // - we can enable the 'verified' filter here
-  const availableFilters: FilterTypeKeys[] = useMemo(() => {
-    return [
-      SearchFilterKeys.Type,
-      SearchFilterKeys.CreatedBy,
-      SearchFilterKeys.CreatedAt,
-    ];
-  }, []);
-
   return isOpen ? (
     <Modal isOpen={isOpen} onClose={closeModal}>
       <SearchFilterWrapper data-testid="search-filter-modal-container">
@@ -87,17 +46,7 @@ export const SearchFilterModal = ({
           <Title order={4}>{t`Filter by`}</Title>
           <Button onlyIcon onClick={() => setIsOpen(false)} icon="close" />
         </Flex>
-        {availableFilters.map(key => {
-          const Filter = filterMap[key];
-          return (
-            <Filter
-              key={key}
-              data-testid={`${key}-search-filter`}
-              value={output[key]}
-              onChange={value => onOutputChange(key, value)}
-            />
-          );
-        })}
+        <SearchFilterDisplay value={output} onChangeFilters={setOutput} />
 
         <SearchFilterModalFooter
           onApply={applyFilters}
