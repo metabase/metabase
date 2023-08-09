@@ -17,6 +17,8 @@ export const BucketPickerPopover = styled(BaseBucketPickerPopover)`
   }
 `;
 
+BucketPickerPopover.defaultProps = { color: "summarize" };
+
 export const Content = styled.div`
   display: flex;
   flex: auto;

@@ -554,9 +554,9 @@
 (defmethod sql-jdbc.describe-table/get-table-pks :oracle
   [_driver ^Connection conn _ table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
-    (into #{} (sql-jdbc.sync.common/reducible-results
-               #(.getPrimaryKeys metadata nil nil (:name table))
-               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+    (into [] (sql-jdbc.sync.common/reducible-results
+              #(.getPrimaryKeys metadata nil nil (:name table))
+              (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
   [_]

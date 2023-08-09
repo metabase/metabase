@@ -20,6 +20,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -144,7 +145,7 @@
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
                   "different  what other SQL databases do. (#4218)")
-      (mt/with-bigquery-fks :bigquery-cloud-sdk
+      (mt/with-bigquery-fks!
         (let [results (mt/run-mbql-query venues
                         {:aggregation [:count]
                          :breakout    [$category_id->categories.name]})]
@@ -857,7 +858,7 @@
 (deftest remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
-      (mt/with-bigquery-fks :bigquery-cloud-sdk
+      (mt/with-bigquery-fks!
         (let [query (mt/mbql-query checkins
                       {:fields [$id $venue_id->venues.name]
                        :limit  1})]

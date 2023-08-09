@@ -6,6 +6,7 @@
    [metabase.core :as mbc]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
@@ -25,20 +26,19 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest can-connect-with-details?-test
-  (is (= true
-         (driver.u/can-connect-with-details? :h2 (:details (data/db)))))
-  (testing "Lie and say Test DB is Postgres. `can-connect?` should fail"
-    (is (= false
-           (driver.u/can-connect-with-details? :postgres (:details (data/db))))))
-  (testing "Random made-up DBs should fail"
-    (is (= false
-           (driver.u/can-connect-with-details? :postgres {:host   "localhost"
-                                                          :port   5432
-                                                          :dbname "ABCDEFGHIJKLMNOP"
-                                                          :user   "rasta"}))))
-  (testing "Things that you can connect to, but are not DBs, should fail"
-    (is (= false
-           (driver.u/can-connect-with-details? :postgres {:host "google.com", :port 80})))))
+  (testing "Should not be able to connect without setting h2/*allow-testing-h2-connections*"
+    (is (not (driver.u/can-connect-with-details? :h2 (:details (data/db))))))
+  (binding [h2/*allow-testing-h2-connections* true]
+    (is (driver.u/can-connect-with-details? :h2 (:details (data/db))))
+    (testing "Lie and say Test DB is Postgres. `can-connect?` should fail"
+      (is (not (driver.u/can-connect-with-details? :postgres (:details (data/db))))))
+    (testing "Random made-up DBs should fail"
+      (is (not (driver.u/can-connect-with-details? :postgres {:host   "localhost"
+                                                              :port   5432
+                                                              :dbname "ABCDEFGHIJKLMNOP"
+                                                              :user   "rasta"}))))
+    (testing "Things that you can connect to, but are not DBs, should fail"
+      (is (not (driver.u/can-connect-with-details? :postgres {:host "google.com", :port 80}))))))
 
 (deftest db->pooled-connection-spec-test
   (mt/test-driver :h2

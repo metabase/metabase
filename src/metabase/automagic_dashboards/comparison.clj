@@ -264,7 +264,11 @@
     (assert (or (= (:source left) (:source right))
                 (= (-> left :source :table_id) (-> right :source u/the-id))))
     (->> (concat segment-dashboards [dashboard])
-         (reduce #(populate/merge-dashboards %1 %2 {:skip-titles? true}))
+         (reduce (fn [dashboard-1 dashboard-2]
+                   (if dashboard-1
+                     (populate/merge-dashboards dashboard-1 dashboard-2 {:skip-titles? true})
+                     dashboard-2))
+                 nil)
          dashboard->cards
          (m/distinct-by (some-fn :dataset_query hash))
          (transduce (mapcat unroll-multiseries)

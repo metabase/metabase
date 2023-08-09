@@ -39,7 +39,6 @@ import {
 
 interface OwnProps {
   model: Question;
-  canRunActions: boolean;
 }
 
 interface DispatchProps {

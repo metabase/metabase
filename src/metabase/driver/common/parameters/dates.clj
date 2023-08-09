@@ -4,23 +4,25 @@
    [clojure.string :as str]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s])
   (:import
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
 
-(s/defn date-type?
+(mu/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
-  [param-type :- s/Keyword]
-  (= (get-in mbql.s/parameter-types [param-type :type]) :date))
+  [param-type :- :keyword]
+  (= (get-in lib.schema.parameter/types [param-type :type]) :date))
 
 (defn not-single-date-type?
   "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,
@@ -128,7 +130,7 @@
       (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
       [[group-label group-value]])))
 
-(s/defn ^:private regex->parser :- (s/pred fn?)
+(mu/defn ^:private regex->parser :- fn?
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which takes a parameter value,
   validates the value against regex and gives a map of labels and group values. Respects the following special label
   names:
@@ -136,7 +138,7 @@
       :unit – finds a matching date unit and merges date unit operations to the result
       :int-value, :int-value-1 – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
-  [regex :- java.util.regex.Pattern group-labels]
+  [regex :- [:fn {:error/message "regular expression"} m/regexp?] group-labels]
   (fn [param-value]
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
@@ -331,11 +333,14 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
-(s/defn ^:private execute-decoders
+(mu/defn ^:private execute-decoders
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
   dox for [[date-string->range]] for more details."
-  [decoders, decoder-type :- (s/enum :range :filter), decoder-param, date-string :- s/Str]
+  [decoders
+   decoder-type :- [:enum :range :filter]
+   decoder-param
+   date-string :- :string]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
           (when-let [parser-result (and parser-result-decoder (parser date-string))]
             (parser-result-decoder parser-result decoder-param)))
@@ -406,10 +411,11 @@
                          {:param date-string
                           :type  qp.error-type/invalid-parameter}))))))
 
-(s/defn date-string->filter :- mbql.s/Filter
+(mu/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    returns a corresponding MBQL filter clause for a given field reference."
-  [date-string :- s/Str field :- (s/cond-pre su/IntGreaterThanZero mbql.s/Field)]
+  [date-string :- :string
+   field       :- [:or ms/PositiveInt mbql.s/Field]]
   (or (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
                       {:type        qp.error-type/invalid-parameter

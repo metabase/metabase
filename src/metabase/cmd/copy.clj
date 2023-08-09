@@ -1,10 +1,13 @@
 (ns metabase.cmd.copy
-  "Shared lower-level implementation of the `dump-to-h2` and `load-from-h2` commands. The `copy!` function implemented
-  here supports loading data from an application database to any empty application database for all combinations of
-  supported application database types."
+  "Shared lower-level implementation of the [[metabase.cmd.dump-to-h2/dump-to-h2!]]
+  and [[metabase.cmd.load-from-h2/load-from-h2!]] commands. The [[copy!]] function implemented here supports loading
+  data from an application database to any empty application database for all combinations of supported application
+  database types."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
    [metabase.models
@@ -163,21 +166,51 @@
       (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
-(def ^:private table-select-fragments
-  {;; ensure ID order to ensure that parent fields are inserted before children
-   "metabase_field" "ORDER BY id ASC"})
+(def ^:dynamic *copy-h2-database-details*
+  "Whether [[copy-data!]] (and thus [[metabase.cmd.load-from-h2/load-from-h2!]]) should copy connection details for H2
+  Databases from the source application database. Normally disabled for security reasons. This is only here so we can
+  disable this check for tests."
+  false)
+
+(defn- model-select-fragment
+  [model]
+  (case model
+    :model/Field {:order-by [[:id :asc]]}
+    nil))
+
+(defn- sql-for-selecting-instances-from-source-db [model]
+  (first
+   (sql/format
+    (merge {:select [[:*]]
+            :from   [[(t2/table-name model)]]}
+           (model-select-fragment model))
+    {:quoted false})))
+
+(defn- model-results-xform [model]
+  (case model
+    :model/Database
+    ;; For security purposes, do NOT copy connection details for H2 Databases by default; replace them with an empty map.
+    ;; Why? Because this is a potential pathway to injecting sneaky H2 connection parameters that cause RCEs. For the
+    ;; Sample Database, the correct details are reset automatically on every
+    ;; launch (see [[metabase.sample-data/update-sample-database-if-needed!]]), and we don't support connecting other H2
+    ;; Databases in prod anyway, so this ultimately shouldn't cause anyone any problems.
+    (if *copy-h2-database-details*
+      identity
+      (map (fn [database]
+             (cond-> database
+               (= (:engine database) "h2") (assoc :details "{}")))))
+    ;; else
+    identity))
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
   (with-open [source-conn (.getConnection source-data-source)]
-    (doseq [entity entities
-            :let   [table-name (t2/table-name entity)
-                    fragment   (table-select-fragments (u/lower-case-en (name table-name)))
-                    sql        (str "SELECT * FROM "
-                                    (name table-name)
-                                    (when fragment (str " " fragment)))
-                    results    (jdbc/reducible-query {:connection source-conn} sql)]]
+    (doseq [model entities
+            :let  [table-name (t2/table-name model)
+                   sql        (sql-for-selecting-instances-from-source-db model)
+                   results    (jdbc/reducible-query {:connection source-conn} sql)]]
       (transduce
-       (partition-all chunk-size)
+       (comp (model-results-xform model)
+             (partition-all chunk-size))
        ;; cnt    = the total number we've inserted so far
        ;; chunkk = current chunk to insert
        (fn
@@ -187,12 +220,12 @@
          ([cnt chunkk]
           (when (seq chunkk)
             (when (zero? cnt)
-              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name entity)))))
+              (log/info (u/colorize 'blue (trs "Copying instances of {0}..." (name model)))))
             (try
               (insert-chunk! target-db-type target-db-conn-spec table-name chunkk)
               (catch Throwable e
-                (throw (ex-info (trs "Error copying instances of {0}" (name entity))
-                                {:entity (name entity)}
+                (throw (ex-info (trs "Error copying instances of {0}" (name model))
+                                {:model (name model)}
                                 e)))))
           (+ cnt (count chunkk))))
        0
@@ -202,7 +235,7 @@
   "Make sure [target] application DB is empty before we start copying data."
   [data-source]
   ;; check that there are no Users yet
-  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS \"cnt\" FROM core_user;")]
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS cnt FROM core_user;")]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")

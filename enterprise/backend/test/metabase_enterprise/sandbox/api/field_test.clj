@@ -129,12 +129,12 @@
         ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. So
         ;; searching whould only include venues in that category
         (let [url (format "field/%s/search/%s" (mt/id :venues :name) (mt/id :venues :name))]
-          (is (= [["Gordo Taqueria"         "Gordo Taqueria"]
-                  ["Tacos Villa Corona"     "Tacos Villa Corona"]
-                  ["Taqueria Los Coyotes"   "Taqueria Los Coyotes"]
-                  ["Taqueria San Francisco" "Taqueria San Francisco"]
-                  ["Tito's Tacos"           "Tito's Tacos"]
-                  ["Yuca's Taqueria"        "Yuca's Taqueria"]]
+          (is (= [["Gordo Taqueria"]
+                  ["Tacos Villa Corona"]
+                  ["Taqueria Los Coyotes"]
+                  ["Taqueria San Francisco"]
+                  ["Tito's Tacos"]
+                  ["Yuca's Taqueria"]]
                  (mt/user-http-request :rasta :get 200 url :value "Ta"))))))))
 
 (deftest caching-test
@@ -177,7 +177,7 @@
               (is (some? fv-id)))
             (t2/update! FieldValues fv-id
                         {:values new-values})
-            (with-redefs [field-values/distinct-values (constantly {:values          new-values
+            (with-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
                                                                     :has_more_values false})]
               (is (= (map vector new-values)
                      (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))))

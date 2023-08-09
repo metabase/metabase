@@ -10,6 +10,7 @@
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -20,9 +21,12 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- disable-other-sso-types [thunk]
-  (mt/with-temporary-setting-values [ldap-enabled false
-                                     saml-enabled false]
-    (thunk)))
+  (let [current-features (premium-features/token-features)]
+    (premium-features-test/with-premium-features #{:sso-saml}
+      (mt/with-temporary-setting-values [ldap-enabled false
+                                         saml-enabled false]
+        (premium-features-test/with-premium-features current-features
+          (thunk))))))
 
 (use-fixtures :each disable-other-sso-types)
 
@@ -30,59 +34,72 @@
 (def ^:private default-redirect-uri "http://localhost:3000/test")
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
-(deftest sso-prereqs-test
-  (testing "SSO requests fail if JWT hasn't been configured or enabled"
-    (mt/with-temporary-setting-values [jwt-enabled               false
-                                       jwt-identity-provider-uri nil
-                                       jwt-shared-secret         nil]
-      (saml-test/with-valid-premium-features-token
-        (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))
-
-      (testing "SSO requests fail if they don't have a valid premium-features token"
-        (premium-features-test/with-premium-features nil
-          (is (= "SSO requires a valid token"
-                 (saml-test/client :get 403 "/auth/sso")))))))
-
-  (testing "SSO requests fail if JWT is enabled but hasn't been configured"
-    (saml-test/with-valid-premium-features-token
-      (mt/with-temporary-setting-values [jwt-enabled               true
-                                         jwt-identity-provider-uri nil]
-        (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))))
-
-  (testing "SSO requests fail if JWT is configured but hasn't been enabled"
-    (saml-test/with-valid-premium-features-token
-      (mt/with-temporary-setting-values [jwt-enabled               false
-                                         jwt-identity-provider-uri default-idp-uri
-                                         jwt-shared-secret         default-jwt-secret]
-        (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))))
-
-  (testing "The JWT Shared Secret must also be included for SSO to be configured"
-    (saml-test/with-valid-premium-features-token
-      (mt/with-temporary-setting-values [jwt-enabled               true
-                                         jwt-identity-provider-uri default-idp-uri
-                                         jwt-shared-secret         nil]
-        (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso")))))))
+(defmacro with-sso-jwt-token
+  "Stubs the `premium-features/token-features` function to simulate a premium token with the `:sso-jwt` feature.
+   This needs to be included to test any of the JWT features."
+  [& body]
+  `(premium-features-test/with-premium-features #{:sso-jwt}
+     ~@body))
 
 (defn- call-with-default-jwt-config [f]
-  (mt/with-temporary-setting-values [jwt-enabled               true
-                                     jwt-identity-provider-uri default-idp-uri
-                                     jwt-shared-secret         default-jwt-secret
-                                     site-url                  "http://localhost"]
-    (f)))
+  (let [current-features (premium-features/token-features)]
+    (premium-features-test/with-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [jwt-enabled               true
+                                         jwt-identity-provider-uri default-idp-uri
+                                         jwt-shared-secret         default-jwt-secret
+                                         site-url                  "http://localhost"]
+        (premium-features-test/with-premium-features current-features
+          (f))))))
+
+(defmacro with-default-jwt-config [& body]
+  `(call-with-default-jwt-config
+    (fn []
+      ~@body)))
 
 (defmacro ^:private with-jwt-default-setup [& body]
   `(disable-other-sso-types
     (fn []
-      (saml-test/with-valid-premium-features-token
+      (with-sso-jwt-token
         (saml-test/call-with-login-attributes-cleared!
          (fn []
            (call-with-default-jwt-config
             (fn []
               ~@body))))))))
+
+(deftest sso-prereqs-test
+  (with-sso-jwt-token
+    (testing "SSO requests fail if JWT hasn't been configured or enabled"
+      (mt/with-temporary-setting-values [jwt-enabled               false
+                                         jwt-identity-provider-uri nil
+                                         jwt-shared-secret         nil]
+        (is (= "SSO has not been enabled and/or configured"
+               (saml-test/client :get 400 "/auth/sso")))
+
+        (testing "SSO requests fail if they don't have a valid premium-features token"
+          (with-default-jwt-config
+            (premium-features-test/with-premium-features #{}
+              (is (= "SSO has not been enabled and/or configured"
+                     (saml-test/client :get 400 "/auth/sso"))))))))
+
+    (testing "SSO requests fail if JWT is enabled but hasn't been configured"
+      (mt/with-temporary-setting-values [jwt-enabled               true
+                                         jwt-identity-provider-uri nil]
+        (is (= "SSO has not been enabled and/or configured"
+               (saml-test/client :get 400 "/auth/sso")))))
+
+    (testing "SSO requests fail if JWT is configured but hasn't been enabled"
+      (mt/with-temporary-setting-values [jwt-enabled               false
+                                         jwt-identity-provider-uri default-idp-uri
+                                         jwt-shared-secret         default-jwt-secret]
+        (is (= "SSO has not been enabled and/or configured"
+               (saml-test/client :get 400 "/auth/sso")))))
+
+    (testing "The JWT Shared Secret must also be included for SSO to be configured"
+      (mt/with-temporary-setting-values [jwt-enabled               true
+                                         jwt-identity-provider-uri default-idp-uri
+                                         jwt-shared-secret         nil]
+        (is (= "SSO has not been enabled and/or configured"
+               (saml-test/client :get 400 "/auth/sso")))))))
 
 (deftest redirect-test
   (testing "with JWT configured, a GET request should result in a redirect to the IdP"
@@ -123,18 +140,21 @@
                  (t2/select-one-fn :login_attributes User :email "rasta@metabase.com"))))))))
 
 (deftest no-open-redirect-test
-  (testing "Check a JWT with bad (open redirect)"
+  (testing "Check that we prevent open redirects to untrusted sites"
     (with-jwt-default-setup
-      (is (= "SSO is trying to do an open redirect to an untrusted site"
-             (saml-test/client
-               :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
-               :return_to "https://evilsite.com"
-               :jwt (jwt/sign {:email      "rasta@metabase.com"
-                               :first_name "Rasta"
-                               :last_name  "Toucan"
-                               :extra      "keypairs"
-                               :are        "also present"}
-                              default-jwt-secret)))))))
+      (doseq [redirect-uri ["https://badsite.com"
+                            "//badsite.com"]]
+        (is (= "Invalid redirect URL"
+               (-> (saml-test/client
+                    :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                    :return_to redirect-uri
+                    :jwt (jwt/sign {:email      "rasta@metabase.com"
+                                    :first_name "Rasta"
+                                    :last_name  "Toucan"
+                                    :extra      "keypairs"
+                                    :are        "also present"}
+                                   default-jwt-secret))
+                   :message)))))))
 
 (deftest expired-jwt-test
   (testing "Check an expired JWT"
@@ -233,15 +253,16 @@
 
 (deftest group-mappings-test
   (testing "make sure our setting for mapping group names -> IDs works"
-    (mt/with-temporary-setting-values [jwt-group-mappings {"group_1" [1 2 3]
-                                                           "group_2" [3 4]
-                                                           "group_3" [5]}]
-      (testing "keyword group names"
-        (is (= #{1 2 3 4}
-               (#'mt.jwt/group-names->ids [:group_1 :group_2]))))
-      (testing "string group names"
-        (is (= #{3 4 5}
-               (#'mt.jwt/group-names->ids ["group_2" "group_3"])))))))
+    (with-sso-jwt-token
+      (mt/with-temporary-setting-values [jwt-group-mappings {"group_1" [1 2 3]
+                                                             "group_2" [3 4]
+                                                             "group_3" [5]}]
+        (testing "keyword group names"
+          (is (= #{1 2 3 4}
+                 (#'mt.jwt/group-names->ids [:group_1 :group_2]))))
+        (testing "string group names"
+          (is (= #{3 4 5}
+                 (#'mt.jwt/group-names->ids ["group_2" "group_3"]))))))))
 
 (defn- group-memberships [user-or-id]
   (when-let [group-ids (seq (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]

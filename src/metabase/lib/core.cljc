@@ -142,9 +142,12 @@
    upper
    lower]
   [lib.field
+   add-field
+   field-id
+   fieldable-columns
    fields
-   with-fields
-   fieldable-columns]
+   remove-field
+   with-fields]
   [lib.filter
    filter
    filters
@@ -173,6 +176,7 @@
    join-condition-lhs-columns
    join-condition-operators
    join-condition-rhs-columns
+   join-condition-update-temporal-bucketing
    join-conditions
    join-fields
    join-lhs-display-name

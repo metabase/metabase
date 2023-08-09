@@ -161,7 +161,7 @@
   "Given a seq of names that are potentially the same, provide a seq of tuples of
   original name to a non-ambiguous version of the name."
   [names]
-  (let [uniquifier (metabase.mbql.util/unique-name-generator)
+  (let [uniquifier (mbql.u/unique-name-generator)
         [_ new-names] (reduce
                        (fn [[taken acc] n]
                          (let [candidate (uniquifier n)]

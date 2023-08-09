@@ -123,7 +123,8 @@
   {:arglists '([table-name])}
   keyword)
 
-(defmulti ^:private field-metadata-method
+(defmulti field-metadata-method
+  "Metadata for fields"
   {:arglists '([table-name field-name])}
   (fn [table-name field-name]
     [(keyword table-name) (keyword field-name)]))

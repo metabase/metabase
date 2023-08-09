@@ -10,6 +10,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.logger :as logger]
    [metabase.troubleshooting :as troubleshooting]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.response :as response]))
 

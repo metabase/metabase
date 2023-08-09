@@ -14,6 +14,7 @@ import {
   rightSidebar,
   saveDashboard,
   sidebar,
+  toggleDashboardInfoSidebar,
   undoToast,
   visitDashboard,
   visitEmbeddedPage,
@@ -726,7 +727,7 @@ const openSlowEmbeddingDashboard = (params = {}) => {
       params: {},
     };
     visitEmbeddedPage(embeddingPayload, {
-      setFilters: new URLSearchParams(params).toString(),
+      setFilters: params,
     });
   });
 
@@ -747,10 +748,6 @@ const openSlowFullAppEmbeddingDashboard = (params = {}) => {
 
   getDashboardCard().should("be.visible");
 };
-
-function toggleDashboardInfoSidebar() {
-  dashboardHeader().icon("info").click();
-}
 
 const visitFullAppEmbeddingUrl = ({ url, qs }) => {
   cy.visit({
