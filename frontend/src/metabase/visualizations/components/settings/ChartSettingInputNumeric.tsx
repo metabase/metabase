@@ -3,7 +3,20 @@ import * as React from "react";
 import _ from "underscore";
 import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
 
-const ALLOWED_CHARS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."];
+const ALLOWED_CHARS = [
+  "0",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  ".",
+  "-",
+];
 
 interface ChartSettingInputProps {
   value: number | undefined;
@@ -11,7 +24,7 @@ interface ChartSettingInputProps {
   onChangeSettings: () => void;
 }
 
-const ChartSettingInputNumeric = ({
+export const ChartSettingInputNumeric = ({
   onChange,
   value,
   ...props
@@ -44,6 +57,3 @@ const ChartSettingInputNumeric = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ChartSettingInputNumeric;
