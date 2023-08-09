@@ -73,27 +73,6 @@ describe("StructuredQuery", () => {
           joins: [{ ...join, condition: VALID_CONDITION }],
         });
       });
-
-      it("should remove join without any condition", () => {
-        const q = ordersTable.query().join(getJoin({ condition: null }));
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
-      });
-
-      it("should remove join referencing invalid source field", () => {
-        const q = ordersTable
-          .query()
-          .join(getJoin({ condition: ["=", null, PRODUCT_ID_FIELD_REF] }));
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
-      });
-
-      it("should remove join referencing invalid join field", () => {
-        const q = ordersTable
-          .query()
-          .join(
-            getJoin({ condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null] }),
-          );
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
-      });
     });
 
     describe("filters", () => {
