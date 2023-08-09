@@ -24,7 +24,7 @@
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement)))
+   (java.sql Connection PreparedStatement SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -66,14 +66,12 @@
   [driver database thunk]
   (try
    (thunk)
-   (catch Exception e
-     (if (= (:type (ex-data e)) actions.error/incorrect-affected-rows)
-       (throw e)
-       (throw (ex-info (or (ex-message e) "Error executing action.")
-                       (or (some-> (parse-sql-error driver database e) (assoc :status-code 400))
-                           (ex-data e))))))))
+   (catch SQLException e
+     (throw (ex-info (or (ex-message e) "Error executing action.")
+                     (or (some-> (parse-sql-error driver database e) (assoc :status-code 400))
+                         (ex-data e)))))))
 
-(defmacro ^:private with-auto-parse-sql-error
+(defmacro ^:private with-auto-parse-sql-exception
   "Execute body and if there is an exception, try to parse the error message to search for known sql errors then re-throw it."
   [driver database & body]
   `(do-with-auto-parse-sql-error ~driver ~database (fn [] ~@body)))
@@ -202,17 +200,15 @@
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver delete-hsql)]
     (with-jdbc-transaction [conn database-id]
-      (with-auto-parse-sql-error driver database
-        ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-        (let [rows-deleted (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
-          (when-not (= rows-deleted 1)
-            (throw (ex-info (if (zero? rows-deleted)
-                              (tru "Sorry, the row you''re trying to delete doesn''t exist")
-                              (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
-                            {:type            actions.error/incorrect-affected-rows
-                             :action-type     :row/delete
-                             :number-affected rows-deleted})))
-          {:rows-deleted [1]})))))
+      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+      (let [rows-deleted (with-auto-parse-sql-exception driver database
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (when-not (= rows-deleted 1)
+          (throw (ex-info (if (zero? rows-deleted)
+                            (tru "Sorry, the row you''re trying to delete doesn''t exist")
+                            (tru "Sorry, this would delete {0} rows, but you can only act on 1" rows-deleted))
+                          {:staus-code 400})))
+        {:rows-deleted [1]}))))
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
@@ -226,17 +222,15 @@
                          (prepare-query driver action))
         sql-args     (sql.qp/format-honeysql driver update-hsql)]
     (with-jdbc-transaction [conn database-id]
-      (with-auto-parse-sql-error driver database
-        ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
-        (let [rows-updated (first (jdbc/execute! {:connection conn} sql-args {:transaction? false}))]
-          (when-not (= rows-updated 1)
-            (throw (ex-info (if (zero? rows-updated)
-                              (tru "Sorry, the row you''re trying to update doesn''t exist")
-                              (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
-                            {:type            actions.error/incorrect-affected-rows
-                             :action-type     :row/update
-                             :number-affected rows-updated})))
-          {:rows-updated [1]})))))
+      ;; TODO -- this should probably be using [[metabase.driver/execute-write-query!]]
+      (let [rows-updated (with-auto-parse-sql-exception driver database
+                           (first (jdbc/execute! {:connection conn} sql-args {:transaction? false})))]
+        (when-not (= rows-updated 1)
+          (throw (ex-info (if (zero? rows-updated)
+                            (tru "Sorry, the row you''re trying to update doesn''t exist")
+                            (tru "Sorry, this would update {0} rows, but you can only act on 1" rows-updated))
+                          {:staus-code 400})))
+        {:rows-updated [1]}))))
 
 (defmulti select-created-row
   "Multimethod for converting the result of an insert into the created row.
@@ -279,12 +273,12 @@
     (log/tracef ":row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
     (log/tracef ":row/create SQL + args:\n\n%s" (u/pprint-to-str sql-args))
     (with-jdbc-transaction [conn database-id]
-      (with-auto-parse-sql-error driver database
-        (let [result (jdbc/execute! {:connection conn} sql-args {:return-keys true, :identifiers identity, :transaction? false})
-              _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
-              row    (select-created-row driver create-hsql conn result)]
-          (log/tracef ":row/create returned row %s" (pr-str row))
-          {:created-row row})))))
+      (let [result (with-auto-parse-sql-exception driver database
+                     (jdbc/execute! {:connection conn} sql-args {:return-keys true, :identifiers identity, :transaction? false}))
+            _      (log/tracef ":row/create INSERT returned\n\n%s" (u/pprint-to-str result))
+            row    (select-created-row driver create-hsql conn result)]
+        (log/tracef ":row/create returned row %s" (pr-str row))
+        {:created-row row}))))
 
 ;;;; Bulk actions
 
