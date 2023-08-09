@@ -87,8 +87,8 @@
 }
 
 /* shared arrow styles */
-.PopoverBody--withArrow:before,
-.PopoverBody--withArrow:after {
+.PopoverBody--withArrow::before,
+.PopoverBody--withArrow::after {
   position: absolute;
   content: "";
   display: block;
@@ -144,8 +144,8 @@
   margin-right: 8px;
 }
 
-.PopoverHeader-item--withArrow:before,
-.PopoverHeader-item--withArrow:after {
+.PopoverHeader-item--withArrow::before,
+.PopoverHeader-item--withArrow::after {
   position: absolute;
   content: "";
   display: block;
@@ -158,13 +158,13 @@
 }
 
 /* create a slightly larger arrow on the right for border purposes */
-.PopoverHeader-item--withArrow:before {
+.PopoverHeader-item--withArrow::before {
   right: -16px;
   border-left-color: var(--color-border);
 }
 
 /* create a smaller inset arrow on the right */
-.PopoverHeader-item--withArrow:after {
+.PopoverHeader-item--withArrow::after {
   right: -15px;
   border-left-color: var(--color-bg-white);
 }
@@ -196,61 +196,61 @@
 }
 
 /* create a slightly larger arrow on the top for border purposes */
-.tether-element-attached-top .PopoverBody--withArrow:before {
+.tether-element-attached-top .PopoverBody--withArrow::before {
   top: -20px;
   border-bottom-color: var(--color-border);
 }
-.tether-element-attached-top .PopoverBody--tooltip:before {
+.tether-element-attached-top .PopoverBody--tooltip::before {
   border-bottom: none;
 }
 
 /* create a smaller inset arrow on the top */
-.tether-element-attached-top .PopoverBody--withArrow:after {
+.tether-element-attached-top .PopoverBody--withArrow::after {
   top: -18px;
   border-bottom-color: var(--color-bg-white);
 }
-.tether-element-attached-top .PopoverBody--tooltip:after {
+.tether-element-attached-top .PopoverBody--tooltip::after {
   border-bottom-color: var(--color-bg-black);
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
-.tether-element-attached-bottom .PopoverBody--withArrow:before {
+.tether-element-attached-bottom .PopoverBody--withArrow::before {
   bottom: -20px;
   border-top-color: var(--color-border);
 }
-.tether-element-attached-bottom .PopoverBody--tooltip:before {
+.tether-element-attached-bottom .PopoverBody--tooltip::before {
   border-top: none;
 }
 
 /* create a smaller inset arrow on the bottom */
-.tether-element-attached-bottom .PopoverBody--withArrow:after {
+.tether-element-attached-bottom .PopoverBody--withArrow::after {
   bottom: -18px;
   border-top-color: var(--color-bg-white);
 }
-.tether-element-attached-bottom .PopoverBody--tooltip:after {
+.tether-element-attached-bottom .PopoverBody--tooltip::after {
   border-top-color: var(--color-bg-black);
 }
 
 /* if the tether element is attached right, move our arrows right */
-.tether-target-attached-right .PopoverBody--withArrow:before,
-.tether-target-attached-right .PopoverBody--withArrow:after {
+.tether-target-attached-right .PopoverBody--withArrow::before,
+.tether-target-attached-right .PopoverBody--withArrow::after {
   right: 12px;
 }
 
 /* if the tether element is attached center, move our arrows to the center */
-.tether-element-attached-center .PopoverBody--withArrow:before,
-.tether-element-attached-center .PopoverBody--withArrow:after {
+.tether-element-attached-center .PopoverBody--withArrow::before,
+.tether-element-attached-center .PopoverBody--withArrow::after {
   margin-left: 50%;
   left: -10px;
 }
 
-.tether-element-attached-right .PopoverBody--withArrow:before,
-.tether-element-attached-right .PopoverBody--withArrow:after {
+.tether-element-attached-right .PopoverBody--withArrow::before,
+.tether-element-attached-right .PopoverBody--withArrow::after {
   right: 12px;
 }
 
-.tether-element-attached-left .PopoverBody--withArrow:before,
-.tether-element-attached-left .PopoverBody--withArrow:after {
+.tether-element-attached-left .PopoverBody--withArrow::before,
+.tether-element-attached-left .PopoverBody--withArrow::after {
   left: 12px;
 }
 

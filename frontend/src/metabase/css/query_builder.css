@@ -245,7 +245,7 @@
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
 }
 
-.QueryError-adminEmail:before {
+.QueryError-adminEmail::before {
   content: "Admin Email";
   font-size: 10px;
   text-align: center;
@@ -520,7 +520,7 @@
   cursor: pointer;
 }
 
-.QuestionTooltipTarget:after {
+.QuestionTooltipTarget::after {
   content: "?";
   font-size: 13px;
   font-weight: bold;
