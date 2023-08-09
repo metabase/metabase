@@ -2,9 +2,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { createRef, Component } from "react";
-import { ResizableBox } from "react-resizable";
 import { connect } from "react-redux";
-import cx from "classnames";
 import _ from "underscore";
 import slugg from "slugg";
 
@@ -23,6 +21,7 @@ import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
 
+import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 
@@ -59,9 +58,11 @@ import DataSourceSelectors from "./DataSourceSelectors";
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
 import {
-  NativeQueryEditorRoot,
   DragHandleContainer,
   DragHandle,
+  EditorRoot,
+  NativeQueryEditorRoot,
+  StyledResizableBox,
 } from "./NativeQueryEditor.styled";
 import "./NativeQueryEditor.css";
 
@@ -591,7 +592,7 @@ export class NativeQueryEditor extends Component {
         data-testid="native-query-editor-container"
       >
         {hasTopBar && (
-          <div className="flex align-center" data-testid="native-query-top-bar">
+          <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
               <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
                 <DataSourceSelectors
@@ -620,7 +621,7 @@ export class NativeQueryEditor extends Component {
                 toggleEditor={this.toggleEditor}
               />
             )}
-          </div>
+          </Flex>
         )}
         {isPromptInputVisible && (
           <NativeQueryEditorPrompt
@@ -629,9 +630,9 @@ export class NativeQueryEditor extends Component {
             onClose={this.togglePromptVisibility}
           />
         )}
-        <ResizableBox
+        <StyledResizableBox
           ref={this.resizeBox}
-          className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
+          isOpen={isNativeEditorOpen}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
@@ -647,10 +648,9 @@ export class NativeQueryEditor extends Component {
           }}
         >
           <>
-            <div
-              className="flex-full"
-              data-testid="native-query-editor"
+            <EditorRoot
               id={ACE_ELEMENT_ID}
+              data-testid="native-query-editor"
               ref={this.editor}
             />
 
@@ -689,7 +689,7 @@ export class NativeQueryEditor extends Component {
               />
             )}
           </>
-        </ResizableBox>
+        </StyledResizableBox>
       </NativeQueryEditorRoot>
     );
   }

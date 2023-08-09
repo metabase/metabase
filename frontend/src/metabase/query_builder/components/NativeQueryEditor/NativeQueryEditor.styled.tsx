@@ -1,3 +1,4 @@
+import { ResizableBox } from "react-resizable";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color, darken } from "metabase/lib/colors";
@@ -122,4 +123,15 @@ export const DragHandle = styled.div`
   height: 5px;
   background-color: ${darken("border", 0.03)};
   border-radius: 4px;
+`;
+
+export const EditorRoot = styled.div`
+  flex: 1 0 auto;
+`;
+
+export const StyledResizableBox = styled(ResizableBox)<{
+  isOpen: boolean;
+}>`
+  display: ${props => (props.isOpen ? "flex" : "none")};
+  border-top: 1px solid ${color("border")};
 `;
