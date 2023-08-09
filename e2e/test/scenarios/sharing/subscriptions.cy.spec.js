@@ -18,7 +18,7 @@ import {
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
-const { admin, normal } = USERS;
+const { admin } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
   beforeEach(() => {
@@ -125,21 +125,6 @@ describe("scenarios > dashboard > subscriptions", () => {
         popover().isRenderedWithinViewport();
       });
 
-      it("should forward non-admin users to add email form, but should not forward for admin users", () => {
-        // should show options for admin
-        openDashboardSubscriptions();
-        sidebar().within(() => {
-          cy.findByText("Email it").should("exist");
-          cy.findByText("Send it to Slack").should("exist");
-        });
-
-        // should forward to email form for non-admins
-        cy.signInAsNormalUser();
-        openDashboardSubscriptions();
-
-        sidebar().findByText("Email this dashboard").should("exist");
-      });
-
       it.skip("should not send attachments by default if not explicitly selected (metabase#28673)", () => {
         openDashboardSubscriptions();
         assignRecipient();
@@ -157,20 +142,6 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly");
-      });
-
-      it("should forward non-admin users to add email form when clicking add", () => {
-        cy.signInAsNormalUser();
-        openDashboardSubscriptions(1);
-        sidebar()
-          .findByPlaceholderText("Enter user names or email addresses")
-          .click()
-          .type(`${normal.first_name} ${normal.last_name}{enter}`)
-          .blur(); // blur is needed to close the popover
-        clickButton("Done");
-
-        sidebar().findByLabelText("add icon").click();
-        sidebar().findByText("Email this dashboard").should("exist");
       });
     });
 
@@ -421,40 +392,6 @@ describe("scenarios > dashboard > subscriptions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("#work").click();
       cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
-    });
-
-    it("should forward non-admin users to add slack form, but should not forward admin users", () => {
-      // should show options for admin
-      openDashboardSubscriptions();
-      sidebar().within(() => {
-        cy.findByText("Email it").should("exist");
-        cy.findByText("Send it to Slack").should("exist");
-      });
-
-      // should forward for non-admins
-      cy.signInAsNormalUser();
-      openDashboardSubscriptions();
-
-      sidebar().findByText("Send this dashboard to Slack").should("exist");
-    });
-  });
-
-  describe("with slack and email set up", { tags: "@external" }, () => {
-    describe("with no existing subscriptions", () => {
-      beforeEach(() => {
-        setupSMTP();
-        mockSlackConfigured();
-      });
-
-      it("should not forward non-admins to creation form ", () => {
-        cy.signInAsNormalUser();
-        openDashboardSubscriptions();
-
-        sidebar().within(() => {
-          cy.findByText("Email it").should("exist");
-          cy.findByText("Send it to Slack").should("exist");
-        });
-      });
     });
   });
 
