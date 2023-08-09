@@ -4,7 +4,6 @@
    [metabase.models :refer [LoginHistory Session User]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
