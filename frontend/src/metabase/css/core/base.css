@@ -31,7 +31,6 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--color-bg-light);
-
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

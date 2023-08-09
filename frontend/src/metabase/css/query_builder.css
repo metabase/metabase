@@ -253,7 +253,6 @@
   background-color: white;
   padding-left: var(--padding-1);
   padding-right: var(--padding-1);
-
   position: absolute;
   top: -0.75em;
   left: 50%;
@@ -285,7 +284,6 @@
   font-size: 0.9em;
   z-index: 2;
   background-color: var(--color-bg-white);
-
   border: 1px solid var(--color-border);
 }
 
@@ -512,11 +510,9 @@
   width: 20px;
   height: 20px;
   display: flex;
-
   align-items: center;
   justify-content: center;
   opacity: 0.7;
-
   cursor: pointer;
 }
 
