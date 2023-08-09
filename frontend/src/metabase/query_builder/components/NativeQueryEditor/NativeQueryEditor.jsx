@@ -594,16 +594,14 @@ export class NativeQueryEditor extends Component {
         {hasTopBar && (
           <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
-              <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
-                <DataSourceSelectors
-                  isNativeEditorOpen={isNativeEditorOpen}
-                  query={query}
-                  readOnly={readOnly}
-                  setDatabaseId={this.setDatabaseId}
-                  setTableId={this.setTableId}
-                  editorContext={editorContext}
-                />
-              </div>
+              <DataSourceSelectors
+                isNativeEditorOpen={isNativeEditorOpen}
+                query={query}
+                readOnly={readOnly}
+                setDatabaseId={this.setDatabaseId}
+                setTableId={this.setTableId}
+                editorContext={editorContext}
+              />
             )}
             {hasParametersList && (
               <ResponsiveParametersList
@@ -615,7 +613,6 @@ export class NativeQueryEditor extends Component {
             )}
             {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
               <VisibilityToggler
-                className={!isNativeEditorOpen ? "hide sm-show" : ""}
                 isOpen={isNativeEditorOpen}
                 readOnly={!!readOnly}
                 toggleEditor={this.toggleEditor}
