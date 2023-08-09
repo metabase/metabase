@@ -7,7 +7,6 @@ import {
   filterWidget,
   sidebar,
   modal,
-  openNewCollectionItemFlowFor,
   visitDashboard,
   appBar,
   rightSidebar,
@@ -20,7 +19,8 @@ import {
   enableTracking,
   expectGoodSnowplowEvent,
   closeNavigationSidebar,
-  updateDashboardCards,
+  saveDashboard,
+  queryBuilderHeader,
   getDashboardCards,
 } from "e2e/support/helpers";
 
@@ -29,50 +29,123 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
-function saveDashboard() {
-  cy.findByText("Save").click();
-  cy.findByText("You're editing this dashboard.").should("not.exist");
-}
-
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should create new dashboard and navigate to it from the nav bar and from the root collection (metabase#20638)", () => {
-    cy.visit("/");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Dashboard").click();
+  describe("create", () => {
+    it("new dashboard UI flow", { tags: "@smoke" }, () => {
+      cy.intercept("POST", "/api/dashboard").as("createDashboard");
+      cy.intercept("POST", "/api/card").as("createQuestion");
 
-    createDashboardUsingUI("Dash A", "Desc A");
+      const dashboardName = "Dash A";
+      const dashboardDescription = "Fresh new dashboard";
+      const newQuestionName = "New dashboard question";
+      const existingQuestionName = "Orders, Count";
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You're editing this dashboard.");
+      cy.visit("/");
+      appBar().findByText("New").click();
+      popover().findByText("Dashboard").should("be.visible").click();
 
-    // See it as a listed dashboard
-    cy.visit("/collection/root?type=dashboard");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Dash A");
+      cy.log("Create a new dashboard");
+      modal().within(() => {
+        // Without waiting for this, the test was constantly flaking locally.
+        cy.findByText("Our analytics");
 
-    cy.log(
-      "should create new dashboard and navigate to it from the root collection (metabase#20638)",
-    );
+        cy.findByLabelText("Name").type(dashboardName);
+        cy.findByLabelText("Description").type(dashboardDescription, {
+          delay: 0,
+        });
+        cy.button("Create").click();
+      });
 
-    openNewCollectionItemFlowFor("dashboard");
+      cy.log("Router should immediately navigate to it");
+      cy.wait("@createDashboard").then(({ response: { body } }) => {
+        cy.location("pathname").should("contain", `/dashboard/${body.id}`);
+      });
 
-    createDashboardUsingUI("Dash B", "Desc B");
+      cy.findByTestId("dashboard-empty-state").findByText(
+        "This dashboard is looking empty.",
+      );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You're editing this dashboard.");
+      cy.log("New dashboards are opened in editing mode by default");
+      cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
+
+      cy.log(
+        "Should create new question from an empty dashboard (metabase#31848)",
+      );
+      cy.findByTestId("dashboard-empty-state")
+        .findByRole("link", { name: "ask a new one" })
+        .click();
+
+      popover().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Products").click();
+      });
+
+      queryBuilderHeader().findByText("Save").click();
+      modal().within(() => {
+        cy.findByLabelText("Name").clear().type(newQuestionName);
+        cy.button("Save").click();
+      });
+      cy.wait("@createQuestion");
+      modal().within(() => {
+        cy.button("Yes please!").click();
+        cy.findByText(dashboardName).click();
+      });
+
+      openQuestionsSidebar();
+      sidebar().findByText(existingQuestionName).click();
+
+      getDashboardCards().should("have.length", 2);
+
+      saveDashboard();
+
+      cy.log("Breadcrumbs should show a collection dashboard was saved in");
+      appBar().findByText("Our analytics").click();
+
+      cy.log("New dashboard should appear in the collection");
+      cy.findAllByTestId("collection-entry-name")
+        .should("contain", dashboardName)
+        .and("contain", newQuestionName);
+    });
+
+    it("should create new dashboard inside a collection created on the go", () => {
+      const NEW_DASHBOARD = "Foo";
+      const NEW_COLLECTION = "Bar";
+
+      cy.visit("/");
+      appBar().findByText("New").click();
+      popover().findByText("Dashboard").should("be.visible").click();
+
+      modal().within(() => {
+        cy.findByLabelText("Name").type(NEW_DASHBOARD);
+        cy.log("Open a collection picker");
+        cy.findByTestId("select-button")
+          .should("contain", "Our analytics")
+          .click();
+      });
+
+      cy.log("Create new collection on the go");
+      popover().findByText("New collection").click();
+      modal().within(() => {
+        cy.findByLabelText("Name").type(NEW_COLLECTION);
+        cy.button("Create").click();
+      });
+
+      cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
+      saveDashboard();
+      closeNavigationSidebar();
+
+      cy.log("Breadcrumbs show newly created dashboard");
+      appBar().findByText(NEW_COLLECTION).click();
+      cy.findByTestId("collection-entry-name").should(
+        "have.text",
+        NEW_DASHBOARD,
+      );
+    });
   });
 
   it("should update the name and description", () => {
@@ -759,29 +832,6 @@ describe("scenarios > dashboard", () => {
     });
   });
 
-  it("should create new dashboard inside a collection created on the go", () => {
-    cy.visit("/");
-    appBar().findByText("New").click();
-    popover().findByText("Dashboard").click();
-    const NEW_DASHBOARD = "Foo";
-    modal().within(() => {
-      cy.findByLabelText("Name").type(NEW_DASHBOARD);
-      cy.findByTestId("select-button").click();
-    });
-    popover().findByText("New collection").click();
-    const NEW_COLLECTION = "Bar";
-    modal().within(() => {
-      cy.findByLabelText("Name").type(NEW_COLLECTION);
-      cy.findByText("Create").click();
-      cy.findByText("New dashboard");
-      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
-      cy.findByText("Create").click();
-    });
-    saveDashboard();
-    closeNavigationSidebar();
-    cy.get("header").findByText(NEW_COLLECTION);
-  });
-
   it("should not allow edit on small screens", () => {
     cy.viewport(480, 800);
 
@@ -898,40 +948,4 @@ function assertScrollBarExists() {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
-}
-
-function createDashboardUsingUI(name, description) {
-  cy.intercept("POST", "/api/dashboard").as("createDashboard");
-
-  modal().within(() => {
-    // Without waiting for this, the test was constantly flaking locally.
-    // It typed `est Dashboard`.
-    cy.findByText("Our analytics");
-
-    cy.findByLabelText("Name").type(name);
-    cy.findByLabelText("Description").type(description);
-    cy.findByText("Create").click();
-  });
-
-  cy.wait("@createDashboard").then(({ response: { body } }) => {
-    cy.url().should("contain", `/dashboard/${body.id}`);
-  });
-}
-
-function createTextCard(text, row) {
-  return {
-    row,
-    size_x: 24,
-    size_y: 1,
-    visualization_settings: {
-      virtual_card: {
-        name: null,
-        display: "text",
-        visualization_settings: {},
-        dataset_query: {},
-        archived: false,
-      },
-      text,
-    },
-  };
 }
