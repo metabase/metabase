@@ -52,36 +52,41 @@
         ;; The timestamps will also need to be updated (to be in the TZ, not in Zulu time)
         ;;
         ;; A Slack reminder has been set to follow up on this
-        (is (=? [ ;; IPv6
-                 {:timestamp          "2021-03-18T20:55:50.955232Z"
-                  :device_description "Mobile Browser (Mobile Safari/iOS)"
-                  :ip_address         "0:0:0:0:0:0:0:1"
-                  :active             false
-                  :location           #hawk/malli [:maybe [:= "Unknown location"]]
-                  :timezone           nil}
-                 ;; IPv4
-                 {:timestamp          "2021-03-18T20:04:24.7273Z"
-                  :device_description "Library (Apache-HttpClient/JVM (Java))"
-                  :ip_address         "127.0.0.1"
-                  :active             false
-                  :location           #hawk/malli [:maybe [:= "Unknown location"]]
-                  :timezone           nil}
-                 ;; France
-                 {:timestamp          #hawk/malli [:enum
-                                                   "2021-03-18T20:52:41.808482+01:00"
-                                                   "2021-03-18T19:52:41.808482Z"] ; timestamp offset depends on the value of location
-                  :device_description "Browser (Chrome/Windows)"
-                  :ip_address         "185.233.100.23"
-                  :active             true
-                  :location           #hawk/malli [:maybe [:re #"France"]]
-                  :timezone           #hawk/malli [:maybe [:= "CET"]]}
-                 ;; Virginia
-                 {:timestamp          #hawk/malli [:enum
-                                                   "2021-03-18T15:52:20.172351-04:00"
-                                                   "2021-03-18T19:52:20.172351Z"]
-                  :device_description "Browser (Chrome/Windows)"
-                  :ip_address         "52.206.149.9"
-                  :active             false
-                  :location           #hawk/malli [:maybe [:= "Ashburn, Virginia, United States"]]
-                  :timezone           #hawk/malli [:maybe [:= "ET"]]}]
-                (mt/client session-id :get 200 "login-history/current")))))))
+        (is (malli= [:cat
+                     ;; localhost ipv6
+                     [:map
+                      [:timestamp          [:= "2021-03-18T20:55:50.955232Z"]]
+                      [:device_description [:= "Mobile Browser (Mobile Safari/iOS)"]]
+                      [:ip_address         [:= "0:0:0:0:0:0:0:1"]]
+                      [:active             [:= false]]
+                      [:location           [:maybe [:= "Unknown location"]]]
+                      [:timezone           nil?]]
+                     ;; localhost ipv4
+                     [:map
+                      [:timestamp          [:= "2021-03-18T20:04:24.7273Z"]]
+                      [:device_description [:= "Library (Apache-HttpClient/JVM (Java))"]]
+                      [:ip_address         [:= "127.0.0.1"]]
+                      [:active             [:= false]]
+                      [:location           [:maybe [:= "Unknown location"]]]
+                      [:timezone           nil?]]
+                     ;; France
+                     [:map
+                      [:timestamp          [:enum
+                                            "2021-03-18T20:52:41.808482+01:00"
+                                            "2021-03-18T19:52:41.808482Z"]]
+                      [:device_description [:= "Browser (Chrome/Windows)"]]
+                      [:ip_address         [:= "185.233.100.23"]]
+                      [:active             [:= true]]
+                      [:location           [:maybe [:re #"France"]]]
+                      [:timezone           [:maybe [:= "CET"]]]]
+                     ;; Virginia
+                     [:map
+                      [:timestamp          [:enum
+                                            "2021-03-18T15:52:20.172351-04:00"
+                                            "2021-03-18T19:52:20.172351Z"]]
+                      [:device_description [:= "Browser (Chrome/Windows)"]]
+                      [:ip_address         [:= "52.206.149.9"]]
+                      [:active             [:= false]]
+                      [:location           [:maybe [:re "Virginia, United States"]]]
+                      [:timezone           [:maybe [:= "ET"]]]]]
+                    (mt/client session-id :get 200 "login-history/current")))))))
