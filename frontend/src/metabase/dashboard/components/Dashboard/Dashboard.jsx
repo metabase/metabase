@@ -46,6 +46,7 @@ class Dashboard extends Component {
     loadDashboardParams: PropTypes.func,
     location: PropTypes.object,
 
+    isAdmin: PropTypes.bool,
     isFullscreen: PropTypes.bool,
     isNightMode: PropTypes.bool,
     isSharing: PropTypes.bool,

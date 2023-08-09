@@ -88,6 +88,7 @@ class DashboardHeader extends Component {
     dashboard: PropTypes.object.isRequired,
     fetchPulseFormInput: PropTypes.func.isRequired,
     formInput: PropTypes.object.isRequired,
+    isAdmin: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
