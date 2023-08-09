@@ -750,6 +750,9 @@
                                                          (t2/select-one Field :id (mt/id :venues :name))
                                                          "Red"
                                                          1)))))))
+(deftest does-this-even-allowed?
+  (mt/with-db (t2/select-one :model/Database :is_sample true)
+    (is (= 1 (count (mt/rows (mt/run-mbql-query accounts {:limit 1})))))))
 
 (deftest search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
