@@ -45,17 +45,49 @@
 (mr/def ::filters
   [:sequential {:min 1} [:ref ::expression/boolean]])
 
-(defn- expression-ref-error-for-stage [stage]
+(defn- matching-locations
+  [form pred]
+  (loop [stack [[[] form]], matches []]
+    (if-let [[loc form :as top] (peek stack)]
+      (let [stack (pop stack)
+            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
+        (cond
+          (pred form)        (recur stack                                  (conj matches top))
+          (map? form)        (recur (onto-stack form)                      matches)
+          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
+          :else              (recur stack                                  matches)))
+      matches)))
+
+(defn- bad-ref-clause? [ref-type valid-ids x]
+  (and (vector? x)
+       (= ref-type (first x))
+       (not (contains? valid-ids (get x 2)))))
+
+(defn- expression-ref-errors-for-stage [stage]
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
-    (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
-      [:expression _opts (expression-name :guard (complement expression-names))]
-      (str "Invalid :expression reference: no expression named " (pr-str expression-name)))))
+    (matching-locations (dissoc stage :joins :lib/stage-metadata)
+                        #(bad-ref-clause? :expression expression-names %))))
+
+(defn- aggregation-ref-errors-for-stage [stage]
+  (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
+    (matching-locations (dissoc stage :joins :lib/stage-metadata)
+                        #(bad-ref-clause? :aggregation uuids %))))
+
+(defn ref-errors-for-stage
+  "Return the locations and the clauses with dangling expression or aggregation references.
+  The return value is sequence of pairs (vectors) with the first element specifying the location
+  as a vector usable in [[get-in]] and the second element being the clause with dangling reference."
+  [stage]
+  (concat (expression-ref-errors-for-stage stage)
+          (aggregation-ref-errors-for-stage stage)))
+
+(defn- expression-ref-error-for-stage [stage]
+  (when-let [err-loc (first (expression-ref-errors-for-stage stage))]
+    (str "Invalid :expression reference: no expression named " (pr-str (get-in err-loc [1 2])))))
 
 (defn- aggregation-ref-error-for-stage [stage]
-  (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
-    (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
-      [:aggregation _opts (ag-uuid :guard (complement uuids))]
-      (str "Invalid :aggregation reference: no aggregation with uuid " ag-uuid))))
+  (when-let [err-loc (first (aggregation-ref-errors-for-stage stage))]
+    (str "Invalid :aggregation reference: no aggregation with uuid " (get-in err-loc [1 2]))))
 
 (def ^:private ^{:arglists '([stage])} ref-error-for-stage
   "Validate references in the context of a single `stage`, independent of any previous stages. If there is an error with
