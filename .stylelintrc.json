@@ -15,7 +15,6 @@
     "selector-no-vendor-prefix": null,
     "alpha-value-notation": null,
     "property-no-vendor-prefix": null,
-    "import-notation": null,
-    "declaration-block-no-shorthand-property-overrides": null
+    "import-notation": null
   }
 }

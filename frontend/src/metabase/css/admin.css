@@ -75,12 +75,9 @@
 
 .AdminList-search .Icon {
   position: absolute;
-  margin-top: auto;
-  margin-bottom: auto;
+  margin: auto auto auto 1em;
   top: 0;
   bottom: 0;
-  margin: auto;
-  margin-left: 1em;
   color: var(--color-text-light);
 }
 
