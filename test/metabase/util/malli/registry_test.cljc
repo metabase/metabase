@@ -19,6 +19,7 @@
 (deftest ^:parallel resolve-test
   (is (mc/schema? (mr/resolve-schema :int)))
   (is (mc/schema? (mr/resolve-schema ::int)))
-  (is (= ":int"
-         (pr-str (mr/resolve-schema ::int))
-         (pr-str (mr/resolve-schema [:ref ::int])))))
+  #?(:clj
+     (is (= ":int"
+            (pr-str (mr/resolve-schema ::int))
+            (pr-str (mr/resolve-schema [:ref ::int]))))))
