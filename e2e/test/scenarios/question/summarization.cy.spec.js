@@ -207,23 +207,20 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
-    // Go straight to orders table in custom questions
     openOrdersTable({ mode: "notebook" });
 
     summarize({ mode: "notebook" });
     popover().within(() => {
       cy.findByText("Number of distinct values of ...").click();
-      cy.log(
-        "**Test fails at this point as there isn't an extra field next to 'Created At'**",
-      );
-      // instead of relying on DOM structure that might change
-      // (i.e. find "Created At" -> parent -> parent -> parent -> find "by month")
-      // access it directly from the known common parent
-      cy.get(".List-item").contains("by month").click({ force: true });
+      cy.findByLabelText("Temporal bucket").click();
     });
-    // this should be among the granular selection choices
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hour of day").click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.button("More…").click();
+        cy.findByText("Hour of day").click();
+      });
   });
 
   it.skip("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
