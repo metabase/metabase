@@ -740,12 +740,12 @@
   (testing "RHS columns when building a join against"
     (doseq [query            [lib.tu/venues-query
                               lib.tu/query-with-join]
-            [card-type card] {"Native" lib.tu/categories-native-card
-                              "MBQL"   lib.tu/categories-mbql-card}]
+            [card-type card] {"Native" (:categories/native lib.tu/mock-cards)
+                              "MBQL"   (:categories lib.tu/mock-cards)}]
       (testing (str "a " card-type " Card")
         (let [cols (lib/join-condition-rhs-columns query card nil nil)]
-          (is (=? [{:display-name "ID", :lib/source :source/joins, :lib/card-id 1}
-                   {:display-name "Name", :lib/source :source/joins, :lib/card-id 1}]
+          (is (=? [{:display-name "ID", :lib/source :source/joins, :lib/card-id (:id card)}
+                   {:display-name "Name", :lib/source :source/joins, :lib/card-id (:id card)}]
                   cols))
           (is (=? [{:display-name "ID", :is-from-join true}
                    {:display-name "Name", :is-from-join true}]
