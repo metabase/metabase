@@ -57,32 +57,30 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
   [_driver error-type database error-message]
-  (when-let [[match table constraint]
+  (when-let [[_match table constraint]
              (re-find #"Duplicate entry '.+' for key '(.+)\.(.+)'" error-message)]
     (let [constraint (remove-backticks constraint)
           table      (remove-backticks table)
           columns    (constraint->column-names database table constraint)]
-      (when match
-        {:type    error-type
-         :message (tru "Value for column(s) {0} is duplicated" (str/join ", " columns))
-         :errors  (reduce (fn [acc col]
-                            (assoc acc col (tru "This column has unique constraint and this value is existed")))
-                          {}
-                          columns)}))))
+      {:type    error-type
+       :message (tru "Value for column(s) {0} is duplicated" (str/join ", " columns))
+       :errors  (reduce (fn [acc col]
+                          (assoc acc col (tru "This column has unique constraint and this value is existed")))
+                        {}
+                        columns)})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
   [_driver error-type _database error-message]
-  (when-let [[match ref-table _constraint _fkey-cols _table key-cols]
+  (when-let [[_match ref-table _constraint _fkey-cols _table key-cols]
              (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
     (let [ref-table  (-> ref-table (str/split #"\.") last remove-backticks)
           columns    (map remove-backticks (str/split key-cols #", "))]
-      (when match
-        {:type       error-type
-         :message (tru "Column(s) {0} is referenced from {1} table" (str/join ", " columns) ref-table)
-         :errors  (reduce (fn [acc col]
-                            (assoc acc col (tru "The value is referenced from {0} table" ref-table)))
-                          {}
-                          columns)}))))
+      {:type       error-type
+       :message (tru "Column(s) {0} is referenced from {1} table" (str/join ", " columns) ref-table)
+       :errors  (reduce (fn [acc col]
+                          (assoc acc col (tru "The value is referenced from {0} table" ref-table)))
+                        {}
+                        columns)})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
   [_driver error-type _database error-message]
