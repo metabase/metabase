@@ -313,10 +313,11 @@ class QuestionInner {
     return this._card && this._card.displayIsLocked;
   }
 
-  maybeResetDisplay(sensibleDisplays, previousSensibleDisplays): Question {
-    const wasSensible =
-      previousSensibleDisplays == null ||
-      previousSensibleDisplays.includes(this.display());
+  maybeResetDisplay(
+    sensibleDisplays: [string],
+    previousSensibleDisplays: [string],
+  ): Question {
+    const wasSensible = previousSensibleDisplays.includes(this.display());
     const isSensible = sensibleDisplays.includes(this.display());
     const shouldUnlock = wasSensible && !isSensible;
     const defaultDisplay = this.setDefaultDisplay().display();

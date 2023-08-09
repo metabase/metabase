@@ -189,12 +189,16 @@ export const queryCompleted = (question, queryResults) => {
         );
       }
 
-      question = question
-        .maybeResetDisplay(
+      // In tests it is possible for prevData to be undefined and display to be the default
+      // In this case we shouldn't reset the display
+      if (prevData) {
+        question = question.maybeResetDisplay(
           getSensibleDisplays(data),
-          prevData && getSensibleDisplays(prevData),
-        )
-        .switchTableScalar(data);
+          getSensibleDisplays(prevData),
+        );
+      }
+
+      question = question.switchTableScalar(data);
     }
 
     const card = question.card();
