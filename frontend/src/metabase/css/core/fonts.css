@@ -50,7 +50,7 @@
       format("svg"); /* Legacy iOS */
 }
 
-/*PT Serif 400 */
+/* PT Serif 400 */
 @font-face {
   font-family: "PT Serif";
   src: local("PT Serif"), local("PTSerif-Regular"),
@@ -60,7 +60,7 @@
   font-display: swap;
 }
 
-/*PT Serif 700 */
+/* PT Serif 700 */
 @font-face {
   font-family: "PT Serif";
   src: local("PT Serif Bold"), local("PTSerif-Bold"),

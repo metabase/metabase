@@ -199,7 +199,7 @@
 }
 
 .TableEditor-field-visibility {
-  /*color: var(--color-warning);*/
+  /* color: var(--color-warning); */
 }
 
 .TableEditor-field-visibility .ColumnarSelector-row:hover {

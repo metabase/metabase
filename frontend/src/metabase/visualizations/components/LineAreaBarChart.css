@@ -183,7 +183,7 @@
   transition: stroke 0.15s linear;
 }
 
-/* .mute-* selectors dynamically generated in LineAreaBarChart.js*/
+/* .mute-* selectors dynamically generated in LineAreaBarChart.js */
 
 .LineAreaBarChart.mute-yl .dc-chart .axis.y,
 .LineAreaBarChart.mute-yl .dc-chart .y-axis-label.y-label {
@@ -206,7 +206,7 @@
 /* we put the brush behind everything so this isn't necessary
 /*.LineAreaBarChart .dc-chart .brush {
   pointer-events: none;
-}*/
+} */
 
 /* grid lines aren't clickable, and get in the way of the brush */
 .LineAreaBarChart .dc-chart .grid-line {

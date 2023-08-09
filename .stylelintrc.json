@@ -16,7 +16,6 @@
     "rule-empty-line-before": null,
     "no-duplicate-selectors": null,
     "declaration-empty-line-before": null,
-    "comment-whitespace-inside": null,
     "comment-empty-line-before": null,
     "media-feature-range-notation": null,
     "selector-no-vendor-prefix": null,
