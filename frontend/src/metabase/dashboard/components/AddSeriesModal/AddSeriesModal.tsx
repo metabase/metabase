@@ -92,7 +92,6 @@ export class AddSeriesModal extends Component<Props, State> {
   };
 
   handleRemoveSeries = (_event: MouseEvent, removedIndex: number) => {
-    this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
     /**
      * The first series is the base dashcard.card - it's not included
      * in the this.state.series array.
