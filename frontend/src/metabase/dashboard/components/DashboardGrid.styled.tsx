@@ -16,7 +16,8 @@ export const DashboardCard = styled.div<DashboardCardProps>`
   *
   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Understanding_z-index/Stacking_context
   */
-  &:hover {
+  &:hover,
+  &:focus-within {
     z-index: 3;
   }
 
@@ -27,7 +28,7 @@ export const DashboardCard = styled.div<DashboardCardProps>`
     bottom: 0;
     right: 0;
     border-radius: 8px;
-    box-shadow: 0px 1px 3px var(--color-shadow);
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.13);
   }
 
   ${props =>

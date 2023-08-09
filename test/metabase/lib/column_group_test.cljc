@@ -292,7 +292,7 @@
                     groups)))
           (testing `lib/display-info
             (testing "Card is not present in MetadataProvider"
-              (is (=? [{:display-name "Saved Question 1"
+              (is (=? [{:display-name "Question 1"
                         :is-from-join true}]
                       (for [group groups]
                         (lib/display-info lib.tu/venues-query group)))))

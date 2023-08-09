@@ -304,9 +304,11 @@ async function handleQBInit(
   const metadata = getMetadata(getState());
 
   let question = new Question(card, metadata);
+
   if (question.isSaved()) {
-    // Don't set viz automatically for saved questions
-    question = question.lockDisplay();
+    if (!question.isDataset()) {
+      question = question.lockDisplay();
+    }
 
     const currentUser = getUser(getState());
     if (currentUser?.is_qbnewb) {
