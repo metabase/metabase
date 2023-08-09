@@ -690,3 +690,11 @@
   `:database-id`; if this is not available for one reason or another this will return `nil`."
   [a-query]
   (lib.core/database-id a-query))
+
+(defn ^:export join-condition-update-temporal-bucketing
+  "Updates the provided join-condition's fields' temporal-bucketing option.
+   Must be called on a standard join condition as per [[standard-join-condition?]].
+   This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
+   Fields that do not support the provided option will be ignored."
+  [a-query stage-number join-condition bucketing-option]
+  (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))

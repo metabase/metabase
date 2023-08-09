@@ -67,7 +67,7 @@ jobs:
   e2e-tests:
     needs: [build, files-changed, test-run-id]
     if: |
-      always() &&
+      !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
@@ -98,6 +98,7 @@ jobs:
           - "collections"
           - "custom-column"
           - "dashboard"
+          - "dashboard-cards"
           - "dashboard-filters"
           - "embedding"
           - "filters"
@@ -246,7 +247,7 @@ jobs:
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
       - name: Upload Replay.io recordings
-        if: github.event_name == 'schedule' && always()
+        if: github.event_name == 'schedule' && !cancelled()
         uses: replayio/action-upload@v0.4.7
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
@@ -265,7 +266,7 @@ jobs:
   e2e-tests-skipped-stub:
     needs: [build, files-changed]
     if: |
-      always() &&
+      !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'false' &&
       needs.build.result == 'skipped'
     runs-on: ubuntu-22.04
