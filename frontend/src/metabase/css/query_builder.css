@@ -183,13 +183,16 @@
   background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
 }
+
 .Loading.Loading--hidden {
   background-color: transparent;
 }
+
 .Dirty {
   background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
 }
+
 .Dirty.Loading--hidden {
   background-color: transparent;
 }
@@ -298,15 +301,19 @@
 .GuiBuilder-row {
   border-bottom: 1px solid var(--color-border);
 }
+
 .GuiBuilder-row:last-child {
   border-bottom-color: transparent;
 }
+
 .GuiBuilder-filtered-by {
   border-right: 1px solid transparent;
 }
+
 .GuiBuilder-view {
   border-right: 1px solid var(--color-border);
 }
+
 .GuiBuilder-sort-limit {
   border-left: 1px solid var(--color-border);
   min-width: 0;
@@ -316,10 +323,12 @@
 .GuiBuilder.GuiBuilder--expand {
   flex-direction: row;
 }
+
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
   border-right-color: transparent;
   border-bottom-color: var(--color-border);
 }
+
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
   border-right-color: var(--color-border);
 }

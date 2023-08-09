@@ -73,6 +73,7 @@
 :local(.full-width) {
   width: 100%;
 }
+
 .half {
   width: 50%;
 }
@@ -87,6 +88,7 @@
 :local(.relative) {
   position: relative;
 }
+
 .absolute,
 :local(.absolute) {
   position: absolute;
@@ -102,14 +104,17 @@
 :local(.top) {
   top: 0;
 }
+
 .right,
 :local(.right) {
   right: 0;
 }
+
 .bottom,
 :local(.bottom) {
   bottom: 0;
 }
+
 .left,
 :local(.left) {
   left: 0;

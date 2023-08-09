@@ -43,6 +43,7 @@
 :local(.sectionTitle.selected) {
   color: var(--color-brand);
 }
+
 :local(.item.selected),
 :local(.sectionTitle.selected) {
   background-color: rgba(80, 158, 227, 0.15);

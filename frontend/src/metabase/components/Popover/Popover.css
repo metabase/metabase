@@ -81,6 +81,7 @@
   line-height: 1.26;
   padding: 10px 12px;
 }
+
 .PopoverBody.PopoverBody--tooltip.PopoverBody--tooltipConstrainedWidth {
   font-size: 12px;
   max-width: 200px;
@@ -200,6 +201,7 @@
   top: -20px;
   border-bottom-color: var(--color-border);
 }
+
 .tether-element-attached-top .PopoverBody--tooltip::before {
   border-bottom: none;
 }
@@ -209,6 +211,7 @@
   top: -18px;
   border-bottom-color: var(--color-bg-white);
 }
+
 .tether-element-attached-top .PopoverBody--tooltip::after {
   border-bottom-color: var(--color-bg-black);
 }
@@ -218,6 +221,7 @@
   bottom: -20px;
   border-top-color: var(--color-border);
 }
+
 .tether-element-attached-bottom .PopoverBody--tooltip::before {
   border-top: none;
 }
@@ -227,6 +231,7 @@
   bottom: -18px;
   border-top-color: var(--color-bg-white);
 }
+
 .tether-element-attached-bottom .PopoverBody--tooltip::after {
   border-top-color: var(--color-bg-black);
 }

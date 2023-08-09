@@ -132,6 +132,7 @@
   background-color: var(--color-bg-light);
   border: 1px solid transparent;
 }
+
 .AdminInput:focus {
   border-color: var(--color-brand);
   box-shadow: none;
@@ -162,9 +163,11 @@
 .AdminSelect--borderless {
   border: none !important;
 }
+
 .AdminSelect--borderless .AdminSelect-content {
   margin-left: auto;
 }
+
 .AdminSelect--borderless .AdminSelect-chevron {
   margin-left: 0;
 }

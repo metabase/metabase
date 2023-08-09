@@ -2,6 +2,7 @@
 :local(.float-left) {
   float: left;
 }
+
 .float-right,
 :local(.float-right) {
   float: right;

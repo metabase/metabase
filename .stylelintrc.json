@@ -12,7 +12,6 @@
     "selector-id-pattern": null,
     "color-function-notation": null,
     "declaration-block-no-redundant-longhand-properties": null,
-    "rule-empty-line-before": null,
     "media-feature-range-notation": null,
     "selector-no-vendor-prefix": null,
     "alpha-value-notation": null,

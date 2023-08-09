@@ -34,6 +34,7 @@
   fill: var(--color-text-medium);
   font-weight: 900;
 }
+
 .LineAreaBarChart .dc-chart g.row text.inside {
   fill: white;
   font-weight: bold;
@@ -123,6 +124,7 @@
 .LineAreaBarChart .dc-chart .line {
   stroke-width: 2px;
 }
+
 .LineAreaBarChart .dc-chart .dc-tooltip .dot {
   r: 3px !important;
   stroke-width: 2px;
@@ -132,6 +134,7 @@
 .LineAreaBarChart .dc-chart .line--medium .line {
   stroke-width: 3px;
 }
+
 .LineAreaBarChart .dc-chart .line--medium .dc-tooltip .dot {
   r: 3px !important;
   stroke-width: 2px;
@@ -141,6 +144,7 @@
 .LineAreaBarChart .dc-chart .line--heavy .line {
   stroke-width: 4px;
 }
+
 .LineAreaBarChart .dc-chart .line--heavy .dc-tooltip .dot {
   r: 3.5px !important;
   stroke-width: 3px;
@@ -159,6 +163,7 @@
 .LineAreaBarChart .dc-chart .dc-tooltip .dot.deselected {
   opacity: 0;
 }
+
 .LineAreaBarChart .dc-chart .line.deselected {
   color: var(--color-text-light);
 }

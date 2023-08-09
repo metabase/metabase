@@ -86,13 +86,16 @@
 :local(.icons) {
   composes: flex flex-row align-center from "style";
 }
+
 :local(.leftIcons) {
   composes: flex-no-shrink flex align-self-start mr2 from "style";
   composes: icons;
 }
+
 :local(.rightIcons) {
   composes: icons;
 }
+
 :local(.itemIcons) {
   composes: leftIcons;
   padding-top: 4px;
@@ -119,9 +122,11 @@
 :local(.item) :local(.icon) {
   visibility: hidden;
 }
+
 :local(.item):hover :local(.icon) {
   visibility: visible;
 }
+
 :local(.icon):hover {
   color: var(--color-brand);
 }
@@ -133,10 +138,12 @@
   visibility: visible !important;
   margin-left: 10px;
 }
+
 :local(.item):hover :local(.itemCheckbox),
 :local(.item.selected) :local(.itemCheckbox) {
   display: inline;
 }
+
 :local(.item.selected) :local(.itemCheckbox) {
   color: var(--color-brand);
 }
@@ -146,6 +153,7 @@
   visibility: visible !important;
   composes: relative from "style";
 }
+
 :local(.item):hover :local(.itemIcon),
 :local(.item.selected) :local(.itemIcon) {
   display: none;

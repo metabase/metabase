@@ -1,6 +1,7 @@
 .hide {
   display: none !important;
 }
+
 .show {
   display: inherit;
 }

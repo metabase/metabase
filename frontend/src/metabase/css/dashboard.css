@@ -142,6 +142,7 @@
   right: -2px;
   top: -2px;
 }
+
 .Dash--editing .DashCard:hover .Visualization-slow-spinner {
   opacity: 0;
   transition: opacity 0.15s linear;

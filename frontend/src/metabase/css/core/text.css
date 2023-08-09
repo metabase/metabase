@@ -100,6 +100,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+
 .text-lowercase {
   text-transform: lowercase;
 }
@@ -118,6 +119,7 @@
 .text-normal {
   font-weight: 400;
 }
+
 .text-bold,
 :local(.text-bold) {
   font-weight: 700;
@@ -204,6 +206,7 @@
   line-height: 1.4em;
   white-space: pre-wrap;
 }
+
 .text-code-plain {
   font-family: monospace;
   color: var(--color-text-dark);

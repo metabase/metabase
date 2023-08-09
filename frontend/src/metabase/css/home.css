@@ -32,6 +32,7 @@
   background-color: var(--color-bg-light);
   border-left: 2px solid var(--color-border);
 }
+
 .Layout-mainColumn {
   max-width: 700px;
   margin-left: auto;

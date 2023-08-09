@@ -20,9 +20,11 @@
   margin-right: 0;
   margin-left: 0;
 }
+
 :local(.fullscreen .name) {
   font-size: 14px;
 }
+
 :local(.fullscreen .parameter) {
   min-width: 0;
   min-height: 0;
@@ -59,15 +61,19 @@
   color: var(--color-text-dark);
   width: 142px;
 }
+
 :local(.parameter.noPopover) input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }
+
 :local(.parameter.noPopover) input:-moz-placeholder {
   color: var(--color-text-medium);
 }
+
 :local(.parameter.noPopover) input::-moz-placeholder {
   color: var(--color-text-medium);
 }
+
 :local(.parameter.noPopover) input:-ms-input-placeholder {
   color: var(--color-text-medium);
 }

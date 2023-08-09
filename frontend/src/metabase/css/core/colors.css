@@ -67,6 +67,7 @@
 .text-success {
   color: var(--color-success);
 }
+
 .bg-success {
   background-color: var(--color-success);
 }
@@ -83,6 +84,7 @@
 .bg-error-hover:hover {
   background-color: var(--color-error);
 }
+
 .bg-error-input {
   background-color: var(--color-bg-white);
 }
@@ -95,9 +97,11 @@
 .text-slate {
   color: var(--color-text-medium);
 }
+
 .text-slate-light {
   color: var(--color-text-light);
 }
+
 .text-slate-extra-light {
   background-color: var(--color-bg-light);
 }
@@ -164,6 +168,7 @@
   color: var(--color-text-white);
   background-color: var(--color-brand);
 }
+
 .brand-hover:hover * {
   color: var(--color-text-white);
 }
@@ -195,6 +200,7 @@
 .bg-question {
   background-color: var(--color-bg-dark);
 }
+
 .text-question {
   color: var(--color-text-medium);
 }
@@ -202,9 +208,11 @@
 .text-light {
   color: var(--color-text-light);
 }
+
 .text-medium {
   color: var(--color-text-medium);
 }
+
 .text-dark {
   color: var(--color-text-dark);
 }
