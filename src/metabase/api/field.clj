@@ -419,14 +419,14 @@
     value        :- [:maybe ms/NonBlankString]
     maybe-limit  :- [:maybe ms/PositiveInt]]
    (try
-     (let [field   (follow-fks field)
-           search-field (follow-fks search-field)
-           limit   (or maybe-limit default-max-field-search-limit)
-           results (qp/process-query (search-values-query field search-field value limit))]
-       (get-in results [:data :rows]))
-     (catch Throwable e
-       (log/error e (trs "Error searching field values"))
-       nil))))
+    (let [field        (follow-fks field)
+          search-field (follow-fks search-field)
+          limit        (or maybe-limit default-max-field-search-limit)
+          results      (qp/process-query (search-values-query field search-field value limit))]
+      (get-in results [:data :rows]))
+    (catch Throwable e
+      (log/error e (trs "Error searching field values"))
+      nil))))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
@@ -439,17 +439,7 @@
         search-field (api/check-404 (t2/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)
     (throw-if-no-read-or-segmented-perms search-field)
-    (def field field)
-    (def search-field search-field)
-    (def value value)
     (search-values field search-field value mw.offset-paging/*limit*)))
-
-#_(def feedback->email (t2/select-one :model/Field 1006))
-#_(def accounts->email (t2/select-one :model/Field 1040))
-
-#_(search-values feedback->email feedback->email "s" nil)
-
-#_(search-values field search-field value nil)
 
 (defn remapped-value
   "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
