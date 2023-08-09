@@ -32,7 +32,7 @@ jobs:
   fe-linter-prettier:
     needs: files-changed
     if: needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.e2e_specs == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-64C-256G-2T
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
@@ -44,7 +44,7 @@ jobs:
   fe-linter-eslint:
     needs: files-changed
     if: needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.e2e_specs == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-64C-256G-2T
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
@@ -60,7 +60,7 @@ jobs:
   fe-type-check:
     needs: files-changed
     if: needs.files-changed.outputs.frontend_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-64C-256G-2T
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
@@ -78,7 +78,7 @@ jobs:
   fe-tests-unit:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04-64C-256G-2T
     timeout-minutes: 60
     steps:
     - uses: actions/checkout@v3
@@ -99,7 +99,7 @@ jobs:
   fe-tests-timezones:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-64C-256G-2T
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
@@ -115,7 +115,7 @@ jobs:
   fe-chromatic:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-64C-256G-2T
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

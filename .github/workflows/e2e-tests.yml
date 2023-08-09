@@ -41,7 +41,7 @@ jobs:
   build:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-64C-256G-2T
     timeout-minutes: 25
     strategy:
       matrix:
@@ -70,7 +70,7 @@ jobs:
       !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
       needs.build.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-64C-256G-2T
     timeout-minutes: 90
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
@@ -307,7 +307,7 @@ jobs:
           echo "Didn't run due to conditional filtering"
 
   visual-regression-tests:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-64C-256G-2T
     timeout-minutes: 60
     needs: build
     if: ${{ github.event_name != 'schedule' }}
