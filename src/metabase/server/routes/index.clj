@@ -75,7 +75,7 @@
         (log/error e message)
         (throw (Exception. message e))))))
 
-(defn- load-entrypoint-template [entrypoint-name embeddable? {:keys [uri params]}]
+(defn- load-entrypoint-template [entrypoint-name embeddable? {:keys [uri params nonce]}]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
    (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})]
@@ -84,6 +84,7 @@
       :bootstrapJSON        (escape-script (json/generate-string public-settings))
       :userLocalizationJSON (escape-script (load-localization (:locale params)))
       :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
+      :nonceJSON            (escape-script (json/generate-string nonce))
       :language             (hiccup.util/escape-html (public-settings/site-locale))
       :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
       :applicationName      (hiccup.util/escape-html (public-settings/application-name))
