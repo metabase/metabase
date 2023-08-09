@@ -158,7 +158,6 @@
                                       (map (fn [selected-ref]
                                              (find-closest-matching-ref metadata-providerable selected-ref refs)))
                                       selected-refs)]
-     (println "(pr-str matching-selected-refs):" (pr-str matching-selected-refs)) ; NOCOMMIT
      (mapv (fn [col a-ref]
              (assoc col :selected? (contains? matching-selected-refs a-ref)))
            columns
