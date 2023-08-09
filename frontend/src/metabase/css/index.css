@@ -1,5 +1,4 @@
 @import "./vendor.css";
-
 @import "./components/buttons.css";
 @import "./components/form.css";
 @import "./components/header.css";
@@ -9,9 +8,7 @@
 @import "./components/table.css";
 @import "./components/tippy.css";
 @import "./components/grabber.css";
-
 @import "./containers/entity_search.css";
-
 @import "./admin.css";
 @import "./card.css";
 @import "./dashboard.css";

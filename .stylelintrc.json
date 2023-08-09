@@ -20,7 +20,6 @@
     "alpha-value-notation": null,
     "property-no-vendor-prefix": null,
     "import-notation": null,
-    "at-rule-empty-line-before": null,
     "media-query-no-invalid": null,
     "declaration-block-no-shorthand-property-overrides": null
   }
