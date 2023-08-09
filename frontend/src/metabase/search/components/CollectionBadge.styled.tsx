@@ -14,6 +14,7 @@ export const CollectionLink = styled(Link)`
   display: flex;
   align-items: center;
   text-decoration: dashed;
+
   &:hover {
     color: ${color("brand")};
   }

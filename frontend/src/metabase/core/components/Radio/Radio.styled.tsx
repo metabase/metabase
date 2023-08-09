@@ -87,7 +87,7 @@ export const RadioContainerUnderlined = styled(RadioContainer)`
   color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
   border-bottom: 3px solid
     ${props =>
-      props.checked ? getSchemeColor(props.colorScheme) : "transparent"};
+      props.checked ? `${getSchemeColor(props.colorScheme)}` : "transparent"};
   padding: 1rem 0;
 `;
 
@@ -128,7 +128,9 @@ export const RadioButton = styled.span<RadioButtonProps>`
   border-radius: 0.75rem;
   box-shadow: 0 0 0 2px
     ${props =>
-      props.checked ? getSchemeColor(props.colorScheme) : color("text-medium")};
+      props.checked
+        ? `${getSchemeColor(props.colorScheme)}`
+        : color("text-medium")};
   background-color: ${props =>
     props.checked ? getSchemeColor(props.colorScheme) : "transparent"};
 `;

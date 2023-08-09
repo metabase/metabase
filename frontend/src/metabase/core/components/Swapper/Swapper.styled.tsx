@@ -14,9 +14,6 @@ export const SwapperDefaultElement = styled.div<SwapperElementProps>`
 
 export const SwapperLayeredElement = styled.div<SwapperElementProps>`
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   transform: scale(${props => (props.isVisible ? 1 : 0)});
 `;

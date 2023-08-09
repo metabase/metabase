@@ -36,6 +36,7 @@ export const CardSide = styled.div`
 export const CardButton = styled(Button)`
   border-color: ${alpha(color("bg-white"), 0)};
   background-color: ${alpha(color("bg-white"), 0.1)};
+
   :hover {
     border-color: ${alpha(color("bg-white"), 0)};
     background-color: ${alpha(color("bg-white"), 0.3)};

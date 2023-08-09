@@ -23,10 +23,8 @@ export const ItemPickerRoot = styled.div`
 export const ItemPickerHeader = styled.div`
   display: flex;
   align-items: center;
-
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-
   border-bottom: 1px solid ${color("border")};
 `;
 
@@ -42,7 +40,6 @@ export const SearchInput = styled.input`
 export const SearchToggle = styled(IconButtonWrapper)`
   margin-left: auto;
   padding-left: 1rem;
-
   color: ${color("text-light")};
 
   &:hover {

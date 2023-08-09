@@ -24,6 +24,7 @@ export const ModalMain = styled.div`
     height: calc(98vh - 10rem);
     flex-direction: column;
   }
+
   display: flex;
 `;
 
@@ -95,7 +96,6 @@ export const SearchContainer = styled.div<{ isActive: boolean }>`
   flex: 1 1 auto;
   align-items: center;
   position: relative;
-
   border: ${props =>
     props.isActive ? `1px solid ${color("border")}` : "none"};
   overflow: hidden;
@@ -108,7 +108,6 @@ export const SearchContainer = styled.div<{ isActive: boolean }>`
 
   justify-content: center;
   margin-left: auto;
-
   max-width: ${props => (props.isActive ? "20rem" : "2rem")};
   height: 2rem;
   border-radius: 0.5rem;
@@ -124,7 +123,6 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   color: ${color("text-medium")};
   font-weight: 700;
   margin-right: ${space(1)};
-
   width: 100%;
 
   &:focus {

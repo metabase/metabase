@@ -103,10 +103,12 @@ export const ItemNameCell = styled.td`
   ${ItemLink} {
     padding: 1em;
   }
+
   &:hover {
     ${ItemLink} {
       color: ${color("brand")};
     }
+
     cursor: pointer;
   }
 `;
@@ -134,11 +136,14 @@ export const SortingControlContainer = styled.div<{ isActive: boolean }>`
   color: ${props => (props.isActive ? color("text-dark") : "")};
   cursor: pointer;
   user-select: none;
+
   .Icon {
     visibility: ${props => (props.isActive ? "visible" : "hidden")};
   }
+
   &:hover {
     color: ${color("text-dark")};
+
     .Icon {
       visibility: visible;
     }
@@ -159,7 +164,6 @@ export const TBody = styled.tbody`
   td {
     border: none;
     background-color: transparent;
-
     border-top: 1px solid ${color("border")};
 
     &:first-of-type {

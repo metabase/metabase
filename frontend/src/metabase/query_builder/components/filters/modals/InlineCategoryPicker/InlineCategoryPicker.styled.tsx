@@ -28,6 +28,5 @@ export const PickerGrid = styled.div<PickerGridProps>`
     grid-auto-flow: column;
   `
       : ""}
-
   gap: ${space(2)};
 `;

@@ -49,7 +49,7 @@ export const DashboardCardActionsPanel = styled.div`
   top: 0;
   right: 20px;
   border-radius: 8px;
-  box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 13%);
   cursor: default;
   transition: opacity 200ms;
   opacity: 0;

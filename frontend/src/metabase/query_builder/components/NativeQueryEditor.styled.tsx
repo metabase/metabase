@@ -9,7 +9,7 @@ export const NativeQueryEditorRoot = styled.div`
   }
 
   .ace_search {
-    font-family: Lato;
+    font-family: Lato, "Helvetica Neue", Helvetica, sans-serif;
     background-color: ${color("bg-light")};
     color: ${color("text-dark")};
     border-color: ${color("border")};

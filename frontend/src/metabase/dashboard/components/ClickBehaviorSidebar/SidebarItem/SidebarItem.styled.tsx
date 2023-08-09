@@ -17,12 +17,9 @@ export const BaseSidebarItemRoot = styled.div<{
 }>`
   display: flex;
   align-items: center;
-
   overflow: hidden;
-
   border: 1px solid transparent;
   border-radius: 8px;
-
   cursor: pointer;
 
   ${({ disabled }) => disabled && disabledStyle}
@@ -39,7 +36,6 @@ export const SelectableSidebarItemRoot = styled(BaseSidebarItemRoot)<{
 }>`
   background-color: ${props =>
     props.isSelected ? color("brand") : "transparent"};
-
   color: ${props => (props.isSelected ? color("white") : "inherit")};
 `;
 
@@ -56,11 +52,9 @@ export const IconContainer = styled.div`
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
-
   width: 36px;
   height: 36px;
   margin-right: 10px;
-
   border: 1px solid #f2f2f2;
   border-radius: 8px;
 `;

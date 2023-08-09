@@ -44,7 +44,7 @@ export const Head = styled.div<SharedProps>`
 
 export const Info = styled.div<SharedProps>`
   text-align: right;
-  padding: 0.5em 0.5em 0 0.5em;
+  padding: 0.5em 0.5em 0;
   font-size: ${props => (props.isNarrow ? "12px" : "16px")};
 
   ${Subtitle} {
@@ -59,7 +59,6 @@ export const FunnelStart = styled.div<SharedProps>`
   flex-direction: column;
   text-align: right;
   flex-grow: 1;
-
   padding-right: 0.5em;
   font-size: 24px;
 

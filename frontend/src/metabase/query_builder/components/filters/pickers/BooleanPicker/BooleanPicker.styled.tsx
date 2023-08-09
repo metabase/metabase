@@ -16,7 +16,7 @@ FilterRadio.defaultProps = {
 };
 
 export const RadioContainer = styled.div`
-  margin: 15px 20px 70px 20px;
+  margin: 15px 20px 70px;
 `;
 
 export const CheckboxContainer = styled.div`

@@ -6,15 +6,12 @@ import { Icon } from "metabase/core/components/Icon";
 export const IconWrapper = styled.span`
   display: flex;
   margin-right: 0.25rem;
-
   color: ${color("brand")};
-
   transition: all 200ms linear;
 `;
 
 export const ClickActionButtonIcon = styled(Icon)`
   margin-right: 0.2rem;
-
   color: ${color("brand")};
   transition: all 200ms linear;
 `;
@@ -23,15 +20,12 @@ export const HorizontalClickActionButton = styled(Button)`
   display: flex;
   flex: auto;
   align-items: center;
-
   border-radius: 8px;
   border: none;
-
   padding: 0.5rem;
   margin: 0 -0.5rem;
   width: auto;
   min-width: 148px;
-
   line-height: 1rem;
 
   &:hover {
@@ -82,9 +76,7 @@ export const SortControl = styled(Button)`
   color: ${color("brand")};
   border: 1px solid ${alpha("brand", 0.35)};
   line-height: 1;
-
   font-size: 0.75rem;
-
   padding: 0.1875rem 0.875rem 0.0625rem;
   border-radius: 100px;
 
@@ -99,7 +91,6 @@ export const FormattingControl = styled(Button)`
   color: ${alpha("text-light", 0.65)};
   margin-left: auto;
   line-height: 1;
-
   border: none;
   padding: 0.125rem 0.25rem;
 

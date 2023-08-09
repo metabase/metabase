@@ -21,10 +21,7 @@ export const RowLegendCaption = styled(LegendCaption)`
 
 export const RowChartContainer = styled.div`
   position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  left: 0;
+  inset: 0;
 `;
 
 export const RowChartLegendLayout = styled(LegendLayout)`

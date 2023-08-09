@@ -14,10 +14,12 @@ export const TabList = styled(BaseTabList)`
     display: flex;
     align-items: end;
     overflow-x: scroll;
+
     /* Chrome */
     ::-webkit-scrollbar {
       display: none;
     }
+
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
   }
@@ -43,15 +45,16 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   position: absolute;
   cursor: pointer;
   height: 100%;
-  height: 100%;
   width: 3rem;
   padding-bottom: ${space(2)};
   text-align: ${props => props.direction};
   color: ${color("text-light")};
+
   &:hover {
     color: ${color("brand")};
   }
   ${props => props.direction}: 0;
+
   background: linear-gradient(
     to ${props => props.direction},
     ${alpha("white", 0.1)},

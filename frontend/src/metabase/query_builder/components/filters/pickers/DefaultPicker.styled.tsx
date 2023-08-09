@@ -13,7 +13,7 @@ export const BetweenLayoutFieldContainer = styled.div`
 `;
 
 export const BetweenLayoutFieldSeparator = styled.div`
-  padding: 0.5rem 0.5rem 0 0.5rem;
+  padding: 0.5rem 0.5rem 0;
   font-weight: 700;
   color: ${color("text-medium")};
 `;

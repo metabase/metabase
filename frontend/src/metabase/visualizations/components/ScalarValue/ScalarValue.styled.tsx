@@ -10,8 +10,7 @@ export const ScalarRoot = styled.div`
   position: relative;
   display: flex;
   flex: 1;
-  flex-direction: column;
-  flex-wrap: wrap;
+  flex-flow: column wrap;
   justify-content: center;
   align-items: center;
   width: 100%;

@@ -18,7 +18,7 @@ export const DataPointRoot = styled.div`
 export const DataPointHeader = styled.header`
   text-transform: uppercase;
   font-size: 12px;
-  padding: 0 1.5rem 0.25rem 1.5rem;
+  padding: 0 1.5rem 0.25rem;
 `;
 
 interface DataPointTableHeaderProps {
@@ -26,7 +26,7 @@ interface DataPointTableHeaderProps {
 }
 
 export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
-  &:after {
+  &::after {
     ${props => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
   }
 `;
@@ -34,18 +34,18 @@ export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
 export const DataPointTableBody = styled.tbody`
   border-top: 1px solid ${darken("bg-dark", 0.55)};
 
-  &:before {
+  &::before {
     ${tableRowSpacingStyle}
   }
 `;
 
 export const DataPointTableFooter = styled.tfoot`
-  &:before {
+  &::before {
     ${tableRowSpacingStyle}
   }
 `;
 
 export const DataPointTable = styled.table`
   border-collapse: collapse;
-  margin: 0 0.75rem 0.75rem 0.75rem;
+  margin: 0 0.75rem 0.75rem;
 `;

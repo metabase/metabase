@@ -5,7 +5,6 @@ import { color } from "metabase/lib/colors";
 export const LicenseInputContainer = styled.div`
   display: flex;
   flex-wrap: nowrap;
-  // min-width: 680px;
   width: 680px;
 `;
 

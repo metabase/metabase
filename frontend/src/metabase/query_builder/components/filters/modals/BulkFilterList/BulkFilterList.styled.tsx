@@ -9,9 +9,11 @@ export const ListRoot = styled.div`
 export const ListRow = styled.div`
   padding: 1rem 2rem;
   border-bottom: 1px solid ${color("border")};
+
   &:last-of-type {
     border-bottom: none;
   }
+
   &:hover,
   :focus-within {
     background-color: ${color("bg-light")};
@@ -23,7 +25,9 @@ export const FilterContainer = styled.div`
     display: grid;
     grid-template-columns: 1fr 2fr;
   }
+
   gap: 1rem;
+
   &:not(:last-of-type) {
     border-bottom: 1px solid ${color("border")};
     margin-bottom: ${space(2)};

@@ -22,12 +22,9 @@ export const DashboardCard = styled.div<DashboardCardProps>`
 
   .Card {
     position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
+    inset: 0;
     border-radius: 8px;
-    box-shadow: 0px 1px 3px var(--color-shadow);
+    box-shadow: 0 1px 3px var(--color-shadow);
   }
 
   ${props =>

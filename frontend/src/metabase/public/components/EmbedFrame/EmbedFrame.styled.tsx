@@ -18,10 +18,7 @@ export const Root = styled.div<{
     props.hasScroll &&
     css`
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
     `}
 
   ${props =>
@@ -38,7 +35,6 @@ export const ContentContainer = styled.div<{ hasScroll: boolean }>`
   flex-direction: column;
   flex: 1 0 auto;
   position: relative;
-
   overflow-y: ${props => props.hasScroll && "auto"};
 `;
 
@@ -95,9 +91,7 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;
   flex-shrink: 0;
   align-items: center;
-
   ${props => footerVariantStyles[props.variant]}
-
   padding: 0.5rem;
 
   ${breakpointMinMedium} {

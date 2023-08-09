@@ -6,10 +6,8 @@ import { breakpointMinSmall } from "metabase/styled-components/theme";
 export const Root = styled.div`
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
-
   background-color: ${color("bg-white")};
   line-height: 24px;
-
   box-shadow: 0 20px 20px ${color("shadow")};
 
   ${breakpointMinSmall} {

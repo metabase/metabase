@@ -12,7 +12,7 @@ export const SidebarRoot = styled.aside`
 `;
 
 export const SidebarHeader = styled.div`
-  padding: 0.75rem 1.5rem 0 1.5rem;
+  padding: 0.75rem 1.5rem 0;
   flex-shrink: 0;
 `;
 

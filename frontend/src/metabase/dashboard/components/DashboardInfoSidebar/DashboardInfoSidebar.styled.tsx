@@ -18,7 +18,7 @@ export const DashboardInfoSidebarRoot = styled.aside`
   ${breakpointMaxSmall} {
     position: absolute;
     width: 90%;
-    right: 0px;
+    right: 0;
     z-index: 2;
     height: auto;
     border-bottom: 1px solid ${color("border")};
