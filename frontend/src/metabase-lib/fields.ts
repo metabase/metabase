@@ -25,8 +25,8 @@ export function fieldableColumns(
  * For most purposes, you should be use columnMetadata objects and not access field ids directly
  *
  * @param {ColumnMetadata} column
- * @returns { number } field id
+ * @returns {number|null} field id
  */
-export function _fieldId(column: ColumnMetadata): number {
+export function _fieldId(column: ColumnMetadata): number | null {
   return ML.field_id(column);
 }
