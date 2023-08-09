@@ -46,7 +46,7 @@
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-foreign-key-constraint]
   [_driver error-type database error-message]
   (when-let [[_match _table constraint ref-table _columns _value]
-             (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" #p error-message)]
+             (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
     (let [columns (constraint->column-names database constraint)]
       {:type    error-type
        :message (tru "Column(s) {0} is referenced from {1} table" (str/join ", " columns) ref-table)
