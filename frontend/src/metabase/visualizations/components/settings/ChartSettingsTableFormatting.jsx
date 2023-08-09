@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 
-import { t, jt } from "ttag";
+import { t, jt, msgid, ngettext } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -28,33 +28,40 @@ import {
 } from "metabase/components/sortable";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { isNumeric, isString } from "metabase-lib/types/utils/isa";
+import { isNumeric, isString, isBoolean } from "metabase-lib/types/utils/isa";
+
+const COMMON_OPERATOR_NAMES = {
+  "is-null": t`is null`,
+  "not-null": t`is not null`,
+};
 
 const NUMBER_OPERATOR_NAMES = {
+  "=": t`is equal to`,
+  "!=": t`is not equal to`,
   "<": t`is less than`,
   ">": t`is greater than`,
   "<=": t`is less than or equal to`,
   ">=": t`is greater than or equal to`,
-  "=": t`is equal to`,
-  "!=": t`is not equal to`,
-  "is-null": t`is null`,
-  "not-null": t`is not null`,
 };
 
 const STRING_OPERATOR_NAMES = {
   "=": t`is equal to`,
   "!=": t`is not equal to`,
-  "is-null": t`is null`,
-  "not-null": t`is not null`,
   contains: t`contains`,
   "does-not-contain": t`does not contain`,
   "starts-with": t`starts with`,
   "ends-with": t`ends with`,
 };
 
+const BOOLEAN_OPERATIOR_NAMES = {
+  "is-true": t`is true`,
+  "is-false": t`is false`,
+};
+
 export const ALL_OPERATOR_NAMES = {
   ...NUMBER_OPERATOR_NAMES,
   ...STRING_OPERATOR_NAMES,
+  ...BOOLEAN_OPERATIOR_NAMES,
 };
 
 // TODO
@@ -94,6 +101,7 @@ export default class ChartSettingsTableFormatting extends Component {
     editingRule: null,
     editingRuleIsNew: null,
   };
+
   render() {
     const { value, onChange, cols, canHighlightRow } = this.props;
     const { editingRule, editingRuleIsNew } = this.state;
@@ -104,13 +112,14 @@ export default class ChartSettingsTableFormatting extends Component {
           rule={value[editingRule]}
           cols={cols}
           isNew={editingRuleIsNew}
-          onChange={rule =>
+          onChange={rule => {
+            console.log(rule);
             onChange([
               ...value.slice(0, editingRule),
               rule,
               ...value.slice(editingRule + 1),
-            ])
-          }
+            ]);
+          }}
           onRemove={() => {
             onChange([
               ...value.slice(0, editingRule),
@@ -309,20 +318,46 @@ const RuleEditor = ({
   canHighlightRow = true,
 }) => {
   const selectedColumns = rule.columns.map(name => _.findWhere(cols, { name }));
+  const hasBooleanRule =
+    selectedColumns.length > 0 && selectedColumns.some(isBoolean);
+  const isBooleanRule =
+    selectedColumns.length > 0 && selectedColumns.every(isBoolean);
   const isStringRule =
-    selectedColumns.length > 0 && _.all(selectedColumns, isString);
+    !hasBooleanRule &&
+    selectedColumns.length > 0 &&
+    selectedColumns.every(isString);
   const isNumericRule =
-    selectedColumns.length > 0 && _.all(selectedColumns, isNumeric);
+    !hasBooleanRule &&
+    selectedColumns.length > 0 &&
+    selectedColumns.every(isNumeric);
 
   const hasOperand =
-    rule.operator !== "is-null" && rule.operator !== "not-null";
+    rule.operator !== "is-null" &&
+    rule.operator !== "not-null" &&
+    rule.operator !== "is-true" &&
+    rule.operator !== "is-false";
+
+  const handleColumnChange = columns => {
+    console.log(columns);
+    const _cols = columns.map(name => _.findWhere(cols, { name }));
+    console.log(_cols, _cols.every(isBoolean));
+
+    const operatorUpdate =
+      columns.length === 1 && columns[0] === columns.changedItem
+        ? {
+            operator: _cols.every(isBoolean) ? "is-true" : "=",
+          }
+        : {};
+
+    onChange({ ...rule, columns, ...operatorUpdate });
+  };
 
   return (
     <div>
       <h3 className="mb1">{t`Which columns should be affected?`}</h3>
       <Select
         value={rule.columns}
-        onChange={e => onChange({ ...rule, columns: e.target.value })}
+        onChange={e => handleColumnChange(e.target.value)}
         isInitiallyOpen={rule.columns.length === 0}
         placeholder="Choose a column"
         multiple
@@ -332,8 +367,9 @@ const RuleEditor = ({
             key={col.name}
             value={col.name}
             disabled={
-              (isStringRule && !isString(col)) ||
-              (isNumericRule && !isNumeric(col))
+              (isStringRule && (!isString(col) || isBoolean(col))) ||
+              (isNumericRule && !isNumeric(col)) ||
+              (isBooleanRule && !isBoolean(col))
             }
           >
             {col.display_name}
@@ -358,14 +394,27 @@ const RuleEditor = ({
       )}
       {rule.type === "single" ? (
         <div>
-          <h3 className="mt3 mb1">{t`When a cell in this column…`}</h3>
+          <h3 className="mt3 mb1">
+            {ngettext(
+              msgid`When a cell in this column…`,
+              `When any cell in these columns…`,
+              selectedColumns.length,
+            )}
+          </h3>
           <Select
             value={rule.operator}
             onChange={e => onChange({ ...rule, operator: e.target.value })}
           >
-            {Object.entries(
-              isNumericRule ? NUMBER_OPERATOR_NAMES : STRING_OPERATOR_NAMES,
-            ).map(([operator, operatorName]) => (
+            {Object.entries({
+              ...COMMON_OPERATOR_NAMES,
+              ...(isBooleanRule
+                ? BOOLEAN_OPERATIOR_NAMES
+                : isNumericRule
+                ? NUMBER_OPERATOR_NAMES
+                : isStringRule
+                ? STRING_OPERATOR_NAMES
+                : {}),
+            }).map(([operator, operatorName]) => (
               <Option key={operatorName} value={operator}>
                 {operatorName}
               </Option>
