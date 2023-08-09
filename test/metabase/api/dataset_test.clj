@@ -332,7 +332,22 @@
                            "  1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues {:fields [$id $name]})))))))
+                                   (mt/mbql-query venues {:fields [$id $name]})))))
+    (testing "`:now` is usable inside `:case` with mongo (#32216)"
+      (mt/test-driver :mongo
+        (is (= {:$switch
+                {:branches
+                 [{:case {:$eq [{:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}
+                                {:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}]},
+                   :then "a"}]
+                 :default "b"}}
+               (-> (mt/user-http-request
+                    :rasta :post 200 "dataset/native"
+                    (mt/mbql-query venues
+                      {:expressions
+                       {:E [:case [[[:= [:get-day [:now]] [:get-day [:now]]] "a"]]
+                            {:default "b"}]}}))
+                   :query first :$project :E)))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres
