@@ -12,7 +12,7 @@ const QUESTION = {
     query: {
       "source-table": ORDERS_ID,
       expressions: {
-        LONG_NAME: ["*", ["field", SAMPLE_DATABASE.ORDERS.SUBTOTAL, null], 2],
+        [LONG_NAME]: ["*", ["field", SAMPLE_DATABASE.ORDERS.SUBTOTAL, null], 2],
       },
       aggregation: [["sum", ["expression", LONG_NAME]]],
       breakout: [
@@ -38,12 +38,12 @@ describe("issue 32964", () => {
   it("should not overflow chart settings sidebar with long column name (metabase#32964)", () => {
     visitQuestionAdhoc(QUESTION);
     cy.findByTestId("viz-settings-button").click();
-
-    const sidebarLeft = cy.findByTestId("sidebar-left");
-    const longName = sidebarLeft.findByText(LONG_NAME);
-
-    expect(longName.getBoundingClientRect().right).toBeLessThan(
-      sidebarLeft.getBoundingClientRect().right,
-    );
+    cy.findByTestId("sidebar-left").within(([sidebar]) => {
+      const maxX = sidebar.getBoundingClientRect().right;
+      cy.findByText(`Sum of ${LONG_NAME}`).then(([el]) => {
+        const x = el.getBoundingClientRect().right;
+        expect(x).to.be.lessThan(maxX);
+      });
+    });
   });
 });
