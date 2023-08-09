@@ -15,6 +15,7 @@
 :local .ChartWithLegend .LegendWrapper {
   flex-basis: auto;
   flex-grow: 1;
+
   /* allow legend and spacer to shrink */
   min-width: 0;
   min-height: 0;
@@ -88,6 +89,7 @@
 }
 
 /* DEBUG */
+
 /*
 :local .ChartWithLegend .Legend {
   background-color: color-mod(var(--color-bg-black) alpha(-90%));

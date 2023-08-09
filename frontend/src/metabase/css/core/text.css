@@ -113,6 +113,7 @@
 }
 
 /* text weight */
+
 /* NOTE: .text-light removed since it conflicted with text-light in colors.css */
 .text-normal {
   font-weight: 400;

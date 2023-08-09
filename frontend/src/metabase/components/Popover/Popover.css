@@ -9,6 +9,7 @@
   min-width: 1em; /* ewwwwwwww */
   display: flex;
   flex-direction: column;
+
   /* add a max-width so that long strings don't cause the popover to expand
    * see metabase#4930 */
   max-width: 500px;
@@ -176,6 +177,7 @@
   border-bottom-left-radius: 6px;
   padding-top: 8px;
   width: 100%;
+
   /* Without z-index; calendar days, if selected, scroll above this component */
   z-index: 1;
 }

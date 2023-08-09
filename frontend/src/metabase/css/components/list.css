@@ -18,6 +18,7 @@
 .List-section-header {
   color: var(--color-text-dark);
   border: 2px solid transparent;
+
   /* so that spacing matches .List-item */
 }
 

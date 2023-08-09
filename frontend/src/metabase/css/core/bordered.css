@@ -89,7 +89,9 @@
 }
 
 /* BORDERLESS IS THE DEFAULT */
+
 /* ONLY USE IF needing to override an existing border! */
+
 /* ensure there is no border via important */
 .borderless,
 :local(.borderless) {
