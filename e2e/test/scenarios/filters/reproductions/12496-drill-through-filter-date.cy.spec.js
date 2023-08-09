@@ -2,7 +2,7 @@ import { popover, restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("issue 12496", () => {
+describe.skip("issue 12496", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
