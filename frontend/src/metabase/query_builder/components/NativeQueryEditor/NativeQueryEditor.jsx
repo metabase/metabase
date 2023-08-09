@@ -587,10 +587,7 @@ export class NativeQueryEditor extends Component {
     );
 
     return (
-      <NativeQueryEditorRoot
-        className="NativeQueryEditor"
-        data-testid="native-query-editor-container"
-      >
+      <NativeQueryEditorRoot data-testid="native-query-editor-container">
         {hasTopBar && (
           <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (

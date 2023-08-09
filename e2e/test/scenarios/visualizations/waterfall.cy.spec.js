@@ -47,7 +47,7 @@ describe("scenarios > visualizations > waterfall", () => {
     openNativeEditor().type(
       "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
@@ -60,7 +60,7 @@ describe("scenarios > visualizations > waterfall", () => {
       "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
     );
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
@@ -87,7 +87,7 @@ describe("scenarios > visualizations > waterfall", () => {
     openNativeEditor().type(
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
@@ -278,7 +278,7 @@ describe("scenarios > visualizations > waterfall", () => {
       cy.signInAsNormalUser();
 
       openNativeEditor().type("select 'A' as X, -4.56 as Y");
-      cy.get(".NativeQueryEditor .Icon-play").click();
+      cy.findByTestId("native-query-editor-container").icon("play").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Visualization").click();
       switchToWaterfallDisplay();
