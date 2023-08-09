@@ -152,13 +152,12 @@
 ;;                                        Public functions                                         ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defn search-context->applicable-models :- [:set SearchableModel]
-  "Given a search-context, retuns the list of models that can be applied to it.
+(mu/defn ->applicable-models :- [:set SearchableModel]
+  "Returns a set of models that are applicable for the search context.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
-  [search-context :- SearchContext]
+  [models :- [:set SearchableModel] search-context :- SearchContext]
   (let [{:keys [created-by
-                models
                 verified]} search-context]
     (cond-> models
       (some? created-by) (set/intersection (:created-by (feature->supported-models)))

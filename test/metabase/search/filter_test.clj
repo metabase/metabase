@@ -12,45 +12,60 @@
    :models             search.config/all-models
    :current-user-perms #{"/"}})
 
-(deftest ^:parallel search-context->applicable-models-test
+(deftest ^:parallel ->applicable-models-test
   (testing "without optional filters"
     (testing "return :models as is"
       (is (= search.config/all-models
-             (search.filter/search-context->applicable-models default-search-ctx)))
+             (search.filter/->applicable-models
+              search.config/all-models
+              default-search-ctx)))
+
       (is (= #{}
-             (search.filter/search-context->applicable-models
-              (merge default-search-ctx
-                     {:models #{}}))))
+             (search.filter/->applicable-models
+              #{}
+              default-search-ctx)))
 
       (is (= search.config/all-models
-             (search.filter/search-context->applicable-models
+             (search.filter/->applicable-models
+              search.config/all-models
               (merge default-search-ctx
                      {:archived? true}))))))
+
+  (testing "ignores :modess from search-context"
+    (is (= search.config/all-models
+             (search.filter/->applicable-models
+              search.config/all-models
+              (merge default-search-ctx
+                     {:models   #{"card"}
+                      :archived? true})))))
 
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
       (is (= #{"dashboard" "dataset" "action" "card"}
-             (search.filter/search-context->applicable-models
+             (search.filter/->applicable-models
+              search.config/all-models
               (merge default-search-ctx
                      {:created-by 1}))))
 
       (is (= #{"dashboard" "dataset"}
-             (search.filter/search-context->applicable-models
+             (search.filter/->applicable-models
+              #{"dashboard" "dataset" "table"}
               (merge default-search-ctx
-                     {:models #{"dashboard" "dataset" "table"}
-                      :created-by 1})))))
+                     {:created-by 1})))))
 
     (testing "verified"
       (is (= #{"card" "collection"}
-             (search.filter/search-context->applicable-models
+             (search.filter/->applicable-models
+              search.config/all-models
               (merge default-search-ctx
                      {:verified true}))))
 
+
       (is (= #{"card"}
-             (search.filter/search-context->applicable-models
+             (search.filter/->applicable-models
+              #{"card" "dashboard" "dataset" "table"}
               (merge default-search-ctx
-                     {:models #{"card" "dashboard" "dataset" "table"}
-                      :verified true})))))))
+                     {:verified true})))))))
 
 (def ^:private base-search-query
   {:select [:*]
