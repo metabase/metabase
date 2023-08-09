@@ -11,7 +11,6 @@
     "custom-property-pattern": null,
     "selector-id-pattern": null,
     "color-function-notation": null,
-    "declaration-block-no-redundant-longhand-properties": null,
     "media-feature-range-notation": "prefix",
     "selector-no-vendor-prefix": null,
     "alpha-value-notation": null,

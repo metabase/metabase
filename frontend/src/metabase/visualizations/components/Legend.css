@@ -30,7 +30,6 @@ fullscreen dashboard mode
 
 :local .Legend.horizontal {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  flex-flow: row wrap;
   margin-top: 1em;
 }

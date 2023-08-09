@@ -1,8 +1,5 @@
 .LineAreaBarChart .renderer {
-  margin-top: -5px;
-  margin-left: -0.5em;
-  margin-right: -0.5em;
-  margin-bottom: -0.5em;
+  margin: -5px -0.5em -0.5em;
   overflow: hidden;
 }
 
