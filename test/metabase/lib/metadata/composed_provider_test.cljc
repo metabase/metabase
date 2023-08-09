@@ -1,7 +1,7 @@
 (ns metabase.lib.metadata.composed-provider-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.lib :as lib]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
