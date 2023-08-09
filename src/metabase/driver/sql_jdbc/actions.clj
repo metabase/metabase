@@ -74,17 +74,15 @@
                            (ex-data e))))))))
 
 (defmacro ^:private with-auto-parse-sql-error
-  "Execute body and if there is an exception, try to parse the error message to search for known sql error message."
+  "Execute body and if there is an exception, try to parse the error message to search for known sql errors then re-throw it."
   [driver database & body]
   `(do-with-auto-parse-sql-error ~driver ~database (fn [] ~@body)))
 
-(defn- catch-throw [e status-code & [more-info]]
-  (throw
-   (ex-info (ex-message e)
-            (merge {:exception-data (ex-data e)
-                    :status-code status-code}
-                   more-info)
-            e)))
+(defn- mbql-query->raw-hsql
+  [driver query]
+  (qp.store/with-store
+    (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
+    (sql.qp/mbql->honeysql driver query)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Action Execution                                                 |
@@ -197,12 +195,7 @@
 
 (defmethod actions/perform-action!* [:sql-jdbc :row/delete]
   [driver action database {database-id :database, :as query}]
-  (let [raw-hsql    (qp.store/with-store
-                      (try
-                       (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
-                       (sql.qp/mbql->honeysql driver query)
-                       (catch Exception e
-                         (catch-throw e 400))))
+  (let [raw-hsql    (mbql-query->raw-hsql driver query)
         delete-hsql (-> raw-hsql
                         (dissoc :select)
                         (assoc :delete [])
@@ -224,12 +217,7 @@
 (defmethod actions/perform-action!* [:sql-jdbc :row/update]
   [driver action database {database-id :database :keys [update-row] :as query}]
   (let [update-row   (update-keys update-row keyword)
-        raw-hsql     (qp.store/with-store
-                       (try
-                        (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
-                        (sql.qp/mbql->honeysql driver query)
-                        (catch Exception e
-                          (catch-throw e 400))))
+        raw-hsql     (mbql-query->raw-hsql driver query)
         target-table (first (:from raw-hsql))
         update-hsql  (-> raw-hsql
                          (select-keys [:where])
@@ -281,12 +269,7 @@
 (defmethod actions/perform-action!* [:sql-jdbc :row/create]
   [driver action database {database-id :database :keys [create-row] :as query}]
   (let [create-row  (update-keys create-row keyword)
-        raw-hsql    (qp.store/with-store
-                      (try
-                       (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
-                       (sql.qp/mbql->honeysql driver query)
-                       (catch Exception e
-                         (catch-throw e 400))))
+        raw-hsql    (mbql-query->raw-hsql driver query)
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
                         (assoc :values [(cast-values driver create-row (get-in query [:query :source-table]))])
