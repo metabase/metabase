@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
-export const NativeQueryEditorRoot = styled.div`
+const aceEditorStyle = css`
   .ace_editor {
     height: 100%;
     background-color: ${color("bg-light")};
@@ -89,4 +90,8 @@ export const NativeQueryEditorRoot = styled.div`
   .ace_editor .ace_gutter {
     background-color: ${color("bg-light")};
   }
+`;
+
+export const NativeQueryEditorRoot = styled.div`
+  ${aceEditorStyle}
 `;
