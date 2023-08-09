@@ -164,16 +164,29 @@
          (is (=         clj-tags (-> clj-tags (#'lib.native/TemplateTags->) (#'lib.native/->TemplateTags))))
          (is (test.js/= js-tags  (-> js-tags  (#'lib.native/->TemplateTags) (#'lib.native/TemplateTags->))))))))
 
+(def ^:private qp-results-metadata
+  "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
+  Processor.
+
+  IRL queries actually come back with both `data.cols` and `data.results_metadata.columns`, which are slightly
+  different from one another; the frontend merges these together into one unified metadata map. This is both icky and
+  silly. I'm hoping we can get away with just using one or the other in the future. So let's try to use just the stuff
+  here and see how far we get. If it turns out we need something in `data.cols` that's missing from here, let's just
+  add it to `data.results_metadata.columns` in QP results, and add it here as well, so we can start moving toward a
+  world where we don't have two versions of the metadata in query responses."
+  {:lib/type :metadata/results
+   :columns  (get-in lib.tu/mock-cards [:venues :result-metadata])})
+
 (deftest ^:parallel native-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
            :stages   [{:lib/type    :mbql.stage/native
                        :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
-          (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" meta/qp-results-metadata nil))))
+          (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" qp-results-metadata nil))))
 
 (deftest ^:parallel native-query-suggested-name-test
-  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" meta/qp-results-metadata nil)]
+  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" qp-results-metadata nil)]
     (is (= "Native query"
            (lib.metadata.calculation/describe-query query)))
     (is (nil? (lib.metadata.calculation/suggested-name query)))))

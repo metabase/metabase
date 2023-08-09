@@ -109,7 +109,7 @@
                                                        (meta/id :venues :category-id)]]]}]}]}
           (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
               (lib/join (lib/join-clause
-                         (lib/saved-question-query meta/metadata-provider meta/saved-question)
+                         (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
                          [(lib/= (meta/field-metadata :categories :id)
                                  (meta/field-metadata :venues :category-id))]))
               (dissoc :lib/metadata)))))
@@ -117,7 +117,7 @@
 (deftest ^:parallel join-condition-field-metadata-test
   (testing "Should be able to use raw Field metadatas in the join condition"
     (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-          q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
+          q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
           venues-category-id-metadata (meta/field-metadata :venues :category-id)
           categories-id-metadata      (lib.metadata/stage-column q2 "ID")]
       (let [clause (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
@@ -768,7 +768,7 @@
   (let [query lib.tu/venues-query]
     (doseq [lhs          [nil (lib.metadata/field query (meta/id :venues :id))]
             joined-thing [(meta/table-metadata :venues)
-                          meta/saved-question-CardMetadata]]
+                          (:venues lib.tu/mock-cards)]]
       (testing (str "lhs = " (pr-str lhs)
                     "\njoined-thing = " (pr-str joined-thing))
         (is (=? [{:lib/desired-column-alias "ID"}
@@ -899,7 +899,7 @@
                             {:lib/type :metadata/column, :name "PRICE"}]
                            (lib/joinable-columns lib.tu/venues-query -1 table-or-card))
     (meta/table-metadata :venues)
-    meta/saved-question-CardMetadata))
+    (:venues lib.tu/mock-cards)))
 
 (deftest ^:parallel joinable-columns-join-test
   (let [query           lib.tu/query-with-join
@@ -961,7 +961,7 @@
                                                 2 (lib.tu/add-joins query "J1" "J2")}
           [first-join? join? join-or-joinable] (list*
                                                 [(zero? num-existing-joins) false (meta/table-metadata :venues)]
-                                                [(zero? num-existing-joins) false meta/saved-question-CardMetadata]
+                                                [(zero? num-existing-joins) false (:venues lib.tu/mock-cards)]
                                                 [(zero? num-existing-joins) false nil]
                                                 (when-let [[first-join & more] (not-empty (lib/joins query))]
                                                   (cons [true true first-join]
