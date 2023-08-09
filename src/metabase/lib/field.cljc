@@ -54,16 +54,20 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    field-id     :- ::lib.schema.id/field]
-  (merge
-   (when (lib.util/first-stage? query stage-number)
-     (when-let [card-id (lib.util/source-card-id query)]
-       (when-let [card-metadata (lib.card/saved-question-metadata query card-id)]
-         (m/find-first #(= (:id %) field-id)
-                       card-metadata))))
-   (try
-     (lib.metadata/field query field-id)
-     (catch #?(:clj Throwable :cljs :default) _
-       nil))))
+  (if-let [card-metadata (when (lib.util/first-stage? query stage-number)
+                           (when-let [card-id (lib.util/source-card-id query)]
+                             (when-let [card-metadata (lib.card/saved-question-metadata query card-id)]
+                               (m/find-first #(= (:id %) field-id)
+                                             card-metadata))))]
+    ;; handle missing Field metadata as long as it is present in the Card metadata
+    (merge
+     card-metadata
+     (try
+       (lib.metadata/field query field-id)
+       (catch #?(:clj Throwable :cljs :default) _
+         nil)))
+    ;; if no Card metadata is present, this should propagate errors from [[lib.metadata/field]]
+    (lib.metadata/field query field-id)))
 
 (mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
   [column-name      :- ::lib.schema.common/non-blank-string
@@ -224,11 +228,11 @@
                                       (not (str/includes? field-display-name " → ")))
                              (or
                               (when fk-field-id
-                                 ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                 ;; "ID" dropped instead.
-                                 ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                 ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                 ;; See #30109 for more details.
+                                ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                ;; "ID" dropped instead.
+                                ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                ;; See #30109 for more details.
                                 (if-let [field (lib.metadata/field query fk-field-id)]
                                   (-> (lib.metadata.calculation/display-info query stage-number field)
                                       :display-name

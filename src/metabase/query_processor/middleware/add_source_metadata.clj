@@ -60,7 +60,9 @@
                           :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
     (catch Throwable e
       (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
-      nil)))
+      ;; NOCOMMIT
+      (throw e)
+      #_nil)))
 
 (mu/defn ^:private add-source-metadata :- [:map
                                            [:source-metadata

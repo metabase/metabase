@@ -29,19 +29,60 @@
     (assert ag-uuid "Metadata for an aggregation reference should include :lib/source-uuid")
     [:aggregation options ag-uuid]))
 
+(mu/defn ^:private some-aggregation :- [:tuple
+                                        ::lib.schema.common/int-greater-than-or-equal-to-zero
+                                        ::lib.schema.aggregation/aggregation]
+  "Find the aggregation matching `ag-uuid`, and return a pair of
+
+    [index aggregation-definition]
+
+  Throw an Exception if it does not exist."
+  ([stage   :- ::lib.schema/stage
+    ag-uuid :- :string]
+   (let [{aggregations :aggregation} stage]
+     (or (some (fn [[index ag]]
+                 (when (= (lib.options/uuid ag) ag-uuid)
+                   [index ag]))
+               (m/indexed aggregations))
+         (throw (ex-info (i18n/tru "No aggregation with uuid {0}" (pr-str ag-uuid))
+                         {:uuid ag-uuid, :stage stage})))))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    ag-uuid      :- :string]
+   (try
+     (some-aggregation (lib.util/query-stage query stage-number) ag-uuid)
+     (catch #?(:clj Throwable :cljs :default) e
+       (throw (ex-info (ex-message e)
+                       {:query        query
+                        :stage-number stage-number}
+                       e))))))
+
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
-  "Resolve an aggregation with a specific `index`."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   ag-uuid      :- :string]
-  (let [{aggregations :aggregation} (lib.util/query-stage query stage-number)
-        found (m/find-first (comp #{ag-uuid} :lib/uuid second) aggregations)]
-    (when-not found
-      (throw (ex-info (i18n/tru "No aggregation with uuid {0}" ag-uuid)
-                      {:uuid         ag-uuid
-                       :query        query
-                       :stage-number stage-number})))
-    found))
+  "Resolve an aggregation with a specific `ag-uuid`"
+  ([stage   :- ::lib.schema/stage
+    ag-uuid :- :string]
+   (let [[_index ag] (some-aggregation stage ag-uuid)]
+     ag))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    ag-uuid      :- :string]
+   (let [[_index ag] (some-aggregation query stage-number ag-uuid)]
+     ag)))
+
+(mu/defn index-of :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+  "Get the index of an aggregation with `ag-uuid`. Mostly for legacy ref conversion purposes."
+  ([stage   :- ::lib.schema/stage
+    ag-uuid :- :string]
+   (let [[index _ag] (some-aggregation stage ag-uuid)]
+     index))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    ag-uuid      :- :string]
+   (let [[index _ag] (some-aggregation query stage-number ag-uuid)]
+     index)))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :aggregation
   [query stage-number _k]
@@ -51,7 +92,9 @@
      (for [aggregation aggregations]
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
 
-(defmethod lib.metadata.calculation/metadata-method :aggregation
+(mu/defmethod lib.metadata.calculation/metadata-method :aggregation :- [:map
+                                                                        [:lib/type [:= :metadata/column]]
+                                                                        [:lib/source-uuid ::lib.schema.common/non-blank-string]]
   [query stage-number [_ag {:keys [base-type effective-type], :as _opts} index, :as _aggregation-ref]]
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
@@ -246,12 +289,15 @@
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
   "Get the aggregations in a given stage of a query."
-  ([query]
-   (aggregations query -1))
+  ([query-or-stage :- [:or ::lib.schema/query ::lib.schema/stage]]
+   (let [stage (if (= (:lib/type query-or-stage) :mbql/query)
+                 (lib.util/query-stage query-or-stage -1)
+                 query-or-stage)]
+     (not-empty (:aggregation stage))))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
+   (aggregations (lib.util/query-stage query stage-number))))
 
 (mu/defn aggregations-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the aggregations in a given stage of a query."

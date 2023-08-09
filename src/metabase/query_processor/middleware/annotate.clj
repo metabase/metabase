@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.driver.common :as driver.common]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.convert.metadata :as lib.convert.metadata]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -27,24 +28,6 @@
    [metabase.util.malli.schema :as ms]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]))
-
-(def ^:private Col
-  "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
-  ;; name and display name can be blank because some wacko DBMSes like SQL Server return blank column names for
-  ;; unaliased aggregations like COUNT(*) (this only applies to native queries, since we determine our own names for
-  ;; MBQL.)
-  [:map
-   [:name         :string]
-   [:display_name :string]
-   ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   [:base_type    ms/FieldType]
-   ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
-   ;; from the metadata but that's for another day
-   ;; where this column came from in the original query.
-   [:source       [:enum :aggregation :fields :breakout :native]]
-   ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
-   ;; Added by this middleware as one of the last steps.
-   [:field_ref {:optional true} mbql.s/FieldOrAggregationReference]])
 
 ;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
@@ -487,13 +470,13 @@
 
 (def ^:private ColsWithUniqueNames
   [:and
-   [:maybe [:sequential Col]]
+   [:maybe [:sequential lib.convert.metadata/LegacyColumn]]
    [:fn
     {:error/message ":cols with unique names"}
     #(su/empty-or-distinct? (map :name %))]])
 
 (mu/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
-  [cols :- [:sequential Col]]
+  [cols :- [:sequential lib.convert.metadata/LegacyColumn]]
   (map (fn [col unique-name]
          (assoc col :name unique-name))
        cols

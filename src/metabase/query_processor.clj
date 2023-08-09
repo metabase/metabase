@@ -10,9 +10,11 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.convert.metadata :as lib.convert.metadata]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.plugins.classloader :as classloader]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit
     :as qp.add-default-temporal-unit]
    [metabase.query-processor.middleware.add-dimension-projections
@@ -94,7 +96,7 @@
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -307,24 +309,36 @@
               (preprocess* query)))]
     (qp query nil nil)))
 
-(defn- restore-join-aliases [preprocessed-query]
-  (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
-    (escape-join-aliases/restore-aliases preprocessed-query replacement)))
+(def ^:private LegacyQueryOrMLv2Query
+  [:map [:database ::lib.schema.id/database]])
+
+(mu/defn ^:private ->mlv2-query :- ::lib.schema/query
+  [query :- LegacyQueryOrMLv2Query]
+  (if (= (:lib/type query) :mbql/query)
+    query
+    (lib/query
+     (qp.store/metadata-provider (:database query))
+     query)))
+
+(mu/defn query->mlv2-metadata
+  "Fast version of [[query->expected-cols]] that uses MLv2 for column calculation. Leaves metadata with MLv2-style
+  `:kebab-case` keys."
+  [query :- LegacyQueryOrMLv2Query]
+  (qp.store/with-store
+    (-> query ->mlv2-query lib/returned-columns vec)))
 
 (defn query->expected-cols
-  "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
-  it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
-  queries with native source queries won't work, since we don't need the results."
-  [{query-type :type, :as query}]
-  (when-not (= (mbql.u/normalize-token query-type) :query)
-    (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-                    {:type qp.error-type/qp})))
-  ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
-  ;; check where this is used.
+  "Return the `:cols` you would normally see in MBQL query results using MLv2. This only works for pure MBQL queries,
+  since it does not actually run the queries. Native queries or MBQL queries with native source queries won't work,
+  since we don't need the results.
+  Converts MLv2-style metadata to legacy-style `:snake_case` keys.
+  Check whether you can use [[query->mlv2-metadata]] instead and consume MLv2-style metadata directly."
+  [query]
   (qp.store/with-store
-    (let [preprocessed (-> query preprocess restore-join-aliases)]
-      (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
+    (let [mlv2-query (->mlv2-query query)]
+      (mapv (fn [col]
+              (lib.convert.metadata/->legacy-column-metadata mlv2-query col))
+            (query->mlv2-metadata mlv2-query)))))
 
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled

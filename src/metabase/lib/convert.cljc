@@ -6,6 +6,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
@@ -15,11 +16,10 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
-(def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
-  {})
-
 (def ^:private ^:dynamic *legacy-index->pMBQL-uuid*
   {})
+
+(def ^:dynamic *pMBQL-stage* nil)
 
 (defn- clean-location [almost-stage error-type error-location]
   (let [operate-on-parent? #{:malli.core/missing-key :malli.core/end-of-input}
@@ -341,6 +341,7 @@
   [input]
   (aggregation->legacy-MBQL input))
 
+;;; TODO -- consider whether this should be using [[metabase.lib.convert.metadata/->legacy-column-metadata]] instead.
 (defn- stage-metadata->legacy-metadata [stage-metadata]
   (into []
         (comp (map #(update-keys % u/->snake_case_en))
@@ -376,9 +377,10 @@
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
     (let [opts (options->legacy-MBQL opts)]
-      (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
+      (cond-> [:aggregation (lib.aggregation/index-of *pMBQL-stage* agg-uuid)]
         opts (conj opts)))
-    ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside source_metadata that are only used for legacy and thus can be ignored
+    ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside
+    ;; source_metadata that are only used for legacy and thus can be ignored
     ag))
 
 (defmethod ->legacy-MBQL :dispatch-type/sequential [xs]
@@ -435,10 +437,7 @@
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
-  (binding [*pMBQL-uuid->legacy-index* (into {}
-                                             (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
-                                                            [ag-uuid idx]))
-                                             (:aggregation stage))]
+  (binding [*pMBQL-stage* stage]
     (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
             (-> stage
                 disqualify
@@ -447,7 +446,7 @@
                 (m/update-existing :expressions (fn [expressions]
                                                   (into {}
                                                         (for [expression expressions
-                                                              :let [legacy-clause (->legacy-MBQL expression)]]
+                                                              :let       [legacy-clause (->legacy-MBQL expression)]]
                                                           [(lib.util/expression-name expression)
                                                            ;; We wrap literals in :value ->pMBQL
                                                            ;; so unwrap this direction

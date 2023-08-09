@@ -3,7 +3,9 @@
    [clojure.core.protocols]
    [clojure.datafy :as datafy]
    [medley.core :as m]
-   [metabase.lib.metadata.protocols :as metadata.protocols]))
+   [metabase.lib.metadata.protocols :as metadata.protocols]
+   #?@(:clj
+       ([pretty.core :as pretty]))))
 
 (defn composed-metadata-provider
   "A metadata provider composed of several different `metadata-providers`. Methods try each constituent provider in
@@ -22,4 +24,9 @@
 
     clojure.core.protocols/Datafiable
     (datafy [_this]
-      (cons `composed-metadata-provider (map datafy/datafy metadata-providers)))))
+      (cons `composed-metadata-provider (map datafy/datafy metadata-providers)))
+
+    #?@(:clj
+        [pretty/PrettyPrintable
+         (pretty [_this]
+                 (list* `composed-metadata-provider metadata-providers))])))

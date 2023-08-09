@@ -13,6 +13,7 @@
   but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
   those Fields potentially dozens of times in a single query execution."
   (:require
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.composed-provider
     :as lib.metadata.composed-provider]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -317,17 +318,37 @@
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
 
+(mu/defn ^:private metadata-provider-database :- lib.metadata/DatabaseMetadata
+  []
+  (-> (database)
+      (update-keys u/->kebab-case-en)
+      (assoc :lib/type :metadata/database)))
+
+(mu/defn ^:private metabase-provider-table :- lib.metadata/TableMetadata
+  [table-id :- ::lib.schema.id/table]
+  (fetch-and-store-tables! [table-id])
+  (-> (table table-id)
+      (update-keys u/->kebab-case-en)
+      (assoc :lib/type :metadata/table)))
+
+(mu/defn ^:private metadata-provider-field :- lib.metadata/ColumnMetadata
+  [field-id :- ::lib.schema.id/field]
+  (fetch-and-store-fields! [field-id])
+  (-> (field field-id)
+      (update-keys u/->kebab-case-en)
+      (assoc :lib/type :metadata/column)))
+
 (defn- base-metadata-provider []
   (reify
     lib.metadata.protocols/MetadataProvider
     (database [_this]
-      (some-> (database) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/database)))
+      (metadata-provider-database))
 
     (table [_this table-id]
-      (some-> (table table-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/table)))
+      (metabase-provider-table table-id))
 
     (field [_this field-id]
-      (some-> (field field-id) (update-keys u/->kebab-case-en) (assoc :lib/type :metadata/column)))
+      (metadata-provider-field field-id))
 
     (card [_this _card-id] nil)
     (metric [_this _metric-id] nil)
@@ -342,8 +363,12 @@
 
 (defn metadata-provider
   "Create a new MLv2 metadata provider that uses the QP store."
-  []
-  (cached ::metadata-provider
-    (lib.metadata.composed-provider/composed-metadata-provider
-     (base-metadata-provider)
-     (lib.metadata.jvm/application-database-metadata-provider (:id (database))))))
+  ([]
+   (metadata-provider (:id (database))))
+
+  ([database-id]
+   (fetch-and-store-database! database-id) ; this will no-op if it's already fetched
+   (cached ::metadata-provider
+     (lib.metadata.composed-provider/composed-metadata-provider
+      (base-metadata-provider)
+      (lib.metadata.jvm/application-database-metadata-provider database-id)))))
