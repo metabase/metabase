@@ -54,6 +54,9 @@ const STEPS: NotebookStepDef[] = [
         return legacyQuery;
       }
       const join = Lib.joins(topLevelQuery, stageIndex)[index];
+      if (!join) {
+        return legacyQuery;
+      }
       const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, join);
       return convertStageQueryToLegacyStageQuery(
         nextQuery,
