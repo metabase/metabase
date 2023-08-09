@@ -65,6 +65,15 @@ export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
 }
 
+export function removeDashboardCard(index = 0) {
+  showDashboardCardActions(index);
+  cy.findAllByTestId("dashboardcard-actions-panel")
+    .eq(0)
+    .should("be.visible")
+    .icon("close")
+    .click();
+}
+
 export function showDashcardVisualizationSettings(index = 0) {
   return getDashboardCard(index)
     .realHover()
@@ -144,7 +153,7 @@ export function addHeadingWhileEditing(string, options = {}) {
 }
 
 export function openQuestionsSidebar() {
-  cy.findByLabelText("Add questions").click();
+  cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
 }
 
 export function createNewTab() {

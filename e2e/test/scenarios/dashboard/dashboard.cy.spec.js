@@ -21,6 +21,7 @@ import {
   closeNavigationSidebar,
   saveDashboard,
   queryBuilderHeader,
+  removeDashboardCard,
   getDashboardCards,
 } from "e2e/support/helpers";
 
@@ -148,6 +149,96 @@ describe("scenarios > dashboard", () => {
     });
   });
 
+  describe("existing dashboard", () => {
+    beforeEach(() => {
+      cy.createDashboard({ name: "Testing Dashboard" }).then(
+        ({ body: { id } }) => {
+          visitDashboard(id);
+        },
+      );
+    });
+
+    context("add a question (dashboard card)", () => {
+      it("should be possible via questions sidebar", () => {
+        editDashboard();
+        openQuestionsSidebar();
+
+        cy.log("The list of saved questions");
+        sidebar().findByText("Orders, Count").click();
+
+        cy.log("The search component");
+        cy.intercept("GET", "/api/search*").as("search");
+        cy.findByPlaceholderText("Search…").type("Orders{enter}");
+        cy.wait("@search");
+        cy.findByTestId("select-list").findByText("Orders, Count").click();
+
+        cy.log(
+          "should show values of added dashboard card via search immediately (metabase#15959)",
+        );
+        assertBothCardsArePresent();
+
+        cy.log("Remove one card");
+        removeDashboardCard(0);
+        getDashboardCards().should("have.length", 1);
+
+        cy.log("It should be possible to undo remove that card");
+        cy.findByTestId("toast-undo").within(() => {
+          cy.findByText("Removed card");
+          cy.button("Undo").click();
+        });
+
+        assertBothCardsArePresent();
+        saveDashboard();
+        assertBothCardsArePresent();
+
+        function assertBothCardsArePresent() {
+          getDashboardCards()
+            .should("have.length", 2)
+            .and("contain", "Orders, Count")
+            .and("contain", "18,760");
+        }
+      });
+
+      it("should save a dashboard after adding a saved question from an empty state (metabase#29450)", () => {
+        cy.findByTestId("dashboard-empty-state").within(() => {
+          cy.findByText("This dashboard is looking empty.");
+          cy.findByText("Add a saved question").click();
+        });
+
+        sidebar().findByText("Orders, Count").click();
+
+        saveDashboard();
+
+        getDashboardCards()
+          .should("have.length", 1)
+          .and("contain", "Orders, Count")
+          .and("contain", "18,760");
+      });
+
+      it("should allow navigating to the notebook editor directly from a dashboard card", () => {
+        visitDashboard(1);
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit question").should("be.visible").click();
+        cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+      });
+    });
+
+    it(
+      "should not allow dashboard editing on small screens",
+      { viewportWidth: 480, viewportHeight: 800 },
+      () => {
+        cy.icon("pencil").should("not.be.visible");
+
+        cy.viewport(660, 800);
+
+        cy.icon("pencil").should("be.visible").click();
+        cy.findByTestId("edit-bar").findByText(
+          "You're editing this dashboard.",
+        );
+      },
+    );
+  });
   it("should update the name and description", () => {
     cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
     cy.intercept(
@@ -282,18 +373,6 @@ describe("scenarios > dashboard", () => {
     cy.icon("location");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Location");
-  });
-
-  it("should add a question", () => {
-    visitDashboard(1);
-    cy.icon("pencil").click();
-    openQuestionsSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders, Count").click();
-    saveDashboard();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders, Count");
   });
 
   it("should link filters to custom question with filtered aggregate data (metabase#11007)", () => {
@@ -625,77 +704,6 @@ describe("scenarios > dashboard", () => {
     });
     cy.get(".Modal--full").should("not.exist");
     assertScrollBarExists();
-  });
-
-  it("should show values of added dashboard card via search immediately (metabase#15959)", () => {
-    cy.intercept("GET", "/api/search*").as("search");
-    visitDashboard(1);
-    cy.icon("pencil").click();
-    openQuestionsSidebar();
-
-    sidebar().within(() => {
-      // From the list
-      cy.findByText("Orders, Count").click();
-
-      // From search
-      cy.findByPlaceholderText("Search…").type("Orders{enter}");
-      cy.wait("@search");
-      cy.findByText("Orders, Count").click();
-    });
-
-    cy.findByTestId("loading-spinner").should("not.exist");
-    cy.findAllByText("18,760").should("have.length", 2);
-  });
-
-  it("should allow you to add questions using 'Add a saved question' button (metabase#29450)", () => {
-    cy.createDashboard({ name: "dash:29450" });
-
-    cy.visit("/collection/root");
-    // enter newly created dashboard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("dash:29450").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a saved question").click();
-
-    sidebar().within(() => {
-      cy.findByText("Orders, Count").click();
-    });
-
-    saveDashboard();
-  });
-
-  it("should show collection breadcrumbs for a dashboard", () => {
-    visitDashboard(1);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    appBar().within(() => cy.findByText("Our analytics").click());
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").should("be.visible");
-  });
-
-  it("should allow removing a card and undoing", () => {
-    visitDashboard(1);
-
-    cy.icon("pencil").click();
-    cy.findByTestId("dashcard").realHover();
-    cy.icon("close").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").should("not.exist");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Undo").click();
-    saveDashboard();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").should("be.visible");
-  });
-
-  it("should allow navigating to the notebook editor for a question on the dashboard", () => {
-    visitDashboard(1);
-    showDashboardCardActions();
-    getDashboardCardMenu().click();
-    popover().findByText("Edit question").click();
-    cy.findByRole("button", { name: "Visualize" }).should("be.visible");
   });
 
   it("should allow making card hide when it is empty", () => {
