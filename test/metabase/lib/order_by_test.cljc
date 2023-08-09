@@ -1,6 +1,6 @@
 (ns metabase.lib.order-by-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -162,6 +162,22 @@
                   :base-type    :type/Integer
                   :lib/source   :source/breakouts}]
                 (lib/orderable-columns query)))))))
+
+(deftest ^:parallel order-by-breakout-expression-test
+  (testing "order-by with a broken out expression has correct reference (#32845)"
+    (let [query (lib/expression lib.tu/venues-query
+                                "Category ID + 1"
+                                (lib/+ (meta/field-metadata :venues :category-id) 1))
+          breakout-col (m/find-first #(= (:lib/source %) :source/expressions)
+                                     (lib/breakoutable-columns query 0))
+          query (lib/breakout query breakout-col)]
+    (are [query] (=? [:desc {} [:expression
+                                {:base-type :type/Integer, :effective-type :type/Integer}
+                                "Category ID + 1"]]
+                     (get-in (lib/order-by query 0 (first (lib/orderable-columns query 0)) :desc)
+                             [:stages 0 :order-by 0]))
+      query
+      (lib/append-stage query)))))
 
 (deftest ^:parallel orderable-columns-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]

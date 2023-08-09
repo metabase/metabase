@@ -411,27 +411,38 @@
   [field-clause]
   field-clause)
 
+(defn- column-metadata->field-ref
+  [metadata]
+  (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
+          options           (merge {:lib/uuid       (str (random-uuid))
+                                    :base-type      (:base-type metadata)
+                                    :effective-type (column-metadata-effective-type metadata)}
+                                   (when-let [join-alias (lib.join/current-join-alias metadata)]
+                                     {:join-alias join-alias})
+                                   (when-let [temporal-unit (::temporal-unit metadata)]
+                                     {:temporal-unit temporal-unit})
+                                   (when-let [binning (::binning metadata)]
+                                     {:binning binning})
+                                   (when-let [source-field-id (:fk-field-id metadata)]
+                                     {:source-field source-field-id}))]
+      [:field options (if inherited-column?
+                        (or (:lib/desired-column-alias metadata) (:name metadata))
+                        (or (:id metadata) (:name metadata)))]))
+
 (defmethod lib.ref/ref-method :metadata/column
   [{source :lib/source, :as metadata}]
   (case source
     :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    (let [options          (merge
-                            {:lib/uuid       (str (random-uuid))
-                             :base-type      (:base-type metadata)
-                             :effective-type (column-metadata-effective-type metadata)}
-                            (when-let [join-alias (lib.join/current-join-alias metadata)]
-                              {:join-alias join-alias})
-                            (when-let [temporal-unit (::temporal-unit metadata)]
-                              {:temporal-unit temporal-unit})
-                            (when-let [binning (::binning metadata)]
-                              {:binning binning})
-                            (when-let [source-field-id (:fk-field-id metadata)]
-                              {:source-field source-field-id}))
-          always-use-name? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))]
-      [:field options (if always-use-name?
-                        (:name metadata)
-                        (or (:id metadata) (:name metadata)))])))
+    ;; :source/breakouts hides the true origin of the column. Since it's impossible to
+    ;; break out by aggregation references at the current stage, we only have to check
+    ;; if we break out by an expression reference. :expression-name is only set for
+    ;; expression references, so if it's set, we have to generate an expression ref,
+    ;; otherwise we generate a normal field ref.
+    :source/breakouts    (if (contains? metadata :lib/expression-name)
+                           (lib.expression/column-metadata->expression-ref metadata)
+                           (column-metadata->field-ref metadata))
+    (column-metadata->field-ref metadata)))
 
 (defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
