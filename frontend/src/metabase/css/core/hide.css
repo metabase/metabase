@@ -74,7 +74,7 @@
 }
 
 /* xl */
-@media screen and (--breakpoint-min-xl) h {
+@media screen and (--breakpoint-min-xl) {
   .xl-hide {
     display: none !important;
   }
