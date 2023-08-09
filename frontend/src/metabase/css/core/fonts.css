@@ -1,6 +1,6 @@
 /* lato-regular - latin */
 @font-face {
-  font-family: "Lato";
+  font-family: Lato;
   font-style: normal;
   font-weight: 400;
   src: url("~fonts/Lato/lato-v16-latin-regular.eot"); /* IE9 Compat Modes */
@@ -19,7 +19,7 @@
 
 /* lato-700 - latin */
 @font-face {
-  font-family: "Lato";
+  font-family: Lato;
   font-style: normal;
   font-weight: 700;
   src: url("~fonts/Lato/lato-v16-latin-700.eot"); /* IE9 Compat Modes */
@@ -35,7 +35,7 @@
 }
 /* lato-900 - latin */
 @font-face {
-  font-family: "Lato";
+  font-family: Lato;
   font-style: normal;
   font-weight: 900;
   src: url("~fonts/Lato/lato-v16-latin-900.eot"); /* IE9 Compat Modes */
@@ -72,7 +72,7 @@
 
 /* Merriweather-400 */
 @font-face {
-  font-family: "Merriweather";
+  font-family: Merriweather;
   src: local("Merriweather Regular"), local("Merriweather-Regular"),
     url("~fonts/Merriweather/Merriweather-Regular.woff2") format("woff2");
   font-weight: 400;
@@ -82,7 +82,7 @@
 
 /* Merriweather-700 */
 @font-face {
-  font-family: "Merriweather";
+  font-family: Merriweather;
   src: local("Merriweather Bold"), local("Merriweather-Bold"),
     url("~fonts/Merriweather/Merriweather-Bold.woff2") format("woff2");
   font-weight: 700;
@@ -92,7 +92,7 @@
 
 /* Merriweather-400 */
 @font-face {
-  font-family: "Merriweather";
+  font-family: Merriweather;
   src: local("Merriweather Black"), local("Merriweather-Black"),
     url("~fonts/Merriweather/Merriweather-Black.woff2") format("woff2");
   font-weight: 900;
@@ -101,7 +101,7 @@
 }
 
 @font-face {
-  font-family: "Montserrat";
+  font-family: Montserrat;
   src: local("Montserrat Regular"), local("Montserrat-Regular"),
     url("~fonts/Montserrat/Montserrat-Regular.woff2") format("woff2");
   font-weight: normal;
@@ -110,7 +110,7 @@
 }
 
 @font-face {
-  font-family: "Montserrat";
+  font-family: Montserrat;
   src: local("Montserrat Bold"), local("Montserrat-Bold"),
     url("~fonts/Montserrat/Montserrat-Bold.woff2") format("woff2");
   font-weight: bold;
@@ -119,7 +119,7 @@
 }
 
 @font-face {
-  font-family: "Montserrat";
+  font-family: Montserrat;
   src: local("Montserrat Black"), local("Montserrat-Black"),
     url("~fonts/Montserrat/Montserrat-Black.woff2") format("woff2");
   font-weight: 900;
@@ -146,7 +146,7 @@
 }
 
 @font-face {
-  font-family: "Oswald";
+  font-family: Oswald;
   src: local("Oswald Bold"), local("Oswald-Bold"),
     url("~fonts/Oswald/Oswald-Bold.woff2") format("woff2");
   font-weight: bold;
@@ -155,7 +155,7 @@
 }
 
 @font-face {
-  font-family: "Oswald";
+  font-family: Oswald;
   src: local("Oswald Regular"), local("Oswald-Regular"),
     url("~fonts/Oswald/Oswald-Regular.woff2") format("woff2");
   font-weight: normal;
@@ -164,7 +164,7 @@
 }
 
 @font-face {
-  font-family: "Raleway";
+  font-family: Raleway;
   src: local("Raleway Bold"), local("Raleway-Bold"),
     url("~fonts/Raleway/Raleway-Bold.woff2") format("woff2");
   font-weight: bold;
@@ -173,7 +173,7 @@
 }
 
 @font-face {
-  font-family: "Raleway";
+  font-family: Raleway;
   src: local("Raleway Regular"), local("Raleway-Regular"),
     url("~fonts/Raleway/Raleway-Regular.woff2") format("woff2");
   font-weight: normal;
@@ -182,7 +182,7 @@
 }
 
 @font-face {
-  font-family: "Raleway";
+  font-family: Raleway;
   src: local("Raleway Black"), local("Raleway-Black"),
     url("~fonts/Raleway/Raleway-Black.woff2") format("woff2");
   font-weight: 900;
@@ -191,7 +191,7 @@
 }
 
 @font-face {
-  font-family: "Roboto";
+  font-family: Roboto;
   src: local("Roboto Black"), local("Roboto-Black"),
     url("~fonts/Roboto/Roboto-Black.woff2") format("woff2");
   font-weight: 900;
@@ -200,7 +200,7 @@
 }
 
 @font-face {
-  font-family: "Roboto";
+  font-family: Roboto;
   src: local("Roboto Bold"), local("Roboto-Bold"),
     url("~fonts/Roboto/Roboto-Bold.woff2") format("woff2");
   font-weight: bold;
@@ -209,7 +209,7 @@
 }
 
 @font-face {
-  font-family: "Roboto";
+  font-family: Roboto;
   src: local("Roboto"), local("Roboto-Regular"),
     url("~fonts/Roboto/Roboto-Regular.woff2") format("woff2");
   font-weight: normal;
@@ -272,7 +272,7 @@
 }
 
 @font-face {
-  font-family: "Lora";
+  font-family: Lora;
   src: local("Lora Bold"), local("Lora-Bold"),
     url("~fonts/Lora/Lora-Bold.woff2") format("woff2");
   font-weight: bold;
@@ -281,7 +281,7 @@
 }
 
 @font-face {
-  font-family: "Lora";
+  font-family: Lora;
   src: local("Lora Regular"), local("Lora-Regular"),
     url("~fonts/Lora/Lora-Regular.woff2") format("woff2");
   font-weight: normal;
@@ -344,7 +344,7 @@
 }
 
 @font-face {
-  font-family: "Poppins";
+  font-family: Poppins;
   src: local("Poppins Bold"), local("Poppins-Bold"),
     url("~fonts/Poppins/Poppins-Bold.woff2") format("woff2");
   font-weight: bold;
@@ -353,7 +353,7 @@
 }
 
 @font-face {
-  font-family: "Poppins";
+  font-family: Poppins;
   src: local("Poppins Regular"), local("Poppins-Regular"),
     url("~fonts/Poppins/Poppins-Regular.woff2") format("woff2");
   font-weight: normal;
@@ -362,7 +362,7 @@
 }
 
 @font-face {
-  font-family: "Poppins";
+  font-family: Poppins;
   src: local("Poppins Black"), local("Poppins-Black"),
     url("~fonts/Poppins/Poppins-Black.woff2") format("woff2");
   font-weight: 900;
@@ -434,7 +434,7 @@
 }
 
 @font-face {
-  font-family: "Ubuntu";
+  font-family: Ubuntu;
   src: local("Ubuntu Bold"), local("Ubuntu-Bold"),
     url("~fonts/Ubuntu/Ubuntu-Bold.woff2") format("woff2");
   font-weight: bold;
@@ -443,7 +443,7 @@
 }
 
 @font-face {
-  font-family: "Ubuntu";
+  font-family: Ubuntu;
   src: local("Ubuntu Regular"), local("Ubuntu-Regular"),
     url("~fonts/Ubuntu/Ubuntu-Regular.woff2") format("woff2");
   font-weight: normal;
@@ -452,7 +452,7 @@
 }
 
 @font-face {
-  font-family: "Inter";
+  font-family: Inter;
   src: local("Inter Regular"), local("Inter-Regular"),
     url("~fonts/Inter/Inter-Regular.woff2") format("woff2");
   font-weight: normal;
@@ -461,7 +461,7 @@
 }
 
 @font-face {
-  font-family: "Inter";
+  font-family: Inter;
   src: local("Inter Bold"), local("Inter-Bold"),
     url("~fonts/Inter/Inter-Bold.woff2") format("woff2");
   font-weight: bold;
@@ -470,7 +470,7 @@
 }
 
 @font-face {
-  font-family: "Inter";
+  font-family: Inter;
   src: local("Inter Black"), local("Inter-Black"),
     url("~fonts/Inter/Inter-Black.woff2") format("woff2");
   font-weight: 900;

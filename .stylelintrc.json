@@ -27,7 +27,6 @@
     "property-no-vendor-prefix": null,
     "shorthand-property-no-redundant-values": null,
     "import-notation": null,
-    "font-family-name-quotes": null,
     "at-rule-empty-line-before": null,
     "media-query-no-invalid": null,
     "declaration-block-no-shorthand-property-overrides": null
