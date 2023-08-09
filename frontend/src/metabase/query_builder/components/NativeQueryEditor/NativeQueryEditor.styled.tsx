@@ -93,7 +93,14 @@ const aceEditorStyle = css`
 `;
 
 export const NativeQueryEditorRoot = styled.div`
+  width: 100%;
+  background-color: ${color("bg-light")};
+
   ${aceEditorStyle}
+
+  .GuiBuilder-data {
+    border-right: none;
+  }
 `;
 
 export const DragHandleContainer = styled.div`

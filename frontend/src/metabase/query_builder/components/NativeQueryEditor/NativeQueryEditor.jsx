@@ -587,7 +587,7 @@ export class NativeQueryEditor extends Component {
 
     return (
       <NativeQueryEditorRoot
-        className="NativeQueryEditor bg-light full"
+        className="NativeQueryEditor"
         data-testid="native-query-editor-container"
       >
         {hasTopBar && (

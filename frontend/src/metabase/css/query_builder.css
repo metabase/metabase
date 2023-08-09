@@ -375,12 +375,6 @@
   top: -0.8rem;
 }
 
-/* NATIVE */
-
-.NativeQueryEditor .GuiBuilder-data {
-  border-right: none;
-}
-
 /* VISUALIZATION SETTINGS */
 
 .VisualizationSettings .GuiBuilder-section {
