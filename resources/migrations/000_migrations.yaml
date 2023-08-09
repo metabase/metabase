@@ -15174,6 +15174,14 @@ databaseChangeLog:
                 name: action_id
 
   - changeSet:
+      id: v48.00-007
+      author: johnswanson
+      comment: Migrate migrate-click-through to a custom migration
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateClickThrough"
+
+  - changeSet:
       id: v48.00-009
       author: calherries
       comment: Added 0.48.0 - Create table_privileges table
