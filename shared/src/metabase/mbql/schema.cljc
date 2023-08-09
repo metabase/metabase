@@ -736,6 +736,7 @@
 (def ^:private FieldOrExpressionRefOrRelativeDatetime
   [:multi
    {:error/message ":field or :expression reference or :relative-datetime"
+    :error/fn      (constantly ":field or :expression reference or :relative-datetime")
     :dispatch      (fn [x]
                      (if (is-clause? :relative-datetime x)
                        :relative-datetime

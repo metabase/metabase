@@ -7,6 +7,7 @@
    [malli.error :as me]
    [malli.experimental :as mx]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
 (defn- add-default-map-schemas
@@ -53,7 +54,7 @@
                                                 (cons '&f fn-tail)))]
     (when (= parsed ::mc/invalid)
       (let [error     (mc/explain mx/SchematizedParams fn-tail)
-            humanized (me/humanize error)]
+            humanized (mu.humanize/humanize error)]
         (throw (ex-info (format "Invalid function tail: %s" humanized)
                         {:fn-tail   fn-tail
                          :error     error
