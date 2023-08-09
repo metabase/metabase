@@ -720,7 +720,10 @@
          join-aliases-to-ignore (into #{}
                                       (comp (map current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
-                                      (joins query stage-number))]
+                                      (joins query stage-number))
+         lhs-column-or-nil      (or lhs-column-or-nil
+                                    (when (join? join-or-joinable)
+                                      (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
                                                     {:include-implicitly-joinable? false})
@@ -754,17 +757,20 @@
     rhs-column-or-nil  :- [:maybe Field]]
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
-   (sort-join-condition-columns
-    (let [joinable   (if (join? join-or-joinable)
-                     (joined-thing query join-or-joinable)
-                     join-or-joinable)
-          join-alias (when (join? join-or-joinable)
-                       (current-join-alias join-or-joinable))]
-      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
-           (map (fn [col]
-                  (cond-> (assoc col :lib/source :source/joins)
-                    join-alias (with-join-alias join-alias))))
-           (mark-selected-column query rhs-column-or-nil))))))
+   (let [joinable          (if (join? join-or-joinable)
+                             (joined-thing query join-or-joinable)
+                             join-or-joinable)
+         join-alias        (when (join? join-or-joinable)
+                             (current-join-alias join-or-joinable))
+         rhs-column-or-nil (or rhs-column-or-nil
+                               (when (join? join-or-joinable)
+                                 (standard-join-condition-rhs (first (join-conditions join-or-joinable)))))]
+     (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
+          (map (fn [col]
+                 (cond-> (assoc col :lib/source :source/joins)
+                   join-alias (with-join-alias join-alias))))
+          (mark-selected-column query rhs-column-or-nil)
+          sort-join-condition-columns))))
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
