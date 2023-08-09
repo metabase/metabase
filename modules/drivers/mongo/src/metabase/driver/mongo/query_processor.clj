@@ -939,9 +939,9 @@
   #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var})
 
 (defmethod ->rvalue :case [[_ cases options]]
-  {:$switch {:branches (for [[pred expr] cases]
-                         {:case (compile-cond pred)
-                          :then (->rvalue expr)})
+  {:$switch {:branches (vec (for [[pred expr] cases]
+                              {:case (compile-cond pred)
+                               :then (->rvalue expr)}))
              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
