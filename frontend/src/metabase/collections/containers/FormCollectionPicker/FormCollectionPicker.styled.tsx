@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import ItemPicker from "metabase/containers/ItemPicker";
-import Button from "metabase/core/components/Button/Button";
+import Button from "metabase/core/components/Button";
 
 export const MIN_POPOVER_WIDTH = 300;
 
