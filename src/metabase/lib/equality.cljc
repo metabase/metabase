@@ -3,12 +3,17 @@
   (:refer-clojure :exclude [=])
   (:require
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
-   [metabase.mbql.util.match :as mbql.u.match]))
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
+   [metabase.mbql.util.match :as mbql.u.match]
+   [metabase.util.malli :as mu]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -103,6 +108,26 @@
                                     [:field opts field-name])))
         refs))
 
+(mu/defn resolve-field-id :- lib.metadata/ColumnMetadata
+  "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
+  Saved Question metadata if available.
+
+  This doesn't really have a good home. It's used here and by [[metabase.lib.field]], but because it depends on eg.
+  [[metabase.lib.card]] and [[metabase.lib.convert]] it can't go in [[metabase.lib.metadata.calculation]]."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   field-id     :- ::lib.schema.id/field]
+  (merge
+   (when (lib.util/first-stage? query stage-number)
+     (when-let [card-id (lib.util/source-card-id query)]
+       (when-let [card-metadata (lib.card/saved-question-metadata query card-id)]
+         (m/find-first #(= (:id %) field-id)
+                       card-metadata))))
+   (try
+     (lib.metadata/field query field-id)
+     (catch #?(:clj Throwable :cljs :default) _
+       nil))))
+
 (defn find-closest-matches-for-refs
   "For each `needles` (which must be a ref) find the column or ref in `haystack` that it most closely matches. This is
   meant to power things like [[metabase.lib.breakout/breakoutable-columns]] which are supposed to include
@@ -121,14 +146,13 @@
   `:field` refs that did not include join aliases even though the Fields came from joined Tables... we still know the
   Fields are the same if they have the same IDs.
 
-  The three-arity version can also find matches between integer Field ID references like `[:field {} 1]` and
+  The four-arity version can also find matches between integer Field ID references like `[:field {} 1]` and
   equivalent string column name field literal references like `[:field {} \"bird_type\"]` by resolving Field IDs using
-  a `metadata-providerable` (something that can be treated as a metadata provider, e.g. a `query` with a
-  MetadataProvider associated with it). This is the ultimately hacky workaround for totally busted legacy queries.
+  the `query` and `stage-number`. This is ultimately a hacky workaround for totally busted legacy queries.
 
-  Note that this currently only works when `needles` contain integer Field IDs. The `haystack` refs must have string
-  literal column names. Luckily we currently don't have problems with MLv1/legacy queries accidentally using string
-  `:field` literals where it shouldn't have been doing so."
+  Note that this currently only works when `needles` contain integer Field IDs. Any refs in the `haystack` must have
+  string literal column names. Luckily we currently don't have problems with MLv1/legacy queries accidentally using
+  string `:field` literals where it shouldn't have been doing so."
   ([needles haystack]
    (loop [xforms      [;; initial xform (applied before any tests) converts any columns into refs
                        #(cond-> %
@@ -146,7 +170,7 @@
                        #(lib.options/update-options % dissoc :join-alias)]
           haystack-xf haystack
           ;; A map of needles left to find. Keys are indexes, values are the refs to find.
-          ;; Any nil needles are dropped, but their indexes still count. This makes the 3-arity form easy to write.
+          ;; Any nil needles are dropped, but their indexes still count. This makes the 4-arity form easy to write.
           needles     (into {}
                             (comp (map-indexed vector)
                                   (filter second))
@@ -169,20 +193,20 @@
                 (m/remove-keys finished-needles needles)
                 (merge results matches))))))
 
-  ([metadata-providerable needles haystack]
+  ([query stage-number needles haystack]
    ;; First run with the needles as given.
    (let [matches       (find-closest-matches-for-refs needles haystack)
          ;; Those that were matched are replaced with nil.
          blank-matched (reduce #(assoc %1 %2 nil) (vec needles) (vals matches))
          ;; Those that remain are converted to [:field {} "name"] refs if possible, or nil if not.
-         converted     (when (and metadata-providerable
+         converted     (when (and query
                                   (some some? blank-matched))
-                         (for [needle blank-matched]
-                           (when needle
-                             (mbql.u.match/match-one needle
-                               [:field opts (field-id :guard integer?)]
-                               (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-                                 [:field opts field-name])))))]
+                         (for [needle blank-matched
+                               :let [field-id (and needle (last needle))]]
+                           (when (and needle field-id (integer? field-id))
+                             (-> (resolve-field-id query stage-number field-id)
+                                 (dissoc :id) ; Remove any :id to force the ref to use the field name.
+                                 lib.ref/ref))))]
      (if converted
        ;; If any of the needles were not found, and were converted successfully, try to match them again.
        (merge matches (find-closest-matches-for-refs converted haystack))
@@ -200,14 +224,10 @@
         keys
         first))
 
-  ([metadata-providerable a-ref refs-or-cols]
-   (->> (find-closest-matches-for-refs metadata-providerable [a-ref] refs-or-cols)
+  ([query stage-number a-ref refs-or-cols]
+   (->> (find-closest-matches-for-refs query stage-number [a-ref] refs-or-cols)
         keys
         first)))
-
-;; START HERE: Find all existing uses of find-closest-matches-for-refs and refactor them for the new return value.
-;; Then find all uses for `find-closest-matching-ref` refactor to use `find-closest-matches-for-refs` if better.
-;; *Then* write some tests to make sure it works in all the cases we wanted it to, with columns and all.
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching
@@ -220,14 +240,14 @@
     ;; return (visibile-columns query), but if any of those appear in `:fields`, mark then `:selected?`
     (mark-selected-columns (visibile-columns query) (:fields stage))"
   ([columns selected-columns-or-refs]
-   (mark-selected-columns nil columns selected-columns-or-refs))
+   (mark-selected-columns nil -1 columns selected-columns-or-refs))
 
-  ([metadata-providerable columns selected-columns-or-refs]
+  ([query stage-number columns selected-columns-or-refs]
    (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
          refs                   (mapv lib.ref/ref columns)
          matching-selected-refs (into #{}
                                       (map (fn [selected-ref]
-                                             (find-closest-matching-ref metadata-providerable selected-ref refs)))
+                                             (find-closest-matching-ref query stage-number selected-ref refs)))
                                       selected-refs)]
      (mapv (fn [col a-ref]
              (assoc col :selected? (contains? matching-selected-refs a-ref)))

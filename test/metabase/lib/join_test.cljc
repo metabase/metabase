@@ -4,6 +4,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
@@ -198,7 +199,7 @@
                          ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
                 metadata))
         (is (=? "CATEGORIES__via__CATEGORY_ID"
-                (lib.join/current-join-alias (first metadata))))
+                (lib.join.util/current-join-alias (first metadata))))
         (is (=? [:field
                  {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                  (meta/id :categories :name)]
@@ -526,7 +527,7 @@
     (let [query  lib.tu/query-with-join
           [join] (lib/joins query)
           join   (lib/with-join-alias join nil)]
-      (is (nil? (lib.join/current-join-alias join)))
+      (is (nil? (lib.join.util/current-join-alias join)))
       (let [new-conditions [(lib/=
                              (meta/field-metadata :venues :id)
                              (meta/field-metadata :categories :id))]

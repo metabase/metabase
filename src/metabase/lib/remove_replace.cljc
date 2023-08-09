@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
@@ -211,7 +212,7 @@
   (mbql.match/replace a-join
     (field :guard (fn [field-clause]
                     (and (lib.util/field-clause? field-clause)
-                         (= (lib.join/current-join-alias field-clause) old-name))))
+                         (= (lib.join.util/current-join-alias field-clause) old-name))))
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage

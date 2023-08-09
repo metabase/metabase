@@ -151,7 +151,7 @@
        (vec columns)
 
        :else
-       (let [matching (lib.equality/find-closest-matches-for-refs query existing-order-bys columns)]
+       (let [matching (lib.equality/find-closest-matches-for-refs query stage-number existing-order-bys columns)]
          (mapv #(let [pos (matching %)]
                   (cond-> %
                     pos (assoc :order-by-position pos)))

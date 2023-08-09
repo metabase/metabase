@@ -3,6 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
+   [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
@@ -265,33 +266,37 @@
      [:field {:join-alias "J"} 3]]
     nil))
 
-(deftest ^:parallel find-closest-matches-for-refs-3-arity-test
+(deftest ^:parallel find-closest-matches-for-refs-4-arity-test
   (is (= {[:field {} "CATEGORY"] 0
           [:field {} "ID"]       1}
          (lib.equality/find-closest-matches-for-refs
-          meta/metadata-provider
+          (lib/query meta/metadata-provider (meta/table-metadata :products))
+          -1
           [[:field {} (meta/id :products :category)]
            [:field {} "ID"]
            [:field {} "NAME"]]
           [[:field {} "ID"]
            [:field {} "CATEGORY"]]))))
 
-(deftest ^:parallel find-closest-matching-ref-3-arity-test
+(deftest ^:parallel find-closest-matching-ref-4-arity-test
   (is (= [:field {} "CATEGORY"]
          (lib.equality/find-closest-matching-ref
-          meta/metadata-provider
+          (lib/query meta/metadata-provider (meta/table-metadata :products))
+          -1
           [:field {} (meta/id :products :category)]
           [[:field {} "ID"]
            [:field {} "CATEGORY"]])))
   (is (= nil
          (lib.equality/find-closest-matching-ref
-           meta/metadata-provider
+          (lib/query meta/metadata-provider (meta/table-metadata :products))
+          -1
            [:field {} (meta/id :products :title)]
            [[:field {} "ID"]
             [:field {} "CATEGORY"]])))
   (is (= [:field {} "ID"]
          (lib.equality/find-closest-matching-ref
-          meta/metadata-provider
+          (lib/query meta/metadata-provider (meta/table-metadata :products))
+          -1
           [:field {} "ID"]
           [[:field {} "ID"]
            [:field {} "CATEGORY"]]))))

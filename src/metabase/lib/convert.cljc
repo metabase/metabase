@@ -160,7 +160,6 @@
                                  (map-indexed (fn [~'idx [~'_tag {~'ag-uuid :lib/uuid}]]
                                                 [~'ag-uuid ~'idx]))
                                  aggregations#)]
-        (prn aggregations# legacy->pMBQL# pMBQL->legacy#)
         (binding [*legacy-index->pMBQL-uuid* legacy->pMBQL#
                   *pMBQL-uuid->legacy-index* pMBQL->legacy#]
           ~@body))))
@@ -175,19 +174,6 @@
                                       ->pMBQL
                                       (lib.util/named-expression-clause k))))
                           not-empty)]
-    (prn (macroexpand '(metabase.lib.convert/with-aggregation-list aggregations
-                         (let [stage (-> stage
-                                         stage-source-card-id->pMBQL
-                                         (m/assoc-some :aggregation aggregations :expressions expressions))
-                               stage (reduce
-                                       (fn [stage k]
-                                         (if-not (get stage k)
-                                           stage
-                                           (update stage k ->pMBQL)))
-                                       stage
-                                       (disj stage-keys :aggregation :expressions))]
-                           (cond-> stage
-                             (:joins stage) (update :joins deduplicate-join-aliases))))))
     (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
