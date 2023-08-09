@@ -30,7 +30,6 @@
     "font-family-name-quotes": null,
     "at-rule-empty-line-before": null,
     "media-query-no-invalid": null,
-    "color-hex-length": null,
     "declaration-block-no-shorthand-property-overrides": null
   }
 }
