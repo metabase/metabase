@@ -19,7 +19,7 @@
   [:int {:min 0}])
 
 (mr/def ::positive-int
-  [:int {:min 1}])
+  pos-int?)
 
 (mr/def ::uuid
   ;; TODO -- should this be stricter?
@@ -51,9 +51,7 @@
    [:ref ::relation-type]])
 
 (defn- base-type? [x]
-  (and (isa? x :type/*)
-       (not (semantic-type? x))
-       (not (relation-type? x))))
+  (isa? x :type/*))
 
 (mr/def ::base-type
   [:fn

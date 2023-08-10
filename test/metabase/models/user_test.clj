@@ -82,7 +82,7 @@
       (perms/grant-permissions! group-id (perms/table-read-path table))
       (is (set/subset?
            #{(perms/table-read-path table)}
-           (metabase.models.user/permissions-set (mt/user->id :rasta)))))))
+           (user/permissions-set (mt/user->id :rasta)))))))
 
 ;;; Tests for invite-user and create-new-google-auth-user!
 

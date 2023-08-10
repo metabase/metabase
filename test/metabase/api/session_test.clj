@@ -20,6 +20,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]

@@ -242,24 +242,36 @@
   (filter:bound field, :lower min-val, :upper max-val))
 
 (defmethod parse-filter* :contains
-  [[_ field string-or-field options]]
-  {:type      :search
-   :dimension (->rvalue field)
-   :query     {:type          :contains
-               :value         (->rvalue string-or-field)
-               :caseSensitive (get options :case-sensitive true)}})
+  [[_ field pattern options]]
+  (if (and (sequential? pattern) (= :value (first pattern)))
+    {:type      :search
+     :dimension (->rvalue field)
+     :query     {:type          :contains
+                 :value         (->rvalue pattern)
+                 :caseSensitive (get options :case-sensitive true)}}
+    (throw (ex-info (tru "Dynamic patterns are not supported.")
+                    {:type qp.error-type/invalid-query
+                     :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :starts-with
-  [[_ field string-or-field options]]
-  (filter:like field
-               (str (escape-like-filter-pattern (->rvalue string-or-field)) \%)
-               (get options :case-sensitive true)))
+  [[_ field pattern options]]
+  (if (and (sequential? pattern) (= :value (first pattern)))
+    (filter:like field
+                 (str (escape-like-filter-pattern (->rvalue pattern)) \%)
+                 (get options :case-sensitive true))
+    (throw (ex-info (tru "Dynamic patterns are not supported.")
+                    {:type qp.error-type/invalid-query
+                     :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :ends-with
-  [[_ field string-or-field options]]
-  (filter:like field
-               (str \% (escape-like-filter-pattern (->rvalue string-or-field)))
-               (get options :case-sensitive true)))
+  [[_ field pattern options]]
+  (if (and (sequential? pattern) (= :value (first pattern)))
+    (filter:like field
+                 (str \% (escape-like-filter-pattern (->rvalue pattern)))
+                 (get options :case-sensitive true))
+    (throw (ex-info (tru "Dynamic patterns are not supported.")
+                    {:type qp.error-type/invalid-query
+                     :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :=
   [[_ field value-or-field]]
@@ -756,11 +768,14 @@
 (defn- expression->actual-ags
   "Return a flattened list of actual aggregations that are needed for `expression`."
   [[_ & args]]
-  (vec (reduce concat (for [arg   args
-                            :when (not (number? arg))]
-                        (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-                          (expression->actual-ags arg)
-                          [arg])))))
+  (into []
+        (comp (remove number?)
+              (map (fn [arg]
+                     (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
+                       (expression->actual-ags arg)
+                       [arg])))
+              cat)
+        args))
 
 (defn- unwrap-name
   [x]

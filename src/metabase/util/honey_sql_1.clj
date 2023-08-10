@@ -11,6 +11,7 @@
    [honeysql.format :as hformat]
    [honeysql.types]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -33,7 +34,7 @@
   (-> s str (.toUpperCase Locale/ENGLISH)))
 
 ;; Add an `:h2` quote style that uppercases the identifier
-(let [{ansi-quote-fn :ansi} @#'honeysql.format/quote-fns]
+(let [{ansi-quote-fn :ansi} @#'hformat/quote-fns]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (alter-var-root #'hformat/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
 
@@ -58,13 +59,13 @@
 ;; with calculated columns with numeric literals -- some SQL databases can't recognize that a calculated field in a
 ;; SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters. Go ahead an use the
 ;; old behavior so we can keep our HoneySQL dependency up to date.
-(extend-protocol honeysql.format/ToSql
+(extend-protocol hformat/ToSql
   Number
   (to-sql [x] (str x)))
 
 ;; Ratios are represented as the division of two numbers which may cause order-of-operation issues when dealing with
 ;; queries. The easiest way around this is to convert them to their decimal representations.
-(extend-protocol honeysql.format/ToSql
+(extend-protocol hformat/ToSql
   clojure.lang.Ratio
   (to-sql [x] (hformat/to-sql (double x))))
 
@@ -193,6 +194,7 @@
 (p.types/defrecord+ ^{:deprecated "0.46.0"} TypedHoneySQLForm [form info]
   pretty/PrettyPrintable
   (pretty [_]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     `(with-type-info ~form ~info))
 
   ToSql
@@ -233,7 +235,7 @@
     (:metabase.util.honeysql-extensions/database-type type-info)
     (update :metabase.util.honeysql-extensions/database-type (comp u/lower-case-en name))))
 
-(extend-protocol TypedHoneySQL
+(extend-protocol #_{:clj-kondo/ignore [:deprecated-var]} TypedHoneySQL
   Object
   (type-info [_]
     nil)
@@ -273,6 +275,7 @@
    Otherwise, returns `nil`."
   {:deprecated "0.46.0"}
   [honeysql-form]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (some-> honeysql-form type-info type-info->db-type))
 
 (defn is-of-type?
@@ -298,6 +301,7 @@
     ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
   {:deprecated "0.46.0", :style/indent [:form]}
   [honeysql-form db-type :- (s/maybe su/KeywordOrString)]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (if (some? db-type)
     (with-type-info honeysql-form {:metabase.util.honeysql-extensions/database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
@@ -353,6 +357,7 @@
   [operator]
   (fn [& args]
     (let [arg-db-type (some (fn [arg]
+                              #_{:clj-kondo/ignore [:deprecated-var]}
                               (-> arg type-info type-info->db-type))
                             args)]
       #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}

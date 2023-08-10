@@ -10,8 +10,9 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp])

@@ -11,6 +11,7 @@
    [+ - / * abs mod inc dec cast concat format second])
   (:require
    [honeysql.core :as hsql]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honey-sql-1 :as h1x]
    [metabase.util.honey-sql-2 :as h2x]))
 

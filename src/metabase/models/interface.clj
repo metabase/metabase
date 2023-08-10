@@ -20,6 +20,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [potemkin :as p]
    [schema.core :as schema]
@@ -43,11 +44,13 @@
 ;;; result metadata need those to be loaded in order to serialize them to JSON
 (comment metabase.server.middleware.json/keep-me)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  instance-of?
   InstanceOf
+  InstanceOf:Schema
+  instance-of?
   model
   instance])
 
@@ -318,7 +321,7 @@
    [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
 
 (def ^:private ^{:arglists '([definition])} validate-metric-segment-definition
-  (let [explainer (mc/explainer MetricSegmentDefinition)]
+  (let [explainer (mr/explainer MetricSegmentDefinition)]
     (fn [definition]
       (if-let [error (explainer definition)]
         (let [humanized (me/humanize error)]

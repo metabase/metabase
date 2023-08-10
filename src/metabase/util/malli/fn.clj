@@ -50,7 +50,7 @@
   [fn-tail]
   (let [parsed (mc/parse mx/SchematizedParams (if (symbol? (first fn-tail))
                                                 fn-tail
-                                                (cons '-f fn-tail)))]
+                                                (cons '&f fn-tail)))]
     (when (= parsed ::mc/invalid)
       (let [error     (mc/explain mx/SchematizedParams fn-tail)
             humanized (me/humanize error)]
@@ -95,46 +95,39 @@
     ;; =>
     (fn [x] (inc x))"
   [parsed]
-  `(clojure.core/fn ~@(deparameterized-fn-tail parsed)))
+  `(core/fn ~@(deparameterized-fn-tail parsed)))
 
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
   use [[metabase.util.malli/disable-enforcement]] to bind this only in Clojure code."
   true)
 
-(defn validate-input
-  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
-  explainer and throws an exception if the check fails."
-  [schema value fn-name]
+(defn- validate [schema value error-type]
   (when *enforce*
-    (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)]
-        (throw (ex-info (if fn-name
-                          (i18n/tru "Invalid input in {0}: {1}" fn-name (pr-str humanized))
-                          (i18n/tru "Invalid input: {0}" (pr-str humanized)))
-                        {:type      ::invalid-input
-                         :fn        fn-name
+    ;; `validate` is significantly faster than `explain` if `value` is actually valid.
+    (when-not (mr/validate schema value)
+      (let [error     (mr/explain schema value)
+            humanized (me/humanize error)]
+        (throw (ex-info (case error-type
+                          ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
+                          ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                        {:type      error-type
                          :error     error
                          :humanized humanized
                          :schema    schema
                          :value     value}))))))
 
+(defn validate-input
+  "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
+  explainer and throws an exception if the check fails."
+  [schema value]
+  (validate schema value ::invalid-input))
+
 (defn validate-output
   "Impl for [[metabase.util.malli.fn/fn]]; validates function output `value` against `schema` using a cached explainer
   and throws an exception if the check fails. Returns validated value."
-  [schema value fn-name]
-  (when *enforce*
-    (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)]
-        (throw (ex-info (if fn-name
-                          (i18n/tru "Invalid output in {0}: {1}" fn-name (pr-str humanized))
-                          (i18n/tru "Invalid output: {0}" (pr-str humanized)))
-                        {:type      ::invalid-output
-                         :fn        fn-name
-                         :error     error
-                         :humanized humanized
-                         :schema    schema
-                         :value     value})))))
+  [schema value]
+  (validate schema value ::invalid-output)
   value)
 
 (defn- varargs-schema? [[_cat & args :as _input-schema]]
@@ -160,12 +153,12 @@
            (concat (butlast arg-names) ['& (last arg-names)])
            arg-names))))
 
-(defn- input-schema->validation-forms [[_cat & schemas :as input-schema] fn-name]
+(defn- input-schema->validation-forms [[_cat & schemas :as input-schema]]
   (let [arg-names (input-schema-arg-names input-schema)
         schemas   (if (varargs-schema? input-schema)
                     (concat (butlast schemas) [[:maybe (last schemas)]])
                     schemas)]
-    (->> (map (clojure.core/fn [arg-name schema]
+    (->> (map (core/fn [arg-name schema]
                 ;; 1. Skip checks against `:any` schema, there is no situation where it would fail.
                 ;;
                 ;; 2. Skip checks against the default varargs schema, there is no situation where [:maybe [:* :any]] is
@@ -173,7 +166,7 @@
                 (when-not (= schema (if (= arg-name 'more)
                                       [:maybe [:* :any]]
                                       :any))
-                  `(validate-input ~schema ~arg-name '~fn-name)))
+                  `(validate-input ~schema ~arg-name)))
               arg-names
               schemas)
          (filter some?))))
@@ -181,30 +174,31 @@
 (defn- input-schema->application-form [input-schema]
   (let [arg-names (input-schema-arg-names input-schema)]
     (if (varargs-schema? input-schema)
-      (list* `apply '-f arg-names)
-      (list* '-f arg-names))))
+      (list* `apply '&f arg-names)
+      (list* '&f arg-names))))
 
-(defn- instrumented-arity [[_=> input-schema output-schema] fn-name]
+(defn- instrumented-arity [[_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
                                  input-schema)
         arglist                (input-schema->arglist input-schema)
-        input-validation-forms (input-schema->validation-forms input-schema fn-name)
+        input-validation-forms (input-schema->validation-forms input-schema)
         result-form            (input-schema->application-form input-schema)
         result-form            (if (and output-schema
                                         (not= output-schema :any))
-                                 `(validate-output ~output-schema ~result-form '~fn-name)
+                                 `(->> ~result-form
+                                       (validate-output ~output-schema))
                                  result-form)]
     `(~arglist ~@input-validation-forms ~result-form)))
 
-(defn- instrumented-fn-tail [[schema-type :as schema] fn-name]
+(defn- instrumented-fn-tail [[schema-type :as schema]]
   (case schema-type
     :=>
-    [(instrumented-arity schema fn-name)]
+    [(instrumented-arity schema)]
 
     :function
     (let [[_function & schemas] schema]
-      (map #(instrumented-arity % fn-name) schemas))))
+      (map instrumented-arity schemas))))
 
 (defn instrumented-fn-form
   "Given a `fn-tail` like
@@ -217,12 +211,9 @@
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
-  ([parsed]
-   (instrumented-fn-form parsed nil))
-
-  ([parsed fn-name]
-   `(let [~'-f ~(deparameterized-fn-form parsed)]
-      (clojure.core/fn ~@(instrumented-fn-tail (fn-schema parsed) fn-name)))))
+  [parsed]
+  `(let [~'&f ~(deparameterized-fn-form parsed)]
+     (core/fn ~@(instrumented-fn-tail (fn-schema parsed)))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]]. A form like
@@ -231,10 +222,10 @@
 
   compiles to something like
 
-    (let [-f (fn [x] (inc x))]
+    (let [&f (fn [x] (inc x))]
       (fn [a]
         (validate-input :int a)
-        (validate-output :int (-f a))))
+        (validate-output :int (&f a))))
 
   Known issue: this version of `fn` does not capture the optional function name and make it available, e.g. you can't
   do
@@ -246,15 +237,15 @@
   If we were to include `my-fn` in the uninstrumented `fn` form, then it would bypass schema checks when you call
   another arity:
 
-    (let [-f (fn my-fn
+    (let [&f (fn my-fn
                ([x] (my-fn x 1))
                ([x y] (+ x y)))]
       (fn
         ([a]
-         (-f a))
+         (&f a))
         ([a b]
          (validate-input :int b)
-         (-f a b))))
+         (&f a b))))
 
     ;; skips the `:- :int` check on `y` in the 2-arity
     (my-fn 1.0) ;; => 2.0

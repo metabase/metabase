@@ -13,12 +13,14 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models :refer [Field]]
    [metabase.models.table :as table]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
@@ -279,12 +281,16 @@
                             (flatten-row xs path))))))]
     (into {} (flatten-row row [field-name]))))
 
+(def ^:private ^{:arglists '([s])} can-parse-datetime?
+  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
+  (mr/validator ::lib.schema.literal/string.datetime))
+
 (defn- type-by-parsing-string
   "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
   [member]
   (let [member-type (type member)]
     (if (and (instance? String member)
-             (mbql.s/can-parse-datetime? member))
+             (can-parse-datetime? member))
       java.time.LocalDateTime
       member-type)))
 

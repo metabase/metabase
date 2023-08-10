@@ -28,6 +28,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [schema.core :as s]

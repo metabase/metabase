@@ -59,7 +59,6 @@
   (testing "Should have :fields :all by default (#32419)"
     (is (=? {:lib/type    :mbql/join
              :stages      [{:lib/type     :mbql.stage/mbql
-                            :lib/options  {:lib/uuid string?}
                             :source-table (meta/id :orders)}]
              :lib/options {:lib/uuid string?}
              :fields      :all}
@@ -954,30 +953,139 @@
                     (lib/with-join-fields join cols)))))))))
 
 (deftest ^:parallel join-lhs-display-name-test
-  (doseq [[source-table? query]          {true  lib.tu/venues-query
-                                          false lib.tu/query-with-source-card}
-          [num-existing-joins query]     {0 query
-                                          1 (lib.tu/add-joins query "J1")
-                                          2 (lib.tu/add-joins query "J1" "J2")}
-          [first-join? join-or-joinable] (list*
-                                          [(zero? num-existing-joins) (meta/table-metadata :venues)]
-                                          [(zero? num-existing-joins) meta/saved-question-CardMetadata]
-                                          [(zero? num-existing-joins) nil]
-                                          (when-let [[first-join & more] (not-empty (lib/joins query))]
-                                            (cons [true first-join]
-                                                  (for [join more]
-                                                    [false join]))))
-          [num-stages query]             {1 query
-                                          2 (lib/append-stage query)}]
+  (doseq [[source-table? query]                {true  lib.tu/venues-query
+                                                false lib.tu/query-with-source-card}
+          [num-existing-joins query]           {0 query
+                                                1 (lib.tu/add-joins query "J1")
+                                                2 (lib.tu/add-joins query "J1" "J2")}
+          [first-join? join? join-or-joinable] (list*
+                                                [(zero? num-existing-joins) false (meta/table-metadata :venues)]
+                                                [(zero? num-existing-joins) false meta/saved-question-CardMetadata]
+                                                [(zero? num-existing-joins) false nil]
+                                                (when-let [[first-join & more] (not-empty (lib/joins query))]
+                                                  (cons [true true first-join]
+                                                        (for [join more]
+                                                          [false true join]))))
+          [num-stages query]                   {1 query
+                                                2 (lib/append-stage query)}]
     (testing (str "query w/ source table?" source-table?                                              \newline
                   "num-existing-joins = "  num-existing-joins                                         \newline
                   "num-stages = "          num-stages                                                 \newline
                   "join =\n"               (u/pprint-to-str join-or-joinable)                         \newline
                   "existing joins = "      (u/pprint-to-str (map lib.options/uuid (lib/joins query))) \newline
                   "first join? "           first-join?)
-      (is (= (if (and source-table?
-                      (= num-stages 1)
-                      first-join?)
-               "Venues"
-               "Previous results")
-             (lib/join-lhs-display-name query join-or-joinable))))))
+      (testing "When passing an explicit LHS column, use display name for its `:table`"
+        (is (= "Orders"
+               (lib/join-lhs-display-name query join-or-joinable (meta/field-metadata :orders :product-id)))))
+      (testing "existing join should use the display name for condition LHS"
+        (when join?
+          (is (= "Venues"
+                 (lib/join-lhs-display-name query join-or-joinable)))))
+      (testing "The first join should use the display name of the query `:source-table` without explicit LHS"
+        (when (and source-table?
+                   (= num-stages 1)
+                   first-join?)
+          (is (= "Venues"
+                 (lib/join-lhs-display-name query join-or-joinable)))))
+      (testing "When *building* a join that is not the first join, if query does not use `:source-table`, use 'Previous results'"
+        (when (and (not join?)
+                   (or (not source-table?)
+                       (not first-join?)
+                       (> num-stages 1)))
+          (is (= "Previous results"
+                 (lib/join-lhs-display-name query join-or-joinable))))))))
+
+(deftest ^:parallel join-condition-update-temporal-bucketing-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        products-created-at (meta/field-metadata :products :created-at)
+        orders-created-at (meta/field-metadata :orders :created-at)]
+    (is (=? [:= {}
+             [:field {:temporal-unit :year} (meta/id :orders :created-at)]
+             [:field {:temporal-unit :year} (meta/id :products :created-at)]]
+            (lib/join-condition-update-temporal-bucketing
+              query
+              -1
+              (lib/= orders-created-at
+                     products-created-at)
+              :year)))
+    (is (=? [:= {}
+             [:field (complement :temporal-unit) (meta/id :orders :id)]
+             [:field {:temporal-unit :year} (meta/id :products :created-at)]]
+            (lib/join-condition-update-temporal-bucketing
+              query
+              -1
+              (lib/= (meta/field-metadata :orders :id)
+                     products-created-at)
+              :year)))
+    (testing "removing with nil"
+      (is (=? [:= {}
+               [:field (complement :temporal-unit) (meta/id :orders :created-at)]
+               [:field (complement :temporal-unit) (meta/id :products :created-at)]]
+              (lib/join-condition-update-temporal-bucketing
+                query
+                -1
+                (lib/join-condition-update-temporal-bucketing
+                  query
+                  -1
+                  (lib/= orders-created-at
+                         products-created-at)
+                  :year)
+                nil))))
+    (is (thrown-with-msg?
+          #?(:clj AssertionError :cljs :default)
+          #"Non-standard join condition."
+          (lib/join-condition-update-temporal-bucketing
+            query
+            -1
+            (lib/= (lib/+ (meta/field-metadata :orders :id) 1)
+                   products-created-at)
+            :year)))))
+
+(deftest ^:parallel join-condition-columns-handle-temporal-units-test
+  (testing "join-condition-lhs-columns and -rhs-columns should correctly mark columns regardless of :temporal-unit (#32390)\n"
+    (let [orders-query      (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          query             (-> orders-query
+                                (lib/join (-> (lib/join-clause (meta/table-metadata :products))
+                                              (lib/with-join-alias "P")
+                                              (lib/with-join-conditions [(lib/= (-> (meta/field-metadata :orders :created-at)
+                                                                                    (lib/with-temporal-bucket :month))
+                                                                                (-> (meta/field-metadata :products :created-at)
+                                                                                    (lib/with-temporal-bucket :month)))]))))
+          [join]            (lib/joins query)
+          [condition]       (lib/join-conditions join)
+          {[lhs rhs] :args} (lib/external-op condition)]
+      (is (=? [:field {:temporal-unit :month} integer?]
+              lhs))
+      (is (=? [:field {:temporal-unit :month, :join-alias "P"} integer?]
+              rhs))
+      (doseq [lhs          [lhs nil]
+              rhs          [rhs nil]
+              ;; if we specify lhs/rhs, then we should be able to mark things selected correctly when passing in a
+              ;; Table (joinable) instead of an actual join
+              [query join] (concat
+                            [[query join]]
+                            (when (and lhs rhs)
+                              [[orders-query (meta/table-metadata :products)]]))]
+        (testing (pr-str (list `lib/join-condition-lhs-columns 'query (:lib/type join) (when lhs 'lhs) (when rhs 'rhs)))
+          (is (= [{:name "ID", :selected? false}
+                  {:name "USER_ID", :selected? false}
+                  {:name "PRODUCT_ID", :selected? false}
+                  {:name "SUBTOTAL", :selected? false}
+                  {:name "TAX", :selected? false}
+                  {:name "TOTAL", :selected? false}
+                  {:name "DISCOUNT", :selected? false}
+                  {:name "CREATED_AT", :selected? true}
+                  {:name "QUANTITY", :selected? false}]
+                 (mapv #(select-keys % [:name :selected?])
+                       (lib/join-condition-lhs-columns query join lhs rhs)))))
+        (testing (pr-str (list `lib/join-condition-rhs-columns 'query (:lib/type join) (when lhs 'lhs) (when rhs 'rhs)))
+          (is (= [{:name "ID", :selected? false}
+                  {:name "EAN", :selected? false}
+                  {:name "TITLE", :selected? false}
+                  {:name "CATEGORY", :selected? false}
+                  {:name "VENDOR", :selected? false}
+                  {:name "PRICE", :selected? false}
+                  {:name "RATING", :selected? false}
+                  {:name "CREATED_AT", :selected? true}]
+                 (mapv #(select-keys % [:name :selected?])
+                       (lib/join-condition-rhs-columns query join lhs rhs)))))))))

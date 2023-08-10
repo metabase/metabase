@@ -44,7 +44,7 @@
          {:source-query source-query}))
       nil)))
 
-(mu/defn ^:private mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   ((requiring-resolve 'metabase.query-processor/query->expected-cols)

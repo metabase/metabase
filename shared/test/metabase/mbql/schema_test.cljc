@@ -117,3 +117,17 @@
                               :template-tags {"date_range" template-tag}
                               :parameters    [parameter]}}]
         (is (nil? (me/humanize (mc/explain mbql.s/Query query))))))))
+
+(deftest ^:paralell value-test
+  (let [value [:value
+               "192.168.1.1"
+               {:base_type         :type/IPAddress
+                :effective_type    :type/IPAddress
+                :coercion_strategy nil
+                :semantic_type     :type/IPAddress
+                :database_type     "inet"
+                :name              "ip"}]]
+    (are [schema] (not (me/humanize (mc/explain schema value)))
+      mbql.s/value
+      @#'mbql.s/EqualityComparable
+      [:or mbql.s/absolute-datetime mbql.s/value])))

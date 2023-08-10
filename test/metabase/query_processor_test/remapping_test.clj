@@ -207,7 +207,7 @@
   (testing "Remapping should work for native queries"
     (mt/dataset sample-dataset
       (letfn [(remappings-with-metadata [metadata]
-                (metabase.test/with-column-remappings [orders.product_id products.title]
+                (mt/with-column-remappings [orders.product_id products.title]
                   (mt/rows
                     (mt/run-mbql-query nil
                       {:source-query    {:native "SELECT * FROM ORDERS WHERE USER_ID = 1 AND TOTAL > 10 ORDER BY ID ASC LIMIT 2;"}

@@ -11,9 +11,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (def ^:private activity-feed-topics
   "The set of event topics which are subscribed to for use in the Metabase activity feed."

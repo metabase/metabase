@@ -8,8 +8,7 @@
   There are 3 mains ways to provide values to a parameter:
   - chain-filter: see [metabase.models.params.chain-filter]
   - field-values: see [metabase.models.params.field-values]
-  - custom-values: see [metabase.models.params.custom-values]
-  "
+  - custom-values: see [metabase.models.params.custom-values]"
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -23,6 +22,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -230,7 +230,7 @@
   "Return the IDs of any Fields referenced in the 'implicit' template tag field filter parameters for native queries in
   `cards`."
   [cards]
-  (reduce set/union (map card->template-tag-field-ids cards)))
+  (reduce set/union #{} (map card->template-tag-field-ids cards)))
 
 (s/defn dashcards->param-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This

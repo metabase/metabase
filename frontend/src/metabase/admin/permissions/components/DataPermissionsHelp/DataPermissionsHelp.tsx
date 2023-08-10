@@ -27,7 +27,7 @@ export const DataPermissionsHelp = () => {
         defaultValue="database-level"
       >
         <Accordion.Item value="database-level">
-          <Accordion.Control>Database levels</Accordion.Control>
+          <Accordion.Control>{t`Database levels`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <PermissionHelpDescription
@@ -71,7 +71,7 @@ export const DataPermissionsHelp = () => {
         </Accordion.Item>
 
         <Accordion.Item value="schema-table-level">
-          <Accordion.Control>Schema and table levels</Accordion.Control>
+          <Accordion.Control>{t`Schema and table levels`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <PermissionHelpDescription
@@ -99,7 +99,7 @@ export const DataPermissionsHelp = () => {
         </Accordion.Item>
 
         <Accordion.Item value="others">
-          <Accordion.Control>Other data permissions</Accordion.Control>
+          <Accordion.Control>{t`Other data permissions`}</Accordion.Control>
           <Accordion.Panel>
             <Stack spacing="1rem" py="1rem">
               <Text>

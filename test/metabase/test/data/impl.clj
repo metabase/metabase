@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field FieldValues Secret Table]]
+   [metabase.models.humanization :as humanization]
    [metabase.models.secret :as secret]
    [metabase.plugins.classloader :as classloader]
    [metabase.sync :as sync]
@@ -95,6 +96,8 @@
   (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
+  (assert (= (humanization/humanization-strategy) :simple)
+          "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms
       (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
