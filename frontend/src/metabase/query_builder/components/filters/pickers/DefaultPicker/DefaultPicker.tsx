@@ -1,12 +1,13 @@
-/* eslint-disable react/prop-types */
-/* eslint-disable  react/jsx-key */
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
+import type { ReactElement } from "react";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
 
 import { getCurrencySymbol } from "metabase/lib/formatting";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 import {
   getFilterArgumentFormatOptions,
@@ -14,9 +15,9 @@ import {
 } from "metabase-lib/operators/utils";
 import { isCurrency } from "metabase-lib/types/utils/isa";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import TextPicker from "./TextPicker";
-import SelectPicker from "./SelectPicker";
-import NumberPicker from "./NumberPicker";
+import TextPicker from "../TextPicker";
+import SelectPicker from "../SelectPicker";
+import NumberPicker from "../NumberPicker";
 
 import {
   BetweenLayoutContainer,
@@ -41,7 +42,17 @@ const defaultLayoutPropTypes = {
   fieldWidgets: PropTypes.array,
 };
 
-export default function DefaultPicker({
+export interface DefaultPickerProps {
+  filter: Filter;
+  setValue: (index: number, value: RowValue) => void;
+  setValues: (values: RowValue[]) => void;
+  onCommit: (filter: Filter) => void;
+  className?: string;
+  minWidth?: number | null;
+  maxWidth?: number | null;
+  checkedColor?: string;
+}
+export function DefaultPicker({
   filter,
   setValue,
   setValues,
@@ -50,7 +61,7 @@ export default function DefaultPicker({
   minWidth,
   maxWidth,
   checkedColor,
-}) {
+}: DefaultPickerProps) {
   const operator = filter.operator();
   if (!operator) {
     return <div className={className} />;
@@ -66,10 +77,13 @@ export default function DefaultPicker({
 
   const visualizationSettings = filter?.query()?.question()?.settings();
 
-  const key = getColumnKey(dimension.column());
+  const key = dimension?.column?.()
+    ? getColumnKey(dimension.column() as DatasetColumn)
+    : "";
+
   const columnSettings = visualizationSettings?.column_settings?.[key];
 
-  const fieldMetadata = field?.metadata?.fields[field?.id];
+  const fieldMetadata = field?.metadata?.fields[field?.id as FieldId];
   const fieldSettings = {
     ...(fieldMetadata?.settings ?? {}),
     ...(columnSettings ?? {}),
@@ -88,15 +102,16 @@ export default function DefaultPicker({
       let values, onValuesChange;
       if (operator.multi) {
         values = filter.arguments();
-        onValuesChange = values => setValues(values);
+        onValuesChange = (values: RowValue[]) => setValues(values);
       } else {
         values = [filter.arguments()[index]];
-        onValuesChange = values => setValue(index, values[0]);
+        onValuesChange = (values: RowValue[]) => setValue(index, values[0]);
       }
 
       if (operatorField.type === "hidden") {
         return null;
       } else if (operatorField.type === "select") {
+        // unclear, but this may be a dead code path
         return (
           <SelectPicker
             key={index}
@@ -112,11 +127,12 @@ export default function DefaultPicker({
         // get the underling field if the query is nested
         let underlyingField = field;
         let sourceField;
-        while ((sourceField = underlyingField.sourceField())) {
+        while ((sourceField = underlyingField?.sourceField())) {
           underlyingField = sourceField;
         }
         return (
           <FieldValuesWidget
+            key={index}
             className="input"
             value={values}
             onChange={onValuesChange}
@@ -175,7 +191,6 @@ export default function DefaultPicker({
   return (
     <DefaultPickerContainer
       data-testid="default-picker-container"
-      limitHeight
       className={cx(className, "PopoverBody--marginBottom")}
     >
       {layout}
@@ -185,13 +200,14 @@ export default function DefaultPicker({
 
 DefaultPicker.propTypes = defaultPickerPropTypes;
 
-const DefaultLayout = ({ className, fieldWidgets }) => (
-  <div className={className}>
+const DefaultLayout = ({
+  fieldWidgets,
+}: {
+  fieldWidgets: (ReactElement | null)[];
+}) => (
+  <div>
     {fieldWidgets.map((fieldWidget, index) => (
-      <div
-        key={index}
-        className={index < fieldWidgets.length - 1 ? "mb1" : null}
-      >
+      <div key={index} className={index < fieldWidgets.length - 1 ? "mb1" : ""}>
         {fieldWidget}
       </div>
     ))}
@@ -200,7 +216,11 @@ const DefaultLayout = ({ className, fieldWidgets }) => (
 
 DefaultLayout.propTypes = defaultLayoutPropTypes;
 
-const BetweenLayout = ({ className, fieldWidgets }) => {
+const BetweenLayout = ({
+  fieldWidgets,
+}: {
+  fieldWidgets: (ReactElement | null)[];
+}) => {
   const [left, right] = fieldWidgets;
 
   return (
