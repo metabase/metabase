@@ -484,13 +484,14 @@ export class NativeQueryEditor extends Component<
             const questionColumns = referencedQuestions
               .filter(Boolean)
               .flatMap(question =>
-                question.result_metadata
+                question
+                  .getResultMetadata()
                   .filter(columnMetadata =>
                     isMatchForPrefix(columnMetadata.name),
                   )
                   .map(columnMetadata => [
                     columnMetadata.name,
-                    `${question.name} :${columnMetadata.base_type}`,
+                    `${question.displayName()} :${columnMetadata.base_type}`,
                   ]),
               );
 
