@@ -95,6 +95,8 @@ type CardCompletionItem = Pick<Card, "id" | "name" | "dataset"> & {
   collection_name: string;
 };
 
+type AutocompleteItem = [string, string];
+
 interface OwnProps {
   question: Question;
   query: NativeQuery;
@@ -128,7 +130,7 @@ interface OwnProps {
   editorContext?: "question";
 
   handleResize: () => void;
-  autocompleteResultsFn: (prefix: string) => Promise<null>;
+  autocompleteResultsFn: (prefix: string) => Promise<AutocompleteItem[]>;
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   fetchQuestion: (questionId: CardId) => Question;
@@ -171,7 +173,7 @@ export class NativeQueryEditor extends Component<
   _lastAutoComplete: {
     timestamp?: number;
     prefix?: string | null;
-    results?: never[];
+    results?: AutocompleteItem[];
   } = {};
   _localUpdate = false;
 
@@ -446,6 +448,7 @@ export class NativeQueryEditor extends Component<
         try {
           let { results, timestamp } = this._lastAutoComplete;
           const cacheHit =
+            typeof timestamp === "number" &&
             Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
             this._lastAutoComplete.prefix === prefix;
           if (!cacheHit) {
@@ -470,7 +473,7 @@ export class NativeQueryEditor extends Component<
             const lowerCasePrefix = prefix.toLowerCase();
             const isMatchForPrefix = (name: string) =>
               name.toLowerCase().includes(lowerCasePrefix);
-            const questionColumns = referencedQuestions
+            const questionColumns: AutocompleteItem[] = referencedQuestions
               .filter(Boolean)
               .flatMap(question =>
                 question
@@ -478,10 +481,15 @@ export class NativeQueryEditor extends Component<
                   .filter(columnMetadata =>
                     isMatchForPrefix(columnMetadata.name),
                   )
-                  .map(columnMetadata => [
-                    columnMetadata.name,
-                    `${question.displayName()} :${columnMetadata.base_type}`,
-                  ]),
+                  .map(
+                    columnMetadata =>
+                      [
+                        columnMetadata.name,
+                        `${question.displayName()} :${
+                          columnMetadata.base_type
+                        }`,
+                      ] as AutocompleteItem,
+                  ),
               );
 
             // Concat the results from tables, fields, and referenced questions.
@@ -492,12 +500,12 @@ export class NativeQueryEditor extends Component<
           }
 
           // transform results into what ACE expects
-          const resultsForAce = results.map(([name, meta]) => ({
+          const resultsForAce = results?.map(([name, meta]) => ({
             name: name,
             value: name,
             meta: meta,
           }));
-          callback(null, resultsForAce);
+          callback(null, resultsForAce || []);
         } catch (error) {
           console.error("error getting autocompletion data", error);
           callback(null, []);
