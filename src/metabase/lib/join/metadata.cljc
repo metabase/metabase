@@ -135,7 +135,7 @@
     (mapv (fn [col]
             (as-> col col
               (lib.join.alias/with-join-alias col join-alias)
-              (lib.join.alias/add-source-and-desired-aliases a-join unique-name-fn col)))
+              (add-source-and-desired-aliases a-join unique-name-fn col)))
           cols)))
 
 (defn- mark-selected-joinable-columns
