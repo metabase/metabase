@@ -70,13 +70,18 @@
         [ag]  (lib.metadata.calculation/returned-columns query)]
     (is (=? {:name "count"}
             ag))
-    (is (= {:base_type      :type/Integer
-            :semantic_type  :type/Quantity
-            :name           "count"
-            :source         :aggregation
-            :effective_type :type/Integer
-            :display_name   "Count"
-            :field_ref      [:aggregation 0]}
+    (is (= {:base_type         :type/Integer
+            :semantic_type     :type/Quantity
+            :name              "count"
+            :source            :aggregation
+            :effective_type    :type/Integer
+            :display_name      "Count"
+            :field_ref         [:aggregation 0]
+            :coercion_strategy nil
+            :settings          nil
+            :nfc_path          nil
+            :parent_id         nil
+            :fingerprint       nil}
            (lib.convert.metadata/->legacy-column-metadata query ag)))))
 
 (deftest ^:parallel deduplicate-names-test

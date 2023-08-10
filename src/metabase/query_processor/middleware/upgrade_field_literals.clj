@@ -127,7 +127,7 @@
                                               (not (@valid-field-names %))))]
       (fix-bad-nominal-ref @visible-cols &match)
 
-      [:field _opts (_id :guard integer?)]
+      [:field (_opts :guard (complement :source-field)) (_id :guard integer?)]
       (downgrade-id-ref query stage-number &match))))
 
 (mu/defn ^:private upgrade-field-literals-in-mbql-stage :- ::lib.schema/stage

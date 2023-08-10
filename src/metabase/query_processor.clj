@@ -10,13 +10,8 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.convert.metadata :as lib.convert.metadata]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-default-temporal-unit
     :as qp.add-default-temporal-unit]
    [metabase.query-processor.middleware.add-dimension-projections
@@ -96,11 +91,11 @@
    [metabase.query-processor.middleware.wrap-value-literals
     :as qp.wrap-value-literals]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.util.malli :as mu]
+   [potemkin :as p]
    [schema.core :as s]))
+
+(comment qp.metadata/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -312,10 +307,6 @@
               (preprocess* query)))]
     (qp query nil nil)))
 
-;; NOCOMMIT
-(defn query->expected-cols [query]
-  (qp.metadata/query->expected-cols query))
-
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
   SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
@@ -394,3 +385,9 @@
 
   ([query info context]
    (process-query-and-save-execution! (add-default-constraints query) info context)))
+
+;;; Convenience import. Prefer using [[qp.metadata/query->expected-cols]] going forward.
+
+(p/import-vars
+ [qp.metadata
+  query->expected-cols])

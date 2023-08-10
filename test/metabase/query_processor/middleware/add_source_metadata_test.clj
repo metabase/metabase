@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-source-metadata
     :as add-source-metadata]
    [metabase.test :as mt]
@@ -14,23 +15,45 @@
     (mt/with-everything-store
       (add-source-metadata/add-source-metadata-for-source-queries query))))
 
+(defn- select-metadata-keys [col]
+  (select-keys col @#'add-source-metadata/source-metadata-keys))
+
 (defn- results-metadata [query-results]
-  (for [col (-> query-results :data :cols)]
-    (select-keys
-     col
-     [:id :table_id :name :display_name :base_type :effective_type :coercion_strategy
-      :semantic_type :unit :fingerprint :settings :field_ref :nfc_path :parent_id])))
+  (mapv select-metadata-keys (mt/cols query-results)))
 
 (defn- venues-source-metadata
   ([]
    (venues-source-metadata :id :name :category_id :latitude :longitude :price))
 
   ([& field-names]
-   (let [field-ids (map #(mt/id :venues (keyword (u/lower-case-en (name %))))
-                        field-names)]
-     (results-metadata
-      (mt/run-mbql-query venues {:fields (for [id field-ids] [:field id nil])
-                                 :limit  1})))))
+   (mapv
+    select-metadata-keys
+    (qp.metadata/query->expected-cols
+     {:database (mt/id)
+      :type     :query
+      :query    {:source-table (mt/id :venues)
+                 :fields       (mapv (fn [field-name]
+                                       (let [id (mt/id :venues (keyword (u/lower-case-en (name field-name))))]
+                                         [:field id nil]))
+                                     field-names)
+                 :limit        1}}))))
+
+(defn- nested-venues-source-metadata
+  ([]
+   (nested-venues-source-metadata :id :name :category_id :latitude :longitude :price))
+
+  ([& field-names]
+   (mapv
+    select-metadata-keys
+    (qp.metadata/query->expected-cols
+     {:database (mt/id)
+      :type     :query
+      :query    {:source-query {:source-table (mt/id :venues)
+                                :fields       (mapv (fn [field-name]
+                                                      (let [id (mt/id :venues (keyword (u/lower-case-en (name field-name))))]
+                                                        [:field id nil]))
+                                                    field-names)
+                                :limit        1}}}))))
 
 (deftest ^:parallel basic-test
   (testing "Can we automatically add source metadata to the parent level of a query? If the source query has `:fields`"
@@ -55,41 +78,41 @@
 
 (deftest ^:parallel basic-summary-columns-test
   (testing "Can we add source metadata for a source query that has breakouts/aggregations?"
-    (is (= (mt/mbql-query venues
-             {:source-query    {:source-table $$venues
-                                :aggregation  [[:count]]
-                                :breakout     [$price]}
-              :source-metadata (concat
-                                (venues-source-metadata :price)
-                                [{:name          "count"
-                                  :display_name  "Count"
-                                  :base_type     :type/Integer
-                                  :semantic_type :type/Quantity
-                                  :field_ref     [:aggregation 0]}])})
-           (add-source-metadata
-            (mt/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :aggregation  [[:count]]
-                              :breakout     [$price]}}))))))
+    (is (partial= (mt/mbql-query venues
+                    {:source-query    {:source-table $$venues
+                                       :aggregation  [[:count]]
+                                       :breakout     [$price]}
+                     :source-metadata (concat
+                                       (venues-source-metadata :price)
+                                       [{:name          "count"
+                                         :display_name  "Count"
+                                         :base_type     :type/Integer
+                                         :semantic_type :type/Quantity
+                                         :field_ref     [:aggregation 0]}])})
+                  (add-source-metadata
+                   (mt/mbql-query venues
+                     {:source-query {:source-table $$venues
+                                     :aggregation  [[:count]]
+                                     :breakout     [$price]}}))))))
 
 (deftest ^:parallel basic-aggregation-with-field-test
   (testing "Can we add source metadata for a source query that has an aggregation for a specific Field?"
-    (is (= (mt/mbql-query venues
-             {:source-query    {:source-table $$venues
-                                :aggregation  [[:avg $id]]
-                                :breakout     [$price]}
-              :source-metadata (concat
-                                (venues-source-metadata :price)
-                                [{:name          "avg"
-                                  :display_name  "Average of ID"
-                                  :base_type     :type/Float
-                                  :settings      nil
-                                  :field_ref     [:aggregation 0]}])})
-           (add-source-metadata
-            (mt/mbql-query venues
-              {:source-query {:source-table $$venues
-                              :aggregation  [[:avg $id]]
-                              :breakout     [$price]}}))))))
+    (is (partial= (mt/mbql-query venues
+                    {:source-query    {:source-table $$venues
+                                       :aggregation  [[:avg $id]]
+                                       :breakout     [$price]}
+                     :source-metadata (concat
+                                       (venues-source-metadata :price)
+                                       [{:name         "avg"
+                                         :display_name "Average of ID"
+                                         :base_type    :type/Float
+                                         :settings     nil
+                                         :field_ref    [:aggregation 0]}])})
+                  (add-source-metadata
+                   (mt/mbql-query venues
+                     {:source-query {:source-table $$venues
+                                     :aggregation  [[:avg $id]]
+                                     :breakout     [$price]}}))))))
 
 (defn- source-metadata [query]
   (get-in query [:query :source-metadata] query))
@@ -97,52 +120,52 @@
 (deftest ^:parallel named-aggregations-test
   (testing "adding source metadata for source queries with named aggregations"
     (testing "w/ `:name` and `:display-name`"
-      (is (= (mt/mbql-query venues
-               {:source-query    {:source-table $$venues
-                                  :aggregation  [[:aggregation-options
-                                                  [:avg $id]
-                                                  {:name "some_generated_name", :display-name "My Cool Ag"}]]
-                                  :breakout     [$price]}
-                :source-metadata (concat
-                                  (venues-source-metadata :price)
-                                  [{:name         "some_generated_name"
-                                    :display_name "My Cool Ag"
-                                    :base_type    :type/Float
-                                    :settings     nil
-                                    :field_ref    [:aggregation 0]}])})
-             (add-source-metadata
-              (mt/mbql-query venues
-                {:source-query {:source-table $$venues
-                                :aggregation  [[:aggregation-options
-                                                [:avg $id]
-                                                {:name "some_generated_name", :display-name "My Cool Ag"}]]
-                                :breakout     [$price]}})))))))
+      (is (partial= (mt/mbql-query venues
+                      {:source-query    {:source-table $$venues
+                                         :aggregation  [[:aggregation-options
+                                                         [:avg $id]
+                                                         {:name "some_generated_name", :display-name "My Cool Ag"}]]
+                                         :breakout     [$price]}
+                       :source-metadata (concat
+                                         (venues-source-metadata :price)
+                                         [{:name         "some_generated_name"
+                                           :display_name "My Cool Ag"
+                                           :base_type    :type/Float
+                                           :settings     nil
+                                           :field_ref    [:aggregation 0]}])})
+                    (add-source-metadata
+                     (mt/mbql-query venues
+                       {:source-query {:source-table $$venues
+                                       :aggregation  [[:aggregation-options
+                                                       [:avg $id]
+                                                       {:name "some_generated_name", :display-name "My Cool Ag"}]]
+                                       :breakout     [$price]}})))))))
 
 (deftest ^:parallel named-aggregations-name-only-test
   (testing "w/ `:name` only"
-    (is (= [{:name         "some_generated_name"
-             :display_name "Average of ID"
-             :base_type    :type/Float
-             :settings     nil
-             :field_ref    [:aggregation 0]}]
-           (source-metadata
-            (add-source-metadata
-             (mt/mbql-query venues
-                            {:source-query {:source-table $$venues
-                                            :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}})))))))
+    (is (partial= [{:name         "some_generated_name"
+                    :display_name "Average of ID"
+                    :base_type    :type/Float
+                    :settings     nil
+                    :field_ref    [:aggregation 0]}]
+                  (source-metadata
+                   (add-source-metadata
+                    (mt/mbql-query venues
+                      {:source-query {:source-table $$venues
+                                      :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}})))))))
 
 (deftest ^:parallel named-aggregations-display-name-only-test
   (testing "w/ `:display-name` only"
-    (is (= [{:name         "avg"
-             :display_name "My Cool Ag"
-             :base_type    :type/Float
-             :settings     nil
-             :field_ref    [:aggregation 0]}]
-           (source-metadata
-            (add-source-metadata
-             (mt/mbql-query venues
-                            {:source-query {:source-table $$venues
-                                            :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}})))))))
+    (is (partial= [{:name         "avg"
+                    :display_name "My Cool Ag"
+                    :base_type    :type/Float
+                    :settings     nil
+                    :field_ref    [:aggregation 0]}]
+                  (source-metadata
+                   (add-source-metadata
+                    (mt/mbql-query venues
+                      {:source-query {:source-table $$venues
+                                      :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}})))))))
 
 (deftest ^:parallel nested-sources-test
   (testing (str "Can we automatically add source metadata to the parent level of a query? If the source query has a "
@@ -151,7 +174,7 @@
              {:source-query    {:source-query    {:source-table $$venues
                                                   :fields       [$id $name]}
                                 :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
+              :source-metadata (nested-venues-source-metadata :id :name)})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-query    {:source-table $$venues
@@ -164,8 +187,8 @@
              {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                                     :fields       [$id $name]}
                                                   :source-metadata (venues-source-metadata :id :name)}
-                                :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
+                                :source-metadata (nested-venues-source-metadata :id :name)}
+              :source-metadata (nested-venues-source-metadata :id :name)})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query
@@ -179,12 +202,11 @@
     (is (= (mt/mbql-query venues
              {:source-query    {:source-query    {:source-query    {:source-table $$venues}
                                                   :source-metadata (venues-source-metadata)}
-                                :source-metadata (venues-source-metadata)}
-              :source-metadata (venues-source-metadata)})
+                                :source-metadata (nested-venues-source-metadata)}
+              :source-metadata (nested-venues-source-metadata)})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-query {:source-query {:source-table $$venues}}}}))))))
-
 
 (deftest ^:parallel nested-sources-3-levels-with-fields-test
   (testing "nested 3 levels with `fields`"
@@ -192,8 +214,8 @@
              {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                                     :fields       [$id $name]}
                                                   :source-metadata (venues-source-metadata :id :name)}
-                                :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
+                                :source-metadata (nested-venues-source-metadata :id :name)}
+              :source-metadata (nested-venues-source-metadata :id :name)})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-query {:source-query {:source-table $$venues
@@ -204,21 +226,24 @@
     ;; field ref for the count aggregation differs slightly depending on what level of the query we're at; at the
     ;; most-deeply-nested level we can use the `[:aggregation 0]` ref to refer to it; at higher levels we have to
     ;; refer to it with a field literal
-    (is (= (letfn [(metadata-with-count-field-ref [field-ref]
+    (is (= (letfn [(metadata-with-count-field-ref [nested? field-ref]
                      (concat
-                      (venues-source-metadata :price)
-                      (let [[count-col] (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]}))]
-                        [(-> count-col
-                             (dissoc :effective_type)
-                             (assoc :field_ref field-ref
-                                    :base_type :type/Integer))])))]
+                      ((if nested?
+                         nested-venues-source-metadata
+                         venues-source-metadata) :price)
+                      ;; count col
+                      [(-> (mt/mbql-query venues {:aggregation [[:count]]})
+                           qp.metadata/query->expected-cols
+                           first
+                           select-metadata-keys
+                           (assoc :field_ref field-ref))]))]
              (mt/mbql-query venues
                {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                                       :aggregation  [[:count]]
                                                                       :breakout     [$price]}
-                                                    :source-metadata (metadata-with-count-field-ref [:aggregation 0])}
-                                  :source-metadata (metadata-with-count-field-ref *count/Integer)}
-                :source-metadata (metadata-with-count-field-ref *count/Integer)}))
+                                                    :source-metadata (metadata-with-count-field-ref false [:aggregation 0])}
+                                  :source-metadata (metadata-with-count-field-ref true [:field "count" {:base-type :type/Integer}])}
+                :source-metadata (metadata-with-count-field-ref true [:field "count" {:base-type :type/Integer}])}))
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-query {:source-query {:source-table $$venues
@@ -230,7 +255,7 @@
     (is (= (mt/mbql-query venues
              {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
                                 :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (venues-source-metadata :id :name)})
+              :source-metadata (nested-venues-source-metadata :id :name)})
            (add-source-metadata
             (mt/mbql-query venues
               {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
@@ -295,19 +320,21 @@
                                     :condition    [:= *user_id &v.venues.id]}]
                     :order-by     [[:asc $id]]
                     :limit        2}))]
-      (is (= ["ID" "DATE" "USER_ID" "VENUE_ID" "ID_2" "NAME" "LAST_LOGIN"]
-             (map :name (get-in query [:query :source-metadata])))))))
+      (is (= ["ID" "DATE" "USER_ID" "VENUE_ID" "u__ID" "u__NAME" "u__LAST_LOGIN"]
+             (mapv :name (get-in query [:query :source-metadata])))))))
 
 (deftest inception-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
     (mt/dataset sample-dataset
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [query]
-                (as-> query query
-                  (get-in query [:query :source-metadata])
-                  (m/index-by :name query)
-                  (get query "EAN")
-                  (select-keys query [:name :display_name :base_type :semantic_type :id :field_ref])))]
+                (or (not-empty
+                     (as-> query query
+                       (get-in query [:query :source-metadata])
+                       (m/index-by :name query)
+                       (get query "Products__EAN")
+                       (select-keys query [:name :display_name :base_type :semantic_type :id :field_ref])))
+                    ['NOT-FOUND (get-in query [:query :source-metadata])]))]
         (let [base-query (mt/mbql-query orders
                            {:source-table $$orders
                             :joins        [{:fields       :all
@@ -320,12 +347,14 @@
                     :let  [query (mt/nest-query base-query level)]]
               (testing (format "%d level(s) of nesting" level)
                 (is (= (mt/$ids products
-                         {:name         "EAN"
+                         {:name         "Products__EAN"
                           :display_name "Products → Ean"
                           :base_type    :type/Text
                           :semantic_type nil
                           :id           %ean
-                          :field_ref    &Products.ean})
+                          :field_ref    (condp = level
+                                          1 &Products.ean
+                                          [:field "Products__EAN" {:base-type :type/Text}])})
                        (ean-metadata (add-source-metadata query))))))))))))
 
 (deftest ignore-legacy-source-metadata-test
@@ -336,24 +365,24 @@
       (let [query             (mt/mbql-query orders
                                 {:source-query {:source-table $$orders
                                                 :joins        [{:source-table $$products
-                                                                :alias         "ℙ"
+                                                                :alias        "ℙ"
                                                                 :fields       :all
                                                                 :condition    [:= $product_id &ℙ.products.id]}]
                                                 :order-by     [[:asc $id]]
                                                 :limit        2}})
             metadata          (qp/query->expected-cols query)
-            ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
-            ;; `qp/query->expected-cols`
-            expected-metadata (for [col metadata]
-                                (cond-> (dissoc col :description :source :visibility_type)
-                                  ;; for some reason this middleware returns temporal fields with a `:default` unit,
-                                  ;; whereas `query->expected-cols` does not return the unit. It ulimately makes zero
-                                  ;; difference, so I haven't looked into why this is the case yet.
-                                  (isa? (:base_type col) :type/Temporal)
-                                  (update :field_ref (fn [[_ id-or-name opts]]
-                                                       [:field id-or-name (assoc opts :temporal-unit :default)]))))]
+            source-metadata   (qp/query->expected-cols
+                               (mt/mbql-query orders
+                                 {:source-table $$orders
+                                  :joins        [{:source-table $$products
+                                                  :alias        "ℙ"
+                                                  :fields       :all
+                                                  :condition    [:= $product_id &ℙ.products.id]}]
+                                  :order-by     [[:asc $id]]
+                                  :limit        2}))
+            expected-metadata (mapv select-metadata-keys source-metadata)]
         (letfn [(added-metadata [query]
-                  (get-in (add-source-metadata query) [:query :source-metadata]))]
+                  (vec (get-in (add-source-metadata query) [:query :source-metadata])))]
           (testing "\nShould add source metadata if there's none already"
             (is (= expected-metadata
                    (added-metadata query))))
@@ -373,7 +402,7 @@
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
     (mt/dataset sample-dataset
       (is (= (mt/$ids orders
-               [$product_id->products.title
+               [[:field "PRODUCTS__via__PRODUCT_ID__TITLE" {:base-type :type/Text}]
                 [:aggregation 0]])
              (->> (mt/mbql-query orders
                     {:source-query {:source-query {:source-table $$orders

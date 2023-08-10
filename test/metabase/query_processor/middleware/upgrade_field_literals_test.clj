@@ -3,11 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor.middleware.upgrade-field-literals
-    :as upgrade-field-literals]
-   [metabase.test :as mt]
-   [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.lib.core :as lib]))
+   [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]))
 
 (defn- upgrade-field-literals [query]
   (upgrade-field-literals/upgrade-field-literals query meta/metadata-provider))
@@ -33,44 +29,21 @@
 
 (deftest ^:parallel upgrade-to-valid-clauses-test
   (testing "Make sure upgrades don't result in weird clauses like nested `datetime-field` clauses")
-  (is (= (lib.tu.macros/mbql-query checkins
-           {:source-query    {:source-table $$checkins}
-            :aggregation     [[:count]]
-            :breakout        [[:field "DATE" {:base-type :type/Date, :temporal-unit :week}]]
-            :filter          [:between
-                              [:field "DATE" {:base-type :type/Date, :temporal-unit :week}]
-                              "2014-02-01T00:00:00-08:00"
-                              "2014-05-01T00:00:00-07:00"]})
-         (upgrade-field-literals
-          (lib.tu.macros/mbql-query nil
-            {:source-query {:source-table $$checkins}
-             :aggregation  [[:count]]
-             :breakout     [[:field "DATE" {:base-type :type/Date, :temporal-unit :week}]]
-             :filter       [:between
-                            [:field (mt/id :checkins :date) {:temporal-unit :week}]
-                            "2014-02-01T00:00:00-08:00"
-                            "2014-05-01T00:00:00-07:00"]})))))
-
-(deftest ^:parallel upgrade-to-valid-clauses-test
-  (testing "Make sure upgrades don't result in weird clauses like nested `datetime-field` clauses")
-  (let [source-query    (lib.tu.macros/mbql-query checkins)
-        source-metadata (qp.metadata/legacy-metadata (lib/query meta/metadata-provider source-query))]
+  (let [source-query (lib.tu.macros/mbql-query checkins)]
     (is (= (lib.tu.macros/mbql-query checkins
-             {:source-query    (:query source-query)
-              :source-metadata source-metadata
-              :aggregation     [[:count]]
-              :breakout        [[:field "DATE" {:base-type :type/Date, :temporal-unit :week}]]
-              :filter          [:between
-                                [:field "DATE" {:base-type :type/Date, :temporal-unit :week}]
-                                "2014-02-01T00:00:00-08:00"
-                                "2014-05-01T00:00:00-07:00"]})
+             {:source-query (:query source-query)
+              :aggregation  [[:count]]
+              :breakout     [[:field "DATE" {:base-type :type/Date, :temporal-unit :week}]]
+              :filter       [:between
+                             [:field "DATE" {:base-type :type/Date, :temporal-unit :week}]
+                             "2014-02-01T00:00:00-08:00"
+                             "2014-05-01T00:00:00-07:00"]})
            (upgrade-field-literals
             (lib.tu.macros/mbql-query nil
-              {:source-query    (:query source-query)
-               :source-metadata source-metadata
-               :aggregation     [[:count]]
-               :breakout        [!week.*DATE/Date]
-               :filter          [:between !week.*DATE/Date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))))))
+              {:source-query (:query source-query)
+               :aggregation  [[:count]]
+               :breakout     [!week.*DATE/Date]
+               :filter       [:between !week.*DATE/Date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))))))
 
 (deftest ^:parallel support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of `:field` w/ name inside filter clauses against explicit joins (#14809)"
@@ -134,3 +107,19 @@
                :some.namespace/perms {:gtaps #{"/db/3570/schema/PUBLIC/table/41117/query/"}}}]
     (is (= query
            (upgrade-field-literals query)))))
+
+(deftest ^:parallel implicitly-joined-columns-test
+  (testing "Don't upgrade field literals that have :source-field"
+    (is (= (lib.tu.macros/mbql-query checkins
+             {:source-query {:source-table $$checkins
+                             :filter       [:> $date "2014-01-01"]}
+              :aggregation  [[:count]]
+              :order-by     [[:asc $venue-id->venues.price]]
+              :breakout     [$venue-id->venues.price]})
+           (upgrade-field-literals
+            (lib.tu.macros/mbql-query checkins
+              {:source-query {:source-table $$checkins
+                              :filter       [:> $date "2014-01-01"]}
+               :aggregation  [[:count]]
+               :order-by     [[:asc $venue-id->venues.price]]
+               :breakout     [$venue-id->venues.price]}))))))

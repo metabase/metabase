@@ -376,7 +376,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod aggregate-column-info ::test-extensions
-  ([_ aggregation-type]
+  ([_driver aggregation-type]
    (assert (#{:count :cum-count} aggregation-type))
    {:base_type     :type/BigInteger
     :semantic_type :type/Quantity

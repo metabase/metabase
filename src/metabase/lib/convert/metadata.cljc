@@ -2,6 +2,7 @@
   "Utilities for converting from MLv2-style metadata to legacy-style metadata."
   (:require
    [clojure.string :as str]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,11 +13,11 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.mbql.util.match :as mbql.match]))
+   [metabase.util.malli.schema :as ms]))
 
 (def LegacyColumn
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -39,7 +40,9 @@
 (mu/defn ^:private legacy-display-name :- ::lib.schema.common/non-blank-string
   [query column-metadata]
   ;; FIXME
-  (let [column-metadata (lib.temporal-bucket/with-temporal-bucket column-metadata nil)]
+  (let [column-metadata (-> column-metadata
+                            (lib.temporal-bucket/with-temporal-bucket nil)
+                            (lib.binning/with-binning nil))]
     (lib.metadata.calculation/display-name query -1 column-metadata :long)))
 
 (mu/defn ^:private legacy-ref :- mbql.s/AnyReference
@@ -64,27 +67,35 @@
 
 (mu/defn ->legacy-column-metadata :- LegacyColumn
   "Convert MLv2 column metadata to legacy metadata (similar to what the QP would return in results metadata)."
-  [query           :- ::lib.schema/query
-   column-metadata :- lib.metadata/ColumnMetadata]
-  (try
-    (let [column-metadata (merge
-                           #_{:fk-target-field-id nil}
-                           column-metadata
-                           {:name         ((some-fn :lib/desired-column-alias :name) column-metadata)
-                            :display-name (legacy-display-name query column-metadata)
-                            :field-ref    (legacy-ref query column-metadata)
-                            :source       (legacy-source column-metadata)}
-                           (when-let [join-alias (lib.join/current-join-alias column-metadata)]
-                             {:source-alias join-alias}))]
-      (into {}
-            (comp (remove (fn [[k _v]]
-                            (when-let [key-namespace (namespace k)]
-                              (or (= key-namespace "lib")
-                                  (str/starts-with? key-namespace "metabase.lib")))))
-                  (map (fn [[k v]]
-                         [(u/->snake_case_en k) v])))
-            column-metadata))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (str "Error converting MLv2 metadata to legacy metadata: " (ex-message e))
-                      {:query query, :metadata column-metadata}
-                      e)))))
+  ([column-metadata :- lib.metadata/ColumnMetadata]
+   (let [column-metadata (merge
+                          {:coercion-strategy nil
+                           :settings          nil
+                           :nfc-path          nil
+                           :parent-id         nil
+                           :fingerprint       nil}
+                          column-metadata
+                          {:name         ((some-fn :lib/desired-column-alias :name) column-metadata)
+                           :source       (legacy-source column-metadata)}
+                          (when-let [join-alias (lib.join/current-join-alias column-metadata)]
+                            {:source-alias join-alias}))]
+     (into {}
+           (comp (remove (fn [[k _v]]
+                           (when-let [key-namespace (namespace k)]
+                             (or (= key-namespace "lib")
+                                 (str/starts-with? key-namespace "metabase.lib")))))
+                 (map (fn [[k v]]
+                        [(u/->snake_case_en k) v])))
+           column-metadata)))
+
+  ([query :- ::lib.schema/query
+    column-metadata]
+   (try
+     (->legacy-column-metadata
+      (assoc column-metadata
+             :display-name (legacy-display-name query column-metadata)
+             :field-ref    (legacy-ref query column-metadata)))
+     (catch #?(:clj Throwable :cljs :default) e
+       (throw (ex-info (str "Error converting MLv2 metadata to legacy metadata: " (ex-message e))
+                       {:query query, :metadata column-metadata}
+                       e))))))
