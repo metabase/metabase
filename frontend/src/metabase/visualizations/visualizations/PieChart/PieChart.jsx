@@ -63,7 +63,7 @@ export default class PieChart extends Component {
   static defaultSize = getDefaultSize("pie");
 
   static isSensible({ cols, rows }) {
-    return cols.length === 2;
+    return cols.length >= 2;
   }
 
   static checkRenderable(
