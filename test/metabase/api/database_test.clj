@@ -9,7 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Collection Database Field FieldValues Metric Segment Table]]
    [metabase.models.database :as database :refer [protected-password]]
@@ -667,7 +667,7 @@
                                            :result_metadata [{:name "col_name"}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
-                :id                 mbql.s/saved-questions-virtual-database-id
+                :id                 lib.schema.id/saved-questions-virtual-database-id
                 :features           ["basic-aggregations"]
                 :is_saved_questions true}
                (last (:data (mt/user-http-request :lucky :get 200 "database?saved=true")))))))
@@ -815,7 +815,7 @@
     (t2.with-temp/with-temp [Card card (assoc (card-with-native-query "Birthday Card")
                                               :result_metadata [{:name "age_in_bird_years"}])]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))]
+                                           (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (schema= {:name               (s/eq "Saved Questions")
                       :id                 (s/eq -1337)
                       :is_saved_questions (s/eq true)
@@ -842,12 +842,12 @@
     (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
       (with-redefs [api.database/cards-virtual-tables (constantly [])]
         (is (= {:name               "Saved Questions"
-                :id                 mbql.s/saved-questions-virtual-database-id
+                :id                 lib.schema.id/saved-questions-virtual-database-id
                 :features           ["basic-aggregations"]
                 :is_saved_questions true
                 :tables             []}
                (mt/user-http-request :crowberto :get 200
-                                     (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))))
+                                     (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1118,7 +1118,7 @@
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
-        (let [schemas (set (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id)))]
+        (let [schemas (set (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" lib.schema.id/saved-questions-virtual-database-id)))]
           (is (contains? schemas "Everything else"))
           (is (contains? schemas "My Collection")))))
     (testing "null and empty schemas should both come back as blank strings"
@@ -1257,11 +1257,11 @@
                    :schema           "My Collection"
                    :description      nil}]
                  (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/schema/My Collection" mbql.s/saved-questions-virtual-database-id)))))
+                                       (format "database/%d/schema/My Collection" lib.schema.id/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
-                                               (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
+                                               (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
             (is (schema= [{:id               #"^card__\d+$"
                            :db_id            s/Int
                            :display_name     s/Str
@@ -1281,7 +1281,7 @@
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
+                                       (format "database/%d/schema/Coin Collection" lib.schema.id/saved-questions-virtual-database-id)))))))
     (testing "should work for the datasets in the 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1")
@@ -1304,11 +1304,11 @@
                    :schema           "My Collection"
                    :description      nil}]
                  (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/datasets/My Collection" mbql.s/saved-questions-virtual-database-id)))))
+                                       (format "database/%d/datasets/My Collection" lib.schema.id/saved-questions-virtual-database-id)))))
 
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
-                                               (format "database/%d/datasets/%s" mbql.s/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
+                                               (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id (api.table/root-collection-schema-name)))]
             (is (schema= [{:id               #"^card__\d+$"
                            :db_id            s/Int
                            :display_name     s/Str
@@ -1327,7 +1327,7 @@
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
+                                       (format "database/%d/schema/Coin Collection" lib.schema.id/saved-questions-virtual-database-id)))))))
 
     (mt/with-temp* [Database [{db-id :id}]
                     Table    [_ {:db_id db-id, :schema nil, :name "t1"}]
