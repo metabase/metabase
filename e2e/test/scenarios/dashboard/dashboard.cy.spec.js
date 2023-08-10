@@ -23,6 +23,8 @@ import {
   queryBuilderHeader,
   removeDashboardCard,
   getDashboardCards,
+  toggleDashboardInfoSidebar,
+  dashboardHeader,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -150,8 +152,10 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("existing dashboard", () => {
+    const originalDashboardName = "Amazing Dashboard";
+
     beforeEach(() => {
-      cy.createDashboard({ name: "Testing Dashboard" }).then(
+      cy.createDashboard({ name: originalDashboardName }).then(
         ({ body: { id } }) => {
           visitDashboard(id);
         },
@@ -224,6 +228,146 @@ describe("scenarios > dashboard", () => {
       });
     });
 
+    context("title and description", () => {
+      beforeEach(() => {
+        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+        cy.intercept(
+          "PUT",
+          "/api/dashboard/*",
+          cy.spy().as("updateDashboardSpy"),
+        ).as("updateDashboard");
+      });
+
+      const newTitle = "Renamed";
+      const newDescription = "Foo Bar";
+
+      it("should update the name and description without entering the dashboard edit mode", () => {
+        cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
+
+        cy.wait("@updateDashboard");
+        cy.wait("@getDashboard");
+
+        toggleDashboardInfoSidebar();
+
+        rightSidebar()
+          .findByPlaceholderText("Add description")
+          .type(newDescription)
+          .blur();
+
+        cy.wait("@updateDashboard");
+        cy.wait("@getDashboard");
+
+        cy.log(
+          "New title and description should be preserved upon page reload",
+        );
+        cy.reload();
+        cy.wait("@getDashboard");
+
+        dashboardHeader().findByDisplayValue(newTitle);
+        toggleDashboardInfoSidebar();
+        sidebar().findByText(newDescription);
+
+        cy.log("should not call unnecessary API requests (metabase#31721)");
+        cy.get("@updateDashboardSpy").should("have.callCount", 2);
+
+        cy.log("Should revert the title change if escaped");
+        dashboardHeader().findByDisplayValue(newTitle).type("Whatever{esc}");
+        dashboardHeader().findByDisplayValue(newTitle);
+        cy.get("@updateDashboardSpy").should("have.callCount", 2);
+
+        cy.log("Should revert the description change if escaped");
+        sidebar().findByText(newDescription).type("Baz{esc}");
+        sidebar().findByText(newDescription);
+        cy.get("@updateDashboardSpy").should("have.callCount", 2);
+      });
+
+      it("should update the name and description in the dashboard edit mode", () => {
+        editDashboard();
+
+        cy.log("Should revert the title change if editing is cancelled");
+        cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
+        cy.findByTestId("edit-bar").button("Cancel").click();
+        cy.findByTestId("edit-bar").should("not.exist");
+        cy.get("@updateDashboardSpy").should("not.have.been.called");
+        cy.findByDisplayValue(originalDashboardName);
+
+        editDashboard();
+
+        cy.log("should not take you out of the edit mode when updating title");
+        cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
+        cy.log(
+          "The only way to open a sidebar in edit mode is to click on a revision history",
+        );
+        dashboardHeader()
+          .findByText(/^Edited a few seconds ago/)
+          .click();
+
+        rightSidebar()
+          .findByPlaceholderText("Add description")
+          .type(newDescription)
+          .blur();
+
+        // TODO
+        // This might be a bug! We're applying the description while still in the edit mode!
+        // OTOH, the title is preserved only on save.
+        cy.wait("@updateDashboard");
+
+        saveDashboard();
+        cy.wait("@updateDashboard");
+        cy.get("@updateDashboardSpy").should("have.callCount", 2);
+      });
+
+      it("should not have markdown content overflow the description area (metabase#31326)", () => {
+        toggleDashboardInfoSidebar();
+
+        const testMarkdownContent =
+          "# Heading 1{enter}{enter}**bold** https://www.metabase.com/community_posts/how-to-measure-the-success-of-new-product-features-and-why-it-is-important{enter}{enter}![alt](/app/assets/img/welcome-modal-2.png){enter}{enter}This is my description. ";
+
+        rightSidebar()
+          .findByPlaceholderText("Add description")
+          .type(testMarkdownContent, { delay: 0 })
+          .blur();
+
+        cy.wait("@updateDashboard");
+
+        rightSidebar().within(() => {
+          cy.log("Markdown content should not be bigger than its container");
+          cy.findByTestId("editable-text").then($markdown => {
+            const el = $markdown[0];
+
+            // vertical
+            expect(el.clientHeight).to.be.gte(
+              el.firstElementChild.clientHeight,
+            );
+
+            // horizontal
+            $markdown.find("*").each((_index, childEl) => {
+              const parentRect = el.getBoundingClientRect();
+              const childRect = childEl.getBoundingClientRect();
+
+              expect(parentRect.left).to.be.lte(childRect.left);
+              expect(parentRect.right).to.be.gte(childRect.right);
+            });
+          });
+
+          cy.log(
+            "Textarea should have a proper height when we change markdown text",
+          );
+          cy.findByTestId("editable-text")
+            .click()
+            .then($el => {
+              const lineHeight = parseFloat(
+                window.getComputedStyle($el[0]).lineHeight,
+              );
+
+              expect($el[0].scrollHeight).to.be.gte(
+                testMarkdownContent.split("{enter}").length * lineHeight, // num of lines * lineHeight
+              );
+            });
+        });
+      });
+    });
+
     it(
       "should not allow dashboard editing on small screens",
       { viewportWidth: 480, viewportHeight: 800 },
@@ -238,114 +382,6 @@ describe("scenarios > dashboard", () => {
         );
       },
     );
-  });
-  it("should update the name and description", () => {
-    cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-    cy.intercept(
-      "PUT",
-      "/api/dashboard/1",
-      cy.spy().as("updateDashboardSpy"),
-    ).as("updateDashboard");
-    cy.intercept(
-      "PUT",
-      "/api/dashboard/*/cards",
-      cy.spy().as("updateDashboardCardsSpy"),
-    );
-
-    visitDashboard(1);
-    cy.wait("@getDashboard");
-
-    cy.findByTestId("dashboard-name-heading")
-      .click()
-      .type("{selectall}Orders per year")
-      .blur();
-
-    cy.wait("@updateDashboard");
-    cy.wait("@getDashboard");
-
-    cy.get("main header").within(() => {
-      cy.icon("info").click();
-    });
-
-    rightSidebar().within(() => {
-      cy.findByPlaceholderText("Add description")
-        .click()
-        .type("{selectall}How many orders were placed in each year?")
-        .blur();
-    });
-    cy.wait("@updateDashboard");
-    cy.wait("@getDashboard");
-
-    // refresh page and check that title/desc were updated
-    visitDashboard(1);
-    cy.wait("@getDashboard");
-
-    cy.findByDisplayValue("Orders per year");
-
-    cy.get("main header").within(() => {
-      cy.icon("info").click();
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("How many orders were placed in each year?").click();
-    cy.findByDisplayValue("How many orders were placed in each year?");
-
-    cy.log("should not call unnecessary API requests (metabase#31721)");
-    cy.get("@updateDashboardSpy").should("have.callCount", 2);
-    cy.get("@updateDashboardCardsSpy").should("not.have.been.called");
-  });
-
-  it("should not take you out of edit mode when updating title", () => {
-    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
-
-    visitDashboard(1);
-
-    cy.icon("pencil").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You're editing this dashboard.");
-
-    cy.findByTestId("dashboard-name-heading")
-      .click()
-      .type("{selectall}Orders per year")
-      .blur();
-
-    saveDashboard();
-    cy.wait("@updateDashboard");
-  });
-
-  it("should revert the title if editing is cancelled", () => {
-    visitDashboard(1);
-
-    cy.icon("pencil").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You're editing this dashboard.");
-
-    cy.findByTestId("dashboard-name-heading")
-      .click()
-      .type("{selectall}Orders per year")
-      .blur();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You're editing this dashboard.");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Cancel").click();
-    cy.findByDisplayValue("Orders in a dashboard");
-  });
-
-  it("should allow empty card title (metabase#12013)", () => {
-    visitDashboard(1);
-
-    cy.findByTextEnsureVisible("Orders");
-    cy.findByTestId("legend-caption").should("exist");
-
-    editDashboard();
-    showDashboardCardActions();
-    cy.icon("palette").click();
-
-    cy.findByDisplayValue("Orders").click().clear();
-    cy.get("[data-metabase-event='Chart Settings;Done']").click();
-
-    cy.findByTestId("legend-caption").should("not.exist");
   });
 
   it("should add a filter", () => {
@@ -785,88 +821,6 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").within(() => {
       cy.findByText("There was a problem displaying this chart.");
     });
-  });
-
-  it("should not have markdown content overflow in description (metabase#31326)", () => {
-    cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
-    visitDashboard(1);
-    cy.wait("@getDashboard");
-
-    cy.get("main header").icon("info").click();
-
-    const testMarkdownContent =
-      "{selectall}# Heading 1{enter}{enter}**bold** https://www.metabase.com/community_posts/how-to-measure-the-success-of-new-product-features-and-why-it-is-important{enter}{enter}![alt](/app/assets/img/welcome-modal-2.png){enter}{enter}This is my description. ";
-
-    rightSidebar().within(() => {
-      cy.findByPlaceholderText("Add description")
-        .click()
-        .type(testMarkdownContent)
-        .blur();
-    });
-
-    cy.wait("@updateDashboard");
-
-    rightSidebar().within(() => {
-      // check that markdown content is not bigger than its container
-      cy.findByTestId("editable-text").then($markdown => {
-        const el = $markdown[0];
-
-        // vertical
-        expect(el.clientHeight).to.be.gte(el.firstElementChild.clientHeight);
-
-        // horizontal
-        $markdown.find("*").each((_index, childEl) => {
-          const parentRect = el.getBoundingClientRect();
-          const childRect = childEl.getBoundingClientRect();
-
-          expect(parentRect.left).to.be.lte(childRect.left);
-          expect(parentRect.right).to.be.gte(childRect.right);
-        });
-      });
-
-      cy.findByTestId("editable-text")
-        .click()
-        .then($el => {
-          const lineHeight = parseFloat(
-            window.getComputedStyle($el[0]).lineHeight,
-          );
-
-          // check that textarea has proper height when we change markdown text
-          expect($el[0].scrollHeight).to.be.gte(
-            testMarkdownContent.split("{enter}").length * lineHeight, // num of lines * lineHeight
-          );
-        });
-    });
-  });
-
-  it("should not allow edit on small screens", () => {
-    cy.viewport(480, 800);
-
-    visitDashboard(1);
-
-    cy.icon("pencil").should("not.be.visible");
-
-    cy.viewport(660, 800);
-
-    cy.icon("pencil").should("be.visible");
-  });
-
-  it("shows sorted cards on mobile screens", () => {
-    cy.viewport(400, 800);
-    cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-      const cards = [
-        createTextCard("bottom", 1), // the bottom card intentionally goes first to have unsorted cards coming from the BE
-        createTextCard("top", 0),
-      ];
-
-      updateDashboardCards({ dashboard_id, cards });
-
-      visitDashboard(dashboard_id);
-    });
-
-    getDashboardCards().eq(0).contains("top");
-    getDashboardCards().eq(1).contains("bottom");
   });
 });
 
