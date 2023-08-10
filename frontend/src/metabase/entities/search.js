@@ -82,6 +82,7 @@ export default createEntity({
                 return {
                   ...collectionKey,
                   ...item,
+                  initial_sync_status: "incomplete",
                 };
               })
             : [],
