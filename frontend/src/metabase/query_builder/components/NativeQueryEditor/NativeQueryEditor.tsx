@@ -155,18 +155,7 @@ interface NativeQueryEditorState {
   isPromptInputVisible: boolean;
 }
 
-type AceCompletionsGetterCallback = (
-  _: unknown,
-  completions: Ace.Completion[] | null,
-) => void;
-
-type AceCompletionsGetter = (
-  editor: Ace.Editor,
-  session: Ace.EditSession,
-  pos: Ace.Position,
-  prefix: string,
-  callback: AceCompletionsGetterCallback,
-) => void;
+type AceCompletionsGetter = Ace.Completer["getCompletions"];
 
 export class NativeQueryEditor extends Component<
   Props,
@@ -448,7 +437,7 @@ export class NativeQueryEditor extends Component<
         _session: Ace.EditSession,
         _pos: Ace.Position,
         prefix: string,
-        callback: AceCompletionsGetterCallback,
+        callback: Ace.CompleterCallback,
       ) => {
         if (!this.props.autocompleteResultsFn) {
           return callback(null, []);
