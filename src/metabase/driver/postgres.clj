@@ -466,6 +466,9 @@
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
 
+      (= ::add/source (::add/source-table opts))
+      (keyword (::add/source-alias opts))
+
       (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))

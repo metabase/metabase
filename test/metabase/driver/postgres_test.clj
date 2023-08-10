@@ -50,6 +50,11 @@
                                 hx/*honey-sql-version*                   2]
                         (thunk))))
 
+(defn- pretty-sql [s]
+  (-> s
+      (str/replace #"\"" "")
+      (str/replace #"public\." "")))
+
 (deftest ^:parallel interval-test
   (is (= ["INTERVAL '2 day'"]
          (sql/format-expr [::postgres/interval 2 :day])))
@@ -210,6 +215,33 @@
                              {:database (u/the-id database)
                               :type     :query
                               :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
+
+
+(deftest json-aliases-test
+  (mt/test-driver :postgres
+    (testing "Make sure that JSON fields are referenced correctly"
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-aliases-test"})]
+        ;; create the postgres DB
+        (drop-if-exists-and-create-db! "json-aliases-test")
+        ;; create the DB object
+        ;;
+        (mt/with-temp* [Database [database  {:engine :postgres, :details details}]
+                        Table    [table     {:db_id (u/the-id database)
+                                             :name  "silly_table"}]
+                        Field    [val-field {:table_id      (u/the-id table)
+                                             :nfc_path      [:jsonfield "value"]
+                                             :name "foo"
+                                             :database_type "integer"}]]
+          (is (= (str "SELECT foo AS foo"
+                      " FROM (SELECT (silly_table.jsonfield#>> array[?]::text[])::integer AS foo FROM silly_table) AS source"
+                      " LIMIT 1048575")
+                 (some-> (qp/compile {:type :query
+                                      :database (u/the-id database)
+                                      :query {:source-query {:source-table (u/the-id table),
+                                                             :fields
+                                                             [[:field (u/the-id val-field) nil]]}}})
+                         :query
+                         pretty-sql))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -970,11 +1002,6 @@
                       :postgres
                       database
                       (t2/select-one Table :db_id (mt/id) :name "json_table")))))))))))
-
-(defn- pretty-sql [s]
-  (-> s
-      (str/replace #"\"" "")
-      (str/replace #"public\." "")))
 
 (deftest do-not-cast-to-date-if-column-is-already-a-date-test
   (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
