@@ -594,19 +594,25 @@ export class NativeQueryEditor extends Component<
   };
 
   _updateSize() {
-    const doc = this._editor.getSession().getDocument();
+    const { viewHeight } = this.props;
+
+    const doc = this._editor?.getSession().getDocument();
     const element = this.resizeBox.current;
-    // set the newHeight based on the line count, but ensure it's within
-    // [MIN_HEIGHT_LINES, getMaxAutoSizeLines()]
+
+    if (!doc || !element) {
+      return;
+    }
+
     const newHeight = getEditorLineHeight(
       Math.max(
-        Math.min(doc.getLength(), getMaxAutoSizeLines()),
+        Math.min(doc.getLength(), getMaxAutoSizeLines(viewHeight)),
         MIN_HEIGHT_LINES,
       ),
     );
+
     if (newHeight > element.offsetHeight) {
-      element.style.height = newHeight + "px";
-      this._editor.resize();
+      element.style.height = `${newHeight}px`;
+      this._editor?.resize();
     }
   }
 
