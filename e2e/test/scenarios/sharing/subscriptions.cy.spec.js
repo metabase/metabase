@@ -18,7 +18,7 @@ import {
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
-const { admin } = USERS;
+const { admin, normal } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
   beforeEach(() => {
@@ -130,6 +130,25 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly");
+      });
+
+      it("should forward non-admin users to add email form when clicking add", () => {
+        cy.signInAsNormalUser();
+
+        openDashboardSubscriptions();
+
+        sidebar().within(() => {
+          cy.findByPlaceholderText("Enter user names or email addresses")
+            .click()
+            .type(`${normal.first_name} ${normal.last_name}{enter}`);
+          cy.contains("Done")
+            .closest(".Button")
+            .should("not.be.disabled")
+            .click();
+
+          cy.findByLabelText("add icon").click();
+          cy.findByText("Email this dashboard").should("exist");
+        });
       });
     });
 
@@ -373,13 +392,34 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should have 'Send to Slack now' button (metabase#14515)", () => {
       openSlackCreationForm();
 
-      cy.findAllByRole("button", { name: "Send to Slack now" }).should(
-        "be.disabled",
-      );
-      cy.findByPlaceholderText("Pick a user or channel...").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("#work").click();
-      cy.findAllByRole("button", { name: "Done" }).should("not.be.disabled");
+      sidebar().within(() => {
+        cy.findAllByRole("button", { name: "Send to Slack now" }).should(
+          "be.disabled",
+        );
+        cy.findByPlaceholderText("Pick a user or channel...").click();
+      });
+
+      popover().findByText("#work").click();
+      sidebar()
+        .findAllByRole("button", { name: "Done" })
+        .should("not.be.disabled");
+    });
+
+    it("should forward non-admin users to add slack form when clicking add", () => {
+      cy.signInAsNormalUser();
+      openDashboardSubscriptions();
+
+      sidebar().within(() => {
+        cy.findByPlaceholderText("Pick a user or channel...").click();
+      });
+
+      popover().findByText("#work").click();
+      sidebar().findAllByRole("button", { name: "Done" }).click();
+
+      sidebar().within(() => {
+        cy.findByLabelText("add icon").click();
+        cy.findByText("Send this dashboard to Slack").should("exist");
+      });
     });
   });
 

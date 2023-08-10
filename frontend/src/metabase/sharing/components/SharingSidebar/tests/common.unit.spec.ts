@@ -19,24 +19,6 @@ describe("SharingSidebar", () => {
     ).toBeInTheDocument();
   });
 
-  // ! NEED TO PROPERLY MOCK PULSES TO FIX THIS
-  it("should forward non-admin users to add email form when clicking add - when slack is not setup", async () => {
-    setup({ isAdmin: false, email: true, slack: false });
-
-    userEvent.click(await screen.findByLabelText("add icon"));
-    expect(await screen.findByText("Email this dashboard")).toBeInTheDocument();
-  });
-
-  // ! NEED TO PROPERLY MOCK PULSES TO FIX THIS
-  it("should forward non-admin users to add slack form when clicking add - when email is not setup", async () => {
-    setup({ isAdmin: false, email: false, slack: true });
-
-    userEvent.click(await screen.findByLabelText("add icon"));
-    expect(
-      await screen.findByText("Send this dashboard to Slack"),
-    ).toBeInTheDocument();
-  });
-
   it("should not forward non-admins - when slack and email are both setup", async () => {
     setup({ isAdmin: false, email: true, slack: true });
 
