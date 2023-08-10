@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]

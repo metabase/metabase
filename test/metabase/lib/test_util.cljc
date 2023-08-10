@@ -227,7 +227,7 @@
                    :native             "SELECT whatever"}]})
 
 (def mock-cards
-  "Map of mock MBQL query Card against the test tables. There are two versions of the Card for each table:
+  "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
 
   * `:venues`, a Card WITH `:result-metadata`
   * `:venues/no-metadata`, a Card WITHOUT `:result-metadata`
