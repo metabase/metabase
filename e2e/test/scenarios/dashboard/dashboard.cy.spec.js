@@ -25,6 +25,7 @@ import {
   getDashboardCards,
   toggleDashboardInfoSidebar,
   dashboardHeader,
+  openProductsTable,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -148,6 +149,47 @@ describe("scenarios > dashboard", () => {
         "have.text",
         NEW_DASHBOARD,
       );
+    });
+
+    it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
+      cy.intercept("POST", "/api/card").as("saveQuestion");
+
+      visitDashboard(1);
+
+      cy.log("Save new question from an ad-hoc query");
+      openProductsTable();
+      cy.findByTestId("qb-header").findByText("Save").click();
+      modal().button("Save").click();
+      cy.wait("@saveQuestion");
+
+      cy.log("Add this new question to a dashboard created on the fly");
+      modal().within(() => {
+        cy.findByText("Saved! Add this to a dashboard?");
+        cy.button("Yes please!").click();
+      });
+
+      modal().findByText("Create a new dashboard").click();
+      modal().within(() => {
+        cy.findByLabelText("Name").type("Foo").blur();
+        cy.button("Create").click();
+      });
+
+      saveDashboard();
+
+      cy.log(
+        "Find the originally visited (unrelated) dashboard in search and go to it",
+      );
+      appBar()
+        .findByPlaceholderText(/^Search/)
+        .click();
+      cy.findAllByTestId("recently-viewed-item-title")
+        .contains("Orders in a dashboard")
+        .click();
+
+      cy.log("It should not contain an alien card from the other dashboard");
+      getDashboardCards().should("have.length", 1).and("contain", "37.65");
+      cy.log("It should not open in editing mode");
+      cy.findByTestId("edit-bar").should("not.exist");
     });
   });
 
