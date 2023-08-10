@@ -6,6 +6,8 @@ import {
   modal,
   rightSidebar,
   appBar,
+  getDashboardCard,
+  undoToast,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -87,9 +89,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             it("should be able to move/undo move a dashboard (metabase#13059)", () => {
               appBar().contains("Our analytics");
 
-              popover().within(() => {
-                cy.findByText("Move").click();
-              });
+              popover().findByText("Move").click();
               cy.location("pathname").should("eq", "/dashboard/1/move");
 
               modal().within(() => {
@@ -98,19 +98,23 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               });
 
               assertOnRequest("updateDashboard");
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.contains("37.65");
-              // it should update dashboard's collection after the move without the page reload (metabase#13059)
+              getDashboardCard().contains("37.65");
+
+              cy.log(
+                "it should update dashboard's collection after the move without the page reload (metabase#, metabase#25705)",
+              );
               appBar().contains("First collection");
+              appBar().should("not.contain", "Our analytics");
 
               // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("Dashboard moved to");
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("Undo").click();
+              undoToast().within(() => {
+                cy.contains("Dashboard moved to First collection");
+                cy.button("Undo").click();
+              });
               assertOnRequest("updateDashboard");
 
               appBar().contains("Our analytics");
+              appBar().should("not.contain", "First collection");
             });
 
             it("should be able to archive/unarchive a dashboard", () => {
