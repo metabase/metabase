@@ -6,10 +6,10 @@ import {
   filterToUrlEncoded,
   getFilterTitle,
 } from "metabase/parameters/utils/date-formatting";
-import Button from "metabase/core/components/Button";
 import Popover from "metabase/components/Popover";
-import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
+import { CreatedAtButton } from "metabase/search/components/SearchFilterModal/filters/CreatedAtFilter/CreatedAtFilter.styled";
+import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
   value = [],
@@ -22,7 +22,8 @@ export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
   );
 
   const [openPopover, setOpenPopover] = useState(false);
-  const onChangeThings = (filter: any[]) => {
+
+  const onFilterChange = (filter: any[]) => {
     const encodedFilter = filterToUrlEncoded(filter);
     if (encodedFilter) {
       onChange([encodedFilter]);
@@ -30,16 +31,25 @@ export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
     setFilter(filter);
   };
 
+  const onCommit = (filter: any[]) => {
+    onFilterChange(filter);
+    setOpenPopover(false);
+  };
+
   return (
     <div ref={ref}>
-      <Button onClick={() => setOpenPopover(!openPopover)} fullWidth>
+      <CreatedAtButton onClick={() => setOpenPopover(!openPopover)} fullWidth>
         {filter.length > 0 ? getFilterTitle(filter) : t`Anytime`}
-      </Button>
-      <Popover isOpen={openPopover} target={ref.current}>
+      </CreatedAtButton>
+      <Popover
+        isOpen={openPopover}
+        target={ref.current}
+        onClose={() => setOpenPopover(false)}
+      >
         <DatePicker
           filter={filter}
-          onCommit={onChangeThings}
-          onFilterChange={onChangeThings}
+          onCommit={onCommit}
+          onFilterChange={onFilterChange}
         />
       </Popover>
     </div>
