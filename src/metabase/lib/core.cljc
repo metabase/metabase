@@ -17,6 +17,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -43,6 +44,7 @@
          lib.join/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
+         lib.metadata.composed-provider/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -198,8 +200,13 @@
    describe-top-level-key
    display-name
    display-info
+   metadata
+   returned-columns
    suggested-name
-   type-of]
+   type-of
+   visible-columns]
+  [lib.metadata.composed-provider
+   composed-metadata-provider]
   [lib.metric
    available-metrics]
   [lib.native
