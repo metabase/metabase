@@ -1,4 +1,6 @@
 /* eslint-disable import/no-commonjs */
+
+// "index" is required to get the original library and bypass the webpack alias
 const ttag = require("ttag/index");
 
 // ttag has "configurable: false" for module exports,
