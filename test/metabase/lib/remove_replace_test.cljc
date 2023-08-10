@@ -766,6 +766,26 @@
             (is (=? result
                     (lib/remove-clause query' 0 (second (lib/joins query' 0)))))))))))
 
+(deftest ^:parallel remove-dependent-join
+  (let [first-join-clause (-> (lib/join-clause
+                               (meta/table-metadata :checkins)
+                               [(lib/= (meta/field-metadata :venues :id)
+                                       (-> (meta/field-metadata :checkins :venue-id)
+                                           (lib/with-join-alias "Checkins")))])
+                              (lib/with-join-fields :all)
+                              (lib/with-join-alias "Checkins"))
+        query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/join first-join-clause)
+                  (lib/join (-> (lib/join-clause
+                                 (meta/table-metadata :users)
+                                 [(lib/= (-> (meta/field-metadata :checkins :user-id)
+                                             (lib/with-join-alias "Checkins"))
+                                         (-> (meta/field-metadata :users :id)
+                                             (lib/with-join-alias "Users")))])
+                                (lib/with-join-fields :all)
+                                (lib/with-join-alias "Users"))))]
+    (is (nil? (lib/joins (lib/remove-clause query 0 first-join-clause))))))
+
 (deftest ^:parallel replace-join-test
   (let [query             lib.tu/query-with-join
         expected-original {:stages [{:joins [{:lib/type :mbql/join, :alias "Cat", :fields :all}]}]}
