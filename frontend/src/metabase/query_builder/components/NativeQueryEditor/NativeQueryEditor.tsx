@@ -386,7 +386,7 @@ export class NativeQueryEditor extends Component<
       return;
     }
 
-    this._editor = ace.edit(editorElement);
+    this._editor = ace.edit(editorElement) as Ace.Editor;
 
     // listen to onChange events
     this._editor.getSession().on("change", this.onChange);
