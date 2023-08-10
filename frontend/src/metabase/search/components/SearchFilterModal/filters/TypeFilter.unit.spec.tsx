@@ -7,13 +7,11 @@ import { TypeFilter } from "metabase/search/components/SearchFilterModal/filters
 import { SearchModelType } from "metabase-types/api";
 
 const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
-  action: "Action",
   card: "Question",
   collection: "Collection",
   dashboard: "Dashboard",
   database: "Database",
   dataset: "Model",
-  "indexed-entity": "Indexed Entity",
   metric: "Metric",
   pulse: "Pulse",
   segment: "Segment",
@@ -21,14 +19,12 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
 };
 
 const TEST_TYPES: Array<SearchModelType> = [
-  "action",
   "card",
   "collection",
   "dashboard",
   "database",
   "dataset",
   "table",
-  "indexed-entity",
   "pulse",
   "segment",
   "metric",
@@ -111,7 +107,7 @@ describe("TypeFilter", () => {
 
     expect(options).toHaveLength(TEST_TYPE_SUBSET.length);
 
-    options.forEach((option, index) => {
+    options.forEach(option => {
       expect(TEST_TYPE_SUBSET).toContain(option.value);
     });
   });

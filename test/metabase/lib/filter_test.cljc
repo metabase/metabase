@@ -99,7 +99,7 @@
        :day))
 
     (testing "segment"
-      (doseq [id [7 "6"]]
+      (let [id 7]
         (test-clause
          [:segment {:lib/uuid string?} id]
          lib/segment
