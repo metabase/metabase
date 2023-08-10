@@ -46,6 +46,11 @@ export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
     css`
       pointer-events: none;
       opacity: 0.4;
+      color: inherit;
+
+      ${NodeListItemIcon} {
+        color: inherit;
+      }
     `};
 `;
 
