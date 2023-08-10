@@ -2,7 +2,22 @@ import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Checkbox } from "./";
 
 
-<Meta title="Inputs/Checkbox & Checkbox Group" component={Checkbox}  />
+<Meta title="Inputs/Checkbox & Checkbox Group" component={Checkbox}
+      argTypes={
+        {
+          size: {
+            options: ["xs", "sm", "md", "lg", "xl"],
+            control: { type: 'inline-radio' }
+          },
+        }
+      }
+/>
+
+export const Template = args => <Checkbox.Group defaultValue={["yes"]} {...args}>
+  <Checkbox label="Yes" value="yes" />
+  <Checkbox label="No" value="no" />
+  <Checkbox label="I'm not sure" indeterminate />
+</Checkbox.Group>
 
 # Checkbox & Checkbox.Group
 
@@ -19,7 +34,6 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 
 ## Caveats
 
-- As of right now, don't use the size prop.
 - Please don't use the `error` prop on Checkbox components (We'll standardize on this as other inputs get converted).
 
 ## Usage guidelines
@@ -32,11 +46,7 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 
 <Canvas>
   <Story name="Default">
-    <Checkbox.Group defaultValue="yes">
-      <Checkbox label="Yes" value="yes" />
-      <Checkbox label="No" value="no" />
-      <Checkbox label="I'm not sure" indeterminate />
-    </Checkbox.Group>
+    {Template.bind({})}
   </Story>
 </Canvas>
 

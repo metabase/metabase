@@ -50,6 +50,7 @@ export const theme: MantineThemeOverride = {
     Checkbox: {
       defaultProps: {
         icon: CheckboxIcon,
+        size: "md",
       },
       styles(theme, params) {
         return {
@@ -60,7 +61,7 @@ export const theme: MantineThemeOverride = {
             fontWeight: 700,
             color: theme.colors.text[2],
             [`padding${params.labelPosition === "left" ? "Right" : "Left"}`]:
-              theme.spacing.xs,
+              "8px",
           },
           input: {
             "&:focus": {
@@ -78,18 +79,22 @@ export const theme: MantineThemeOverride = {
               background: theme.colors.brand[1],
               border: `1px solid ${theme.colors.brand[1]}`,
             }),
+            transform: `scale(0.75)`,
           },
-          ...(params.indeterminate && {
-            icon: {
+          icon: {
+            ...(params.indeterminate && {
               "& > *": {
                 fill: color("white"),
               },
-            },
-          }),
+            }),
+          },
         };
       },
     },
     CheckboxGroup: {
+      defaultProps: {
+        size: "md",
+      },
       styles(theme) {
         /* Note: we need the ':has' selector to target the space just
          * above the first checkbox since we don't seem to have selector
