@@ -340,12 +340,16 @@ export class NativeQueryEditor extends Component<
 
   handleCursorChange = _.debounce(
     (e: Event, { cursor }: { cursor: Ace.Position }) => {
-      this._editor.completers = this.nextCompleters(cursor);
-      if (this.props.setNativeEditorSelectedRange) {
+      if (this._editor && this.nextCompleters) {
+        this._editor.completers = this.nextCompleters(cursor);
+      }
+
+      if (this._editor && this.props.setNativeEditorSelectedRange) {
         this.props.setNativeEditorSelectedRange(
           this._editor.getSelectionRange(),
         );
       }
+
       const cardTagId = this.cardTagIdAtCursor(cursor);
       if (cardTagId) {
         this.props.openDataReferenceAtQuestion(cardTagId);
