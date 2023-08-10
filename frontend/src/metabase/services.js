@@ -313,53 +313,18 @@ export const TimelineEventApi = {
 };
 
 export const MetabaseApi = {
-  db_list: (...args) =>
-    GET(
-      "/api/database",
-      res => res["data"],
-    )(...args).then(dbs =>
-      dbs.map(db => ({
-        ...db,
-        initial_sync_status: "incomplete",
-        is_full_sync: false,
-      })),
-    ),
+  db_list: GET("/api/database", res => res["data"]),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
   db_add_sample_database: POST("/api/database/sample_database"),
-  db_get: (...args) =>
-    GET("/api/database/:dbId")(...args).then(db => ({
-      ...db,
-      initial_sync_status: "incomplete",
-      is_full_sync: false,
-    })),
+  db_get: GET("/api/database/:dbId"),
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
-  db_metadata: (...args) =>
-    GET("/api/database/:dbId/metadata")(...args).then(db => ({
-      ...db,
-      tables: db.tables.map(table => ({
-        ...table,
-        initial_sync_status: "incomplete",
-      })),
-    })),
+  db_metadata: GET("/api/database/:dbId/metadata"),
   db_schemas: GET("/api/database/:dbId/schemas"),
   db_syncable_schemas: GET("/api/database/:dbId/syncable_schemas"),
-  db_schema_tables: (...args) =>
-    GET("/api/database/:dbId/schema/:schemaName")(...args).then(dbs =>
-      dbs.map(db => ({
-        ...db,
-        initial_sync_status: "incomplete",
-      })),
-    ),
-  db_virtual_dataset_tables: (...args) =>
-    GET("/api/database/:dbId/datasets/:schemaName")(...args).then(tables =>
-      tables.map(table => ({
-        ...table,
-        initial_sync_status: "incomplete",
-      })),
-    ),
-  // db_virtual_dataset_tables: GET("/api/database/:dbId/datasets/:schemaName"),
+  db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
+  db_virtual_dataset_tables: GET("/api/database/:dbId/datasets/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
@@ -382,11 +347,10 @@ export const MetabaseApi = {
   // table_fields:                GET("/api/table/:tableId/fields"),
   table_fks: GET("/api/table/:tableId/fks"),
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
-  table_query_metadata: (...args) =>
-    GET(
-      "/api/table/:tableId/query_metadata",
-      injectTableMetadata,
-    )(...args).then(a => ({ ...a, initial_sync_status: "incomplete" })),
+  table_query_metadata: GET(
+    "/api/table/:tableId/query_metadata",
+    injectTableMetadata,
+  ),
   // table_sync_metadata:        POST("/api/table/:tableId/sync"),
   table_rescan_values: POST("/api/table/:tableId/rescan_values"),
   table_discard_values: POST("/api/table/:tableId/discard_values"),
