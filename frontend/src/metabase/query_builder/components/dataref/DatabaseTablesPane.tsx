@@ -18,7 +18,7 @@ import {
 } from "./NodeList.styled";
 import { PaneContent } from "./Pane.styled";
 
-interface DatabaseTablesPaneProps {
+export interface DatabaseTablesPaneProps {
   onBack: () => void;
   onClose: () => void;
   onItemClick: (type: string, item: unknown) => void;
