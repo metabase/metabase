@@ -79,7 +79,7 @@
                     [:field %people.address {:join-alias "Question 54"}]]})]
           (is (=? [{:name "CREATED_AT"
                     :field_ref [:field (mt/id :products :created_at) {:temporal-unit :default}]
-                    :display_name "Created At: Default" #_"Created At"} ; FIXME
+                    :display_name "Created At"}
                    {:name "ID"
                     :field_ref [:field (mt/id :orders :id) {:join-alias "Question 54"}]
                     :display_name "Question 54 → ID"
