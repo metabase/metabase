@@ -278,10 +278,10 @@ export class NativeQueryEditor extends Component<
 
     if (query.hasWritePermission() && !readOnly) {
       this._editor.setReadOnly(false);
-      editorElement.classList.remove("read-only");
+      editorElement?.classList.remove("read-only");
     } else {
       this._editor.setReadOnly(true);
-      editorElement.classList.add("read-only");
+      editorElement?.classList.add("read-only");
     }
 
     const aceMode = getEngineNativeAceMode(query.engine());
@@ -788,7 +788,9 @@ export class NativeQueryEditor extends Component<
                 openSnippetModalWithSelectedText
               }
               runQuery={this.runQuery}
-              target={() => this.editor.current.querySelector(".ace_selection")}
+              target={() =>
+                this.editor.current?.querySelector(".ace_selection")
+              }
               canSaveSnippets={canSaveSnippets}
             />
 
