@@ -547,13 +547,19 @@ export class NativeQueryEditor extends Component<
     callback,
   ) => {
     const name = this.getSnippetNameAtCursor(pos);
+
+    if (!name) {
+      callback(null, []);
+      return;
+    }
+
     const snippets = (this.props.snippets || []).filter(snippet =>
       snippet.name.toLowerCase().includes(name.toLowerCase()),
     );
 
     callback(
       null,
-      snippets.map(({ name, description, content }) => ({
+      snippets.map(({ name }) => ({
         name,
         value: name,
       })),
