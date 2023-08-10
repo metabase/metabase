@@ -54,10 +54,10 @@
     ;; =>
 
     (def f
-      (let [&f (fn [x] (inc x))]
+      (let [&uninstrumented (fn [x] (inc x))]
         (fn ([a]
              (metabase.util.malli.fn/validate-input :int a)
-             (->> (&f a)
+             (->> (&uninstrumented a)
                   (metabase.util.malli.fn/validate-output :int))))))
 
   Known issue: does not currently generate automatic type hints the way [[schema.core/defn]] does, nor does it attempt

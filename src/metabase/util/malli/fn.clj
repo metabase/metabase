@@ -50,7 +50,7 @@
   [fn-tail]
   (let [parsed (mc/parse mx/SchematizedParams (if (symbol? (first fn-tail))
                                                 fn-tail
-                                                (cons '&f fn-tail)))]
+                                                (cons '&uninstrumented fn-tail)))]
     (when (= parsed ::mc/invalid)
       (let [error     (mc/explain mx/SchematizedParams fn-tail)
             humanized (me/humanize error)]
@@ -174,8 +174,8 @@
 (defn- input-schema->application-form [input-schema]
   (let [arg-names (input-schema-arg-names input-schema)]
     (if (varargs-schema? input-schema)
-      (list* `apply '&f arg-names)
-      (list* '&f arg-names))))
+      (list* `apply '&uninstrumented arg-names)
+      (list* '&uninstrumented arg-names))))
 
 (defn- instrumented-arity [[_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
@@ -212,7 +212,7 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [parsed]
-  `(let [~'&f ~(deparameterized-fn-form parsed)]
+  `(let [~'&uninstrumented ~(deparameterized-fn-form parsed)]
      (core/fn ~@(instrumented-fn-tail (fn-schema parsed)))))
 
 (defmacro fn

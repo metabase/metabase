@@ -1,6 +1,5 @@
 (ns metabase.lib.table
   (:require
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
@@ -55,11 +54,3 @@
                        :lib/source               :source/table-defaults
                        :lib/source-column-alias  (:name col)
                        :lib/desired-column-alias (unique-name-fn (or (:name col) ""))))))))
-
-(defmethod lib.join/join-clause-method :metadata/table
-  [{::keys [join-alias join-fields], :as table-metadata}]
-  (cond-> (lib.join/join-clause {:lib/type     :mbql.stage/mbql
-                                 :lib/options  {:lib/uuid (str (random-uuid))}
-                                 :source-table (:id table-metadata)})
-    join-alias  (lib.join/with-join-alias join-alias)
-    join-fields (lib.join/with-join-fields join-fields)))
