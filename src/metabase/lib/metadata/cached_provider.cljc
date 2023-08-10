@@ -6,6 +6,8 @@
    [metabase.util.log :as log]
    #?@(:clj ([pretty.core :as pretty]))))
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (defn- get-in-cache [cache ks]
   (when-some [cached-value (get-in @cache ks)]
     (when-not (= cached-value ::nil)
@@ -35,19 +37,24 @@
       cached-value)
     (store-in-cache! cache ks (fetch-thunk))))
 
-(defn- bulk-metadata [cache uncached-provider metadata-type ids]
-  (when (seq ids)
-    (log/debugf "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
-    (let [existing-ids (set (keys (get @cache metadata-type)))
-          missing-ids  (set/difference (set ids) existing-ids)]
-      (log/debugf "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
-      (when (seq missing-ids)
-        (log/debugf "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
-        ;; TODO -- we should probably store `::nil` markers for things we tried to fetch that didn't exist
-        (doseq [instance (lib.metadata.protocols/bulk-metadata uncached-provider metadata-type missing-ids)]
-          (store-in-cache! cache [metadata-type (:id instance)] instance))))
-    (for [id ids]
-      (get-in-cache cache [metadata-type id]))))
+(defn- bulk-metadata
+  ([cache metadata-type ids]
+   (bulk-metadata cache nil metadata-type ids))
+
+  ([cache uncached-provider metadata-type ids]
+   (when (seq ids)
+     (log/debugf "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
+     (let [existing-ids (set (keys (get @cache metadata-type)))
+           missing-ids  (set/difference (set ids) existing-ids)]
+       (log/debugf "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
+       (when uncached-provider
+         (when (seq missing-ids)
+           (log/debugf "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
+           ;; TODO -- we should probably store `::nil` markers for things we tried to fetch that didn't exist
+           (doseq [instance (lib.metadata.protocols/bulk-metadata uncached-provider metadata-type missing-ids)]
+             (store-in-cache! cache [metadata-type (:id instance)] instance)))))
+     (for [id ids]
+       (get-in-cache cache [metadata-type id])))))
 
 ;;; wraps another metadata provider and caches results. Implements
 ;;; the [[lib.metadata.protocols/CachedMetadataProvider]] protocol which allows warming the cache before use.
@@ -76,8 +83,7 @@
 
   #?@(:clj
       [pretty/PrettyPrintable
-       (pretty [_this]
-               (list `cached-metadata-provider metadata-provider))]))
+       (pretty [_this] (list `cached-metadata-provider metadata-provider))]))
 
 (defn cached-metadata-provider
   "Wrap `metadata-provider` with an implementation that automatically caches results.
@@ -86,3 +92,36 @@
   then [[lib.metadata.protocols/bulk-metadata]] will work as expected; it can be done for side-effects as well."
   ^CachedProxyMetadataProvider [metadata-provider]
   (->CachedProxyMetadataProvider (atom {}) metadata-provider))
+
+(deftype AlreadyCachedMetadataProvider [^CachedProxyMetadataProvider provider]
+  lib.metadata.protocols/MetadataProvider
+  (database [_this]            (get-in-cache (.cache provider) [:metadata/database]))
+  (table    [_this table-id]   (get-in-cache (.cache provider) [:metadata/table table-id]))
+  (field    [_this field-id]   (get-in-cache (.cache provider) [:metadata/column field-id]))
+  (card     [_this card-id]    (get-in-cache (.cache provider) [:metadata/card card-id]))
+  (metric   [_this metric-id]  (get-in-cache (.cache provider) [:metadata/metric metric-id]))
+  (segment  [_this segment-id] (get-in-cache (.cache provider) [:metadata/segment segment-id]))
+  (tables   [_this]            (get-in-cache (.cache provider) [::database-tables]))
+  (fields   [_this table-id]   (get-in-cache (.cache provider) [::table-fields table-id]))
+  (metrics  [_this table-id]   (get-in-cache (.cache provider) [::table-metrics table-id]))
+
+  lib.metadata.protocols/CachedMetadataProvider
+  (cached-database [_this]                           (get-in-cache    (.cache provider) [:metadata/database]))
+  (cached-metadata [_this metadata-type id]          (get-in-cache    (.cache provider) [metadata-type id]))
+  (store-database! [_this database-metadata]         (store-database! (.cache provider) database-metadata))
+  (store-metadata! [_this metadata-type id metadata] (store-metadata! (.cache provider) metadata-type id metadata))
+
+  ;; these only work if the underlying metadata provider is also a [[BulkMetadataProvider]].
+  lib.metadata.protocols/BulkMetadataProvider
+  (bulk-metadata [_this metadata-type ids]
+    (bulk-metadata (.cache provider) metadata-type ids))
+
+  #?@(:clj
+      [pretty/PrettyPrintable
+       (pretty [_this] (list `already-cached-metadata-provider provider))]))
+
+(defn already-cached-metadata-provider
+  "A MetadataProvider that returns cached results from a [[cached-metadata-provider]]. If values are not in the cache,
+  does not fetch them."
+  ^AlreadyCachedMetadataProvider [^CachedProxyMetadataProvider cached-provider]
+  (->AlreadyCachedMetadataProvider cached-provider))

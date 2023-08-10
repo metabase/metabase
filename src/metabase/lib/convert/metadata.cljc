@@ -45,10 +45,17 @@
                             (lib.binning/with-binning nil))]
     (lib.metadata.calculation/display-name query -1 column-metadata :long)))
 
+;; TODO -- duplicated with [[metabase.query-processor.middleware.add-default-temporal-unit/add-default-temporal-unit]]
+(defn- add-default-temporal-bucket [col]
+  (if (and (not (lib.temporal-bucket/temporal-bucket col))
+           (isa? (:effective-type col) :type/Temporal))
+    (lib.temporal-bucket/with-temporal-bucket col :default)
+    col))
+
 (mu/defn ^:private legacy-ref :- mbql.s/AnyReference
   [query column-metadata]
   (binding [lib.convert/*pMBQL-stage* (lib.util/query-stage query -1)]
-    (mbql.match/replace (lib.convert/->legacy-MBQL (lib.ref/ref column-metadata))
+    (mbql.match/replace (lib.convert/->legacy-MBQL (lib.ref/ref (add-default-temporal-bucket column-metadata)))
       [:field (field-id :guard integer?) (opts :guard map?)]
       (mbql.u/update-field-options &match dissoc :base-type :effective-type))))
 

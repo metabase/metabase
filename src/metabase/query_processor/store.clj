@@ -9,11 +9,12 @@
 
     (qp.store/field 10) ;; get Field 10
 
-   Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information about that Field,
-  but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
-  those Fields potentially dozens of times in a single query execution."
+   Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information
+  about that Field, but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient
+  than fetching those Fields potentially dozens of times in a single query execution."
   (:require
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.composed-provider
     :as lib.metadata.composed-provider]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -195,7 +196,7 @@
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
-           (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." id)
+           (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." (pr-str id))
              {:table id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [table fetched-tables]
@@ -223,7 +224,7 @@
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
-           (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id)
+           (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." (pr-str id))
                     {:field id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [field fetched-fields]
@@ -359,16 +360,31 @@
 
     pretty/PrettyPrintable
     (pretty [_this]
-      `metadata-provider)))
+      `(base-metadata-provider))))
+
+(defn bootstrap-application-database-metadata-provider
+  "Cached application database MetadataProvider for bootstrapping query compilation/resolving things before we know the
+  actual `:database` ID, This is used for fetching stuff from the application database in order to resolve the query's
+  `:database` if needed when it's has a `:source-card` and is using
+  the [[metabase.lib.schema.id/saved-questions-virtual-database-id]]."
+  []
+  (cached ::bootstrap-application-database-metadata-provider
+    (lib.metadata.jvm/application-database-metadata-provider)))
 
 (defn metadata-provider
   "Create a new MLv2 metadata provider that uses the QP store."
   ([]
-   (metadata-provider (:id (database))))
+   (if (:database @*store*)
+     (cached ::metadata-provider
+       (lib.metadata.composed-provider/composed-metadata-provider
+        (base-metadata-provider)
+        ;; use anything that was cached by the [[bootstrap-application-database-metadata-provider]] rather than fetching
+        ;; it from the DB again.
+        (lib.metadata.cached-provider/already-cached-metadata-provider (bootstrap-application-database-metadata-provider))
+        (lib.metadata.jvm/application-database-metadata-provider (u/the-id (database)))))
+     (bootstrap-application-database-metadata-provider)))
 
   ([database-id]
-   (fetch-and-store-database! database-id) ; this will no-op if it's already fetched
-   (cached ::metadata-provider
-     (lib.metadata.composed-provider/composed-metadata-provider
-      (base-metadata-provider)
-      (lib.metadata.jvm/application-database-metadata-provider database-id)))))
+   (when database-id
+     (fetch-and-store-database! database-id))
+   (metadata-provider)))

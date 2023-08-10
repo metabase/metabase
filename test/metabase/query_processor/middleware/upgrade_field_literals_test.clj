@@ -22,9 +22,7 @@
                                    :condition    [:= *count/Number &venues.*count/Number]}]
                    :order-by     [[:asc $checkins.venue-id]]
                    :limit        3})]
-      (is (= (assoc-in query
-                       [:query :order-by]
-                       [[:asc [:field "VENUE_ID" {:base-type :type/Integer}]]])
+      (is (= query
              (upgrade-field-literals query))))))
 
 (deftest ^:parallel upgrade-to-valid-clauses-test
@@ -123,22 +121,3 @@
                :aggregation  [[:count]]
                :order-by     [[:asc $venue-id->venues.price]]
                :breakout     [$venue-id->venues.price]}))))))
-
-#_(deftest ^:parallel upgrade-unmarked-join-fields-test
-  (is (= (lib.tu.macros/mbql-query orders
-           {:source-query {:source-table $$orders
-                           :joins        [{:fields       :all
-                                           :source-table $$products
-                                           :condition    [:= $product-id &Products.products.id]
-                                           :alias        "Products"}]}
-            :aggregation  [[:count]]
-            :breakout     [[:field "ID" {:base-type :type/BigInteger, :join-alias "Products"}]]})
-         (upgrade-field-literals
-          (lib.tu.macros/mbql-query orders
-            {:source-query {:source-table $$orders
-                            :joins        [{:fields       :all
-                                            :source-table $$products
-                                            :condition    [:= $product-id &Products.products.id]
-                                            :alias        "Products"}]}
-             :aggregation  [[:count]]
-             :breakout     [$products.id]})))))

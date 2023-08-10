@@ -95,22 +95,6 @@
                      (pr-str <>))))
       field-ref))
 
-#_(mu/defn ^:private downgrade-id-ref :- ::lib.schema.ref/field.literal
-  "Downgrade a `:field` ID reference to a nominal `:field` reference for stages of the query where we should be using
-  nominal references."
-  [query
-   stage-number
-   field-ref :- ::lib.schema.ref/field.id]
-  (or (when-let [column-metadata (lib.metadata.calculation/metadata query stage-number field-ref)]
-        (u/prog1 (lib/ref (-> column-metadata
-                              (assoc :lib/source :source/previous-stage)
-                              (dissoc :source-field)))
-          (warn-once (format "Warning: found :field ID ref in a subsequent stage (%d) of the query:" stage-number)
-                     (pr-str field-ref)
-                     "Correcting this to:"
-                     (pr-str <>))))
-      field-ref))
-
 (mu/defn ^:private fix-refs-in-subsequent-stage :- SubsequentMBQLStage
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -125,10 +109,7 @@
     (mbql.u/replace stage
       [:field _opts (_field-name :guard #(and (string? %)
                                               (not (@valid-field-names %))))]
-      (fix-bad-nominal-ref @visible-cols &match)
-
-      #_[:field (_opts :guard (complement :source-field)) (_id :guard integer?)]
-      #_(downgrade-id-ref query stage-number &match))))
+      (fix-bad-nominal-ref @visible-cols &match))))
 
 (mu/defn ^:private upgrade-field-literals-in-mbql-stage :- ::lib.schema/stage
   [query        :- ::lib.schema/query

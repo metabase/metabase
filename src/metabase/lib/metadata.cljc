@@ -5,7 +5,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.shared.util.i18n :as i18n]))
 
 ;;; Column vs Field?
 ;;;
@@ -218,7 +219,9 @@
   "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
   [metadata-providerable :- MetadataProviderable
    table-id              :- ::lib.schema.id/table]
-  (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
+  (or (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id)
+      (throw (ex-info (i18n/tru "Table {0} does not exist" (pr-str table-id))
+                      {:table-id table-id}))))
 
 (mu/defn fields :- [:sequential ColumnMetadata]
   "Get metadata about all the Fields belonging to a specific Table."
@@ -230,7 +233,9 @@
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- MetadataProviderable
    field-id              :- ::lib.schema.id/field]
-  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
+  (or (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id)
+      (throw (ex-info (i18n/tru "Field {0} does not exist" (pr-str field-id))
+                      {:field-id field-id}))))
 
 ;;;; Stage metadata
 
