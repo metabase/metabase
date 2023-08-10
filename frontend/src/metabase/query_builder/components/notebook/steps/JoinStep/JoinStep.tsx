@@ -71,8 +71,15 @@ export function JoinStep({
   };
 
   const handleTableChange = (nextTable: Lib.Joinable) => {
-    setTable(nextTable);
-    setIsAddingNewCondition(true);
+    const nextQuery = setTable(nextTable);
+
+    // If setTable returns a query,
+    // it means it was possible to automatically set the condition via FKs
+    if (nextQuery) {
+      updateQuery(nextQuery);
+    } else {
+      setIsAddingNewCondition(true);
+    }
   };
 
   const handleAddCondition = (condition: Lib.JoinConditionClause) => {
