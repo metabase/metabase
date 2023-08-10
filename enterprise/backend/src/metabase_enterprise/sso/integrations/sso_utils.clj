@@ -59,7 +59,7 @@
     (let [decoded-url (some-> ^String redirect-url (URLDecoder/decode "UTF-8"))
           host        (some-> decoded-url (URI.) (.getHost))
           our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
-      (api/check-400 (or (nil? decoded-url) (= host our-host))))
+      (api/check-400 (or (nil? decoded-url) (nil? host) (= host our-host))))
     (catch Exception e
       (log/error e "Invalid redirect URL")
       (throw (ex-info (tru "Invalid redirect URL")
