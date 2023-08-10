@@ -717,8 +717,8 @@
   implements [[metabase.driver.sql-jdbc.sync/db-default-timezone]]; the `:h2` driver does not for example. Why is
   this? Who knows, but it's something you should keep in mind.
 
-  TODO FIXME (cam) -- I think we need to fix this for drivers that return `nil`."
-  {:added "0.34.0", :arglists '(^java.lang.String [driver database])}
+  This method should return a [[String]], a [[java.time.ZoneId]], or a [[java.time.ZoneOffset]]."
+  {:added "0.34.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
