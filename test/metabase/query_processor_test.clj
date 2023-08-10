@@ -3,6 +3,7 @@
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
@@ -42,6 +43,13 @@
             (testing "preprocess should return same results even when query was cached."
               (is (= expected-results
                      (qp/preprocess query))))))))))
+
+(driver/register! ::custom-escape-spaces-to-underscores :parent :h2)
+
+(defmethod driver/escape-alias ::custom-escape-spaces-to-underscores
+  [driver field-alias]
+  (-> ((get-method driver/escape-alias :h2) driver field-alias)
+      (str/replace #"\s" "_")))
 
 (deftest ^:parallel query->expected-cols-test
   (testing "field_refs in expected columns have the original join aliases (#30648)"
