@@ -5,54 +5,6 @@ import { Menu } from "./";
 
 <Meta title="Layovers/Menu" component={Menu} />
 
-export const Default = (args) => (
-  <Menu {...args}>
-    <Menu.Target>
-      <Text span>Toggle menu</Text>
-    </Menu.Target>
-    <Menu.Dropdown>
-      <Menu.Item>Text</Menu.Item>
-      <Menu.Item>Text</Menu.Item>
-      <Menu.Item>Text</Menu.Item>
-      <Menu.Item>Text</Menu.Item>
-      <Menu.Item>Text</Menu.Item>
-    </Menu.Dropdown>
-  </Menu>
-);
-
-export const WithIcon = (args) => (
-  <Menu {...args}>
-    <Menu.Target>
-      <Text span>Toggle menu</Text>
-    </Menu.Target>
-    <Menu.Dropdown>
-      <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-      <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-      <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-      <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-      <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-    </Menu.Dropdown>
-  </Menu>
-);
-
-export const WithLabelAndDivider = (args) => (
-  <Menu {...args}>
-    <Menu.Target>
-      <Text span>Toggle menu</Text>
-    </Menu.Target>
-    <Menu.Dropdown>
-      <Menu.Label>Label</Menu.Label>
-      <Menu.Item>Text</Menu.Item>
-      <Menu.Item>Text</Menu.Item>
-      <Menu.Item>Text</Menu.Item>
-      <Menu.Divider />
-      <Menu.Label>Label</Menu.Label>
-      <Menu.Item>Text</Menu.Item>
-      <Menu.Item>Text</Menu.Item>
-    </Menu.Dropdown>
-  </Menu>
-);
-
 # Menu
 
 Our themed wrapper around [Mantine Menu](https://mantine.dev/core/menu/).
@@ -76,11 +28,81 @@ N/A
 
 ## General
 
+export const Default = (args) => (
+  <Menu {...args}>
+    <Menu.Target>
+      <Text span>Toggle menu</Text>
+    </Menu.Target>
+    <Menu.Dropdown>
+      <Menu.Item>Text</Menu.Item>
+      <Menu.Item>Text</Menu.Item>
+      <Menu.Item>Text</Menu.Item>
+      <Menu.Item>Text</Menu.Item>
+      <Menu.Item>Text</Menu.Item>
+    </Menu.Dropdown>
+  </Menu>
+);
+
 <Canvas>
   <Story name="Default">
     {Default}
   </Story>
 </Canvas>
+
+export const WithRightSection = (args) => (
+  <Menu {...args}>
+    <Menu.Target>
+      <Text span>Toggle menu</Text>
+    </Menu.Target>
+    <Menu.Dropdown>
+      <Menu.Item>Text</Menu.Item>
+      <Menu.Item>Text</Menu.Item>
+      <Menu.Item>Text</Menu.Item>
+      <Menu.Item
+        rightSection={<Text size="xs">⌘K</Text>}>
+        Text
+      </Menu.Item>
+      <Menu.Item>Text</Menu.Item>
+    </Menu.Dropdown>
+  </Menu>
+);
+
+<Canvas>
+  <Story name="WithRightSection">
+    {WithRightSection}
+  </Story>
+</Canvas>
+
+export const WithIcon = (args) => (
+  <Menu {...args}>
+    <Menu.Target>
+      <Text span>Toggle menu</Text>
+    </Menu.Target>
+    <Menu.Dropdown>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}>
+        Text
+      </Menu.Item>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}>
+        Text
+      </Menu.Item>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}>
+        Text
+      </Menu.Item>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}
+        rightSection={<Text size="xs">⌘K</Text>}>
+        Text
+      </Menu.Item>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}>
+        Text
+      </Menu.Item>
+    </Menu.Dropdown>
+  </Menu>
+);
 
 <Canvas>
   <Story name="WithIcon">
@@ -88,6 +110,39 @@ N/A
   </Story>
 </Canvas>
 
+export const WithLabelAndDivider = (args) => (
+  <Menu {...args}>
+    <Menu.Target>
+      <Text span>Toggle menu</Text>
+    </Menu.Target>
+    <Menu.Dropdown>
+      <Menu.Label>Label</Menu.Label>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}>
+        Text
+      </Menu.Item>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}>
+        Text
+      </Menu.Item>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}>
+        Text
+      </Menu.Item>
+      <Menu.Divider />
+      <Menu.Label>Label</Menu.Label>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}
+        rightSection={<Text size="xs">⌘K</Text>}>
+        Text
+      </Menu.Item>
+      <Menu.Item
+        icon={<Icon name="dashboard" />}>
+        Text
+      </Menu.Item>
+    </Menu.Dropdown>
+  </Menu>
+);
 
 <Canvas>
   <Story name="WithLabelAndDivider">
