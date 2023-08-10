@@ -96,8 +96,8 @@
     (is (= "{$in: [1, 2, 3]}"
            (substitute {:id [1 2 3]}
                        [(param :id)]))))
-  (testing "multiple-values single (#22486)"
-    (is (= "{$in: [\"33 Taps\"]}"
+  (testing "multiple-values single (#30136)"
+    (is (= "\"33 Taps\""
            (substitute {:id ["33 Taps"]}
                        [(param :id)]))))
   (testing "multiple-values multi (#22486)"
