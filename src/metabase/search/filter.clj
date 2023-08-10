@@ -152,8 +152,8 @@
 ;;                                        Public functions                                         ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defn ->applicable-models :- [:set SearchableModel]
-  "Returns a set of models that are applicable for the search context.
+(mu/defn search-context->applicable-models :- [:set SearchableModel]
+  "Returns a set of models that are applicable given the search context.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
   [models :- [:set SearchableModel] search-context :- SearchContext]

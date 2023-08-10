@@ -913,8 +913,29 @@
                             (map (juxt :id :model :name))
                             set)))))))
 
-
        (testing "error if doesn't have premium-features"
          (premium-features-test/with-premium-features #{}
            (is (= "Content Management or Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                   (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true)))))))))
+
+(deftest available-models-should-be-independent-of-models-param-test
+  (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"
+   (let [search-term "Available models"]
+    (with-search-items-in-root-collection search-term
+      (testing "GET /api/search"
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card")
+                   :available_models
+                   set)))
+
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard")
+                   :available_models
+                   set))))
+
+      (testing "GET /api/search/models"
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card"))))
+
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))

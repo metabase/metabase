@@ -16,24 +16,24 @@
   (testing "without optional filters"
     (testing "return :models as is"
       (is (= search.config/all-models
-             (search.filter/->applicable-models
+             (search.filter/search-context->applicable-models
               search.config/all-models
               default-search-ctx)))
 
       (is (= #{}
-             (search.filter/->applicable-models
+             (search.filter/search-context->applicable-models
               #{}
               default-search-ctx)))
 
       (is (= search.config/all-models
-             (search.filter/->applicable-models
+             (search.filter/search-context->applicable-models
               search.config/all-models
               (merge default-search-ctx
                      {:archived? true}))))))
 
   (testing "ignores :modess from search-context"
     (is (= search.config/all-models
-             (search.filter/->applicable-models
+             (search.filter/search-context->applicable-models
               search.config/all-models
               (merge default-search-ctx
                      {:models   #{"card"}
@@ -42,27 +42,27 @@
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
       (is (= #{"dashboard" "dataset" "action" "card"}
-             (search.filter/->applicable-models
+             (search.filter/search-context->applicable-models
               search.config/all-models
               (merge default-search-ctx
                      {:created-by 1}))))
 
       (is (= #{"dashboard" "dataset"}
-             (search.filter/->applicable-models
+             (search.filter/search-context->applicable-models
               #{"dashboard" "dataset" "table"}
               (merge default-search-ctx
                      {:created-by 1})))))
 
     (testing "verified"
       (is (= #{"card" "collection"}
-             (search.filter/->applicable-models
+             (search.filter/search-context->applicable-models
               search.config/all-models
               (merge default-search-ctx
                      {:verified true}))))
 
 
       (is (= #{"card"}
-             (search.filter/->applicable-models
+             (search.filter/search-context->applicable-models
               #{"card" "dashboard" "dataset" "table"}
               (merge default-search-ctx
                      {:verified true})))))))
