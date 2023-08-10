@@ -27,6 +27,10 @@
             "position": "before"
           },
           {
+            "pattern": "ttag",
+            "group": "external"
+          },
+          {
             "pattern": "metabase/**",
             "group": "internal"
           },
