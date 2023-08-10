@@ -1,12 +1,23 @@
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import {
+  createMockDashboard,
+  createMockDashboardOrderedCard,
+} from "metabase-types/api/mocks";
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 import { getDefaultTab } from "metabase/dashboard/actions";
 import DashboardHeader from "./DashboardHeader";
 
-const TEST_DASHBOARD = createMockDashboard();
+console.warn = jest.fn();
+console.error = jest.fn();
+
+const DASHCARD = createMockDashboardOrderedCard();
+
+const TEST_DASHBOARD = createMockDashboard({
+  ordered_cards: [DASHCARD],
+});
 
 const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
   ordered_tabs: [
@@ -19,20 +30,67 @@ const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
   ],
 });
 
-const setup = async ({ dashboard = TEST_DASHBOARD }) => {
+const setup = async ({
+  dashboard = TEST_DASHBOARD,
+  isAdmin = false,
+  email = false,
+  slack = false,
+}) => {
   setupBookmarksEndpoints([]);
 
+  const channelData: {
+    channels: {
+      email?: any;
+      slack?: any;
+    };
+  } = { channels: {} };
+
+  if (email) {
+    channelData.channels.email = {
+      type: "email",
+      name: "Email",
+      allows_recipients: true,
+      recipients: ["user", "email"],
+      schedules: ["hourly"],
+      configured: true,
+    };
+  }
+
+  if (slack) {
+    channelData.channels.slack = {
+      type: "slack",
+      name: "Slack",
+      allows_recipients: false,
+      schedules: ["hourly"],
+      configured: true,
+      fields: [
+        {
+          name: "channel",
+          type: "select",
+          displayName: "Post to",
+          options: ["#general", "#random", "#alerts"],
+          required: true,
+        },
+      ],
+    };
+  }
+
+  fetchMock.get("path:/api/pulse/form_input", channelData);
+
   const dashboardHeaderProps = {
+    isAdmin,
     dashboard,
+    canManageSubscriptions: true,
     isEditing: false,
     isFullscreen: false,
     isNavBarOpen: false,
     isNightMode: false,
     isAdditionalInfoVisible: false,
     refreshPeriod: 0,
+    addMarkdownDashCardToDashboard: jest.fn(),
+    addHeadingDashCardToDashboard: jest.fn(),
     setRefreshElapsedHook: jest.fn(),
     addCardToDashboard: jest.fn(),
-    addTextDashCardToDashboard: jest.fn(),
     addLinkDashCardToDashboard: jest.fn(),
     fetchDashboard: jest.fn(),
     updateDashboardAndCards: jest.fn(),
@@ -63,7 +121,17 @@ const setup = async ({ dashboard = TEST_DASHBOARD }) => {
       dashboard: createMockDashboardState({
         dashboardId: dashboard.id,
         dashboards: {
-          [dashboard.id]: dashboard,
+          [dashboard.id]: {
+            ...dashboard,
+            ordered_cards: dashboard.ordered_cards.map(c => c.id),
+          },
+        },
+        dashcards: {
+          [DASHCARD.id]: {
+            ...DASHCARD,
+            isDirty: false,
+            isRemoved: false,
+          },
         },
       }),
     },
@@ -99,5 +167,25 @@ describe("DashboardHeader", () => {
       screen.getByTestId("dashboard-export-pdf-button"),
     );
     expect(exportPdfButton.getByText("Export tab as PDF")).toBeInTheDocument();
+  });
+
+  it("should not show subscriptions button for non-admin users - when email and slack are not configured", async () => {
+    await setup({
+      isAdmin: false,
+      email: false,
+      slack: false,
+    });
+
+    expect(screen.queryByLabelText("subscriptions")).not.toBeInTheDocument();
+  });
+
+  it("should show subscriptions button for admins - even when email and slack are not configured", async () => {
+    await setup({
+      isAdmin: true,
+      email: false,
+      slack: false,
+    });
+
+    expect(screen.getByLabelText("subscriptions")).toBeInTheDocument();
   });
 });

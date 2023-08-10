@@ -69,18 +69,6 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByRole("link", { name: /set up email/i });
       cy.findByRole("link", { name: /configure Slack/i });
     });
-
-    it("should not show subscriptions button for non-admin users, but should show for admin users", () => {
-      // should show for admins
-      openDashboardSubscriptions();
-      cy.findByLabelText("subscriptions").should("exist");
-
-      // should not show for non-admins
-      cy.signInAsNormalUser();
-      visitDashboard(1);
-
-      cy.findByLabelText("subscriptions").should("not.exist");
-    });
   });
 
   describe("with email set up", { tags: "@external" }, () => {
