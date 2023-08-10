@@ -1,20 +1,32 @@
-import { useState, useCallback } from "react";
+import { useCallback, useImperativeHandle, useState, RefObject } from "react";
 
 import type { ControlledPopoverWithTriggerProps } from "./ControlledPopoverWithTrigger";
 import ControlledPopoverWithTrigger from "./ControlledPopoverWithTrigger";
 
+export type TippyPopoverWithTriggerRef = {
+  open: () => void;
+  close: () => void;
+};
+
 export type TippyPopoverWithTriggerProps = {
   isInitiallyVisible?: boolean;
+  popoverRef?: RefObject<TippyPopoverWithTriggerRef>;
 } & Omit<ControlledPopoverWithTriggerProps, "visible" | "onClose" | "onOpen">;
 
 function UncontrolledPopoverWithTrigger({
   isInitiallyVisible,
+  popoverRef,
   ...props
 }: TippyPopoverWithTriggerProps) {
   const [visible, setVisible] = useState(isInitiallyVisible || false);
 
   const onOpen = useCallback(() => setVisible(true), []);
   const onClose = useCallback(() => setVisible(false), []);
+
+  useImperativeHandle(popoverRef, () => ({
+    open: onOpen,
+    close: onClose,
+  }));
 
   return (
     <ControlledPopoverWithTrigger
