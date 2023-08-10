@@ -8,6 +8,7 @@ import {
   appBar,
   getDashboardCard,
   undoToast,
+  openDashboardMenu,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -17,6 +18,14 @@ const PERMISSIONS = {
   view: ["readonly"],
   no: ["nocollection", "nosql", "none"],
 };
+
+const questionDetails = {
+  name: "Q1",
+  native: { query: "SELECT  '42' as ANSWER" },
+  display: "scalar",
+};
+
+const dashboardName = "FooBar";
 
 describe("managing dashboard from the dashboard's edit menu", () => {
   beforeEach(() => {
@@ -29,15 +38,24 @@ describe("managing dashboard from the dashboard's edit menu", () => {
         onlyOn(permission === "curate", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
-              cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-              cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
-
               cy.signIn(user);
-              visitDashboard(1);
-              assertOnRequest("getDashboard");
-              cy.get("main header").within(() => {
-                cy.icon("ellipsis").click();
+
+              cy.createNativeQuestionAndDashboard({
+                questionDetails,
+                dashboardDetails: { name: dashboardName },
+              }).then(({ body: { dashboard_id } }) => {
+                cy.wrap(dashboard_id).as("originalDashboardId");
+                cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(
+                  "getDashboard",
+                );
+                cy.intercept("PUT", `/api/dashboard/${dashboard_id}`).as(
+                  "updateDashboard",
+                );
+                visitDashboard(dashboard_id);
+                assertOnRequest("getDashboard");
               });
+
+              openDashboardMenu();
             });
 
             it("should be able to change title and description", () => {
@@ -67,23 +85,86 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               cy.findByDisplayValue("Orders in a dashboard1");
             });
 
-            it("should be able to duplicate a dashboard", () => {
-              cy.intercept("POST", "/api/dashboard/1/copy").as("copyDashboard");
+            it("should shallow duplicate a dashboard but not its cards", () => {
+              cy.get("@originalDashboardId").then(id => {
+                cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
+                  "copyDashboard",
+                );
 
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("Duplicate").click();
-              cy.location("pathname").should("eq", "/dashboard/1/copy");
-              cy.get(".Modal").within(() => {
-                clickButton("Duplicate");
-                cy.findByText("Failed").should("not.exist");
+                const newDashboardName = `${dashboardName} - Duplicate`;
+                const { name: originalQuestionName } = questionDetails;
+                const newQuestionName = `${originalQuestionName} - Duplicate`;
+                const newDashboardId = id + 1;
+
+                popover().findByText("Duplicate").should("be.visible").click();
+                cy.location("pathname").should("eq", `/dashboard/${id}/copy`);
+
+                modal().within(() => {
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}" and its questions`,
+                  });
+                  cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard")
+                    .as("shallowCopyCheckbox")
+                    .should("not.be.checked")
+                    .click();
+                  cy.get("@shallowCopyCheckbox").should("be.checked");
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}"`,
+                  });
+                  cy.button("Duplicate").click();
+                  assertOnRequest("copyDashboard");
+                });
+
+                cy.url().should("contain", `/dashboard/${newDashboardId}`);
+
+                cy.findByDisplayValue(newDashboardName);
+                appBar().findByText("Our analytics").click();
+
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", dashboardName)
+                  .and("contain", newDashboardName)
+                  .and("contain", originalQuestionName)
+                  .and("not.contain", newQuestionName);
               });
-              assertOnRequest("copyDashboard");
-              cy.location("pathname").should(
-                "eq",
-                "/dashboard/2-orders-in-a-dashboard-duplicate",
-              );
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText(`Orders in a dashboard - Duplicate`);
+            });
+
+            it("should deep duplicate a dashboard and its cards", () => {
+              cy.get("@originalDashboardId").then(id => {
+                cy.intercept("POST", `/api/dashboard/${id}/copy`).as(
+                  "copyDashboard",
+                );
+                const newDashboardName = `${dashboardName} - Duplicate`;
+                const { name: originalQuestionName } = questionDetails;
+                const newQuestionName = `${originalQuestionName} - Duplicate`;
+                const newDashboardId = id + 1;
+
+                popover().findByText("Duplicate").should("be.visible").click();
+                cy.location("pathname").should("eq", `/dashboard/${id}/copy`);
+
+                modal().within(() => {
+                  cy.findByRole("heading", {
+                    name: `Duplicate "${dashboardName}" and its questions`,
+                  });
+                  cy.findByDisplayValue(newDashboardName);
+                  cy.findByLabelText("Only duplicate the dashboard").should(
+                    "not.be.checked",
+                  );
+                  cy.button("Duplicate").click();
+                  assertOnRequest("copyDashboard");
+                });
+
+                cy.url().should("contain", `/dashboard/${newDashboardId}`);
+
+                cy.findByDisplayValue(newDashboardName);
+                appBar().findByText("Our analytics").click();
+
+                cy.findAllByTestId("collection-entry-name")
+                  .should("contain", dashboardName)
+                  .and("contain", newDashboardName)
+                  .and("contain", originalQuestionName)
+                  .and("contain", newQuestionName);
+              });
             });
 
             it("should be able to move/undo move a dashboard (metabase#13059)", () => {
@@ -106,7 +187,6 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               appBar().contains("First collection");
               appBar().should("not.contain", "Our analytics");
 
-              // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
               undoToast().within(() => {
                 cy.contains("Dashboard moved to First collection");
                 cy.button("Undo").click();
