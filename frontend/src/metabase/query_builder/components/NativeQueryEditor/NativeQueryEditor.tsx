@@ -345,7 +345,7 @@ export class NativeQueryEditor extends Component<
     100,
   );
 
-  handleKeyDown = e => {
+  handleKeyDown = (e: KeyboardEvent) => {
     const { isRunning, cancelQuery, enableRun } = this.props;
 
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -461,7 +461,7 @@ export class NativeQueryEditor extends Component<
 
             // Get columns from referenced questions that match the prefix
             const lowerCasePrefix = prefix.toLowerCase();
-            const isMatchForPrefix = name =>
+            const isMatchForPrefix = (name: string) =>
               name.toLowerCase().includes(lowerCasePrefix);
             const questionColumns = referencedQuestions
               .filter(Boolean)
