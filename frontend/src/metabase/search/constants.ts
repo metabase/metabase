@@ -4,6 +4,7 @@ import { SearchModelType } from "metabase-types/api";
 
 export const SearchFilterKeys = {
   Type: "type",
+  Verified: "verified",
 } as const;
 
 export const SEARCH_FILTERS: {

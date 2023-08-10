@@ -287,3 +287,7 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
 };
+
+export const PLUGIN_CONTENT_VERIFICATION = {
+  isEnabled: () => false,
+};

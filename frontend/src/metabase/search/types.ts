@@ -16,9 +16,11 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = SearchModelType[];
+export type VerifiedFilterProps = boolean | undefined;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
+  [SearchFilterKeys.Verified]: VerifiedFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;

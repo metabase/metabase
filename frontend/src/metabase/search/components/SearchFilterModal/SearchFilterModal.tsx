@@ -12,11 +12,13 @@ import {
 import Button from "metabase/core/components/Button";
 import { Title, Flex } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { TypeFilter } from "./filters/TypeFilter";
+import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { SearchFilterWrapper } from "./SearchFilterModal.styled";
+import { TypeFilter, VerifiedFilter } from "./filters";
 
 const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
   [SearchFilterKeys.Type]: TypeFilter,
+  [SearchFilterKeys.Verified]: VerifiedFilter,
 };
 
 export const SearchFilterModal = ({
@@ -36,7 +38,7 @@ export const SearchFilterModal = ({
     key: FilterTypeKeys,
     val: SearchFilterPropTypes[FilterTypeKeys],
   ) => {
-    if (!val || val.length === 0) {
+    if (!val || (Array.isArray(val) && val.length === 0)) {
       setOutput(_.omit(output, key));
     } else {
       setOutput({
@@ -67,7 +69,11 @@ export const SearchFilterModal = ({
   // we can use this field to control which filters are available
   // - we can enable the 'verified' filter here
   const availableFilters: FilterTypeKeys[] = useMemo(() => {
-    return [SearchFilterKeys.Type];
+    const filters: FilterTypeKeys[] = [SearchFilterKeys.Type];
+    if (PLUGIN_CONTENT_VERIFICATION.isEnabled()) {
+      filters.push(SearchFilterKeys.Verified);
+    }
+    return filters;
   }, []);
 
   return isOpen ? (

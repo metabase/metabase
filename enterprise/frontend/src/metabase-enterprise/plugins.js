@@ -16,6 +16,7 @@ import "./sandboxes";
 import "./auth";
 import "./caching";
 import "./collections";
+import "./content_verification";
 import "./whitelabel";
 import "./embedding";
 import "./snippets";
