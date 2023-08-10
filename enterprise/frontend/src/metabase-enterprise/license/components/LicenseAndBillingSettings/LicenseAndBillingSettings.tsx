@@ -26,6 +26,7 @@ import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import { SettingDefinition } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import { Text, Anchor } from "metabase/ui";
 
 const HOSTING_FEATURE_KEY = "hosting";
 const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
@@ -129,13 +130,14 @@ const LicenseAndBillingSettings = ({
         )}
 
         {!isStoreManagedBilling && (
-          <SectionDescription>
-            {jt`To manage your billing preferences, please email ${(
-              <ExternalLink key="email" href="mailto:billing@metabase.com">
+          <>
+            <Text color="text.1">
+              {t`To manage your billing preferences, please email `}
+              <Anchor span href="mailto:billing@metabase.com">
                 billing@metabase.com
-              </ExternalLink>
-            )}`}
-          </SectionDescription>
+              </Anchor>
+            </Text>
+          </>
         )}
       </>
 
