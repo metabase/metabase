@@ -44,7 +44,7 @@ export default class Funnel extends Component {
   static defaultSize = getDefaultSize("funnel");
 
   static isSensible({ cols, rows }) {
-    return cols.length === 2;
+    return cols.length >= 2;
   }
 
   static checkRenderable(series, settings) {
