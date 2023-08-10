@@ -520,6 +520,9 @@ export class NativeQueryEditor extends Component<
   }
 
   getSnippetNameAtCursor = ({ row, column }: Ace.Position) => {
+    if (!this._editor) {
+      return null;
+    }
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
@@ -527,6 +530,9 @@ export class NativeQueryEditor extends Component<
   };
 
   getCardTagNameAtCursor = ({ row, column }: Ace.Position) => {
+    if (!this._editor) {
+      return null;
+    }
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*(#[^\}]*)$/);
@@ -605,7 +611,7 @@ export class NativeQueryEditor extends Component<
   }
 
   _retriggerAutocomplete = _.debounce(() => {
-    if (this._editor.completer?.popup?.isOpen) {
+    if (this._editor?.completer?.popup?.isOpen) {
       this._editor.execCommand("startAutocomplete");
     }
   }, AUTOCOMPLETE_DEBOUNCE_DURATION);
