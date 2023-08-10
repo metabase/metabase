@@ -629,7 +629,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
       if (this._editor && !this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
-        setTimeout(() => this._editor.focus(), 50);
+        setTimeout(() => this._editor?.focus(), 50);
       }
     }
   };
@@ -661,13 +661,13 @@ export class NativeQueryEditor extends Component<
   };
 
   handleQueryUpdate = (queryText: string) => {
-    this._editor.setValue(queryText);
-    this._editor.clearSelection();
+    this._editor?.setValue(queryText);
+    this._editor?.clearSelection();
   };
 
   handleQueryGenerated = (queryText: string) => {
     this.handleQueryUpdate(queryText);
-    this._editor.focus();
+    this._editor?.focus();
   };
 
   isPromptInputVisible = () => {
@@ -772,7 +772,7 @@ export class NativeQueryEditor extends Component<
             if (typeof resizableBoxProps?.onResizeStop === "function") {
               resizableBoxProps.onResizeStop(e, data);
             }
-            this._editor.resize();
+            this._editor?.resize();
           }}
         >
           <>
