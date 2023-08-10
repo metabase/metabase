@@ -91,6 +91,9 @@
     (metrics  [_this table-id]   (for [metric metrics
                                        :when (= (:table-id metric) table-id)]
                                    (assoc metric :lib/type :metadata/metric)))
+    (segments [_this table-id]   (for [segment segments
+                                       :when (= (:table-id segment) table-id)]
+                                   (assoc segment :lib/type :metadata/segment)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]

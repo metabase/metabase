@@ -233,6 +233,8 @@
    rename-join
    replace-clause
    replace-join]
+  [lib.segment
+   available-segments]
   [lib.stage
    append-stage
    drop-stage]
