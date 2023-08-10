@@ -9867,7 +9867,7 @@ babel-plugin-react-docgen@^4.2.1:
     lodash "^4.17.15"
     react-docgen "^5.0.0"
 
-babel-plugin-ttag@^1.8.8:
+babel-plugin-ttag@^1.7.26:
   version "1.8.8"
   resolved "https://registry.yarnpkg.com/babel-plugin-ttag/-/babel-plugin-ttag-1.8.8.tgz#ee560976cc08f52e3812d0ceb322299cbf0134b1"
   integrity sha512-0xTObf1Guk5XdfSfyKm35fUEoT5CK/qwnbvXsD8YVBclVzDpTEChhEgbhg5/5yz446suiZbwtdJQaYCJF9q8WQ==
@@ -20006,6 +20006,11 @@ pkg-dir@^5.0.0:
   dependencies:
     find-up "^5.0.0"
 
+plural-forms@^0.3.10:
+  version "0.3.10"
+  resolved "https://registry.yarnpkg.com/plural-forms/-/plural-forms-0.3.10.tgz#b2c04fa3f49382221b75442ff743fc97cec99bad"
+  integrity sha512-WrBD4Ojmt55Fmk6WpggelL5Y0VkPglgv6ddUEtt7gVN1EvZ6MWofpx1P92bRuYqqbne3C78SMF40mBrxtVnvmg==
+
 plural-forms@^0.5.3:
   version "0.5.3"
   resolved "https://registry.yarnpkg.com/plural-forms/-/plural-forms-0.5.3.tgz#63c97b0f3be6ead92276d6f6ae81996508997911"
@@ -24201,13 +24206,13 @@ tsutils@^3.21.0:
   dependencies:
     tslib "^1.8.1"
 
-ttag@1.7.24:
-  version "1.7.24"
-  resolved "https://registry.yarnpkg.com/ttag/-/ttag-1.7.24.tgz#3da0eb52ed3a3cef0cf94328d07b2ba570906788"
-  integrity sha512-8H/0dS6VYqBXzVBCo8f4s48TMIkC9UrALfMkXsaNWqKo3P3UQzfE1KZXlBkrhZho2A1iJuxUgGzHSgQvkZwGmg==
+ttag@1.7.19:
+  version "1.7.19"
+  resolved "https://registry.yarnpkg.com/ttag/-/ttag-1.7.19.tgz#e6cb038f47737d8df1a778be80a88d4904beecbd"
+  integrity sha512-5s8Lhs1BM9lSGybOKwWwsZBm2kPa6rS2ecBQMjlhYHqpUiCjrgSVz/xcccE1ri+nVLjCrlkjrT86tbONnOu+2w==
   dependencies:
     dedent "^0.7.0"
-    plural-forms "^0.5.3"
+    plural-forms "^0.3.10"
 
 tty-browserify@0.0.0:
   version "0.0.0"
