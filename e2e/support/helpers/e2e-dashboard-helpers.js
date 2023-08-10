@@ -1,5 +1,5 @@
 import { visitDashboard } from "./e2e-misc-helpers";
-import { dashboardHeader, popover } from "./e2e-ui-elements-helpers";
+import { popover } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -200,3 +200,7 @@ export function toggleDashboardInfoSidebar() {
 export function openDashboardMenu() {
   dashboardHeader().findByLabelText("dashboard-menu-button").click();
 }
+
+export const dashboardHeader = () => {
+  return cy.findByTestId("dashboard-header");
+};
