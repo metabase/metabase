@@ -77,7 +77,7 @@
                             :or   {has-source-metadata? true
                                    native-source?       false}}]
   (let [{base-type :base_type effective-type :effective_type :keys [name] :as breakout-col}
-        (qp.test/breakout-col (qp.test/col :venues :price))]
+        (qp.test-util/breakout-col (qp.test-util/col :venues :price))]
     {:rows [[1 22]
             [2 59]
             [3 13]
@@ -90,7 +90,7 @@
 
               (not has-source-metadata?)
               (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
-            (qp.test/aggregate-col :count)]}))
+            (qp.test-util/aggregate-col :count)]}))
 
 (deftest ^:parallel mbql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -322,7 +322,7 @@
             (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
                                                                 :type :native
                                                                 :native {:query sql}}}]
-              (qp.test/rows-and-cols
+              (qp.test-util/rows-and-cols
                (mt/format-rows-by [int int]
                  (qp/process-query
                   (query-with-source-card card
