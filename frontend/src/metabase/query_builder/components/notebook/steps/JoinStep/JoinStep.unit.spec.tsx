@@ -259,6 +259,26 @@ describe("Notebook Editor > Join Step", () => {
     );
   });
 
+  it("should apply a suggested condition when table is selected", async () => {
+    const { getRecentJoin } = setup();
+
+    const popover = screen.getByTestId("popover");
+    userEvent.click(await within(popover).findByText("Products"));
+
+    const { conditions } = getRecentJoin();
+    const [condition] = conditions;
+    expect(conditions).toHaveLength(1);
+    expect(condition.operator).toBe("=");
+    expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
+    expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
+
+    expect(screen.getByLabelText("Left column")).toHaveTextContent(
+      "Product ID",
+    );
+    expect(screen.getByLabelText("Right column")).toHaveTextContent("ID");
+    expect(screen.getByLabelText("Change operator")).toHaveTextContent("=");
+  });
+
   it("should change LHS column", async () => {
     const query = getJoinedQuery();
     const { getRecentJoin } = setup(
@@ -384,6 +404,5 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it.todo("field selection");
-  it.todo("default condition");
   it.todo("multiple conditions");
 });
