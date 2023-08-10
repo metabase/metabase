@@ -721,7 +721,6 @@ export class NativeQueryEditor extends Component<
       readOnly,
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
-      width,
       hasParametersList = true,
       hasTopBar = true,
       hasEditingSidebar = true,
@@ -786,10 +785,10 @@ export class NativeQueryEditor extends Component<
             onClose={this.togglePromptVisibility}
           />
         )}
+        {/* @ts-expect-error — error in resizable box types  */}
         <StyledResizableBox
           ref={this.resizeBox}
           isOpen={isNativeEditorOpen}
-          width={width}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
