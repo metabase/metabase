@@ -173,5 +173,36 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
+    Menu: {
+      styles(theme) {
+        return {
+          dropdown: {
+            padding: "0.5rem",
+          },
+          item: {
+            color: theme.colors.text[2],
+            fontSize: theme.fontSizes.md,
+            fontWeight: 700,
+            padding: "0.5rem 1rem",
+
+            "&:hover": {
+              color: theme.colors.brand[1],
+              backgroundColor: theme.colors.brand[0],
+            },
+          },
+          itemIcon: {
+            marginRight: "0.5rem",
+          },
+          label: {
+            color: theme.colors.text[0],
+            fontSize: theme.fontSizes.md,
+            fontWeight: 700,
+          },
+          divider: {
+            borderTopColor: theme.colors.border[0],
+          },
+        };
+      },
+    },
   },
 };
