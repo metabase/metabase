@@ -66,7 +66,7 @@
   since we don't need the results.
   Converts MLv2-style metadata to legacy-style `:snake_case` keys.
   Check whether you can use [[metabase.query-processor.metadata/query->mlv2-metadata]] instead and consume MLv2-style metadata directly."
-  [query :- mbql.s/Query]
+  [query :- :map]
   ;; work around all those dumb tests that save Cards with {} queries
   (when (seq query)
     (qp.store/with-store
