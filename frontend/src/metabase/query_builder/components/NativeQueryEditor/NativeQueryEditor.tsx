@@ -133,7 +133,7 @@ interface OwnProps {
   autocompleteResultsFn: (prefix: string) => Promise<AutocompleteItem[]>;
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
-  fetchQuestion: (questionId: CardId) => Question;
+  fetchQuestion: (questionId: CardId) => Promise<Question>;
   runQuestionQuery: (opts?: {
     overrideWithCard?: Card;
     shouldUpdateUrl?: boolean;
