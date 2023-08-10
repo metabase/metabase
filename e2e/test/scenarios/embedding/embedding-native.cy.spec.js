@@ -80,7 +80,7 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
-      // Created At: Q2, 2023
+      // Created At: Q2 2023
       filterWidget().contains("Created At").click();
       cy.findByTestId("select-button").click();
       popover().last().contains("2023").click();
@@ -105,7 +105,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // Let's try to remove one filter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2, 2023")
+      cy.findByText("Q2 2023")
         .closest("fieldset")
         .within(() => {
           cy.icon("close").click();
@@ -157,8 +157,8 @@ describe("scenarios > embedding > native questions", () => {
         // It should be possible to both set the filter value and hide it at the same time.
         // That's the synonymous to the locked filter.
         visitEmbeddedPage(payload, {
-          setFilters: "id=92",
-          hideFilters: "id,product_id,state,created_at,total",
+          setFilters: { id: 92 },
+          hideFilters: ["id", "product_id", "state", "created_at", "total"],
         });
 
         cy.findByTestId("table-row").should("have.length", 1);
@@ -186,13 +186,13 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         visitEmbeddedPage(payload, {
-          setFilters: "created_at=Q2-2025&source=Organic&state=OR",
+          setFilters: { created_at: "Q2-2025", source: "Organic", state: "OR" },
         });
 
         filterWidget()
           .should("have.length", 4)
           .and("contain", "OR")
-          .and("contain", "Q2, 2025");
+          .and("contain", "Q2 2025");
         // Why do we use input field in one filter widget but a simple `span` in the other one?
         cy.findByDisplayValue("Organic");
 
@@ -204,7 +204,7 @@ describe("scenarios > embedding > native questions", () => {
 
         // OTOH, we should also be able to override the default filter value by eplixitly setting it
         visitEmbeddedPage(payload, {
-          setFilters: "total=80",
+          setFilters: { total: 80 },
         });
 
         cy.get("legend").contains("Total").parent("fieldset").contains("80");

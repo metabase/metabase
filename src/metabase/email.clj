@@ -1,9 +1,11 @@
 (ns metabase.email
   (:require
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [postal.core :as postal]
    [postal.support :refer [make-props]]
@@ -121,23 +123,29 @@
   does not catch and swallow thrown exceptions, it will bubble up."
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
-  (when-not (email-smtp-host)
-    (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
-  ;; Now send the email
-  (send-email! (smtp-settings)
-               (merge
-                {:from    (if-let [from-name (email-from-name)]
-                            (str from-name " <" (email-from-address) ">")
-                            (email-from-address))
-                 :to      recipients
-                 :subject subject
-                 :body    (case message-type
-                            :attachments message
-                            :text        message
-                            :html        [{:type    "text/html; charset=utf-8"
-                                           :content message}])}
-                (when-let [reply-to (email-reply-to)]
-                  {:reply-to reply-to}))))
+  (try
+    (when-not (email-smtp-host)
+      (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
+    ;; Now send the email
+    (send-email! (smtp-settings)
+                 (merge
+                  {:from    (if-let [from-name (email-from-name)]
+                              (str from-name " <" (email-from-address) ">")
+                              (email-from-address))
+                   :to      recipients
+                   :subject subject
+                   :body    (case message-type
+                              :attachments message
+                              :text        message
+                              :html        [{:type    "text/html; charset=utf-8"
+                                             :content message}])}
+                  (when-let [reply-to (email-reply-to)]
+                    {:reply-to reply-to})))
+    (catch Throwable e
+      (prometheus/inc :metabase-email/message-errors)
+      (throw e))
+    (finally
+      (prometheus/inc :metabase-email/messages))))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key

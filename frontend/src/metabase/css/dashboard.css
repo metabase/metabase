@@ -96,19 +96,6 @@
   margin-top: 1.5em;
 }
 
-.DashCard {
-  position: relative;
-  z-index: 2;
-}
-
-.DashCard .Card {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-}
-
 .Dash--editing .DashCard .Card {
   transition: border 0.3s, background-color 0.3s;
 }
@@ -121,21 +108,6 @@
   z-index: 2;
 }
 
-/* Google Maps widgets */
-.DashCard .gm-style-mtc,
-.DashCard .gm-bundled-control,
-.DashCard .PinMapUpdateButton,
-.leaflet-container .leaflet-control-container {
-  opacity: 0.01;
-  transition: opacity 0.3s linear;
-}
-.DashCard:hover .gm-style-mtc,
-.DashCard:hover .gm-bundled-control,
-.DashCard:hover .PinMapUpdateButton,
-.leaflet-container:hover .leaflet-control-container {
-  opacity: 1;
-}
-
 .Dash--editing .PinMap {
   /* allow map to pan. need to stopPropagation in PinMap to prevent weird dragging interaction */
   pointer-events: all;
@@ -144,18 +116,6 @@
 .PinMapUpdateButton--disabled {
   pointer-events: none;
   color: var(--color-text-light);
-}
-
-.DashCard .Card {
-  border-radius: 8px;
-  box-shadow: 0px 1px 3px var(--color-shadow);
-}
-
-@media (prefers-reduced-motion) {
-  /* short duration (instead of none) to still trigger transition events */
-  .DashCard {
-    transition-duration: 10ms !important;
-  }
 }
 
 .Dash--editing .DashCard.react-draggable-dragging .Card {
@@ -248,39 +208,6 @@
   max-height: 600px;
   width: 80%;
   max-width: 1024px;
-}
-
-/*
-
-  fullscreen text size modifications
-
-*/
-
-/*
-  increase the base font size in fullscreen mode to bump things up to
-  accomodate for viewing distance on TVs etc
-*/
-@media screen and (min-width: 1280px) {
-  .Dashboard.Dashboard--fullscreen {
-    font-size: 1.2em;
-  }
-  /* keep the dashboard header title from being overwhelmingly large */
-  .Dashboard.Dashboard--fullscreen .Header-title-name {
-    font-size: 1em;
-  }
-  /* keep the single row text cards to avoid overflow with a scroll bar */
-  .Dashboard.Dashboard--fullscreen .Text--single-row {
-    font-size: 0.85em;
-  }
-  .Dashboard.Dashboard--fullscreen .fullscreen-text-small .LegendItem {
-    font-size: 1em;
-  }
-}
-
-@media screen and (min-width: 1540px) {
-  .Dashboard.Dashboard--fullscreen {
-    font-size: 1.4em;
-  }
 }
 
 /* what for to print the dashboards */

@@ -14,6 +14,7 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -145,7 +146,7 @@ describe("scenarios > question > nested", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("10511");
-    cy.findAllByText("June, 2022");
+    cy.findAllByText("June 2022");
     cy.findAllByText("13");
   });
 
@@ -189,33 +190,31 @@ describe("scenarios > question > nested", () => {
     };
 
     cy.log("Create a metric with a filter");
-    cy.request("POST", "/api/metric", metric).then(
-      ({ body: { id: metricId } }) => {
-        // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
-        const baseQuestionDetails = {
-          name: "12507",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["metric", metricId]],
-            breakout: [
-              ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
-            ],
-          },
-        };
+    createMetric(metric).then(({ body: { id: metricId } }) => {
+      // "capture" the original query because we will need to re-use it later in a nested question as "source-query"
+      const baseQuestionDetails = {
+        name: "12507",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["metric", metricId]],
+          breakout: [
+            ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
+          ],
+        },
+      };
 
-        const nestedQuestionDetails = {
-          query: {
-            filter: [">", ["field", ORDERS.TOTAL, null], 50],
-          },
-        };
+      const nestedQuestionDetails = {
+        query: {
+          filter: [">", ["field", ORDERS.TOTAL, null], 50],
+        },
+      };
 
-        // Create new question which uses previously defined metric
-        createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
+      // Create new question which uses previously defined metric
+      createNestedQuestion({ baseQuestionDetails, nestedQuestionDetails });
 
-        cy.log("Reported failing since v0.35.2");
-        cy.get(".cellData").contains(metric.name);
-      },
-    );
+      cy.log("Reported failing since v0.35.2");
+      cy.get(".cellData").contains(metric.name);
+    });
   });
 
   it("should handle remapped display values in a base QB question (metabase#10474)", () => {

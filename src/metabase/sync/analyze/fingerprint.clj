@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [redux.core :as redux]
    [schema.core :as s]
@@ -102,7 +103,7 @@
   [base-types :- #{su/FieldType}]
   (->> (for [base-type base-types]
          (cons base-type (descendants base-type)))
-       (reduce set/union)
+       (reduce set/union #{})
        (map u/qualified-name)
        set))
 

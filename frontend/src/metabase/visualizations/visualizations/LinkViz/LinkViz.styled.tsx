@@ -1,29 +1,47 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
+import BaseExternalLink from "metabase/core/components/ExternalLink";
 import { Icon } from "metabase/core/components/Icon";
 import RecentsList from "metabase/nav/components/RecentsList";
 
-export const DisplayLinkCardWrapper = styled.div`
+export const DisplayLinkCardWrapper = styled.div<{ fade?: boolean }>`
   padding: 0 0.5rem;
   display: flex;
   width: 100%;
   height: 100%;
-  pointer-events: all;
   align-items: center;
+  pointer-events: ${({ fade }) => (fade ? "none" : "all")};
+  opacity: ${({ fade }) => (fade ? 0.25 : 1)};
 `;
 
-export const EditLinkCardWrapper = styled.div`
+export const EditLinkCardWrapper = styled.div<{ fade?: boolean }>`
   padding: 0 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   width: 100%;
   height: 100%;
-  pointer-events: all;
+  pointer-events: ${({ fade }) => (fade ? "none" : "all")};
+  opacity: ${({ fade }) => (fade ? 0.25 : 1)};
 `;
 
 export const CardLink = styled(Link)`
+  width: 100%;
+  padding: 0 0.5rem;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: bold;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const ExternalLink = styled(BaseExternalLink)`
   width: 100%;
   padding: 0 0.5rem;
   display: flex;

@@ -2,9 +2,12 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.memoize :as memoize]
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.database :as api.database]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues Permissions Table]]
    [metabase.models.database :as database]
    [metabase.models.field :as field]
@@ -576,15 +579,18 @@
       (testing "A non-admin cannot update database metadata if the advanced-permissions feature flag is not present"
         (with-all-users-data-perms {db-id {:details :yes}}
           (premium-features-test/with-premium-features #{}
-            (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"}))))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"}))))))
 
       (testing "A non-admin cannot update database metadata if they do not have DB details permissions"
         (with-all-users-data-perms {db-id {:details :no}}
-          (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"})))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"})))))
 
       (testing "A non-admin can update database metadata if they have DB details permissions"
         (with-all-users-data-perms {db-id {:details :yes}}
-          (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))
+          (is (=? {:id db-id}
+                  (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))))
 
 (deftest delete-database-test
   (t2.with-temp/with-temp [Database {db-id :id}]
@@ -597,7 +603,7 @@
                   Table       [{table-id :id}  {:db_id db-id}]
                   Field       [{field-id :id}  {:table_id table-id}]
                   FieldValues [{values-id :id} {:field_id field-id, :values [1 2 3 4]}]]
-    (with-redefs [metabase.api.database/*rescan-values-async* false]
+    (with-redefs [api.database/*rescan-values-async* false]
       (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
         (with-all-users-data-perms {db-id {:details :yes}}
           (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
@@ -685,16 +691,25 @@
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
 
 (deftest upload-csv-test
-  (let [db-id (u/the-id (mt/db))]
-    (testing "Should be blocked without data access"
-      (perms/grant-application-permissions! (perms-group/all-users) :setting)
-      (mt/with-temporary-setting-values [uploads-enabled      true
-                                         uploads-database-id  db-id
-                                         uploads-schema-name  nil
-                                         uploads-table-prefix "uploaded_magic_"]
-        (with-all-users-data-perms {db-id {:data {:native :none, :schemas :none}}}
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"You don't have permissions to do that\."
-               (api.card-test/upload-example-csv! nil false)))))
-      (perms/revoke-application-permissions! (perms-group/all-users) :setting))))
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (testing "Should be blocked without data access"
+          (perms/grant-application-permissions! (perms-group/all-users) :setting)
+          ;; Create not_public schema
+          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                           ["CREATE SCHEMA \"not_public\";"])
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "not_public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (with-all-users-data-perms {db-id {:data {:native :none, :schemas :none}}}
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You don't have permissions to do that\."
+                     (api.card-test/upload-example-csv! nil false))))
+              (with-all-users-data-perms {db-id {:data {:native :none, :schemas ["not_public"]}}}
+                (is
+                 (api.card-test/upload-example-csv! nil false)))))
+          (perms/revoke-application-permissions! (perms-group/all-users) :setting))))))

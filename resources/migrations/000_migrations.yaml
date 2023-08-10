@@ -15922,6 +15922,180 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v47.00-051
+      author: noahmoss
+      comment: Added 0.47.0 - Drop foreign key constraint on connection_impersonations.db_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: connection_impersonations
+            constraintName: fk_conn_impersonation_db_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: connection_impersonations
+            baseColumnNames: db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_conn_impersonation_db_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v47.00-052
+      author: noahmoss
+      comment: Added 0.47.0 - Drop foreign key constraint on connection_impersonations.group_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: connection_impersonations
+            constraintName: fk_conn_impersonation_group_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: connection_impersonations
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_conn_impersonation_group_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v47.00-053
+      author: noahmoss
+      comment: Added 0.47.0 -- connection_impersonations index for db_id column
+      changes:
+        - createIndex:
+            tableName: connection_impersonations
+            columns:
+              - column:
+                  name: db_id
+            indexName: idx_conn_impersonations_db_id
+
+  - changeSet:
+      id: v47.00-054
+      author: noahmoss
+      comment: Added 0.47.0 -- connection_impersonations index for group_id column
+      changes:
+        - createIndex:
+            tableName: connection_impersonations
+            columns:
+              - column:
+                  name: group_id
+            indexName: idx_conn_impersonations_group_id
+
+  - changeSet:
+      id: v47.00-055
+      author: noahmoss
+      comment: Added 0.47.0 - unique constraint for connection impersonations
+      changes:
+        - addUniqueConstraint:
+            tableName: connection_impersonations
+            columnNames: group_id, db_id
+            constraintName: conn_impersonation_unique_group_id_db_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: connection_impersonations
+            constraintName: conn_impersonation_unique_group_id_db_id
+
+  - changeSet:
+      id: v47.00-056
+      author: noahmoss
+      comment: Added 0.47.0 - re-add foreign key constraint on connection_impersonations.db_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: connection_impersonations
+            baseColumnNames: db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_conn_impersonation_db_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v47.00-057
+      author: noahmoss
+      comment: Added 0.47.0 - re-add foreign key constraint on connection_impersonations.group_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: connection_impersonations
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_conn_impersonation_group_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v48.00-001
+      author: qnkhuat
+      comment: Added 0.47.0 - Migrate database.options to database.settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateDatabaseOptionsToSettings"
+
+  - changeSet:
+      id: v48.00-002
+      author: qnkhuat
+      comment: Added 0.47.0 - drop metabase_database.options
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: options
+      rollback:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: options
+                  type: ${text.type}
+                  remarks: "Serialized JSON containing various options like QB behavior."
+
+  - changeSet:
+      id: v48.00-003
+      author: qnkhuat
+      comment: Added 0.48.0 - drop computation_job_result table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: computation_job_result
+      changes:
+          - dropTable:
+              tableName: computation_job_result
+      rollback: # no rollback needed since this table has been unused since 2018
+
+  - changeSet:
+      id: v48.00-004
+      author: qnkhuat
+      comment: Added 0.48.0 - drop computation_job table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: computation_job
+      changes:
+          - dropTable:
+              tableName: computation_job
+      rollback: # no rollback needed since this table has been unused since 2018
+
+  - changeSet:
+      id: v48.00-005
+      author: qnkhuat
+      comment: Added 0.48.0 - Add query_execution.action_id
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: action_id
+                  type: integer
+                  remarks: 'The ID of the action associated with this query execution, if any.'
+
+  - changeSet:
+      id: v48.00-006
+      author: qnkhuat
+      comment: Added 0.48.0 - Index query_execution.action_id
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_action_id
+            columns:
+              column:
+                name: action_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

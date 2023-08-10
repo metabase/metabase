@@ -1,6 +1,39 @@
 {:config-paths ["macros"]
  :linters
- {:unresolved-symbol
+ {:aliased-namespace-symbol     {:level :warning}
+  :invalid-arity                {:skip-args [metabase.mbql.util.match/match]} ; TODO (cam): can we fix these?
+  :keyword-binding              {:level :warning}
+  :main-without-gen-class       {:level :warning}
+  :misplaced-docstring          {:level :warning}
+  :missing-body-in-when         {:level :warning}
+  :missing-docstring            {:level :warning}
+  :missing-else-branch          {:level :warning}
+  :namespace-name-mismatch      {:level :warning}
+  :non-arg-vec-return-type-hint {:level :warning}
+  :reduce-without-init          {:level :warning}
+  :redundant-fn-wrapper         {:level :warning}
+  :refer-all                    {:level :warning, :exclude [clojure.test]}
+  :single-key-in                {:level :warning}
+  :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
+  :use                          {:level :warning}
+  :warn-on-reflection           {:level :warning}
+
+  ;;
+  ;; disabled linters
+  ;;
+
+  :unexpected-recur         {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
+  :used-underscored-binding {:level :off} ; false positives: see https://github.com/clj-kondo/clj-kondo/issues/2152
+
+  ;;
+  ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
+  ;;
+
+  ;; :docstring-leading-trailing-whitespace {:level :warning}
+  ;; :docstring-no-summary                  {:level :warning}
+  ;; :shadowed-var                          {:level :warning}
+
+  :unresolved-symbol
   {:exclude
    [instaparse.core/transform
     (cljs.test/is [=? malli=])
@@ -24,33 +57,6 @@
     (metabase.util/prog1 [<>])
     (taoensso.nippy/extend-freeze)
     (taoensso.nippy/extend-thaw)]}
-
-  :refer-all                                {:level   :warning
-                                             :exclude [clojure.test]}
-  ;; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
-  :unexpected-recur                         {:level :off}
-  ;; TODO (cam): can we fix these?
-  :unused-referred-var                      {:exclude {compojure.core [GET DELETE POST PUT]}}
-  :missing-else-branch                      {:level :warning}
-  :misplaced-docstring                      {:level :warning}
-  :non-arg-vec-return-type-hint             {:level :warning}
-  :missing-body-in-when                     {:level :warning}
-  :missing-docstring                        {:level :warning}
-  ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
-  :namespace-name-mismatch                  {:level :off}
-  :use                                      {:level :warning}
-  :redundant-fn-wrapper                     {:level :warning}
-  :invalid-arity                            {:skip-args [metabase.mbql.util.match/match]}
-  :warn-on-reflection                       {:level :warning}
-  ;; TODO (cam): here are some more linters we should experiment with enabling -- some might be useful.
-  ;; :docstring-no-summary                  {:level :warning}
-  ;; :docstring-leading-trailing-whitespace {:level :warning}
-  ;; :reduce-without-init                   {:level :warning}
-  ;; :used-underscored-binding              {:level :warning}
-  ;; :single-key-in                         {:level :warning}
-  ;; :keyword-binding                       {:level :warning}
-  ;; :main-without-gen-class                {:level :warning}
-  ;; :shadowed-var                          {:level :warning}
 
   :deprecated-var
   {:exclude
@@ -123,20 +129,25 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print                   {:message "Use clojure.tools.logging instead of clojure.core/print"}
-   clojure.core/println                 {:message "Use clojure.tools.logging instead of clojure.core/println"}
-   clojure.core/printf                  {:message "Use clojure.tools.logging instead of clojure.core/printf"}
-   clojure.core/prn                     {:message "Use clojure.tools.logging instead of clojure.core/prn"}
-   clojure.core/pr                      {:message "Use clojure.tools.logging instead of clojure.core/pr"}
+  {clojure.core/print                   {:message "Use metabase.util.log instead of clojure.core/print"}
+   clojure.core/println                 {:message "Use metabase.util.log instead of clojure.core/println"}
+   clojure.core/printf                  {:message "Use metabase.util.log instead of clojure.core/printf"}
+   clojure.core/prn                     {:message "Use metabase.util.log instead of clojure.core/prn"}
+   clojure.core/pr                      {:message "Use metabase.util.log instead of clojure.core/pr"}
+   clojure.core/tap>                    {:message "Don't use tap> is source code"}
+   clojure.core/time                    {:message "Don't use time in source code"}
    clojure.java.jdbc/get-connection     {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
    clojure.java.jdbc/with-db-connection {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata   {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
-   clojure.pprint/pprint                {:message "Use clojure.tools.logging instead of clojure.pprint/pprint"}
+   clojure.pprint/pprint                {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
    clojure.string/lower-case            {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case            {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    honeysql.core/call                   {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                    {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock                 {:message "Use mt/with-clock"}
+   java.util.UUID/randomUUID            {:message "Use clojure.core/random-uuid instead of java.util.UUID/randomUUID"}
+   malli.core/explainer                 {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
+   medley.core/random-uuid              {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.test/with-temp              {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp"}
    ;; metabase.test/with-temp*             {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp*"}
    toucan.db/select                     {:message "Use t2/select instead of toucan.db/select"}
@@ -358,6 +369,7 @@
     metabase.pulse.render.body                                      body
     metabase.pulse.render.common                                    common
     metabase.pulse.render.style                                     style
+    metabase.pulse.parameters                                       params
     metabase.query-processor-test                                   qp.test
     metabase.query-processor.context                                qp.context
     metabase.query-processor.error-type                             qp.error-type
@@ -460,7 +472,10 @@
     ring.adapter.jetty9.servlet                                     servlet
     saml20-clj.core                                                 saml
     toucan.db                                                       db
-    toucan.models                                                   models}}}
+    toucan.models                                                   models}}
+
+  :metabase/validate-deftest                   {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs {:level :warning}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -471,7 +486,6 @@
   metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
   metabase.actions.test-util/with-actions                                              clojure.core/let
   metabase.api.common/let-404                                                          clojure.core/let
-  metabase.api.dashboard-test/let-url                                                  clojure.core/let
   metabase.api.search-test/do-test-users                                               clojure.core/let
   metabase.async.api-response-test/with-response                                       clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                     clojure.core/let
@@ -505,6 +519,7 @@
   metabase.test.data.interface/defdataset                                              clojure.core/def
   metabase.test.data.interface/defdataset-edn                                          clojure.core/def
   metabase.test/defdataset                                                             clojure.core/def
+  metabase.test/let-url                                                                clojure.core/let
   metabase.test/with-actions                                                           clojure.core/let
   metabase.test/with-open-channels                                                     clojure.core/let
   metabase.test/with-single-admin-user                                                 clojure.core/fn
@@ -512,7 +527,10 @@
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
+  metabase.util.malli/defmethod                                                        schema.core/defmethod
   metabase.util.malli/defn                                                             schema.core/defn
+  metabase.util.malli.defn/defn                                                        schema.core/defn
+  metabase.util.malli.fn/fn                                                            schema.core/fn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def
   potemkin.types/defprotocol+                                                          clojure.core/defprotocol
@@ -526,7 +544,11 @@
 
  :hooks
  {:analyze-call
-  {clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
+  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+   cljs.test/is                                                                                                              hooks.clojure.test/is
+   clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
+   clojure.test/is                                                                                                           hooks.clojure.test/is
+   metabase-enterprise.advanced-config.caching-test/with-temp-persist-models                                                 hooks.common/with-seven-bindings
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan.util.test/with-temp*
@@ -701,8 +723,8 @@
   source-namespaces
   {:linters
    {:discouraged-var
-    {clojure.core/with-redefs {:message "Don't use with-redefs"}
-     clojure.core/eval        {:message "Don't use eval"}}}}
+    {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
+     clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
 
   printable-namespaces
   {:linters
@@ -725,9 +747,7 @@
   metabase-lib
   {:linters
    {:docstring-leading-trailing-whitespace                {:level :warning}
-    :reduce-without-init                                  {:level :warning}
     :used-underscored-binding                             {:level :warning}
-    :single-key-in                                        {:level :warning}
     :keyword-binding                                      {:level :warning}
     :shadowed-var                                         {:level :warning}
     :metabase/deftest-not-marked-parallel-or-synchronized {:level :warning}

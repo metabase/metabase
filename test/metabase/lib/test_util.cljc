@@ -89,6 +89,9 @@
     (metrics  [_this table-id]   (for [metric metrics
                                        :when (= (:table-id metric) table-id)]
                                    (assoc metric :lib/type :metadata/metric)))
+    (segments [_this table-id]   (for [segment segments
+                                       :when (= (:table-id segment) table-id)]
+                                   (assoc segment :lib/type :metadata/segment)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]
@@ -107,12 +110,12 @@
                               :type     :query
                               :query    {:source-table (meta/id :checkins)
                                          :aggregation  [[:count]]
-                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}]})))
+                                         :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
+              :database-id   (meta/id)}]})))
 
-(defn query-with-card-source-table
-  "A query with a `card__<id>` source Table, and a metadata provider that has that Card. Card's name is `My Card`. Card
+(def query-with-source-card
+  "A query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`. Card
   'exports' two columns, `USER_ID` and `count`."
-  []
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
    :database     (meta/id)
@@ -158,9 +161,8 @@
                                  :field_ref      [:aggregation 0]
                                  :effective_type :type/BigInteger}]}]})))
 
-(defn query-with-card-source-table-with-result-metadata
+(def query-with-source-card-with-result-metadata
   "A query with a `card__<id>` source Table and a metadata provider that has a Card with `:result_metadata`."
-  []
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card-with-result-metadata
    :type         :pipeline
@@ -168,27 +170,45 @@
    :stages       [{:lib/type    :mbql.stage/mbql
                    :source-card 1}]})
 
-(defn query-with-join
-  "A query against `VENUES` with an explicit join against `CATEGORIES`."
-  []
-  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-      (lib/join (-> (lib/join-clause
-                     (meta/table-metadata :categories)
-                     [(lib/=
-                       (meta/field-metadata :venues :category-id)
-                       (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
-                    (lib/with-join-alias "Cat")
+(defn- add-join
+  [query join-alias]
+  (-> query
+      (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
+                    (lib/with-join-alias join-alias)
+                    (lib/with-join-conditions
+                     [(lib/= (meta/field-metadata :venues :category-id)
+                             (lib/with-join-alias (meta/field-metadata :categories :id) join-alias))])
                     (lib/with-join-fields :all)))))
 
-(defn query-with-expression
+(defn add-joins
+  "Add joins with `join-aliases` against `CATEGORIES`. Assumes source table is `VENUES`, but that really shouldn't matter
+  for most tests."
+  [query & join-aliases]
+  (reduce add-join query join-aliases))
+
+(def query-with-join
+  "A query against `VENUES` with an explicit join against `CATEGORIES`."
+  (add-joins venues-query "Cat"))
+
+(def query-with-join-with-explicit-fields
+  "A query against `VENUES` with an explicit join against `CATEGORIES`, that includes explicit `:fields` including just
+  `CATEGORIES.NAME`."
+  (-> venues-query
+      (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
+                    (lib/with-join-conditions [(lib/= (meta/field-metadata :venues :category-id)
+                                                      (-> (meta/field-metadata :categories :id)
+                                                          (lib/with-join-alias "Cat")))])
+                    (lib/with-join-alias "Cat")
+                    (lib/with-join-fields [(-> (meta/field-metadata :categories :name)
+                                               (lib/with-join-alias "Cat"))])))))
+
+(def query-with-expression
   "A query with an expression."
-  []
-  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (-> venues-query
       (lib/expression "expr" (lib/absolute-datetime "2020" :month))))
 
-(defn native-query
+(def native-query
   "A sample native query."
-  []
   {:lib/type     :mbql/query
    :lib/metadata meta/metadata-provider
    :database     (meta/id)
@@ -205,3 +225,70 @@
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
+
+(def categories-mbql-card
+  "Mock MBQL query Card against the `CATEGORIES` Table."
+  {:lib/type        :metadata/card
+   :id              1
+   :name            "Tarot Card"
+   :dataset-query   {:database (meta/id)
+                     :type     :query
+                     :query    {:source-table (meta/id :categories)}}
+   :result-metadata [(meta/field-metadata :categories :id)
+                     (meta/field-metadata :categories :name)]})
+
+(def metadata-provider-with-categories-mbql-card
+  "A metadata provider with the [[categories-mbql-card]] as Card 1. Composed with the
+  normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+   meta/metadata-provider
+   (mock-metadata-provider
+    {:cards [categories-mbql-card]})))
+
+(def categories-native-card
+  "Mock native query Card against the `CATEGORIES` Table."
+  {:lib/type        :metadata/card
+   :id              1
+   :name            "Tarot Card"
+   :dataset-query   {:database (meta/id)
+                     :type     :native
+                     :native   {:query "SELECT * FROM CATEGORIES;"}}
+   :result-metadata (mapv #(dissoc % :id :table-id)
+                          [(meta/field-metadata :categories :id)
+                           (meta/field-metadata :categories :name)])})
+
+(def metadata-provider-with-categories-native-card
+  "A metadata provider with the [[categories-native-card]] as Card 1. Composed with the
+  normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+   meta/metadata-provider
+   (mock-metadata-provider
+    {:cards [categories-native-card]})))
+
+(def mock-cards
+  "Map of mock MBQL query Card against the test tables."
+  (into {}
+        (for [[idx table] (m/indexed [:categories
+                                      :checkins
+                                      :users
+                                      :venues
+                                      :products
+                                      :orders
+                                      :people
+                                      :reviews])]
+          [table {:lib/type :metadata/card
+                  :id (inc idx)
+                  :name (str "Mock " (name table) " card")
+                  :dataset-query {:database (meta/id)
+                                  :type :query
+                                  :query {:source-table (meta/id table)}}
+                  :result-metadata (for [[[meta-table meta-col] _] (methods meta/field-metadata-method)
+                                         :when (= table meta-table)]
+                                     (dissoc (meta/field-metadata table meta-col) :id :table-id))}])))
+
+(def metadata-provider-with-mock-cards
+  "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
+  (lib.metadata.composed-provider/composed-metadata-provider
+    meta/metadata-provider
+    (mock-metadata-provider
+      {:cards (vals mock-cards)})))

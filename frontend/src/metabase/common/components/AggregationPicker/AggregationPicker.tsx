@@ -20,6 +20,7 @@ import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import QueryColumnPicker from "../QueryColumnPicker";
 import {
+  Root,
   ColumnPickerContainer,
   ColumnPickerHeaderContainer,
   ColumnPickerHeaderTitleContainer,
@@ -241,6 +242,7 @@ export function AggregationPicker({
           columnGroups={columnGroups}
           hasTemporalBucketing
           maxHeight={maxHeight}
+          color="summarize"
           checkIsColumnSelected={checkColumnSelected}
           onSelect={handleColumnSelect}
           onClose={onClose}
@@ -250,18 +252,19 @@ export function AggregationPicker({
   }
 
   return (
-    <AccordionList
-      className={className}
-      sections={sections}
-      maxHeight={maxHeight}
-      alwaysExpanded={false}
-      onChange={handleChange}
-      onChangeSection={handleSectionChange}
-      itemIsSelected={checkIsItemSelected}
-      renderItemName={renderItemName}
-      renderItemDescription={omitItemDescription}
-      renderItemExtra={renderItemExtra}
-    />
+    <Root className={className} color="summarize">
+      <AccordionList
+        sections={sections}
+        maxHeight={maxHeight}
+        alwaysExpanded={false}
+        onChange={handleChange}
+        onChangeSection={handleSectionChange}
+        itemIsSelected={checkIsItemSelected}
+        renderItemName={renderItemName}
+        renderItemDescription={omitItemDescription}
+        renderItemExtra={renderItemExtra}
+      />
+    </Root>
   );
 }
 

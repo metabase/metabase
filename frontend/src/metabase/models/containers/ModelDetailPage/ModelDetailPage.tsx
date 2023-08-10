@@ -90,7 +90,6 @@ function ModelDetailPage({
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;
-  const canRunActions = hasActionsEnabled && hasDataPermissions;
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
@@ -175,7 +174,6 @@ function ModelDetailPage({
         mainTable={mainTable}
         tab={tab}
         hasDataPermissions={hasDataPermissions}
-        canRunActions={canRunActions}
         hasActionsTab={hasActionsTab}
         onChangeName={handleNameChange}
         onChangeDescription={handleDescriptionChange}

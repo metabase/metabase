@@ -4,6 +4,7 @@ import {
   describeEE,
   getPermissionRowPermissions,
   isPermissionDisabled,
+  modal,
   modifyPermission,
   openNativeEditor,
   popover,
@@ -274,8 +275,7 @@ describeEE("impersonated permission", () => {
       cy.findByRole("dialog").findByText("Edit settings").click();
 
       // Page leave confirmation should be on top
-      cy.findAllByRole("dialog")
-        .eq(0)
+      modal()
         .as("leaveConfirmation")
         .findByText("Discard your unsaved changes?")
         .should("be.visible");
@@ -371,9 +371,7 @@ describeEE("impersonated permission", () => {
 function savePermissions() {
   cy.findByTestId("edit-bar").button("Save changes").click();
   cy.findByRole("dialog").findByText("Yes").click();
-  cy.findByTestId("edit-bar")
-    .findByText("You've made changes to permissions.")
-    .should("not.exist");
+  cy.findByTestId("edit-bar").should("not.exist");
 }
 
 function selectImpersonatedAttribute(attribute) {

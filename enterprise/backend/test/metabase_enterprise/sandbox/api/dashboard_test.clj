@@ -62,17 +62,17 @@
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
           (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
             (testing "GET /api/dashboard/:id/params/:param-key/values"
-              (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
-                                          (is (= {:values          ["African" "American"]
-                                                  :has_more_values false}
-                                                 (->> url
-                                                      (mt/user-http-request :rasta :get 200)
-                                                      (chain-filter-test/take-n-values 2))))))
+              (mt/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
+                (is (= {:values          [["African"] ["American"]]
+                        :has_more_values false}
+                       (->> url
+                            (mt/user-http-request :rasta :get 200)
+                            (chain-filter-test/take-n-values 2))))))
             (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
-              (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
-                                          (is (= {:values          ["African" "American"]
-                                                  :has_more_values false}
-                                                 (mt/user-http-request :rasta :get 200 url)))))))))))
+              (mt/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
+                (is (= {:values          [["African"] ["American"]]
+                        :has_more_values false}
+                       (mt/user-http-request :rasta :get 200 url)))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
@@ -81,7 +81,7 @@
         (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
          (fn [{:keys [card-id mappings add-card! dashcards]}]
            (testing "Should be able to add a card with `parameter_mapping` with only sandboxed perms"
-             (perms/grant-permissions! (perms-group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
+             (perms/grant-permissions! (perms-group/all-users) (perms/table-sandboxed-query-path (mt/id :venues)))
              (is (schema= [{:card_id            (s/eq card-id)
                             :parameter_mappings [(s/one
                                                    {:parameter_id (s/eq "_CATEGORY_ID_")
@@ -103,7 +103,7 @@
         (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures
          (fn [{:keys [dashboard-id card-id update-mappings! new-mappings]}]
            (testing "Should be able to update `:parameter_mappings` *with* only sandboxed perms"
-             (perms/grant-permissions! (perms-group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
+             (perms/grant-permissions! (perms-group/all-users) (perms/table-sandboxed-query-path (mt/id :venues)))
              (update-mappings! 200)
              (is (= new-mappings
                     (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
@@ -129,7 +129,7 @@
                              (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-values-url dashboard-id "abc")))]
 
             (is (> (-> (get-values :crowberto) :values count) 3))
-            (is (= {:values          ["African" "American" "Artisan"]
+            (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (get-values :rasta)))))
 
@@ -137,7 +137,7 @@
         (testing "when search values"
           (let [search (fn [user]
                          (mt/user-http-request user :get 200 (api.dashboard-test/chain-filter-search-url dashboard-id "abc" "bbq")))]
-            (is (= {:values          ["BBQ"]
+            (is (= {:values          [["BBQ"]]
                     :has_more_values false}
                    (search :crowberto)))
 

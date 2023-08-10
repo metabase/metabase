@@ -1,17 +1,22 @@
 import { useState, useCallback } from "react";
 import { t } from "ttag";
 
+import { Box, Text } from "metabase/ui";
+
 import { useDispatch } from "metabase/lib/redux";
 import { updateSettings } from "metabase/admin/settings/settings";
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
 import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
 import Button from "metabase/core/components/Button/Button";
-import { Collection, DashboardId } from "metabase-types/api";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+
+import type { Collection, DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
@@ -37,6 +42,30 @@ export const CustomHomePageModal = ({
         [CUSTOM_HOMEPAGE_REDIRECT_TOAST_KEY]: true,
       }),
     );
+
+    const id = Date.now();
+    await dispatch(
+      addUndo({
+        message: () => (
+          <Box ml="0.5rem" mr="2.5rem">
+            <Text
+              span
+              fw={700}
+            >{t`This dashboard has been set as your homepage.`}</Text>
+            <br />
+            <Text
+              span
+            >{t`You can change this in Admin > Settings > General.`}</Text>
+          </Box>
+        ),
+        icon: "info",
+        timeout: 10000,
+        id,
+        actions: [dismissUndo(id)],
+        actionLabel: "Got it",
+        canDismiss: false,
+      }),
+    );
     await dispatch(refreshCurrentUser());
     trackCustomHomepageDashboardEnabled("homepage");
   };
@@ -60,11 +89,11 @@ export const CustomHomePageModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalContent
-        title="Customize Homepage"
+        title={t`Customize Homepage`}
         onClose={handleClose}
         footer={[
           <Button onClick={handleClose} key="custom-homepage-modal-cancel">
-            Cancel
+            {t`Cancel`}
           </Button>,
           <Button
             primary
@@ -72,7 +101,7 @@ export const CustomHomePageModal = ({
             key="custom-homepage-modal-save"
             disabled={!dashboardId}
           >
-            Save
+            {t`Save`}
           </Button>,
         ]}
       >
@@ -80,9 +109,11 @@ export const CustomHomePageModal = ({
         <DashboardSelector
           value={dashboardId}
           onChange={handleChange}
-          collectionFilter={(collection: Collection) =>
-            collection.personal_owner_id === null || collection.id === "root"
-          }
+          collectionFilter={(
+            collection: Collection,
+            _index: number,
+            allCollections: Collection[],
+          ) => !isPersonalCollectionOrChild(collection, allCollections)}
         />
       </ModalContent>
     </Modal>

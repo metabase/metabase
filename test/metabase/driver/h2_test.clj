@@ -14,12 +14,10 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
-
-;; TODO: remove hx from this test
-#_{:clj-kondo/ignore [:discouraged-namespace]}
-(require '[metabase.util.honeysql-extensions :as hx])
 
 (set! *warn-on-reflection* true)
 
@@ -67,11 +65,47 @@
 
 (deftest only-connect-to-existing-dbs-test
   (testing "Make sure we *cannot* connect to a non-existent database by default"
-    (is (= ::exception-thrown
-           (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
-                (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException e
-                  (and (re-matches #"Database .+ not found, .+" (.getMessage e))
-                       ::exception-thrown)))))))
+    (binding [h2/*allow-testing-h2-connections* true]
+      (is (thrown-with-msg?
+           org.h2.jdbc.JdbcSQLNonTransientConnectionException
+           #"Database .+ not found, .+"
+           (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")}))))))
+
+(deftest ^:parallel only-connect-when-non-malicious-properties
+  (testing "Reject connection strings with malicious properties"
+    (let [conn-str (str "jdbc:h2:file:"
+                        (System/getProperty "user.dir")
+                        "/toucan_sightings.db"
+                        ";TRACE_LEVEL_SYSTEM_OUT=1\\;CREATE TRIGGER IAMPWNED BEFORE SELECT ON INFORMATION_SCHEMA.TABLES AS $$//javascript\nnew java.net.URL('http://localhost:3000/api/health').openConnection().getContentLength()\n$$--=x\\;")
+          result (try (binding [h2/*allow-testing-h2-connections* true]
+                        (driver/can-connect? :h2 {:db conn-str}))
+                      ::did-not-throw
+                      (catch Exception e e))]
+      (is (instance? clojure.lang.ExceptionInfo result))
+      (is (partial= {:cause "Malicious keys detected"
+                     :data {:keys ["TRACE_LEVEL_SYSTEM_OUT"]}}
+                    (Throwable->map result)))))
+  (testing "Reject connection details which lie about their driver"
+    (let [conn "mem:fake-h2-db"
+          f (fn f [details]
+              (try (driver/can-connect? :postgres details)
+                   ::did-not-throw
+                   (catch Exception e e)))]
+      (testing "connection-uri"
+        (let [result (f {:connection-uri conn})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"connection-uri"}} (ex-data result)))))
+      (testing "subprotocol"
+        (let [result (f {:db conn, :subprotocol "h2"})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"subprotocol"}} (ex-data result)))))
+      (testing "subprotocol"
+        (let [result (f {:db conn, :classname "org.h2.Driver"})]
+          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+                 (ex-message result)))
+          (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :h2
@@ -301,7 +335,7 @@
           (testing "spec obtained from audit db has no connection string, and that works OK."
             (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
               (is (= audit-db-expected-id audit-db-id))
-              (let [audit-db-pooled-spec (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec audit-db-id)]
+              (let [audit-db-pooled-spec (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
                 (is (= "com.mchange.v2.c3p0.PoolBackedDataSource" (pr-str (type (:datasource audit-db-pooled-spec)))))
                 (let [spec (sql-jdbc.conn/connection-details->spec :h2 audit-db-pooled-spec)]
                   (is (= #{:classname :subprotocol :subname :datasource}

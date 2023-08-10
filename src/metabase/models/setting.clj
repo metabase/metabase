@@ -81,6 +81,7 @@
    [environ.core :as env]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
@@ -170,7 +171,6 @@
      custom-formatting
      custom-geojson
      custom-geojson-enabled
-     enable-content-management?
      enable-embedding
      enable-nested-queries
      enable-sandboxes?
@@ -296,7 +296,12 @@
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
    :on-change   (s/maybe clojure.lang.IFn)
 
-   ;; optional fn called whether to allow the getter to return a value. Useful for ensuring premium settings are not available to
+   ;; If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
+   ;; the setting will behave the same as if `enabled?` returns `false` (see below).
+   :feature     (s/maybe s/Keyword)
+
+   ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
+   ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
    :enabled?    (s/maybe clojure.lang.IFn)})
 
 (defonce ^{:doc "Map of loaded defsettings"}
@@ -335,7 +340,7 @@
     (doseq [changed-setting (into (set (keys d1))
                                   (set (keys d2)))]
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
-        (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
+        (on-change (core/get old changed-setting) (core/get new changed-setting))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -406,17 +411,24 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
+(defn- has-feature?
+  [feature]
+  (u/ignore-exceptions
+   (classloader/require 'metabase.public-settings.premium-features))
+  (let [has-feature?' (resolve 'metabase.public-settings.premium-features/has-feature?)]
+    (has-feature?' feature)))
+
 (defn has-advanced-setting-access?
   "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
   Return `false` for all non-admins when `advanced-permissions` is disabled. Return `true` for all admins."
   []
   (or api/*is-superuser?*
       (do
-        (u/ignore-exceptions
-         (classloader/require 'metabase-enterprise.advanced-permissions.common
-                              'metabase.public-settings.premium-features))
+        (when config/ee-available?
+          (classloader/require 'metabase-enterprise.advanced-permissions.common
+                               'metabase.public-settings.premium-features))
         (if-let [current-user-has-application-permissions?
-                 (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
+                 (and (has-feature? :advanced-permissions)
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
           (current-user-has-application-permissions? :setting)
           false))))
@@ -481,19 +493,20 @@
         db-is-set-up? (or (requiring-resolve 'metabase.db/db-is-set-up?)
                           ;; this should never be hit. it is just overly cautious against a NPE here. But no way this
                           ;; cannot resolve
-                          (constantly false))]
+                          (constantly false))
+        db-value      #(t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))]
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (let [v (if *disable-cache*
-                (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))
+                (db-value)
                 (do
                   (setting.cache/restore-cache-if-needed!)
                   (let [cache (setting.cache/cache)]
                     (if (nil? cache)
                       ;; If another thread is populating the cache for the first time, we will have a nil value for
                       ;; the cache and must hit the db while the cache populates
-                      (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name))
-                      (clojure.core/get cache (setting-name setting-definition-or-name))))))]
+                      (db-value)
+                      (core/get cache (setting-name setting-definition-or-name))))))]
         (not-empty v)))))
 
 (defn default-value
@@ -614,14 +627,13 @@
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
   if any."
   [setting-definition-or-name]
-  (let [{:keys [cache? getter enabled? default]} (resolve-setting setting-definition-or-name)
-        disable-cache?                           (not cache?)]
-    (if (or (nil? enabled?) (enabled?))
-      (if (= *disable-cache* disable-cache?)
-        (getter)
-        (binding [*disable-cache* disable-cache?]
-          (getter)))
-      default)))
+  (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
+        disable-cache?                                   (or *disable-cache* (not cache?))]
+    (if (or (and feature (not (has-feature? feature)))
+            (and enabled? (not (enabled?))))
+      default
+      (binding [*disable-cache* disable-cache?]
+        (getter)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -798,8 +810,12 @@
 
     (mandrill-api-key \"xyz123\")"
   [setting-definition-or-name new-value]
-  (let [{:keys [setter cache?], :as setting} (resolve-setting setting-definition-or-name)
-        name                                 (setting-name setting)]
+  (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
+        name                                                  (setting-name setting)]
+    (when (and feature (not (has-feature? feature)))
+      (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
+    (when (and enabled? (not (enabled?)))
+      (throw (ex-info (tru "Setting {0} is not enabled" name) setting)))
     (when-not (current-user-can-access-setting? setting)
       (throw (ex-info (tru "You do not have access to the setting {0}" name) setting)))
     (when (= setter :none)
@@ -833,6 +849,7 @@
                  :visibility     :admin
                  :sensitive?     false
                  :cache?         true
+                 :feature        nil
                  :database-local :never
                  :user-local     :never
                  :deprecated     nil
@@ -841,7 +858,7 @@
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
-      (when-let [registered-setting (clojure.core/get @registered-settings setting-name)]
+      (when-let [registered-setting (core/get @registered-settings setting-name)]
         (when (not= setting-ns (:namespace registered-setting))
           (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
                           {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))
@@ -858,6 +875,10 @@
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
       (when (and (allows-user-local-values? setting) (allows-database-local-values? setting))
         (throw (ex-info (tru "Setting {0} allows both user-local and database-local values; this is not supported"
+                             setting-name)
+                        {:setting setting})))
+      (when (and (:enabled? setting) (:feature setting))
+        (throw (ex-info (tru "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
                              setting-name)
                         {:setting setting})))
       (swap! registered-settings assoc setting-name <>))))
@@ -1032,7 +1053,15 @@
 
   Do you want to update something else when this setting changes? Takes a function which takes 2 arguments, `old`, and
   `new` and calls it with the old and new settings values. By default, the :on-change will be missing, and nothing
-  will happen, in [[call-on-change]] below."
+  will happen, in [[call-on-change]] below.
+
+  ###### `:feature`
+  If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
+  the setting will behave the same as if `enabled?` returns `false` (see below).
+
+  ###### `enabled?`
+  Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
+  exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled."
   {:style/indent 1}
   [setting-symbol description & {:as options}]
   {:pre [(symbol? setting-symbol)
