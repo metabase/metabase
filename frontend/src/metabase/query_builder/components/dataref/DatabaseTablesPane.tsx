@@ -72,6 +72,7 @@ const DatabaseTablesPane = ({
                 {models.map(model => (
                   <li key={model.id}>
                     <NodeListItemLink
+                      disabled={model.initial_sync_status !== "complete"}
                       onClick={() => onItemClick("question", model)}
                     >
                       <NodeListItemIcon name="model" />
