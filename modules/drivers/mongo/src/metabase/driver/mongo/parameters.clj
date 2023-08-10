@@ -35,6 +35,10 @@
 (defn- param-value->str
   [{coercion :coercion_strategy, :as field} x]
   (cond
+    ;; #30136: Provide a way of using dashboard filter as a variable.
+    (and (sequential? x) (= (count x) 1))
+    (recur field (first x))
+
     ;; sequences get converted to `$in`
     (sequential? x)
     (format "{$in: [%s]}" (str/join ", " (map (partial param-value->str field) x)))

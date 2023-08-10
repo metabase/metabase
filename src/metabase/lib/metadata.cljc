@@ -135,7 +135,12 @@
    {:error/message "Valid Segment metadata"}
    [:lib/type [:= :metadata/segment]]
    [:id       ::lib.schema.id/segment]
-   [:name     ::lib.schema.common/non-blank-string]])
+   [:name     ::lib.schema.common/non-blank-string]
+   [:table-id   ::lib.schema.id/table]
+   ;; the MBQL snippet defining this Segment; this may still be in legacy
+   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
+   [:definition :map]
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def MetricMetadata
   "Malli schema for a legacy v1 [[metabase.models.metric]], but with kebab-case keys. A Metric defines an MBQL snippet

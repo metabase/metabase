@@ -46,9 +46,32 @@
   nil)
 
 (defn make-nestable-sql
-  "For embedding native sql queries, wraps [sql] in parens and removes any semicolons"
+  "Do best effort edit to the `sql`, to make it nestable in subselect.
+
+  That requires:
+
+  - Removal of traling comments (after the semicolon).
+  - Removing the semicolon(s).
+  - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
+    comments were preceding semicolon.
+  - Wrapping the result in parens.
+
+  This implementation does not handle few cases cases properly. 100% correct comment and semicolon removal would
+  probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
+  https://github.com/metabase/metabase/pull/30677
+
+  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"
   [sql]
-  (str "(" (str/replace sql #";[\s;]*$" "") ")"))
+  (str "("
+       (-> sql
+           (str/replace #";([\s;]*(--.*\n?)*)*$" "")
+           str/trimr
+           (as-> trimmed
+                 ;; Query could potentially end with a comment.
+                 (if (re-find #"--.*$" trimmed)
+                   (str trimmed "\n")
+                   trimmed)))
+       ")"))
 
 (defn- format-sql-source-query [_fn [sql params]]
   (into [(make-nestable-sql sql)] params))
@@ -71,7 +94,7 @@
   (case (long hx/*honey-sql-version*)
     1
     #_{:clj-kondo/ignore [:deprecated-var]}
-    (sql.qp.deprecated/->SQLSourceQuery sql params)
+    (sql.qp.deprecated/->SQLSourceQuery (make-nestable-sql sql) params)
 
     2
     [::sql-source-query sql params]))
@@ -1063,38 +1086,46 @@
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (defn- like-clause
-  "Generate a SQL `LIKE` clause. `value` is assumed to be a `Value` object (a record type with a key `:value` as well as
-  some sort of type info) or similar as opposed to a raw value literal."
-  [driver field value options]
+  "Generate honeysql like clause used in `:starts-with`, `:contains` or `:ends-with.
+  If matching case insensitively, `pattern` is lowercased earlier in [[generate-pattern]]."
+  [field pattern {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   ;; TODO - don't we need to escape underscores and percent signs in the pattern, since they have special meanings in
-  ;; LIKE clauses? That's what we're doing with Druid...
+  ;; LIKE clauses? That's what we're doing with Druid... (Cam)
   ;;
   ;; TODO - Postgres supports `ILIKE`. Does that make a big enough difference performance-wise that we should do a
-  ;; custom implementation?
-  (if (get options :case-sensitive true)
-    [:like field                    (->honeysql driver value)]
-    [:like (hx/call :lower field) (->honeysql driver (update value 1 u/lower-case-en))]))
+  ;; custom implementation? (Cam)
+  [:like (cond->> field (not case-sensitive) (hx/call :lower)) pattern])
 
-(def ^:private StringValue
-  [:and
-   mbql.s/value
-   [:fn {:error/message "string value"} #(string? (second %))]])
+(def ^:private StringValueOrFieldOrExpression
+  [:or
+   [:and mbql.s/value
+    [:fn {:error/message "string value"} #(string? (second %))]]
+   mbql.s/FieldOrExpressionDef])
 
-(mu/defn ^:private update-string-value :- mbql.s/value
-  [value :- StringValue f]
-  (update value 1 f))
+(mu/defn ^:private generate-pattern
+  "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
+  [driver
+   pre
+   [type _ :as arg] :- StringValueOrFieldOrExpression
+   post
+   {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
+  (if (= :value type)
+    (->honeysql driver (update arg 1 #(cond-> (str pre % post)
+                                        (not case-sensitive) u/lower-case-en)))
+    (cond->> (->honeysql driver (into [:concat] (remove nil?) [pre arg post]))
+      (not case-sensitive) (hx/call :lower))))
 
 (defmethod ->honeysql [:sql :starts-with]
-  [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update-string-value value #(str % \%)) options))
+  [driver [_ field arg options]]
+  (like-clause (->honeysql driver field) (generate-pattern driver nil arg "%" options) options))
 
 (defmethod ->honeysql [:sql :contains]
-  [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update-string-value value #(str \% % \%)) options))
+  [driver [_ field arg options]]
+  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg "%" options) options))
 
 (defmethod ->honeysql [:sql :ends-with]
-  [driver [_ field value options]]
-  (like-clause driver (->honeysql driver field) (update-string-value value #(str \% %)) options))
+  [driver [_ field arg options]]
+  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg nil options) options))
 
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]
