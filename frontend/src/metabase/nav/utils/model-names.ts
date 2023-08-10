@@ -1,15 +1,17 @@
 import { t } from "ttag";
 
 const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
+  action: t`Action`,
   card: t`Question`,
-  dataset: t`Model`,
-  dashboard: t`Dashboard`,
-  table: t`Table`,
-  database: t`Database`,
   collection: t`Collection`,
-  segment: t`Segment`,
+  dashboard: t`Dashboard`,
+  database: t`Database`,
+  dataset: t`Model`,
+  "indexed-entity": "Indexed Entity",
   metric: t`Metric`,
   pulse: t`Pulse`,
+  segment: t`Segment`,
+  table: t`Table`,
 };
 
 export const getTranslatedEntityName = (type: string) =>

@@ -228,9 +228,8 @@ export default class Funnel extends Component {
   }
 
   render() {
-    const { headerIcon, settings } = this.props;
-
-    const hasTitle = settings["card.title"];
+    const { headerIcon, settings, showTitle } = this.props;
+    const hasTitle = showTitle && settings["card.title"];
 
     if (settings["funnel.type"] === "bar") {
       return <FunnelBar {...this.props} />;
