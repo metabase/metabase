@@ -1,9 +1,5 @@
 import _ from "underscore";
-
-import { TYPE } from "metabase-lib/types/constants";
-import Field from "metabase-lib/metadata/Field";
 import { FieldDimension } from "metabase-lib/Dimension";
-import * as Table from "./table";
 
 export function isLocalField(field) {
   return Array.isArray(field) && field[0] === "field";

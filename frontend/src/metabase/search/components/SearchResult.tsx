@@ -7,8 +7,7 @@ import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
 import type { SearchScore, SearchModelType } from "metabase-types/api";
 
-import type { WrappedResult } from "./types";
-
+import type { WrappedResult } from "metabase/search/types";
 import {
   IconWrapper,
   ResultButton,
@@ -143,7 +142,7 @@ export function SearchResult({
               size={12}
             />
           </TitleWrapper>
-          <Text>
+          <Text data-testid="result-link-info-text">
             <InfoText result={result} />
           </Text>
           {hasDescription && result.description && (
@@ -151,7 +150,15 @@ export function SearchResult({
           )}
           <Score scores={result.scores} />
         </div>
-        {loading && <ResultSpinner size={24} borderWidth={3} />}
+        {loading && (
+          // SearchApp also uses `loading-spinner`, using a different test ID
+          // to not confuse unit tests waiting for loading-spinner to disappear
+          <ResultSpinner
+            data-testid="search-result-loading-spinner"
+            size={24}
+            borderWidth={3}
+          />
+        )}
       </ResultLinkContent>
       {compact || <Context context={result.context} />}
     </ResultContainer>
