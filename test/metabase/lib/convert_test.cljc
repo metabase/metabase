@@ -670,6 +670,5 @@
                                                   {:base-type                                  :type/DateTimeWithLocalTZ
                                                    :join-alias                                 "O"
                                                    :temporal-unit                              :year
-                                                   :metabase.lib.field/original-effective-type (symbol "nil #_\"key is not present.\"")}]]
-                                  :source-table 60}]}}
+                                                   :metabase.lib.field/original-effective-type (symbol "nil #_\"key is not present.\"")}]]}]}}
                 (lib.convert/->legacy-MBQL query)))))))
