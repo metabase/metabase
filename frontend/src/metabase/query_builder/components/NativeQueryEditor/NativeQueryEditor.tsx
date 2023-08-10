@@ -408,12 +408,7 @@ export class NativeQueryEditor extends Component<
 
     // initialize the content
     this.handleQueryUpdate(query?.queryText() ?? "");
-    this._editor.renderer.setScrollMargin(
-      SCROLL_MARGIN,
-      SCROLL_MARGIN,
-      SCROLL_MARGIN,
-      SCROLL_MARGIN,
-    );
+    this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN, 0, 0);
 
     // hmmm, this could be dangerous
     if (!this.props.readOnly) {
