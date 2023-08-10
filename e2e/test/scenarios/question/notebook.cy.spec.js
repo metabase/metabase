@@ -66,7 +66,9 @@ describe("scenarios > question > notebook", () => {
     popover().within(() => {
       cy.contains("User ID").click();
     });
-    cy.icon("filter").click();
+    cy.findByTestId("step-summarize-0-0").within(() => {
+      cy.icon("filter").click();
+    });
     popover().within(() => {
       cy.icon("int").click();
       cy.get("input").type("46");
