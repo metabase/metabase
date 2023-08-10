@@ -97,7 +97,10 @@ const DatabaseTablesPane = ({
           <ul>
             {tables.map(table => (
               <li key={table.id}>
-                <NodeListItemLink onClick={() => onItemClick("table", table)}>
+                <NodeListItemLink
+                  disabled={table.initial_sync_status !== "complete"}
+                  onClick={() => onItemClick("table", table)}
+                >
                   <NodeListItemIcon name="table" />
                   <NodeListItemName>{table.table_name}</NodeListItemName>
                 </NodeListItemLink>
