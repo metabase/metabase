@@ -82,7 +82,7 @@
 
 (deftest  build-created-at-filter-test
   (testing "created-at filter"
-    (mt/with-clock #t "2023-05-04T10:00Z[UTC]"
+    (mt/with-clock #t "2023-05-04T10:00:05Z[UTC]"
       (are [created-at expected-where]
            (= expected-where
               (->> (search.filter/build-filters
@@ -93,27 +93,27 @@
                (drop 2)))
            ;; absolute datetime
            "Q1-2023"                                 [[:>= [:cast :card.created_at :date] #t "2023-01-01"]
-                                                      [:< [:cast :card.created_at :date]  #t "2023-03-31"]]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
            "2016-04-18~2016-04-23"                   [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                                                      [:< [:cast :card.created_at :date]  #t "2016-04-23"]]
-           "2016-04-18T10:00:00~2016-04-23T11:00:00" [[:>= :card.created_at #t "2016-04-18T10:00"]
-                                                      [:< :card.created_at  #t "2016-04-23T11:00"]]
+                                                      [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
+           "2016-04-18T10:00:00~2016-04-23T11:00:00" [[:>= :card.created_at #t "2016-04-18T00:00"]
+                                                      [:< :card.created_at #t "2016-04-24T00:00"]]
 
-           "~2023-05-04"                             [[:<  [:cast :card.created_at :date]  #t "2023-05-04"]]
+           "~2023-05-04"                             [[:< [:cast :card.created_at :date]  #t "2023-05-05"]]
            "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
-
            ;; relative datetime
            "past3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
-                                                      [:< [:cast :card.created_at :date]  #t "2023-05-03"]]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
            "next3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-05"]
-                                                      [:< [:cast :card.created_at :date]  #t "2023-05-07"]]
-           "thisminute"                              [[:= :card.created_at #t "2023-05-04T10:00"]]
-           "past3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
-                                                      [:< [:cast :card.created_at :date]  #t "2023-05-03"]]
-           "lasthour"                                [[:= :card.created_at #t "2023-05-04T09:00"]]
+                                                      [:< [:cast :card.created_at :date]  #t "2023-05-08"]]
+           "thisminute"                              [[:>= :card.created_at #t "2023-05-04T10:00"]
+                                                      [:< :card.created_at #t "2023-05-04T10:01"]]
+           "lasthour"                                [[:>= :card.created_at #t "2023-05-04T09:00"]
+                                                      [:< :card.created_at #t "2023-05-04T10:00"]]
            "past1months-from-36months"               [[:>= [:cast :card.created_at :date] #t "2020-04-01"]
-                                                      [:< [:cast :card.created_at :date]  #t "2020-04-30"]]
-           "today"                                   [[:= [:cast :card.created_at :date]  #t "2023-05-04"]]))))
+                                                      [:< [:cast :card.created_at :date]  #t "2020-05-01"]]
+           "today"                                   [[:>= [:cast :card.created_at :date] #t "2023-05-04"]
+                                                      [:< [:cast :card.created_at :date] #t "2023-05-05"]]))))
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"

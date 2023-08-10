@@ -997,47 +997,43 @@
          :model/Metric     {_metric-new :id}  {:name       search-term
                                                :created_at new}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
-        (let [search     (fn [created-at]
-                           (mt/with-current-user (mt/user->id :crowberto)
-                             (->> (#'api.search/search (#'api.search/search-context
-                                                        {:search-string      search-term
-                                                         :archived           false
-                                                         :models             search.config/all-models
-                                                         :created-at         created-at}))
-                                  :data
-                                  (map (juxt :model :id))
-                                  set)))
-              new-result #{["action"     action-new]
-                           ["card"       card-new]
-                           ["collection" coll-new]
-                           ["database"   db-new]
-                           ["dataset"    model-new]
-                           ["dashboard"  dashboard-new]
-                           ["table"      table-new]}
-              old-result #{["action"     action-old]
-                           ["card"       card-old]
-                           ["collection" coll-old]
-                           ["database"   db-old]
-                           ["dataset"    model-old]
-                           ["dashboard"  dashboard-old]
-                           ["table"      table-old]}]
+        (let [test-search (fn [created-at expected]
+                           (testing (format "searching with created-at = %s" created-at)
+                             (mt/with-current-user (mt/user->id :crowberto)
+                               (is (= expected
+                                      (->> (#'api.search/search (#'api.search/search-context
+                                                                 {:search-string search-term
+                                                                  :archived      false
+                                                                  :models        search.config/all-models
+                                                                  :created-at    created-at}))
+                                           :data
+                                           (map (juxt :model :id))
+                                           set))))))
+              new-result  #{["action"     action-new]
+                            ["card"       card-new]
+                            ["collection" coll-new]
+                            ["database"   db-new]
+                            ["dataset"    model-new]
+                            ["dashboard"  dashboard-new]
+                            ["table"      table-new]}
+              old-result  #{["action"     action-old]
+                            ["card"       card-old]
+                            ["collection" coll-old]
+                            ["database"   db-old]
+                            ["dataset"    model-old]
+                            ["dashboard"  dashboard-old]
+                            ["table"      table-old]}]
 
           ;; absolute datetime
-          (is (= old-result (search "Q2-2021")))
-          (is (= new-result (search "2023-05-04")))
-          (is (= (set/union old-result new-result)
-                 (search "2021-05-03~")))
-          ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
-          (is (= old-result
-                 (search "2021-05-04~2023-05-04")))
-          (is (= old-result
-                 (search "~2023-05-04")))
-          (is (= old-result
-                 (search "2021-05-04T09:00:00~2021-05-04T10:00:10")))
-          ;; relative times
-          (is (= new-result
-                 (search "thisyear")))
-          (is (= old-result
-                 (search "past1years-from-12months")))
-          (is (= new-result
-                 (search "today"))))))))
+         (test-search "Q2-2021" old-result)
+         (test-search "2023-05-04" new-result)
+         (test-search "2021-05-03~" (set/union old-result new-result))
+         ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
+         (test-search "2021-05-04~2023-05-03" old-result)
+         (test-search "~2023-05-03" old-result)
+         (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
+
+         ;; relative times
+         (test-search "thisyear" new-result)
+         (test-search "past1years-from-12months" old-result)
+         (test-search "today" new-result))))))
