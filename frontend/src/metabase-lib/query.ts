@@ -3,6 +3,7 @@ import type { DatabaseId, DatasetQuery } from "metabase-types/api";
 import type {
   Clause,
   ColumnMetadata,
+  Join,
   MetadataProvider,
   MetricMetadata,
   Query,
@@ -35,7 +36,7 @@ export function dropStage(query: Query, stageIndex: number): Query {
 export function removeClause(
   query: Query,
   stageIndex: number,
-  targetClause: Clause,
+  targetClause: Clause | Join,
 ): Query {
   return ML.remove_clause(query, stageIndex, targetClause);
 }
@@ -43,8 +44,8 @@ export function removeClause(
 export function replaceClause(
   query: Query,
   stageIndex: number,
-  targetClause: Clause,
-  newClause: Clause | ColumnMetadata | MetricMetadata,
+  targetClause: Clause | Join,
+  newClause: Clause | ColumnMetadata | MetricMetadata | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
