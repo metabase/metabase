@@ -7,10 +7,13 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider
     :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -266,25 +269,36 @@
     {:cards [categories-native-card]})))
 
 (def mock-cards
-  "Map of mock MBQL query Card against the test tables."
+  "Map of mock MBQL query Card against the test tables. There are two versions of the Card for each table:
+
+  * `:venues`, a Card WITH `:result-metadata`
+  * `:venues/no-metadata`, a Card WITHOUT `:result-metadata`
+  * `:venues/native`, a Card with `:result-metadata` and a NATIVE query."
   (into {}
-        (for [[idx table] (m/indexed [:categories
-                                      :checkins
-                                      :users
-                                      :venues
-                                      :products
-                                      :orders
-                                      :people
-                                      :reviews])]
-          [table {:lib/type :metadata/card
-                  :id (inc idx)
-                  :name (str "Mock " (name table) " card")
-                  :dataset-query {:database (meta/id)
-                                  :type :query
-                                  :query {:source-table (meta/id table)}}
-                  :result-metadata (for [[[meta-table meta-col] _] (methods meta/field-metadata-method)
-                                         :when (= table meta-table)]
-                                     (dissoc (meta/field-metadata table meta-col) :id :table-id))}])))
+        (comp (mapcat (fn [table]
+                        [{:table table, :metadata? true,  :native? false, :card-name table}
+                         {:table table, :metadata? true,  :native? true,  :card-name (keyword (name table) "native")}
+                         {:table table, :metadata? false, :native? false, :card-name (keyword (name table) "no-metadata")}]))
+              (map-indexed (fn [idx {:keys [table metadata? native? card-name]}]
+                             [card-name
+                              (merge
+                               {:lib/type      :metadata/card
+                                :id            (inc idx)
+                                :name          (str "Mock " (name table) " card")
+                                :dataset-query (if native?
+                                                 {:database (meta/id)
+                                                  :type     :native
+                                                  :native   {:query (str "SELECT * FROM " (name table))}}
+                                                 {:database (meta/id)
+                                                  :type     :query
+                                                  :query    {:source-table (meta/id table)}})}
+                               (when metadata?
+                                 {:result-metadata
+                                  (->> (meta/fields table)
+                                       (map (partial meta/field-metadata table))
+                                       (sort-by :id)
+                                       (mapv #(dissoc % :id :table-id)))}))])))
+        (meta/tables)))
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
@@ -292,3 +306,18 @@
     meta/metadata-provider
     (mock-metadata-provider
       {:cards (vals mock-cards)})))
+
+(mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
+  "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
+  with `column-name` returned by a `query`. This only makes sense for queries with multiple stages, or ones with a
+  source Card."
+  [query       :- ::lib.schema/query
+   column-name :- ::lib.schema.common/non-blank-string]
+  (let [cols     (lib.metadata.calculation/visible-columns query)
+        metadata (or (m/find-first #(= (:name %) column-name)
+                                   cols)
+                     (let [col-names (vec (sort (map :name cols)))]
+                       (throw (ex-info (str "No column named " (pr-str column-name) "; found: " (pr-str col-names))
+                                       {:column column-name
+                                        :found  col-names}))))]
+    (lib/ref metadata)))

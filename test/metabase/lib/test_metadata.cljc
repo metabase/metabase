@@ -2198,6 +2198,22 @@
   "[[metabase.lib.metadata.protocols/MetadataProvider]] using the test [[metadata]]."
   (meta.graph-provider/->SimpleGraphMetadataProvider metadata))
 
+(mu/defn tables :- [:set :keyword]
+  "Set of valid table names."
+  []
+  (set (keys (methods table-metadata-method))))
+
+(mu/defn fields :- [:set :keyword]
+  "Set of valid table names for a `:table-name`."
+  [table-name :- :keyword]
+  (assert ((tables) table-name)
+          (str "Invalid table: " table-name))
+  (into #{}
+        (keep (fn [[a-table-name a-field-name]]
+                (when (= a-table-name table-name)
+                  a-field-name)))
+        (keys (methods field-metadata-method))))
+
 (mu/defn table-metadata :- lib.metadata/TableMetadata
   "Get Table metadata for a one of the `test-data` Tables in the test metadata, e.g. `:venues`. This is here so you can
   test things that should consume Table metadata."

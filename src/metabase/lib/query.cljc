@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -65,28 +66,34 @@
   (let [query (lib.util/pipeline query)]
     (query-with-stages metadata-providerable (:stages query))))
 
-(defmulti ^:private ->query
+(defmulti ^:private query-method
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod ->query :dispatch-type/map
+(defmethod query-method :dispatch-type/map
   [metadata-providerable query]
   (query-from-existing metadata-providerable query))
 
 ;;; this should already be a query in the shape we want, but let's make sure it has the database metadata that was
 ;;; passed in
-(defmethod ->query :mbql/query
+(defmethod query-method :mbql/query
   [metadata-providerable query]
   (assoc query :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)))
 
-(defmethod ->query :metadata/table
+(defmethod query-method :metadata/table
   [metadata-providerable table-metadata]
   (query-with-stages metadata-providerable
                      [{:lib/type     :mbql.stage/mbql
-                       :source-table (:id table-metadata)}]))
+                       :source-table (u/the-id table-metadata)}]))
+
+(defmethod query-method :metadata/card
+  [metadata-providerable card-metadata]
+  (query-with-stages metadata-providerable
+                     [{:lib/type     :mbql.stage/mbql
+                       :source-card (u/the-id card-metadata)}]))
 
 (mu/defn query :- ::lib.schema/query
   "Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
@@ -94,7 +101,7 @@
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
-  (->query metadata-providerable x))
+  (query-method metadata-providerable x))
 
 (mu/defn saved-question-query :- ::lib.schema/query
   "Convenience for creating a query from a Saved Question (i.e., a Card)."
