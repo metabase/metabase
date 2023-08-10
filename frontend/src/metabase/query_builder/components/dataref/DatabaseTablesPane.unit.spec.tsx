@@ -54,48 +54,48 @@ const setup = (options?: Partial<DatabaseTablesPaneProps>) => {
 };
 
 describe("DatabaseTablesPane", () => {
-  it("should render tables with initial_sync_status='incomplete' as non-interactive", () => {
+  it("should show tables with initial_sync_status='incomplete' as non-interactive", () => {
     setup({
       searchResults: [incompleteTableSearchResult],
     });
 
-    const incompleteTableSearchResultLink = screen.getByText(
+    const searchResultElement = screen.getByText(
       checkNotNull(incompleteTableSearchResult.table_name),
     );
 
-    expect(incompleteTableSearchResultLink).toBeInTheDocument();
+    expect(searchResultElement).toBeInTheDocument();
     expect(() => {
-      userEvent.click(incompleteTableSearchResultLink);
+      userEvent.click(searchResultElement);
     }).toThrow();
   });
 
-  it("should render tables with initial_sync_status='aborted' as non-interactive", () => {
+  it("should show tables with initial_sync_status='aborted' as non-interactive", () => {
     setup({
       searchResults: [abortedTableSearchResult],
     });
 
-    const abortedTableSearchResultLink = screen.getByText(
+    const searchResultElement = screen.getByText(
       checkNotNull(abortedTableSearchResult.table_name),
     );
 
-    expect(abortedTableSearchResultLink).toBeInTheDocument();
+    expect(searchResultElement).toBeInTheDocument();
     expect(() => {
-      userEvent.click(abortedTableSearchResultLink);
+      userEvent.click(searchResultElement);
     }).toThrow();
   });
 
-  it("should render tables with initial_sync_status='complete' as interactive", () => {
+  it("should show tables with initial_sync_status='complete' as interactive", () => {
     setup({
       searchResults: [completeTableSearchResult],
     });
 
-    const completeTableSearchResultLink = screen.getByText(
+    const searchResultElement = screen.getByText(
       checkNotNull(completeTableSearchResult.table_name),
     );
 
-    expect(completeTableSearchResultLink).toBeInTheDocument();
+    expect(searchResultElement).toBeInTheDocument();
     expect(() => {
-      userEvent.click(completeTableSearchResultLink);
+      userEvent.click(searchResultElement);
     }).not.toThrow();
   });
 });
