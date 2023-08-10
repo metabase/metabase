@@ -9,7 +9,7 @@ export default {
       {
         name: "first_name",
         title: t`First name`,
-        placeholder: "Johnny",
+        placeholder: t`Johnny`,
         autoFocus: true,
         validate: validate.maxLength(100),
         normalize: firstName => firstName || null,
@@ -17,14 +17,14 @@ export default {
       {
         name: "last_name",
         title: t`Last name`,
-        placeholder: "Appleseed",
+        placeholder: t`Appleseed`,
         validate: validate.maxLength(100),
         normalize: lastName => lastName || null,
       },
       {
         name: "email",
         title: t`Email`,
-        placeholder: "nicetoseeyou@email.com",
+        placeholder: t`nicetoseeyou@email.com`,
         validate: validate.required().email(),
       },
       {

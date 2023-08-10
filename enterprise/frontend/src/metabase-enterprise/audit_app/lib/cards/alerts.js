@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const table = () => ({
   card: {
-    name: "Alerts",
+    name: t`Alerts`,
     display: "table",
     dataset_query: {
       type: "internal",

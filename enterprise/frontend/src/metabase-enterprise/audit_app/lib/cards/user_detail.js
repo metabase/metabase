@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const table = userId => ({
   card: {
-    name: "Most-viewed Dashboards",
+    name: t`Most-viewed Dashboards`,
     display: "table",
     dataset_query: {
       type: "internal",
@@ -12,7 +14,7 @@ export const table = userId => ({
 
 export const mostViewedDashboards = userId => ({
   card: {
-    name: "Most-viewed Dashboards",
+    name: t`Most-viewed Dashboards`,
     display: "row",
     dataset_query: {
       type: "internal",
@@ -28,7 +30,7 @@ export const mostViewedDashboards = userId => ({
 
 export const mostViewedQuestions = userId => ({
   card: {
-    name: "Most-viewed Queries",
+    name: t`Most-viewed Queries`,
     display: "row",
     dataset_query: {
       type: "internal",
@@ -44,7 +46,7 @@ export const mostViewedQuestions = userId => ({
 
 export const objectViewsByTime = userId => ({
   card: {
-    name: "Query views",
+    name: t`Query views`,
     display: "line",
     dataset_query: {
       type: "internal",
@@ -54,7 +56,7 @@ export const objectViewsByTime = userId => ({
   },
   series: [
     {
-      name: "Dashboard views",
+      name: t`Dashboard views`,
       display: "line",
       dataset_query: {
         type: "internal",
@@ -67,7 +69,7 @@ export const objectViewsByTime = userId => ({
 
 export const queryViews = userId => ({
   card: {
-    name: "Query views",
+    name: t`Query views`,
     display: "table",
     dataset_query: {
       type: "internal",
@@ -89,7 +91,7 @@ export const queryViews = userId => ({
 
 export const dashboardViews = userId => ({
   card: {
-    name: "Dashboard views",
+    name: t`Dashboard views`,
     display: "table",
     dataset_query: {
       type: "internal",
@@ -108,7 +110,7 @@ export const dashboardViews = userId => ({
 
 export const createdDashboards = userId => ({
   card: {
-    name: "Created dashboards",
+    name: t`Created dashboards`,
     display: "table",
     dataset_query: {
       type: "internal",
@@ -120,7 +122,7 @@ export const createdDashboards = userId => ({
 
 export const createdQuestions = userId => ({
   card: {
-    name: "Created questions",
+    name: t`Created questions`,
     display: "table",
     dataset_query: {
       type: "internal",
@@ -132,7 +134,7 @@ export const createdQuestions = userId => ({
 
 export const downloads = userId => ({
   card: {
-    name: "Downloads",
+    name: t`Downloads`,
     display: "table",
     dataset_query: {
       type: "internal",

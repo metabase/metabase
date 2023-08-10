@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const auditLog = tableId => ({
   card: {
-    name: "Audit log",
+    name: t`Audit log`,
     display: "table",
     dataset_query: {
       type: "internal",

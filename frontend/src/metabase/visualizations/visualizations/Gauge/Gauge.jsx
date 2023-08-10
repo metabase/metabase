@@ -115,7 +115,7 @@ export default class Gauge extends Component {
       readDependencies: ["gauge.segments"],
     },
     "gauge.segments": {
-      section: "Display",
+      section: t`Display`,
       title: t`Gauge ranges`,
       getDefault(series) {
         let value = 100;

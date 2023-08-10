@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const viewsByTime = questionId => ({
   card: {
-    name: "Views last 45 days",
+    name: t`Views last 45 days`,
     display: "bar",
     dataset_query: {
       type: "internal",
@@ -28,7 +30,7 @@ export const viewsByTime = questionId => ({
 
 export const averageExecutionTime = questionId => ({
   card: {
-    name: "Average execution time last 45 days",
+    name: t`Average execution time last 45 days`,
     display: "line",
     dataset_query: {
       type: "internal",
@@ -40,7 +42,7 @@ export const averageExecutionTime = questionId => ({
 
 export const revisionHistory = questionId => ({
   card: {
-    name: "Revision history",
+    name: t`Revision history`,
     display: "table",
     dataset_query: {
       type: "internal",
@@ -60,7 +62,7 @@ export const revisionHistory = questionId => ({
 
 export const auditLog = questionId => ({
   card: {
-    name: "Audit log",
+    name: t`Audit log`,
     display: "table",
     dataset_query: {
       type: "internal",

@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const details = queryHash => ({
   card: {
-    name: "Query details",
+    name: t`Query details`,
     display: "table",
     dataset_query: {
       type: "internal",
