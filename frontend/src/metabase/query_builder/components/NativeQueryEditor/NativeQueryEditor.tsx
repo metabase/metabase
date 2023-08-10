@@ -573,8 +573,9 @@ export class NativeQueryEditor extends Component<
     //   - {{#123-foo|}} will fetch completions for the word "123-foo"
     //   - {{#123 foo|}} will not fetch completions because the word "foo" is not the first word in the tag.
     // Note we need to drop the leading `#` from the card tag name because the prefix only includes alphanumerics
-    if (prefix !== this.getCardTagNameAtCursor(pos).substring(1)) {
-      callback(null, null);
+    const tagNameAtCursor = this.getCardTagNameAtCursor(pos);
+    if (prefix !== tagNameAtCursor?.substring?.(1)) {
+      callback(null, []);
     }
     const apiResults = await this.props.cardAutocompleteResultsFn(prefix);
     const resultsForAce = apiResults.map(
