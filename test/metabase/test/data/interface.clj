@@ -381,7 +381,9 @@
    {:base_type     :type/BigInteger
     :semantic_type :type/Quantity
     :name          "count"
-    :display_name  "Count"
+    :display_name  (case aggregation-type
+                     :count     "Count"
+                     :cum-count "Cumulative count")
     :source        :aggregation
     :field_ref     [:aggregation 0]})
 
@@ -393,8 +395,9 @@
                                      :query    {:source-table table-id
                                                 :aggregation  [[aggregation-type [:field-id field-id]]]}}))
     (when (= aggregation-type :cum-count)
-      {:base_type     :type/BigInteger
-       :semantic_type :type/Quantity}))))
+      {:base_type      :type/BigInteger
+       :effective_type :type/BigInteger
+       :semantic_type  :type/Quantity}))))
 
 
 (defmulti count-with-template-tag-query

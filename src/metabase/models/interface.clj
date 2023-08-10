@@ -13,6 +13,7 @@
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
+   [metabase.server.middleware.json]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
@@ -37,6 +38,9 @@
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
+
+;;; this needs to be loaded for side effects -- it has the JSON encoder definitions for the `java.time` classes
+(comment metabase.server.middleware.json/keep-em)
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars

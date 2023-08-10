@@ -195,12 +195,11 @@
             query         {:database (mt/id)
                            :type     :query
                            :query    q3}]
-        (is (= (mt/$ids orders
-                 [$product_id->products.title
-                  *sum/Float])
-               (-> (qp.add-implicit-clauses/add-implicit-clauses query)
-                   :query
-                   :fields)))))))
+        (is (=? (mt/$ids orders
+                  [$product_id->products.title *sum/Float])
+                (-> (qp.add-implicit-clauses/add-implicit-clauses query)
+                    :query
+                    :fields)))))))
 
 (deftest add-implicit-fields-for-source-query-inside-join-test
   (testing "Should add implicit `:fields` for `:source-query` inside a join"
@@ -253,3 +252,23 @@
                                        :condition    [:= $category_id &cat.*categories.id]}]
                        :order-by     [[:asc $name]]
                        :limit        3}))))))))
+
+(deftest ^:parallel e2e-preprocess-test
+  (testing "make sure :fields for things returned by a source query get added"
+    (is (=? {:query {:source-query {:source-table (mt/id :venues)
+                                    :aggregation  [[:aggregation-options [:count] {:name "count"}]
+                                                   [:aggregation-options [:count] {:name "count_2"}]
+                                                   [:aggregation-options [:count] {:name "count_3"}]]}
+                     :fields       [[:field "count" {:base-type :type/Integer}]
+                                    [:field "count_2" {:base-type :type/Integer}]
+                                    [:field "count_3" {:base-type :type/Integer}]]
+                     :limit        1}}
+            (qp/preprocess
+             (mt/mbql-query venues
+               {:source-query {:source-table $$venues
+                               :aggregation  [[:aggregation-options
+                                               [:count]
+                                               {:name "count"}]
+                                              [:count]
+                                              [:count]]}
+                :limit        1}))))))

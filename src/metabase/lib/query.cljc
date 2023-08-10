@@ -49,21 +49,12 @@
     :database     database-id
     :stages       stages}))
 
-(mu/defn query-with-stage
-  "Create a query from a specific stage."
-  ([metadata-providerable stage]
-   (query-with-stages metadata-providerable [stage]))
-
-  ([database-id           :- ::lib.schema.id/database
-    metadata-providerable :- lib.metadata/MetadataProviderable
-    stage]
-   (query-with-stages database-id metadata-providerable [stage])))
-
 (mu/defn ^:private query-from-existing :- ::lib.schema/query
   [metadata-providerable :- lib.metadata/MetadataProviderable
    query                 :- lib.util/LegacyOrPMBQLQuery]
   (let [query (lib.convert/->pMBQL query)]
-    (query-with-stages metadata-providerable (:stages query))))
+    (merge query
+           (query-with-stages metadata-providerable (:stages query)))))
 
 (defmulti ^:private ->query
   "Implementation for [[query]]."

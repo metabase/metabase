@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema.binning :as binning]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
@@ -18,13 +19,41 @@
   [:merge
    ::common/options
    [:map
-    [:temporal-unit {:optional true} ::temporal-bucketing/unit]]])
+    {:error/message "field options"}
+    ;;
+    ;; `:source-field` is used to refer to a column from a different Table you would like IMPLICITLY JOINED to the
+    ;; source table.
+    ;;
+    ;; If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
+    ;; `:source-field` should be for information purposes only.
+    [:source-field {:optional true} [:maybe ::id/field]]
+    ;;
+    ;; `:temporal-unit` is used to specify DATE BUCKETING for a column that represents a moment in time of some sort.
+    ;;
+    ;; There is no requirement that all `:type/Temporal` derived columns specify a `:temporal-unit`, but for legacy
+    ;; reasons `:field` clauses that refer to `:type/DateTime` columns will be automatically "bucketed" in the
+    ;; `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
+    ;; values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more
+    ;; details. `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they
+    ;; do any special datetime handling for plain `:field` clauses when their column derives from `:type/DateTime`.
+    [:temporal-unit {:optional true} ::temporal-bucketing/unit]
+    ;;
+    ;; `:join-alias` is used to refer to a column from a different Table/nested query that you are
+    ;; EXPLICITLY JOINING against.
+    [:join-alias {:optional true} [:maybe ::common/non-blank-string]]
+    ;;
+    ;; Using binning requires the driver to support the `:binning` feature.
+    [:binning {:optional true} [:maybe ::binning/binning]]]])
 
 (mr/def ::field.literal.options
-  [:merge
-   ::field.options
-   [:map
-    [:base-type ::common/base-type]]])
+  [:and
+   [:merge
+    ::field.options
+    [:map
+     [:base-type ::common/base-type]]]
+   [:fn
+    {:error/message ":source-field is not allowed for nominal :field references"}
+    (complement :source-field)]])
 
 ;;; `:field` clause
 (mr/def ::field.literal

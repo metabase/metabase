@@ -19,7 +19,11 @@
 (def ^:private ^:dynamic *legacy-index->pMBQL-uuid*
   {})
 
-(def ^:dynamic *pMBQL-stage* nil)
+;; TODO -- this should probably just be a parameter to an internal version of [[->legacy-MBQL]].
+(def ^:dynamic *pMBQL-stage*
+  "The pMBQL query stage we are currently dealing with. Bind this when calling [[->legacy-MBQL]] so we can resolve
+  `:aggregation` references."
+  nil)
 
 (defn- clean-location [almost-stage error-type error-location]
   (let [operate-on-parent? #{:malli.core/missing-key :malli.core/end-of-input}

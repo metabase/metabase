@@ -48,7 +48,7 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
-(mu/defn ^:private resolve-field-id :- lib.metadata/ColumnMetadata
+(mu/defn resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available."
   [query        :- ::lib.schema/query
@@ -426,20 +426,22 @@
 (defn- column-metadata->field-ref
   [metadata]
   (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
-          options           (merge {:lib/uuid       (str (random-uuid))
-                                    :base-type      (:base-type metadata)
-                                    :effective-type (column-metadata-effective-type metadata)}
-                                   (when-let [join-alias (lib.join/current-join-alias metadata)]
-                                     {:join-alias join-alias})
-                                   (when-let [temporal-unit (::temporal-unit metadata)]
-                                     {:temporal-unit temporal-unit})
-                                   (when-let [binning (::binning metadata)]
-                                     {:binning binning})
+        id-or-name        (if inherited-column?
+                            (or (:lib/desired-column-alias metadata) (:name metadata))
+                            (or (:id metadata) (:name metadata)))
+        options           (merge {:lib/uuid       (str (random-uuid))
+                                  :base-type      (:base-type metadata)
+                                  :effective-type (column-metadata-effective-type metadata)}
+                                 (when-let [join-alias (lib.join/current-join-alias metadata)]
+                                   {:join-alias join-alias})
+                                 (when-let [temporal-unit (::temporal-unit metadata)]
+                                   {:temporal-unit temporal-unit})
+                                 (when-let [binning (::binning metadata)]
+                                   {:binning binning})
+                                 (when (integer? id-or-name)
                                    (when-let [source-field-id (:fk-field-id metadata)]
-                                     {:source-field source-field-id}))]
-      [:field options (if inherited-column?
-                        (or (:lib/desired-column-alias metadata) (:name metadata))
-                        (or (:id metadata) (:name metadata)))]))
+                                     {:source-field source-field-id})))]
+    [:field options id-or-name]))
 
 (defmethod lib.ref/ref-method :metadata/column
   [{source :lib/source, :as metadata}]

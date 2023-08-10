@@ -24,17 +24,18 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- maybe-remove-checksum
+(defn- maybe-remove-irrelevant-keys
   "remove metadata checksum if present because it can change between runs if encryption is in play"
   [x]
   (cond-> x
-    (map? x) (m/dissoc-in [:data :results_metadata :checksum])))
+    (map? x) (m/dissoc-in [:data :results_metadata :checksum]
+                          [:data :download_perms])))
 
 (defn- expected-results* [export-format query]
-  (maybe-remove-checksum (streaming.test-util/expected-results export-format (qp/process-query query))))
+  (maybe-remove-irrelevant-keys (streaming.test-util/expected-results export-format (qp/process-query query))))
 
 (defn- basic-actual-results* [export-format query]
-  (maybe-remove-checksum (streaming.test-util/process-query-basic-streaming export-format query)))
+  (maybe-remove-irrelevant-keys (streaming.test-util/process-query-basic-streaming export-format query)))
 
 (deftest basic-streaming-test
   (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
@@ -47,7 +48,7 @@
                  (basic-actual-results* export-format query))))))))
 
 (defn- actual-results* [export-format query]
-  (maybe-remove-checksum (streaming.test-util/process-query-api-response-streaming export-format query)))
+  (maybe-remove-irrelevant-keys (streaming.test-util/process-query-api-response-streaming export-format query)))
 
 (defn- compare-results [export-format query]
   (is (= (expected-results* export-format query)
@@ -230,7 +231,7 @@
 ;;; (like `metabase.api.dataset-test`).
 ;;; TODO: migrate the test cases above to use these functions, if possible
 
-(defn do-test
+(defn- do-test
   "Test helper to enable writing API-level export tests across multiple export endpoints and formats."
   [message {:keys [query viz-settings assertions endpoints user]}]
   (testing message
@@ -307,7 +308,8 @@
                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
                                 ["1" "Red Medicine" "4" "10.0646" "-165.374" "3"]
                                 ["2" "Stout Burgers & Beers" "11" "34.0996" "-118.329" "2"]]
-                               (csv/read-csv results))))
+                               (cond-> results
+                                 (string? results) csv/read-csv))))
 
                  :json (fn [results]
                          (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]

@@ -1,13 +1,19 @@
 (ns metabase.lib.convert.metadata-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.convert.metadata :as lib.convert.metadata]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(deftest ^:parallel legacy-ref-test
+  (testing "strip out :base-type and :effective-type from legacy Field ID refs"
+    (is (= [:field (meta/id :venues :id) nil]
+           (#'lib.convert.metadata/legacy-ref lib.tu/venues-query (meta/field-metadata :venues :id))))))
 
 (deftest ^:parallel legacy-column-metadata-test
   (is (= {:description       nil
@@ -28,7 +34,8 @@
           :base_type         :type/DateTimeWithLocalTZ
           :field_ref         [:field
                               (meta/id :orders :created-at)
-                              {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :default, :join-alias "J"}]
+                              {:temporal-unit :default, :join-alias "J"}]
+          :source            :fields
           :source_alias      "J"}
          (lib.convert.metadata/->legacy-column-metadata
           (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -60,7 +67,7 @@
 (deftest ^:parallel aggregation-ref-test
   (let [query (-> lib.tu/venues-query
                   (lib/aggregate (lib/count)))
-        [ag]  (lib/returned-columns query)]
+        [ag]  (lib.metadata.calculation/returned-columns query)]
     (is (=? {:name "count"}
             ag))
     (is (= {:base_type      :type/Integer
@@ -71,3 +78,32 @@
             :display_name   "Count"
             :field_ref      [:aggregation 0]}
            (lib.convert.metadata/->legacy-column-metadata query ag)))))
+
+(deftest ^:parallel deduplicate-names-test
+  (testing "Should return deduplicated `:name`s (should use `:lib/desired-column-alias` to calculate this)"
+    (let [query (-> lib.tu/venues-query
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/count)))
+          cols  (lib.metadata.calculation/returned-columns query)]
+      (is (=? [{:base_type     :type/Integer
+                :name          "count"
+                :display_name  "Count"
+                :semantic_type :type/Quantity
+                :source        :aggregation
+                :field_ref     [:aggregation 0]}
+               {:base_type     :type/Integer
+                :name          "count_2"
+                :display_name  "Count"
+                :semantic_type :type/Quantity
+                :source        :aggregation
+                :field_ref     [:aggregation 1]}
+               {:base_type     :type/Integer
+                :name          "count_3"
+                :display_name  "Count"
+                :semantic_type :type/Quantity
+                :source        :aggregation
+                :field_ref     [:aggregation 2]}]
+              (mapv
+               (partial lib.convert.metadata/->legacy-column-metadata query)
+               cols))))))

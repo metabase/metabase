@@ -1,92 +1,163 @@
 (ns metabase.query-processor.middleware.upgrade-field-literals
   (:require
-   [clojure.walk :as walk]
+   [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.util :as lib.util]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.query-processor.middleware.resolve-fields
-    :as qp.resolve-fields]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defn- warn-once
   "Log only one warning per QP run (regardless of message)."
-  [message]
-  ;; Make sure QP store is available since we use caching below (it may not be in some unit tests)
-  (when (qp.store/initialized?)
-    ;; by caching the block below, the warning will only get trigger a maximum of one time per query run. We don't need
-    ;; to blow up the logs with a million warnings.
-    (qp.store/cached ::bad-clause-warning
-      (log/warn (u/colorize :red message)))))
+  [& lines]
+  (let [message (str \newline (str/join "\n\n" lines))]
+    ;; Make sure QP store is available since we use caching below (it may not be in some unit tests)
+    (when (qp.store/initialized?)
+      ;; by caching the block below, the warning will only get trigger a maximum of one time per query run. We don't need
+      ;; to blow up the logs with a million warnings.
+      (qp.store/cached ::bad-clause-warning
+        (log/warn (u/colorize :red message))))
+    (log/debug (u/colorize :yellow message)))
+  nil)
 
-(defn- fix-clause [{:keys [source-aliases field-name->field]} [_ field-name options :as field-clause]]
-  ;; attempt to find a corresponding Field ref from the source metadata.
-  (let [field-ref (:field_ref (get field-name->field field-name))]
-    (cond
-      field-ref
-      (mbql.u/match-one field-ref
-        ;; If the matching Field ref is an integer `:field` clause then replace it with the corrected clause.
-        [:field (id :guard integer?) new-options]
-        [:field id (merge new-options (dissoc options :base-type))]
+;;; For the purposes of this middleware, "initial stage" means the first stage of a query that has a `:source-table`,
+;;; and "subsequent stage" means any stage after the first, or the first stage if it has a `:source-card` (since
+;;; effectively that stage is not the first stage of the query)
 
-        ;; Otherwise the Field clause in the source query uses a string Field name as well, but that name differs from
-        ;; the one in `source-aliases`. Will this work? Not sure whether or not we need to log something about this.
-        [:field (field-name :guard string?) new-options]
-        (u/prog1 [:field field-name (merge new-options (dissoc options :base-type))]
-          (warn-once
-           (trs "Warning: clause {0} does not match a column in the source query. Attempting to correct this to {1}"
-                (pr-str field-clause)
-                (pr-str <>)))))
+(def ^:private InitialMBQLStage
+  ::lib.schema/stage.mbql.with-source-table)
 
-      ;; If the field name exists in the ACTUAL names returned by the source query then we're g2g and don't need to
-      ;; complain about anything.
-      (contains? source-aliases field-name)
-      field-clause
+(def ^:private SubsequentMBQLStage
+  [:or
+   ::lib.schema/stage.mbql.without-source
+   ::lib.schema/stage.mbql.with-source-card])
 
-      ;; no matching Field ref means there's no column with this name in the source query. The query may not work, so
-      ;; log a warning about it. This query is probably not going to work so we should let everyone know why.
-      :else
+(mu/defn ^:private resolve-nominal-ref :- [:maybe lib.metadata/ColumnMetadata]
+  [visible-cols                            :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+   [_field _opts field-name :as field-ref] :- ::lib.schema.ref/field.literal]
+  (or (some (fn [f]
+              (m/find-first f visible-cols))
+            [#(= (:lib/desired-column-alias %) field-name)
+             #(= (:name %) field-name)
+             #(= (u/lower-case-en (:lib/desired-column-alias %)) (u/lower-case-en field-name))
+             #(= (u/lower-case-en (:name %)) (u/lower-case-en field-name))])
       (do
-        (warn-once
-         (trs "Warning: clause {0} refers to a Field that may not be present in the source query. Query may not work as expected. Found: {1}"
-              (pr-str field-clause) (pr-str (or (not-empty source-aliases)
-                                                (set (keys field-name->field))))))
-        field-clause))))
+        (warn-once "Warning: clause refers to a Field that may not be present in the source query:"
+                   (pr-str field-ref)
+                   "Query may not work as expected. Found:"
+                   (pr-str (into #{}
+                                 (mapcat (juxt :lib/desired-column-alias :name))
+                                 visible-cols)))
+        nil)))
 
-(defn- upgrade-field-literals-one-level [{:keys [source-metadata], :as inner-query}]
-  (let [source-aliases    (into #{} (keep :source_alias) source-metadata)
-        field-name->field (merge (m/index-by :name source-metadata)
-                                 (m/index-by (comp u/lower-case-en :name) source-metadata))]
-    (mbql.u/replace inner-query
-      ;; don't upgrade anything inside `source-query` or `source-metadata`.
-      (_ :guard (constantly (some (set &parents) [:source-query :source-metadata])))
-      &match
+(mu/defn ^:private upgrade-nominal-ref :- :mbql.clause/field
+  "Attempt to upgrade a nominal `:field` ref to an integer ID one."
+  [visible-cols
+   field-ref :- ::lib.schema.ref/field.literal]
+  (or (when-let [column-metadata (resolve-nominal-ref visible-cols field-ref)]
+        (u/prog1 (lib/ref column-metadata)
+          (warn-once "Warning: found nominal :field ref in the initial stage of the query:"
+                     (pr-str field-ref)
+                     "Correcting this to:"
+                     (pr-str <>))))
+      field-ref))
 
-      ;; look for `field` clauses that use a string name that doesn't appear in `source-aliases` (the ACTUAL names that
-      ;; are returned by the source query)
-      [:field (field-name :guard (every-pred string? (complement source-aliases))) options]
-      (or (fix-clause {:inner-query inner-query, :source-aliases source-aliases, :field-name->field field-name->field}
-                      &match)
-          &match))))
+(mu/defn ^:private fix-refs-in-initial-stage :- InitialMBQLStage
+  "All refs in the initial stage should be integer ID refs; attempt to fix any nominal refs."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   stage        :- InitialMBQLStage]
+  (let [metadata (delay
+                   (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number)))]
+    (mbql.u/replace stage
+      [:field opts (field-name :guard string?)]
+      (upgrade-nominal-ref @metadata &match))))
 
-(defn upgrade-field-literals
+(mu/defn ^:private fix-bad-nominal-ref :- ::lib.schema.ref/field.literal
+  "Fix a nominal `:field` ref whose literal field name does not actually match the name of anything returned by the
+  previous stage."
+  [visible-cols
+   field-ref :- ::lib.schema.ref/field.literal]
+  (or (when-let [column-metadata (resolve-nominal-ref visible-cols field-ref)]
+        (u/prog1 (lib/ref column-metadata)
+          (warn-once "Warning: clause does not match a column in the source query:"
+                     (pr-str field-ref)
+                     "Correcting this to:"
+                     (pr-str <>))))
+      field-ref))
+
+(mu/defn ^:private downgrade-id-ref :- ::lib.schema.ref/field.literal
+  "Downgrade a `:field` ID reference to a nominal `:field` reference for stages of the query where we should be using
+  nominal references."
+  [query
+   stage-number
+   field-ref :- ::lib.schema.ref/field.id]
+  (or (when-let [column-metadata (lib.metadata.calculation/metadata query stage-number field-ref)]
+        (u/prog1 (lib/ref (-> column-metadata
+                              (assoc :lib/source :source/previous-stage)
+                              (dissoc :source-field)))
+          (warn-once (format "Warning: found :field ID ref in a subsequent stage (%d) of the query:" stage-number)
+                     (pr-str field-ref)
+                     "Correcting this to:"
+                     (pr-str <>))))
+      field-ref))
+
+(mu/defn ^:private fix-refs-in-subsequent-stage :- SubsequentMBQLStage
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   stage        :- SubsequentMBQLStage]
+  (let [visible-cols      (delay (if-let [source-card-id (:source-card stage)]
+                                   (lib.metadata.calculation/returned-columns (lib.metadata/card query source-card-id))
+                                   (for [col (lib.metadata.calculation/returned-columns query
+                                                                                        (lib.util/previous-stage-number query stage-number)
+                                                                                        (lib.util/previous-stage query stage-number))]
+                                     (assoc col :lib/source :source/previous-stage))))
+        valid-field-names (delay (into #{} (map :lib/desired-column-alias) @visible-cols))]
+    (mbql.u/replace stage
+      [:field _opts (_field-name :guard #(and (string? %)
+                                              (not (@valid-field-names %))))]
+      (fix-bad-nominal-ref @visible-cols &match)
+
+      [:field _opts (_id :guard integer?)]
+      (downgrade-id-ref query stage-number &match))))
+
+(mu/defn ^:private upgrade-field-literals-in-mbql-stage :- ::lib.schema/stage
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   stage        :- ::lib.schema/stage]
+  (let [f (if (and (lib.util/first-stage? query stage-number)
+                   (:source-table stage))
+            fix-refs-in-initial-stage
+            fix-refs-in-subsequent-stage)]
+    (merge
+     (f query stage-number (dissoc stage :joins :lib/stage-metadata))
+     (select-keys stage [:joins :lib/stage-metadata]))))
+
+(mu/defn ^:private upgrade-field-literals-in-stage :- ::lib.schema/stage
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   stage]
+  (case (:lib/type stage)
+    :mbql.stage/native stage
+    :mbql.stage/mbql   (upgrade-field-literals-in-mbql-stage query stage-number stage)))
+
+(mu/defn upgrade-field-literals :- mbql.s/Query
   "Look for usage of `:field` (name) forms where `field` (ID) would have been the correct thing to use, and fix it, so
   the resulting query doesn't end up being broken."
-  [query]
-  (-> (walk/postwalk
-       (fn [form]
-         ;; find maps that have `source-query` and `source-metadata`, but whose source query is an MBQL source query
-         ;; rather than an native one
-         (if (and (map? form)
-                  (:source-query form)
-                  (seq (:source-metadata form))
-                  ;; we probably shouldn't upgrade things at all if we have a source MBQL query whose source is a native
-                  ;; query at ANY level, since `[:field <name>]` might mean `source.<name>` or it might mean
-                  ;; `some_join.<name>`. But we'll probably break more things than we fix if turn off this middleware in
-                  ;; that case. See #19757 for more info
-                  (not (get-in form [:source-query :native])))
-           (upgrade-field-literals-one-level form)
-           form))
-       (qp.resolve-fields/resolve-fields query))
-      qp.resolve-fields/resolve-fields))
+  ([query]
+   (upgrade-field-literals query (qp.store/metadata-provider)))
+
+  ([query             :- mbql.s/Query
+    metadata-provider :- lib.metadata/MetadataProvider]
+   (-> (lib/query metadata-provider query)
+       (lib.util/update-stages-and-join-stages upgrade-field-literals-in-stage)
+       lib.convert/->legacy-MBQL)))

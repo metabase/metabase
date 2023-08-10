@@ -51,3 +51,16 @@
           (lib/query meta/metadata-provider {:database (meta/id)
                                              :type     :query
                                              :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}}))))
+
+(deftest ^:parallel query-from-legacy-test
+  (is (=? {:lib/type             :mbql/query
+           :lib/metadata         some?
+           :stages               [{:lib/type :mbql.stage/mbql, :source-table 2}]
+           :database             (meta/id)
+           :some.namespace/perms {:gtaps #{"/db/1"}}}
+          (lib/query
+           meta/metadata-provider
+           {:database             1
+            :type                 :query
+            :query                {:source-table 2}
+            :some.namespace/perms {:gtaps #{"/db/1"}}}))))

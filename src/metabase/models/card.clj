@@ -10,18 +10,21 @@
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
+   [metabase.models.parameter-card
+    :as parameter-card
+    :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.util :as qp.util]
-   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -172,10 +175,7 @@
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (let [inferred-metadata (not-empty (mw.session/with-current-user nil
-                                           (classloader/require 'metabase.query-processor)
-                                           (u/ignore-exceptions
-                                             ((resolve 'metabase.query-processor/query->expected-cols) query))))]
+      (let [inferred-metadata (not-empty (qp.metadata/query->expected-cols query))]
         (assoc card :result_metadata inferred-metadata)))))
 
 (defn- check-for-circular-source-query-references

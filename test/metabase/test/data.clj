@@ -197,7 +197,7 @@
          " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
   (ddl.i/format-name (tx/driver) (name a-name)))
 
-(defn id
+(defn application-database-id
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
   can be rebound with `with-db`."
   ([]
@@ -205,10 +205,26 @@
    (u/the-id (db)))
 
   ([table-name]
-   (data.impl/the-table-id (id) (format-name table-name)))
+   (data.impl/the-table-id (application-database-id) (format-name table-name)))
 
   ([table-name field-name & nested-field-names]
-   (apply data.impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
+   (apply data.impl/the-field-id (application-database-id table-name) (map format-name (cons field-name nested-field-names)))))
+
+(def ^:dynamic *id*
+  "Implementation for [[id]]."
+  #'application-database-id)
+
+(defn id
+  "Get the ID of the current database or one of its Tables or Fields. Can be rebound by binding [[*id*]]. Default
+  implementation is [[application-database-id]], which gets a real ID from the application database."
+  ([]
+   (*id*))
+
+  ([table-name]
+   (*id* table-name))
+
+  ([table-name field-name & nested-field-names]
+   (apply *id* table-name field-name nested-field-names)))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the

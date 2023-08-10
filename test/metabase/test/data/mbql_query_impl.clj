@@ -1,13 +1,16 @@
 (ns metabase.test.data.mbql-query-impl
-  "Internal implementation of `data/$ids` and `data/mbql-query` and related macros."
+  "Internal implementation of [[metabase.test.data/$ids]] and [[metabase.test.data/$ids]] and related macros."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.models.field :refer [Field]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:dynamic *id-fn-symb*              'metabase.test.data/id)
+(def ^:dynamic *field-name-fn-symb*      `field-name)
+(def ^:dynamic *field-base-type-fn-symb* `field-base-type)
 
 (defn- token->sigil [token]
   (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
@@ -24,7 +27,7 @@
   [source-table-symb token-str]
   (let [parts (str/split token-str #"\.")]
     (cons
-     'metabase.test.data/id
+     *id-fn-symb*
      (if (= (count parts) 1)
        [(keyword source-table-symb) (keyword (first parts))]
        (map keyword parts)))))
@@ -69,18 +72,18 @@
                    :dest-token-str    dest-token-str})))
 
 (defn field-name [field-id]
-  (t2/select-one-fn :name Field :id field-id))
+  (t2/select-one-fn :name :model/Field :id field-id))
 
 (defn field-base-type [field-id]
-  (t2/select-one-fn :base_type Field :id field-id))
+  (t2/select-one-fn :base_type :model/Field :id field-id))
 
 (defn- field-literal [source-table-symb token-str]
   (if (str/includes? token-str "/")
     (let [[field-name field-type] (str/split token-str #"/")]
       [:field field-name {:base-type (keyword "type" field-type)}])
     [:field
-     (list `field-name (field-id-call source-table-symb token-str))
-     {:base-type (list `field-base-type (field-id-call source-table-symb token-str))}]))
+     (list *field-name-fn-symb* (field-id-call source-table-symb token-str))
+     {:base-type (list *field-base-type-fn-symb* (field-id-call source-table-symb token-str))}]))
 
 (defmethod mbql-field [:literal :normal]
   [_ _ source-table-symb token-str]
@@ -137,7 +140,7 @@
 ;; $$ = table ID.
 (defmethod parse-token-by-sigil "$$"
   [_ token]
-  (list 'metabase.test.data/id (keyword (.substring (str token) 2))))
+  (list *id-fn-symb* (keyword (.substring (str token) 2))))
 
 (defn parse-tokens
   "Internal impl fn of `$ids` and `mbql-query` macros. Walk `body` and replace `$field` (and related) tokens with calls
@@ -151,7 +154,7 @@
 (defn wrap-inner-query
   "Internal impl fn of `data/mbql-query` macro."
   [inner-query]
-  {:database (list 'metabase.test.data/id)
+  {:database (list *id-fn-symb*)
    :type     :query
    :query    inner-query})
 
@@ -161,7 +164,7 @@
   [inner-query table]
   (if (some (partial contains? inner-query) #{:source-table :source-query})
     inner-query
-    (assoc inner-query :source-table (list 'metabase.test.data/id (keyword table)))))
+    (assoc inner-query :source-table (list *id-fn-symb* (keyword table)))))
 
 (deftest parse-tokens-test
   (is (= '[:field

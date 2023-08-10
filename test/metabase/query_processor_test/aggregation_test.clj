@@ -4,9 +4,7 @@
    [clojure.test :refer :all]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor-test :as qp.test]
-   [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [metabase.test.util :as tu]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
@@ -215,8 +213,6 @@
                  {:aggregation [[:cum-sum $id]]
                   :breakout    [$price]})))))))
 
-
-;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
 (deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count aggregations"
@@ -271,13 +267,11 @@
 
 (deftest field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
-    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
+    (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:settings {:is_priceless false}}
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test/aggregate-col :sum :venues :price)
-                      :settings {:is_priceless false})
-               (or (-> results mt/cols first)
-                   results)))))))
+        (is (=? {:data {:cols [{:settings {:is_priceless false}}]}}
+                results))))))
 
 (deftest ^:parallel duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
@@ -298,6 +292,6 @@
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !
-;; !                    tests for named aggregations can be found in `expression-aggregations-test`                    !
+;; !    tests for named aggregations can be found in [[metabase.query-processor-test.expression-aggregations-test]]    !
 ;; !                                                                                                                   !
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

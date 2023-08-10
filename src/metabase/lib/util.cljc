@@ -478,3 +478,42 @@
           ;; subvec holds onto references, so create a new vector
           (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))
+
+(defn update-stages
+  "Update all stages of `query` by calling
+
+    (f query stage-number stage)
+
+  on each top-level stage."
+  [query f]
+  (reduce
+   (fn [query stage-number]
+     (update-query-stage
+      query
+      stage-number
+      (fn [stage]
+        (f query stage-number stage))))
+   query
+   (range (count (:stages query)))))
+
+(defn update-stages-and-join-stages
+  "Update all stages of `query` by calling
+
+    (f query stage-number stage)
+
+  on each stage, recursing into stages in joins. For joins, `query` and `stage-number` are relative to the join."
+  [query f]
+  (letfn [(update-join [join]
+            (update join :stages (fn [stages]
+                                   (-> (assoc query :stages stages)
+                                       (update-stages-and-join-stages f)
+                                       :stages))))
+          (update-joins [joins]
+            (mapv update-join joins))
+          (update-joins-in-stage [stage]
+            (cond-> stage
+              (:joins stage) (update :joins update-joins)))]
+    (update-stages
+     query
+     (fn [query stage-number stage]
+       (f query stage-number (update-joins-in-stage stage))))))

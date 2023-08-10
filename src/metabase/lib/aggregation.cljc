@@ -121,22 +121,22 @@
   (lib.hierarchy/derive tag ::count-aggregation))
 
 (defmethod lib.metadata.calculation/display-name-method ::count-aggregation
-  [query stage-number [tag _opts x] style]
+  [query stage-number [_tag _opts x] style]
   ;; x is optional.
   (if x
     (let [x-display-name (lib.metadata.calculation/display-name query stage-number x style)]
-      (case tag
-        :count     (i18n/tru "Count of {0}" x-display-name)
-        :cum-count (i18n/tru "Cumulative count of {0}" x-display-name)))
-    (case tag
-      :count     (i18n/tru "Count")
-      :cum-count (i18n/tru "Cumulative count"))))
+      (i18n/tru "Count of {0}" x-display-name)
+      #_(case tag
+          :count     (i18n/tru "Count of {0}" x-display-name)
+          :cum-count (i18n/tru "Cumulative count of {0}" x-display-name)))
+    (i18n/tru "Count")
+    #_(case tag
+        :count     (i18n/tru "Count")
+        :cum-count (i18n/tru "Cumulative count"))))
 
 (defmethod lib.metadata.calculation/column-name-method ::count-aggregation
-  [_query _stage-number [tag :as _clause]]
-  (case tag
-    :count     "count"
-    :cum-count "cum_count"))
+  [_query _stage-number _clause]
+  "count")
 
 (defmethod lib.metadata.calculation/metadata-method ::count-aggregation
   [query stage-number clause]

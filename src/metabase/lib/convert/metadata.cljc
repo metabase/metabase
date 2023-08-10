@@ -14,7 +14,9 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.mbql.util.match :as mbql.match]))
 
 (def LegacyColumn
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -43,7 +45,9 @@
 (mu/defn ^:private legacy-ref :- mbql.s/AnyReference
   [query column-metadata]
   (binding [lib.convert/*pMBQL-stage* (lib.util/query-stage query -1)]
-    (lib.convert/->legacy-MBQL (lib.ref/ref column-metadata))))
+    (mbql.match/replace (lib.convert/->legacy-MBQL (lib.ref/ref column-metadata))
+      [:field (field-id :guard integer?) (opts :guard map?)]
+      (mbql.u/update-field-options &match dissoc :base-type :effective-type))))
 
 (defn- legacy-source [column-metadata]
   (case (:lib/source column-metadata)
@@ -63,12 +67,15 @@
   [query           :- ::lib.schema/query
    column-metadata :- lib.metadata/ColumnMetadata]
   (try
-    (let [column-metadata (merge column-metadata
-                                 {:display-name (legacy-display-name query column-metadata)
-                                  :field-ref    (legacy-ref query column-metadata)
-                                  :source       (legacy-source column-metadata)}
-                                 (when-let [join-alias (lib.join/current-join-alias column-metadata)]
-                                   {:source-alias join-alias}))]
+    (let [column-metadata (merge
+                           #_{:fk-target-field-id nil}
+                           column-metadata
+                           {:name         ((some-fn :lib/desired-column-alias :name) column-metadata)
+                            :display-name (legacy-display-name query column-metadata)
+                            :field-ref    (legacy-ref query column-metadata)
+                            :source       (legacy-source column-metadata)}
+                           (when-let [join-alias (lib.join/current-join-alias column-metadata)]
+                             {:source-alias join-alias}))]
       (into {}
             (comp (remove (fn [[k _v]]
                             (when-let [key-namespace (namespace k)]

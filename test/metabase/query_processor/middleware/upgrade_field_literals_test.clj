@@ -1,115 +1,136 @@
 (ns metabase.query-processor.middleware.upgrade-field-literals-test
   (:require
    [clojure.test :refer :all]
-   [medley.core :as m]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-source-metadata
-    :as add-source-metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.upgrade-field-literals
     :as upgrade-field-literals]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.lib.core :as lib]))
 
 (defn- upgrade-field-literals [query]
-  (mt/with-everything-store
-    (upgrade-field-literals/upgrade-field-literals query)))
+  (upgrade-field-literals/upgrade-field-literals query meta/metadata-provider))
 
-(deftest dont-replace-aggregations-test
+(deftest ^:parallel dont-replace-aggregations-test
   (testing "Don't replace field-literals forms with aggregation references"
-    (let [source-query    (mt/mbql-query checkins
-                            {:aggregation [[:count]]
-                             :breakout    [$checkins.venue_id]})
-          source-metadata (qp/query->expected-cols source-query)
-          query           (mt/mbql-query venues
-                            {:source-query    (:query source-query)
-                             :source-metadata source-metadata
-                             :joins           [(let [source-query    (mt/mbql-query venues
-                                                                       {:breakout [$category_id]})
-                                                     source-metadata (qp/query->expected-cols source-query)]
-                                                 {:fields          :all
-                                                  :alias           "venues"
-                                                  :strategy        :inner-join
-                                                  :condition       [:= *count/Number &venues.*count/Number]
-                                                  :source-query    (:query source-query)
-                                                  :source-metadata source-metadata})]
-                             :order-by        [[:asc $checkins.venue_id]]
-                             :limit           3})]
-      (is (= query
+    (let [query (lib.tu.macros/mbql-query venues
+                  {:source-query {:source-table $$checkins
+                                  :aggregation  [[:count]]
+                                  :breakout     [$checkins.venue-id]}
+                   :joins        [{:source-query {:source-table $$venues
+                                                  :breakout     [$venues.category-id]}
+                                   :fields       :all
+                                   :alias        "venues"
+                                   :strategy     :inner-join
+                                   :condition    [:= *count/Number &venues.*count/Number]}]
+                   :order-by     [[:asc $checkins.venue-id]]
+                   :limit        3})]
+      (is (= (assoc-in query
+                       [:query :order-by]
+                       [[:asc [:field "VENUE_ID" {:base-type :type/Integer}]]])
              (upgrade-field-literals query))))))
 
-(deftest upgrade-to-valid-clauses-test
+(deftest ^:parallel upgrade-to-valid-clauses-test
   (testing "Make sure upgrades don't result in weird clauses like nested `datetime-field` clauses")
-  (let [source-query    (mt/mbql-query checkins)
-        source-metadata (qp/query->expected-cols source-query)]
-    (is (= (mt/mbql-query checkins
-             {:aggregation     [[:count]]
-              :breakout        [!week.date]
-              :filter          [:between !week.date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]
-              :source-query    source-query
-              :source-metadata source-metadata})
+  (is (= (lib.tu.macros/mbql-query checkins
+           {:source-query    {:source-table $$checkins}
+            :aggregation     [[:count]]
+            :breakout        [[:field "DATE" {:base-type :type/Date, :temporal-unit :week}]]
+            :filter          [:between
+                              [:field "DATE" {:base-type :type/Date, :temporal-unit :week}]
+                              "2014-02-01T00:00:00-08:00"
+                              "2014-05-01T00:00:00-07:00"]})
+         (upgrade-field-literals
+          (lib.tu.macros/mbql-query nil
+            {:source-query {:source-table $$checkins}
+             :aggregation  [[:count]]
+             :breakout     [[:field "DATE" {:base-type :type/Date, :temporal-unit :week}]]
+             :filter       [:between
+                            [:field (mt/id :checkins :date) {:temporal-unit :week}]
+                            "2014-02-01T00:00:00-08:00"
+                            "2014-05-01T00:00:00-07:00"]})))))
+
+(deftest ^:parallel upgrade-to-valid-clauses-test
+  (testing "Make sure upgrades don't result in weird clauses like nested `datetime-field` clauses")
+  (let [source-query    (lib.tu.macros/mbql-query checkins)
+        source-metadata (qp.metadata/legacy-metadata (lib/query meta/metadata-provider source-query))]
+    (is (= (lib.tu.macros/mbql-query checkins
+             {:source-query    (:query source-query)
+              :source-metadata source-metadata
+              :aggregation     [[:count]]
+              :breakout        [[:field "DATE" {:base-type :type/Date, :temporal-unit :week}]]
+              :filter          [:between
+                                [:field "DATE" {:base-type :type/Date, :temporal-unit :week}]
+                                "2014-02-01T00:00:00-08:00"
+                                "2014-05-01T00:00:00-07:00"]})
            (upgrade-field-literals
-            (mt/mbql-query nil
-              {:aggregation     [[:count]]
+            (lib.tu.macros/mbql-query nil
+              {:source-query    (:query source-query)
+               :source-metadata source-metadata
+               :aggregation     [[:count]]
                :breakout        [!week.*DATE/Date]
-               :filter          [:between !week.*DATE/Date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]
-               :source-query    source-query
-               :source-metadata source-metadata}))))))
+               :filter          [:between !week.*DATE/Date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))))))
 
-(deftest support-legacy-filter-clauses-test
-  (testing "We should handle legacy usage of `:field` w/ name inside filter clauses"
-    (mt/dataset sample-dataset
-      (testing "against explicit joins (#14809)"
-        (let [source-query    (mt/mbql-query orders
-                                {:joins [{:fields       :all
-                                          :source-table $$products
-                                          :condition    [:= $product_id &Products.products.id]
-                                          :alias        "Products"}]})
-              source-metadata (qp/query->expected-cols source-query)]
-          (is (= (mt/mbql-query orders
-                   {:source-query    (:query source-query)
-                    :source-metadata source-metadata
-                    :filter          [:= &Products.products.category "Widget"]})
-                 (upgrade-field-literals
-                  (mt/mbql-query orders
-                    {:source-query    (:query source-query)
-                     :source-metadata source-metadata
-                     :filter          [:= *CATEGORY/Text "Widget"]}))))))
+(deftest ^:parallel support-legacy-filter-clauses-test
+  (testing "We should handle legacy usage of `:field` w/ name inside filter clauses against explicit joins (#14809)"
+    (let [source-query (lib.tu.macros/mbql-query orders
+                         {:joins [{:fields       :all
+                                   :source-table $$products
+                                   :condition    [:= $product-id &Products.products.id]
+                                   :alias        "Products"}]})]
+      (is (= (lib.tu.macros/mbql-query orders
+               {:source-query (:query source-query)
+                :filter       [:=
+                               [:field "Products__CATEGORY" {:base-type :type/Text, :join-alias "Products"}]
+                               "Widget"]})
+             (upgrade-field-literals
+              (lib.tu.macros/mbql-query orders
+                {:source-query (:query source-query)
+                 :filter       [:= *CATEGORY/Text "Widget"]})))))))
 
-      (testing "against implicit joins (#14811)"
-        (let [source-query    (mt/mbql-query orders
-                                {:aggregation [[:sum $product_id->products.price]]
-                                 :breakout    [$product_id->products.category]})
-              source-metadata (qp/query->expected-cols source-query)]
-          (is (= (mt/mbql-query orders
-                   {:source-query    (:query source-query)
-                    :source-metadata source-metadata
-                    :filter          [:= $product_id->products.category "Widget"]})
-                 (upgrade-field-literals
-                  (mt/mbql-query orders
-                    {:source-query    (:query source-query)
-                     :source-metadata source-metadata
-                     ;; not sure why FE is using `field-literal` here... but it should work anyway.
-                     :filter          [:= *CATEGORY/Text "Widget"]})))))))))
+(deftest ^:parallel support-legacy-filter-clauses-implicit-joins-test
+  (testing "We should handle legacy usage of `:field` w/ name inside filter clauses against implicit joins (#14811)"
+    (is (= (lib.tu.macros/mbql-query orders
+             {:source-query {:source-table $$orders
+                             :aggregation  [[:sum $product-id->products.price]]
+                             :breakout     [$product-id->products.category]}
+              :filter       [:=
+                             [:field "PRODUCTS__via__PRODUCT_ID__CATEGORY" {:base-type :type/Text}]
+                             "Widget"]})
+           (upgrade-field-literals
+            (lib.tu.macros/mbql-query orders
+              {:source-query {:source-table $$orders
+                              :aggregation  [[:sum $product-id->products.price]]
+                              :breakout     [$product-id->products.category]}
+               ;; not sure why FE is using `field-literal` here... but it should work anyway.
+               :filter       [:= *CATEGORY/Text "Widget"]}))))))
 
-(deftest attempt-case-insensitive-match-test
+(deftest ^:parallel attempt-case-insensitive-match-test
   (testing "Attempt to fix things even if the name used is the wrong case (#16389)"
-    (mt/dataset sample-dataset
-      (mt/with-everything-store
-        (is (query= (mt/mbql-query orders
-                      {:source-query {:source-table $$orders
-                                      :aggregation  [[:count]]
-                                      :breakout     [!month.product_id->products.created_at]}
-                       :aggregation  [[:sum *count/Integer]]
-                       :breakout     [[:field %products.created_at {:source-field  %product_id
-                                                                    :temporal-unit :month}]]
-                       :limit        1})
-                    ;; This query is actually broken -- see #19757 -- but since we're nice we'll try to fix it anyway.
-                    (-> (mt/mbql-query orders
-                          {:source-query {:source-table $$orders
-                                          :aggregation  [[:count]]
-                                          :breakout     [!month.product_id->products.created_at]}
-                           :aggregation  [[:sum *count/Integer]]
-                           :breakout     [[:field "created_at" {:base-type :type/DateTimeWithLocalTZ}]]
-                           :limit        1})
-                        add-source-metadata/add-source-metadata-for-source-queries
-                        upgrade-field-literals
-                        (m/dissoc-in [:query :source-metadata]))))))))
+    (is (= (lib.tu.macros/mbql-query orders
+             {:source-query {:source-table $$orders
+                             :aggregation  [[:count]]
+                             :breakout     [!month.product-id->products.created-at]}
+              :aggregation  [[:sum *count/Integer]]
+              :breakout     [[:field "PRODUCTS__via__PRODUCT_ID__CREATED_AT"
+                              {:temporal-unit :month
+                               :base-type     :type/DateTimeWithLocalTZ}]]
+              :limit        1})
+           ;; This query is actually broken -- see #19757 -- but since we're nice we'll try to fix it anyway.
+           (upgrade-field-literals
+            (lib.tu.macros/mbql-query orders
+              {:source-query {:source-table $$orders
+                              :aggregation  [[:count]]
+                              :breakout     [!month.product-id->products.created-at]}
+               :aggregation  [[:sum *count/Integer]]
+               :breakout     [[:field "created_at" {:base-type :type/DateTimeWithLocalTZ}]]
+               :limit        1}))))))
+
+(deftest ^:parallel preserve-namespaced-keys-test
+  (let [query {:database             (meta/id)
+               :type                 :query
+               :query                {:source-table 2}
+               :some.namespace/perms {:gtaps #{"/db/3570/schema/PUBLIC/table/41117/query/"}}}]
+    (is (= query
+           (upgrade-field-literals query)))))

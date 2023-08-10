@@ -3,12 +3,12 @@
    [clojure.test :refer :all]
    [metabase.models.card :refer [Card]]
    [metabase.query-processor.util.tag-referenced-cards :as qp.u.tag-referenced-cards]
-   [metabase.test :as mt]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest tags-referenced-cards-lookup-test
   (testing "returns Card instances from raw query"
-    (mt/with-temp* [Card [c1 {}]
-                    Card [c2 {}]]
+    (t2.with-temp/with-temp [Card c1 {}
+                             Card c2 {}]
       (is (= [c1 c2]
              (qp.u.tag-referenced-cards/tags-referenced-cards
               {:native

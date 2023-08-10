@@ -786,9 +786,9 @@
                                                    :alias        "Q"}]
                                    :limit        1}))
                     fields     #{%orders.discount %products.title %people.source}]
-                (is (= [{:display_name "Discount" :field_ref [:field %orders.discount nil]}
-                        {:display_name "Products → Title" :field_ref [:field %products.title nil]}
-                        {:display_name "Q → Source" :field_ref [:field %people.source {:join-alias "Q"}]}]
+                (is (= [{:display_name "Discount",         :field_ref [:field %orders.discount nil]}
+                        {:display_name "Products → Title", :field_ref [:field %products.title nil]}
+                        {:display_name "Q → Source",       :field_ref [:field %people.source {:join-alias "Q"}]}]
                        (->> (:cols (add-column-info base-query {}))
                             (filter #(fields (:id %)))
                             (map #(select-keys % [:display_name :field_ref])))))))))))))
