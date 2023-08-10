@@ -1041,7 +1041,7 @@
   (mt/dataset sample-dataset
     (testing "References to joined fields should be handled correctly (#14766)"
       ;; using `$products.id` should give you the same results as properly referring to it with `&Products.products.id`
-      (let [expected-result (mt/run-mbql-query orders
+      (let [expected-query  (mt/mbql-query orders
                               {:source-query {:source-table $$orders
                                               :joins        [{:fields       :all
                                                               :source-table $$products
@@ -1050,7 +1050,8 @@
                                :aggregation  [[:count]]
                                :breakout     [$products.id]
                                :limit        5})
-            actual-result   (mt/run-mbql-query orders
+            expected-result (qp/process-query expected-query)
+            query           (mt/mbql-query orders
                               {:source-query {:source-table $$orders
                                               :joins        [{:fields       :all
                                                               :source-table $$products
@@ -1058,15 +1059,23 @@
                                                               :alias        "Products"}]}
                                :aggregation  [[:count]]
                                :breakout     [&Products.products.id]
-                               :limit        5})]
-        (is (schema= {:status   (s/eq :completed)
-                      s/Keyword s/Any}
-                     expected-result))
-        (is (schema= {:status   (s/eq :completed)
-                      s/Keyword s/Any}
-                     actual-result))
-        (is (= (mt/rows expected-result)
-               (mt/rows actual-result)))))))
+                               :limit        5})
+            actual-result   (qp/process-query query)]
+        (is (=? {:status :completed}
+                expected-result))
+        (is (=? {:status :completed}
+                actual-result))
+        (is (= [[:field "ID" {:base-type :type/BigInteger, :join-alias "Products"}]
+                [:aggregation 0]]
+               (map :field_ref (mt/cols actual-result))))
+        (testing "expected"
+          (mt/with-native-query-testing-context expected-query
+            (is (= [[1 93] [2 98] [3 77] [4 89] [5 97]]
+                   (mt/rows expected-result)))))
+        (testing "actual"
+          (mt/with-native-query-testing-context query
+            (is (= [[1 93] [2 98] [3 77] [4 89] [5 97]]
+                   (mt/rows actual-result)))))))))
 
 (deftest duplicate-column-names-in-nested-queries-test
   (testing "duplicate column names in nested queries (#10511)"

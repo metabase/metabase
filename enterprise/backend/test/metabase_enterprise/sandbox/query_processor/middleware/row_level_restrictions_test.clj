@@ -982,7 +982,7 @@
               (mt/with-column-remappings [orders.product_id products.title]
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
-                            (dissoc col :field_ref :id :table_id :fk_field_id :options))
+                            (dissoc col :field_ref :id :table_id :fk_target_field_id :fk_field_id :options))
                           (format-results [results]
                             (-> results
                                 (update-in [:data :cols] (partial map format-col))

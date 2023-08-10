@@ -95,7 +95,7 @@
                      (pr-str <>))))
       field-ref))
 
-(mu/defn ^:private downgrade-id-ref :- ::lib.schema.ref/field.literal
+#_(mu/defn ^:private downgrade-id-ref :- ::lib.schema.ref/field.literal
   "Downgrade a `:field` ID reference to a nominal `:field` reference for stages of the query where we should be using
   nominal references."
   [query
@@ -127,8 +127,8 @@
                                               (not (@valid-field-names %))))]
       (fix-bad-nominal-ref @visible-cols &match)
 
-      [:field (_opts :guard (complement :source-field)) (_id :guard integer?)]
-      (downgrade-id-ref query stage-number &match))))
+      #_[:field (_opts :guard (complement :source-field)) (_id :guard integer?)]
+      #_(downgrade-id-ref query stage-number &match))))
 
 (mu/defn ^:private upgrade-field-literals-in-mbql-stage :- ::lib.schema/stage
   [query        :- ::lib.schema/query

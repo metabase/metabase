@@ -123,3 +123,22 @@
                :aggregation  [[:count]]
                :order-by     [[:asc $venue-id->venues.price]]
                :breakout     [$venue-id->venues.price]}))))))
+
+#_(deftest ^:parallel upgrade-unmarked-join-fields-test
+  (is (= (lib.tu.macros/mbql-query orders
+           {:source-query {:source-table $$orders
+                           :joins        [{:fields       :all
+                                           :source-table $$products
+                                           :condition    [:= $product-id &Products.products.id]
+                                           :alias        "Products"}]}
+            :aggregation  [[:count]]
+            :breakout     [[:field "ID" {:base-type :type/BigInteger, :join-alias "Products"}]]})
+         (upgrade-field-literals
+          (lib.tu.macros/mbql-query orders
+            {:source-query {:source-table $$orders
+                            :joins        [{:fields       :all
+                                            :source-table $$products
+                                            :condition    [:= $product-id &Products.products.id]
+                                            :alias        "Products"}]}
+             :aggregation  [[:count]]
+             :breakout     [$products.id]})))))

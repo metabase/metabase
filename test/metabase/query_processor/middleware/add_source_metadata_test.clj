@@ -252,14 +252,15 @@
 
 (deftest ^:parallel nested-sources-with-source-native-query-test
   (testing "can we add `source-metadata` to the parent level if the source query has a native source query, but itself has `source-metadata`?"
-    (is (= (mt/mbql-query venues
-             {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
-                                :source-metadata (venues-source-metadata :id :name)}
-              :source-metadata (nested-venues-source-metadata :id :name)})
-           (add-source-metadata
-            (mt/mbql-query venues
-              {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
-                              :source-metadata (venues-source-metadata :id :name)}}))))))
+    (is (partial= (mt/mbql-query venues
+                    {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
+                                       :source-metadata (nested-venues-source-metadata :id :name)}
+                     :source-metadata (for [col (nested-venues-source-metadata :id :name)]
+                                        (dissoc col :coercion_strategy :settings :nfc_path :parent_id :fingerprint))})
+                  (add-source-metadata
+                   (mt/mbql-query venues
+                     {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
+                                     :source-metadata (nested-venues-source-metadata :id :name)}}))))))
 
 (deftest ^:parallel joins-test
   (testing "should work inside JOINS as well"

@@ -69,11 +69,11 @@
   "Convert MLv2 column metadata to legacy metadata (similar to what the QP would return in results metadata)."
   ([column-metadata :- lib.metadata/ColumnMetadata]
    (let [column-metadata (merge
-                          {:coercion-strategy nil
-                           :settings          nil
-                           :nfc-path          nil
-                           :parent-id         nil
-                           :fingerprint       nil}
+                          #_{:coercion-strategy nil
+                             :settings          nil
+                             :nfc-path          nil
+                             :parent-id         nil
+                             :fingerprint       nil}
                           column-metadata
                           {:name         ((some-fn :lib/desired-column-alias :name) column-metadata)
                            :source       (legacy-source column-metadata)}
