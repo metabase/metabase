@@ -358,7 +358,7 @@ export class NativeQueryEditor extends Component<
   };
 
   runQuery = () => {
-    this.props.cancelQuery();
+    this.props.cancelQuery?.();
     const { query, runQuestionQuery } = this.props;
 
     // if any text is selected, just run that
@@ -619,7 +619,7 @@ export class NativeQueryEditor extends Component<
   }
 
   toggleEditor = () => {
-    this.props.setIsNativeEditorOpen(!this.props.isNativeEditorOpen);
+    this.props.setIsNativeEditorOpen?.(!this.props.isNativeEditorOpen);
   };
 
   /// Change the Database we're currently editing a query for.
