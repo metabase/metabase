@@ -263,7 +263,9 @@
                              :value  [1 2]}]}))))))
 
 (deftest better-error-when-parameter-mismatch
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (mt/normal-drivers-with-feature :native-parameters))
+  (mt/test-drivers (->> :native-parameters
+                        mt/normal-drivers-with-feature
+                        (filter #(isa? driver/hierarchy % :sql)))
     (testing "Column index"
       (is (thrown-with-msg?
             Exception

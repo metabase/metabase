@@ -438,6 +438,14 @@
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
   {:added "0.35.0"}
   [driver stmt params]
+  (when (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
+                (catch Throwable _ (count params)))
+           (count params))
+    (throw (ex-info (tru "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
+                    {:driver driver
+                     :type   qp.error-type/driver
+                     :statement (str/split-lines (str stmt))
+                     :params params})))
   (dorun
    (map-indexed
     (fn [i param]
@@ -511,26 +519,13 @@
         (u/ignore-exceptions
           (.cancel stmt))))))
 
-(defn- parameter-specific-error-message
-  [message]
-  (let [parameter-specific? (some #(re-find % message)
-                              [;; Postgres
-                               #"The column index is out of range: \d+, number of columns: \d+"
-                               ;; H2
-                               #"Invalid value \".*\" for parameter \"parameterIndex\""
-                               ;; Mysql
-                               #"Could not set parameter at position 2"])]
-    (if parameter-specific?
-      (tru "It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers.")
-      (tru "Error preparing statement: {0}" message))))
-
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
   ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid.
   (doto (try
           (prepared-statement driver conn sql params)
           (catch Throwable e
-            (throw (ex-info (parameter-specific-error-message (ex-message e))
+            (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
                             {:driver driver
                              :type   qp.error-type/driver
                              :sql    (str/split-lines (mdb.query/format-sql sql driver))
