@@ -203,7 +203,7 @@ describe("scenarios > question > joined questions", () => {
     cy.icon("add_data").click();
 
     enterCustomColumnDetails({
-      formula: "[Question 5 → Sum of Rating] / [Sum of Total]",
+      formula: "[Question 5 - Product → Sum of Rating] / [Sum of Total]",
       name: "Sum Divide",
     });
 
