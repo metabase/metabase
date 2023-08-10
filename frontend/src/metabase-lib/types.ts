@@ -44,11 +44,17 @@ export type OrderByDirection = "asc" | "desc";
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
 
+declare const JoinConditionClause: unique symbol;
+export type JoinConditionClause = unknown & {
+  _opaque: typeof JoinConditionClause;
+};
+
 export type Clause =
   | AggregationClause
   | BreakoutClause
   | ExpressionClause
   | FilterClause
+  | JoinConditionClause
   | OrderByClause;
 
 export type Limit = number | null;
@@ -74,6 +80,8 @@ export type TableDisplayInfo = {
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
 };
+
+export type CardDisplayInfo = TableDisplayInfo;
 
 type TableInlineDisplayInfo = Pick<
   TableDisplayInfo,
@@ -136,6 +144,12 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
+export type FilterOperatorDisplayInfo = {
+  displayName: string;
+  shortName: string;
+  default?: boolean;
+};
+
 export type ExpressionArg =
   | null
   | boolean
@@ -151,6 +165,10 @@ export type ExternalOp = {
   operator: string;
   options: Record<string, unknown>;
   args: ExpressionArg[];
+};
+
+export type JoinConditionExternalOp = Omit<ExternalOp, "args"> & {
+  args: [ColumnMetadata, ColumnMetadata];
 };
 
 declare const Join: unique symbol;

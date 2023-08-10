@@ -27,7 +27,7 @@ export function filterClause(
   filterOperator: FilterOperator,
   column: ColumnMetadata,
   ...args: ExpressionArg[]
-): ExternalOp {
+): FilterClause {
   return ML.filter_clause(filterOperator, column, ...args);
 }
 

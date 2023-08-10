@@ -12,11 +12,14 @@ import type {
   Bucket,
   BucketDisplayInfo,
   CardMetadata,
+  CardDisplayInfo,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
   ColumnGroup,
   ColumnMetadata,
+  FilterOperator,
+  FilterOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MetadataProvider,
@@ -50,6 +53,21 @@ declare function DisplayInfoFn(
   stageIndex: number,
   columnGroup: ColumnGroup,
 ): ColumnDisplayInfo | TableDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  cardMetadata: CardMetadata,
+): CardDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  tableMetadata: TableMetadata,
+): TableDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  joinable: CardMetadata | TableMetadata,
+): CardDisplayInfo | TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
@@ -90,6 +108,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   joinStrategy: JoinStrategy,
 ): JoinStrategyDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  filterOperator: FilterOperator,
+): FilterOperatorDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
