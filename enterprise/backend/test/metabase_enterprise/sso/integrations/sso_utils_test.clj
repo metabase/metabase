@@ -1,4 +1,4 @@
-(ns backend.test.metabase-enterprise.sso.integrations.sso-utils-test
+(ns metabase-enterprise.sso.integrations.sso-utils-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]))
 
