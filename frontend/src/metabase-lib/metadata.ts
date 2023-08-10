@@ -12,6 +12,7 @@ import type {
   Bucket,
   BucketDisplayInfo,
   CardMetadata,
+  CardDisplayInfo,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
@@ -54,6 +55,21 @@ declare function DisplayInfoFn(
   stageIndex: number,
   columnGroup: ColumnGroup,
 ): ColumnDisplayInfo | TableDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  cardMetadata: CardMetadata,
+): CardDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  tableMetadata: TableMetadata,
+): TableDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  joinable: CardMetadata | TableMetadata,
+): CardDisplayInfo | TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

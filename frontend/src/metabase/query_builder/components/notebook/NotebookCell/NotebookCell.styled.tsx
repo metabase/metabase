@@ -25,7 +25,6 @@ export const NotebookCellItemContainer = styled.div<{
   font-weight: bold;
   color: ${props => (props.inactive ? props.color : "white")};
   border-radius: 6px;
-  margin-right: 4px;
 
   border: 2px solid transparent;
   border-color: ${props =>
