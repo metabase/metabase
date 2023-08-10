@@ -27,7 +27,7 @@ export interface DatabaseTablesPaneProps {
   searchResults: SearchResult[];
 }
 
-const DatabaseTablesPane = ({
+export const DatabaseTablesPane = ({
   database,
   onItemClick,
   searchResults,
