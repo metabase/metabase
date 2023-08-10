@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
@@ -39,11 +41,7 @@ const completeTableSearchResult = createMockSearchResult({
 
 const defaultProps = {
   database: checkNotNull(metadata.database(database.id)),
-  searchResults: [
-    incompleteTableSearchResult,
-    abortedTableSearchResult,
-    completeTableSearchResult,
-  ],
+  searchResults: [],
   onBack: jest.fn(),
   onClose: jest.fn(),
   onItemClick: jest.fn(),
@@ -56,11 +54,48 @@ const setup = (options?: Partial<DatabaseTablesPaneProps>) => {
 };
 
 describe("DatabaseTablesPane", () => {
-  it("works", () => {
-    setup();
+  it("should render tables with initial_sync_status='incomplete' as non-interactive", () => {
+    setup({
+      searchResults: [incompleteTableSearchResult],
+    });
 
-    expect(
-      screen.getByText(checkNotNull(completeTableSearchResult.table_name)),
-    ).toBeInTheDocument();
+    const incompleteTableSearchResultLink = screen.getByText(
+      checkNotNull(incompleteTableSearchResult.table_name),
+    );
+
+    expect(incompleteTableSearchResultLink).toBeInTheDocument();
+    expect(() => {
+      userEvent.click(incompleteTableSearchResultLink);
+    }).toThrow();
+  });
+
+  it("should render tables with initial_sync_status='aborted' as non-interactive", () => {
+    setup({
+      searchResults: [abortedTableSearchResult],
+    });
+
+    const abortedTableSearchResultLink = screen.getByText(
+      checkNotNull(abortedTableSearchResult.table_name),
+    );
+
+    expect(abortedTableSearchResultLink).toBeInTheDocument();
+    expect(() => {
+      userEvent.click(abortedTableSearchResultLink);
+    }).toThrow();
+  });
+
+  it("should render tables with initial_sync_status='complete' as interactive", () => {
+    setup({
+      searchResults: [completeTableSearchResult],
+    });
+
+    const completeTableSearchResultLink = screen.getByText(
+      checkNotNull(completeTableSearchResult.table_name),
+    );
+
+    expect(completeTableSearchResultLink).toBeInTheDocument();
+    expect(() => {
+      userEvent.click(completeTableSearchResultLink);
+    }).not.toThrow();
   });
 });
