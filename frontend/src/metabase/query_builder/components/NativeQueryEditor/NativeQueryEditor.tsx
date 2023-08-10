@@ -321,12 +321,21 @@ export class NativeQueryEditor extends Component<
   }
 
   cardTagIdAtCursor = ({ row, column }: Ace.Position) => {
+    if (!this._editor) {
+      return null;
+    }
     const line = this._editor.getValue().split("\n")[row];
     const matches = Array.from(line.matchAll(CARD_TAG_REGEX));
+
     const match = matches.find(
-      m => column > m.index && column < m.index + m[0].length,
+      m =>
+        typeof m.index === "number" &&
+        column > m.index &&
+        column < m.index + m[0].length,
     );
-    return parseInt(match?.[2]) || null;
+    const idStr = match?.[2];
+
+    return (idStr && parseInt(idStr)) || null;
   };
 
   handleCursorChange = _.debounce(
