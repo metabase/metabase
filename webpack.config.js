@@ -171,6 +171,8 @@ const config = (module.exports = {
       // icepick 2.x is es6 by defalt, to maintain backwards compatability
       // with ie11 point to the minified version
       icepick: __dirname + "/node_modules/icepick/icepick.min",
+      // this is to allow overriding library functions in EE plugins
+      ttag$: SRC_PATH + "/lib/ttag",
       // conditionally load either the EE plugins file or a empty file in the CE code tree
       "ee-plugins":
         process.env.MB_EDITION === "ee"
