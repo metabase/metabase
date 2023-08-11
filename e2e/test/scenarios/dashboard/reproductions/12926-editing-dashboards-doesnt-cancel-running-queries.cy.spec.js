@@ -44,7 +44,7 @@ describe("issue 12926", () => {
       });
 
       cy.window().then(win => {
-        cy.stub(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
       });
 
       removeCard();
@@ -94,7 +94,7 @@ describe("issue 12926", () => {
       popover().findByText("Add filter").click();
 
       cy.window().then(win => {
-        cy.stub(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
       });
 
       getDashboardCard().findByText("Select…").click();
