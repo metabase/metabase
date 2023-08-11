@@ -9,6 +9,7 @@ export const theme: MantineThemeOverride = {
     brand: [color("brand-light"), color("brand")],
     text: [color("text-light"), color("text-medium"), color("text-dark")],
     border: [color("border")],
+    bg: [color("bg-light"), color("bg-medium"), color("bg-dark")],
   },
   primaryColor: "brand",
   primaryShade: 1,
@@ -209,7 +210,7 @@ export const theme: MantineThemeOverride = {
 
             "&:hover, &:focus": {
               color: theme.colors.brand[1],
-              backgroundColor: theme.colors.brand[0],
+              backgroundColor: theme.colors.bg[0],
 
               [`& .${getStylesRef("itemRightSection")}`]: {
                 color: theme.colors.brand[1],
