@@ -505,16 +505,6 @@
     stage-number :- :int]
    (not-empty (get (lib.util/query-stage query stage-number) :joins))))
 
-(mu/defn implicit-join-name :- ::lib.schema.common/non-blank-string
-  "Name for an implicit join against `table-name` via an FK field, e.g.
-
-    CATEGORIES__via__CATEGORY_ID
-
-  You should make sure this gets ran thru a unique-name fn."
-  [table-name           :- ::lib.schema.common/non-blank-string
-   source-field-id-name :- ::lib.schema.common/non-blank-string]
-  (lib.util/format "%s__via__%s" table-name source-field-id-name))
-
 (mu/defn join-conditions :- [:maybe ::lib.schema.join/conditions]
   "Get all join conditions for the given join"
   [a-join :- lib.join.util/PartialJoin]

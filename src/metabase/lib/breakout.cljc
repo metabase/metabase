@@ -70,8 +70,9 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [columns (let [stage (lib.util/query-stage query stage-number)]
-                   (lib.metadata.calculation/visible-columns query stage-number stage))]
+   (let [columns (let [stage (lib.util/query-stage query stage-number)
+                       options {:include-implicitly-joinable-for-source-card? false}]
+                   (lib.metadata.calculation/visible-columns query stage-number stage options))]
      (when (seq columns)
        (let [matching (lib.equality/find-closest-matches-for-refs
                         query stage-number (breakouts query stage-number) columns)]

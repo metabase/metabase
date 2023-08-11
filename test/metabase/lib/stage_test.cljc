@@ -164,24 +164,6 @@
                   "Cat → Name"]
                  (mapv #(lib.metadata.calculation/display-name query -1 % :long) metadata))))))))
 
-(deftest ^:parallel query-with-source-card-include-implicit-columns-test
-  (testing "visible-columns should not include implicitly joinable columns when the query has a source Card (#30950)"
-    (doseq [varr [#'lib.tu/query-with-source-card
-                  #'lib.tu/query-with-source-card-with-result-metadata]
-            :let [query @varr]]
-      (testing (pr-str varr)
-        (is (=? [{:name                     "USER_ID"
-                  :display-name             "User ID"
-                  :base-type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "USER_ID"}
-                 {:name                     "count"
-                  :display-name             "Count"
-                  :base-type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "count"}]
-                (lib.metadata.calculation/visible-columns query)))))))
-
 (deftest ^:parallel do-not-propagate-temporal-units-to-next-stage-text
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                   (lib/with-fields [(lib/with-temporal-bucket (meta/field-metadata :checkins :date) :year)])

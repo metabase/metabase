@@ -1024,14 +1024,15 @@
                 (-> field-query
                     (lib/remove-field -1 created-at)
                     fields-of))))))
-  (testing "custom expressions throw an exception"
+  (testing "custom expressions are ignored"
     (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/expression "custom" (lib/* 3 2)))
           expr-column (->> (lib.metadata.calculation/returned-columns query)
                            (remove :id)
                            first)]
-      (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Custom expressions cannot be de-selected."
-                            (lib/remove-field query -1 expr-column)))))
+      ;; :fields gets populated, but the expression should not be there
+      (is (empty? (filter (comp string? last)
+                          (lib/fields (lib/remove-field query -1 expr-column)))))))
   (testing "single join"
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)

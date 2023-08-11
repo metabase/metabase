@@ -100,14 +100,6 @@
   (lib.options/update-options a-ref (fn [options]
                                       (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
 
-(defn- named-refs-for-integer-refs [metadata-providerable refs]
-  (keep (fn [a-ref]
-          (mbql.u.match/match-one a-ref
-                                  [:field opts (field-id :guard integer?)]
-                                  (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-                                    [:field opts field-name])))
-        refs))
-
 (mu/defn resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available.
@@ -202,10 +194,11 @@
          converted     (when (and query
                                   (some some? blank-matched))
                          (for [needle blank-matched
-                               :let [field-id (and needle (last needle))]]
-                           (when (and needle field-id (integer? field-id))
+                               :let [field-id (last needle)]]
+                           (when (integer? field-id)
                              (-> (resolve-field-id query stage-number field-id)
-                                 (dissoc :id) ; Remove any :id to force the ref to use the field name.
+                                 (dissoc :id                         ; Remove any :id to force the ref to use the field name.
+                                         :lib/desired-column-alias)  ; Hack: resolving by name doesn't work if this is present
                                  lib.ref/ref))))]
      (if converted
        ;; If any of the needles were not found, and were converted successfully, try to match them again.
