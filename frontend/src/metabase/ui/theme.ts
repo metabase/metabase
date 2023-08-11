@@ -175,7 +175,7 @@ export const theme: MantineThemeOverride = {
       styles(theme) {
         return {
           dropdown: {
-            padding: "0.75rem",
+            padding: "0.75rem !important",
           },
           item: {
             color: theme.colors.text[2],
@@ -192,6 +192,7 @@ export const theme: MantineThemeOverride = {
             marginRight: "0.75rem",
           },
           itemRightSection: {
+            color: theme.colors.text[0],
             marginLeft: "0.75rem",
           },
           label: {
