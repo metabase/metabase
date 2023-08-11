@@ -11,11 +11,9 @@ import {
 } from "metabase-types/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import Visualization, {
-  ErrorView,
-  ErrorViewProps,
-} from "metabase/visualizations/components/Visualization";
+import Visualization from "metabase/visualizations/components/Visualization";
 
+import { ErrorView } from "./ErrorView";
 import { QuestionList } from "./QuestionList";
 
 /**
@@ -147,7 +145,7 @@ export class AddSeriesModal extends Component<Props, State> {
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
               className="spread"
-              errorView={AddSeriesModalErrorView}
+              errorView={ErrorView}
               rawSeries={series}
               showTitle
               isDashboard
@@ -199,16 +197,3 @@ export class AddSeriesModal extends Component<Props, State> {
     );
   }
 }
-
-const AddSeriesModalErrorView = ({
-  icon,
-  isDashboard,
-  isSmall,
-}: ErrorViewProps) => (
-  <ErrorView
-    error="Unable to combine these questions"
-    icon={icon}
-    isDashboard={isDashboard}
-    isSmall={isSmall}
-  />
-);
