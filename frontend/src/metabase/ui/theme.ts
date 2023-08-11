@@ -36,7 +36,7 @@ export const theme: MantineThemeOverride = {
       styles(theme) {
         return {
           root: {
-            marginBottom: theme.spacing.xs,
+            marginBottom: theme.spacing.md,
           },
           label: {
             color: theme.colors.text[2],
@@ -53,7 +53,7 @@ export const theme: MantineThemeOverride = {
             color: theme.colors.text[2],
           },
           description: {
-            marginBottom: theme.spacing.xs,
+            marginBottom: theme.spacing.md,
           },
         };
       },
@@ -65,13 +65,13 @@ export const theme: MantineThemeOverride = {
       styles(theme, params) {
         return {
           root: {
-            marginBottom: theme.spacing.xs,
+            marginBottom: theme.spacing.md,
           },
           label: {
             fontWeight: 700,
             color: theme.colors.text[2],
             [`padding${params.labelPosition === "left" ? "Right" : "Left"}`]:
-              theme.spacing.xs,
+              theme.spacing.sm,
           },
           input: {
             "&:focus": {
@@ -112,12 +112,12 @@ export const theme: MantineThemeOverride = {
             fontWeight: 700,
             color: theme.colors.text[2],
             "&:has(+ .mantine-Checkbox-root)": {
-              marginBottom: theme.spacing.sm,
+              marginBottom: theme.spacing.md,
             },
           },
           description: {
             "&:has(+ .mantine-Checkbox-root)": {
-              marginBottom: theme.spacing.sm,
+              marginBottom: theme.spacing.md,
             },
           },
         };
@@ -138,7 +138,7 @@ export const theme: MantineThemeOverride = {
           },
           item: {
             border: `1px solid ${theme.colors.border}`,
-            borderRadius: theme.spacing.xs,
+            borderRadius: theme.spacing.sm,
             "&[data-active]": {
               border: `1px solid ${theme.colors.border}`,
             },
@@ -197,7 +197,7 @@ export const theme: MantineThemeOverride = {
             color: theme.colors.text[2],
             fontSize: theme.fontSizes.md,
             fontWeight: 700,
-            padding: theme.spacing.md,
+            padding: `${theme.spacing.md}`,
 
             "&:hover, &:focus": {
               color: theme.colors.brand[1],
