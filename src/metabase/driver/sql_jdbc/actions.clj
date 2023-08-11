@@ -72,7 +72,7 @@
                          (ex-data e)))))))
 
 (defmacro ^:private with-auto-parse-sql-exception
-  "Execute body and if there is an exception, try to parse the error message to search for known sql errors then re-throw it."
+  "Execute body and if there is an exception, try to parse the error message to search for known sql errors then throw a regular (and easier to understand/process) exception."
   [driver database & body]
   `(do-with-auto-parse-sql-error ~driver ~database (fn [] ~@body)))
 
