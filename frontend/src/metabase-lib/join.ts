@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 
 import type {
+  Bucket,
   CardMetadata,
   Clause,
   ColumnMetadata,
@@ -73,6 +74,20 @@ export function withJoinConditions(
   newConditions: JoinConditionClause[] | JoinConditionExternalOp[],
 ): Join {
   return ML.with_join_conditions(join, newConditions);
+}
+
+export function joinConditionUpdateTemporalBucketing(
+  query: Query,
+  stageIndex: number,
+  condition: JoinConditionClause,
+  bucket: Bucket,
+): JoinConditionClause {
+  return ML.join_condition_update_temporal_bucketing(
+    query,
+    stageIndex,
+    condition,
+    bucket,
+  );
 }
 
 /**

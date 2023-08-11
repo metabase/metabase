@@ -24,6 +24,7 @@ export interface QueryColumnPickerProps {
   columnGroups: Lib.ColumnGroup[];
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
+  withDefaultBucketing?: boolean;
   maxHeight?: number;
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
@@ -44,6 +45,7 @@ function QueryColumnPicker({
   columnGroups,
   hasBinning = false,
   hasTemporalBucketing = false,
+  withDefaultBucketing = true,
   maxHeight = DEFAULT_MAX_HEIGHT,
   color = "brand",
   checkIsColumnSelected,
@@ -86,6 +88,11 @@ function QueryColumnPicker({
         return;
       }
 
+      if (!withDefaultBucketing) {
+        handleSelect(item.column);
+        return;
+      }
+
       const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
       if (hasBinning && isBinnable) {
         handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
@@ -111,6 +118,7 @@ function QueryColumnPicker({
       stageIndex,
       hasBinning,
       hasTemporalBucketing,
+      withDefaultBucketing,
       checkIsColumnSelected,
       handleSelect,
       onClose,
