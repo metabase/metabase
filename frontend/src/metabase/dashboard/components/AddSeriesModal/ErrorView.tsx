@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   ErrorViewProps,
   ErrorView as VisualizationErrorView,
@@ -5,7 +7,7 @@ import {
 
 export const ErrorView = ({ icon, isDashboard, isSmall }: ErrorViewProps) => (
   <VisualizationErrorView
-    error="Unable to combine these questions"
+    error={t`Unable to combine these questions`}
     icon={icon}
     isDashboard={isDashboard}
     isSmall={isSmall}
