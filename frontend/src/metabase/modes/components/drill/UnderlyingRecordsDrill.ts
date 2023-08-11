@@ -1,4 +1,4 @@
-import { msgid, ngettext } from "ttag";
+import { t, msgid, ngettext } from "ttag";
 import { inflect } from "metabase/lib/formatting/strings";
 import type { Drill } from "metabase/modes/types";
 import {
@@ -21,11 +21,8 @@ export const UnderlyingRecordsDrill: Drill = ({ question, clicked }) => {
       ? inflect(tableName, rowCount)
       : ngettext(msgid`record`, `records`, rowCount);
 
-  const actionTitle = ngettext(
-    msgid`See this ${tableTitle}`,
-    `See these ${tableTitle}`,
-    rowCount,
-  );
+  const actionTitle =
+    rowCount === 1 ? t`See this ${tableTitle}` : t`See these ${tableTitle}`;
 
   return [
     {
