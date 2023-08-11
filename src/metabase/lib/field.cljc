@@ -524,9 +524,17 @@
 (defn- add-field-to-join [query stage-number column]
   (let [column-ref   (lib.ref/ref column)
         [join field] (first (for [join  (lib.join/joins query stage-number)
-                                  :let [field (lib.equality/find-closest-matching-ref
-                                                query stage-number column-ref
-                                                (lib.join/joinable-columns query stage-number join))]
+                                  :let [joinables (lib.join/joinable-columns query stage-number join)
+                                        field (or (lib.equality/find-closest-matching-ref
+                                                   query stage-number column-ref
+                                                   joinables)
+                                                  ;; Sometimes we have to resolve a column marked as coming from a join.
+                                                  ;; Here we try to match with the joinable columns ignoring the diference
+                                                  ;; between the sources.
+                                                  (lib.equality/find-closest-matching-ref
+                                                   query stage-number column-ref
+                                                   (mapv #(assoc % :lib/source (:lib/source column))
+                                                         joinables)))]
                                   :when field]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
