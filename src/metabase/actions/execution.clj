@@ -39,7 +39,7 @@
     (catch Throwable e
       (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
         (api/throw-403 e)
-        (throw (ex-info (tru "Error executing Action: {0}" (ex-message e))
+        (throw (ex-info (format "Error executing Action: %s" (ex-message e))
                         {:action     action
                          :parameters request-parameters}
                         e))))))
@@ -66,7 +66,7 @@
        :http
        (http-action/execute-http-action! action request-parameters))
      (catch Exception e
-       (log/error e (tru "Error executing action."))
+       (log/error e "Error executing action.")
        (if-let [ed (ex-data e)]
          (let [ed (cond-> ed
                     (and (nil? (:status-code ed))

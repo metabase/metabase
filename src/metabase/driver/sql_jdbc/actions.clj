@@ -48,14 +48,17 @@
   [_driver _error-type _database _e]
   nil)
 
+(defn- driver->available-error-parser
+  [driver]
+  (->> (keys (methods maybe-parse-sql-error))
+       (filter (fn [x] (and (sequential? x)
+                            (isa? driver/hierarchy driver (first x)))))
+       (map second)))
+
 (defn- parse-sql-error
   [driver database e]
   (try
-   (some #(maybe-parse-sql-error driver % database (ex-message e))
-          [actions.error/violate-unique-constraint
-           actions.error/violate-foreign-key-constraint
-           actions.error/violate-not-null-constraint
-           actions.error/incorrect-value-type])
+   (some #(maybe-parse-sql-error driver % database (ex-message e)) (driver->available-error-parser driver))
    ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
    ;; We'll still get the original unparsed error message.
    (catch Throwable new-e
@@ -69,7 +72,8 @@
    (catch SQLException e
      (throw (ex-info (or (ex-message e) "Error executing action.")
                      (or (some-> (parse-sql-error driver database e) (assoc :status-code 400))
-                         (ex-data e)))))))
+                         (ex-data e)
+                         {}))))))
 
 (defmacro ^:private with-auto-parse-sql-exception
   "Execute body and if there is an exception, try to parse the error message to search for known sql errors then throw a regular (and easier to understand/process) exception."
