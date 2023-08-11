@@ -68,7 +68,7 @@ import {
 
 import NativeQueryEditorSidebar from "./NativeQueryEditorSidebar";
 import { VisibilityToggler } from "./VisibilityToggler";
-import RightClickPopover from "./RightClickPopover";
+import { RightClickPopover } from "./RightClickPopover";
 import DataSourceSelectors from "./DataSourceSelectors";
 
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
@@ -133,7 +133,7 @@ interface OwnProps {
   }) => void;
   setNativeEditorSelectedRange: (range: Ace.Range) => void;
   openDataReferenceAtQuestion: (id: CardId) => void;
-  openSnippetModalWithSelectedText?: (text: string) => void;
+  openSnippetModalWithSelectedText: () => void;
   insertSnippet: (snippet: NativeQuerySnippet) => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
