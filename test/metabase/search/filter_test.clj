@@ -17,55 +17,43 @@
     (testing "return :models as is"
       (is (= search.config/all-models
              (search.filter/search-context->applicable-models
-              search.config/all-models
               default-search-ctx)))
 
       (is (= #{}
              (search.filter/search-context->applicable-models
-              #{}
-              default-search-ctx)))
+              (assoc default-search-ctx :models #{}))))
 
       (is (= search.config/all-models
              (search.filter/search-context->applicable-models
-              search.config/all-models
               (merge default-search-ctx
                      {:archived? true}))))))
-
-  (testing "ignores :modess from search-context"
-    (is (= search.config/all-models
-             (search.filter/search-context->applicable-models
-              search.config/all-models
-              (merge default-search-ctx
-                     {:models   #{"card"}
-                      :archived? true})))))
 
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
       (is (= #{"dashboard" "dataset" "action" "card"}
              (search.filter/search-context->applicable-models
-              search.config/all-models
               (merge default-search-ctx
                      {:created-by 1}))))
 
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
-              #{"dashboard" "dataset" "table"}
+
               (merge default-search-ctx
-                     {:created-by 1})))))
+                     {:models #{"dashboard" "dataset" "table"}
+                      :created-by 1})))))
 
     (testing "verified"
       (is (= #{"card" "collection"}
              (search.filter/search-context->applicable-models
-              search.config/all-models
               (merge default-search-ctx
                      {:verified true}))))
 
-
       (is (= #{"card"}
              (search.filter/search-context->applicable-models
-              #{"card" "dashboard" "dataset" "table"}
+
               (merge default-search-ctx
-                     {:verified true})))))))
+                     {:models  #{"card" "dashboard" "dataset" "table"}
+                      :verified true})))))))
 
 (def ^:private base-search-query
   {:select [:*]

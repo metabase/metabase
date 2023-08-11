@@ -336,7 +336,8 @@
 (mu/defn query-model-set :- [:set SearchableModel]
   "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx :- SearchContext]
-  (let [model-queries (for [model (search.filter/search-context->applicable-models search.config/all-models search-ctx)]
+  (let [model-queries (for [model (search.filter/search-context->applicable-models
+                                   (assoc search-ctx :models search.config/all-models))]
                         {:nest (sql.helpers/limit (search-query-for-model model search-ctx) 1)})
         query         (when (pos-int? (count model-queries))
                         {:select [:*]
@@ -438,7 +439,7 @@
                  (some? limit)       (assoc :limit-int limit)
                  (some? offset)      (assoc :offset-int offset)
                  (some? verified)    (assoc :verified verified))]
-    (assoc ctx :models (search.filter/search-context->applicable-models models ctx))))
+    (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"

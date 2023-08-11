@@ -156,8 +156,9 @@
   "Returns a set of models that are applicable given the search context.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
-  [models :- [:set SearchableModel] search-context :- SearchContext]
+  [search-context :- SearchContext]
   (let [{:keys [created-by
+                models
                 verified]} search-context]
     (cond-> models
       (some? created-by) (set/intersection (:created-by (feature->supported-models)))
