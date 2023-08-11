@@ -201,6 +201,7 @@ export const theme: MantineThemeOverride = {
         return {
           dropdown: {
             padding: "0.75rem !important",
+            minWidth: "11.5rem",
           },
           item: {
             color: theme.colors.text[2],
