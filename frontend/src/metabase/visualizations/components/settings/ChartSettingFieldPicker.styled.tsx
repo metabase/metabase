@@ -43,7 +43,8 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     margin-right: 0.25rem;
     text-overflow: ellipsis;
     max-width: 100%;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    text-align: left;
     overflow: hidden;
     color: ${color("text-dark")};
   }
