@@ -46,6 +46,7 @@ $ yarn install
 ```
 
 To build and run without watching changes:
+
 ```
 $ yarn build
 ```
