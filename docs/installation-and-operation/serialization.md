@@ -146,19 +146,19 @@ export path & options
 
 ### `--collection`
 
-By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collections` flag.
+By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collection` flag.
 
 The `--collection` flag (alias `-c`) lets you specify by ID one or more collections to include in the export. You can find the collection ID in the collection's URL, e.g., for a collection at: `your-metabase.com/collection/42-terraforming-progress`, the ID would be `42`.
 
 If you want to specify multiple collections, separate the IDs with commas. E.g.,
 
 ```
-java -jar metabase.jar export --collection 1,3,5,9
+java -jar metabase.jar export --collection 1,2,3
 ```
 
-### `--no-collection`
+### `--no-collections`
 
-The `--no-collection` flag (alias `-C`) tells Metabase to exclude all collections from the export.
+The `--no-collections` flag (alias `-C`) tells Metabase to exclude all collections from the export.
 
 ### `--no-settings`
 
