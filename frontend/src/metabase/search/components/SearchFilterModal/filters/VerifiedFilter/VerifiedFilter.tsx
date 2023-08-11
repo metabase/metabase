@@ -5,15 +5,21 @@ import { Group } from "metabase/ui";
 import { VerifiedFilterButton } from "metabase/search/components/SearchFilterModal/filters/VerifiedFilter/VerifiedFilter.styled";
 
 export const VerifiedFilter: SearchFilterComponent<"verified"> = ({
-  value,
+  value = undefined,
   onChange,
+  "data-testid": dataTestId,
 }) => (
-  <SearchFilterView title="Verified">
+  <SearchFilterView title="Verified" data-testid={dataTestId}>
     <Group>
-      <VerifiedFilterButton isSelected={!!value} onClick={() => onChange(true)}>
+      <VerifiedFilterButton
+        data-is-selected={value}
+        isSelected={!!value}
+        onClick={() => onChange(true)}
+      >
         Only verified items
       </VerifiedFilterButton>
       <VerifiedFilterButton
+        data-is-selected={value}
         isSelected={!value}
         onClick={() => onChange(undefined)}
       >

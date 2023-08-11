@@ -66,8 +66,6 @@ export const SearchFilterModal = ({
     setIsOpen(false);
   };
 
-  // we can use this field to control which filters are available
-  // - we can enable the 'verified' filter here
   const availableFilters: FilterTypeKeys[] = useMemo(() => {
     const filters: FilterTypeKeys[] = [SearchFilterKeys.Type];
     if (PLUGIN_CONTENT_VERIFICATION.isEnabled()) {

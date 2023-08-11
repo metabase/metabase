@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderWithProviders, screen } from "__support__/ui";
 import { SearchFilterView } from "./SearchFilterView";
 
 type SetupProps = {
@@ -16,7 +16,7 @@ const setup = ({
   isLoading = false,
   children = <div>Children</div>,
 }: SetupProps = {}) => {
-  render(
+  renderWithProviders(
     <SearchFilterView title={title} tooltip={tooltip} isLoading={isLoading}>
       {children}
     </SearchFilterView>,

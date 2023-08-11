@@ -2,10 +2,16 @@ import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { waitFor, within, renderWithProviders, screen } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import { createMockSearchResult } from "metabase-types/api/mocks";
+import {
+  createMockSearchResult,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
 import { SearchModelType } from "metabase-types/api";
 import { SearchFilters } from "metabase/search/types";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockState } from "metabase-types/store/mocks";
+import { mockSettings } from "__support__/settings";
 
 const TestSearchFilterModal = ({
   initialFilters = {},
@@ -42,11 +48,13 @@ const TEST_TYPES: Array<SearchModelType> = [
 
 const TEST_INITIAL_FILTERS: SearchFilters = {
   type: TEST_TYPES,
+  verified: true,
 };
 
 const setup = async ({
   initialFilters = {},
   availableModelTypes = TEST_TYPES,
+  hasEnterprisePlugins = true,
 } = {}) => {
   const onChangeFilters = jest.fn();
 
@@ -56,11 +64,24 @@ const setup = async ({
     ),
   );
 
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({
+        content_verification: hasEnterprisePlugins,
+      }),
+    }),
+  });
+
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
+
   renderWithProviders(
     <TestSearchFilterModal
       initialFilters={initialFilters}
       onChangeFilters={onChangeFilters}
     />,
+    { storeInitialState: state },
   );
   await waitFor(() => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
@@ -72,6 +93,16 @@ const setup = async ({
 };
 
 describe("SearchFilterModal", () => {
+  it("should not render `Only verified items` filter when `content_verification` is disabled", async () => {
+    await setup({
+      hasEnterprisePlugins: false,
+    });
+
+    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+    expect(screen.queryByText("Only verified items")).not.toBeInTheDocument();
+    expect(screen.queryByText("All items")).not.toBeInTheDocument();
+  });
+
   it("should populate selected filters when `value` is passed in", async () => {
     await setup({
       initialFilters: TEST_INITIAL_FILTERS,
@@ -83,6 +114,11 @@ describe("SearchFilterModal", () => {
       .forEach(checkbox => {
         expect(checkbox).toBeChecked();
       });
+
+    const verifiedButton = screen.getByRole("button", {
+      name: "Only verified items",
+    });
+    expect(verifiedButton).toHaveAttribute("data-is-selected", "true");
   });
 
   it("should not populate filter object with key if key has no value", async () => {
@@ -95,6 +131,12 @@ describe("SearchFilterModal", () => {
       .forEach(checkbox => {
         userEvent.click(checkbox);
       });
+
+    const verifiedButton = screen.getByRole("button", {
+      name: "All items",
+    });
+    userEvent.click(verifiedButton);
+
     userEvent.click(screen.getByText("Apply all filters"));
 
     expect(onChangeFilters).toHaveBeenCalledWith({});
