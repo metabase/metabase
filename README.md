@@ -65,7 +65,8 @@ In order to run the backend, you'll need to build the drivers first, and then st
 $ ./bin/build-drivers.sh
 $ clojure -M:run
 ```
-For a detailed development installation of the Metabase, check out our [Developers Guide](https://www.metabase.com/docs/latest/developers-guide/start).
+
+For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
 
 ## Internationalization
 
