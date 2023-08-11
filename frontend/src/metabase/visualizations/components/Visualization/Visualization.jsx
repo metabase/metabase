@@ -38,7 +38,7 @@ import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
-import ErrorView from "./ErrorView";
+import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
