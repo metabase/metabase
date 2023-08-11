@@ -197,7 +197,7 @@ export const theme: MantineThemeOverride = {
             color: theme.colors.text[2],
             fontSize: theme.fontSizes.md,
             fontWeight: 700,
-            padding: `${theme.spacing.md}`,
+            padding: theme.spacing.md,
 
             "&:hover, &:focus": {
               color: theme.colors.brand[1],
