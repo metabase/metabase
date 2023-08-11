@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const totalQueryExecutionsByDb = () => ({
   card: {
-    name: "Total queries and their average speed",
+    name: t`Total queries and their average speed`,
     display: "bar",
     dataset_query: {
       type: "internal",
@@ -21,7 +23,7 @@ export const totalQueryExecutionsByDb = () => ({
 // DEPRECATED
 export const queryExecutionsPerDbPerDay = () => ({
   card: {
-    name: "Queries per database each day",
+    name: t`Queries per database each day`,
     display: "line",
     dataset_query: {
       type: "internal",
