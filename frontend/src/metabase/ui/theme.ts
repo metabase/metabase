@@ -12,6 +12,16 @@ export const theme: MantineThemeOverride = {
   },
   primaryColor: "brand",
   primaryShade: 1,
+  shadows: {
+    md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
+  },
+  spacing: {
+    xs: "0.25rem",
+    sm: "0.5rem",
+    md: "1rem",
+    lg: "1.5rem",
+    xl: "2rem",
+  },
   fontSizes: {
     xs: "11px",
     sm: "12px",
@@ -177,7 +187,6 @@ export const theme: MantineThemeOverride = {
     Menu: {
       defaultProps: {
         radius: "0.375rem",
-        shadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
       },
       styles(theme) {
         return {
@@ -188,7 +197,7 @@ export const theme: MantineThemeOverride = {
             color: theme.colors.text[2],
             fontSize: theme.fontSizes.md,
             fontWeight: 700,
-            padding: "1rem",
+            padding: theme.spacing.md,
 
             "&:hover, &:focus": {
               color: theme.colors.brand[1],
@@ -211,13 +220,13 @@ export const theme: MantineThemeOverride = {
             color: theme.colors.text[0],
             fontSize: theme.fontSizes.md,
             fontWeight: 700,
-            padding: "0.375rem 1rem",
+            padding: `0.375rem ${theme.spacing.md}`,
           },
           divider: {
-            marginTop: "0.5rem",
-            marginBottom: "0.5rem",
-            marginLeft: "1rem",
-            marginRight: "1rem",
+            marginTop: theme.spacing.sm,
+            marginBottom: theme.spacing.sm,
+            marginLeft: theme.spacing.md,
+            marginRight: theme.spacing.md,
             borderTopColor: theme.colors.border[0],
           },
         };
