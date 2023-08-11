@@ -60,6 +60,7 @@ $ yarn build-hot
 ### Backend  quick setup
 
 In order to run the backend, you'll need to build the drivers first, and then start the backend:
+
 ```
 $ ./bin/build-drivers.sh
 $ clojure -M:run
