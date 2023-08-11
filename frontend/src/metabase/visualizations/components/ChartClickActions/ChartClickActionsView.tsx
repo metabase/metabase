@@ -1,4 +1,4 @@
-import type { RegularClickAction } from "metabase/modes/types";
+import type { RegularClickAction } from "metabase/visualizations/click-actions/types";
 import { Container, Divider } from "./ChartClickActions.styled";
 import {
   getGroupedAndSortedActions,

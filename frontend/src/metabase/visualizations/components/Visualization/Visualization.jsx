@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { assoc } from "icepick";
 import _ from "underscore";
 
+import { Mode } from "metabase/visualizations/click-actions/Mode";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -27,13 +28,12 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries, getCardKey } from "metabase/visualizations/lib/utils";
 
-import { getMode } from "metabase/modes/lib/modes";
+import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { isRegularClickAction } from "metabase/modes/types";
+import { isRegularClickAction } from "metabase/visualizations/click-actions/types";
 import Question from "metabase-lib/Question";
-import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 

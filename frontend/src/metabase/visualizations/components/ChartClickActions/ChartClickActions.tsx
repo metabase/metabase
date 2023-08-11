@@ -13,7 +13,7 @@ import {
   PopoverClickAction,
   isPopoverClickAction,
   isRegularClickAction,
-} from "metabase/modes/types";
+} from "metabase/visualizations/click-actions/types";
 
 import { ChartClickActionsView } from "./ChartClickActionsView";
 import { getGALabelForAction } from "./utils";

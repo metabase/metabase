@@ -1,14 +1,17 @@
 import { render, screen } from "__support__/ui";
-import DefaultMode from "metabase/modes/components/modes/DefaultMode";
+import { DefaultMode } from "metabase/visualizations/click-actions/modes/DefaultMode";
 import { checkNotNull } from "metabase/core/utils/types";
-import type { RegularClickAction } from "metabase/modes/types";
+import type {
+  RegularClickAction,
+  QueryMode,
+} from "metabase/visualizations/click-actions/types";
 import {
   createSampleDatabase,
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
-import Mode from "metabase-lib/Mode";
-import { QueryMode } from "metabase-lib/queries/drills/types";
+import { Mode } from "metabase/visualizations/click-actions/Mode";
+
 import { ChartClickActionsView } from "./ChartClickActionsView";
 
 describe("ChartClickActionsView", () => {
