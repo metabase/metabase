@@ -151,6 +151,11 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
+    Text: {
+      defaultProps: {
+        color: "text.2",
+      },
+    },
     Anchor: {
       styles(theme) {
         return {
