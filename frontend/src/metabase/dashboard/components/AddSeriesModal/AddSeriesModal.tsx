@@ -11,7 +11,10 @@ import {
 } from "metabase-types/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import Visualization from "metabase/visualizations/components/Visualization";
+import Visualization, {
+  ErrorView,
+  ErrorViewProps,
+} from "metabase/visualizations/components/Visualization";
 
 import { QuestionList } from "./QuestionList";
 
@@ -195,3 +198,12 @@ export class AddSeriesModal extends Component<Props, State> {
     );
   }
 }
+
+const AddSeriesModalErrorView = ({ icon, isDashboard, isSmall }: ErrorViewProps) => (
+  <ErrorView
+    error="Unable to combine these questions."
+    icon={icon}
+    isDashboard={isDashboard}
+    isSmall={isSmall}
+  />
+);
