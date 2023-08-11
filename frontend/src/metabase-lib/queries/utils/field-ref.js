@@ -52,14 +52,6 @@ export function getFieldTargetId(field) {
   console.warn("Unknown field type:", field);
 }
 
-export function isFieldLiteral(fieldClause) {
-  return (
-    isValidField(fieldClause) &&
-    isLocalField(fieldClause) &&
-    typeof fieldClause[1] === "string"
-  );
-}
-
 export function getDatetimeUnit(fieldClause) {
   if (isLocalField(fieldClause)) {
     const dimension = FieldDimension.parseMBQLOrWarn(fieldClause);

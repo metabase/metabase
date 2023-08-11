@@ -3,6 +3,7 @@ import { usePrevious } from "react-use";
 import * as Lib from "metabase-lib";
 
 export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
+  const previousQuery = usePrevious(query);
   const previousJoin = usePrevious(join);
 
   const [strategy, _setStrategy] = useState<Lib.JoinStrategy>(
@@ -45,7 +46,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     if (!previousJoin && join) {
       _setSelectedColumns([]);
     }
-  }, [query, stageIndex, join, previousJoin]);
+  }, [query, previousQuery, stageIndex, join, previousJoin]);
 
   const isColumnSelected = (column: Lib.ColumnMetadata) => {
     if (join) {
@@ -101,17 +102,32 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
       if (suggestedCondition) {
         const nextConditions = [suggestedCondition];
         _setConditions(nextConditions);
+
         let nextJoin = Lib.joinClause(nextTable, nextConditions);
         nextJoin = Lib.withJoinFields(nextJoin, "all");
         nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
-        return Lib.join(query, stageIndex, nextJoin);
-      } else {
-        _setTable(nextTable);
-        _setSelectedColumns("all");
-        _setConditions([]);
+
+        const nextQuery = join
+          ? Lib.replaceClause(query, stageIndex, join, nextJoin)
+          : Lib.join(query, stageIndex, nextJoin);
+
+        return { nextQuery, hasConditions: true };
       }
+
+      _setTable(nextTable);
+      _setSelectedColumns("all");
+      _setConditions([]);
+
+      // With a new table and no suggested condition,
+      // the existing join in no longer valid, so we remove it
+      if (join) {
+        const nextQuery = Lib.removeClause(query, stageIndex, join);
+        return { nextQuery, hasConditions: false };
+      }
+
+      return { nextQuery: null, hasConditions: false };
     },
-    [query, stageIndex, strategy],
+    [query, stageIndex, join, strategy],
   );
 
   const addCondition = useCallback(
