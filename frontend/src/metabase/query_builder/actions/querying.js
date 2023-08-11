@@ -183,17 +183,19 @@ export const maybeResetDisplay = (question, data, prevData) => {
   const viz = getVisualization(question.display());
   const wasSensible = prevData && viz.isSensible(prevData);
   const isSensible = viz.isSensible(data);
+  if ((wasSensible && !isSensible) || !prevData) {
+    // if the display was sensible and now it's not, or there was no data to begin with,
+    // unlock display and switch to the default display
+    return question.setDisplayIsLocked(false).setDefaultDisplay();
+  }
   const defaultDisplay = question.setDefaultDisplay().display();
   if (isSensible && defaultDisplay === "table") {
-    // if the display is already sensible, don't switch to a table
+    // if the display is already sensible, don't switch to a table.
     // any sensible display is better than the default table display
     return question;
   }
-  if ((wasSensible && !isSensible) || !prevData) {
-    // if the display was sensible and now it's not, or there was no data to begin with, unlock and switch to the default display
-    return question.setDisplayIsLocked(false).setDefaultDisplay();
-  }
-  // otherwise switch to the default display (if it's not locked)
+  // otherwise switch to the default display.
+  // it still needs to be unlocked to actually switch.
   return question.setDefaultDisplay();
 };
 
