@@ -75,17 +75,15 @@ const incompleteDashcard = createMockDashboardOrderedCard({
   series: [incompleteCard],
 });
 
-const dashcardData = {
-  [dashcard.id]: {
-    [baseCard.id]: dataset,
-    [firstCard.id]: dataset,
-    [secondCard.id]: dataset,
-  },
-};
-
 const defaultProps = {
   dashcard,
-  dashcardData,
+  dashcardData: {
+    [dashcard.id]: {
+      [baseCard.id]: dataset,
+      [firstCard.id]: dataset,
+      [secondCard.id]: dataset,
+    },
+  },
   fetchCardData: jest.fn(),
   setDashCardAttributes: jest.fn(),
   onClose: jest.fn(),
