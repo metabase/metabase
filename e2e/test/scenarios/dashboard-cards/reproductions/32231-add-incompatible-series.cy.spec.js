@@ -34,9 +34,6 @@ describe("issue 32231", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/card/*/series").as("seriesQuery");
   });
 
   it("should show user-friendly error when combining series that cannot be visualized together (metabase#32231)", () => {
