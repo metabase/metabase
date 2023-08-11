@@ -1,7 +1,7 @@
 import { forwardRef, RefObject } from "react";
 import { t } from "ttag";
 
-import { Flex, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
 import TippyPopoverWithTrigger, {
   TippyPopoverWithTriggerRef,
 } from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -23,7 +23,6 @@ interface JoinConditionColumnPickerProps
   label?: string;
   isInitiallyVisible?: boolean;
   readOnly?: boolean;
-  color: string;
   popoverRef?: RefObject<TippyPopoverWithTriggerRef>;
 }
 
@@ -40,7 +39,6 @@ export function JoinConditionColumnPicker({
   label,
   isInitiallyVisible = false,
   readOnly = false,
-  color,
   popoverRef,
   ...props
 }: JoinConditionColumnPickerProps) {
@@ -49,14 +47,13 @@ export function JoinConditionColumnPicker({
   return (
     <TippyPopoverWithTrigger
       isInitiallyVisible={isInitiallyVisible}
-      renderTrigger={({ onClick }) => (
+      renderTrigger={({ visible, onClick }) => (
         <ColumnNotebookCellItem
+          isOpen={visible}
           tableName={columnInfo?.table?.displayName}
           columnName={columnInfo?.displayName}
-          aria-label={label}
-          inactive={!column}
+          label={label}
           readOnly={readOnly}
-          color={color}
           onClick={onClick}
         />
       )}
@@ -78,28 +75,51 @@ export function JoinConditionColumnPicker({
 interface ColumnNotebookCellItemProps {
   tableName?: string;
   columnName?: string;
-  color: string;
-  inactive: boolean;
+  label?: string;
+  isOpen?: boolean;
   readOnly?: boolean;
   onClick: () => void;
 }
 
 const ColumnNotebookCellItem = forwardRef<
-  HTMLDivElement,
+  HTMLButtonElement,
   ColumnNotebookCellItemProps
->(function ColumnNotebookCellItem({ tableName, columnName, ...props }, ref) {
+>(function ColumnNotebookCellItem(
+  { tableName, columnName, label, isOpen, readOnly, onClick },
+  ref,
+) {
+  const hasColumnSelected = !!columnName;
+  const hasTableLabel = !!tableName || hasColumnSelected;
   return (
-    <JoinConditionCellItem {...props} ref={ref}>
-      <Flex direction="column" gap="2px">
-        {Boolean(tableName || columnName) && (
-          <Text display="block" size={11} lh={1} color="white" opacity={0.65}>
-            {tableName || t`Previous results`}
-          </Text>
-        )}
-        <Text display="block" lh={1}>
-          {columnName || t`Pick a column…`}
+    <JoinConditionCellItem
+      isOpen={isOpen}
+      hasColumnSelected={hasColumnSelected}
+      aria-label={label}
+      readOnly={readOnly}
+      onClick={onClick}
+      ref={ref}
+    >
+      {hasTableLabel && (
+        <Text
+          display="block"
+          size={11}
+          lh={1}
+          color="white"
+          align="left"
+          weight={400}
+        >
+          {tableName || t`Previous results`}
         </Text>
-      </Flex>
+      )}
+      <Text
+        display="block"
+        color={columnName ? "white" : "brand"}
+        align="left"
+        weight={700}
+        lh={1}
+      >
+        {columnName || t`Pick a column…`}
+      </Text>
     </JoinConditionCellItem>
   );
 });

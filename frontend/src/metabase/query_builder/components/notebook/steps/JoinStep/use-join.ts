@@ -148,6 +148,17 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     [query, stageIndex, conditions],
   );
 
+  const removeCondition = useCallback(
+    (condition: Lib.JoinConditionClause) => {
+      const nextConditions = conditions.filter(
+        _condition => _condition !== condition,
+      );
+      _setConditions(nextConditions);
+      return Lib.removeClause(query, stageIndex, condition);
+    },
+    [query, stageIndex, conditions],
+  );
+
   return {
     strategy,
     table,
@@ -157,6 +168,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
     setTable,
     addCondition,
     updateCondition,
+    removeCondition,
     isColumnSelected,
     setSelectedColumns,
   };

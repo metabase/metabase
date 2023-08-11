@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePrevious } from "react-use";
 import * as Lib from "metabase-lib";
 
 export function useJoinCondition(
@@ -8,6 +9,8 @@ export function useJoinCondition(
   join?: Lib.Join,
   condition?: Lib.JoinConditionClause,
 ) {
+  const previousCondition = usePrevious(condition);
+
   const externalOp = condition ? Lib.externalOp(condition) : undefined;
   const [initialLHSColumn, initialRHSColumn] = externalOp?.args || [];
 
@@ -20,6 +23,15 @@ export function useJoinCondition(
   const [operator, _setOperator] = useState<Lib.FilterOperator | undefined>(
     getInitialConditionOperator(query, stageIndex, condition),
   );
+
+  useEffect(() => {
+    if (condition && previousCondition !== condition) {
+      const externalOp = Lib.externalOp(condition);
+      _setLHSColumn(externalOp?.args[0]);
+      _setRHSColumn(externalOp?.args[1]);
+      _setOperator(getConditionOperator(query, stageIndex, condition));
+    }
+  }, [query, stageIndex, condition, previousCondition]);
 
   const operators = useMemo(
     () => Lib.joinConditionOperators(query, stageIndex),
