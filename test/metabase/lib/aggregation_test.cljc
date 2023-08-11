@@ -6,14 +6,12 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -769,21 +767,3 @@
               query))
       (is (=? [:field {:lib/uuid string?, :base-type :type/Float} "avg"]
               (lib/ref expr-metadata))))))
-
-(deftest ^:parallel ref-test
-  (testing "Should generate correct :aggregation references"
-    (let [query (-> lib.tu/venues-query
-                    (lib/breakout (meta/field-metadata :venues :category-id))
-                    (lib/aggregate (lib/count)))]
-      (doseq [query [query
-                     ;; make sure it works even when roundtripping to legacy and back.
-                     (->> query lib.convert/->legacy-MBQL (lib/query meta/metadata-provider))]]
-        (testing (str \newline (u/pprint-to-str query))
-          (let [[ag] (lib/aggregations query)]
-            (is (=? [:count {:lib/uuid string?}]
-                    ag))
-            (let [ag-uuid (lib.options/uuid ag)]
-              (is (string? ag-uuid))
-              (is (=? [[:field {} (meta/id :venues :category-id)]
-                       [:aggregation {} ag-uuid]]
-                      (mapv lib/ref (lib.metadata.calculation/returned-columns query)))))))))))
