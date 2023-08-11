@@ -3,20 +3,25 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util :as u]))
 
 (deftest ^:parallel calculate-names-even-without-metadata-test
   (testing "Even if metadata is missing, we should still be able to calculate reasonable display names"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                    (lib/order-by [:field
-                                   {:lib/uuid  (str (random-uuid))
-                                    :base-type :type/Text}
-                                   "TOTAL"]))]
-      (is (= "Venues, Sorted by Total ascending"
-             (lib.metadata.calculation/suggested-name query))))))
+    (doseq [query [(-> lib.tu/venues-query
+                       (lib/order-by (meta/field-metadata :orders :total)))
+                   (-> lib.tu/venues-query
+                       (lib/order-by [:field
+                                      {:lib/uuid  (str (random-uuid))
+                                       :base-type :type/Text}
+                                      "TOTAL"]))]]
+      (testing (str "\nquery =\n" (u/pprint-to-str query))
+        (is (= "Venues, Sorted by Total ascending"
+               (lib.metadata.calculation/suggested-name query)))))))
 
 (deftest ^:parallel long-display-name-test
-  (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+  (let [query lib.tu/venues-query
         results (->> query
                      lib.metadata.calculation/visible-columns
                      (map (comp :long-display-name #(lib/display-info query 0 %))))]
@@ -70,7 +75,7 @@
             "Categories__ID"            ; this column is not projected, but should still be returned.
             "Categories__NAME"]
            (map :lib/desired-column-alias
-                (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                (-> lib.tu/venues-query
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
@@ -79,5 +84,5 @@
                                   (lib/with-join-fields [(lib/with-join-alias (meta/field-metadata :categories :name) "Categories")])))
                     lib.metadata.calculation/visible-columns)))))
   (testing "nil has no visible columns (#31366)"
-    (is (empty? (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (is (empty? (-> lib.tu/venues-query
                     (lib.metadata.calculation/visible-columns nil))))))

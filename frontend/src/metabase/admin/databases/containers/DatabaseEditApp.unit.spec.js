@@ -39,18 +39,14 @@ const ENGINES_MOCK = {
   },
 };
 
-const ComponentMock = () => <div />;
-jest.mock(
-  "metabase/databases/containers/DatabaseHelpCard",
-  () => ComponentMock,
-);
-
 async function setup({ cachingEnabled = false, databaseIdParam = "" } = {}) {
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const settings = mockSettings({
     engines: ENGINES_MOCK,
-    "token-features": createMockTokenFeatures({ advanced_config: true }),
+    "token-features": createMockTokenFeatures({
+      cache_granular_controls: true,
+    }),
     "enable-query-caching": cachingEnabled,
   });
 

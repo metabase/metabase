@@ -20,13 +20,12 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as schema]
    [toucan2.core :as t2]
-   [toucan2.tools.default-fields :as t2.default-fields])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.default-fields :as t2.default-fields]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,17 +90,20 @@
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
-    ;; add the newly created user to the magic perms groups
-    (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
-      (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
-      (t2/insert! PermissionsGroupMembership
-        :user_id  user-id
-        :group_id (:id (perms-group/all-users))))
+    ;; add the newly created user to the magic perms groups.
+    (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
     (when superuser?
-      (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
-      (t2/insert! PermissionsGroupMembership
-        :user_id  user-id
-        :group_id (:id (perms-group/admin))))))
+      (log/info (trs "Adding User {0} to All Users permissions group..." user-id)))
+    (let [groups (filter some? [(perms-group/all-users)
+                                (when superuser? (perms-group/admin))])]
+      (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
+        ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
+        ;; for [[metabase.models.permissions-group-membership]]... we don't want it recursively trying to update
+        ;; the user
+        (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
+                    (for [group groups]
+                      {:user_id  user-id
+                       :group_id (u/the-id group)}))))))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
@@ -314,7 +316,7 @@
 (schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (UUID/randomUUID)))))))
+  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -369,7 +371,7 @@
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (u/prog1 (str user-id \_ (UUID/randomUUID))
+  (u/prog1 (str user-id \_ (random-uuid))
     (t2/update! User user-id
                 {:reset_token     <>
                  :reset_triggered (System/currentTimeMillis)})))

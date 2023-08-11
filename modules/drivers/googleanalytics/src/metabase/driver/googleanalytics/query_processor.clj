@@ -10,6 +10,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -307,7 +308,7 @@
                     (count (filter some? (map k filters))))]
     (if (and (< (key-count :start-date) 2)
              (< (key-count :end-date) 2))
-      (reduce merge filters)
+      (into {} filters)
       (throw (ex-info (tru "Multiple date filters are not supported.")
                       {:type    qp.error-type/invalid-query
                        :filters filters})))))

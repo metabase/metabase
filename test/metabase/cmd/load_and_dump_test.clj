@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.cmd.compare-h2-dbs :as compare-h2-dbs]
+   [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.cmd.load-from-h2 :as load-from-h2]
@@ -38,11 +39,12 @@
                                (mdb.spec/spec driver/*driver* details))))]
           (binding [setting/*disable-cache*         true
                     mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
-            (with-redefs [i18n.impl/site-locale-from-setting-fn (atom (constantly false))]
+            (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
-              (load-from-h2/load-from-h2! h2-fixture-db-file)
-              (dump-to-h2/dump-to-h2! h2-file)
+              (binding [copy/*copy-h2-database-details* true]
+                (load-from-h2/load-from-h2! h2-fixture-db-file)
+                (dump-to-h2/dump-to-h2! h2-file))
               (is (not (compare-h2-dbs/different-contents?
                         h2-file
                         h2-fixture-db-file))))))))))

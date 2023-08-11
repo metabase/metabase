@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.cmd :as cmd]
+   [metabase.cmd.copy :as copy]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.rotate-encryption-key :refer [rotate-encryption-key!]]
@@ -78,7 +79,8 @@
                       mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
-              (load-from-h2/load-from-h2! h2-fixture-db-file)
+              (binding [copy/*copy-h2-database-details* true]
+                (load-from-h2/load-from-h2! h2-fixture-db-file))
               (t2/insert! Setting {:key "nocrypt", :value "unencrypted value"})
               (t2/insert! Setting {:key "settings-last-updated", :value original-timestamp})
               (let [u (first (t2/insert-returning-instances! User {:email        "nobody@nowhere.com"
@@ -87,6 +89,7 @@
                                                                    :password     "nopassword"
                                                                    :is_active    true
                                                                    :is_superuser false}))]
+
                 (reset! user-id (u/the-id u)))
               (let [secret (first (t2/insert-returning-instances! Secret {:name       "My Secret (plaintext)"
                                                                           :kind       "password"

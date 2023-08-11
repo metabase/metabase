@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
@@ -16,13 +17,14 @@
    [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
-   #_:clj-kondo/ignore
+   #_{:clj-kondo/ignore [:consistent-alias]}
    [metabase.sync.field-values :as sync.field-values]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -79,7 +81,10 @@
     (sync.concurrent/submit-task
      (fn []
        (let [database (table/database (first newly-unhidden))]
-         (if (driver.u/can-connect-with-details? (:engine database) (:details database))
+         ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+         ;; purposes of creating a new H2 database.
+         (if (binding [h2/*allow-testing-h2-connections* true]
+               (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
              (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name table))))
              (sync/sync-table! table))

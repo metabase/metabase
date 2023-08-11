@@ -26,8 +26,9 @@
   {:pre [(fn? match-fn) (vector? clause-parents)]}
   (cond
     (map? form)
-    (reduce concat (for [[k v] form]
-                     (match-fn (conj clause-parents k) v)))
+    (mapcat (fn [[k v]]
+              (match-fn (conj clause-parents k) v))
+            form)
 
     (sequential? form)
     (mapcat (partial match-fn (if (keyword? (first form))

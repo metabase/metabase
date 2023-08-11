@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.query-processor.store :as qp.store]))
 
-(deftest cached-test
+(deftest ^:parallel cached-test
   (testing "make sure `cached` only evaluates its body once during the duration of a QP run"
     (let [eval-count   (atom 0)
           cached-value (fn []
@@ -17,7 +17,7 @@
                {:value      (cached-value)
                 :eval-count @eval-count}))))))
 
-(deftest reuse-existing-store-test
+(deftest ^:parallel reuse-existing-store-test
   (testing "multiple calls to `with-store` should keep the existing store if one is already established"
     (let [eval-count   (atom 0)
           cached-value (fn []
@@ -33,7 +33,7 @@
                    {:value      (cached-value)
                     :eval-count @eval-count}))))))))
 
-(deftest caching-unique-key-test
+(deftest ^:parallel caching-unique-key-test
   (testing "caching should be unique for each key"
     (let [eval-count   (atom 0)
           cached-value (fn [x]

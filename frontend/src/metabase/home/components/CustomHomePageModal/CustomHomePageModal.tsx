@@ -14,7 +14,9 @@ import ModalContent from "metabase/components/ModalContent";
 
 import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
 import Button from "metabase/core/components/Button/Button";
-import { Collection, DashboardId } from "metabase-types/api";
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+
+import type { Collection, DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
@@ -87,11 +89,11 @@ export const CustomHomePageModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalContent
-        title="Customize Homepage"
+        title={t`Customize Homepage`}
         onClose={handleClose}
         footer={[
           <Button onClick={handleClose} key="custom-homepage-modal-cancel">
-            Cancel
+            {t`Cancel`}
           </Button>,
           <Button
             primary
@@ -99,7 +101,7 @@ export const CustomHomePageModal = ({
             key="custom-homepage-modal-save"
             disabled={!dashboardId}
           >
-            Save
+            {t`Save`}
           </Button>,
         ]}
       >
@@ -107,9 +109,11 @@ export const CustomHomePageModal = ({
         <DashboardSelector
           value={dashboardId}
           onChange={handleChange}
-          collectionFilter={(collection: Collection) =>
-            collection.personal_owner_id === null || collection.id === "root"
-          }
+          collectionFilter={(
+            collection: Collection,
+            _index: number,
+            allCollections: Collection[],
+          ) => !isPersonalCollectionOrChild(collection, allCollections)}
         />
       </ModalContent>
     </Modal>

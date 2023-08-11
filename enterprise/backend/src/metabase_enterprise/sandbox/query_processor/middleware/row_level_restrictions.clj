@@ -28,6 +28,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -41,13 +44,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- all-table-ids [m]
-  (set
-   (reduce
-    concat
-    (mbql.u/match m
-      (_ :guard (every-pred map? :source-table (complement ::gtap?)))
-      (let [recursive-ids (all-table-ids (dissoc &match :source-table))]
-        (cons (:source-table &match) recursive-ids))))))
+  (into #{} cat (mbql.u/match m
+                  (_ :guard (every-pred map? :source-table (complement ::gtap?)))
+                  (let [recursive-ids (all-table-ids (dissoc &match :source-table))]
+                    (cons (:source-table &match) recursive-ids)))))
 
 (defn- query->all-table-ids [query]
   (let [ids (all-table-ids query)]
@@ -91,7 +91,7 @@
 ;;; |                                                Applying a GTAP                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private target-field->base-type :- (s/maybe su/FieldType)
+(mu/defn ^:private target-field->base-type :- [:maybe ms/FieldType]
   "If the `:target` of a parameter contains a `:field` clause, return the base type corresponding to the Field it
   references. Otherwise returns `nil`."
   [[_ target-field-clause]]
@@ -130,7 +130,7 @@
   (mapv (partial attr-remapping->parameter (:login_attributes @*current-user*))
         attribute-remappings))
 
-(s/defn ^:private preprocess-source-query :- mbql.s/SourceQuery
+(mu/defn ^:private preprocess-source-query :- mbql.s/SourceQuery
   [source-query :- mbql.s/SourceQuery]
   (try
     (let [query        {:database (:id (qp.store/database))
@@ -233,11 +233,11 @@
     (assoc source-query :source-metadata metadata)))
 
 
-(s/defn ^:private gtap->source :- {:source-query                     s/Any
-                                   (s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata]
-                                   s/Keyword                         s/Any}
+(mu/defn ^:private gtap->source :- [:map
+                                    [:source-query :any]
+                                    [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
   "Get the source query associated with a `gtap`."
-  [{card-id :card_id, table-id :table_id, :as gtap} :- su/Map]
+  [{card-id :card_id, table-id :table_id, :as gtap} :- :map]
   (-> ((if card-id
          card-gtap->source
          table-gtap->source) gtap)
@@ -258,7 +258,7 @@
    (remove nil?)
    set))
 
-(s/defn ^:private sandbox->perms-set :- #{perms/PathSchema}
+(mu/defn ^:private sandbox->perms-set :- [:set perms/PathSchema]
   "Calculate the set of permissions needed to run the query associated with a sandbox; this set of permissions is excluded
   during the normal QP perms check.
 

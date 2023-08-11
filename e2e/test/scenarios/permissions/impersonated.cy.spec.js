@@ -4,6 +4,7 @@ import {
   describeEE,
   getPermissionRowPermissions,
   isPermissionDisabled,
+  modal,
   modifyPermission,
   openNativeEditor,
   popover,
@@ -274,8 +275,7 @@ describeEE("impersonated permission", () => {
       cy.findByRole("dialog").findByText("Edit settings").click();
 
       // Page leave confirmation should be on top
-      cy.findAllByRole("dialog")
-        .eq(0)
+      modal()
         .as("leaveConfirmation")
         .findByText("Discard your unsaved changes?")
         .should("be.visible");

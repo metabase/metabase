@@ -47,6 +47,34 @@ describe("scenarios > dashboard > filters > text/category", () => {
     );
   });
 
+  it("should reset filter state when all values are unselected (metabase#25533)", () => {
+    const filterType = "Is";
+    const filterValue = "Organic";
+
+    cy.log(`Make sure we can connect '${filterType}' filter`);
+    setFilter("Text or Category", filterType);
+
+    cy.findByTestId("dashcard").findByText("Select…").click();
+    popover().contains("Source").click();
+
+    saveDashboard();
+    filterWidget().click();
+
+    applyFilterByType(filterType, filterValue);
+
+    filterWidget().click();
+    cy.log("uncheck all values");
+
+    popover().within(() => {
+      cy.findByText(filterValue).click();
+      cy.button("Update filter").click();
+    });
+
+    filterWidget().within(() => {
+      cy.icon("close").should("not.exist");
+    });
+  });
+
   it(`should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)`, () => {
     setFilter("Text or Category", "Is");
 

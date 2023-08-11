@@ -11,7 +11,7 @@ import {
   breakpointMaxSmall,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
+import Button from "metabase/core/components/Button";
 
 const activeInputCSS = css`
   border-radius: 6px;
@@ -106,9 +106,7 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
 
 const ICON_MARGIN = "10px";
 
-export const SearchIcon = styled(Icon, {
-  shouldForwardProp: shouldForwardNonTransientProp,
-})<{ isActive: boolean }>`
+export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
   ${breakpointMaxSmall} {
     transition: margin 0.3s;
 
@@ -178,5 +176,15 @@ export const SearchResultsContainer = styled.div`
     border: 1px solid ${color("border")};
     border-radius: 6px;
     box-shadow: 0 7px 20px ${color("shadow")};
+  }
+`;
+
+export const SearchFunnelButton = styled(Button)<{ isFiltered?: boolean }>`
+  margin-right: 0.25rem;
+  border: none;
+
+  ${({ isFiltered }) => isFiltered && `color: ${color("brand")};`}
+  &:hover {
+    background: transparent;
   }
 `;
