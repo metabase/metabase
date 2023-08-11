@@ -145,7 +145,7 @@ export class AddSeriesModal extends Component<Props, State> {
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
               className="spread"
-              errorView={ErrorView}
+              errorView={series.length > 1 ? ErrorView : undefined}
               rawSeries={series}
               showTitle
               isDashboard
