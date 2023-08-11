@@ -70,6 +70,9 @@ describe("issue 32231", () => {
       cy.findByText(incompleteQuestion.name).click();
 
       cy.get(".LineAreaBarChart").should("not.exist");
+      cy.findByText(
+        "Cannot read properties of undefined (reading 'name')",
+      ).should("not.exist");
       cy.findByText("Unable to combine these questions").should("exist");
 
       cy.findByText(incompleteQuestion.name).click();
