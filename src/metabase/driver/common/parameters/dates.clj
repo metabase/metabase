@@ -395,8 +395,9 @@
 
 (mu/defn date-string->range :- DateStringRange
   "Takes a string description of a date range such as `lastmonth` or `2016-07-15~2016-08-6` and returns a map with
-  `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive, e.g.
+  `:unit`, `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive,
 
+  e.g:
     (date-string->range \"past2days\") ; -> {:start \"2020-01-20\", :end \"2020-01-21\"}
 
   intended for use with SQL like
@@ -424,8 +425,8 @@
          ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
          ;; against the db field value that is casted granularity level of a day in the db time zone
          (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
-            (adjust-inclusive-range-if-needed options)
-            format-date-range)
+              (adjust-inclusive-range-if-needed options)
+              format-date-range)
          ;; if both of the decoders above fail, then the date string is invalid
          (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
                          {:param date-string

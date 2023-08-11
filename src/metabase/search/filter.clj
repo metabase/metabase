@@ -13,7 +13,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
