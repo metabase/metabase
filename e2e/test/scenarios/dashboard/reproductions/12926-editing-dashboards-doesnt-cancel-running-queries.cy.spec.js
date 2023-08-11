@@ -12,10 +12,12 @@ import {
 } from "e2e/support/helpers";
 
 const filterDisplayName = "F";
+const queryResult = 42;
+const parameterValue = 10;
 const questionDetails = {
   name: "Question 1",
   native: {
-    query: "SELECT 42 [[+{{F}}]] as ANSWER",
+    query: `SELECT ${queryResult} [[+{{F}}]] as ANSWER`,
     "template-tags": {
       F: {
         type: "number",
@@ -69,7 +71,7 @@ describe("issue 12926", () => {
 
       cy.wait("@dashcardQueryRestored");
 
-      getDashboardCard().findByText("42");
+      getDashboardCard().findByText(queryResult);
     });
   });
 
@@ -90,7 +92,7 @@ describe("issue 12926", () => {
 
       setFilter("Number", "Equal to");
       sidebar().findByText("No default").click();
-      popover().findByPlaceholderText("Enter a number").type(1);
+      popover().findByPlaceholderText("Enter a number").type(parameterValue);
       popover().findByText("Add filter").click();
 
       cy.window().then(win => {
@@ -103,6 +105,8 @@ describe("issue 12926", () => {
       saveDashboard();
 
       cy.get("@xhrAbort").should("have.been.calledOnce");
+
+      getDashboardCard().findByText(queryResult + parameterValue);
     });
   });
 });
