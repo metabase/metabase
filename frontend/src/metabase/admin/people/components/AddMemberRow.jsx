@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
+import { t } from "ttag";
 
 import { Icon } from "metabase/core/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -53,7 +54,7 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
           ref={rowRef}
           value={text}
           isValid={selectedUsersById.size > 0}
-          placeholder="Julie McMemberson"
+          placeholder={t`Julie McMemberson`}
           onChange={e => setText(e.target.value)}
           onDone={handleDone}
           onCancel={onCancel}
