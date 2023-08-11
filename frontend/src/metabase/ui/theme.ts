@@ -22,6 +22,11 @@ export const theme: MantineThemeOverride = {
     lg: "1.5rem",
     xl: "2rem",
   },
+  radius: {
+    xs: "4px",
+    sm: "6px",
+    md: "8px",
+  },
   fontSizes: {
     xs: "11px",
     sm: "12px",
@@ -74,6 +79,8 @@ export const theme: MantineThemeOverride = {
               theme.spacing.sm,
           },
           input: {
+            borderRadius: theme.radius.xs,
+
             "&:focus": {
               outline: `2px solid ${theme.colors.brand[1]}`,
             },
@@ -186,7 +193,8 @@ export const theme: MantineThemeOverride = {
     },
     Menu: {
       defaultProps: {
-        radius: "0.375rem",
+        radius: "sm",
+        shadow: "md",
       },
       styles(theme) {
         return {
