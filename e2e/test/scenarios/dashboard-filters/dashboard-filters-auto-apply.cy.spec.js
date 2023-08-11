@@ -14,6 +14,7 @@ import {
   rightSidebar,
   saveDashboard,
   sidebar,
+  toggleDashboardInfoSidebar,
   undoToast,
   visitDashboard,
   visitEmbeddedPage,
@@ -747,10 +748,6 @@ const openSlowFullAppEmbeddingDashboard = (params = {}) => {
 
   getDashboardCard().should("be.visible");
 };
-
-function toggleDashboardInfoSidebar() {
-  dashboardHeader().icon("info").click();
-}
 
 const visitFullAppEmbeddingUrl = ({ url, qs }) => {
   cy.visit({

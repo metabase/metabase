@@ -21,6 +21,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.u.match]
@@ -718,7 +720,10 @@
          join-aliases-to-ignore (into #{}
                                       (comp (map current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
-                                      (joins query stage-number))]
+                                      (joins query stage-number))
+         lhs-column-or-nil      (or lhs-column-or-nil
+                                    (when (join? join-or-joinable)
+                                      (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
                                                     {:include-implicitly-joinable? false})
@@ -752,17 +757,20 @@
     rhs-column-or-nil  :- [:maybe Field]]
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
-   (sort-join-condition-columns
-    (let [joinable   (if (join? join-or-joinable)
-                     (joined-thing query join-or-joinable)
-                     join-or-joinable)
-          join-alias (when (join? join-or-joinable)
-                       (current-join-alias join-or-joinable))]
-      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
-           (map (fn [col]
-                  (cond-> (assoc col :lib/source :source/joins)
-                    join-alias (with-join-alias join-alias))))
-           (mark-selected-column query rhs-column-or-nil))))))
+   (let [joinable          (if (join? join-or-joinable)
+                             (joined-thing query join-or-joinable)
+                             join-or-joinable)
+         join-alias        (when (join? join-or-joinable)
+                             (current-join-alias join-or-joinable))
+         rhs-column-or-nil (or rhs-column-or-nil
+                               (when (join? join-or-joinable)
+                                 (standard-join-condition-rhs (first (join-conditions join-or-joinable)))))]
+     (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
+          (map (fn [col]
+                 (cond-> (assoc col :lib/source :source/joins)
+                   join-alias (with-join-alias join-alias))))
+          (mark-selected-column query rhs-column-or-nil)
+          sort-join-condition-columns))))
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
@@ -936,3 +944,34 @@
     (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-column-or-nil)
     (join-lhs-display-name-for-first-join-in-first-stage query stage-number join-or-joinable)
     (i18n/tru "Previous results"))))
+
+(mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
+  "Updates the provided join-condition's fields' temporal-bucketing option, returns the updated join-condition.
+   Must be called on a standard join condition as per [[standard-join-condition?]].
+   This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
+   Fields that do not support the provided option will be ignored."
+  ([query :- ::lib.schema/query
+    join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
+    option-or-unit :- [:maybe [:or
+                               ::lib.schema.temporal-bucketing/option
+                               ::lib.schema.temporal-bucketing/unit]]]
+   (join-condition-update-temporal-bucketing query -1 join-condition option-or-unit))
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
+    option-or-unit :- [:maybe [:or
+                               ::lib.schema.temporal-bucketing/option
+                               ::lib.schema.temporal-bucketing/unit]]]
+   (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
+     (assert (standard-join-condition? join-condition)
+             (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
+     (let [unit (cond-> option-or-unit
+                  (not (keyword? option-or-unit)) :unit)
+           stage-number (lib.util/canonical-stage-index query stage-number)
+           available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
+           available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
+           sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
+           sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+       (cond-> join-condition
+         sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
+         sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))

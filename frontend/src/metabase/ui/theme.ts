@@ -12,13 +12,14 @@ export const theme: MantineThemeOverride = {
   primaryColor: "brand",
   primaryShade: 1,
   fontSizes: {
-    xs: "10px",
-    sm: "14px",
-    md: "16px",
-    lg: "18px",
-    xl: "24px",
+    xs: "11px",
+    sm: "12px",
+    md: "14px",
+    lg: "17px",
+    xl: "21px",
   },
   fontFamily: 'Lato, "Helvetica Neue", Helvetica, sans-serif',
+  fontFamilyMonospace: "Monaco, monospace",
   components: {
     Radio: {
       styles(theme) {
@@ -145,6 +146,29 @@ export const theme: MantineThemeOverride = {
             marginLeft: "1rem",
             height: "1.75rem",
             width: "1.75rem",
+          },
+        };
+      },
+    },
+    Text: {
+      defaultProps: {
+        color: "text.2",
+      },
+    },
+    Anchor: {
+      styles(theme) {
+        return {
+          root: {
+            fontFamily: "inherit",
+            color: theme.colors.brand[1],
+            "&:focus": {
+              outline: `2px solid ${theme.colors.brand[0]}`,
+              outlineOffset: "2px",
+            },
+            "&:active": {
+              color: theme.colors.text[2],
+              textDecoration: "underline",
+            },
           },
         };
       },

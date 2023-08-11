@@ -129,21 +129,24 @@
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print                   {:message "Use clojure.tools.logging instead of clojure.core/print"}
-   clojure.core/println                 {:message "Use clojure.tools.logging instead of clojure.core/println"}
-   clojure.core/printf                  {:message "Use clojure.tools.logging instead of clojure.core/printf"}
-   clojure.core/prn                     {:message "Use clojure.tools.logging instead of clojure.core/prn"}
-   clojure.core/pr                      {:message "Use clojure.tools.logging instead of clojure.core/pr"}
+  {clojure.core/print                   {:message "Use metabase.util.log instead of clojure.core/print"}
+   clojure.core/println                 {:message "Use metabase.util.log instead of clojure.core/println"}
+   clojure.core/printf                  {:message "Use metabase.util.log instead of clojure.core/printf"}
+   clojure.core/prn                     {:message "Use metabase.util.log instead of clojure.core/prn"}
+   clojure.core/pr                      {:message "Use metabase.util.log instead of clojure.core/pr"}
+   clojure.core/tap>                    {:message "Don't use tap> is source code"}
+   clojure.core/time                    {:message "Don't use time in source code"}
    clojure.java.jdbc/get-connection     {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
    clojure.java.jdbc/with-db-connection {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata   {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
-   clojure.pprint/pprint                {:message "Use clojure.tools.logging instead of clojure.pprint/pprint"}
+   clojure.pprint/pprint                {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
    clojure.string/lower-case            {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case            {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    honeysql.core/call                   {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                    {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock                 {:message "Use mt/with-clock"}
    java.util.UUID/randomUUID            {:message "Use clojure.core/random-uuid instead of java.util.UUID/randomUUID"}
+   malli.core/explainer                 {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
    medley.core/random-uuid              {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.test/with-temp              {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp"}
    ;; metabase.test/with-temp*             {:message "Use t2.with-temp/with-temp instead of metabase.test/with-temp*"}

@@ -275,31 +275,31 @@
   (testing "#32509 when building a join against a Card"
     (doseq [{:keys [message card metadata-provider]}
             [{:message           "MBQL Card"
-              :card              lib.tu/categories-mbql-card
-              :metadata-provider lib.tu/metadata-provider-with-categories-mbql-card}
+              :card              (:categories lib.tu/mock-cards)
+              :metadata-provider lib.tu/metadata-provider-with-mock-cards}
              {:message           "Native Card"
-              :card              lib.tu/categories-native-card
-              :metadata-provider lib.tu/metadata-provider-with-categories-native-card}]]
+              :card              (lib.tu/mock-cards :categories/native)
+              :metadata-provider lib.tu/metadata-provider-with-mock-cards}]]
       (testing message
         (let [cols   (rhs-columns lib.tu/venues-query card)
               groups (lib/group-columns cols)]
           (testing `lib/group-columns
             (is (=? [{:lib/type                     :metadata/column-group
-                      :card-id                      1
+                      :card-id                      (:id card)
                       ::lib.column-group/group-type :group-type/join.explicit
-                      ::lib.column-group/columns    [{:name "ID", :lib/card-id 1}
-                                                     {:name "NAME", :lib/card-id 1}]}]
+                      ::lib.column-group/columns    [{:name "ID", :lib/card-id (:id card)}
+                                                     {:name "NAME", :lib/card-id (:id card)}]}]
                     groups)))
           (testing `lib/display-info
             (testing "Card is not present in MetadataProvider"
-              (is (=? [{:display-name "Saved Question 1"
+              (is (=? [{:display-name (str "Question " (:id card))
                         :is-from-join true}]
                       (for [group groups]
                         (lib/display-info lib.tu/venues-query group)))))
             (testing "Card *is* present in MetadataProvider"
               (let [query (assoc lib.tu/venues-query :lib/metadata metadata-provider)]
-                (is (=? [{:name         "Tarot Card"
-                          :display-name "Tarot Card"
+                (is (=? [{:name         "Mock categories card"
+                          :display-name "Mock Categories Card"
                           :is-from-join true}]
                         (for [group groups]
                           (lib/display-info query group))))))))))))

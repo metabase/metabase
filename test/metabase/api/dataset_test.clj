@@ -13,7 +13,7 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -199,7 +199,7 @@
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/generate-string
-                                                           {:database mbql.s/saved-questions-virtual-database-id
+                                                           {:database lib.schema.id/saved-questions-virtual-database-id
                                                             :type     :query
                                                             :query    {:source-table (str "card__" (u/the-id card))}}))]
                   (is (some? result))
@@ -332,7 +332,22 @@
                            "  1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues {:fields [$id $name]})))))))
+                                   (mt/mbql-query venues {:fields [$id $name]})))))
+    (testing "`:now` is usable inside `:case` with mongo (#32216)"
+      (mt/test-driver :mongo
+        (is (= {:$switch
+                {:branches
+                 [{:case {:$eq [{:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}
+                                {:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}]},
+                   :then "a"}]
+                 :default "b"}}
+               (-> (mt/user-http-request
+                    :rasta :post 200 "dataset/native"
+                    (mt/mbql-query venues
+                      {:expressions
+                       {:E [:case [[[:= [:get-day [:now]] [:get-day [:now]]] "a"]]
+                            {:default "b"}]}}))
+                   :query first :$project :E)))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres

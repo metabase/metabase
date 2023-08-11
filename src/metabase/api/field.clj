@@ -423,7 +423,6 @@
            limit   (or maybe-limit default-max-field-search-limit)
            results (qp/process-query (search-values-query field search-field value limit))]
        (get-in results [:data :rows]))
-     ;; this Exception is usually one that can be ignored which is why I gave it log level debug
      (catch Throwable e
        (log/error e (trs "Error searching field values"))
        nil))))

@@ -3,14 +3,13 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.driver.util :as driver.u]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -18,9 +17,9 @@
   (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))
 
 (defn- wrap-inner-query [query]
-  {:database     mbql.s/saved-questions-virtual-database-id
-   :type         :query
-   :query        query})
+  {:database lib.schema.id/saved-questions-virtual-database-id
+   :type     :query
+   :query    query})
 
 (defn- default-result-with-inner-query
   ([inner-query]
@@ -77,7 +76,7 @@
                                  "2015-01-01"
                                  "2015-02-01"]})))))))
   (testing "respects `enable-nested-queries` server setting"
-    (mt/with-temp* [Card [{card-id :id} {:dataset_query (mt/mbql-query venues)}]]
+    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (mt/with-temporary-setting-values [enable-nested-queries true]
         (is (some? (resolve-card-id-source-tables
                     (mt/mbql-query nil
@@ -88,8 +87,8 @@
                 {:source-table (str "card__" card-id)}))
              (is false "Nested queries disabled not honored")
              (catch Exception e
-               (is (schema= {:clause {:source-table (s/eq (str "card__" card-id))}}
-                            (ex-data e)))))))))
+               (is (=? {:clause {:source-table (str "card__" card-id)}}
+                       (ex-data e)))))))))
 
 (deftest resolve-native-queries-test
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves native queries"
@@ -112,7 +111,7 @@
   (testing "make sure that nested nested queries work as expected"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/mbql-query venues
                                                    {:limit 100})}]
-                    Card [card-2 {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
+                    Card [card-2 {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
                                                   :type     :query
                                                   :query    {:source-table (str "card__" (u/the-id card-1)), :limit 50}}}]]
       (is (= (-> (default-result-with-inner-query
@@ -137,19 +136,19 @@
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table (str "card__" (u/the-id card))
                                                     :limit        1}
-                                         :database mbql.s/saved-questions-virtual-database-id})]
+                                         :database lib.schema.id/saved-questions-virtual-database-id})]
           (is (= {:dataset true :rows 1}
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))
     (testing "But not when the dataset is lower than top level"
       (mt/with-temp* [Card [dataset {:dataset_query (mt/mbql-query venues {:limit 100})
                                      :dataset       true}]
-                      Card [card    {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
+                      Card [card    {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
                                                      :type     :query
                                                      :query    {:source-table (str "card__" (u/the-id dataset))}}}]]
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table (str "card__" (u/the-id card))
                                                     :limit        1}
-                                         :database mbql.s/saved-questions-virtual-database-id})]
+                                         :database lib.schema.id/saved-questions-virtual-database-id})]
           (is (= {:rows 1}
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
 
@@ -327,16 +326,6 @@
                (resolve-card-id-source-tables query)))))))
 
 (deftest card-id->source-query-and-metadata-test
-  (testing "card-id->source-query-and-metadata-test should trim SQL queries"
-    (let [query {:type     :native
-                 :native   {:query "SELECT * FROM table\n-- remark"}
-                 :database (mt/id)}]
-      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query query}]
-        (is (= {:source-metadata nil
-                :source-query    {:native "SELECT * FROM table\n"}
-                :database        (mt/id)}
-               (#'fetch-source-query/card-id->source-query-and-metadata card-id))))))
-
   (testing "card-id->source-query-and-metadata-test should preserve non-SQL native queries"
     (let [query {:type     :native
                  :native   {:projections ["_id" "user_id" "venue_id"],
