@@ -30,6 +30,10 @@ const incompleteQuestion = {
   display: "bar",
 };
 
+const issue32231Error = "Cannot read properties of undefined (reading 'name')";
+const multipleSeriesError = "Unable to combine these questions";
+const defaultError = "Which fields do you want to use for the X and Y axes?";
+
 describe("issue 32231", () => {
   beforeEach(() => {
     restore();
@@ -65,20 +69,23 @@ describe("issue 32231", () => {
 
     cy.get(".AddSeriesModal").within(() => {
       cy.get(".LineAreaBarChart").should("exist");
-      cy.findByText("Unable to combine these questions").should("not.exist");
+      cy.findByText(issue32231Error).should("not.exist");
+      cy.findByText(multipleSeriesError).should("not.exist");
+      cy.findByText(defaultError).should("not.exist");
 
       cy.findByText(incompleteQuestion.name).click();
 
       cy.get(".LineAreaBarChart").should("not.exist");
-      cy.findByText(
-        "Cannot read properties of undefined (reading 'name')",
-      ).should("not.exist");
-      cy.findByText("Unable to combine these questions").should("exist");
+      cy.findByText(issue32231Error).should("not.exist");
+      cy.findByText(multipleSeriesError).should("exist");
+      cy.findByText(defaultError).should("not.exist");
 
       cy.findByText(incompleteQuestion.name).click();
 
       cy.get(".LineAreaBarChart").should("exist");
-      cy.findByText("Unable to combine these questions").should("not.exist");
+      cy.findByText(issue32231Error).should("not.exist");
+      cy.findByText(multipleSeriesError).should("not.exist");
+      cy.findByText(defaultError).should("not.exist");
     });
   });
 
@@ -102,9 +109,7 @@ describe("issue 32231", () => {
       visitDashboard(dashboard_id);
     });
 
-    cy.findByTestId("dashcard")
-      .findByText("Which fields do you want to use for the X and Y axes?")
-      .should("exist");
+    cy.findByTestId("dashcard").findByText(defaultError).should("exist");
 
     cy.icon("pencil").click();
     cy.findByTestId("add-series-button").click({ force: true });
@@ -112,16 +117,9 @@ describe("issue 32231", () => {
 
     cy.get(".AddSeriesModal").within(() => {
       cy.get(".LineAreaBarChart").should("not.exist");
-
-      cy.findByText(
-        "Cannot read properties of undefined (reading 'name')",
-      ).should("not.exist");
-
-      cy.findByText("Unable to combine these questions").should("not.exist");
-
-      cy.findByText(
-        "Which fields do you want to use for the X and Y axes?",
-      ).should("exist");
+      cy.findByText(issue32231Error).should("not.exist");
+      cy.findByText(multipleSeriesError).should("not.exist");
+      cy.findByText(defaultError).should("exist");
     });
   });
 });
