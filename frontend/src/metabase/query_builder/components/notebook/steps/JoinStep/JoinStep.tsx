@@ -22,6 +22,7 @@ import { JoinTablePicker } from "./JoinTablePicker";
 import {
   ConditionNotebookCell,
   ConditionUnionLabel,
+  ConditionContainer,
   TablesNotebookCell,
   RemoveConditionButton,
 } from "./JoinStep.styled";
@@ -48,6 +49,7 @@ export function JoinStep({
     setTable,
     addCondition,
     updateCondition,
+    removeCondition,
     isColumnSelected,
     setSelectedColumns,
   } = useJoin(query, stageIndex, join);
@@ -115,6 +117,13 @@ export function JoinStep({
     }
   };
 
+  const handleRemoveCondition = (condition: Lib.JoinConditionClause) => {
+    const nextQuery = removeCondition(condition);
+    if (nextQuery) {
+      updateQuery(nextQuery);
+    }
+  };
+
   const handleNewConditionClick = () => setIsAddingNewCondition(true);
 
   const renderJoinCondition = (
@@ -128,20 +137,23 @@ export function JoinStep({
     const isComplete = !!condition && typeof index === "number";
     const key = isComplete ? `join-condition-${index}` : "new-join-condition";
 
+    const isSingleCondition = isComplete
+      ? conditions.length === 1
+      : conditions.length === 0;
     const isLast = isAddingNewCondition
       ? !isComplete
       : index === conditions.length - 1;
 
     return (
-      <Flex key={key} mr="6px" align="center" data-testid={key}>
+      <Flex key={key} mr="6px" align="center" gap="8px" data-testid={key}>
         <JoinCondition
           query={query}
           stageIndex={stageIndex}
           condition={condition}
           join={join}
           table={table}
-          color={color}
           readOnly={readOnly}
+          canRemove={!isSingleCondition}
           onChange={nextCondition => {
             if (isComplete) {
               handleUpdateCondition(index, nextCondition);
@@ -150,6 +162,13 @@ export function JoinStep({
             }
           }}
           onChangeLHSColumn={setSelectedLHSColumn}
+          onRemove={() => {
+            if (isComplete) {
+              handleRemoveCondition(condition);
+            } else {
+              setIsAddingNewCondition(false);
+            }
+          }}
         />
         <JoinConditionRightPart
           isComplete={isComplete}
@@ -157,7 +176,6 @@ export function JoinStep({
           color={color}
           readOnly={readOnly}
           onNewCondition={handleNewConditionClick}
-          onRemove={() => setIsAddingNewCondition(false)}
         />
       </Flex>
     );
@@ -211,7 +229,6 @@ interface JoinConditionRightPartProps {
   color: string;
   readOnly?: boolean;
   onNewCondition: () => void;
-  onRemove: () => void;
 }
 
 function JoinConditionRightPart({
@@ -220,17 +237,12 @@ function JoinConditionRightPart({
   color,
   readOnly,
   onNewCondition,
-  onRemove,
 }: JoinConditionRightPartProps) {
   if (!isLast) {
     return <ConditionUnionLabel>{t`and`}</ConditionUnionLabel>;
   }
 
-  if (readOnly) {
-    return null;
-  }
-
-  if (isComplete) {
+  if (!readOnly && isComplete) {
     return (
       <NotebookCellAdd
         color={color}
@@ -240,11 +252,7 @@ function JoinConditionRightPart({
     );
   }
 
-  return (
-    <RemoveConditionButton onClick={onRemove} aria-label={t`Remove condition`}>
-      <Icon name="close" size={12} />
-    </RemoveConditionButton>
-  );
+  return null;
 }
 
 interface JoinConditionProps {
@@ -254,9 +262,10 @@ interface JoinConditionProps {
   join?: Lib.Join;
   table: Lib.Joinable;
   readOnly?: boolean;
-  color: string;
+  canRemove: boolean;
   onChange: (condition: Lib.JoinConditionClause) => void;
   onChangeLHSColumn: (column: Lib.ColumnMetadata) => void;
+  onRemove: () => void;
 }
 
 function JoinCondition({
@@ -266,9 +275,10 @@ function JoinCondition({
   join,
   table,
   readOnly,
-  color,
+  canRemove,
   onChange,
   onChangeLHSColumn,
+  onRemove,
 }: JoinConditionProps) {
   const {
     lhsColumn,
@@ -286,6 +296,8 @@ function JoinCondition({
 
   const lhsColumnGroup = Lib.groupColumns(lhsColumns);
   const rhsColumnGroup = Lib.groupColumns(rhsColumns);
+
+  const isComplete = Boolean(lhsColumn && rhsColumn && operator);
 
   const handleOperatorChange = (operator: Lib.FilterOperator) => {
     const nextCondition = setOperator(operator);
@@ -312,38 +324,53 @@ function JoinCondition({
   };
 
   return (
-    <Flex gap="6px" align="center">
-      <JoinConditionColumnPicker
-        query={query}
-        stageIndex={stageIndex}
-        column={lhsColumn}
-        columnGroups={lhsColumnGroup}
-        label={t`Left column`}
-        isInitiallyVisible={!condition}
-        withDefaultBucketing={!rhsColumn}
-        readOnly={readOnly}
-        color={color}
-        onSelect={handleLHSColumnChange}
-      />
-      <JoinConditionOperatorPicker
-        query={query}
-        stageIndex={stageIndex}
-        operator={operator}
-        operators={operators}
-        onChange={handleOperatorChange}
-      />
-      <JoinConditionColumnPicker
-        query={query}
-        stageIndex={stageIndex}
-        column={rhsColumn}
-        columnGroups={rhsColumnGroup}
-        label={t`Right column`}
-        withDefaultBucketing={!lhsColumn}
-        readOnly={readOnly}
-        color={color}
-        popoverRef={rhsColumnPicker}
-        onSelect={handleRHSColumnChange}
-      />
-    </Flex>
+    <ConditionContainer isComplete={isComplete}>
+      <Flex align="center" gap="4px" mih="47px" p="4px">
+        <Box ml={!lhsColumn ? "4px" : undefined}>
+          <JoinConditionColumnPicker
+            query={query}
+            stageIndex={stageIndex}
+            column={lhsColumn}
+            columnGroups={lhsColumnGroup}
+            label={t`Left column`}
+            isInitiallyVisible={!condition}
+            withDefaultBucketing={!rhsColumn}
+            readOnly={readOnly}
+            onSelect={handleLHSColumnChange}
+          />
+        </Box>
+        <JoinConditionOperatorPicker
+          query={query}
+          stageIndex={stageIndex}
+          operator={operator}
+          operators={operators}
+          disabled={readOnly}
+          isConditionComplete={isComplete}
+          onChange={handleOperatorChange}
+        />
+        <Box mr={!rhsColumn ? "4px" : undefined}>
+          <JoinConditionColumnPicker
+            query={query}
+            stageIndex={stageIndex}
+            column={rhsColumn}
+            columnGroups={rhsColumnGroup}
+            label={t`Right column`}
+            withDefaultBucketing={!lhsColumn}
+            readOnly={readOnly}
+            popoverRef={rhsColumnPicker}
+            onSelect={handleRHSColumnChange}
+          />
+        </Box>
+      </Flex>
+      {!readOnly && canRemove && (
+        <RemoveConditionButton
+          onClick={onRemove}
+          isConditionComplete={isComplete}
+          aria-label={t`Remove condition`}
+        >
+          <Icon name="close" size={16} />
+        </RemoveConditionButton>
+      )}
+    </ConditionContainer>
   );
 }
