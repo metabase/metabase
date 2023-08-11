@@ -133,7 +133,7 @@ interface OwnProps {
   autocompleteResultsFn: (prefix: string) => Promise<AutocompleteItem[]>;
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
-  fetchQuestion: (questionId: CardId) => Promise<Question>;
+  fetchQuestion: (cardId: CardId) => Promise<Card>;
   runQuestionQuery: (opts?: {
     overrideWithCard?: Card;
     shouldUpdateUrl?: boolean;
@@ -460,7 +460,7 @@ export class NativeQueryEditor extends Component<
             const referencedQuestionIds =
               this.props.query.referencedQuestionIds();
             // The results of the API call are cached by ID
-            const referencedQuestions = await Promise.all(
+            const referencedCards = await Promise.all(
               referencedQuestionIds.map(id => this.props.fetchQuestion(id)),
             );
 
@@ -468,11 +468,10 @@ export class NativeQueryEditor extends Component<
             const lowerCasePrefix = prefix.toLowerCase();
             const isMatchForPrefix = (name: string) =>
               name.toLowerCase().includes(lowerCasePrefix);
-            const questionColumns: AutocompleteItem[] = referencedQuestions
+            const questionColumns: AutocompleteItem[] = referencedCards
               .filter(Boolean)
-              .flatMap(question =>
-                question
-                  .getResultMetadata()
+              .flatMap(card =>
+                card.result_metadata
                   .filter(columnMetadata =>
                     isMatchForPrefix(columnMetadata.name),
                   )
@@ -480,9 +479,7 @@ export class NativeQueryEditor extends Component<
                     columnMetadata =>
                       [
                         columnMetadata.name,
-                        `${question.displayName()} :${
-                          columnMetadata.base_type
-                        }`,
+                        `${card.name} :${columnMetadata.base_type}`,
                       ] as AutocompleteItem,
                   ),
               );
