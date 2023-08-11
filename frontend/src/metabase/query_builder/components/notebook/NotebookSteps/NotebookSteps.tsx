@@ -6,7 +6,11 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 
-import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
+import type {
+  NotebookStep as INotebookStep,
+  OpenSteps,
+  UpdateQueryOpts,
+} from "../types";
 import { getQuestionSteps } from "../lib/steps";
 import NotebookStep from "../NotebookStep";
 import { Container } from "./NotebookSteps.styled";
@@ -22,12 +26,23 @@ interface NotebookStepsProps {
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   const isNew = !readOnly && !question.table();
-  return isNew
-    ? {
-        "0:filter": true,
-        "0:summarize": true,
-      }
-    : {};
+
+  if (isNew) {
+    return {
+      "0:filter": true,
+      "0:summarize": true,
+    };
+  }
+
+  // We need to keep join steps open at all time for MLv1-MLv2 compat
+  // This should be reworked once all notebook clauses are using MLv2
+  // Learn more: https://github.com/metabase/metabase/pull/32911
+
+  const steps = getQuestionSteps(question, {});
+  const joinSteps = steps.filter(step => step.type === "join");
+  const openStepsEntries = joinSteps.map(step => [step.id, true]);
+
+  return Object.fromEntries(openStepsEntries);
 }
 
 function NotebookSteps({
@@ -63,7 +78,11 @@ function NotebookSteps({
   }, []);
 
   const handleQueryChange = useCallback(
-    async (step: INotebookStep, query: StructuredQuery | Query) => {
+    async (
+      step: INotebookStep,
+      query: StructuredQuery | Query,
+      { closeStep = true }: UpdateQueryOpts = {},
+    ) => {
       // Performs a query update with either metabase-lib v1 or v2
       // The StructuredQuery block is temporary and will be removed
       // once all the notebook steps are using metabase-lib v2
@@ -79,9 +98,11 @@ function NotebookSteps({
         await updateQuestion(cleanQuestion);
       }
 
-      // mark the step as "closed" since we can assume
-      // it's been added or removed by the updateQuery
-      handleStepClose(step.id);
+      if (closeStep) {
+        // mark the step as "closed" since we can assume
+        // it's been added or removed by the updateQuery
+        handleStepClose(step.id);
+      }
     },
     [question, updateQuestion, handleStepClose],
   );
@@ -95,8 +116,10 @@ function NotebookSteps({
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
-        const onChange = (query: StructuredQuery | Query) =>
-          handleQueryChange(step, query);
+        const onChange = (
+          query: StructuredQuery | Query,
+          opts?: UpdateQueryOpts,
+        ) => handleQueryChange(step, query, opts);
 
         return (
           <NotebookStep

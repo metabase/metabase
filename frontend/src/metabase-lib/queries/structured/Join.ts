@@ -17,7 +17,6 @@ import type {
 import {
   getDatetimeUnit,
   isDateTimeField,
-  isFieldLiteral,
 } from "metabase-lib/queries/utils/field-ref";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import Dimension, { FieldDimension } from "metabase-lib/Dimension";
@@ -653,24 +652,8 @@ export default class Join extends MBQLObjectClause {
   }
 
   isValid() {
-    if (!this.condition || !this.joinedTable() || this.hasGaps()) {
-      return false;
-    }
-
-    const dimensionOptions = this.parent().dimensionOptions();
-    const dimensions = [...this.parentDimensions(), ...this.joinDimensions()];
-    return dimensions.every(
-      dimension =>
-        dimensionOptions.hasDimension(dimension) ||
-        dimensionOptions.hasDimension(dimension.getMLv1CompatibleDimension()) ||
-        // For some GUI queries created in earlier versions of Metabase,
-        // some dimensions are described as field literals
-        // Usually it's [ "field", field_numeric_id, null|object ]
-        // And field literals look like [ "field", "PRODUCT_ID", {'base-type': 'type/Integer' } ]
-        // These literals are not present in dimension options, but still work
-        // As a workaround, we just skip field literals if they're not present in dimension options
-        isFieldLiteral(dimension.mbql()),
-    );
+    // MLv2 should ensure there's a valid condition, etc.
+    return !!this.parentTable() && !!this.joinedTable();
   }
 
   clean() {

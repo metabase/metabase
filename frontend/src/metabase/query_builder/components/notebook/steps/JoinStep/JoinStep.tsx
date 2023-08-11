@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text } from "metabase/ui";
@@ -33,12 +33,17 @@ export function JoinStep({
   color,
   readOnly,
   sourceQuestion,
-  updateQuery,
+  updateQuery: _updateQuery,
 }: NotebookStepUiComponentProps) {
   const { stageIndex, itemIndex } = step;
 
   const joins = Lib.joins(query, stageIndex);
   const join = typeof itemIndex === "number" ? joins[itemIndex] : undefined;
+
+  const updateQuery = useCallback(
+    (nextQuery: Lib.Query) => _updateQuery(nextQuery, { closeStep: false }),
+    [_updateQuery],
+  );
 
   const {
     strategy,
@@ -81,13 +86,12 @@ export function JoinStep({
   };
 
   const handleTableChange = (nextTable: Lib.Joinable) => {
-    const nextQuery = setTable(nextTable);
-
-    // If setTable returns a query,
-    // it means it was possible to automatically set the condition via FKs
+    setIsAddingNewCondition(false);
+    const { nextQuery, hasConditions } = setTable(nextTable);
     if (nextQuery) {
       updateQuery(nextQuery);
-    } else {
+    }
+    if (!hasConditions) {
       setIsAddingNewCondition(true);
     }
   };
