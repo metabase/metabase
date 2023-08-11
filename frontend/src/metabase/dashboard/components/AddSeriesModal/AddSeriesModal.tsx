@@ -147,6 +147,7 @@ export class AddSeriesModal extends Component<Props, State> {
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
               className="spread"
+              errorView={AddSeriesModalErrorView}
               rawSeries={series}
               showTitle
               isDashboard
@@ -199,7 +200,11 @@ export class AddSeriesModal extends Component<Props, State> {
   }
 }
 
-const AddSeriesModalErrorView = ({ icon, isDashboard, isSmall }: ErrorViewProps) => (
+const AddSeriesModalErrorView = ({
+  icon,
+  isDashboard,
+  isSmall,
+}: ErrorViewProps) => (
   <ErrorView
     error="Unable to combine these questions."
     icon={icon}
