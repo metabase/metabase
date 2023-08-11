@@ -11,16 +11,6 @@ visualizations.get = function (key) {
   );
 };
 
-export function getSensibleDisplays(data) {
-  return Array.from(visualizations)
-    .filter(
-      ([, viz]) =>
-        // don't rule out displays if there's no data
-        data.rows.length <= 1 || (viz.isSensible && viz.isSensible(data)),
-    )
-    .map(([display]) => display);
-}
-
 let defaultVisualization;
 export function setDefaultVisualization(visualization) {
   defaultVisualization = visualization;
@@ -47,6 +37,10 @@ export function registerVisualization(visualization) {
   for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
+}
+
+export function getVisualization(identifier) {
+  return visualizations.get(identifier);
 }
 
 export function getVisualizationRaw(series) {

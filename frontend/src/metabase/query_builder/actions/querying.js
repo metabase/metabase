@@ -6,9 +6,9 @@ import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
+import { getVisualization } from "metabase/visualizations";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSensibleDisplays } from "metabase/visualizations";
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
@@ -171,6 +171,32 @@ const loadStartUIControls = createThunkAction(
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
+export const maybeResetDisplay = (question, data, prevData) => {
+  const isScalarDisplay = ["scalar", "progress", "gauge"].includes(
+    question.display(),
+  );
+  const isScalarResult = data.rows.length === 1 && data.cols.length === 1;
+  if (!isScalarDisplay && isScalarResult && !question.displayIsLocked()) {
+    // if we have a 1x1 result, previously we didn't, and display is unlocked, switch display to scalar
+    return question.setDisplay("scalar");
+  }
+  const viz = getVisualization(question.display());
+  const wasSensible = prevData && viz.isSensible(prevData);
+  const isSensible = viz.isSensible(data);
+  const defaultDisplay = question.setDefaultDisplay().display();
+  if (isSensible && defaultDisplay === "table") {
+    // if the display is already sensible, don't switch to a table
+    // any sensible display is better than the default table display
+    return question;
+  }
+  if ((wasSensible && !isSensible) || !prevData) {
+    // if the display was sensible and now it's not, or there was no data to begin with, unlock and switch to the default display
+    return question.setDisplayIsLocked(false).setDefaultDisplay();
+  }
+  // otherwise switch to the default display (if it's not locked)
+  return question.setDefaultDisplay();
+};
+
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
@@ -189,12 +215,7 @@ export const queryCompleted = (question, queryResults) => {
         );
       }
 
-      question = question
-        .maybeResetDisplay(
-          getSensibleDisplays(data),
-          prevData && getSensibleDisplays(prevData),
-        )
-        .switchTableScalar(data);
+      question = maybeResetDisplay(question, data, prevData);
     }
 
     const card = question.card();
