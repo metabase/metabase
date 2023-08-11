@@ -6055,12 +6055,10 @@ msgstr "추가할 질문을 고르세요"
 msgid "You are editing this page"
 msgstr "이 페이지를 편집하고 있습니다"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "이 {0}을(를) 보기"
+msgstr "이 {0}을(를) 보기"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29355,4 +29353,9 @@ msgstr "잘못된 출력: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "잘못된 입력: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "{0}{1} 참조"
 

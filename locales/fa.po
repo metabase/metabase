@@ -6061,12 +6061,10 @@ msgstr "یک سوال برای اضافه کردن انتخاب کنید"
 msgid "You are editing this page"
 msgstr "شما در حال ویرایش این صفحه هستید"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "این را ببینید {0}"
+msgstr "این را ببینید {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29361,4 +29359,9 @@ msgstr "خروجی نامعتبر: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "ورودی نامعتبر: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "این را ببینید {0}{1}"
 

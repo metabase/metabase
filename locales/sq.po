@@ -6058,13 +6058,10 @@ msgstr "Zgjidh një pyetje për të shtuar"
 msgid "You are editing this page"
 msgstr "Ju jeni duke redaktuar këtë faqe"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Shiko këtë {0}"
-msgstr[1] "Shih këto {0}"
+msgstr "Shiko këtë {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29416,4 +29413,10 @@ msgstr "Dalje e pavlefshme: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Hyrja e pavlefshme: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Shiko këtë {0}{1}"
+msgstr[1] "Shihni këto {0}"
 

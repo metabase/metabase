@@ -6071,14 +6071,10 @@ msgstr "Izaberite pitanje koje želite da dodate"
 msgid "You are editing this page"
 msgstr "Trenutno editujete ovu stranicu"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Pogledajte {0}"
-msgstr[1] "Pogledajte {0} "
-msgstr[2] "Pogledajte {0}"
+msgstr "Pogledajte {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29494,4 +29490,11 @@ msgstr "Неважећи излаз: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Неважећи унос: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Погледајте ову {0}{1}"
+msgstr[1] "Види ове {0}"
+msgstr[2] "Види ове {0}"
 

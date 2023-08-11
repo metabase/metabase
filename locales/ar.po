@@ -6096,17 +6096,10 @@ msgstr "اختر سؤالًا لإضافته"
 msgid "You are editing this page"
 msgstr "أنت تقوم بتحرير هذه الصفحة"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "انظر هذه {0}"
-msgstr[1] "انظر هذا {0}"
-msgstr[2] "انظر هذين {0}"
-msgstr[3] "انظر هذه {0}"
-msgstr[4] "شاهد هذه {0}"
-msgstr[5] "شاهد هذه {0}"
+msgstr "انظر هذا {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29710,4 +29703,14 @@ msgstr "ناتج غير صالح: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "إدخال غير صالح: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "شاهد هذه {0}"
+msgstr[1] "شاهد هذا {0} {1}"
+msgstr[2] "شاهد هذه {0}"
+msgstr[3] "شاهد هذه {0}"
+msgstr[4] "شاهد هذه {0}"
+msgstr[5] "شاهد هذه {0}"
 

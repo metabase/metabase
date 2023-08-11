@@ -6052,14 +6052,10 @@ msgstr "Izvēlieties pievienojamo jautājumu"
 msgid "You are editing this page"
 msgstr "Jūs rediģējat šo lapu"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Skatīt šo {0}"
-msgstr[1] "Skatīt šo {0}"
-msgstr[2] "Skatīt šo {0}"
+msgstr "Skatīt šo {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29487,4 +29483,11 @@ msgstr "Nederīga izvade: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Nederīgs ievades ievads: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Skatieties šīs {0}"
+msgstr[1] "Skatiet šo {0}{1}"
+msgstr[2] "Skatieties šīs {0}"
 

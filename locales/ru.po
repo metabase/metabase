@@ -6082,15 +6082,10 @@ msgstr "Выберите запрос для добавления"
 msgid "You are editing this page"
 msgstr "Вы редактируете эту страницу"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Посмотреть {0}"
-msgstr[1] "Смотрите эти {0}"
-msgstr[2] "Смотрите эти {0}"
-msgstr[3] "Смотрите эти {0}"
+msgstr "Посмотреть {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29913,4 +29908,12 @@ msgstr "Недопустимый вывод: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Неверный ввод: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Посмотреть эту {0}{1}"
+msgstr[1] "Смотрите эти {0}"
+msgstr[2] "Смотрите эти {0}"
+msgstr[3] "Смотрите эти {0}"
 

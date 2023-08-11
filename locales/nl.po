@@ -6052,13 +6052,10 @@ msgstr "Kies een vraag om toe te voegen"
 msgid "You are editing this page"
 msgstr "Je ben bezig met het bewerken van deze pagina"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Bekijk dit {0}"
-msgstr[1] "Bekijk deze {0}"
+msgstr "Bekijk dit {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29417,4 +29414,10 @@ msgstr "Ongeldige uitvoer: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Ongeldige invoer: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Zie deze {0}{1}"
+msgstr[1] "Zie deze {0}"
 

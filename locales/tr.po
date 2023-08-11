@@ -6049,13 +6049,10 @@ msgstr "Eklenecek bir soru seçin"
 msgid "You are editing this page"
 msgstr "Bu sayfayı düzenliyorsunuz"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Bunu {0} görün"
-msgstr[1] "Bunlara bakın {0}"
+msgstr "Bunu {0} görün"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29414,4 +29411,10 @@ msgstr "Geçersiz çıktı: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Geçersiz girdi: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Bu {0}{1} bak"
+msgstr[1] "şu {0} bak"
 

@@ -6056,13 +6056,10 @@ msgstr "Escull una pregunta per afegir"
 msgid "You are editing this page"
 msgstr "Estàs editant aquesta pàgina"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Veure aquest {0}"
-msgstr[1] "Veure aquests {0}"
+msgstr "Veure aquest {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29407,4 +29404,10 @@ msgstr "Sortida no vàlida: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Entrada no vàlida: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Veure això {0}{1}"
+msgstr[1] "Vegeu aquests {0}"
 

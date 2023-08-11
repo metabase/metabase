@@ -6034,12 +6034,10 @@ msgstr "Chọn một câu hỏi để thêm vào"
 msgid "You are editing this page"
 msgstr "Bạn đang chỉnh sửa trang này"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Xem {0}"
+msgstr "Xem {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29326,4 +29324,9 @@ msgstr "Đầu ra không hợp lệ: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Đầu vào không hợp lệ: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Xem {0}{1} này"
 

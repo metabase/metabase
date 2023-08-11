@@ -6056,14 +6056,10 @@ msgstr "Vyberte otázku, kterou chcete přidat"
 msgid "You are editing this page"
 msgstr "Upravujete tuto stránku"
 
-#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:80
 #: frontend/src/metabase/reference/components/ReferenceHeader.jsx:44
 msgid "See this {0}"
-msgid_plural "See these {0}"
-msgstr[0] "Zobrazit {0}"
-msgstr[1] "Zobrazit {0}"
-msgstr[2] "Zobrazit {0}"
+msgstr "Zobrazit {0}"
 
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:117
 msgid "A subset of"
@@ -29476,4 +29472,11 @@ msgstr "Neplatný výstup: {0}"
 #: metabase/util/malli/fn.clj:112
 msgid "Invalid input: {0}"
 msgstr "Neplatný vstup: {0}"
+
+#: frontend/src/metabase/modes/components/drill/UnderlyingRecordsDrill.ts:24
+msgid "See this {0}{1}"
+msgid_plural "See these {0}"
+msgstr[0] "Viz tento {0}{1}"
+msgstr[1] "Viz tyto {0}"
+msgstr[2] "Viz tyto {0}"
 
