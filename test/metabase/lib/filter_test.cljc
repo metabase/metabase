@@ -8,12 +8,14 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]))
 
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (defn- test-clause [result-filter f & args]
   (is (=? result-filter
           (apply f args))))
 
 (deftest ^:parallel general-filter-clause-test
-  (let [q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
+  (let [q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
         venues-category-id-metadata (meta/field-metadata :venues :category-id)
         venues-name-metadata        (meta/field-metadata :venues :name)
         venues-latitude-metadata    (meta/field-metadata :venues :latitude)
@@ -107,7 +109,7 @@
 
 (deftest ^:parallel filter-test
   (let [q1                          (lib/query meta/metadata-provider (meta/table-metadata :categories))
-        q2                          (lib/saved-question-query meta/metadata-provider meta/saved-question)
+        q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))
         venues-category-id-metadata (meta/field-metadata :venues :category-id)
         original-filter
         [:between
