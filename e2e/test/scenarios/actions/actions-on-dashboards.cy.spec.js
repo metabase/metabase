@@ -1010,7 +1010,7 @@ describe(
         filterWidget().click();
         addWidgetStringFilter("5");
 
-        cy.findByRole("button", { name: actionName }).click();
+        cy.button(actionName).click();
 
         cy.wait("@executePrefetch");
 
@@ -1028,7 +1028,7 @@ describe(
         popover().find("input").first().type("{backspace}10");
         cy.button("Update filter").click();
 
-        cy.findByRole("button", { name: actionName }).click();
+        cy.button(actionName).click();
 
         cy.wait("@executePrefetch");
 
