@@ -56,7 +56,8 @@ To build and run with hot-reload:
 ```
 $ yarn build-hot 
 ```
-### Backend:
+
+### Backend  quick setup
 
 In order to run the backend, you'll need to build the drivers first, and then start the backend:
 ```
