@@ -57,7 +57,7 @@ export const argTypes = {
   },
 };
 
-<Meta title="Layovers/Menu" component={Menu} args={args} argTypes={argTypes} />
+<Meta title="Overlays/Menu" component={Menu} args={args} argTypes={argTypes} />
 
 # Menu
 
@@ -89,11 +89,12 @@ export const Default = args => (
         <Button>Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item>Text</Menu.Item>
-        <Menu.Item>Text</Menu.Item>
-        <Menu.Item>Text</Menu.Item>
-        <Menu.Item>Text</Menu.Item>
-        <Menu.Item>Text</Menu.Item>
+        <Menu.Item>Question</Menu.Item>
+        <Menu.Item>SQL query</Menu.Item>
+        <Menu.Item>Dashboard</Menu.Item>
+        <Menu.Item>Collection</Menu.Item>
+        <Menu.Item>Model</Menu.Item>
+        <Menu.Item>Action</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   </Flex>
@@ -110,13 +111,14 @@ export const WithRightSection = args => (
         <Button>Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item>Text</Menu.Item>
-        <Menu.Item>Text</Menu.Item>
-        <Menu.Item>Text</Menu.Item>
         <Menu.Item rightSection={<Text color="inherit">⌘K</Text>}>
-          Text
+          Question
         </Menu.Item>
-        <Menu.Item>Text</Menu.Item>
+        <Menu.Item>SQL query</Menu.Item>
+        <Menu.Item>Dashboard</Menu.Item>
+        <Menu.Item>Collection</Menu.Item>
+        <Menu.Item>Model</Menu.Item>
+        <Menu.Item>Action</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   </Flex>
@@ -133,11 +135,12 @@ export const WithIcon = args => (
         <Button>Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
+        <Menu.Item icon={<Icon name="insight" />}>Question</Menu.Item>
+        <Menu.Item icon={<Icon name="sql" />}>SQL query</Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Dashboard</Menu.Item>
+        <Menu.Item icon={<Icon name="folder" />}>Collection</Menu.Item>
+        <Menu.Item icon={<Icon name="model" />}>Model</Menu.Item>
+        <Menu.Item icon={<Icon name="bolt" />}>Action</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   </Flex>
@@ -154,19 +157,20 @@ export const WithLabelAndDivider = args => (
         <Button>Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Label>Label</Menu.Label>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
-        <Menu.Divider />
-        <Menu.Label>Label</Menu.Label>
+        <Menu.Label>Data</Menu.Label>
         <Menu.Item
-          icon={<Icon name="dashboard" />}
+          icon={<Icon name="insight" />}
           rightSection={<Text color="inherit">⌘K</Text>}
         >
-          Text
+          Question
         </Menu.Item>
-        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
+        <Menu.Item icon={<Icon name="sql" />}>SQL query</Menu.Item>
+        <Menu.Item icon={<Icon name="model" />}>Model</Menu.Item>
+        <Menu.Item icon={<Icon name="bolt" />}>Action</Menu.Item>
+        <Menu.Divider />
+        <Menu.Label>Reporting</Menu.Label>
+        <Menu.Item icon={<Icon name="dashboard" />}>Dashboard</Menu.Item>
+        <Menu.Item icon={<Icon name="folder" />}>Collection</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   </Flex>
