@@ -37,7 +37,9 @@ describe("issue 32231", () => {
 
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("POST", "/api/card/*/series").as("seriesQuery");
+  });
 
+  it("should show user-friendly error when combining series that cannot be visualized together (metabase#32231)", () => {
     cy.createNativeQuestion(incompleteQuestion);
     cy.createQuestionAndDashboard({ questionDetails: baseQuestion }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
@@ -57,9 +59,7 @@ describe("issue 32231", () => {
         visitDashboard(dashboard_id);
       },
     );
-  });
 
-  it("should show user-friendly error when combining series that cannot be visualized together (metabase#32231)", () => {
     cy.icon("pencil").click();
     cy.findByTestId("add-series-button").click({ force: true });
 
@@ -79,6 +79,48 @@ describe("issue 32231", () => {
 
       cy.get(".LineAreaBarChart").should("exist");
       cy.findByText("Unable to combine these questions").should("not.exist");
+    });
+  });
+
+  it("should show default visualization error message when the only series is incomplete", () => {
+    cy.createNativeQuestionAndDashboard({
+      questionDetails: incompleteQuestion,
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+        cards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 16,
+            size_y: 10,
+          },
+        ],
+      });
+
+      visitDashboard(dashboard_id);
+    });
+
+    cy.findByTestId("dashcard")
+      .findByText("Which fields do you want to use for the X and Y axes?")
+      .should("exist");
+
+    cy.icon("pencil").click();
+    cy.findByTestId("add-series-button").click({ force: true });
+
+    cy.get(".AddSeriesModal").within(() => {
+      cy.get(".LineAreaBarChart").should("not.exist");
+
+      cy.findByText(
+        "Cannot read properties of undefined (reading 'name')",
+      ).should("not.exist");
+
+      cy.findByText("Unable to combine these questions").should("not.exist");
+
+      cy.findByText(
+        "Which fields do you want to use for the X and Y axes?",
+      ).should("exist");
     });
   });
 });
