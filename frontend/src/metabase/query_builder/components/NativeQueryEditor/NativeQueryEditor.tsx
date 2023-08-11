@@ -657,7 +657,7 @@ export class NativeQueryEditor extends Component<
     const { query, setDatasetQuery } = this.props;
     if (query.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
-      if (this._editor && !this.props.readOnly) {
+      if (!this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor?.focus(), 50);
       }
