@@ -2,7 +2,7 @@
   "Misc test utils for Metabase lib."
   (:require
    [clojure.core.protocols]
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [is]]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.core :as lib]
