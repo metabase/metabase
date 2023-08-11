@@ -1,14 +1,30 @@
 import {
   editDashboard,
   getDashboardCard,
+  openQuestionsSidebar,
+  popover,
   restore,
+  saveDashboard,
+  setFilter,
   showDashboardCardActions,
+  sidebar,
   undo,
 } from "e2e/support/helpers";
 
+const filterDisplayName = "F";
 const questionDetails = {
-  name: "Q1",
-  native: { query: "SELECT  '42' as ANSWER" },
+  name: "Question 1",
+  native: {
+    query: "SELECT 42 [[+{{F}}]] as ANSWER",
+    "template-tags": {
+      F: {
+        type: "number",
+        name: "F",
+        id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+        "display-name": filterDisplayName,
+      },
+    },
+  },
 };
 
 describe("issue 12926", () => {
@@ -19,7 +35,7 @@ describe("issue 12926", () => {
 
   describe("card removal while query is in progress", () => {
     it("should stop the ongoing query when removing a card from a dashboard", () => {
-      slowDownQuery();
+      slowDownDashcardQuery();
 
       cy.createNativeQuestionAndDashboard({
         questionDetails,
@@ -37,7 +53,7 @@ describe("issue 12926", () => {
     });
 
     it("should re-fetch the query when doing undo on the removal", () => {
-      slowDownQuery();
+      slowDownDashcardQuery();
 
       cy.createNativeQuestionAndDashboard({
         questionDetails,
@@ -47,30 +63,71 @@ describe("issue 12926", () => {
 
       removeCard();
 
-      restoreQuery();
+      restoreDashcardQuery();
 
       undo();
 
-      cy.wait("@cardQueryRestored");
+      cy.wait("@dashcardQueryRestored");
 
       getDashboardCard().findByText("42");
     });
   });
+
+  describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
+    it("should stop the ongoing query", () => {
+      // this test requires the card to be manually added to the dashboard, as it requires the dashcard id to be negative
+      cy.createNativeQuestion(questionDetails);
+
+      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+        cy.visit(`/dashboard/${dashboardId}`);
+      });
+
+      editDashboard();
+
+      openQuestionsSidebar();
+      slowDownCardQuery();
+      sidebar().findByText(questionDetails.name).click();
+
+      setFilter("Number", "Equal to");
+      sidebar().findByText("No default").click();
+      popover().findByPlaceholderText("Enter a number").type(1);
+      popover().findByText("Add filter").click();
+
+      cy.window().then(win => {
+        cy.stub(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+      });
+
+      getDashboardCard().findByText("Select…").click();
+      popover().contains(filterDisplayName).eq(0).click();
+
+      saveDashboard();
+
+      cy.get("@xhrAbort").should("have.been.calledOnce");
+    });
+  });
 });
 
-function slowDownQuery() {
-  cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
+function slowDownCardQuery() {
+  cy.intercept("POST", "api/card/*/query", req => {
     req.on("response", res => {
-      res.setDelay(10000);
+      res.setDelay(300000);
     });
   }).as("cardQuerySlowed");
 }
 
-function restoreQuery() {
+function slowDownDashcardQuery() {
+  cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
+    req.on("response", res => {
+      res.setDelay(5000);
+    });
+  }).as("dashcardQuerySlowed");
+}
+
+function restoreDashcardQuery() {
   cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
     // calling req.continue() will make cypress skip all previously added intercepts
     req.continue();
-  }).as("cardQueryRestored");
+  }).as("dashcardQueryRestored");
 }
 
 function removeCard() {
