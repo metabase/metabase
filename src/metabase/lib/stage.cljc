@@ -276,7 +276,9 @@
     (->> (concat
            existing-columns
            ;; add implicitly joinable columns if desired
-           (when include-implicitly-joinable?
+           (when (and include-implicitly-joinable?
+                      (or (not (:source-card (lib.util/query-stage query stage-number)))
+                          (:include-implicitly-joinable-for-source-card? options)))
              (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          (mark-selected-breakouts query stage-number))))
 

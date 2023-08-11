@@ -505,7 +505,7 @@
         vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage options)
         ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
     (js/console.log "opts" options "vis" vis-columns "ret" ret-columns)
-    (to-array (lib.equality/mark-selected-columns vis-columns ret-columns))))
+    (to-array (lib.equality/mark-selected-columns vis-columns ret-columns {:keep-join? true}))))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
@@ -534,6 +534,70 @@
     ;; It's already a :metadata/column map
     column))
 
+(defn- match-many
+  "Returns a map from elements of `haystack` to indexes into `needles`.
+  `matchers` should be a collection of functions taking `needles` and `haystack`
+  and returning maps of the same structure."
+  [needles haystack matchers]
+  (if (and (seq needles) (seq haystack) (seq matchers))
+    (let [matcher (first matchers)
+          first-matches (matcher needles haystack)
+          remaining-haystack (remove first-matches haystack)
+          matched-needle-indexes (set (vals first-matches))
+          remaining-needles-with-index (into []
+                                             (keep-indexed (fn [i needle]
+                                                             (when-not (matched-needle-indexes i)
+                                                               [needle i])))
+                                             needles)
+          remaining-matches (match-many (mapv first remaining-needles-with-index)
+                                        remaining-haystack
+                                        (rest matchers))]
+      (into first-matches
+            (map (fn [[hay needle-index]]
+                   [hay (second (remaining-needles-with-index needle-index))]))
+            remaining-matches))
+    {}))
+
+(defn- find-closest-matches-for-refs-by-id-and-join
+  [field-refs columns]
+  (let [fields->columns
+        (zipmap (mapv (fn [column]
+                        (if (map? column)
+                          (let [join-alias (or (:join-alias column)
+                                               (:metabase.lib.join/join-alias column))
+                                opts (cond-> {} join-alias (assoc :join-alias join-alias))
+                                id-or-name (or (:id column) (:name column))]
+                            [:field opts id-or-name])
+                          column))
+                      columns)
+                columns)
+
+        matches
+        (lib.equality/find-closest-matches-for-refs field-refs (mapv key fields->columns) {:keep-join? true})]
+    (update-keys matches fields->columns)))
+
+(defn- find-closest-matches-for-refs-by-name
+  [a-query stage-number field-refs columns]
+  (let [new-columns->columns
+        (zipmap (mapv (fn [field-ref]
+                        (if (and (vector? field-ref)
+                                 (= (first field-ref) :field)
+                                 (integer? (field-ref 2)))
+                          (dissoc (lib.equality/resolve-field-id a-query stage-number (field-ref 2))
+                                  :id)
+                          field-ref))
+                      columns)
+                columns)
+
+        matches
+        (lib.equality/find-closest-matches-for-refs
+         a-query
+         stage-number
+         field-refs
+         (mapv key new-columns->columns)
+         {:keep-join? true})]
+    (update-keys matches new-columns->columns)))
+
 (defn ^:export find-column-indexes-from-legacy-refs
   "Given a list of columns (either JS `data.cols` or MLv2 `ColumnMetadata`) and a list of legacy refs, find each ref's
   corresponding index into the list of columns.
@@ -545,18 +609,26 @@
   (convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (let [columns       (mapv ->column-or-ref legacy-columns)
           field-refs    (map legacy-ref->pMBQL legacy-refs)
-          matches       (lib.equality/find-closest-matches-for-refs a-query stage-number field-refs columns)
           ;; matches is a map of columns to the corresponding index in field-refs.
+          matches       (match-many field-refs
+                                    columns
+                                    [;; first try matching by IDs keeping the join information
+                                     find-closest-matches-for-refs-by-id-and-join
+                                     ;; then try a normal match
+                                     #(lib.equality/find-closest-matches-for-refs a-query stage-number %1 %2 {:keep-join? true})
+                                     ;; then try matching field refs having a name instead of an ID
+                                     #(find-closest-matches-for-refs-by-name a-query stage-number %1 %2)])
           ;; We want to return a parallel list to field-refs, giving the index of the matching column (or -1).
           ;; First, map each column to its index (in the column list).
           column->index (into {} (for [index (range (count columns))]
-                                  [(nth columns index) index]))
+                                   [(nth columns index) index]))
           ;; And use that to map each match's ref-index to its column-index.
           by-index      (into {} (for [[column ref-index] matches]
-                                   [ref-index (column->index column)]))]
-      (->> (range (count legacy-refs))
-           (map #(by-index % -1))
-           to-array))))
+                                   [ref-index (column->index column)]))
+          res (->> (range (count legacy-refs))
+                   (map #(by-index % -1))
+                   to-array)]
+      res)))
 
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."

@@ -448,8 +448,8 @@
     ;; so we break ties by looking at the poisition of the field reference.
     (mbql.u.match/replace condition
       [op op-opts (lhs :guard lib.util/field-clause?) (rhs :guard lib.util/field-clause?)]
-      (let [lhs-alias (current-join-alias lhs)
-            rhs-alias (current-join-alias rhs)]
+      (let [lhs-alias (lib.join.util/current-join-alias lhs)
+            rhs-alias (lib.join.util/current-join-alias rhs)]
         (cond
           ;; no sides obviously belong to joined
           (not (or lhs-alias rhs-alias))
@@ -529,16 +529,6 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (not-empty (get (lib.util/query-stage query stage-number) :joins))))
-
-(mu/defn implicit-join-name :- ::lib.schema.common/non-blank-string
-  "Name for an implicit join against `table-name` via an FK field, e.g.
-
-    CATEGORIES__via__CATEGORY_ID
-
-  You should make sure this gets ran thru a unique-name fn."
-  [table-name           :- ::lib.schema.common/non-blank-string
-   source-field-id-name :- ::lib.schema.common/non-blank-string]
-  (lib.util/format "%s__via__%s" table-name source-field-id-name))
 
 (mu/defn join-conditions :- [:maybe ::lib.schema.join/conditions]
   "Get all join conditions for the given join"

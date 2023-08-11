@@ -15,7 +15,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.u.match]
    [metabase.util.malli :as mu]))
 
 (defmulti =
@@ -107,14 +106,6 @@
   (mbql.u.match/match-one a-ref
     [:field _opts (_id :guard pos-int?)]))
 
-(defn- named-refs-for-integer-refs [metadata-providerable refs]
-  (keep (fn [a-ref]
-          (mbql.u.match/match-one a-ref
-                                  [:field opts (field-id :guard integer?)]
-                                  (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-                                    [:field opts field-name])))
-        refs))
-
 (mu/defn resolve-field-id :- lib.metadata/ColumnMetadata
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available.
@@ -146,6 +137,9 @@
   Returns a map with `haystack` values as keys (whether they be columns or refs) and the corresponding index in
   `needles` as values. If for some `needle` there is no match, that index will not appear in the map.
 
+  `opts` can be used to influence the level of flexibility.
+    :keep-join? if truthy, the join information will not be ignored
+
   If you want to check that a single ref exists in a set of columns, call [[find-closest-matching-ref]] instead.
 
   This first looks for each matching ref with a strict comparison, then in increasingly less-strict comparisons until it
@@ -171,22 +165,27 @@
   broken (see [[metabase.lib.equality-test/index-of-closest-matching-metadata-test]]) and is slightly more performant,
   since it converts metadatas to refs in a lazy fashion."
   ([needles haystack]
-   (loop [xforms      [;; initial xform (applied before any tests) converts any columns into refs
-                       #(cond-> %
-                          (and (map? %)
-                               (= (:lib/type %) :metadata/column)) lib.ref/ref)
-                       ;; ignore irrelevant keys from :binning options
-                       #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
-                       ;; ignore namespaced keys
-                       update-options-remove-namespaced-keys
-                       ;; ignore type info
-                       #(lib.options/update-options % dissoc :base-type :effective-type)
-                       ;; ignore temporal-unit
-                       #(lib.options/update-options % dissoc :temporal-unit)
-                       ;; ignore binning
-                       #(lib.options/update-options % dissoc :binning)
-                       ;; ignore join alias
-                       #(lib.options/update-options % dissoc :join-alias)]
+   (find-closest-matches-for-refs needles haystack {}))
+  ([needles haystack opts]
+   (loop [xforms      (filter
+                       some?
+                       [ ;; initial xform (applied before any tests) converts any columns into refs
+                        #(cond-> %
+                           (and (map? %)
+                                (= (:lib/type %) :metadata/column)) lib.ref/ref)
+                        ;; ignore irrelevant keys from :binning options
+                        #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
+                        ;; ignore namespaced keys
+                        update-options-remove-namespaced-keys
+                        ;; ignore type info
+                        #(lib.options/update-options % dissoc :base-type :effective-type)
+                        ;; ignore temporal-unit
+                        #(lib.options/update-options % dissoc :temporal-unit)
+                        ;; ignore binning
+                        #(lib.options/update-options % dissoc :binning)
+                        ;; ignore join alias
+                        (when-not (:keep-join? opts)
+                          #(lib.options/update-options % dissoc :join-alias))])
           haystack-xf haystack
           ;; A map of needles left to find. Keys are indexes, values are the refs to find.
           ;; Any nil needles are dropped, but their indexes still count. This makes the 4-arity form easy to write.
@@ -210,25 +209,28 @@
          (recur (rest xforms)
                 xformed
                 (m/remove-keys finished-needles needles)
-                (merge results matches))))))
+                (merge matches results))))))
 
   ([query stage-number needles haystack]
+   (find-closest-matches-for-refs query stage-number needles haystack {}))
+  ([query stage-number needles haystack opts]
    ;; First run with the needles as given.
-   (let [matches       (find-closest-matches-for-refs needles haystack)
+   (let [matches       (find-closest-matches-for-refs needles haystack opts)
          ;; Those that were matched are replaced with nil.
          blank-matched (reduce #(assoc %1 %2 nil) (vec needles) (vals matches))
          ;; Those that remain are converted to [:field {} "name"] refs if possible, or nil if not.
          converted     (when (and query
                                   (some some? blank-matched))
                          (for [needle blank-matched
-                               :let [field-id (and needle (last needle))]]
-                           (when (and needle field-id (integer? field-id))
+                               :let [field-id (last needle)]]
+                           (when (integer? field-id)
                              (-> (resolve-field-id query stage-number field-id)
-                                 (dissoc :id) ; Remove any :id to force the ref to use the field name.
+                                 (dissoc :id ; Remove any :id to force the ref to use the field name.
+                                         :lib/desired-column-alias) ; Hack: resolving by name doesn't work if this is present
                                  lib.ref/ref))))]
      (if converted
        ;; If any of the needles were not found, and were converted successfully, try to match them again.
-       (merge matches (find-closest-matches-for-refs converted haystack))
+       (merge matches (find-closest-matches-for-refs converted haystack opts))
        ;; If we found them all, just return the matches.
        matches))))
 
@@ -239,12 +241,16 @@
   See [[find-closest-matches-for-refs]] for details of how the approximate matching works. (Where
   [[find-closest-matches-for-refs]] would return `{column 0}`, this returns just `column`.)"
   ([a-ref refs-or-cols]
-   (->> (find-closest-matches-for-refs [a-ref] refs-or-cols)
+   (find-closest-matching-ref a-ref refs-or-cols {}))
+  ([a-ref refs-or-cols opts]
+   (->> (find-closest-matches-for-refs [a-ref] refs-or-cols opts)
         keys
         first))
 
   ([query stage-number a-ref refs-or-cols]
-   (->> (find-closest-matches-for-refs query stage-number [a-ref] refs-or-cols)
+   (find-closest-matching-ref query stage-number a-ref refs-or-cols {}))
+  ([query stage-number a-ref refs-or-cols opts]
+   (->> (find-closest-matches-for-refs query stage-number [a-ref] refs-or-cols opts)
         keys
         first)))
 
@@ -320,9 +326,15 @@
     ;; return (visibile-columns query), but if any of those appear in `:fields`, mark then `:selected?`
     (mark-selected-columns (visible-columns query) (:fields stage))"
   ([cols selected-columns-or-refs]
-   (mark-selected-columns nil cols selected-columns-or-refs))
+   (mark-selected-columns cols selected-columns-or-refs {}))
 
-  ([metadata-providerable cols selected-columns-or-refs]
+  ([cols selected-columns-or-refs opts]
+   (mark-selected-columns nil -1 cols selected-columns-or-refs opts))
+
+  ([query stage-number cols selected-columns-or-refs]
+   (mark-selected-columns query stage-number cols selected-columns-or-refs {}))
+
+  ([query stage-number cols selected-columns-or-refs opts]
    (when (seq cols)
      (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
            matching-selected-cols (closest-matches-in-metadata metadata-providerable selected-refs cols)]

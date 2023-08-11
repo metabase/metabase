@@ -1,7 +1,6 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -70,8 +69,9 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [cols (let [stage (lib.util/query-stage query stage-number)]
-                (lib.metadata.calculation/visible-columns query stage-number stage))]
+   (let [cols (let [stage   (lib.util/query-stage query stage-number)
+                    options {:include-implicitly-joinable-for-source-card? false}]
+                (lib.metadata.calculation/visible-columns query stage-number stage options))]
      (when (seq cols)
        (let [matching (lib.equality/find-closest-matches-for-refs
                         query stage-number (breakouts query stage-number) cols)]

@@ -138,8 +138,9 @@
          aggregations       (not-empty (lib.aggregation/aggregations-metadata query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
-                              (let [stage (lib.util/query-stage query stage-number)]
-                                (lib.metadata.calculation/visible-columns query stage-number stage)))
+                              (let [stage (lib.util/query-stage query stage-number)
+                                    options {:include-implicitly-joinable-for-source-card? false}]
+                                (lib.metadata.calculation/visible-columns query stage-number stage options)))
          columns            (filter orderable-column? columns)
          existing-order-bys (->> (order-bys query stage-number)
                                  (map (fn [[_tag _opts expr]]

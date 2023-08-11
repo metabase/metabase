@@ -32,6 +32,7 @@
    [:ref :mbql.clause/field]])
 
 (def FieldOrPartialJoin
+  "A field or a partial join."
   [:or Field PartialJoin])
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
@@ -53,12 +54,22 @@
    field-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__%s" join-alias field-name))
 
+(mu/defn format-implicit-join-name :- ::lib.schema.common/non-blank-string
+  "Name for an implicit join against `table-name` via an FK field, e.g.
+
+    CATEGORIES__via__CATEGORY_ID
+
+  You should make sure this gets ran thru a unique-name fn."
+  [table-name           :- ::lib.schema.common/non-blank-string
+   source-field-id-name :- ::lib.schema.common/non-blank-string]
+  (lib.util/format "%s__via__%s" table-name source-field-id-name))
+
 (defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
     (when-let [table (lib.metadata/table-or-card query table-id)]
       (let [table-name           (:name table)
             source-field-id-name (:name (lib.metadata/field query fk-field-id))]
-        (implicit-join-name table-name source-field-id-name)))))
+        (format-implicit-join-name table-name source-field-id-name)))))
 
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string
   "Desired alias for a Field e.g.
@@ -76,4 +87,3 @@
                           (implicit-join-name query field-metadata))]
     (joined-field-desired-alias join-alias (:name field-metadata))
     (:name field-metadata)))
-

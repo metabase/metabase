@@ -452,17 +452,19 @@
    ReturnedColumnsOptions
    [:map
     ;; these all default to true
-    [:include-joined?              {:optional true} :boolean]
-    [:include-expressions?         {:optional true} :boolean]
-    [:include-implicitly-joinable? {:optional true} :boolean]]])
+    [:include-joined?                              {:optional true} :boolean]
+    [:include-expressions?                         {:optional true} :boolean]
+    [:include-implicitly-joinable?                 {:optional true} :boolean]
+    [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
 (mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
   []
   (merge
    (default-returned-columns-options)
-   {:include-joined?              true
-    :include-expressions?         true
-    :include-implicitly-joinable? true}))
+   {:include-joined?                              true
+    :include-expressions?                         true
+    :include-implicitly-joinable?                 true
+    :include-implicitly-joinable-for-source-card? true}))
 
 (defmulti visible-columns-method
   "Impl for [[visible-columns]].
