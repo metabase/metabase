@@ -1,27 +1,64 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Icon } from "metabase/core/components/Icon";
-import { Text, Flex } from "metabase/ui"
+import { Text, Flex } from "metabase/ui";
 import { Menu } from "./";
 
 export const args = {
   target: "click",
   position: "bottom",
   width: 200,
+  disabled: false,
+  openDelay: 0,
+  closeDelay: 100,
+  closeOnClickOutside: true,
+  closeOnEscape: true,
+  closeOnItemClick: true,
 };
 
 export const argTypes = {
   target: {
     options: ["click", "hover"],
-    control: { type: "select" }
+    control: { type: "select" },
   },
   position: {
-    options: ["bottom", "left", "right", "top", "bottom-end", "bottom-start", "left-end", "left-start", "right-end", "right-start", "top-end", "top-start"],
-    control: { type: "select" }
+    options: [
+      "bottom",
+      "left",
+      "right",
+      "top",
+      "bottom-end",
+      "bottom-start",
+      "left-end",
+      "left-start",
+      "right-end",
+      "right-start",
+      "top-end",
+      "top-start",
+    ],
+    control: { type: "select" },
   },
   width: {
-    control : { type: "number" }
-  }
-}
+    control: { type: "number" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  openDelay: {
+    control: { type: "number" },
+  },
+  closeDelay: {
+    control: { type: "number" },
+  },
+  closeOnClickOutside: {
+    control: { type: "boolean" },
+  },
+  closeOnEscape: {
+    control: { type: "boolean" },
+  },
+  closeOnItemClick: {
+    control: { type: "boolean" },
+  },
+};
 
 <Meta title="Layovers/Menu" component={Menu} args={args} argTypes={argTypes} />
 
@@ -48,7 +85,7 @@ N/A
 
 ## General
 
-export const Default = (args) => (
+export const Default = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -66,12 +103,10 @@ export const Default = (args) => (
 );
 
 <Canvas>
-  <Story name="Default">
-    {Default}
-  </Story>
+  <Story name="Default">{Default}</Story>
 </Canvas>
 
-export const WithRightSection = (args) => (
+export const WithRightSection = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -81,10 +116,7 @@ export const WithRightSection = (args) => (
         <Menu.Item>Text</Menu.Item>
         <Menu.Item>Text</Menu.Item>
         <Menu.Item>Text</Menu.Item>
-        <Menu.Item
-          rightSection={<Text>⌘K</Text>}>
-          Text
-        </Menu.Item>
+        <Menu.Item rightSection={<Text>⌘K</Text>}>Text</Menu.Item>
         <Menu.Item>Text</Menu.Item>
       </Menu.Dropdown>
     </Menu>
@@ -92,50 +124,31 @@ export const WithRightSection = (args) => (
 );
 
 <Canvas>
-  <Story name="WithRightSection">
-    {WithRightSection}
-  </Story>
+  <Story name="WithRightSection">{WithRightSection}</Story>
 </Canvas>
 
-export const WithIcon = (args) => (
+export const WithIcon = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
         <Text span>Toggle menu</Text>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   </Flex>
 );
 
 <Canvas>
-  <Story name="WithIcon">
-    {WithIcon}
-  </Story>
+  <Story name="WithIcon">{WithIcon}</Story>
 </Canvas>
 
-export const WithLabelAndDivider = (args) => (
+export const WithLabelAndDivider = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
@@ -143,36 +156,23 @@ export const WithLabelAndDivider = (args) => (
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>Label</Menu.Label>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
         <Menu.Divider />
         <Menu.Label>Label</Menu.Label>
         <Menu.Item
           icon={<Icon name="dashboard" />}
-          rightSection={<Text>⌘K</Text>}>
+          rightSection={<Text>⌘K</Text>}
+        >
           Text
         </Menu.Item>
-        <Menu.Item
-          icon={<Icon name="dashboard" />}>
-          Text
-        </Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Text</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   </Flex>
 );
 
 <Canvas>
-  <Story name="WithLabelAndDivider">
-    {WithLabelAndDivider}
-  </Story>
+  <Story name="WithLabelAndDivider">{WithLabelAndDivider}</Story>
 </Canvas>

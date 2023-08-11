@@ -1,3 +1,4 @@
+import { getStylesRef } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 
 import { color } from "metabase/lib/colors";
@@ -171,6 +172,7 @@ export const theme: MantineThemeOverride = {
     Menu: {
       defaultProps: {
         radius: "0.375rem",
+        shadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
       },
       styles(theme) {
         return {
@@ -183,15 +185,20 @@ export const theme: MantineThemeOverride = {
             fontWeight: 700,
             padding: "1rem",
 
-            "&:hover": {
+            "&:hover, &:focus": {
               color: theme.colors.brand[1],
               backgroundColor: theme.colors.brand[0],
+
+              [`& .${getStylesRef("itemRightSection")}`]: {
+                color: theme.colors.brand[1],
+              },
             },
           },
           itemIcon: {
             marginRight: "0.75rem",
           },
           itemRightSection: {
+            ref: getStylesRef("itemRightSection"),
             color: theme.colors.text[0],
             marginLeft: "0.75rem",
           },
