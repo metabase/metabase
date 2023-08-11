@@ -50,7 +50,9 @@ To build and run without watching changes:
 ```
 $ yarn build
 ```
+
 To build and run with hot-reload:
+
 ```
 $ yarn build-hot 
 ```
