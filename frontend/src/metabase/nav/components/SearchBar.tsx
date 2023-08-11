@@ -194,16 +194,19 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
           onKeyPress={handleInputKeyPress}
           ref={searchInput}
         />
-        <SearchFunnelButton
-          icon="filter"
-          data-is-filtered={isFiltered}
-          data-testid="search-bar-filter-button"
-          isFiltered={isFiltered}
-          onClick={e => {
-            e.stopPropagation();
-            setIsFilterModalOpen(true);
-          }}
-        />
+
+        {(!isSmallScreen() || isActive) && (
+          <SearchFunnelButton
+            icon="filter"
+            data-is-filtered={isFiltered}
+            data-testid="search-bar-filter-button"
+            isFiltered={isFiltered}
+            onClick={e => {
+              e.stopPropagation();
+              setIsFilterModalOpen(true);
+            }}
+          />
+        )}
         {isSmallScreen() && isActive && (
           <CloseSearchButton onClick={handleClickOnClose}>
             <Icon name="close" />
