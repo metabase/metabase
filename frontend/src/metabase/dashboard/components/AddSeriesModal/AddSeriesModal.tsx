@@ -13,8 +13,8 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
 
-import { ErrorView } from "./ErrorView";
 import { QuestionList } from "./QuestionList";
+import { VisualizationErrorView } from "./VisualizationErrorView";
 
 /**
  * The first series is the base dashcard.card.
@@ -145,7 +145,7 @@ export class AddSeriesModal extends Component<Props, State> {
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
               className="spread"
-              errorView={series.length > 1 ? ErrorView : undefined}
+              errorView={series.length > 1 ? VisualizationErrorView : undefined}
               rawSeries={series}
               showTitle
               isDashboard
