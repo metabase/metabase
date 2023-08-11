@@ -5,7 +5,7 @@ import {
   ErrorViewProps,
 } from "metabase/visualizations/components/Visualization";
 
-export const VisualizationErrorView = ({
+export const MultipleSeriesErrorView = ({
   icon,
   isDashboard,
   isSmall,
