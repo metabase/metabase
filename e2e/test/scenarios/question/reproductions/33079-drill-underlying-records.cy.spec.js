@@ -24,11 +24,11 @@ describe("issue 33079", () => {
 
   it("underlying records drill should work in a non-English locale (metabase#33079)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    cy.get(".dot").eq(0).click({ force: true });
+    cy.get(".dot").eq(1).click({ force: true });
     popover()
       .findByText(/Order/) // See these Orders
       .click();
     cy.wait("@dataset");
-    cy.findByTestId("question-row-count").should("contain", "1");
+    cy.findByTestId("question-row-count").should("contain", "19");
   });
 });
