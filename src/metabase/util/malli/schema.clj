@@ -9,8 +9,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.password :as u.password]
-   [schema.core :as s]))
+   [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
 
@@ -161,7 +160,7 @@
   "Schema for a valid Field for API usage."
   (mu/with-api-error-message
     [:fn (fn [k]
-           ((comp (complement (s/checker mbql.s/Field))
+           ((comp (mc/validator mbql.s/Field)
                   mbql.normalize/normalize-tokens) k))]
     (deferred-tru "value must an array with :field id-or-name and an options map")))
 

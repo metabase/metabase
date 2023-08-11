@@ -7,12 +7,12 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
    [metabase.models.params :as params]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(s/defn ^:private to-numeric :- s/Num
+(mu/defn ^:private to-numeric :- number?
   "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
   or arbitrary maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more
   sensical number format exception."
@@ -21,7 +21,7 @@
     (Double/parseDouble s)
     (Long/parseLong s)))
 
-(s/defn ^:private parse-param-value-for-type
+(mu/defn ^:private parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
@@ -44,7 +44,7 @@
     :else
     (to-numeric param-value)))
 
-(s/defn ^:private build-filter-clause :- (s/maybe mbql.s/Filter)
+(mu/defn ^:private build-filter-clause :- [:maybe mbql.s/Filter]
   [{param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     (params.ops/operator? param-type)

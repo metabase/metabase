@@ -3,8 +3,8 @@ import Button from "metabase/core/components/Button";
 import NewItemMenu from "metabase/containers/NewItemMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import { Collection } from "metabase-types/api";
+import { Text } from "metabase/ui";
 import {
-  EmptyStateDescription,
   EmptyStateIconBackground,
   EmptyStateIconForeground,
   EmptyStateRoot,
@@ -24,7 +24,9 @@ const CollectionEmptyState = ({
     <EmptyStateRoot data-testid="collection-empty-state">
       <CollectionEmptyIcon />
       <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
-      <EmptyStateDescription>{t`Use collections to organize and group dashboards and questions for your team or yourself`}</EmptyStateDescription>
+      <Text size="1rem" color="text.1" align="center" mb="1.5rem">
+        {t`Use collections to organize and group dashboards and questions for your team or yourself`}
+      </Text>
       {canWrite && (
         <NewItemMenu
           trigger={<Button icon="add">{t`Create a new…`}</Button>}

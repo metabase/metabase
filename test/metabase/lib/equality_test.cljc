@@ -3,10 +3,15 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
+   [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel untyped-map-test
   (testing "equal"
@@ -224,3 +229,36 @@
           [:field {} (meta/id :products :category)]
           [[:field {} "ID"]
            [:field {} "CATEGORY"]]))))
+
+(deftest ^:parallel find-closest-matching-ref-ignore-temporal-unit-test
+  (testing "Should find a matching ref ignoring :temporal-unit if needed (#32920)"
+    (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          needle   (-> (meta/field-metadata :orders :created-at)
+                       (lib/with-temporal-bucket :month)
+                       lib/ref)
+          haystack (mapv lib/ref (lib.metadata.calculation/returned-columns query))]
+      (is (=? [:field
+               {:lib/uuid       string?
+                :base-type      :type/DateTimeWithLocalTZ
+                :effective-type :type/DateTimeWithLocalTZ}
+               (meta/id :orders :created-at)]
+              (lib.equality/find-closest-matching-ref needle haystack))))))
+
+(deftest ^:parallel mark-selected-columns-ignore-temporal-unit-test
+  (testing "Mark columns selected even if they have a :temporal-unit (#32920)"
+    (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          cols     (lib.metadata.calculation/returned-columns query)
+          selected [(-> (meta/field-metadata :orders :created-at)
+                        (lib/with-temporal-bucket :month)
+                        lib/ref)]]
+      (is (= [{:name "ID",         :selected? false}
+              {:name "USER_ID",    :selected? false}
+              {:name "PRODUCT_ID", :selected? false}
+              {:name "SUBTOTAL",   :selected? false}
+              {:name "TAX",        :selected? false}
+              {:name "TOTAL",      :selected? false}
+              {:name "DISCOUNT",   :selected? false}
+              {:name "CREATED_AT", :selected? true}
+              {:name "QUANTITY",   :selected? false}]
+             (mapv #(select-keys % [:name :selected?])
+                   (lib.equality/mark-selected-columns query cols selected)))))))
