@@ -32,10 +32,15 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/operations-guide/installing-metabase.html).
 
 ## Contributing
-### Quick Setup: Dev environment
+
+## Quick Setup: Dev environment
 
 In order to spin up a development environment, you need to start the front end and the backend as follows:
-The following command will install the javascript dependencies: 
+
+### Frontend quick setup
+
+The following command will install the Javascript dependencies:
+
 ```
 $ yarn install
 ```
