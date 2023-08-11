@@ -46,6 +46,8 @@ const MODEL_DETAILS = {
   dataset: true,
 };
 
+const EXPECTED_UPDATED_VALUE = 999;
+
 const QUERY_ACTION = {
   name: "Query action",
   type: "query",
@@ -54,7 +56,7 @@ const QUERY_ACTION = {
   dataset_query: {
     type: "native",
     native: {
-      query: `UPDATE ${TEST_TABLE} SET PRICE = 999 WHERE ID = {{ ${ID_ACTION_PARAMETER.slug} }}`,
+      query: `UPDATE ${TEST_TABLE} SET PRICE = ${EXPECTED_UPDATED_VALUE} WHERE ID = {{ ${ID_ACTION_PARAMETER.slug} }}`,
       "template-tags": {
         [ID_ACTION_PARAMETER.slug]: {
           id: ID_ACTION_PARAMETER.id,
@@ -109,7 +111,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
     modal().button(QUERY_ACTION.name).click();
 
     cy.log("Assertions");
-    getDashboardCard().findByText("999").should("exist");
+    getDashboardCard().findByText(EXPECTED_UPDATED_VALUE).should("exist");
     modal().should("not.exist");
     undoToast().findByText("Query action ran successfully").should("exist");
   });
