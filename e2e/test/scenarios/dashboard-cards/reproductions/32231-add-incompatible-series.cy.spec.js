@@ -34,6 +34,8 @@ describe("issue 32231", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
+    cy.intercept("GET", "/api/card/*/series?limit=*").as("seriesQuery");
   });
 
   it("should show user-friendly error when combining series that cannot be visualized together (metabase#32231)", () => {
@@ -59,6 +61,7 @@ describe("issue 32231", () => {
 
     cy.icon("pencil").click();
     cy.findByTestId("add-series-button").click({ force: true });
+    cy.wait("@seriesQuery");
 
     cy.get(".AddSeriesModal").within(() => {
       cy.get(".LineAreaBarChart").should("exist");
@@ -105,6 +108,7 @@ describe("issue 32231", () => {
 
     cy.icon("pencil").click();
     cy.findByTestId("add-series-button").click({ force: true });
+    cy.wait("@seriesQuery");
 
     cy.get(".AddSeriesModal").within(() => {
       cy.get(".LineAreaBarChart").should("not.exist");
