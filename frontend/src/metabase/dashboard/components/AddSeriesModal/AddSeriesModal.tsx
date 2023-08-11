@@ -206,7 +206,7 @@ const AddSeriesModalErrorView = ({
   isSmall,
 }: ErrorViewProps) => (
   <ErrorView
-    error="Unable to combine these questions."
+    error="Unable to combine these questions"
     icon={icon}
     isDashboard={isDashboard}
     isSmall={isSmall}
