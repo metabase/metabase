@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]))
 
-(deftest check-sso-redirect-test
+(deftest ^:parallel check-sso-redirect-test
   (testing "check-sso-redirect properly validates redirect URIs"
     (are [uri] (sso-utils/check-sso-redirect uri)
       "/"
