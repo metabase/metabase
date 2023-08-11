@@ -49,10 +49,9 @@ const metadata = createMockMetadata({
   questions: [MODEL],
 });
 
-function getJoinedQuery() {
-  const query = createQuery({ metadata });
-
+function getJoinQueryHelpers(query: Lib.Query) {
   const table = Lib.tableOrCardMetadata(query, PRODUCTS_ID);
+
   const findLHSColumn = columnFinder(
     query,
     Lib.joinConditionLHSColumns(query, 0),
@@ -62,25 +61,58 @@ function getJoinedQuery() {
     Lib.joinConditionRHSColumns(query, 0, table),
   );
 
-  const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const productsId = findRHSColumn("PRODUCTS", "ID");
-
-  const operator = Lib.joinConditionOperators(query, 0).find(
+  const defaultOperator = Lib.joinConditionOperators(query, 0).find(
     operator => Lib.displayInfo(query, 0, operator).default,
   );
 
-  if (!operator) {
+  if (!defaultOperator) {
     throw new Error("No default operator found");
   }
 
+  return { table, defaultOperator, findLHSColumn, findRHSColumn };
+}
+
+function getJoinedQuery() {
+  const query = createQuery({ metadata });
+
+  const { table, defaultOperator, findLHSColumn, findRHSColumn } =
+    getJoinQueryHelpers(query);
+
+  const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
+  const productsId = findRHSColumn("PRODUCTS", "ID");
+
   const condition = Lib.joinConditionClause(
-    operator,
+    defaultOperator,
     ordersProductId,
     productsId,
   );
   const join = Lib.withJoinFields(Lib.joinClause(table, [condition]), "all");
 
   return Lib.join(query, 0, join);
+}
+
+function getJoinedQueryWithMultipleConditions() {
+  const query = getJoinedQuery();
+  const { defaultOperator, findLHSColumn, findRHSColumn } =
+    getJoinQueryHelpers(query);
+
+  const [currentJoin] = Lib.joins(query, 0);
+  const currentConditions = Lib.joinConditions(currentJoin);
+
+  const ordersCreatedAt = findLHSColumn("ORDERS", "CREATED_AT");
+  const productsCreatedAt = findRHSColumn("PRODUCTS", "CREATED_AT");
+
+  const condition = Lib.joinConditionClause(
+    defaultOperator,
+    ordersCreatedAt,
+    productsCreatedAt,
+  );
+  const nextJoin = Lib.withJoinConditions(currentJoin, [
+    ...currentConditions,
+    condition,
+  ]);
+
+  return Lib.replaceClause(query, 0, currentJoin, nextJoin);
 }
 
 function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
@@ -543,5 +575,147 @@ describe("Notebook Editor > Join Step", () => {
     });
   });
 
-  it.todo("multiple conditions");
+  describe("multiple conditions", () => {
+    it("should display a join correctly", () => {
+      setup(
+        createMockNotebookStep({
+          topLevelQuery: getJoinedQueryWithMultipleConditions(),
+        }),
+      );
+
+      expect(screen.getByLabelText("Left table")).toHaveTextContent("Orders");
+      expect(screen.getByLabelText("Right table")).toHaveTextContent(
+        "Products",
+      );
+
+      const firstCondition = screen.getByTestId("join-condition-0");
+      const secondCondition = screen.getByTestId("join-condition-1");
+
+      expect(
+        within(firstCondition).getByLabelText("Left column"),
+      ).toHaveTextContent("Product ID");
+      expect(
+        within(firstCondition).getByLabelText("Right column"),
+      ).toHaveTextContent("ID");
+      expect(
+        within(firstCondition).getByLabelText("Change operator"),
+      ).toHaveTextContent("=");
+
+      expect(
+        within(secondCondition).getByLabelText("Left column"),
+      ).toHaveTextContent("Created At");
+      expect(
+        within(secondCondition).getByLabelText("Right column"),
+      ).toHaveTextContent("Created At");
+      expect(
+        within(secondCondition).getByLabelText("Change operator"),
+      ).toHaveTextContent("=");
+    });
+
+    it("shouldn't allow to add a new condition until the previous one is completed", async () => {
+      setup();
+
+      expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByLabelText("Right table"));
+      const popover = await screen.findByTestId("popover");
+      userEvent.click(await within(popover).findByText("Reviews"));
+
+      expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
+
+      const lhsColumnPicker = await screen.findByLabelText("grid");
+      userEvent.click(within(lhsColumnPicker).getByText("Product ID"));
+      await waitFor(() =>
+        expect(screen.getByLabelText("Left column")).toHaveTextContent(
+          "Product ID",
+        ),
+      );
+
+      expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByLabelText("Right column"));
+      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
+      userEvent.click(within(rhsColumnPicker).getByText("Rating"));
+
+      expect(screen.getByLabelText("Add condition")).toBeInTheDocument();
+    });
+
+    it("should add a new condition", async () => {
+      const { getRecentJoin } = setup(
+        createMockNotebookStep({ topLevelQuery: getJoinedQuery() }),
+      );
+
+      userEvent.click(screen.getByLabelText("Add condition"));
+      const conditionContainer = screen.getByTestId("new-join-condition");
+
+      const lhsColumnPicker = await screen.findByLabelText("grid");
+      userEvent.click(within(lhsColumnPicker).getByText("Created At"));
+      await waitFor(() =>
+        expect(
+          within(conditionContainer).getByLabelText("Left column"),
+        ).toHaveTextContent("Created At"),
+      );
+
+      userEvent.click(
+        within(conditionContainer).getByLabelText("Right column"),
+      );
+      const [, rhsColumnPicker] = await screen.findAllByLabelText("grid");
+      userEvent.click(within(rhsColumnPicker).getByText("Created At"));
+
+      const { conditions } = getRecentJoin();
+      const [condition1, condition2] = conditions;
+
+      expect(condition1.lhsColumn.longDisplayName).toBe("Product ID");
+      expect(condition1.rhsColumn.longDisplayName).toBe("Products → ID");
+      expect(condition2.lhsColumn.longDisplayName).toBe("Created At: Month");
+      expect(condition2.rhsColumn.longDisplayName).toBe(
+        "Products → Created At: Month",
+      );
+    });
+
+    it("should remove an incomplete condition", async () => {
+      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+
+      userEvent.click(screen.getByLabelText("Add condition"));
+      let conditionContainer = screen.getByTestId("new-join-condition");
+
+      userEvent.click(
+        within(conditionContainer).getByLabelText("Remove condition"),
+      );
+
+      expect(
+        screen.queryByTestId("new-join-condition"),
+      ).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByLabelText("Add condition"));
+      conditionContainer = screen.getByTestId("new-join-condition");
+
+      const lhsColumnPicker = await screen.findByLabelText("grid");
+      userEvent.click(within(lhsColumnPicker).getByText("Created At"));
+      await waitFor(() =>
+        expect(
+          within(conditionContainer).getByLabelText("Left column"),
+        ).toHaveTextContent("Created At"),
+      );
+
+      userEvent.click(
+        within(conditionContainer).getByLabelText("Remove condition"),
+      );
+      expect(
+        screen.queryByTestId("new-join-condition"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shouldn't allow removing complete conditions", () => {
+      setup(
+        createMockNotebookStep({
+          topLevelQuery: getJoinedQueryWithMultipleConditions(),
+        }),
+      );
+
+      expect(
+        screen.queryByLabelText("Remove condition"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
