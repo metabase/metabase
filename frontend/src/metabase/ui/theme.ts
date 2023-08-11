@@ -150,11 +150,6 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
-    Text: {
-      defaultProps: {
-        color: "text.2",
-      },
-    },
     Anchor: {
       styles(theme) {
         return {
@@ -174,16 +169,19 @@ export const theme: MantineThemeOverride = {
       },
     },
     Menu: {
+      defaultProps: {
+        radius: "0.375rem",
+      },
       styles(theme) {
         return {
           dropdown: {
-            padding: "0.5rem",
+            padding: "0.75rem",
           },
           item: {
             color: theme.colors.text[2],
             fontSize: theme.fontSizes.md,
             fontWeight: 700,
-            padding: "0.5rem 1rem",
+            padding: "1rem",
 
             "&:hover": {
               color: theme.colors.brand[1],
@@ -191,14 +189,22 @@ export const theme: MantineThemeOverride = {
             },
           },
           itemIcon: {
-            marginRight: "0.5rem",
+            marginRight: "0.75rem",
+          },
+          itemRightSection: {
+            marginLeft: "0.75rem",
           },
           label: {
             color: theme.colors.text[0],
             fontSize: theme.fontSizes.md,
             fontWeight: 700,
+            padding: "0.375rem 1rem",
           },
           divider: {
+            marginTop: "0.5rem",
+            marginBottom: "0.5rem",
+            marginLeft: "1rem",
+            marginRight: "1rem",
             borderTopColor: theme.colors.border[0],
           },
         };
