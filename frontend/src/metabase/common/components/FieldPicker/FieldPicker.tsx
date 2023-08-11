@@ -10,7 +10,7 @@ interface FieldPickerProps {
   stageIndex: number;
   columns: Lib.ColumnMetadata[];
   "data-testid"?: string;
-  isColumnSelected?: (column: Lib.ColumnMetadata) => boolean;
+  isColumnSelected: (column: Lib.ColumnMetadata) => boolean;
   onToggle: (columnIndex: number, isSelected: boolean) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
@@ -23,8 +23,7 @@ export const FieldPicker = ({
   onToggle,
   onSelectAll,
   onSelectNone,
-  isColumnSelected = (column: Lib.ColumnMetadata) =>
-    !!Lib.displayInfo(query, stageIndex, column).selected,
+  isColumnSelected,
   ...props
 }: FieldPickerProps) => {
   const items = useMemo(

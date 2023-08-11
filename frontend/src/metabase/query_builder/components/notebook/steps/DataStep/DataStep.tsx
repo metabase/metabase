@@ -94,6 +94,9 @@ export const DataFieldsPicker = ({
     updateQuery(nextQuery);
   };
 
+  const checkColumnSelected = (column: Lib.ColumnMetadata) =>
+    !!Lib.displayInfo(query, stageIndex, column).selected;
+
   const handleSelectAll = () => {
     const nextQuery = Lib.withFields(query, stageIndex, []);
     updateQuery(nextQuery);
@@ -113,6 +116,7 @@ export const DataFieldsPicker = ({
         query={query}
         stageIndex={stageIndex}
         columns={columns}
+        isColumnSelected={checkColumnSelected}
         onToggle={handleToggle}
         onSelectAll={handleSelectAll}
         onSelectNone={handleSelectNone}
