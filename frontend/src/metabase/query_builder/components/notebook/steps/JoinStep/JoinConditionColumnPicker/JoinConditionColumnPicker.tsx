@@ -46,6 +46,7 @@ export function JoinConditionColumnPicker({
 
   return (
     <TippyPopoverWithTrigger
+      disabled={readOnly}
       isInitiallyVisible={isInitiallyVisible}
       renderTrigger={({ visible, onClick }) => (
         <ColumnNotebookCellItem
@@ -95,6 +96,7 @@ const ColumnNotebookCellItem = forwardRef<
       isOpen={isOpen}
       hasColumnSelected={hasColumnSelected}
       aria-label={label}
+      disabled={readOnly}
       readOnly={readOnly}
       onClick={onClick}
       ref={ref}

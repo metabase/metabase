@@ -14,6 +14,7 @@ interface JoinStrategyPickerProps {
   query: Lib.Query;
   stageIndex: number;
   strategy: Lib.JoinStrategy;
+  readOnly?: boolean;
   onChange: (strategy: Lib.JoinStrategy) => void;
 }
 
@@ -21,6 +22,7 @@ export function JoinStrategyPicker({
   query,
   stageIndex,
   strategy: currentStrategy,
+  readOnly = false,
   onChange,
 }: JoinStrategyPickerProps) {
   const items = useMemo(
@@ -41,8 +43,13 @@ export function JoinStrategyPicker({
 
   return (
     <TippyPopoverWithTrigger
+      disabled={readOnly}
       renderTrigger={({ onClick }) => (
-        <IconButtonWrapper onClick={onClick} aria-label={t`Change join type`}>
+        <IconButtonWrapper
+          onClick={onClick}
+          disabled={readOnly}
+          aria-label={t`Change join type`}
+        >
           <JoinStrategyIcon
             name={currentStrategyIcon}
             tooltip={t`Change join type`}
