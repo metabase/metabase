@@ -79,7 +79,7 @@
                       mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
-              (binding [copy/*allow-loading-h2-databases* true]
+              (binding [copy/*copy-h2-database-details* true]
                 (load-from-h2/load-from-h2! h2-fixture-db-file))
               (t2/insert! Setting {:key "nocrypt", :value "unencrypted value"})
               (t2/insert! Setting {:key "settings-last-updated", :value original-timestamp})

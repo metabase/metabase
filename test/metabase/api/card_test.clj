@@ -54,6 +54,7 @@
    [metabase.upload :as upload]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -972,13 +973,13 @@
           (is (some? (create-card! :crowberto 200))))
         (testing "non-admin should get an error"
           (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-            (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
-                          :query          (s/eq (mt/obj->json->obj query))
-                          :required-perms [perms/PathSchema]
-                          :actual-perms   [perms/PathSchema]
-                          :trace          [s/Any]
-                          s/Keyword       s/Any}
-                         (create-card! :rasta 403)))))))))
+            (is (malli= [:map
+                         [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
+                         [:query          [:= {} (mt/obj->json->obj query)]]
+                         [:required-perms [:sequential perms/PathSchema]]
+                         [:actual-perms   [:sequential perms/PathSchema]]
+                         [:trace          [:sequential :any]]]
+                        (create-card! :rasta 403)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
@@ -1499,13 +1500,13 @@
 
             (testing "should *not* be allowed to update query"
               (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-                (is (schema= {:message        (s/eq "You cannot save this Question because you do not have permissions to run its query.")
-                              :query          (s/eq (mt/obj->json->obj (mt/mbql-query users)))
-                              :required-perms [perms/PathSchema]
-                              :actual-perms   [perms/PathSchema]
-                              :trace          [s/Any]
-                              s/Keyword       s/Any}
-                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
+                (is (malli= [:map
+                             [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
+                             [:query          [:= {} (mt/obj->json->obj (mt/mbql-query users))]]
+                             [:required-perms [:sequential perms/PathSchema]]
+                             [:actual-perms   [:sequential perms/PathSchema]]
+                             [:trace          [:sequential :any]]]
+                            (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
                 (is (= (mt/mbql-query checkins)
                        (t2/select-one-fn :dataset_query :model/Card :id card-id)))))
@@ -2659,44 +2660,46 @@
   (testing "getting values"
     (with-card-param-values-fixtures [{:keys [card param-keys]}]
       (testing "GET /api/card/:card-id/params/:param-key/values"
-        (is (=? {:values          ["Brite Spot Family Restaurant"
-                                   "Red Medicine"
-                                   "Stout Burgers & Beers"
-                                   "The Apple Pan"
-                                   "Wurstküche"]
+        (is (=? {:values          [["Brite Spot Family Restaurant"]
+                                   ["Red Medicine"]
+                                   ["Stout Burgers & Beers"]
+                                   ["The Apple Pan"]
+                                   ["Wurstküche"]]
                  :has_more_values false}
                 (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys))))))
 
       (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-        (is (= {:values          ["Red Medicine"]
+        (is (= {:values          [["Red Medicine"]]
                 :has_more_values false}
                (mt/user-http-request :rasta :get 200 (param-values-url card (:card param-keys) "red")))))))
 
   (testing "fallback to field-values"
-    (with-redefs [api.card/mapping->field-values (constantly "field-values")]
-      (testing "if value-field not found in source card"
-        (mt/with-temp* [:model/Card [{source-card-id :id}]
-                        :model/Card [card
-                                     {:parameters [{:id                   "abc"
-                                                    :type                 "category"
-                                                    :name                 "CATEGORY"
-                                                    :values_source_type   "card"
-                                                    :values_source_config {:card_id     source-card-id
-                                                                           :value_field (mt/$ids $venues.name)}}]}]]
-          (let [url (param-values-url card "abc")]
-            (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))
+    (let [mock-default-result {:values          [["field-values"]]
+                               :has_more_values false}]
+      (with-redefs [api.card/mapping->field-values (constantly mock-default-result)]
+        (testing "if value-field not found in source card"
+          (mt/with-temp* [:model/Card [{source-card-id :id}]
+                          :model/Card [card
+                                       {:parameters [{:id                   "abc"
+                                                      :type                 "category"
+                                                      :name                 "CATEGORY"
+                                                      :values_source_type   "card"
+                                                      :values_source_config {:card_id     source-card-id
+                                                                             :value_field (mt/$ids $venues.name)}}]}]]
+            (let [url (param-values-url card "abc")]
+              (is (= mock-default-result (mt/user-http-request :rasta :get 200 url))))))
 
-      (testing "if card is archived"
-        (mt/with-temp* [:model/Card [{source-card-id :id} {:archived true}]
-                        :model/Card [card
-                                     {:parameters [{:id                   "abc"
-                                                    :type                 "category"
-                                                    :name                 "CATEGORY"
-                                                    :values_source_type   "card"
-                                                    :values_source_config {:card_id     source-card-id
-                                                                           :value_field (mt/$ids $venues.name)}}]}]]
-          (let [url (param-values-url card "abc")]
-            (is (= "field-values" (mt/user-http-request :rasta :get 200 url))))))))
+        (testing "if card is archived"
+          (mt/with-temp* [:model/Card [{source-card-id :id} {:archived true}]
+                          :model/Card [card
+                                       {:parameters [{:id                   "abc"
+                                                      :type                 "category"
+                                                      :name                 "CATEGORY"
+                                                      :values_source_type   "card"
+                                                      :values_source_config {:card_id     source-card-id
+                                                                             :value_field (mt/$ids $venues.name)}}]}]]
+            (let [url (param-values-url card "abc")]
+              (is (= mock-default-result (mt/user-http-request :rasta :get 200 url)))))))))
 
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -2795,7 +2798,7 @@
                                        :slug   "ID"}]}]
       (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
         (is (= :type/Name
-               (t2/select-one-fn :semantic_type :model/Field (metabase.test/id :venues :name)))
+               (t2/select-one-fn :semantic_type :model/Field (mt/id :venues :name)))
             "venues.name has semantic_type=type/Name, so it will be searched")
         (testing "without search query"
           (mt/let-url [url (param-values-url card param-key)]
@@ -2812,7 +2815,7 @@
   (with-card-param-values-fixtures [{:keys [card param-keys]}]
     (testing "we could get the values"
       (is (= {:has_more_values false,
-              :values          ["African" "American" "Asian"]}
+              :values          [["African"] ["American"] ["Asian"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list param-keys)))))
 
@@ -2823,7 +2826,7 @@
 
     (testing "we could search the values"
       (is (= {:has_more_values false,
-              :values          ["African"]}
+              :values          [["African"]]}
              (mt/user-http-request :rasta :get 200
                                    (param-values-url card (:static-list param-keys) "af"))))
 

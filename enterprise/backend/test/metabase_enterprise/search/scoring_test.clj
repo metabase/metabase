@@ -121,7 +121,7 @@
              (-> (scoring/top-results
                   results
                   1
-                  (map #(metabase.search.scoring/score-and-result search-string %)))
+                  (map #(scoring/score-and-result search-string %)))
                  first
                  :name))))))
 

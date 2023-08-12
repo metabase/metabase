@@ -6,14 +6,11 @@ import _ from "underscore";
 import { getIcon, render, screen } from "__support__/ui";
 
 import {
-  createMockActionDashboardCard,
   createMockActionParameter,
-  createMockDashboard,
   createMockFieldSettings,
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
-import { ActionsApi } from "metabase/services";
 
 import ActionParametersInputForm, {
   ActionParametersInputFormProps,
@@ -50,27 +47,15 @@ const mockAction = createMockQueryAction({
   },
 });
 
-const dashboard = createMockDashboard({ id: 123 });
-
-const dashcard = createMockActionDashboardCard({ id: 456, action: mockAction });
-
 const defaultProps: ActionParametersInputFormProps = {
   action: mockAction,
   mappedParameters: [],
-  fetchInitialValues: undefined,
-  shouldPrefetch: false,
+  prefetchesInitialValues: false,
   initialValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
   onSubmit: jest.fn().mockResolvedValue({ success: true }),
 };
-
-const fetchInitialValues = () =>
-  ActionsApi.prefetchDashcardValues({
-    dashboardId: dashboard.id,
-    dashcardId: dashcard.id,
-    parameters: JSON.stringify({}),
-  }).catch(_.noop);
 
 function setup(options?: Partial<ActionParametersInputModalProps>) {
   render(<ActionParametersInputForm {...defaultProps} {...options} />);
@@ -79,6 +64,7 @@ function setup(options?: Partial<ActionParametersInputModalProps>) {
 async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
   render(
     <ActionParametersInputModal
+      showEmptyState={false}
       title="Test Modal"
       onClose={_.noop}
       {...defaultProps}
@@ -162,59 +148,6 @@ describe("Actions > ActionParametersInputForm", () => {
     );
   });
 
-  it("should fetch and load existing values from API for implicit update actions", async () => {
-    setupPrefetch();
-
-    const idParameter = createMockActionParameter({ id: "id" });
-
-    const parameter1 = createMockActionParameter({
-      id: "parameter_1",
-      type: "type/Text",
-      "display-name": "Parameter 1",
-    });
-
-    const parameter2 = createMockActionParameter({
-      id: "parameter_2",
-      type: "type/Text",
-      "display-name": "Parameter 2",
-    });
-
-    await setup({
-      action: createMockImplicitQueryAction({
-        type: "implicit",
-        kind: "row/update",
-        parameters: [idParameter, parameter1, parameter2],
-      }),
-      mappedParameters: [idParameter],
-      initialValues: {
-        id: 888,
-      },
-      fetchInitialValues,
-      shouldPrefetch: true,
-    });
-
-    await waitFor(async () => {
-      expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno");
-    });
-
-    await waitFor(async () => {
-      expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos");
-    });
-  });
-
-  it("should show a warning if an implicit update action does not have a linked ID", async () => {
-    await setup({
-      action: createMockImplicitQueryAction({
-        type: "implicit",
-        kind: "row/update",
-      }),
-      initialValues: {},
-      shouldPrefetch: true,
-    });
-
-    expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
-  });
-
   it('should change the submit button label to "delete" for an implicit delete action', async () => {
     await setup({
       action: createMockImplicitQueryAction({
@@ -238,8 +171,7 @@ describe("Actions > ActionParametersInputForm", () => {
       initialValues: {
         id: 888,
       },
-      fetchInitialValues,
-      shouldPrefetch: true,
+      prefetchesInitialValues: true,
     });
 
     expect(

@@ -18,7 +18,7 @@ const setupEmbedding = async (opts?: SetupOpts) => {
 };
 
 describe("SettingsEditor", () => {
-  it("should allow to configure the origin for full-app embedding", async () => {
+  it("should allow to configure the origin for interactive embedding", async () => {
     await setupEmbedding({
       settings: [
         createMockSettingDefinition({ key: "enable-embedding" }),
@@ -30,8 +30,8 @@ describe("SettingsEditor", () => {
     });
 
     userEvent.click(screen.getByText("Embedding"));
-    userEvent.click(screen.getByText("Full-app embedding"));
-    expect(screen.getByText("Full-app embedding")).toBeInTheDocument();
+    userEvent.click(screen.getByText("Interactive embedding"));
+    expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
     expect(screen.getByText("Authorized origins")).toBeInTheDocument();
     expect(
       screen.queryByText(/some of our paid plans/),

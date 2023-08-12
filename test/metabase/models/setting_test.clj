@@ -1082,7 +1082,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [metabase.models.setting/in-test? (constantly false)]
+  (with-redefs [setting/in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all

@@ -112,7 +112,8 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   flex-direction: row;
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
-  z-index: 3;
+  /* z-index should be higher than in dashcards */
+  z-index: 4;
   position: sticky;
   top: 0;
   left: 0;

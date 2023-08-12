@@ -393,12 +393,9 @@
   [field-clause]
   field-clause)
 
-(defmethod lib.ref/ref-method :metadata/column
-  [{source :lib/source, :as metadata}]
-  (case source
-    :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
-    :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
-    (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
+(defn- column-metadata->field-ref
+  [metadata]
+  (let [inherited-column? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))
           options           (merge {:lib/uuid       (str (random-uuid))
                                     :base-type      (:base-type metadata)
                                     :effective-type (column-metadata-effective-type metadata)}
@@ -412,7 +409,22 @@
                                      {:source-field source-field-id}))]
       [:field options (if inherited-column?
                         (or (:lib/desired-column-alias metadata) (:name metadata))
-                        (or (:id metadata) (:name metadata)))])))
+                        (or (:id metadata) (:name metadata)))]))
+
+(defmethod lib.ref/ref-method :metadata/column
+  [{source :lib/source, :as metadata}]
+  (case source
+    :source/aggregations (lib.aggregation/column-metadata->aggregation-ref metadata)
+    :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
+    ;; :source/breakouts hides the true origin of the column. Since it's impossible to
+    ;; break out by aggregation references at the current stage, we only have to check
+    ;; if we break out by an expression reference. :expression-name is only set for
+    ;; expression references, so if it's set, we have to generate an expression ref,
+    ;; otherwise we generate a normal field ref.
+    :source/breakouts    (if (contains? metadata :lib/expression-name)
+                           (lib.expression/column-metadata->expression-ref metadata)
+                           (column-metadata->field-ref metadata))
+    (column-metadata->field-ref metadata)))
 
 (defn- expression-refs
   "Create refs for all the expressions in a stage of a query."

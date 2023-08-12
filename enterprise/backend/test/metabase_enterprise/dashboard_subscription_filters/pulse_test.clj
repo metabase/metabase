@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.dashboard-subscription-filters.pulse
+(ns ^:mb/once metabase-enterprise.dashboard-subscription-filters.pulse-test
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings.premium-features-test :as premium-features-test]

@@ -14,7 +14,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -45,6 +45,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -187,7 +188,7 @@
 (defn- saved-cards-virtual-db-metadata [question-type & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
-             :id                 mbql.s/saved-questions-virtual-database-id
+             :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
       include-tables? (assoc :tables (cards-virtual-tables question-type
@@ -290,7 +291,7 @@
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
-(s/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
+(mu/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
   {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
    :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
 
@@ -417,7 +418,7 @@
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+(api/defendpoint-schema GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
@@ -1084,7 +1085,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET ["/:virtual-db/schemas"
-                             :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+                             :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
@@ -1095,7 +1096,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET ["/:virtual-db/datasets"
-                             :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+                             :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
@@ -1156,7 +1157,7 @@
                               (schema-tables-list id "" include_hidden include_editable_data_model)))))
 
 (api/defendpoint GET ["/:virtual-db/schema/:schema"
-                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+                      :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [schema]
   (when (public-settings/enable-nested-queries)
@@ -1168,7 +1169,7 @@
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
-                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+                      :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
   [schema]
   (when (public-settings/enable-nested-queries)
@@ -1178,17 +1179,5 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
-
-(api/defendpoint GET "/db-ids-with-deprecated-drivers"
-  "Return a list of database IDs using currently deprecated drivers."
-  []
-  (map
-   u/the-id
-   (filter
-    (fn [database]
-      (let [info (driver.u/available-drivers-info)
-            d    (driver.u/database->driver database)]
-        (some? (:superseded-by (d info)))))
-    (t2/select-pks-set Database))))
 
 (api/define-routes)

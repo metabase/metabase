@@ -340,7 +340,7 @@
     (doseq [changed-setting (into (set (keys d1))
                                   (set (keys d2)))]
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
-        (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
+        (on-change (core/get old changed-setting) (core/get new changed-setting))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -506,7 +506,7 @@
                       ;; If another thread is populating the cache for the first time, we will have a nil value for
                       ;; the cache and must hit the db while the cache populates
                       (db-value)
-                      (clojure.core/get cache (setting-name setting-definition-or-name))))))]
+                      (core/get cache (setting-name setting-definition-or-name))))))]
         (not-empty v)))))
 
 (defn default-value
@@ -858,7 +858,7 @@
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
       ;; eastwood complains about (setting-name @registered-settings) for shadowing the function `setting-name`
-      (when-let [registered-setting (clojure.core/get @registered-settings setting-name)]
+      (when-let [registered-setting (core/get @registered-settings setting-name)]
         (when (not= setting-ns (:namespace registered-setting))
           (throw (ex-info (tru "Setting {0} already registered in {1}" setting-name (:namespace registered-setting))
                           {:existing-setting (dissoc registered-setting :on-change :getter :setter)}))))

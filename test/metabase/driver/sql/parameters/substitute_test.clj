@@ -15,6 +15,7 @@
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]))
 
@@ -301,10 +302,13 @@
     (let [query ["SELECT * FROM " (param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
              (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})})))))
-  (testing "Referenced card query substitution removes trailing semicolons and whitespace #28218"
+  (testing "Referenced card query substitution removes comments (#29168), trailing semicolons (#28218) and whitespace"
     (let [query ["SELECT * FROM " (param "#123")]]
-      (is (= ["SELECT * FROM (SELECT ';' `x`)" []]
-             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT ';' `x`; ; "})}))))))
+      (are [nested expected] (= [(str "SELECT * FROM (" expected ")") []]
+                                (substitute query {"#123" (params/map->ReferencedCardQuery
+                                                           {:card-id 123, :query nested})}))
+        "SELECT ';' `x`; ; "             "SELECT ';' `x`"
+        "SELECT * FROM table\n-- remark" "SELECT * FROM table\n-- remark\n"))))
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 
@@ -553,96 +557,97 @@
          (dissoc :template-tags)))))
 
 (deftest expand-field-filters-test
-  (testing "dimension (date/single)"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
-            :params [#t "2016-07-01"]}
-           (expand-with-field-filter-param {:type :date/single, :value "2016-07-01"}))))
-  (testing "dimension (date/range)"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-07-01"
-                     #t "2016-08-01"]}
-           (expand-with-field-filter-param {:type :date/range, :value "2016-07-01~2016-08-01"}))))
-  (testing "dimension (date/month-year)"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-07-01"
-                     #t "2016-07-31"]}
-           (expand-with-field-filter-param {:type :date/month-year, :value "2016-07"}))))
-  (testing "dimension (date/quarter-year)"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-01-01"
-                     #t "2016-03-31"]}
-           (expand-with-field-filter-param {:type :date/quarter-year, :value "Q1-2016"}))))
-  (testing "dimension (date/all-options, before)"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?;"
-            :params [#t "2016-07-01"]}
-           (expand-with-field-filter-param {:type :date/all-options, :value "~2016-07-01"}))))
-  (testing "dimension (date/all-options, after)"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" > ?;"
-            :params [#t "2016-07-01"]}
-           (expand-with-field-filter-param {:type :date/all-options, :value "2016-07-01~"}))))
-  (testing "relative date — 'yesterday'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
-            :params [#t "2016-06-06"]}
-           (expand-with-field-filter-param {:type :date/range, :value "yesterday"}))))
-  (testing "relative date — 'past7days'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-05-31"
-                     #t "2016-06-06"]}
-           (expand-with-field-filter-param {:type :date/range, :value "past7days"}))))
-  (testing "relative date — 'past30days'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-05-08"
-                     #t "2016-06-06"]}
-           (expand-with-field-filter-param {:type :date/range, :value "past30days"}))))
-  (testing "relative date — 'thisweek'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-06-05"
-                     #t "2016-06-11"]}
-           (expand-with-field-filter-param {:type :date/range, :value "thisweek"}))))
-  (testing "relative date — 'thismonth'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-06-01"
-                     #t "2016-06-30"]}
-           (expand-with-field-filter-param {:type :date/range, :value "thismonth"}))))
-  (testing "relative date — 'thisyear'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-01-01"
-                     #t "2016-12-31"]}
-           (expand-with-field-filter-param {:type :date/range, :value "thisyear"}))))
-  (testing "relative date — 'lastweek'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-05-29"
-                     #t "2016-06-04"]}
-           (expand-with-field-filter-param {:type :date/range, :value "lastweek"}))))
-  (testing "relative date — 'lastmonth'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2016-05-01"
-                     #t "2016-05-31"]}
-           (expand-with-field-filter-param {:type :date/range, :value "lastmonth"}))))
-  (testing "relative date — 'lastyear'"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
-            :params [#t "2015-01-01"
-                     #t "2015-12-31"]}
-           (expand-with-field-filter-param {:type :date/range, :value "lastyear"}))))
-  (testing "dimension with no value — just replace with an always true clause (e.g. 'WHERE 1 = 1')"
-    (is (= {:query  "SELECT * FROM checkins WHERE 1 = 1;"
-            :params []}
-           (expand-with-field-filter-param nil))))
-  (testing "dimension — number — should get parsed to Number"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = 100;"
-            :params []}
-           (expand-with-field-filter-param {:type :number, :value "100"}))))
-  (testing "dimension — text"
-    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
-            :params ["100"]}
-           (expand-with-field-filter-param {:type :text, :value "100"}))))
-  (testing (str "*OPTIONAL* Field Filter params should not get replaced with 1 = 1 if the param is not present "
-                "(#5541, #9489). *Optional params should be emitted entirely.")
-    (is (= {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
-            :params []}
-           (expand-with-field-filter-param
-            "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
-            nil)))))
+  (mt/with-temporary-setting-values [start-of-week :sunday]
+    (testing "dimension (date/single)"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
+              :params [#t "2016-07-01"]}
+             (expand-with-field-filter-param {:type :date/single, :value "2016-07-01"}))))
+    (testing "dimension (date/range)"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-07-01"
+                       #t "2016-08-01"]}
+             (expand-with-field-filter-param {:type :date/range, :value "2016-07-01~2016-08-01"}))))
+    (testing "dimension (date/month-year)"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-07-01"
+                       #t "2016-07-31"]}
+             (expand-with-field-filter-param {:type :date/month-year, :value "2016-07"}))))
+    (testing "dimension (date/quarter-year)"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-01-01"
+                       #t "2016-03-31"]}
+             (expand-with-field-filter-param {:type :date/quarter-year, :value "Q1-2016"}))))
+    (testing "dimension (date/all-options, before)"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?;"
+              :params [#t "2016-07-01"]}
+             (expand-with-field-filter-param {:type :date/all-options, :value "~2016-07-01"}))))
+    (testing "dimension (date/all-options, after)"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" > ?;"
+              :params [#t "2016-07-01"]}
+             (expand-with-field-filter-param {:type :date/all-options, :value "2016-07-01~"}))))
+    (testing "relative date — 'yesterday'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
+              :params [#t "2016-06-06"]}
+             (expand-with-field-filter-param {:type :date/range, :value "yesterday"}))))
+    (testing "relative date — 'past7days'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-05-31"
+                       #t "2016-06-06"]}
+             (expand-with-field-filter-param {:type :date/range, :value "past7days"}))))
+    (testing "relative date — 'past30days'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-05-08"
+                       #t "2016-06-06"]}
+             (expand-with-field-filter-param {:type :date/range, :value "past30days"}))))
+    (testing "relative date — 'thisweek'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-06-05"
+                       #t "2016-06-11"]}
+             (expand-with-field-filter-param {:type :date/range, :value "thisweek"}))))
+    (testing "relative date — 'thismonth'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-06-01"
+                       #t "2016-06-30"]}
+             (expand-with-field-filter-param {:type :date/range, :value "thismonth"}))))
+    (testing "relative date — 'thisyear'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-01-01"
+                       #t "2016-12-31"]}
+             (expand-with-field-filter-param {:type :date/range, :value "thisyear"}))))
+    (testing "relative date — 'lastweek'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-05-29"
+                       #t "2016-06-04"]}
+             (expand-with-field-filter-param {:type :date/range, :value "lastweek"}))))
+    (testing "relative date — 'lastmonth'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2016-05-01"
+                       #t "2016-05-31"]}
+             (expand-with-field-filter-param {:type :date/range, :value "lastmonth"}))))
+    (testing "relative date — 'lastyear'"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ?;"
+              :params [#t "2015-01-01"
+                       #t "2015-12-31"]}
+             (expand-with-field-filter-param {:type :date/range, :value "lastyear"}))))
+    (testing "dimension with no value — just replace with an always true clause (e.g. 'WHERE 1 = 1')"
+      (is (= {:query  "SELECT * FROM checkins WHERE 1 = 1;"
+              :params []}
+             (expand-with-field-filter-param nil))))
+    (testing "dimension — number — should get parsed to Number"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = 100;"
+              :params []}
+             (expand-with-field-filter-param {:type :number, :value "100"}))))
+    (testing "dimension — text"
+      (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
+              :params ["100"]}
+             (expand-with-field-filter-param {:type :text, :value "100"}))))
+    (testing (str "*OPTIONAL* Field Filter params should not get replaced with 1 = 1 if the param is not present "
+                  "(#5541, #9489). *Optional params should be emitted entirely.")
+      (is (= {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
+              :params []}
+             (expand-with-field-filter-param
+              "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
+              nil))))))
 
 (deftest expand-exclude-field-filter-test
   (mt/with-driver :h2
@@ -882,7 +887,7 @@
 
 (deftest field-filter-defaults-test
   (testing (str "Make sure we can specify the type of a default value for a \"Dimension\" (Field Filter) by setting "
-                "the `:widget-type` key. Check that it works correctly with relative dates...")
+                "the `:widget-type` key. Check that it works correctly with relative dates")
     (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
                          "FROM CHECKINS "
                          "WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN ? AND ? "
@@ -899,8 +904,10 @@
                                                                 :type         :dimension
                                                                 :dimension    [:field (mt/id :checkins :date) nil]
                                                                 :default      "past5days"
-                                                                :widget-type  :date/all-options}}}})))))
-  (testing "Check that it works with absolute dates as well"
+                                                                :widget-type  :date/all-options}}}}))))))
+
+(deftest ^:parallel field-filter-defaults-absolute-datetimes-test
+  (testing "Check that default values for Field Filters work with absolute dates"
     (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
                          "FROM CHECKINS "
                          "WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ? "

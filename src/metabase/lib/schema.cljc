@@ -22,6 +22,7 @@
    [metabase.lib.schema.ref :as ref]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util.malli.registry :as mr]))
 
@@ -57,21 +58,14 @@
 (mr/def ::fields
   [:sequential {:min 1} [:ref ::ref/ref]])
 
-(mr/def ::filters
-  [:sequential {:min 1} [:ref ::expression/boolean]])
+;; this is just for enabling round-tripping filters with named segment references
+(mr/def ::filterable
+  [:or
+   [:ref ::expression/boolean]
+   [:tuple [:= :segment] :map :string]])
 
-(defn- matching-locations
-  [form pred]
-  (loop [stack [[[] form]], matches []]
-    (if-let [[loc form :as top] (peek stack)]
-      (let [stack (pop stack)
-            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
-        (cond
-          (pred form)        (recur stack                                  (conj matches top))
-          (map? form)        (recur (onto-stack form)                      matches)
-          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
-          :else              (recur stack                                  matches)))
-      matches)))
+(mr/def ::filters
+  [:sequential {:min 1} ::filterable])
 
 (defn- bad-ref-clause? [ref-type valid-ids x]
   (and (vector? x)
@@ -80,13 +74,13 @@
 
 (defn- expression-ref-errors-for-stage [stage]
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
-    (matching-locations (dissoc stage :joins :lib/stage-metadata)
-                        #(bad-ref-clause? :expression expression-names %))))
+    (mbql.u/matching-locations (dissoc stage :joins :lib/stage-metadata)
+                               #(bad-ref-clause? :expression expression-names %))))
 
 (defn- aggregation-ref-errors-for-stage [stage]
   (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
-    (matching-locations (dissoc stage :joins :lib/stage-metadata)
-                        #(bad-ref-clause? :aggregation uuids %))))
+    (mbql.u/matching-locations (dissoc stage :joins :lib/stage-metadata)
+                               #(bad-ref-clause? :aggregation uuids %))))
 
 (defn ref-errors-for-stage
   "Return the locations and the clauses with dangling expression or aggregation references.
@@ -215,14 +209,15 @@
       (set (join-aliases-in-stage stage)))))
 
 (defn- join-ref-error-for-stages [stages]
-  (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
-    (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
-      (or
-       (mbql.match/match-one (dissoc stage :joins :stage/metadata)
-         [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
-         (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias)))
-       (when (seq more)
-         (recur visible-join-alias? (inc i) more))))))
+  (when (sequential? stages)
+    (loop [visible-join-alias? (constantly false), i 0, [stage & more] stages]
+      (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
+        (or
+         (mbql.match/match-one (dissoc stage :joins :stage/metadata)
+           [:field ({:join-alias (join-alias :guard (complement visible-join-alias?))} :guard :join-alias) _id-or-name]
+           (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias)))
+         (when (seq more)
+           (recur visible-join-alias? (inc i) more)))))))
 
 (def ^:private ^{:arglists '([stages])} ref-error-for-stages
   "Like [[ref-error-for-stage]], but validate references in the context of a sequence of several stages; for validations

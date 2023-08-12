@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
@@ -113,7 +114,7 @@
   ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! new-user))
 
-(s/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
+(mu/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
   [first-name last-name email]
   (or (t2/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
       (google-auth-create-new-user! {:first_name first-name

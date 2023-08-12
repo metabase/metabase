@@ -4,6 +4,7 @@
    [metabase.models.collection :as collection]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -16,6 +17,23 @@
             (let [resp (mt/user-http-request :crowberto :post 200 "collection" {:name            "An official collection"
                                                                                 :color           "#000000"
                                                                                 :authority_level "official"})]
+              (is (malli= [:map
+                           [:description       :nil]
+                           [:archived          [:= false]]
+                           [:slug              [:= "an_official_collection"]]
+                           [:color             [:= "#000000"]]
+                           [:name              [:= "An official collection"]]
+                           [:personal_owner_id :nil]
+                           [:authority_level   [:= "official"]]
+                           [:id                :int]
+                           [:location          [:= "/"]]
+                           [:entity_id         [:maybe ms/NanoIdString]]
+                           [:namespace         :nil]
+                           [:created_at        [:fn
+                                                {:error/message "instance of java.time.temporal.Temporal"}
+                                                (partial instance? java.time.temporal.Temporal)]]
+                           [:type              [:maybe :string]]]
+                          resp))
               (is (= :official (t2/select-one-fn :authority_level :model/Collection (:id resp))))))
 
           (testing "but the type has to be valid"

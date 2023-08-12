@@ -401,6 +401,12 @@
         :when              (and a-metric (= (:table-id a-metric) table-id))]
     a-metric))
 
+(defn- segments [metadata table-id]
+  (for [[_id segment-delay] (some-> metadata :segments deref)
+        :let               [a-segment (some-> segment-delay deref)]
+        :when              (and a-segment (= (:table-id a-segment) table-id))]
+    a-segment))
+
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id unparsed-metadata]
@@ -416,6 +422,7 @@
       (tables   [_this]            (tables   metadata database-id))
       (fields   [_this table-id]   (fields   metadata table-id))
       (metrics  [_this table-id]   (metrics  metadata table-id))
+      (segments [_this table-id]   (segments metadata table-id))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.

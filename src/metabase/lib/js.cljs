@@ -733,6 +733,12 @@
   [a-query]
   (clj->js (lib.core/native-extras a-query)))
 
+(defn ^:export available-segments
+  "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
+  metadata objects."
+  [a-query]
+  (to-array (lib.core/available-segments a-query)))
+
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."
@@ -755,8 +761,8 @@
 (defn ^:export join-lhs-display-name
   "Get the display name for whatever we are joining. For an existing join, pass in the join clause. When constructing a
   join, pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata."
-  [a-query stage-number join-or-joinable]
-  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable))
+  [a-query stage-number join-or-joinable condition-lhs-column-or-nil]
+  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-column-or-nil))
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with a query. If the query is using
@@ -769,3 +775,11 @@
   `:database-id`; if this is not available for one reason or another this will return `nil`."
   [a-query]
   (lib.core/database-id a-query))
+
+(defn ^:export join-condition-update-temporal-bucketing
+  "Updates the provided join-condition's fields' temporal-bucketing option.
+   Must be called on a standard join condition as per [[standard-join-condition?]].
+   This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
+   Fields that do not support the provided option will be ignored."
+  [a-query stage-number join-condition bucketing-option]
+  (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))

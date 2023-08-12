@@ -40,3 +40,14 @@ export function fieldableColumns(
 export function legacyFieldRef(column: ColumnMetadata): FieldReference {
   return ML.legacy_field_ref(column);
 }
+
+/**
+ * This should only be used to get field IDs when it is necessary, like interacting with backend API parameters.
+ * For most purposes, you should be use columnMetadata objects and not access field ids directly
+ *
+ * @param {ColumnMetadata} column
+ * @returns {number|null} field id
+ */
+export function _fieldId(column: ColumnMetadata): number | null {
+  return ML.field_id(column);
+}

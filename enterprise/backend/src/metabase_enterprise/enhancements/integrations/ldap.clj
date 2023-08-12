@@ -11,6 +11,7 @@
     :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -73,7 +74,9 @@
                           (ldap-group-membership-filter))]
       (assoc user-info :attributes (syncable-user-attributes result)))))
 
-(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
+;;; for some reason the `:clj-kondo/ignore` doesn't work inside of [[defenterprise-schema]]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf:Schema User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   :feature :sso-ldap
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo

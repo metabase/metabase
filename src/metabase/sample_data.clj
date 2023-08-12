@@ -72,11 +72,13 @@
     (try
       (log/info (trs "Loading sample database"))
       (let [details (try-to-extract-sample-database!)]
+        (log/debug "Syncing Sample Database...")
         (sync/sync-database! (first (t2/insert-returning-instances! Database
                                                                     :name      sample-database-name
                                                                     :details   details
                                                                     :engine    :h2
                                                                     :is_sample true))))
+      (log/debug "Finished adding Sample Database.")
       (catch Throwable e
         (log/error e (trs "Failed to load sample database"))))))
 

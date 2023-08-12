@@ -5,6 +5,8 @@ import {
   createMockCard,
   createMockDashboardOrderedCard,
   createMockActionDashboardCard,
+  createMockHeadingDashboardCard,
+  createMockTextDashboardCard,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
@@ -77,18 +79,33 @@ describe("DashCardParameterMapper", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render an informative error state for text cards", () => {
-    const textCard = createMockCard({ dataset_query: {}, display: "text" });
+  it("should render an informative parameter mapping state for text cards without variables", () => {
+    const textCard = createMockTextDashboardCard({ size_x: 3, size_y: 3 });
     setup({
-      card: textCard,
-      dashcard: createMockDashboardOrderedCard({
-        visualization_settings: {
-          virtual_card: textCard,
-        },
-      }),
+      dashcard: textCard,
     });
     expect(getIcon("info")).toBeInTheDocument();
-    expect(screen.getByLabelText(/in text cards/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You can connect widgets to {{variables}} in text cards.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should render an informative parameter mapping state for heading cards without variables", () => {
+    const headingCard = createMockHeadingDashboardCard({
+      size_x: 3,
+      size_y: 3,
+    });
+    setup({
+      dashcard: headingCard,
+    });
+    expect(getIcon("info")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You can connect widgets to {{variables}} in heading cards.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("should render a different header for virtual cards", () => {

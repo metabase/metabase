@@ -10,10 +10,10 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -247,6 +247,12 @@
   [_database]
   [:name :engine])
 
+(defsetting persist-models-enabled
+  (deferred-tru "Whether to enable models persistence for a specific Database.")
+  :default        false
+  :type           :boolean
+  :visibility     :public
+  :database-local :only)
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -300,15 +306,20 @@
                                      (sensitive-fields-for-db db)))))]
      (update db :settings (fn [settings]
                             (when (map? settings)
-                              (into {}
-                                    (filter (fn [[setting-name _v]]
-                                              (try
-                                               (setting/can-read-setting? setting-name
-                                                                          (setting/current-user-readable-visibilities))
-                                               (catch Throwable _e
-                                                 true)))
-                                            settings))))))
-
+                              (m/filter-keys
+                               (fn [setting-name]
+                                 (try
+                                  (setting/can-read-setting? setting-name
+                                                             (setting/current-user-readable-visibilities))
+                                  (catch Throwable e
+                                    ;; there is an known issue with exception is ignored when render API response (#32822)
+                                    ;; If you see this error, you probably need to define a setting for `setting-name`.
+                                    ;; But ideally, we should resovle the above issue, and remove this try/catch
+                                    (log/error e (format "Error checking the readability of %s setting. The setting will be hidden in API response." setting-name))
+                                    ;; let's be conservative and hide it by defaults, if you want to see it,
+                                    ;; you need to define it :)
+                                    false)))
+                               settings)))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------

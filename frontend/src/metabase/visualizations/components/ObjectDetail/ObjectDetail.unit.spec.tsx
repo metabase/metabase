@@ -1,4 +1,10 @@
-import { render, screen, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitForElementToBeRemoved,
+  within,
+} from "@testing-library/react";
+import fetchMock from "fetch-mock";
 
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
@@ -236,6 +242,10 @@ const actionsFromDatabaseWithDisabledActions = actions.map(action => ({
   ...action,
   database_id: databaseWithActionsDisabled.id,
 }));
+
+function setupPrefetch() {
+  fetchMock.get(`path:/api/action/${implicitUpdateAction.id}/execute`, {});
+}
 
 function setup(
   options: Partial<ObjectDetailProps> &
@@ -516,6 +526,7 @@ describe("Object Detail", () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
+    setupPrefetch();
 
     expect(
       screen.queryByTestId("action-execute-modal"),
@@ -524,6 +535,13 @@ describe("Object Detail", () => {
     const action = await findActionInActionMenu(implicitUpdateAction);
     expect(action).toBeInTheDocument();
     action?.click();
+
+    expect(
+      screen.queryByText("Choose a record to update"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();

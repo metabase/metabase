@@ -177,7 +177,7 @@
               (is (some? fv-id)))
             (t2/update! FieldValues fv-id
                         {:values new-values})
-            (with-redefs [field-values/distinct-values (constantly {:values          new-values
+            (with-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
                                                                     :has_more_values false})]
               (is (= (map vector new-values)
                      (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))))

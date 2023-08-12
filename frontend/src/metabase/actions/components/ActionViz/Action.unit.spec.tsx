@@ -128,6 +128,7 @@ async function setup({
   const card = checkNotNull(dashcard.card);
 
   if (getActionIsEnabledInDatabase(dashcard)) {
+    fetchMock.get(ACTION_EXEC_MOCK_PATH, {});
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
 
     // for ActionCreator modal (action edit modal)

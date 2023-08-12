@@ -208,6 +208,7 @@ export function DashCardCardParameterMapper({
 
   const mappingInfoText =
     {
+      heading: t`You can connect widgets to {{variables}} in heading cards.`,
       text: t`You can connect widgets to {{variables}} in text cards.`,
       link: t`You cannot connect variables to link cards.`,
       action: t`Open this card's action settings to connect variables`,

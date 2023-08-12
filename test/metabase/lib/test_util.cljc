@@ -2,16 +2,18 @@
   "Misc test utils for Metabase lib."
   (:require
    [clojure.core.protocols]
-   [clojure.test :refer [is]]
+   [clojure.test :refer [deftest is]]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.composed-provider
-    :as lib.metadata.composed-provider]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols :as metadata.protocols]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -89,12 +91,13 @@
     (metrics  [_this table-id]   (for [metric metrics
                                        :when (= (:table-id metric) table-id)]
                                    (assoc metric :lib/type :metadata/metric)))
+    (segments [_this table-id]   (for [segment segments
+                                       :when (= (:table-id segment) table-id)]
+                                   (assoc segment :lib/type :metadata/segment)))
 
     clojure.core.protocols/Datafiable
     (datafy [_this]
       (list `mock-metadata-provider m))))
-
-
 
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
@@ -223,69 +226,78 @@
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
 
-(def categories-mbql-card
-  "Mock MBQL query Card against the `CATEGORIES` Table."
-  {:lib/type        :metadata/card
-   :id              1
-   :name            "Tarot Card"
-   :dataset-query   {:database (meta/id)
-                     :type     :query
-                     :query    {:source-table (meta/id :categories)}}
-   :result-metadata [(meta/field-metadata :categories :id)
-                     (meta/field-metadata :categories :name)]})
-
-(def metadata-provider-with-categories-mbql-card
-  "A metadata provider with the [[categories-mbql-card]] as Card 1. Composed with the
-  normal [[meta/metadata-provider]]."
-  (lib.metadata.composed-provider/composed-metadata-provider
-   meta/metadata-provider
-   (mock-metadata-provider
-    {:cards [categories-mbql-card]})))
-
-(def categories-native-card
-  "Mock native query Card against the `CATEGORIES` Table."
-  {:lib/type        :metadata/card
-   :id              1
-   :name            "Tarot Card"
-   :dataset-query   {:database (meta/id)
-                     :type     :native
-                     :native   {:query "SELECT * FROM CATEGORIES;"}}
-   :result-metadata (mapv #(dissoc % :id :table-id)
-                          [(meta/field-metadata :categories :id)
-                           (meta/field-metadata :categories :name)])})
-
-(def metadata-provider-with-categories-native-card
-  "A metadata provider with the [[categories-native-card]] as Card 1. Composed with the
-  normal [[meta/metadata-provider]]."
-  (lib.metadata.composed-provider/composed-metadata-provider
-   meta/metadata-provider
-   (mock-metadata-provider
-    {:cards [categories-native-card]})))
-
 (def mock-cards
-  "Map of mock MBQL query Card against the test tables."
+  "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
+
+  * `:venues`, a Card WITH `:result-metadata`
+  * `:venues/no-metadata`, a Card WITHOUT `:result-metadata`
+  * `:venues/native`, a Card with `:result-metadata` and a NATIVE query."
   (into {}
-        (for [[idx table] (m/indexed [:categories
-                                      :checkins
-                                      :users
-                                      :venues
-                                      :products
-                                      :orders
-                                      :people
-                                      :reviews])]
-          [table {:lib/type :metadata/card
-                  :id idx
-                  :name (str "Mock " (name table) " card")
-                  :dataset-query {:database (meta/id)
-                                  :type :query
-                                  :query {:source-table (meta/id table)}}
-                  :result-metadata (for [[[meta-table meta-col] _] (methods meta/field-metadata-method)
-                                         :when (= table meta-table)]
-                                     (dissoc (meta/field-metadata table meta-col) :id :table-id))}])))
+        (comp (mapcat (fn [table]
+                        [{:table table, :metadata? true,  :native? false, :card-name table}
+                         {:table table, :metadata? true,  :native? true,  :card-name (keyword (name table) "native")}
+                         {:table table, :metadata? false, :native? false, :card-name (keyword (name table) "no-metadata")}]))
+              (map-indexed (fn [idx {:keys [table metadata? native? card-name]}]
+                             [card-name
+                              (merge
+                               {:lib/type      :metadata/card
+                                :id            (inc idx)
+                                :name          (str "Mock " (name table) " card")
+                                :dataset-query (if native?
+                                                 {:database (meta/id)
+                                                  :type     :native
+                                                  :native   {:query (str "SELECT * FROM " (name table))}}
+                                                 {:database (meta/id)
+                                                  :type     :query
+                                                  :query    {:source-table (meta/id table)}})}
+                               (when metadata?
+                                 {:result-metadata
+                                  (->> (meta/fields table)
+                                       (map (partial meta/field-metadata table))
+                                       (sort-by :id)
+                                       (mapv #(dissoc % :id :table-id)))}))])))
+        (meta/tables)))
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
   (lib.metadata.composed-provider/composed-metadata-provider
     meta/metadata-provider
     (mock-metadata-provider
-      {:cards (vals mock-cards)})))
+     {:cards (vals mock-cards)})))
+
+(mu/defn query-with-mock-card-as-source-card :- [:and
+                                                 ::lib.schema/query
+                                                 [:map
+                                                  [:stages [:tuple
+                                                            [:map
+                                                             [:source-card integer?]]]]]]
+  "Create a query with one of the [[mock-cards]] as its `:source-card`."
+  [table-name :- (into [:enum] (sort (keys mock-cards)))]
+  (lib/query metadata-provider-with-mock-cards (mock-cards table-name)))
+
+(mu/defn query-with-stage-metadata-from-card :- ::lib.schema/query
+  "Convenience for creating a query that has `:lib/metadata` stage metadata attached to it from a Card. Note that this
+  does not create a query with a `:source-card`.
+
+  This is mostly around for historic reasons; consider using either [[metabase.lib.core/query]]
+  or [[query-with-mock-card-as-source-card]] instead, which are closer to real-life usage."
+  [metadata-providerable :- lib.metadata/MetadataProviderable
+   {mbql-query :dataset-query, metadata :result-metadata} :- [:map
+                                                              [:dataset-query :map]
+                                                              [:result-metadata [:sequential {:min 1} :map]]]]
+  (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
+                                  :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
+                     metadata
+                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.util/->stage-metadata metadata)))]
+    (lib.query/query metadata-providerable mbql-query)))
+
+(deftest ^:parallel card-source-query-test
+  (is (=? {:lib/type :mbql/query
+           :database (meta/id)
+           :stages   [{:lib/type :mbql.stage/native
+                       :native   "SELECT * FROM VENUES;"}]}
+          (query-with-stage-metadata-from-card meta/metadata-provider
+                                               {:dataset-query   {:database (meta/id)
+                                                                  :type     :native
+                                                                  :native   {:query "SELECT * FROM VENUES;"}}
+                                                :result-metadata (get-in mock-cards [:venues :result-metadata])}))))

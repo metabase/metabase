@@ -9,14 +9,14 @@ import { setup, FULL_APP_EMBEDDING_URL, EMAIL_URL } from "./setup";
 
 describe("SettingsEditor", () => {
   describe("full-app embedding", () => {
-    it("should show info about full app embedding", async () => {
+    it("should show info about interactive embedding", async () => {
       await setup({
         settings: [createMockSettingDefinition({ key: "enable-embedding" })],
         settingValues: createMockSettings({ "enable-embedding": true }),
       });
 
       userEvent.click(screen.getByText("Embedding"));
-      userEvent.click(screen.getByText("Full-app embedding"));
+      userEvent.click(screen.getByText("Interactive embedding"));
       expect(screen.getByText(/some of our paid plans/)).toBeInTheDocument();
       expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
     });
@@ -31,7 +31,9 @@ describe("SettingsEditor", () => {
       expect(
         screen.getByText(/Embed dashboards, questions/),
       ).toBeInTheDocument();
-      expect(screen.queryByText("Full-app embedding")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Interactive embedding"),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -10,6 +10,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s])
   (:import
@@ -20,7 +21,7 @@
 ;; Load the EE namespace up front so that the extra Settings it defines are available immediately.
 ;; Otherwise, this would only happen the first time `find-user` or `fetch-or-create-user!` is called.
 (when config/ee-available?
- (classloader/require 'metabase-enterprise.enhancements.integrations.ldap))
+  (classloader/require 'metabase-enterprise.enhancements.integrations.ldap))
 
 (defsetting ldap-host
   (deferred-tru "Server hostname."))
@@ -92,8 +93,8 @@
 
                (map? new-value)
                (do (doseq [k (keys new-value)]
-                     (when-not (DN/isValidDN (name k))
-                       (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
+                     (when-not (DN/isValidDN (u/qualified-name k))
+                       (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k))))))
                    (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
@@ -200,7 +201,7 @@
   "Tests the connection to an LDAP server using the currently set settings."
   []
   (let [settings (into {} (for [[k v] mb-settings->ldap-details]
-                             [v (setting/get k)]))]
+                            [v (setting/get k)]))]
     (test-ldap-connection settings)))
 
 (defn verify-password
@@ -234,7 +235,7 @@
   ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
-(s/defn fetch-or-create-user! :- (mi/InstanceOf User)
+(s/defn fetch-or-create-user! :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema User)
   "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- default-impl/UserInfo]
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))

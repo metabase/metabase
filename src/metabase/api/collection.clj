@@ -29,14 +29,15 @@
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline :refer [Timeline]]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -157,10 +158,13 @@
   #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
 
 (def ^:private ModelString
-  (apply s/enum valid-model-param-values))
+  (into [:enum] valid-model-param-values))
 
-; This is basically a union type. defendpoint-schema splits the string if it only gets one
-(def ^:private models-schema (s/conditional vector? [ModelString] :else ModelString))
+(def ^:private Models
+  "This is basically a union type. [[api/defendpoint]] splits the string if it only gets one."
+  [:or
+   [:sequential ModelString]
+   ModelString])
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
@@ -170,18 +174,23 @@
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
 
-
 (def ^:private CollectionChildrenOptions
-  {:archived?                     s/Bool
-   (s/optional-key :pinned-state) (s/maybe (apply s/enum (map keyword valid-pinned-state-values)))
+  [:map
+   [:archived?                     :boolean]
+   [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
-   (s/optional-key :models)       (s/maybe #{(apply s/enum (map keyword valid-model-param-values))})
-   (s/optional-key :sort-info)    (s/maybe [(s/one (apply s/enum (map normalize-sort-choice valid-sort-columns)) "sort-columns")
-                                            (s/one (apply s/enum (map normalize-sort-choice valid-sort-directions)) "sort-direction")])})
+   [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
+   [:sort-info    {:optional true} [:maybe [:tuple
+                                            (into [:enum {:error/message "sort-columns"}]
+                                                  (map normalize-sort-choice)
+                                                  valid-sort-columns)
+                                            (into [:enum {:error/message "sort-direction"}]
+                                                  (map normalize-sort-choice)
+                                                  valid-sort-directions)]]]])
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
-  in the `CollectionChildrenOptions` schema above.
+  in the [[CollectionChildrenOptions]] schema above.
 
   NOTES:
 
@@ -487,7 +496,7 @@
                   :collection_preview :dataset_query)
           update-personal-collection))))
 
-(s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
+(mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]
@@ -662,7 +671,7 @@
       res
       limit-res)))
 
-(s/defn ^:private collection-children
+(mu/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
@@ -682,7 +691,7 @@
        :offset mw.offset-paging/*offset*
        :models valid-models})))
 
-(s/defn ^:private collection-detail
+(mu/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
@@ -713,8 +722,7 @@
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/items"
+(api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
   *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
@@ -723,11 +731,12 @@
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything"
   [id models archived pinned_state sort_column sort_direction]
-  {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
-   pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
-   sort_column    (s/maybe (apply s/enum valid-sort-columns))
-   sort_direction (s/maybe (apply s/enum valid-sort-directions))}
+  {id             ms/PositiveInt
+   models         [:maybe Models]
+   archived       [:maybe ms/BooleanString]
+   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column    [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
   (let [model-kwds (set (map keyword (u/one-or-many models)))]
     (collection-children (api/read-check Collection id)
                          {:models       model-kwds
@@ -762,8 +771,7 @@
       #{:collection}
       #{:no_models})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/root/items"
+(api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
@@ -778,12 +786,12 @@
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
   [models archived namespace pinned_state sort_column sort_direction]
-  {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
-   namespace      (s/maybe su/NonBlankString)
-   pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
-   sort_column    (s/maybe (apply s/enum valid-sort-columns))
-   sort_direction (s/maybe (apply s/enum valid-sort-directions))}
+  {models         [:maybe Models]
+   archived       [:maybe ms/BooleanString]
+   namespace      [:maybe ms/NonBlankString]
+   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column    [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -922,8 +930,7 @@
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
-  (-> (t2/select-one Collection :id id)
-      (t2/hydrate :parent_id)))
+  (collection-detail (t2/select-one Collection :id id)))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 

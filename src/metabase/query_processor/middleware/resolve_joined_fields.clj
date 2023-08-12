@@ -2,6 +2,7 @@
   "Middleware that adds `:join-alias` info to `:field` clauses where needed."
   (:require
    [clojure.data :as data]
+   [malli.core :as mc]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -9,14 +10,19 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (def ^:private InnerQuery
-  (s/constrained su/Map (every-pred (some-fn :source-table :source-query :joins)
-                                    (complement :condition))))
+  [:and
+   :map
+   [:fn
+    {:error/message "Must have :source-table, :source-query, or :joins"}
+    (some-fn :source-table :source-query :joins)]
+   [:fn
+    {:error/message "Should not have :condition"}
+    (complement :condition)]])
 
-(s/defn ^:private add-join-alias
+(mu/defn ^:private add-join-alias
   [{table-id :table_id, field-id :id, :as field}
    {:keys [joins source-query]}   :- InnerQuery
    [_ id-or-name opts :as clause] :- mbql.s/field:id]
@@ -58,7 +64,7 @@
       (when source-query
         (recur source-query))))
 
-(s/defn ^:private add-join-alias-to-fields-if-needed*
+(mu/defn ^:private add-join-alias-to-fields-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
   [{:keys [source-query joins], :as form} :- InnerQuery]
   ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`
@@ -87,7 +93,7 @@
   [form]
   ;; look for any form that has `:joins`, then wrap stuff as needed
   (mbql.u/replace form
-    (m :guard (every-pred map? (complement (s/checker InnerQuery))))
+    (m :guard (every-pred map? (mc/validator InnerQuery)))
     (cond-> m
       ;; recursively wrap stuff in nested joins or source queries in the form
       (:source-query m)

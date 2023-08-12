@@ -3,29 +3,24 @@
    [clojure.test :refer :all]
    [metabase.cmd.copy :as copy]
    [metabase.db.util :as mdb.u]
-   [metabase.models :refer [Database]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (deftest ^:parallel sql-for-selecting-instances-from-source-db-test
-  (are [table-name] (re-find #"(?i)SELECT \* FROM METABASE_DATABASE WHERE engine <> 'h2'"
-                             (#'copy/sql-for-selecting-instances-from-source-db table-name))
-    (t2/table-name Database)
-    :METABASE_DATABASE
-    "metabase_database")
-  ;; make sure the H2 `test-data` DB is loaded
-  (mt/db)
-  (let [sql              (#'copy/sql-for-selecting-instances-from-source-db (t2/table-name Database))
-        selected-drivers (t2/select-fn-set :engine Database sql)]
-    (is (not (contains? selected-drivers :h2)))))
+  (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
+         (#'copy/sql-for-selecting-instances-from-source-db :model/Field))))
 
-(deftest ^:parallel allow-loading-h2-databases-test
-  (testing `copy/*allow-loading-h2-databases*
-    (binding [copy/*allow-loading-h2-databases* true]
-      (is (= "SELECT * FROM metabase_database"
-             (#'copy/sql-for-selecting-instances-from-source-db (t2/table-name Database)))))))
+(deftest ^:parallel copy-h2-database-details-test
+  (doseq [copy-h2-database-details? [true false]]
+    (testing (str `copy/*copy-h2-database-details* " = " copy-h2-database-details?)
+      (binding [copy/*copy-h2-database-details* copy-h2-database-details?]
+        (is (= [{:id 1, :engine "h2", :details (if copy-h2-database-details? "{:db \"metabase.db\"}" "{}")}
+                {:id 2, :engine "postgres", :details "{:db \"metabase\"}"}]
+               (into
+                []
+                (#'copy/model-results-xform :model/Database)
+                [{:id 1, :engine "h2", :details "{:db \"metabase.db\"}"}
+                 {:id 2, :engine "postgres", :details "{:db \"metabase\"}"}])))))))
 
 (deftest ^:paralell all-models-accounted-for-test
   ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities

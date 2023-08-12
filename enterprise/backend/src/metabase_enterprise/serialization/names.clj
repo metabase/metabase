@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -18,6 +18,7 @@
    [metabase.models.user :refer [User]]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -156,7 +157,7 @@
 (defmethod path->context* "databases"
   [context _ _ db-name]
   (assoc context :database (if (= db-name "__virtual")
-                             mbql.s/saved-questions-virtual-database-id
+                             lib.schema.id/saved-questions-virtual-database-id
                              (t2/select-one-pk Database :name db-name))))
 
 (defmethod path->context* "schemas"
@@ -318,7 +319,7 @@
                                                                        rest  ; strip the starting :
                                                                        (apply str)))))))
           context (loop [acc-context                   {}
-                         [{:keys [::model-name ::entity-name] :as model-map} & more] components]
+                         [{::keys [model-name entity-name] :as model-map} & more] components]
                     (let [model-attrs (dissoc model-map ::model-name ::entity-name)
                           new-context (path->context acc-context model-name model-attrs (unescape-name entity-name))]
                       (if (empty? more)

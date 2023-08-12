@@ -12,7 +12,13 @@
   (mt/with-everything-store
     (resolve-joins/resolve-joins query)))
 
-(deftest no-op-test
+(deftest ^:parallel joins->fields-test
+  (is (= [1 2 3 4]
+         (#'resolve-joins/joins->fields [{:fields :all}
+                                         {:fields [1 2]}
+                                         {:fields [3 4]}]))))
+
+(deftest ^:parallel no-op-test
   (testing "Does the middleware function if the query has no joins?"
     (is (= (mt/mbql-query venues)
            (resolve-joins

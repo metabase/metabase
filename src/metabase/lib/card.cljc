@@ -35,7 +35,7 @@
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
   [card-id :- ::lib.schema.id/card]
-  (i18n/tru "Saved Question {0}" (pr-str card-id)))
+  (i18n/tru "Question {0}" (pr-str card-id)))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :source-card
   [query stage-number _k]
@@ -56,7 +56,30 @@
    {:error/message "Card with :dataset-query"}
    [:dataset-query :map]])
 
-(mu/defn ^:private card-metadata-columns
+(defn- ->card-metadata-column [metadata-providerable card col]
+  (merge
+   {:base-type :type/*, :lib/type :metadata/column}
+   (when-let [field-id (:id col)]
+     (try
+       (lib.metadata/field metadata-providerable field-id)
+       (catch #?(:clj Throwable :cljs :default) _
+         nil)))
+   (update-keys col u/->kebab-case-en)
+   {:lib/type                :metadata/column
+    :lib/source              :source/card
+    :lib/card-id             (:id card)
+    :lib/source-column-alias (:name col)}))
+
+(def ^:private CardColumnMetadata
+  [:merge
+   lib.metadata/ColumnMetadata
+   [:map
+    [:lib/source [:= :source/card]]]])
+
+(def ^:private CardColumns
+  [:maybe [:sequential {:min 1} CardColumnMetadata]])
+
+(mu/defn ^:private card-metadata-columns :- CardColumns
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card                  :- Card]
   (when-let [result-metadata (or (:fields card)
@@ -67,22 +90,10 @@
     (when-let [cols (not-empty (cond
                                  (map? result-metadata)        (:columns result-metadata)
                                  (sequential? result-metadata) result-metadata))]
-      (mapv (fn [col]
-              (merge
-               {:base-type :type/*, :lib/type :metadata/column}
-               (when-let [field-id (:id col)]
-                 (try
-                   (lib.metadata/field metadata-providerable field-id)
-                   (catch #?(:clj Throwable :cljs :default) _
-                     nil)))
-               (update-keys col u/->kebab-case-en)
-               {:lib/type                :metadata/column
-                :lib/source              :source/card
-                :lib/card-id             (:id card)
-                :lib/source-column-alias (:name col)}))
+      (mapv (partial ->card-metadata-column metadata-providerable card)
             cols))))
 
-(mu/defn saved-question-metadata :- [:maybe [:sequential {:min 1} lib.metadata.calculation/ColumnMetadataWithSource]]
+(mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-id               :- ::lib.schema.id/card]

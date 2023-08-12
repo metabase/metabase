@@ -1,5 +1,7 @@
 (ns metabase.driver.sql.query-processor.util
-  (:require [metabase.util.honeysql-extensions :as hx]))
+  (:require
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   [metabase.util.honeysql-extensions :as hx]))
 
 (defn nfc-field->parent-identifier
   "Take a nested field column field corresponding to something like an inner key within a JSON column,

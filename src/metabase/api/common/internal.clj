@@ -16,6 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [schema.core :as s])

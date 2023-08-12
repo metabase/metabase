@@ -42,6 +42,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -276,7 +277,7 @@
                           (api.card/create-card!
                            (cond-> (assoc card :collection_id dest-coll-id)
                              same-collection?
-                             (update :name #(str % " -- " (tru "Duplicate"))))
+                             (update :name #(str % " - " (tru "Duplicate"))))
                            ;; creating cards from a transaction. wait until tx complete to signal event
                            true))))
             {:copied {}
@@ -820,7 +821,7 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
-(mu/defn chain-filter
+(mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
 
   Used to query for values that populate chained filter dropdowns and text search boxes."
@@ -846,10 +847,12 @@
                           field-ids)
              values (distinct (mapcat :values results))
              has_more_values (boolean (some true? (map :has_more_values results)))]
-         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-         {:values          (if (sequential? (first values))
-                             (sort-by second values)
-                             (sort values))
+         ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
+         {:values          (cond->> values
+                             (seq values)
+                             (sort-by (case (count (first values))
+                                        2 second
+                                        1 first)))
           :has_more_values has_more_values})
        (catch clojure.lang.ExceptionInfo e
          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)

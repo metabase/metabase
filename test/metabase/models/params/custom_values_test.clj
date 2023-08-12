@@ -20,19 +20,19 @@
                                         :dataset         dataset?
                                         :table_id        (mt/id :venues)})]]
             (testing "get values"
-              (is (=? {:has_more_values true,
-                       :values          ["20th Century Cafe" "25°" "33 Taps"]}
-                      (custom-values/values-from-card
-                        (t2/select-one Card :id card-id)
-                        (mt/$ids $venues.name)))))
+              (is (= {:has_more_values true,
+                      :values          [["20th Century Cafe"] ["25°"] ["33 Taps"]]}
+                     (custom-values/values-from-card
+                      (t2/select-one Card :id card-id)
+                      (mt/$ids $venues.name)))))
 
             (testing "case in-sensitve search test"
-              (is (=? {:has_more_values false
-                       :values          ["Liguria Bakery" "Noe Valley Bakery"]}
-                      (custom-values/values-from-card
-                        (t2/select-one Card :id card-id)
-                        (mt/$ids $venues.name)
-                        "bakery"))))))
+              (is (= {:has_more_values false
+                      :values          [["Liguria Bakery"] ["Noe Valley Bakery"]]}
+                     (custom-values/values-from-card
+                      (t2/select-one Card :id card-id)
+                      (mt/$ids $venues.name)
+                      "bakery"))))))
 
         (testing "has aggregation column"
           (mt/with-temp* [Card [{card-id :id}
@@ -45,34 +45,34 @@
                                         :table_id        (mt/id :venues)})]]
 
             (testing "get values from breakout columns"
-              (is (=? {:has_more_values true,
-                       :values          ["American" "Artisan" "Asian"]}
-                      (custom-values/values-from-card
-                        (t2/select-one Card :id card-id)
-                        (mt/$ids $categories.name)))))
+              (is (= {:has_more_values true,
+                      :values          [["American"] ["Artisan"] ["Asian"]]}
+                     (custom-values/values-from-card
+                      (t2/select-one Card :id card-id)
+                      (mt/$ids $categories.name)))))
 
             (testing "get values from aggregation column"
-              (is (=? {:has_more_values true,
-                       :values          [1 2 3]}
-                      (custom-values/values-from-card
-                        (t2/select-one Card :id card-id)
-                        [:field "sum" {:base-type :type/Float}]))))
+              (is (= {:has_more_values true,
+                      :values          [[1] [2] [3]]}
+                     (custom-values/values-from-card
+                      (t2/select-one Card :id card-id)
+                      [:field "sum" {:base-type :type/Float}]))))
 
             (testing "can search on aggregation column"
-              (is (=? {:has_more_values false,
-                       :values          [2]}
-                      (custom-values/values-from-card
-                        (t2/select-one Card :id card-id)
-                        [:field "sum" {:base-type :type/Float}]
-                        2))))
+              (is (= {:has_more_values false,
+                      :values          [[2]]}
+                     (custom-values/values-from-card
+                      (t2/select-one Card :id card-id)
+                      [:field "sum" {:base-type :type/Float}]
+                      2))))
 
             (testing "doing case in-sensitve search on breakout columns"
-              (is (=? {:has_more_values false
-                       :values          ["Bakery"]}
-                      (custom-values/values-from-card
-                        (t2/select-one Card :id card-id)
-                        [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
-                        "bakery"))))))
+              (is (= {:has_more_values false
+                      :values          [["Bakery"]]}
+                     (custom-values/values-from-card
+                      (t2/select-one Card :id card-id)
+                      [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
+                      "bakery"))))))
 
         (testing "should disable remapping when getting fk columns"
           (mt/with-column-remappings [venues.category_id categories.name]
@@ -85,20 +85,20 @@
                                          {:dataset dataset?})]]
 
               (testing "get values returns the value, not remapped values"
-                (is (=? {:has_more_values true,
-                         :values          [2 3 4]}
-                        (custom-values/values-from-card
-                          (t2/select-one Card :id card-id)
-                          (mt/$ids $venues.category_id)))))
+                (is (= {:has_more_values true,
+                        :values          [[2] [3] [4]]}
+                       (custom-values/values-from-card
+                        (t2/select-one Card :id card-id)
+                        (mt/$ids $venues.category_id)))))
 
 
               (testing "search with  the value, not remapped values"
-                (is (=? {:has_more_values false,
-                         :values          [2]}
-                        (custom-values/values-from-card
-                          (t2/select-one Card :id card-id)
-                          (mt/$ids $venues.category_id)
-                          2)))))))))))
+                (is (= {:has_more_values false,
+                        :values          [[2]]}
+                       (custom-values/values-from-card
+                        (t2/select-one Card :id card-id)
+                        (mt/$ids $venues.category_id)
+                        2)))))))))))
 
 (deftest with-native-card-test
   (doseq [dataset? [true false]]
@@ -111,20 +111,20 @@
                                       :dataset         dataset?
                                       :table_id        (mt/id :venues)})]]
           (testing "get values from breakout columns"
-            (is (=? {:has_more_values false,
-                     :values          ["Fred 62" "Red Medicine"]}
-                    (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      [:field "NAME" {:base-type :type/Text}]))))
+            (is (= {:has_more_values false,
+                    :values          [["Fred 62"] ["Red Medicine"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    [:field "NAME" {:base-type :type/Text}]))))
 
 
           (testing "doing case in-sensitve search on breakout columns"
-            (is (=? {:has_more_values false
-                     :values          ["Red Medicine"]}
-                    (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      [:field "NAME" {:base-type :type/Text}]
-                      "medicine")))))))))
+            (is (= {:has_more_values false
+                    :values          [["Red Medicine"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    [:field "NAME" {:base-type :type/Text}]
+                    "medicine")))))))))
 
 (deftest deduplicate-and-remove-non-empty-values-empty
   (mt/dataset sample-dataset
@@ -134,40 +134,40 @@
                               (mt/card-with-source-metadata-for-query
                                 (mt/native-query {:query "select * from people"}))]]
           (testing "get values from breakout columns"
-            (is (=? {:has_more_values false,
-                     :values          ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]}
-                    (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      [:field "SOURCE" {:base-type :type/Text}]))))
+            (is (= {:has_more_values false,
+                    :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    [:field "SOURCE" {:base-type :type/Text}]))))
 
 
           (testing "doing case in-sensitve search on breakout columns"
-            (is (=? {:has_more_values false
-                     :values          ["Facebook" "Google"]}
-                    (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      [:field "SOURCE" {:base-type :type/Text}]
-                      "oo"))))))
+            (is (= {:has_more_values false
+                    :values          [["Facebook"] ["Google"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    [:field "SOURCE" {:base-type :type/Text}]
+                    "oo"))))))
 
       (testing "with mbql query"
         (mt/with-temp* [Card [{card-id :id}
                               (mt/card-with-source-metadata-for-query
                                 (mt/mbql-query people))]]
           (testing "get values from breakout columns"
-            (is (=? {:has_more_values false,
-                     :values          ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]}
-                    (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      (mt/$ids $people.source)))))
+            (is (= {:has_more_values false,
+                    :values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    (mt/$ids $people.source)))))
 
 
           (testing "doing case in-sensitve search on breakout columns"
-            (is (=? {:has_more_values false
-                     :values          ["Facebook" "Google"]}
-                    (custom-values/values-from-card
-                      (t2/select-one Card :id card-id)
-                      (mt/$ids $people.source)
-                      "oo")))))))))
+            (is (= {:has_more_values false
+                    :values          [["Facebook"] ["Google"]]}
+                   (custom-values/values-from-card
+                    (t2/select-one Card :id card-id)
+                    (mt/$ids $people.source)
+                    "oo")))))))))
 
 (deftest errors-test
   (testing "error if doesn't have permissions"
@@ -195,28 +195,32 @@
     (testing "call to default-case-fn if "
       (testing "souce card is archived"
         (t2.with-temp/with-temp [Card card {:archived true}]
-          (is (= :archived
-                 (custom-values/parameter->values
-                  {:name                 "Card as source"
-                   :slug                 "card"
-                   :id                   "_CARD_"
-                   :type                 "category"
-                   :values_source_type   "card"
-                   :values_source_config {:card_id     (:id card)
-                                          :value_field (mt/$ids $venues.name)}}
-                  nil
-                  (constantly :archived))))))
+          (let [mock-default-result {:has_more_values false
+                             :values [["archived"]]}]
+            (is (= mock-default-result
+                   (custom-values/parameter->values
+                    {:name                 "Card as source"
+                     :slug                 "card"
+                     :id                   "_CARD_"
+                     :type                 "category"
+                     :values_source_type   "card"
+                     :values_source_config {:card_id     (:id card)
+                                            :value_field (mt/$ids $venues.name)}}
+                    nil
+                    (constantly mock-default-result)))))))
 
       (testing "value-field not found in card's result_metadata"
         (t2.with-temp/with-temp [Card card {}]
-          (is (= :field-not-found
-                 (custom-values/parameter->values
-                  {:name                 "Card as source"
-                   :slug                 "card"
-                   :id                   "_CARD_"
-                   :type                 "category"
-                   :values_source_type   "card"
-                   :values_source_config {:card_id     (:id card)
-                                          :value_field [:field 0 nil]}}
-                  nil
-                  (constantly :field-not-found)))))))))
+          (let [mock-default-result {:has_more_values false
+                             :values [["field-not-found"]]}]
+            (is (= mock-default-result
+                   (custom-values/parameter->values
+                    {:name                 "Card as source"
+                     :slug                 "card"
+                     :id                   "_CARD_"
+                     :type                 "category"
+                     :values_source_type   "card"
+                     :values_source_config {:card_id     (:id card)
+                                            :value_field [:field 0 nil]}}
+                    nil
+                    (constantly mock-default-result))))))))))

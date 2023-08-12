@@ -1123,10 +1123,10 @@
               ;; original 3 plust 3 duplicates
               (is (= 6 (count cards-in-coll)) "Not all cards were copied")
               (is (= (into #{} (comp (map :name)
-                                     (mapcat (fn [n] [n (str n " -- Duplicate")])))
+                                     (mapcat (fn [n] [n (str n " - Duplicate")])))
                            [total-card avg-card card])
                      (set (map :name cards-in-coll)))
-                  "Cards should have \"-- Duplicate\" appended"))))))))
+                  "Cards should have \"- Duplicate\" appended"))))))))
 
 (defn- ordered-cards-by-position
   "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/ordered-cards]] does."
@@ -2517,9 +2517,9 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
-          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
-              (is (= {:values ["African" "American" "Artisan" "Asian"] :has_more_values false}
+              (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
                      (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
 
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
@@ -2527,14 +2527,16 @@
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
           (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
-              (is (= {:values ["Japanese" "Steakhouse"], :has_more_values false}
+              (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
                      (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
 
 (deftest dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      ;; make sure we have a clean start
+      (field-values/clear-field-values-for-field! (mt/id :categories :name))
       (testing "Show me names of categories"
-        (is (= {:values          ["African" "American" "Artisan"]
+        (is (= {:values          [["African"] ["American"] ["Artisan"]]
                 :has_more_values false}
                (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
                                                                                          (:id dashboard)
@@ -2542,7 +2544,7 @@
       (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
                                                 (:price param-keys) 4)]
         (testing "\nShow me names of categories that have expensive venues (price = 4)"
-          (is (= {:values          ["Japanese" "Steakhouse"]
+          (is (= {:values          [["Japanese"] ["Steakhouse"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
       ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
@@ -2552,7 +2554,7 @@
                                                 (:price param-keys) 4)]
         (testing "\nmultiple values"
           (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
-            (is (= {:values          ["American" "Asian" "BBQ"]
+            (is (= {:values          [["American"] ["Asian"] ["BBQ"]]
                     :has_more_values false}
                    (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))
     (testing "Should require perms for the Dashboard"
@@ -2570,7 +2572,7 @@
                         DashboardCard [_dashcard-2 (-> dashcard
                                                        (dissoc :id :card_id :entity_id)
                                                        (assoc  :card_id (:id card-2)))]]
-          (is (= {:values          ["African" "American" "Artisan"]
+          (is (= {:values          [["African"] ["American"] ["Artisan"]]
                   :has_more_values false}
                  (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                       (mt/user-http-request :rasta :get 200)
@@ -2585,7 +2587,7 @@
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
-            (is (= {:values ["African" "American" "Artisan"]
+            (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                         (mt/user-http-request :rasta :get 200)
@@ -2595,7 +2597,8 @@
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-          (is (= {:values ["African" "American" "Artisan"] :has_more_values false}
+          (is (= {:values          [["African"] ["American"] ["Artisan"]]
+                  :has_more_values false}
                  (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
                       (mt/user-http-request :rasta :get 200)
                       (chain-filter-test/take-n-values 3)))))))))
@@ -2605,7 +2608,7 @@
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "we could get the values"
         (is (= {:has_more_values false
-                :values          ["African" "American" "Asian"]}
+                :values          [["African"] ["American"] ["Asian"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category param-keys)))))
 
@@ -2616,7 +2619,7 @@
 
       (testing "we could search the values"
         (is (= {:has_more_values false
-                :values          ["African"]}
+                :values          [["African"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category param-keys) "af"))))
 
@@ -2707,10 +2710,10 @@
                                                   :card_id      question-id
                                                   :dashboard_id (:id dashboard)}]]
           (let [url (format "dashboard/%d/params/%s/values" (u/the-id dashboard) "_NATIVE_CATEGORY_NAME_")]
-            (is (=? {:values          ["Doohickey"
-                                       "Gadget"
-                                       "Gizmo"
-                                       "Widget"]
+            (is (=? {:values          [["Doohickey"]
+                                       ["Gadget"]
+                                       ["Gizmo"]
+                                       ["Widget"]]
                      :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
@@ -2720,13 +2723,13 @@
       (let [url (chain-filter-search-url dashboard (:category-name param-keys) "bar")]
         (testing (str "\n" url)
           (testing "\nShow me names of categories that include 'bar' (case-insensitive)"
-            (is (= {:values          ["Bar" "Gay Bar" "Juice Bar"]
+            (is (= {:values          [["Bar"] ["Gay Bar"] ["Juice Bar"]]
                     :has_more_values false}
                    (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))
 
       (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) "house" (:price param-keys) 4)]
         (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
-          (is (= {:values          ["Steakhouse"]
+          (is (= {:values          [["Steakhouse"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
 
@@ -2768,7 +2771,7 @@
                                            :card_id      (:id card)}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
-            (is (= {:values          ["African" "American" "Artisan"]
+            (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))
 
@@ -2840,17 +2843,17 @@
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]
-            (is (= {:values          ["Bad" "Good"]
+            (is (= {:values          [["Bad"] ["Good"]]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url))))
           (testing "Shouldn't use cached FieldValues if the request has any additional constraints"
             (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
-              (is (= {:values          ["Japanese" "Steakhouse"]
+              (is (= {:values          [["Japanese"] ["Steakhouse"]]
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))
         (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
           (mt/let-url [url (chain-filter-search-url dashboard "_CATEGORY_NAME_" "ood")]
-            (is (= {:values          ["Good"]
+            (is (= {:values          [["Good"]]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
@@ -2863,41 +2866,43 @@
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "It uses the results of the card's query execution"
         (mt/let-url [url (chain-filter-values-url dashboard (:card param-keys))]
-          (is (= {:values          ["African" "American" "Artisan" "Asian" "BBQ"]
+          (is (= {:values          [["African"] ["American"] ["Artisan"] ["Asian"] ["BBQ"]]
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))
 
       (testing "it only returns search matches"
         (mt/let-url [url (chain-filter-search-url dashboard (:card param-keys) "af")]
-          (is (= {:values          ["African"]
+          (is (= {:values          [["African"]]
                   :has_more_values false}
                  (mt/user-http-request :rasta :get 200 url)))))))
 
   (testing "fallback to chain-filter"
-    (with-redefs [api.dashboard/chain-filter (constantly "chain-filter")]
-      (testing "if value-field not found in source card"
-        (mt/with-temp* [Card       [{card-id :id}]
-                        Dashboard  [dashboard
-                                    {:parameters    [{:id                   "abc"
-                                                      :type                 "category"
-                                                      :name                 "CATEGORY"
-                                                      :values_source_type   "card"
-                                                      :values_source_config {:card_id     card-id
-                                                                             :value_field (mt/$ids $venues.name)}}]}]]
-          (mt/let-url [url (chain-filter-values-url dashboard "abc")]
-            (is (= "chain-filter" (mt/user-http-request :rasta :get 200 url))))))
+    (let [mock-chain-filter-result {:has_more_values true
+                                    :values [["chain-filter"]]}]
+      (with-redefs [api.dashboard/chain-filter (constantly mock-chain-filter-result)]
+        (testing "if value-field not found in source card"
+          (mt/with-temp* [Card       [{card-id :id}]
+                          Dashboard  [dashboard
+                                      {:parameters    [{:id                   "abc"
+                                                        :type                 "category"
+                                                        :name                 "CATEGORY"
+                                                        :values_source_type   "card"
+                                                        :values_source_config {:card_id     card-id
+                                                                               :value_field (mt/$ids $venues.name)}}]}]]
+            (mt/let-url [url (chain-filter-values-url dashboard "abc")]
+              (is (= mock-chain-filter-result (mt/user-http-request :rasta :get 200 url))))))
 
-      (testing "if card is archived"
-        (mt/with-temp* [Card       [{card-id :id} {:archived true}]
-                        Dashboard  [dashboard
-                                    {:parameters    [{:id                   "abc"
-                                                      :type                 "category"
-                                                      :name                 "CATEGORY"
-                                                      :values_source_type   "card"
-                                                      :values_source_config {:card_id     card-id
-                                                                             :value_field (mt/$ids $venues.name)}}]}]]
-          (mt/let-url [url (chain-filter-values-url dashboard "abc")]
-            (is (= "chain-filter" (mt/user-http-request :rasta :get 200 url))))))))
+        (testing "if card is archived"
+          (mt/with-temp* [Card       [{card-id :id} {:archived true}]
+                          Dashboard  [dashboard
+                                      {:parameters    [{:id                   "abc"
+                                                        :type                 "category"
+                                                        :name                 "CATEGORY"
+                                                        :values_source_type   "card"
+                                                        :values_source_config {:card_id     card-id
+                                                                               :value_field (mt/$ids $venues.name)}}]}]]
+            (mt/let-url [url (chain-filter-values-url dashboard "abc")]
+              (is (= mock-chain-filter-result (mt/user-http-request :rasta :get 200 url)))))))))
 
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -2939,43 +2944,43 @@
     ;; FE use the id returned by /api/table/:card__id/query_metadata
     ;; for the `values_source_config.value_field`, so we need to test to make sure
     ;; the id is a valid field that we could use to retrieve values.
-    (mt/with-temp*
+      (mt/with-temp*
       ;; card with agggregation and binning columns
-      [Card [{mbql-card-id :id}
-             (merge (mt/card-with-source-metadata-for-query
-                     (mt/mbql-query venues
-                       {:limit 5
-                        :aggregation [:count]
-                        :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
-                    {:name        "MBQL question"
-                     :database_id (mt/id)
-                     :table_id    (mt/id :venues)})]
-       Card [{native-card-id :id}
-             (merge (mt/card-with-source-metadata-for-query
-                     (mt/native-query {:query "select name from venues;"}))
-                    {:name        "Native question"
-                     :database_id (mt/id)
-                     :table_id    (mt/id :venues)})]]
+        [Card [{mbql-card-id :id}
+               (merge (mt/card-with-source-metadata-for-query
+                       (mt/mbql-query venues
+                                      {:limit 5
+                                       :aggregation [:count]
+                                       :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
+                      {:name        "MBQL question"
+                       :database_id (mt/id)
+                       :table_id    (mt/id :venues)})]
+         Card [{native-card-id :id}
+               (merge (mt/card-with-source-metadata-for-query
+                       (mt/native-query {:query "select name from venues;"}))
+                      {:name        "Native question"
+                       :database_id (mt/id)
+                       :table_id    (mt/id :venues)})]]
 
-      (let [mbql-card-fields   (card-fields-from-table-metadata mbql-card-id)
-            native-card-fields (card-fields-from-table-metadata native-card-id)
-            fields->parameter  (fn [fields card-id]
-                                 (for [{:keys [id field_ref name]} fields]
-                                   {:id                   (format "id_%s" name)
-                                    :type                 "category"
-                                    :name                 name
-                                    :values_source_type   "card"
-                                    :values_source_config {:card_id     card-id
-                                                           :value_field (if (number? id)
-                                                                          field_ref
-                                                                          id)}}))
-            parameters         (concat
-                                (fields->parameter mbql-card-fields mbql-card-id)
-                                (fields->parameter native-card-fields native-card-id))]
-        (t2.with-temp/with-temp [Dashboard {dash-id :id} {:parameters parameters}]
-          (doseq [param parameters]
-            (mt/let-url [url (chain-filter-values-url dash-id (:id param))]
-              (is (some? (mt/user-http-request :rasta :get 200 url))))))))))
+        (let [mbql-card-fields   (card-fields-from-table-metadata mbql-card-id)
+              native-card-fields (card-fields-from-table-metadata native-card-id)
+              fields->parameter  (fn [fields card-id]
+                                   (for [{:keys [id field_ref name]} fields]
+                                     {:id                   (format "id_%s" name)
+                                      :type                 "category"
+                                      :name                 name
+                                      :values_source_type   "card"
+                                      :values_source_config {:card_id     card-id
+                                                             :value_field (if (number? id)
+                                                                            field_ref
+                                                                            id)}}))
+              parameters         (concat
+                                  (fields->parameter mbql-card-fields mbql-card-id)
+                                  (fields->parameter native-card-fields native-card-id))]
+          (t2.with-temp/with-temp [Dashboard {dash-id :id} {:parameters parameters}]
+            (doseq [param parameters]
+              (mt/let-url [url (chain-filter-values-url dash-id (:id param))]
+                (is (some? (mt/user-http-request :rasta :get 200 url))))))))))
 
 (deftest valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
