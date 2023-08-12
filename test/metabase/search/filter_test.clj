@@ -37,7 +37,6 @@
 
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
-
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by 1})))))
@@ -50,9 +49,8 @@
 
       (is (= #{"card"}
              (search.filter/search-context->applicable-models
-
               (merge default-search-ctx
-                     {:models  #{"card" "dashboard" "dataset" "table"}
+                     {:models   #{"card" "dashboard" "dataset" "table"}
                       :verified true})))))))
 
 (def ^:private base-search-query
