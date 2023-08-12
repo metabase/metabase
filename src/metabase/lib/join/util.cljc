@@ -32,6 +32,7 @@
    [:ref :mbql.clause/field]])
 
 (def FieldOrPartialJoin
+  "A field or a partial join."
   [:or Field PartialJoin])
 
 (mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]

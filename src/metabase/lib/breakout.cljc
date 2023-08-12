@@ -1,7 +1,6 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]

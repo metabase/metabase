@@ -6,7 +6,10 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel calculate-names-even-without-metadata-test
   (testing "Even if metadata is missing, we should still be able to calculate reasonable display names"

@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
@@ -17,7 +16,6 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
@@ -643,24 +641,24 @@
    stage-number :- :int
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [stage  (lib.util/query-stage query stage-number)
-        source (:lib/source column)]
-    (let [res (case source
-      (:source/table-defaults
-       :source/breakouts
-       :source/aggregations
-       :source/expressions
-       :source/card
-       :source/previous-stage)    (exclude-field query stage-number column)
-      :source/implicitly-joinable (cond-> query
-                                    ;; If there are fields, exclude this column from it.
-                                    ;; If :fields is implied, then there can't be any implicitly joined fields in it.
-                                    (:fields stage) (exclude-field stage-number column))
-      :source/joins               (remove-field-from-join query stage-number column)
-      :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
-      ;; Default case: do nothing and return the query unchaged.
-      ;; Generate a warning - we should aim to capture every `:source/*` value above.
-      (do
-        (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
-        query))]
-      #?(:cljs (js/console.log "remove-field" "query" query "column" column "result" res))
-      res)))
+        source (:lib/source column)
+        res (case source
+              (:source/table-defaults
+               :source/breakouts
+               :source/aggregations
+               :source/expressions
+               :source/card
+               :source/previous-stage)    (exclude-field query stage-number column)
+              :source/implicitly-joinable (cond-> query
+                                            ;; If there are fields, exclude this column from it.
+                                            ;; If :fields is implied, then there can't be any implicitly joined fields in it.
+                                            (:fields stage) (exclude-field stage-number column))
+              :source/joins               (remove-field-from-join query stage-number column)
+              :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
+              ;; Default case: do nothing and return the query unchaged.
+              ;; Generate a warning - we should aim to capture every `:source/*` value above.
+              (do
+                (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
+                query))]
+    #?(:cljs (js/console.log "remove-field" "query" query "column" column "result" res))
+    res))
