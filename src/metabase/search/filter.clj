@@ -115,8 +115,8 @@
 
 ;; Verified filters
 
-(defmethod build-optional-filter-query [:verified "card"]
-  [_filter model query verified]
+(defn- default-verified-card-query
+  [model query verified]
   (assert (true? verified) "filter for non-verified cards is not supported")
   (if (premium-features/has-feature? :content-verification)
     (-> query
@@ -125,8 +125,19 @@
                            (search.config/column-with-model-alias model :id)])
         (sql.helpers/where [:= :moderation_review.status "verified"]
                            [:= :moderation_review.moderated_item_type "card"]
-                           [:= :moderation_review.most_recent true]))
+                           [:= :moderation_review.most_recent true]
+                           ))
     (sql.helpers/where query false-clause)))
+
+(defmethod build-optional-filter-query [:verified "card"]
+  [_filter model query verified]
+  (assert (true? verified) "filter for non-verified cards is not supported")
+  (default-verified-card-query model query verified))
+
+(defmethod build-optional-filter-query [:verified "dataset"]
+  [_filter model query verified]
+  (assert (true? verified) "filter for non-verified cards is not supported")
+  (default-verified-card-query model query verified))
 
 (defmethod build-optional-filter-query [:verified "collection"]
   [_filter model query verified]

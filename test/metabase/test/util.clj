@@ -693,8 +693,8 @@
          {:moderated_item_id   (u/the-id card-or-id)
           :moderated_item_type "card"
           :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
-          :status              status}))
-      (thunk))))
+          :status              status})))
+    (thunk)))
 
 (defmacro with-verified-cards
   "Execute the body with all `card-or-ids` verified."
