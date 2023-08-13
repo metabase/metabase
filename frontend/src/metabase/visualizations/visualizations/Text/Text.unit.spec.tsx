@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { color } from "metabase/lib/colors";
 
@@ -152,6 +152,34 @@ describe("Text", () => {
 
         userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
         expect(screen.getByDisplayValue("text text text")).toBeInTheDocument();
+      });
+
+      it("should call onUpdateVisualizationSettings on blur event", () => {
+        const mockUpdateVisualizationSettings = jest.fn();
+
+        const options = {
+          ...defaultProps,
+          settings: getSettingsWithText(""),
+          onUpdateVisualizationSettings: mockUpdateVisualizationSettings,
+          isEditing: true,
+        };
+
+        render(<Text {...options} />);
+
+        userEvent.click(screen.getByTestId("editing-dashboard-text-preview"));
+        const input = screen.getByTestId("editing-dashboard-text-input");
+
+        input.focus();
+        userEvent.type(input, "new");
+        userEvent.type(input, "text");
+
+        expect(mockUpdateVisualizationSettings).toHaveBeenCalledTimes(0);
+
+        fireEvent.blur(input);
+
+        expect(input).toHaveValue("newtext");
+
+        expect(mockUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
       });
     });
   });
