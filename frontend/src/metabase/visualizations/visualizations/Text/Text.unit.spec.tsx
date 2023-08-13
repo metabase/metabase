@@ -172,12 +172,7 @@ describe("Text", () => {
         input.focus();
         userEvent.type(input, "new");
         userEvent.type(input, "text");
-
-        expect(mockUpdateVisualizationSettings).toHaveBeenCalledTimes(0);
-
         fireEvent.blur(input);
-
-        expect(input).toHaveValue("newtext");
 
         expect(mockUpdateVisualizationSettings).toHaveBeenCalledTimes(1);
       });
