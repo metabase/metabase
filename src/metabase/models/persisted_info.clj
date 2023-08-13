@@ -4,8 +4,10 @@
    [clojure.string :as str]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
@@ -74,6 +76,23 @@
        (take 10)
        (apply str)))
 
+(defenterprise refreshable-states
+  "States of `persisted_info` records which can be refreshed.
+
+   'off' needs to be handled here even though setting the state to off is only possible with :cache-granular-controls
+   enabled. A model could still have state=off if the instance previously had the feature flag, then downgraded to not
+   have it. In that case models with state=off were previously prunable when the feature flag enabled, but they should be
+   refreshable with the feature flag disabled."
+  metabase-enterprise.advanced-config.caching
+  []
+  #{"creating" "persisted" "error" "off"})
+
+(defenterprise prunable-states
+  "States of `persisted_info` records which can be pruned."
+  metabase-enterprise.advanced-config.caching
+  []
+  #{"deletable"})
+
 (mi/define-batched-hydration-method persisted?
   :persisted
   "Hydrate a card :is_persisted for the frontend."
@@ -81,7 +100,7 @@
   (when (seq cards)
     (let [existing-ids (t2/select-fn-set :card_id PersistedInfo
                                          :card_id [:in (map :id cards)]
-                                         :state [:not-in ["off" "deletable"]])]
+                                         :state [:in (refreshable-states)])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))

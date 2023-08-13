@@ -2,11 +2,20 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { color } from "metabase/lib/colors";
 
-import { createMockDashboardCardWithVirtualCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboard,
+  createMockDashboardOrderedCard,
+} from "metabase-types/api/mocks";
 import type {
-  BaseDashboardOrderedCard,
+  DashboardOrderedCard,
+  Dashboard,
+  ParameterId,
+  Parameter,
+  ParameterValueOrArray,
   VisualizationSettings,
+  DashboardParameterMapping,
 } from "metabase-types/api";
+import { buildTextTagTarget } from "metabase-lib/parameters/utils/targets";
 
 import { Heading } from "../Heading";
 
@@ -15,21 +24,25 @@ interface Settings {
 }
 
 interface Options {
-  dashcard?: BaseDashboardOrderedCard;
+  dashcard?: DashboardOrderedCard;
   isEditing?: boolean;
   isEditingParameter?: boolean;
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
   settings?: VisualizationSettings;
+  dashboard?: Dashboard;
+  parameterValues?: Record<ParameterId, ParameterValueOrArray>;
 }
 
 const defaultProps = {
-  dashcard: createMockDashboardCardWithVirtualCard(),
+  dashcard: createMockDashboardOrderedCard(),
+  dashboard: createMockDashboard(),
   isEditing: false,
   isEditingParameter: false,
   onUpdateVisualizationSettings: () => {
     return;
   },
   settings: { text: "" },
+  parameterValues: {},
 };
 
 const setup = (options: Options) => {
@@ -47,6 +60,28 @@ describe("Text", () => {
       expect(
         screen.getByTestId("saved-dashboard-heading-content"),
       ).toHaveTextContent("Example Heading");
+    });
+
+    it("should replace mapped variables with parameter values", () => {
+      const variableName = "variable";
+      const text = `Variable: {{${variableName}}}`;
+
+      const parameterValue = 15;
+
+      const { parameters, parameterValues, parameter_mappings } =
+        mapParameterToVariable({ variableName, parameterValue });
+
+      const options = {
+        settings: getSettingsWithText(text),
+        dashcard: createMockDashboardOrderedCard({ parameter_mappings }),
+        dashboard: createMockDashboard({ parameters }),
+        parameterValues: parameterValues,
+      };
+      setup(options);
+
+      expect(
+        screen.getByTestId("saved-dashboard-heading-content"),
+      ).toHaveTextContent(`Variable: ${parameterValue}`);
     });
   });
 
@@ -77,6 +112,29 @@ describe("Text", () => {
         expect(
           screen.getByTestId("editing-dashboard-heading-preview"),
         ).toHaveTextContent("Example Heading");
+      });
+
+      it("should preview without replacing mapped variables with parameter values", () => {
+        const variableName = "variable";
+        const text = `Variable: {{${variableName}}}`;
+
+        const parameterValue = 15;
+
+        const { parameters, parameterValues, parameter_mappings } =
+          mapParameterToVariable({ variableName, parameterValue });
+
+        const options = {
+          settings: getSettingsWithText(text),
+          dashcard: createMockDashboardOrderedCard({ parameter_mappings }),
+          dashboard: createMockDashboard({ parameters }),
+          parameterValues: parameterValues,
+          isEditing: true,
+        };
+        setup(options);
+
+        expect(
+          screen.getByTestId("editing-dashboard-heading-preview"),
+        ).toHaveTextContent("Variable: {{variable}}");
       });
     });
 
@@ -122,18 +180,31 @@ describe("Text", () => {
         expect(screen.getByDisplayValue("Example Heading")).toBeInTheDocument();
       });
 
-      it("should render the read-only heading content (at reduced opacity) in parameter editing mode", () => {
-        setup({
-          settings: getSettingsWithText("Example Heading"),
-          isEditing: true,
-          isEditingParameter: true,
-        });
+      it("should show input without replacing mapped variables with parameter values", () => {
+        const variableName = "variable";
+        const text = `Variable: {{${variableName}}}`;
 
-        expect(screen.getByText("Example Heading")).toBeVisible();
-        expect(screen.getByText("Example Heading")).toHaveStyle(
-          "opacity: 0.25",
+        const parameterValue = 15;
+
+        const { parameters, parameterValues, parameter_mappings } =
+          mapParameterToVariable({ variableName, parameterValue });
+
+        const options = {
+          settings: getSettingsWithText(text),
+          dashcard: createMockDashboardOrderedCard({ parameter_mappings }),
+          dashboard: createMockDashboard({ parameters }),
+          parameterValues: parameterValues,
+          isEditing: true,
+        };
+        setup(options);
+
+        // show input by focusing the card
+        userEvent.click(
+          screen.getByTestId("editing-dashboard-heading-preview"),
         );
-        expect(screen.queryByRole("input")).not.toBeInTheDocument();
+        expect(
+          screen.getByDisplayValue("Variable: {{variable}}"),
+        ).toBeInTheDocument();
       });
 
       it("should call onUpdateVisualizationSettings on blur event", () => {
@@ -169,4 +240,34 @@ function getSettingsWithText(text: string): Settings {
   return {
     text,
   };
+}
+
+function mapParameterToVariable({
+  variableName,
+  parameterValue,
+}: {
+  variableName: string;
+  parameterValue: string | number;
+}) {
+  const parameter: Parameter = {
+    id: "e7f8ca",
+    name: "foo bar",
+    slug: "foo_bar",
+    type: "text",
+    value: parameterValue,
+  };
+
+  const parameter_mappings: DashboardParameterMapping[] = [
+    {
+      card_id: 1,
+      parameter_id: parameter.id,
+      target: buildTextTagTarget(variableName),
+    },
+  ];
+  const parameters: Parameter[] = [parameter];
+  const parameterValues: Record<ParameterId, ParameterValueOrArray> = {
+    [parameter.id]: parameter.value,
+  };
+
+  return { parameters, parameterValues, parameter_mappings };
 }

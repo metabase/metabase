@@ -67,10 +67,12 @@ export interface ValuesSourceConfig {
 
 export type VariableTarget = ["template-tag", string];
 export type ParameterVariableTarget = ["variable", VariableTarget];
+export type ParameterTextTarget = ["text-tag", string];
 
 export type ParameterTarget =
   | ParameterVariableTarget
-  | ParameterDimensionTarget;
+  | ParameterDimensionTarget
+  | ParameterTextTarget;
 
 type DimensionTarget = LocalFieldReference;
 export type ParameterDimensionTarget = [

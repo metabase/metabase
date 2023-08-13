@@ -134,16 +134,16 @@
     query))
 
 (defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
-  (binding [mu/*enforce* false]
+  (mu/disable-enforcement
     (let [target-clause (lib.common/->op-arg target-clause)
           stage (lib.util/query-stage query stage-number)
           location (m/find-first
-                     (fn [possible-location]
-                       (when-let [clauses (get-in stage possible-location)]
-                         (let [target-uuid (lib.options/uuid target-clause)]
-                           (when (some (comp #{target-uuid} :lib/uuid second) clauses)
-                             possible-location))))
-                     (stage-paths query stage-number))
+                    (fn [possible-location]
+                      (when-let [clauses (get-in stage possible-location)]
+                        (let [target-uuid (lib.options/uuid target-clause)]
+                          (when (some (comp #{target-uuid} :lib/uuid second) clauses)
+                            possible-location))))
+                    (stage-paths query stage-number))
           replace? (= :replace remove-or-replace)
           replacement-clause (when replace?
                                (lib.common/->op-arg replacement))
@@ -152,18 +152,18 @@
                               lib.util/remove-clause)
           changing-breakout? (= [:breakout] location)
           sync-breakout-ordering? (and replace?
-                                    changing-breakout?
-                                    (and (= (first target-clause)
-                                            (first replacement-clause))
-                                         (= (last target-clause)
-                                            (last replacement-clause))))
+                                       changing-breakout?
+                                       (and (= (first target-clause)
+                                               (first replacement-clause))
+                                            (= (last target-clause)
+                                               (last replacement-clause))))
           query (cond
                   sync-breakout-ordering?
                   (sync-order-by-options-with-breakout
-                    query
-                    stage-number
-                    target-clause
-                    (select-keys (second replacement-clause) [:binning :temporal-unit]))
+                   query
+                   stage-number
+                   target-clause
+                   (select-keys (second replacement-clause) [:binning :temporal-unit]))
 
                   changing-breakout?
                   (remove-breakout-order-by query stage-number target-clause)
@@ -294,22 +294,22 @@
 (defn- update-joins
   ([query stage-number join-spec f]
    (if-let [join-alias (join-spec->alias query stage-number join-spec)]
-     (binding [mu/*enforce* false]
+     (mu/disable-enforcement
        (let [query-after (as-> query $q
                            (lib.util/update-query-stage
-                             $q
-                             stage-number
-                             (fn [stage]
-                               (u/assoc-dissoc stage :joins (f (:joins stage) join-alias))))
+                            $q
+                            stage-number
+                            (fn [stage]
+                              (u/assoc-dissoc stage :joins (f (:joins stage) join-alias))))
                            (lib.util/update-query-stage
-                             $q
-                             stage-number
-                             (fn [stage]
-                               (m/update-existing
-                                 stage
-                                 :joins
-                                 (fn [joins]
-                                   (mapv #(lib.join/add-default-alias $q stage-number %) joins))))))]
+                            $q
+                            stage-number
+                            (fn [stage]
+                              (m/update-existing
+                               stage
+                               :joins
+                               (fn [joins]
+                                 (mapv #(lib.join/add-default-alias $q stage-number %) joins))))))]
          (remove-invalidated-refs query-after query stage-number)))
      query)))
 

@@ -248,7 +248,7 @@ export const PublicApi = {
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
-  prefetchValues: GET(
+  prefetchDashcardValues: GET(
     "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
@@ -320,6 +320,7 @@ export const MetabaseApi = {
   db_get: GET("/api/database/:dbId"),
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
+  db_metadata: GET("/api/database/:dbId/metadata"),
   db_schemas: GET("/api/database/:dbId/schemas"),
   db_syncable_schemas: GET("/api/database/:dbId/syncable_schemas"),
   db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
@@ -339,7 +340,6 @@ export const MetabaseApi = {
   db_discard_values: POST("/api/database/:dbId/discard_values"),
   db_persist: POST("/api/database/:dbId/persist"),
   db_unpersist: POST("/api/database/:dbId/unpersist"),
-  db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
@@ -578,7 +578,8 @@ export const ActionsApi = {
   create: POST("/api/action"),
   update: PUT("/api/action/:id"),
   execute: POST("/api/action/:id/execute"),
-  prefetchValues: GET(
+  prefetchValues: GET("/api/action/:id/execute"),
+  prefetchDashcardValues: GET(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
   executeDashcardAction: POST(

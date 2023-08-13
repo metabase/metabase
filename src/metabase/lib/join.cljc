@@ -21,6 +21,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.u.match]
@@ -89,15 +91,23 @@
   "Whether this join condition is a binary condition with two `:field` references (a LHS and a RHS), as you'd produce
   in the frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]],
   and [[join-condition-rhs-columns]]."
-  [condition  :- ::lib.schema.expression/boolean]
-  (mbql.u.match/match-one condition
-    [(_operator :guard keyword?)
-     _opts
-     [:field _lhs-opts _lhs-id-or-name]
-     [:field _rhs-opts _rhs-id-or-name]]
-    true
-    _
-    false))
+  [condition  :- [:maybe ::lib.schema.expression/boolean]]
+  (when condition
+    (mbql.u.match/match-one condition
+      [(_operator :guard keyword?)
+       _opts
+       [:field _lhs-opts _lhs-id-or-name]
+       [:field _rhs-opts _rhs-id-or-name]]
+      true
+      _
+      false)))
+
+(defn- standard-join-condition-lhs
+  "If `condition` is a [[standard-join-condition?]], return the LHS."
+  [condition]
+  (when (standard-join-condition? condition)
+    (let [[_operator _opts lhs _rhs] condition]
+      lhs)))
 
 (defn- standard-join-condition-rhs
   "If `condition` is a [[standard-join-condition?]], return the RHS."
@@ -333,6 +343,20 @@
   [mbql-stage]
   (-> {:lib/type :mbql/join
        :stages   [mbql-stage]}
+      lib.options/ensure-uuid))
+
+(defmethod join-clause-method :metadata/card
+  [card]
+  (-> {:lib/type :mbql/join
+       :stages [{:source-card (:id card)
+                 :lib/type :mbql.stage/mbql}]}
+      lib.options/ensure-uuid))
+
+(defmethod join-clause-method :metadata/table
+  [table]
+  (-> {:lib/type :mbql/join
+       :stages [{:source-table (:id table)
+                 :lib/type :mbql.stage/mbql}]}
       lib.options/ensure-uuid))
 
 (defn- with-join-conditions-add-alias-to-rhses
@@ -696,7 +720,10 @@
          join-aliases-to-ignore (into #{}
                                       (comp (map current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
-                                      (joins query stage-number))]
+                                      (joins query stage-number))
+         lhs-column-or-nil      (or lhs-column-or-nil
+                                    (when (join? join-or-joinable)
+                                      (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
      (->> (lib.metadata.calculation/visible-columns query stage-number
                                                     (lib.util/query-stage query stage-number)
                                                     {:include-implicitly-joinable? false})
@@ -730,17 +757,20 @@
     rhs-column-or-nil  :- [:maybe Field]]
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
-   (sort-join-condition-columns
-    (let [joinable   (if (join? join-or-joinable)
-                     (joined-thing query join-or-joinable)
-                     join-or-joinable)
-          join-alias (when (join? join-or-joinable)
-                       (current-join-alias join-or-joinable))]
-      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
-           (map (fn [col]
-                  (cond-> (assoc col :lib/source :source/joins)
-                    join-alias (with-join-alias join-alias))))
-           (mark-selected-column query rhs-column-or-nil))))))
+   (let [joinable          (if (join? join-or-joinable)
+                             (joined-thing query join-or-joinable)
+                             join-or-joinable)
+         join-alias        (when (join? join-or-joinable)
+                             (current-join-alias join-or-joinable))
+         rhs-column-or-nil (or rhs-column-or-nil
+                               (when (join? join-or-joinable)
+                                 (standard-join-condition-rhs (first (join-conditions join-or-joinable)))))]
+     (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
+          (map (fn [col]
+                 (cond-> (assoc col :lib/source :source/joins)
+                   join-alias (with-join-alias join-alias))))
+          (mark-selected-column query rhs-column-or-nil)
+          sort-join-condition-columns))))
 
 (mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
@@ -828,6 +858,14 @@
       a-join (add-join-alias-to-joinable-columns a-join)
       a-join (mark-selected-joinable-columns a-join))))
 
+(defn- join-lhs-display-name-from-condition-lhs
+  [query stage-number join-or-joinable condition-lhs-column-or-nil]
+  (when-let [condition-lhs-column (or condition-lhs-column-or-nil
+                                      (when (join? join-or-joinable)
+                                        (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
+    (let [display-info (lib.metadata.calculation/display-info query stage-number condition-lhs-column)]
+      (get-in display-info [:table :display-name]))))
+
 (defn- first-join?
   "Whether a `join-or-joinable` is (or will be) the first join in a stage of a query.
 
@@ -847,34 +885,93 @@
        (= (:alias join-or-joinable)
           (:alias (first existing-joins)))))))
 
+(defn- join-lhs-display-name-for-first-join-in-first-stage
+  [query stage-number join-or-joinable]
+  (when (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
+             (first-join? query stage-number join-or-joinable)           ; first join?
+             (lib.util/source-table-id query))                           ; query ultimately uses source Table?
+    (let [table-id (lib.util/source-table-id query)
+          table    (lib.metadata/table query table-id)]
+      ;; I think `:default` display name style is okay here, there shouldn't be a difference between `:default` and
+      ;; `:long` for a Table anyway
+      (lib.metadata.calculation/display-name query stage-number table))))
+
 (mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string
-  "Get the display name for whatever we are joining. See #32015 for screenshot examples.
+  "Get the display name for whatever we are joining. See #32015 and #32764 for screenshot examples.
 
   The rules, copied from MLv1, are as follows:
 
-  1. If this is the first join in the first stage of a query, and the query uses a `:source-table`, then use the
-     display name for the source Table.
+  1. If we have the LHS column for the first join condition, we should use display name for wherever it comes from. E.g.
+     if the join is
 
-  2. Otherwise use `Previous results`.
+     ```
+     JOIN whatever ON orders.whatever_id = whatever.id
+     ```
 
-  These rules do seem a little goofy -- why don't we use the name of a Saved Question or Model? But we can worry about
-  that in the future. For now, let's just replicate MLv1 behavior.
+     then we should display the join like this:
+
+    ```
+    +--------+   +----------+    +-------------+    +----------+
+    | Orders | + | Whatever | on | Orders      | =  | Whatever |
+    |        |   |          |    | Whatever ID |    | ID       |
+    +--------+   +----------+    +-------------+    +----------+
+    ```
+
+    1a. If `join-or-joinable` is a join, we can take the condition LHS column from the join itself, since a join will
+        always have a condition. This should only apply to [[standard-join-condition?]] conditions.
+
+    1b. When building a join, you can optionally pass in `condition-lhs-column-or-nil` yourself.
+
+  2. If the condition LHS column is unknown, and this is the first join in the first stage of a query, and the query
+     uses a `:source-table`, then use the display name for the source Table.
+
+  3. Otherwise use `Previous results`.
 
   This function needs to be usable while we are in the process of constructing a join in the context of a given stage,
   but also needs to work for rendering existing joins. Pass a join in for existing joins, or something [[Joinable]]
   for ones we are currently building."
   ([query join-or-joinable]
-   (join-lhs-display-name query -1 join-or-joinable))
+   (join-lhs-display-name query join-or-joinable nil))
 
-  ([query             :- ::lib.schema/query
-    stage-number      :- :int
-    join-or-joinable  :- [:maybe JoinOrJoinable]]
-   (if (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
-            (first-join? query stage-number join-or-joinable)           ; first join?
-            (lib.util/source-table-id query))                           ; query ultimately uses source Table?
-     (let [table-id (lib.util/source-table-id query)
-           table    (lib.metadata/table query table-id)]
-       ;; I think `:default` is okay here, there shouldn't be a difference between `:default` and `:long` for a
-       ;; Table anyway
-       (lib.metadata.calculation/display-name query stage-number table))
-     (i18n/tru "Previous results"))))
+  ([query join-or-joinable condition-lhs-column-or-nil]
+   (join-lhs-display-name query -1 join-or-joinable condition-lhs-column-or-nil))
+
+  ([query                       :- ::lib.schema/query
+    stage-number                :- :int
+    join-or-joinable            :- [:maybe JoinOrJoinable]
+    condition-lhs-column-or-nil :- [:maybe [:or lib.metadata/ColumnMetadata :mbql.clause/field]]]
+   (or
+    (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-column-or-nil)
+    (join-lhs-display-name-for-first-join-in-first-stage query stage-number join-or-joinable)
+    (i18n/tru "Previous results"))))
+
+(mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
+  "Updates the provided join-condition's fields' temporal-bucketing option, returns the updated join-condition.
+   Must be called on a standard join condition as per [[standard-join-condition?]].
+   This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
+   Fields that do not support the provided option will be ignored."
+  ([query :- ::lib.schema/query
+    join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
+    option-or-unit :- [:maybe [:or
+                               ::lib.schema.temporal-bucketing/option
+                               ::lib.schema.temporal-bucketing/unit]]]
+   (join-condition-update-temporal-bucketing query -1 join-condition option-or-unit))
+  ([query :- ::lib.schema/query
+    stage-number :- :int
+    join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
+    option-or-unit :- [:maybe [:or
+                               ::lib.schema.temporal-bucketing/option
+                               ::lib.schema.temporal-bucketing/unit]]]
+   (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
+     (assert (standard-join-condition? join-condition)
+             (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
+     (let [unit (cond-> option-or-unit
+                  (not (keyword? option-or-unit)) :unit)
+           stage-number (lib.util/canonical-stage-index query stage-number)
+           available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
+           available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
+           sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
+           sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+       (cond-> join-condition
+         sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
+         sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))

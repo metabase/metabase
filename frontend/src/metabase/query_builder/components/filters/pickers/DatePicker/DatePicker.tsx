@@ -158,7 +158,7 @@ const DatePicker: React.FC<Props> = props => {
     operators = DATE_OPERATORS,
   } = props;
 
-  const operator = getOperator(props.filter, operators);
+  const operator = getOperator(filter, operators);
   const [showShortcuts, setShowShortcuts] = React.useState(
     !operator && !disableOperatorSelection,
   );

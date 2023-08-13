@@ -100,6 +100,7 @@
                 (pr-str (rest sql-args)))
     sql-args))
 
+;;; TODO -- we should mark this deprecated and tell people to use [[toucan2.core/query]] directly instead
 (defn query
   "Replacement for [[toucan.db/query]] -- uses Honey SQL 2 instead of Honey SQL 1, to ease the transition to the
   former (and to Toucan 2).

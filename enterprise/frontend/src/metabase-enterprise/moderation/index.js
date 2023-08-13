@@ -19,7 +19,7 @@ import {
   getLatestModerationReview,
 } from "./service";
 
-if (hasPremiumFeature("content_management")) {
+if (hasPremiumFeature("content_verification")) {
   Object.assign(PLUGIN_MODERATION, {
     isEnabled: () => true,
     QuestionModerationIcon,

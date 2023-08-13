@@ -37,6 +37,6 @@
          :when (seq login-attributes)]
      (set (keys login-attributes)))
    ;; combine all the sets of attribute keys into a single set
-   (reduce set/union)))
+   (reduce set/union #{})))
 
 (api/define-routes api/+check-superuser)

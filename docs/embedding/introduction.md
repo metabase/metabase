@@ -12,21 +12,21 @@ You can embed Metabase tables, charts, and dashboards—even Metabase's query bu
 
 There are three ways to embed Metabase in your app:
 
-- [Full-app embedding](#full-app-embedding)
-- [Signed embedding](#signed-embedding)
+- [Interactive embedding](#interactive-embedding)
+- [Static embedding](#static-embedding)
 - [Public links and embeds](#public-links-and-embeds)
 
-## Full-app embedding
+## Interactive embedding
 
-Full-app embedding is the only kind of embedding that [integrates with SSO and data permissions](./full-app-embedding.md) to enable true self-service access to the underlying data.
+Interactive embedding is the only kind of embedding that [integrates with SSO and data permissions](./interactive-embedding.md) to enable true self-service access to the underlying data.
 
-**When to use full-app embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With full-app embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
+**When to use interactive embedding**: when you want to [offer multi-tenant, self-service analytics](https://www.metabase.com/blog/why-full-app-embedding). With interactive embedding, people can create their own questions, dashboards, models, and more, all in their own data sandbox.
 
-## Signed embedding
+## Static embedding
 
-Also known as standalone embedding, signed embedding is a secure way to embed charts and dashboards.
+Also known as signed embedding, static embedding is a secure way to embed charts and dashboards.
 
-**When to use signed embedding**: you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once. For example, say you want to showcase some benchmarking stats: if you just want to make those stats available exclusively to your customers, you could use a signed embed.
+**When to use static embedding**: you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once. For example, say you want to showcase some benchmarking stats: if you just want to make those stats available exclusively to your customers, you could use a signed embed.
 
 ## Public links and embeds
 
@@ -36,11 +36,11 @@ If you'd like to share your data with the good people of the internet, you can c
 
 ## Comparison of embedding types
 
-| Action                                                                                                   | [Full-app](./full-app-embedding.md) | [Signed](./signed-embedding.md) | [Public](../questions/sharing/public-links.md) |
+| Action                                                                                                   | [Interactive](./interactive-embedding.md) | [Signed](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
 |----------------------------------------------------------------------------------------------------------|-------------------------------------|---------------------------------|------------------------------------------------|
 | Display charts and dashboards                                                                            | ✅                                  | ✅                              | ✅                                             |
 | Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                  | ✅                              | ✅                                             |
-| Restrict data with [locked filters](./signed-embedding-parameters.md#restricting-data-in-a-signed-embed) | ❌                                  | ✅                              | ❌                                             |
+| Restrict data with [locked filters](./static-embedding-parameters.md#restricting-data-in-a-signed-embed) | ❌                                  | ✅                              | ❌                                             |
 | Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                         | ✅                                  | ❌                              | ❌                                             |
 | Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)               | ✅                                  | ❌                              | ❌                                             |
 | Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                  | ❌                              | ❌                                             |

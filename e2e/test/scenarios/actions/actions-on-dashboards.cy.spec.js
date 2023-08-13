@@ -1033,7 +1033,7 @@ describe(
           cy.button("Pick an action").click();
         });
 
-        cy.wait("@getActions");
+        waitForValidActions();
 
         cy.findByRole("dialog").within(() => {
           cy.findByText(MODEL_NAME).click();
@@ -1095,7 +1095,7 @@ function createDashboardWithActionButton({
     cy.button("Pick an action").click();
   });
 
-  cy.wait("@getActions");
+  waitForValidActions();
 
   cy.findByRole("dialog").within(() => {
     cy.findByText(modelName).click();
@@ -1181,4 +1181,14 @@ function actionEditorModal() {
 
 function getActionParametersInputModal() {
   return cy.findByTestId("action-parameters-input-modal");
+}
+
+function waitForValidActions() {
+  cy.wait("@getActions").then(({ response }) => {
+    const { body: actions } = response;
+
+    actions.forEach(action => {
+      expect(action.parameters).to.have.length.gt(0);
+    });
+  });
 }

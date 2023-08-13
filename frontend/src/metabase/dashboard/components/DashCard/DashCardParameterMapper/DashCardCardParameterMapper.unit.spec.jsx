@@ -5,6 +5,8 @@ import {
   createMockCard,
   createMockDashboardOrderedCard,
   createMockActionDashboardCard,
+  createMockHeadingDashboardCard,
+  createMockTextDashboardCard,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
@@ -77,18 +79,33 @@ describe("DashCardParameterMapper", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render an informative error state for text cards", () => {
-    const textCard = createMockCard({ dataset_query: {}, display: "text" });
+  it("should render an informative parameter mapping state for text cards without variables", () => {
+    const textCard = createMockTextDashboardCard({ size_x: 3, size_y: 3 });
     setup({
-      card: textCard,
-      dashcard: createMockDashboardOrderedCard({
-        visualization_settings: {
-          virtual_card: textCard,
-        },
-      }),
+      dashcard: textCard,
     });
     expect(getIcon("info")).toBeInTheDocument();
-    expect(screen.getByLabelText(/in text cards/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You can connect widgets to {{variables}} in text cards.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should render an informative parameter mapping state for heading cards without variables", () => {
+    const headingCard = createMockHeadingDashboardCard({
+      size_x: 3,
+      size_y: 3,
+    });
+    setup({
+      dashcard: headingCard,
+    });
+    expect(getIcon("info")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You can connect widgets to {{variables}} in heading cards.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("should render a different header for virtual cards", () => {
@@ -105,6 +122,27 @@ describe("DashCardParameterMapper", () => {
       mappingOptions: ["foo", "bar"],
     });
     expect(screen.getByText(/Variable to map to/i)).toBeInTheDocument();
+  });
+
+  it("should render an error state when a field is not present in the list of options", () => {
+    const card = createMockCard({
+      dataset_query: createMockStructuredDatasetQuery({
+        query: {
+          "source-table": 1,
+        },
+      }),
+      display: "scalar",
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardOrderedCard({
+        card,
+      }),
+      mappingOptions: [["dimension", ["field", 1]]],
+      target: ["dimension", ["field", 2]],
+      isMobile: true,
+    });
+    expect(screen.getByText(/unknown field/i)).toBeInTheDocument();
   });
 
   it("should show header content when card is more than 2 units high", () => {

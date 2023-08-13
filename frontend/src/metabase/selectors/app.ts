@@ -17,7 +17,6 @@ export interface RouterProps {
   location: Location;
 }
 
-const HOMEPAGE_PATH = /^\/$/;
 const PATHS_WITHOUT_NAVBAR = [
   /^\/auth/,
   /\/model\/.*\/query/,
@@ -25,11 +24,7 @@ const PATHS_WITHOUT_NAVBAR = [
   /\/model\/query/,
   /\/model\/metadata/,
 ];
-const EMBEDDED_PATHS_WITH_NAVBAR = [
-  HOMEPAGE_PATH,
-  /^\/collection\/.*/,
-  /^\/archive/,
-];
+
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/question\//,
   /\/model\//,
@@ -38,11 +33,11 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
-  return props.location.pathname;
+  return props?.location?.pathname ?? window.location.pathname;
 };
 
 export const getRouterHash = (state: State, props: RouterProps) => {
-  return props.location.hash;
+  return props?.location?.hash ?? window.location.hash;
 };
 
 export const getIsAdminApp = createSelector([getRouterPath], path => {
@@ -85,9 +80,7 @@ export const getIsNavBarEnabled = createSelector(
     if (isEmbedded && !embedOptions.side_nav) {
       return false;
     }
-    if (isEmbedded && embedOptions.side_nav === "default") {
-      return EMBEDDED_PATHS_WITH_NAVBAR.some(pattern => pattern.test(path));
-    }
+
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(path));
   },
 );

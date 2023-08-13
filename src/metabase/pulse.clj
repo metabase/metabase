@@ -30,10 +30,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -208,7 +208,7 @@
   (or (:database_id card)
       (get-in card [:dataset_query :database])))
 
-(s/defn defaulted-timezone :- s/Str
+(mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- (mi/InstanceOf Card)]
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)

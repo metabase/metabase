@@ -9,6 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
@@ -27,6 +28,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -51,7 +53,7 @@
              export-format :api
              qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
   (when (and (not= (:type query) "internal")
-             (not= database mbql.s/saved-questions-virtual-database-id))
+             (not= database lib.schema.id/saved-questions-virtual-database-id))
     (when-not database
       (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                       {:status-code 400, :query query})))
@@ -91,7 +93,7 @@
   "Schema for valid export formats for downloading query results."
   (apply s/enum export-formats))
 
-(s/defn export-format->context :- mbql.s/Context
+(mu/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
   in `export-format`.
 
@@ -124,7 +126,7 @@
    export-format          (into [:enum] export-formats)}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
-                         (update-in [:table.columns] mbql.normalize/normalize)
+                         (update :table.columns mbql.normalize/normalize)
                          mb.viz/db->norm)
         query        (-> (assoc query
                                 :async? true
@@ -198,7 +200,7 @@
                :values          []}
               field-ids)
       ;; deduplicate the values returned from multiple fields
-      (update :values set)))
+      (update :values (comp vec set))))
 
 (defn parameter-values
   "Fetch parameter values. Parameter should be a full parameter, field-ids is an optional vector of field ids, only

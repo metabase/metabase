@@ -26,9 +26,9 @@ import {
   EmptyFilterPickerPlaceholder,
   FilterPopoverSeparator,
 } from "./FilterPopover.styled";
-import FilterPopoverFooter from "./FilterPopoverFooter";
-import FilterPopoverPicker from "./FilterPopoverPicker";
-import FilterPopoverHeader from "./FilterPopoverHeader";
+import { FilterPopoverFooter } from "./FilterPopoverFooter";
+import { FilterPopoverPicker } from "./FilterPopoverPicker";
+import { FilterPopoverHeader } from "./FilterPopoverHeader";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -56,8 +56,7 @@ type Props = {
   checkedColor?: string;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function FilterPopover({
+export function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,
   style = {},

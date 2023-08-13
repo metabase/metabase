@@ -246,7 +246,7 @@
    ^DateTime [this date-time-str]
    "Parse the `date-time-str` and return a `DateTime` instance."))
 
-(extend-protocol ParseDateTimeString
+(extend-protocol #_{:clj-kondo/ignore [:deprecated-var]} ParseDateTimeString
   DateTimeFormatter
   (parse [formatter date-time-str]
     (time.format/parse formatter date-time-str)))
@@ -257,6 +257,7 @@
 ;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
 ;; date
 (defrecord ^:private ^:deprecated ThreadSafeSimpleDateFormat [format-str]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   ParseDateTimeString
   (parse [_ date-time-str]
     (let [sdf         (SimpleDateFormat. format-str)

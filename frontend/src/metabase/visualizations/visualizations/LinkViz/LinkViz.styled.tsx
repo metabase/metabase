@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
+import BaseExternalLink from "metabase/core/components/ExternalLink";
 import { Icon } from "metabase/core/components/Icon";
 import RecentsList from "metabase/nav/components/RecentsList";
 
@@ -26,6 +27,21 @@ export const EditLinkCardWrapper = styled.div<{ fade?: boolean }>`
 `;
 
 export const CardLink = styled(Link)`
+  width: 100%;
+  padding: 0 0.5rem;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: bold;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const ExternalLink = styled(BaseExternalLink)`
   width: 100%;
   padding: 0 0.5rem;
   display: flex;

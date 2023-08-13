@@ -22,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.middleware.multipart-params :as mp]
    [schema.core :as schema]

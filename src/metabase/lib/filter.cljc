@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -158,9 +159,12 @@
   ([query :- :metabase.lib.schema/query
     stage-number :- [:maybe :int]
     boolean-expression]
-   (let [stage-number (clojure.core/or stage-number -1)
-         new-filter (lib.common/->op-arg boolean-expression)]
-     (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter))))
+   ;; if this is a Segment metadata, convert it to `:segment` MBQL clause before adding
+   (if (clojure.core/= (lib.dispatch/dispatch-value boolean-expression) :metadata/segment)
+     (recur query stage-number (lib.ref/ref boolean-expression))
+     (let [stage-number (clojure.core/or stage-number -1)
+           new-filter (lib.common/->op-arg boolean-expression)]
+       (lib.util/update-query-stage query stage-number update :filters (fnil conj []) new-filter)))))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
   "Returns the current filters in stage with `stage-number` of `query`.

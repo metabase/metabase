@@ -2,7 +2,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import Tooltip from "metabase/core/components/Tooltip";
-import { executeRowAction } from "metabase/dashboard/actions";
+import {
+  executeRowAction,
+  reloadDashboardCards,
+} from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
@@ -94,14 +97,21 @@ const ActionComponent = ({
   const canWrite = model?.canWriteActions();
 
   const onSubmit = useCallback(
-    (parameters: ParametersForActionExecution) =>
-      executeRowAction({
+    async (parameters: ParametersForActionExecution) => {
+      const result = await executeRowAction({
         dashboard,
         dashcard,
         parameters,
         dispatch,
         shouldToast: shouldDisplayButton,
-      }),
+      });
+
+      if (result.success) {
+        dispatch(reloadDashboardCards());
+      }
+
+      return result;
+    },
     [dashboard, dashcard, dispatch, shouldDisplayButton],
   );
 

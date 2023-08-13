@@ -16,7 +16,6 @@ import { NotFound } from "metabase/containers/ErrorPages";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import ErrorBoundary from "metabase/ErrorBoundary";
-import SettingsSetting from "../../../components/SettingsSetting";
 
 import {
   getSettings,
@@ -32,6 +31,7 @@ import {
   updateSetting,
   reloadSettings,
 } from "../../../settings";
+import { SettingsSection } from "./SettingsSection";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -171,32 +171,23 @@ class SettingsEditor extends Component {
           saveStatusRef={this.saveStatusRef}
           elements={activeSection.settings}
           settingValues={settingValues}
-          updateSetting={this.updateSetting}
+          derivedSettingValues={derivedSettingValues}
+          updateSetting={this.updateSetting.bind(this)}
+          onChangeSetting={this.handleChangeSetting.bind(this)}
+          reloadSettings={this.props.reloadSettings}
         />
       );
-    } else {
-      return (
-        <ul>
-          {activeSection.settings
-            .filter(setting =>
-              setting.getHidden
-                ? !setting.getHidden(settingValues, derivedSettingValues)
-                : true,
-            )
-            .map((setting, index) => (
-              <SettingsSetting
-                key={setting.key}
-                setting={setting}
-                onChange={this.updateSetting.bind(this, setting)}
-                onChangeSetting={this.handleChangeSetting}
-                reloadSettings={this.props.reloadSettings}
-                autoFocus={index === 0}
-                settingValues={settingValues}
-              />
-            ))}
-        </ul>
-      );
     }
+    return (
+      <SettingsSection
+        settingElements={activeSection.settings}
+        settingValues={settingValues}
+        derivedSettingValues={derivedSettingValues}
+        updateSetting={this.updateSetting.bind(this)}
+        onChangeSetting={this.handleChangeSetting.bind(this)}
+        reloadSettings={this.props.reloadSettings}
+      />
+    );
   }
 
   renderSettingsSections() {

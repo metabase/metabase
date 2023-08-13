@@ -1,4 +1,4 @@
-import { setupUsersEndpoints } from "__support__/server-mocks/user";
+import { setupUsersEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,

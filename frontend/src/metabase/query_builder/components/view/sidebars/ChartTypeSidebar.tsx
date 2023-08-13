@@ -188,7 +188,7 @@ const ChartTypeOption = ({
       data-is-sensible={isSensible}
       data-testid={`${visualization.uiName}-button`}
     >
-      <Icon name={visualization.iconName} />
+      <Icon name={visualization.iconName} size={20} />
       {isSelected && (
         <SettingsButton
           onlyIcon

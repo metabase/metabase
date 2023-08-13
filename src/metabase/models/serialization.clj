@@ -9,14 +9,15 @@
 
   If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
   exported or not, and a test enforces this so serialization isn't forgotten for new models."
+  (:refer-clojure :exclude [descendants])
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.shared.models.visualization-settings :as mb.viz]
@@ -25,8 +26,7 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model])
-  (:refer-clojure :exclude [descendants]))
+   [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
 
@@ -651,7 +651,7 @@
                   map?
                   (as-> &match entity
                     (m/update-existing entity :database (fn [db-id]
-                                                          (if (= db-id mbql.s/saved-questions-virtual-database-id)
+                                                          (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                                             "database/__virtual"
                                                             (t2/select-one-fn :name 'Database :id db-id))))
                     (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
@@ -708,7 +708,7 @@
                   {:database (fully-qualified-name :guard string?)}
                   (-> &match
                       (assoc :database (if (= fully-qualified-name "database/__virtual")
-                                         mbql.s/saved-questions-virtual-database-id
+                                         lib.schema.id/saved-questions-virtual-database-id
                                          (t2/select-one-pk 'Database :name fully-qualified-name)))
                       mbql-fully-qualified-names->ids*) ; Process other keys
 
@@ -981,7 +981,7 @@
         link-card-deps      (viz-link-card-deps viz)]
     (->> (concat vis-column-settings [(mbql-deps viz) link-card-deps])
          (filter some?)
-         (reduce set/union))))
+         (reduce set/union #{}))))
 
 (defmacro with-cache
   "Runs body with all functions marked with ::cache re-bound to memoized versions for performance."

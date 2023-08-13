@@ -4,7 +4,7 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import {
   setupPublicCardQueryEndpoints,
   setupPublicQuestionEndpoints,
-} from "__support__/server-mocks/public";
+} from "__support__/server-mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import {
   createMockPublicCard,

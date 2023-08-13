@@ -12,8 +12,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -39,10 +39,10 @@
     ;; that uses this outside of the normal QP execution context)
     (table->sorted-fields* table-id)))
 
-(s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
+(mu/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in [[metabase.query-processor.sort]], for all the Fields in a given Table."
-  [table-id :- su/IntGreaterThanZero]
+  [table-id :- ms/PositiveInt]
   (let [fields (table->sorted-fields table-id)]
     (when (empty? fields)
       (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (qp.store/table table-id))))
@@ -56,9 +56,9 @@
                                   {:temporal-unit :default})])
      fields)))
 
-(s/defn ^:private source-metadata->fields :- mbql.s/Fields
+(mu/defn ^:private source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
-  [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
+  [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]]
   (distinct
    (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref} source-metadata]
      ;; return field-ref directly if it's a `:field` clause already. It might include important info such as
@@ -74,7 +74,7 @@
            ;; expression
            [:field field-name {:base-type base-type}])))))
 
-(s/defn ^:private should-add-implicit-fields?
+(mu/defn ^:private should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
 
   *  The query has either a `:source-table`, *or* a `:source-query` with `:source-metadata` for it
@@ -98,7 +98,7 @@
            (and source-query (seq source-metadata)))
        (every? empty? [aggregations breakouts fields])))
 
-(s/defn ^:private add-implicit-fields
+(mu/defn ^:private add-implicit-fields
   "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions definied in the query."
   [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query}]
@@ -124,7 +124,7 @@
 ;;; |                                        Add Implicit Breakout Order Bys                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private add-implicit-breakout-order-by :- mbql.s/MBQLQuery
+(mu/defn ^:private add-implicit-breakout-order-by :- mbql.s/MBQLQuery
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
   *explicitly* referenced in `order-by`."
   [{breakouts :breakout, :as inner-query} :- mbql.s/MBQLQuery]
