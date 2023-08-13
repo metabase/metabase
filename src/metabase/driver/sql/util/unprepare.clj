@@ -1,4 +1,5 @@
-(ns metabase.driver.sql.util.unprepare
+(ns ^{:deprecated "0.46.0"}
+ metabase.driver.sql.util.unprepare
   "Utility functions for converting a prepared statement with `?` param placeholders into a plain SQL query by splicing
   params in place.
 
@@ -6,9 +7,12 @@
   methods from here) let's rename this `metabase.driver.sql.unprepare` when we get a chance."
   (:require
    [clojure.string :as str]
+   [honey.sql.protocols :as sql.protocols]
    [java-time :as t]
+   [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -17,6 +21,8 @@
 
 (set! *warn-on-reflection* true)
 
+;;; TODO -- we should give this a better name, maybe something like `sqlize` like Honey SQL 2 uses would be more
+;;; appropriate.
 (defmulti unprepare-value
   "Convert a single argument to appropriate raw SQL for splicing directly into a SQL query. Dispatches on both driver
   and the class of `value`."
@@ -24,6 +30,13 @@
   (fn [driver value]
     [(driver/the-initialized-driver driver) (class value)])
   :hierarchy #'driver/hierarchy)
+
+(extend-protocol sql.protocols/InlineValue
+  Object
+  (sqlize [object]
+    ;; support this for the application database as well (?)
+    (let [driver (or driver/*driver* (mdb.connection/db-type))]
+      (unprepare/unprepare-value driver object))))
 
 (defmethod unprepare-value :default
   [_ value]
@@ -86,7 +99,7 @@
 
   Drivers likely do not need to implement this method themselves -- instead, you should only need to provide
   implementations of `unprepare-value` for the cases where it is needed."
-  {:arglists '([driver [sql & args]]), :style/indent 1}
+  {:arglists '([driver [sql & args]]), :deprecated "0.46.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

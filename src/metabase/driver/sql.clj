@@ -66,6 +66,13 @@
     (merge {:params nil
             :query  (unprepare/unprepare driver (cons sql params))})))
 
+(defmethod driver/mbql->native-spliced :sql
+  [driver query]
+  (if (= (sql.qp/honey-sql-version driver) 2)
+    (binding [sql.qp/*compile-with-inline-parameters* true]
+      (driver/mbql->native driver query))
+    ((get-method driver/mbql->native-spliced :metabase.driver/driver) driver query)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Connection Impersonation                                          |
