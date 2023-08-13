@@ -85,7 +85,7 @@ export function Heading({
             name="heading"
             data-testid="editing-dashboard-heading-input"
             placeholder={placeholder}
-            value={settings.text}
+            value={content}
             autoFocus={justAdded || isFocused}
             onChange={e => setText(e.target.value)}
             onMouseDown={preventDragging}
