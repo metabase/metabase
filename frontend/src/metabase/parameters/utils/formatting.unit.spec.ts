@@ -48,12 +48,12 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/month-year",
         value: "2018-01",
-        expected: "January, 2018",
+        expected: "January 2018",
       },
       {
         type: "date/quarter-year",
         value: "Q1-2018",
-        expected: "Q1, 2018",
+        expected: "Q1 2018",
       },
       {
         type: "date/relative",

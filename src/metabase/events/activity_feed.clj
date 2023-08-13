@@ -11,6 +11,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private activity-feed-topics
@@ -151,15 +153,18 @@
   (when-not (t2/exists? Activity :topic "install")
     (t2/insert! Activity, :topic "install", :model "install")))
 
-(defn process-activity-event!
-  "Handle processing for a single event notification received on the activity-feed-channel"
+(mu/defn process-activity-event! :- [:or [:= :success] (ms/InstanceOfClass Throwable)]
+  "Handle processing for a single event notification received on the activity-feed-channel. Returns `:success` if
+  processing completed successfully, or an Exception if not."
   [activity-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when-let [{topic :topic, object :item} activity-event]
-      (process-activity! (keyword (events/topic->model topic)) topic object))
+      (process-activity! (keyword (events/topic->model topic)) topic object)
+      :success)
     (catch Throwable e
-      (log/warn e (trs "Failed to process activity event {0}" (pr-str (:topic activity-event)))))))
+      (log/warn e (trs "Failed to process activity event {0}" (pr-str (:topic activity-event))))
+      e)))
 
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------

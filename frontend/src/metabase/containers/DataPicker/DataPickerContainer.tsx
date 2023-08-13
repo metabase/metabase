@@ -18,13 +18,13 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
+import { DEFAULT_DATA_PICKER_FILTERS } from "./constants";
+import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
 import type {
   DataPickerProps as DataPickerOwnProps,
   DataPickerDataType,
 } from "./types";
-
-import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
-import { getDataTypes, DEFAULT_DATA_PICKER_FILTERS } from "./utils";
+import { getDataTypes } from "./utils";
 
 import DataPickerView from "./DataPickerView";
 

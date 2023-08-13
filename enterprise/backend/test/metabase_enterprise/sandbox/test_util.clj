@@ -48,7 +48,7 @@
                                                                 :table_id             (data/id table-kw)
                                                                 :card_id              card-id
                                                                 :attribute_remappings remappings}]
-           (perms/grant-permissions! group (perms/table-segmented-query-path (t2/select-one Table :id (data/id table-kw))))
+           (perms/grant-permissions! group (perms/table-sandboxed-query-path (t2/select-one Table :id (data/id table-kw))))
            (do-with-gtap-defs group more f)))))))
 
 (def ^:private WithGTAPsArgs

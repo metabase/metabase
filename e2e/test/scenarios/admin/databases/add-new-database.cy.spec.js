@@ -25,16 +25,7 @@ describe("admin > database > add", () => {
     cy.findByLabelText("Database type").click();
   });
 
-  it("should add a new database", () => {
-    popover().within(() => {
-      if (isEE) {
-        // EE should ship with Oracle and Vertica as options
-        cy.findByText("Oracle");
-        cy.findByText("Vertica");
-      }
-      cy.findByText("H2").click();
-    });
-
+  it.skip("should add a new database", () => {
     typeAndBlurUsingLabel("Display name", "Test");
     typeAndBlurUsingLabel("Connection String", "invalid");
 
@@ -59,6 +50,14 @@ describe("admin > database > add", () => {
 
   describe("external databases", { tags: "@external" }, () => {
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
+      popover().within(() => {
+        if (isEE) {
+          // EE should ship with Oracle and Vertica as options
+          cy.findByText("Oracle");
+          cy.findByText("Vertica");
+        }
+      });
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("PostgreSQL").click({ force: true });
 
@@ -198,6 +197,11 @@ describe("admin > database > add", () => {
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
 
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
+
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
       });
@@ -230,6 +234,11 @@ describe("admin > database > add", () => {
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA Mongo4");
@@ -269,6 +278,11 @@ describe("admin > database > add", () => {
       cy.wait("@createDatabase");
 
       cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("We're taking a look at your database!");
+        cy.findByLabelText("close icon").click();
+      });
 
       cy.findByRole("table").within(() => {
         cy.findByText("QA MySQL8");

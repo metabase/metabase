@@ -74,7 +74,7 @@ const VISUALIZATION_SIZES: {
     default: { width: 12, height: 9 },
   },
   scalar: {
-    min: { width: 1, height: 1 },
+    min: { width: 2, height: 2 },
     default: { width: 4, height: 3 },
   },
   smartscalar: {
@@ -116,3 +116,13 @@ export const getMinSize = (
 export const getDefaultSize = (
   visualizationType: CardDisplayType,
 ): VisualizationSize => getSize(visualizationType, "default");
+
+export const MOBILE_HEIGHT_BY_DISPLAY_TYPE = {
+  action: 1,
+  link: 1,
+  text: 2,
+  heading: 2,
+  scalar: 4,
+};
+
+export const MOBILE_DEFAULT_CARD_HEIGHT = 6;

@@ -88,7 +88,7 @@
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]
     [(cond-> {:message       (tru "incorrect value: {0}" value)
               :column        (-> column
-                                 (clojure.string/replace #"^'(.*)'$" "$1")
+                                 (str/replace #"^'(.*)'$" "$1")
                                  remove-backticks)
               :expected-type expected-type
               :value         value

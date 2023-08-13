@@ -42,11 +42,10 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -278,7 +277,7 @@
                           (api.card/create-card!
                            (cond-> (assoc card :collection_id dest-coll-id)
                              same-collection?
-                             (update :name #(str % " -- " (tru "Duplicate"))))
+                             (update :name #(str % " - " (tru "Duplicate"))))
                            ;; creating cards from a transaction. wait until tx complete to signal event
                            true))))
             {:copied {}
@@ -723,7 +722,7 @@
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
   {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
-             (u/prog1 (str (UUID/randomUUID))
+             (u/prog1 (str (random-uuid))
                (t2/update! :model/Dashboard dashboard-id
                            {:public_uuid       <>
                             :made_public_by_id api/*current-user-id*})))})
@@ -822,7 +821,7 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
-(mu/defn chain-filter
+(mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
 
   Used to query for values that populate chained filter dropdowns and text search boxes."
@@ -848,10 +847,12 @@
                           field-ids)
              values (distinct (mapcat :values results))
              has_more_values (boolean (some true? (map :has_more_values results)))]
-         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
-         {:values          (if (sequential? (first values))
-                             (sort-by second values)
-                             (sort values))
+         ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
+         {:values          (cond->> values
+                             (seq values)
+                             (sort-by (case (count (first values))
+                                        2 second
+                                        1 first)))
           :has_more_values has_more_values})
        (catch clojure.lang.ExceptionInfo e
          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
@@ -957,15 +958,17 @@
 
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:dashboard-id/dashcard/:dashcard-id/execute"
+
+(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [dashboard-id dashcard-id parameters]
-  {dashboard-id su/IntGreaterThanZero
-   dashcard-id su/IntGreaterThanZero
-   parameters su/JSONString}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   parameters   ms/JSONString}
   (api/read-check :model/Dashboard dashboard-id)
-  (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
+  (actions.execution/fetch-values
+   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
+   (json/parse-string parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:dashboard-id/dashcard/:dashcard-id/execute"

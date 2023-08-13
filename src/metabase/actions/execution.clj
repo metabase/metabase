@@ -206,15 +206,15 @@
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
-  [dashboard-id action request-parameters]
+  [action request-parameters]
   (api/check (contains? #{"row/update" "row/delete"} (:kind action))
              400
              (tru "Values can only be fetched for actions that require a Primary Key."))
   (let [implicit-action (keyword (:kind action))
         {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
         info {:executed-by api/*current-user-id*
-              :context :question
-              :dashboard-id dashboard-id}
+              :context     :action
+              :action-id   (:id action)}
         card (t2/select-one Card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
         result (binding [persisted-info/*allow-persisted-substitution* false]
@@ -234,12 +234,8 @@
 
 (defn fetch-values
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.
-   Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
-  [dashboard-id dashcard-id request-parameters]
-  (let [dashcard (api/check-404 (t2/select-one DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (if (= :implicit (:type action))
-      (fetch-implicit-action-values dashboard-id action request-parameters)
-      {})))
+  Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
+  [action request-parameters]
+  (if (= :implicit (:type action))
+    (fetch-implicit-action-values action request-parameters)
+    {}))

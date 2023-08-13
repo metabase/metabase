@@ -185,3 +185,7 @@ export interface ActionDashboardCard
     actionDisplayType?: ActionDisplayType;
   };
 }
+
+export interface WritebackActionListQuery {
+  "model-id"?: CardId;
+}

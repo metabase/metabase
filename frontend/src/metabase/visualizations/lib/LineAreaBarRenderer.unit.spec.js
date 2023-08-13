@@ -162,10 +162,10 @@ describe("LineAreaBarRenderer", () => {
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
     expect(ticks).toEqual([
-      "January, 2020",
-      "February, 2020",
-      "March, 2020",
-      "April, 2020",
+      "January 2020",
+      "February 2020",
+      "March 2020",
+      "April 2020",
     ]);
   });
 

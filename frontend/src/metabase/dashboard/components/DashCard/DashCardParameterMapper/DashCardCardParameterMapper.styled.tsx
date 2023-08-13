@@ -2,13 +2,13 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import { space } from "metabase/styled-components/theme";
-import { color, lighten } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
-export const Container = styled.div`
-  margin: ${space(1)} 0;
+export const Container = styled.div<{ isSmall: boolean }>`
+  margin: ${({ isSmall }) => (isSmall ? 0 : space(1))} 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -76,7 +76,6 @@ export const TargetButton = styled.div<{ variant: string }>`
   background-color: ${color("white")};
   text-weight: bold;
   cursor: pointer;
-  font-size: 1.2em;
   border: 2px solid ${color("brand")};
   border-radius: 8px;
   min-height: 30px;
@@ -108,6 +107,14 @@ export const TargetButton = styled.div<{ variant: string }>`
       background-color: ${color("bg-light")};
       color: ${color("text-medium")};
     `}
+
+  ${({ variant }) =>
+    variant === "invalid" &&
+    css`
+      border-color: ${color("error")};
+      background-color: ${color("error")};
+      color: ${color("white")};
+    `}
 `;
 
 TargetButton.defaultProps = {
@@ -129,7 +136,7 @@ export const CloseIconButton = styled(Button)<{ icon: string; size: number }>`
 
   &:hover {
     color: ${color("white")};
-    background-color: ${lighten("brand", 0.2)};
+    background-color: ${alpha("white", 0.2)};
   }
 `;
 

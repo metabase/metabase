@@ -18,7 +18,7 @@ interface DispatchProps {
 type FieldFormattingSettingsProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
-  onUpdateField: Fields.updateField,
+  onUpdateField: Fields.actions.updateField,
 };
 
 const FieldFormattingSettings = ({

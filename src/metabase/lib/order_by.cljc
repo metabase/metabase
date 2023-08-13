@@ -133,30 +133,37 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [indexed-order-bys (map-indexed (fn [pos [_tag _opts expr]]
-                                          [pos expr])
-                                        (order-bys query stage-number))
-         order-by-pos
-         (fn [x]
-           (some (fn [[pos existing-order-by]]
-                   (let [a-ref (lib.ref/ref x)]
-                     (when (or (lib.equality/= a-ref existing-order-by)
-                               (lib.equality/= a-ref (lib.util/with-default-effective-type existing-order-by)))
-                       pos)))
-                 indexed-order-bys))
-
-         breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
+   (let [breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
          aggregations       (not-empty (lib.aggregation/aggregations-metadata query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
                               (let [stage (lib.util/query-stage query stage-number)]
-                                (lib.metadata.calculation/visible-columns query stage-number stage)))]
-     (some->> (not-empty columns)
-              (into [] (comp (filter orderable-column?)
-                             (map (fn [col]
-                                    (let [pos (order-by-pos col)]
-                                      (cond-> col
-                                        pos (assoc :order-by-position pos)))))))))))
+                                (lib.metadata.calculation/visible-columns query stage-number stage)))
+         columns            (filter orderable-column? columns)
+         existing-order-bys (order-bys query stage-number)]
+     (cond
+       (empty? columns)
+       nil
+
+       (empty? existing-order-bys)
+       (vec columns)
+
+       :else
+       (let [refs          (mapv lib.ref/ref columns)
+             ref->position (into {}
+                                 (map-indexed (fn [pos [_tag _opts expr]]
+                                                (when-let [closest-ref (lib.equality/find-closest-matching-ref
+                                                                        query
+                                                                        (lib.ref/ref expr)
+                                                                        refs)]
+                                                  [closest-ref pos])))
+                                 existing-order-bys)]
+         (mapv (fn [col a-ref]
+                 (let [pos (ref->position a-ref)]
+                   (cond-> col
+                     pos (assoc :order-by-position pos))))
+               columns
+               refs))))))
 
 (def ^:private opposite-direction
   {:asc :desc

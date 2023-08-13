@@ -14,6 +14,9 @@ export type TableMetadata = unknown & { _opaque: typeof TableMetadata };
 declare const CardMetadata: unique symbol;
 export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 
+declare const SegmentMetadata: unique symbol;
+export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
+
 declare const MetricMetadata: unique symbol;
 export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
 
@@ -30,6 +33,9 @@ export type AggregationOperator = unknown & {
 declare const BreakoutClause: unique symbol;
 export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
 
+declare const ExpressionClause: unique symbol;
+export type ExpressionClause = unknown & { _opaque: typeof ExpressionClause };
+
 declare const OrderByClause: unique symbol;
 export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
@@ -41,6 +47,7 @@ export type FilterClause = unknown & { _opaque: typeof FilterClause };
 export type Clause =
   | AggregationClause
   | BreakoutClause
+  | ExpressionClause
   | FilterClause
   | OrderByClause;
 

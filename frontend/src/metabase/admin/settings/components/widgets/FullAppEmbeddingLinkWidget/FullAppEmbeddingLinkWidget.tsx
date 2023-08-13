@@ -15,7 +15,7 @@ export const FullAppEmbeddingLinkWidget = () => {
       <ExternalLink key="upgrade-link" href={upgradeUrl}>
         {t`some of our paid plans,`}
       </ExternalLink>
-    )} you can embed the full Metabase app and enable your users to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.`,
+    )} you can embed the full Metabase app to allow people to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.`,
   };
 
   return <SettingHeader id="embedding-customization-info" setting={setting} />;

@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -37,7 +36,7 @@ import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
 
-import DashboardHeaderView from "../components/DashboardHeaderView";
+import { DashboardHeaderComponent } from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
@@ -93,7 +92,7 @@ class DashboardHeader extends Component {
     addMarkdownDashCardToDashboard: PropTypes.func.isRequired,
     addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    saveDashboardAndCards: PropTypes.func.isRequired,
+    updateDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
 
     onEditingChange: PropTypes.func.isRequired,
@@ -122,6 +121,18 @@ class DashboardHeader extends Component {
       query: PropTypes.object,
       pathname: PropTypes.string,
     }),
+
+    createBookmark: PropTypes.func,
+    deleteBookmark: PropTypes.func,
+    isBookmarked: PropTypes.bool,
+    dashboardBeforeEditing: PropTypes.object,
+    parametersWidget: PropTypes.node,
+    isShowingDashboardInfoSidebar: PropTypes.bool,
+    isAddParameterPopoverOpen: PropTypes.bool,
+    showAddParameterPopover: PropTypes.func,
+    hideAddParameterPopover: PropTypes.func,
+    addParameter: PropTypes.func,
+    isHomepageDashboard: PropTypes.bool,
   };
 
   handleEdit(dashboard) {
@@ -178,8 +189,8 @@ class DashboardHeader extends Component {
     );
   }
 
-  async onSave(preserveParameters) {
-    await this.props.saveDashboardAndCards(preserveParameters);
+  async onSave() {
+    await this.props.updateDashboardAndCards();
     this.onDoneEditing();
   }
 
@@ -368,6 +379,7 @@ class DashboardHeader extends Component {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <DashboardHeaderButton
+            visibleOnSmallScreen={false}
             key="edit"
             aria-label={t`Edit dashboard`}
             data-metabase-event="Dashboard;Edit"
@@ -482,7 +494,7 @@ class DashboardHeader extends Component {
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <DashboardHeaderView
+      <DashboardHeaderComponent
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
@@ -503,7 +515,6 @@ class DashboardHeader extends Component {
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-        onSave={() => this.onSave(true)}
       />
     );
   }

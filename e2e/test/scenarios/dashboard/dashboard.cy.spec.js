@@ -75,7 +75,17 @@ describe("scenarios > dashboard", () => {
 
   it("should update the name and description", () => {
     cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
+    cy.intercept(
+      "PUT",
+      "/api/dashboard/1",
+      cy.spy().as("updateDashboardSpy"),
+    ).as("updateDashboard");
+    cy.intercept(
+      "PUT",
+      "/api/dashboard/*/cards",
+      cy.spy().as("updateDashboardCardsSpy"),
+    );
+
     visitDashboard(1);
     cy.wait("@getDashboard");
 
@@ -112,6 +122,10 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How many orders were placed in each year?").click();
     cy.findByDisplayValue("How many orders were placed in each year?");
+
+    cy.log("should not call unnecessary API requests (metabase#31721)");
+    cy.get("@updateDashboardSpy").should("have.callCount", 2);
+    cy.get("@updateDashboardCardsSpy").should("not.have.been.called");
   });
 
   it("should not take you out of edit mode when updating title", () => {
@@ -757,10 +771,25 @@ describe("scenarios > dashboard", () => {
     modal().within(() => {
       cy.findByLabelText("Name").type(NEW_COLLECTION);
       cy.findByText("Create").click();
+      cy.findByText("New dashboard");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Create").click();
     });
     saveDashboard();
     closeNavigationSidebar();
     cy.get("header").findByText(NEW_COLLECTION);
+  });
+
+  it("should not allow edit on small screens", () => {
+    cy.viewport(480, 800);
+
+    visitDashboard(1);
+
+    cy.icon("pencil").should("not.be.visible");
+
+    cy.viewport(660, 800);
+
+    cy.icon("pencil").should("be.visible");
   });
 });
 
@@ -785,7 +814,20 @@ describeWithSnowplow("scenarios > dashboard", () => {
     cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");
 
+    popover().within(() => {
+      cy.findByText(/Loading/i).should("not.exist");
+      cy.findByText("Orders in a dashboard").click();
+    });
+
+    cy.findByTestId("entity-edit-display-link").findByText(
+      /orders in a dashboard/i,
+    );
+
     saveDashboard();
+
+    cy.findByTestId("entity-view-display-link").findByText(
+      /orders in a dashboard/i,
+    );
 
     expectGoodSnowplowEvent({
       event: "new_link_card_created",

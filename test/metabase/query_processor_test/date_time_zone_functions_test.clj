@@ -1030,7 +1030,9 @@
                            (mt/formatted-rows (repeat (count units) int))
                            first
                            (zipmap units))))]
-        (run-datetime-diff-time-zone-tests diffs))))
+        (run-datetime-diff-time-zone-tests diffs)))))
+
+(deftest datetime-diff-time-zones-test-athena
   ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
   ;; but not at rest. Here we create a native query that returns a `timestamp with time zone` type and then
   ;; run another query with `datetime-diff` against it.

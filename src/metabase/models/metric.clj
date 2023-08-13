@@ -116,8 +116,8 @@
                           (m/map-vals (fn [v] {:after v}) (:after base-diff))
                           (m/map-vals (fn [v] {:before v}) (:before base-diff)))
         (or (get-in base-diff [:after :definition])
-            (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
-                                                                          :after  (get-in metric2 [:definition])})))))
+            (get-in base-diff [:before :definition])) (assoc :definition {:before (get metric1 :definition)
+                                                                          :after  (get metric2 :definition)})))))
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------

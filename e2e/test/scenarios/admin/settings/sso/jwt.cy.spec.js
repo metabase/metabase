@@ -64,7 +64,13 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.button("Regenerate key").click();
-    modal().button("Yes").click();
+    modal().within(() => {
+      cy.findByText("Regenerate JWT signing key?").should("exist");
+      cy.findByText(
+        "This will cause existing tokens to stop working until the identity provider is updated with the new key.",
+      ).should("exist");
+      cy.button("Yes").click();
+    });
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
 

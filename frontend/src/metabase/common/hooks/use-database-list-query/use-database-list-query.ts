@@ -16,5 +16,6 @@ export const useDatabaseListQuery = (
     getLoading: Databases.selectors.getLoading,
     getLoaded: Databases.selectors.getLoaded,
     getError: Databases.selectors.getError,
+    getListMetadata: Databases.selectors.getListMetadata,
   });
 };

@@ -17,8 +17,7 @@ type Props = {
   isNew?: boolean;
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function FilterPopoverFooter({
+export function FilterPopoverFooter({
   filter,
   isNew,
   onFilterChange,

@@ -34,6 +34,7 @@
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.params :as params]
    [metabase.models.params.custom-values :as custom-values]
+   [metabase.models.permissions :as perms]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
@@ -41,6 +42,7 @@
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -59,13 +61,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
-   (java.io File)
-   (java.util UUID)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -106,10 +108,10 @@
   [_ table-id]
   (t2/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(s/defn ^:private cards-with-ids :- (s/maybe [(mi/InstanceOf Card)])
+(mu/defn ^:private cards-with-ids :- [:maybe [:sequential (mi/InstanceOf Card)]]
   "Return unarchived Cards with `card-ids`.
   Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
-  [card-ids :- [su/IntGreaterThanZero]]
+  [card-ids :- [:sequential ms/PositiveInt]]
   (when (seq card-ids)
     (let [card-id->card (m/index-by :id (t2/select Card, :id [:in (set card-ids)], :archived false))]
       (filter identity (map card-id->card card-ids)))))
@@ -921,8 +923,8 @@ saved later when it is ready."
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/collections"
-  "Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with
-  COLLECTION_ID, or remove them from any Collections by passing a `null` COLLECTION_ID."
+  "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
+  `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [:as {{:keys [card_ids collection_id]} :body}]
   {card_ids [su/IntGreaterThanZero], collection_id (s/maybe su/IntGreaterThanZero)}
   (move-cards-to-collection! collection_id card_ids)
@@ -985,7 +987,7 @@ saved later when it is ready."
   (api/check-not-archived (api/read-check Card card-id))
   (let [{existing-public-uuid :public_uuid} (t2/select-one [Card :public_uuid] :id card-id)]
     {:uuid (or existing-public-uuid
-               (u/prog1 (str (UUID/randomUUID))
+               (u/prog1 (str (random-uuid))
                  (t2/update! Card card-id
                              {:public_uuid       <>
                               :made_public_by_id api/*current-user-id*})))}))
@@ -1044,6 +1046,7 @@ saved later when it is ready."
   query in place of the model's query."
   [card-id]
   {card-id ms/PositiveInt}
+  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [{:keys [dataset database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
@@ -1082,6 +1085,7 @@ saved later when it is ready."
   query rather than the saved version of the query."
   [card-id]
   {card-id ms/PositiveInt}
+  (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [_card (t2/select-one Card :id card-id)]
     (api/let-404 [persisted-info (t2/select-one PersistedInfo :card_id card-id)]
       (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
@@ -1094,10 +1098,10 @@ saved later when it is ready."
   [card param query]
   (when-let [field-clause (params/param-target->field-clause (:target param) card)]
     (when-let [field-id (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-      (api.field/field-id->values field-id query))))
+      (api.field/search-values-from-field-id field-id query))))
 
 (mu/defn param-values
-  "Fetch values for a parameter.
+  "Fetch values for a parameter that contain `query`. If `query` is nil or not provided, return all values.
 
   The source of values could be:
   - static-list: user defined values list
@@ -1108,12 +1112,10 @@ saved later when it is ready."
   ([card      :- ms/Map
     param-key :- ms/NonBlankString
     query     :- [:maybe ms/NonBlankString]]
-   (let [param       (get (m/index-by :id (or (seq (:parameters card))
-                                              ;; some older cards or cards in e2e just use the template tags on native
-                                              ;; queries
-                                              (card/template-tag-parameters card)))
-                          param-key)
-         _source-type (:values_source_type param)]
+   (let [param (get (m/index-by :id (or (seq (:parameters card))
+                                        ;; some older cards or cards in e2e just use the template tags on native queries
+                                        (card/template-tag-parameters card)))
+                    param-key)]
      (when-not param
        (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
                        {:status-code 400})))
@@ -1162,20 +1164,24 @@ saved later when it is ready."
   [collection-id filename ^File csv-file]
   {collection-id ms/PositiveInt}
   (when (not (public-settings/uploads-enabled))
-    (throw (Exception. "Uploads are not enabled.")))
+    (throw (Exception. (tru "Uploads are not enabled."))))
+  (when (premium-features/sandboxed-user?)
+    (throw (Exception. (tru "Uploads are not permitted for sandboxed users."))))
   (collection/check-write-perms-for-collection collection-id)
   (try
     (let [start-time        (System/currentTimeMillis)
           db-id             (public-settings/uploads-database-id)
           database          (or (t2/select-one Database :id db-id)
                                 (throw (Exception. (tru "The uploads database does not exist."))))
-          _check_perms      (api/check-403 (mi/can-read? database))
           driver            (driver.u/database->driver database)
           schema-name       (public-settings/uploads-schema-name)
           _check-schema     (when (and (str/blank? schema-name)
                                        (driver/database-supports? driver :schemas database))
                               (throw (ex-info (tru "A schema has not been set.")
                                               {:status-code 422})))
+          _check_perms      (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                                                            (perms/data-perms-path db-id schema-name)))
+
           _check-schema     (when-not (or (nil? schema-name)
                                           (driver.s/include-schema? database schema-name))
                               (throw (ex-info (tru "The schema {0} is not syncable." schema-name)

@@ -8,12 +8,9 @@ import Link from "metabase/core/components/Link";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
-import { darken, color, alpha } from "metabase/lib/colors";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
+import { alpha, color, darken } from "metabase/lib/colors";
 
-export const SidebarIcon = styled(Icon, {
-  shouldForwardProp: shouldForwardNonTransientProp,
-})<{
+export const SidebarIcon = styled(Icon)<{
   color?: string | null;
   isSelected: boolean;
 }>`
@@ -91,8 +88,8 @@ const itemContentStyle = css`
 
 export const FullWidthButton = styled.button<{ isSelected: boolean }>`
   cursor: pointer;
-  ${itemContentStyle}
 
+  ${itemContentStyle}
   ${TreeNode.NameContainer} {
     font-weight: 700;
     color: ${props => getTextColor(props.isSelected)};

@@ -134,6 +134,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
+            <IndexRedirect to="/admin/people" />
             <ModalRoute path="edit" modal={EditUserModal} />
             <ModalRoute path="success" modal={UserSuccessModal} />
             <ModalRoute path="reset" modal={UserPasswordResetModal} />

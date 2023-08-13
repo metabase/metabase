@@ -2,13 +2,13 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import moment from "moment-timezone";
 import type {
   Filter as FilterObject,
   FieldFilter,
   FieldReference,
 } from "metabase-types/api";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
+import { parseTimestamp } from "metabase/lib/time";
 import { isExpression } from "metabase-lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
 import {
@@ -63,40 +63,26 @@ export default class Filter extends MBQLClause {
     return this._query.removeFilter(this._index);
   }
 
-  betterDateLabel() {
-    const args = this.arguments();
-    if (!args.every(arg => typeof arg === "string")) {
-      return undefined;
+  /**
+   * Returns the array of arguments as dates if they are specific dates, and returns their temporal unit.
+   */
+  specificDateArgsAndUnit() {
+    const field = this.dimension()?.field();
+    const isSpecific = ["=", "between", "<", ">"].includes(this.operatorName());
+    if ((field?.isDate() || field?.isTime()) && isSpecific) {
+      const args = this.arguments();
+      const dates = args.map(d => parseTimestamp(d));
+      if (dates.every(d => d.isValid())) {
+        const detectedUnit = dates.some(d => d.minutes())
+          ? "minute"
+          : dates.some(d => d.hours())
+          ? "hour"
+          : "day";
+        const unit = this.dimension()?.temporalUnit() ?? detectedUnit;
+        return [dates, unit];
+      }
     }
-    const unit = this.dimension()?.temporalUnit();
-    const isSupportedDateRangeUnit = [
-      "day",
-      "week",
-      "month",
-      "quarter",
-      "year",
-    ].includes(unit);
-    const op = this.operatorName();
-    const betweenDates = op === "between" && isSupportedDateRangeUnit;
-    const equalsWeek = op === "=" && unit === "week";
-    if (betweenDates || equalsWeek) {
-      return formatDateTimeRangeWithUnit(args, unit, {
-        type: "tooltip",
-        date_resolution: unit === "week" ? "day" : unit,
-      });
-    }
-    const sliceFormat = {
-      // modified from DEFAULT_DATE_FORMATS in date.tsx to show extra context
-      "hour-of-day": "[hour] H",
-      "minute-of-hour": "[minute] m",
-      "day-of-month": "Do [day of month]",
-      "day-of-year": "DDDo [day of year]",
-      "week-of-year": "wo [week of year]",
-    }[unit];
-    const m = moment(args[0]);
-    if (op === "=" && sliceFormat && m.isValid()) {
-      return m.format(sliceFormat);
-    }
+    return [undefined, undefined];
   }
 
   /**
@@ -113,12 +99,17 @@ export default class Filter extends MBQLClause {
       if (isStartingFrom(this)) {
         includeOperator = false;
       }
-      const betterDate = this.betterDateLabel();
-      const op = betterDate ? "=" : this.operatorName();
+      const [dates, dateUnit] = this.specificDateArgsAndUnit();
+      const origOp = this.operatorName();
+      const dateRangeStr =
+        dates &&
+        ["=", "between"].includes(origOp) &&
+        formatDateTimeRangeWithUnit(dates, dateUnit, { type: "tooltip" });
+      const op = dateRangeStr ? "=" : origOp;
       return [
         includeDimension && this.dimension()?.displayName(),
         includeOperator && this.operator(op)?.moreVerboseName,
-        betterDate ?? this.formattedArguments().join(" "),
+        dateRangeStr || this.formattedArguments().join(" "),
       ]
         .map(s => s || "")
         .join(" ");

@@ -31,6 +31,7 @@ const propTypes = {
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
   isReversed: PropTypes.bool,
+  canRemoveSeries: PropTypes.func,
 };
 
 const LegendLayout = ({
@@ -49,6 +50,7 @@ const LegendLayout = ({
   onSelectSeries,
   onRemoveSeries,
   isReversed,
+  canRemoveSeries,
 }) => {
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
@@ -78,6 +80,7 @@ const LegendLayout = ({
             onSelectSeries={onSelectSeries}
             onRemoveSeries={onRemoveSeries}
             isReversed={isReversed}
+            canRemoveSeries={canRemoveSeries}
           />
           {!isVertical && actionButtons && (
             <LegendActions>{actionButtons}</LegendActions>

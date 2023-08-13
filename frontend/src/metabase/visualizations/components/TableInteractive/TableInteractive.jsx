@@ -759,7 +759,7 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
-          data-testid="header-cell"
+          data-testid={isVirtual ? undefined : "header-cell"}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,

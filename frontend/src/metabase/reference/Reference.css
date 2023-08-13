@@ -1,0 +1,200 @@
+:root {
+  --title-color: var(--color-text-medium);
+  --subtitle-color: var(--color-text-medium);
+  --icon-width: 60px;
+}
+
+:local(.guideEmpty) {
+  composes: flex full justify-center from "style";
+  padding-top: 75px;
+}
+
+:local(.guideEmptyBody) {
+  composes: text-centered from "style";
+  max-width: 400px;
+}
+
+:local(.guideEmptyMessage) {
+  composes: text-dark text-paragraph text-centered mt3 from "style";
+}
+
+:local(.columnHeader) {
+  composes: flex flex-full from "style";
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+:local(.revisionsWrapper) {
+  padding-top: 20px;
+  padding-left: var(--icon-width);
+}
+
+:local(.schemaSeparator) {
+  composes: text-light mt2 from "style";
+  margin-left: var(--icon-width);
+  font-size: 18px;
+}
+
+:local(.tableActualName) {
+  font-family: "Lucida Console", Monaco, monospace;
+  font-size: 13px;
+  line-height: 1.4em;
+  letter-spacing: 1px;
+  white-space: pre-wrap;
+  color: var(--color-text-medium);
+  background-color: var(--color-bg-light);
+  border: 1px solid var(--color-text-light);
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
+}
+
+:local(.guideLeftPadded) {
+  composes: flex full justify-center from "style";
+}
+
+:local(.guideLeftPadded)::before {
+  /*FIXME: not sure how to share this with other components
+     because we can't use composes here apparently. any workarounds?*/
+  content: "";
+  display: block;
+  flex: 0.3;
+  max-width: 250px;
+  margin-right: 50px;
+}
+
+:local(.guideLeftPaddedBody) {
+  flex: 0.7;
+  max-width: 550px;
+}
+
+:local(.guideWrapper) {
+  margin-bottom: 50px;
+}
+
+:local(.guideTitle) {
+  composes: guideLeftPadded;
+  font-size: 24px;
+  margin-top: 50px;
+}
+
+:local(.guideTitleBody) {
+  composes: full text-dark text-bold from "style";
+  composes: guideLeftPaddedBody;
+}
+
+:local(.guideSeeAll) {
+  composes: guideLeftPadded;
+  font-size: 18px;
+}
+
+:local(.guideSeeAllBody) {
+  composes: flex full text-dark text-bold mt4 from "style";
+  composes: guideLeftPaddedBody;
+}
+
+:local(.guideSeeAllLink) {
+  composes: flex-full block no-decoration py1 border-top from "style";
+}
+
+:local(.guideContact) {
+  composes: mt4 from "style";
+  composes: guideLeftPadded;
+  margin-bottom: 100px;
+}
+
+:local(.guideContactBody) {
+  composes: full from "style";
+  composes: guideLeftPaddedBody;
+  font-size: 16px;
+}
+
+:local(.guideEditHeader) {
+  composes: full text-body my4 from "style";
+  max-width: 550px;
+  color: var(--color-text-dark);
+}
+
+:local(.guideEditHeaderTitle) {
+  composes: text-bold mb2 from "style";
+  font-size: 24px;
+}
+
+:local(.guideEditCards) {
+  composes: mt2 mb4 from "style";
+}
+
+:local(.guideEditCard) {
+  composes: input p4 from "style";
+}
+
+:local(.guideEditLabel) {
+  composes: block text-bold mb2 from "style";
+  font-size: 16px;
+  color: var(--title-color);
+}
+
+:local(.guideEditHeaderDescription) {
+  font-size: 16px;
+}
+
+:local(.guideEditTitle) {
+  composes: block text-body text-bold from "style";
+  color: var(--title-color);
+  font-size: 16px;
+  margin-top: 50px;
+}
+
+:local(.guideEditSubtitle) {
+  composes: text-body from "style";
+  color: var(--color-text-light);
+  font-size: 16px;
+  max-width: 700px;
+}
+
+:local(.guideEditAddButton) {
+  composes: flex full my2 pl4 from "style";
+  padding-right: 3.5rem;
+}
+
+:local(.guideEditAddButton)::before {
+  content: "";
+  display: block;
+  flex: 250;
+  max-width: 250px;
+  margin-right: 50px;
+}
+
+:local(.guideEditAddButtonBody) {
+  flex: 550;
+  max-width: 550px;
+}
+
+:local(.guideEditTextarea) {
+  composes: text-dark input p2 from "style";
+  resize: none;
+  font-size: 16px;
+  width: 100%;
+  max-width: 850px;
+  min-height: 100px;
+}
+
+:local(.guideEditContact) {
+  composes: flex from "style";
+}
+
+:local(.guideEditContactName) {
+  flex: 250;
+  max-width: 250px;
+  margin-right: 50px;
+}
+
+:local(.guideEditContactEmail) {
+  flex: 550;
+  max-width: 550px;
+}
+
+:local(.guideEditInput) {
+  composes: full text-dark input p2 from "style";
+  font-size: 16px;
+  display: block;
+}

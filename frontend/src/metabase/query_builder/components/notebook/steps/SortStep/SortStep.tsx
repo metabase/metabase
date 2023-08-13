@@ -92,6 +92,7 @@ function SortStep({
           query={topLevelQuery}
           stageIndex={stageIndex}
           columnGroups={getColumnGroups(orderByIndex)}
+          color="text-dark"
           checkIsColumnSelected={item =>
             checkColumnSelected(item, orderByIndex)
           }

@@ -262,7 +262,7 @@ describe("binning related reproductions", () => {
       // ALl of these are implicit assertions and will fail if there's more than one string
       cy.findByText("Count");
       cy.findByText("Created At: Month");
-      cy.findByText("June, 2022");
+      cy.findByText("June 2022");
     });
   });
 
