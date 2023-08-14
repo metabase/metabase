@@ -21,7 +21,7 @@ describe("issue 32121", () => {
 
       // Run the query.
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.get(".NativeQueryEditor .Icon-play").click();
+      cy.findByTestId("native-query-editor-container").icon("play").click();
       cy.wait("@dataset");
       cy.findByTestId("question-row-count").contains(
         "Showing first 2,000 rows",
@@ -58,7 +58,7 @@ describe("issue 32121", () => {
       cy.get(".Modal").should("not.exist");
 
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.get(".NativeQueryEditor .Icon-play").click();
+      cy.findByTestId("native-query-editor-container").icon("play").click();
       cy.wait("@dataset");
 
       saveQuestion("all Orders");
