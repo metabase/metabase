@@ -180,7 +180,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defn search-context->applicable-models :- [:set SearchableModel]
-  "Given a search-context, retuns the list of models that can be applied to it.
+  "Returns a set of models that are applicable given the search context.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
   [search-context :- SearchContext]

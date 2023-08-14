@@ -336,7 +336,8 @@
 (mu/defn query-model-set :- [:set SearchableModel]
   "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx :- SearchContext]
-  (let [model-queries (for [model (:models search-ctx)]
+  (let [model-queries (for [model (search.filter/search-context->applicable-models
+                                   (assoc search-ctx :models search.config/all-models))]
                         {:nest (sql.helpers/limit (search-query-for-model model search-ctx) 1)})
         query         (when (pos-int? (count model-queries))
                         {:select [:*]

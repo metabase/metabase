@@ -469,11 +469,29 @@
         {"price" {"$lte" 100}}
         [:<= $price 100]
 
-        {"name" {"$regex" "hello"}}
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "hello" "options" ""}}}
         [:contains $name "hello"]
 
-        {"name" {"$regex" "^hello"}}
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "hello" "options" ""}}}
+        [:contains $name "hello" {:case-sensitive true}]
+
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "hello" "options" "i"}}}
+        [:contains $name "hello" {:case-sensitive false}]
+
+        {"$expr" {"$regexMatch" {"input" "$name" "regex" "^hello" "options" ""}}}
         [:starts-with $name "hello"]
+
+        {"$expr" {"$regexMatch" {"input" "$name"
+                                 "regex" {"$concat" [{"$literal" "^"}
+                                                     {"$substrCP" ["$name" {"$subtract" [1 1]} 3]}]}
+                                 "options" ""}}}
+        [:starts-with $name [:substring $name 1 3]]
+
+        {"$expr" {"$regexMatch" {"input" "$name"
+                                 "regex" {"$concat" ["$name"
+                                                     {"$literal" "$"}]}
+                                 "options" "i"}}}
+        [:ends-with $name $name {:case-sensitive false}]
 
         {"$and" [{"$expr" {"$eq" ["$price" {"$add" ["$price" 1]}]}} {"name" "hello"}]}
         [:and [:= $price [:+ $price 1]] [:= $name "hello"]]

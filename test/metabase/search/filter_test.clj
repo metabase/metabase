@@ -13,15 +13,16 @@
    :models             search.config/all-models
    :current-user-perms #{"/"}})
 
-(deftest ^:parallel search-context->applicable-models-test
+(deftest ^:parallel ->applicable-models-test
   (testing "without optional filters"
     (testing "return :models as is"
       (is (= search.config/all-models
-             (search.filter/search-context->applicable-models default-search-ctx)))
+             (search.filter/search-context->applicable-models
+              default-search-ctx)))
+
       (is (= #{}
              (search.filter/search-context->applicable-models
-              (merge default-search-ctx
-                     {:models #{}}))))
+              (assoc default-search-ctx :models #{}))))
 
       (is (= search.config/all-models
              (search.filter/search-context->applicable-models
@@ -50,7 +51,7 @@
       (is (= #{"card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:models #{"card" "dashboard" "dataset" "table"}
+                     {:models   #{"card" "dashboard" "dataset" "table"}
                       :verified true})))))))
 
 (def ^:private base-search-query
