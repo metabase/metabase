@@ -6,7 +6,7 @@ interface Props {
 }
 
 export const Root = styled.li<Props>`
-  position: resize;
+  position: relative;
 
   ${props =>
     props.disabled &&
