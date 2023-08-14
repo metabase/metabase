@@ -771,6 +771,9 @@ describe("scenarios > dashboard", () => {
     modal().within(() => {
       cy.findByLabelText("Name").type(NEW_COLLECTION);
       cy.findByText("Create").click();
+      cy.findByText("New dashboard");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Create").click();
     });
     saveDashboard();
     closeNavigationSidebar();
