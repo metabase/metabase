@@ -16,6 +16,7 @@ import listSelect from "metabase/hoc/ListSelect";
 
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getCollectionsById } from "metabase/selectors/collection";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 import ArchivedItem from "../../components/ArchivedItem";
 
@@ -31,6 +32,7 @@ import {
 const mapStateToProps = (state, props) => ({
   isNavbarOpen: getIsNavbarOpen(state),
   isAdmin: getUserIsAdmin(state, props),
+  collectionsById: getCollectionsById(state),
 });
 
 const mapDispatchToProps = {
@@ -56,12 +58,18 @@ class ArchiveApp extends Component {
       isAdmin,
       isNavbarOpen,
       list,
+      collectionsById,
       reload,
-
       selected,
       selection,
       onToggleSelected,
     } = this.props;
+    const writableList = isAdmin
+      ? list
+      : list.filter(
+          item => collectionsById?.[item.getCollection().id]?.can_write,
+        );
+
     return (
       <ArchiveRoot>
         <ArchiveHeader>
@@ -70,13 +78,16 @@ class ArchiveApp extends Component {
         <ArchiveBody>
           <Card
             style={{
-              height: list.length > 0 ? ROW_HEIGHT * list.length : "auto",
+              height:
+                writableList.length > 0
+                  ? ROW_HEIGHT * writableList.length
+                  : "auto",
             }}
           >
-            {list.length > 0 ? (
+            {writableList.length > 0 ? (
               <VirtualizedList
                 scrollElement={this.mainElement}
-                items={list}
+                items={writableList}
                 rowHeight={ROW_HEIGHT}
                 renderItem={({ item }) => (
                   <ArchivedItem
