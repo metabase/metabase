@@ -45,30 +45,51 @@ class ArchiveApp extends Component {
   constructor(props) {
     super(props);
     this.mainElement = getMainElement();
+    this.state = {
+      writableList: [],
+    };
   }
 
   componentDidMount() {
     if (!isSmallScreen()) {
       this.props.openNavbar();
     }
+
+    this.setWritableItems();
+  }
+
+  componentDidUpdate(prevProps) {
+    this.setWritableItems({ prevList: prevProps.list });
+  }
+
+  setWritableItems({ prevList } = { prevList: [] }) {
+    const { isAdmin, list, collectionsById } = this.props;
+
+    if (_.isEqual(prevList, list)) {
+      return;
+    }
+
+    const newWritableList = isAdmin
+      ? list
+      : list.filter(
+          item => collectionsById?.[item.getCollection().id]?.can_write,
+        );
+
+    this.setState({
+      writableList: newWritableList,
+    });
   }
 
   render() {
     const {
       isAdmin,
       isNavbarOpen,
-      list,
-      collectionsById,
       reload,
       selected,
       selection,
       onToggleSelected,
     } = this.props;
-    const writableList = isAdmin
-      ? list
-      : list.filter(
-          item => collectionsById?.[item.getCollection().id]?.can_write,
-        );
+    const { writableList } = this.state;
 
     return (
       <ArchiveRoot>
