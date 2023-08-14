@@ -91,9 +91,11 @@ describe("scenarios > search", () => {
       cy.get("@searchBox").type("{enter}");
       cy.wait("@search");
 
-      cy.findByTestId("search-result-item").within(() => {
-        getProductsSearchResults();
-      });
+      cy.findAllByTestId("search-result-item")
+        .first()
+        .within(() => {
+          getProductsSearchResults();
+        });
     });
 
     it("should work for user with permissions (metabase#12332)", () => {

@@ -144,6 +144,11 @@ export class AddSeriesModal extends Component<Props, State> {
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
               className="spread"
+              errorMessageOverride={
+                series.length > 1
+                  ? t`Unable to combine these questions`
+                  : undefined
+              }
               rawSeries={series}
               showTitle
               isDashboard

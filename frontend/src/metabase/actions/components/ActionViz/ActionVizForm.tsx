@@ -140,7 +140,7 @@ function ActionVizForm({
             action={action}
             mappedParameters={mappedParameters}
             initialValues={initialValues}
-            prefetchesInitialValues
+            prefetchesInitialValues={shouldPrefetch}
             title={title}
             showEmptyState={shouldPrefetch && !hasPrefetchedValues}
             showConfirmMessage={showConfirmMessage}
@@ -180,7 +180,7 @@ function ActionVizForm({
         action={action}
         mappedParameters={mappedParameters}
         initialValues={initialValues}
-        prefetchesInitialValues
+        prefetchesInitialValues={shouldPrefetch}
         onSubmit={onSubmit}
         onSubmitSuccess={handleSubmitSuccess}
       />
