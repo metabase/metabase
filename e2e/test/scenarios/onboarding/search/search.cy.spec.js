@@ -314,10 +314,12 @@ describe("scenarios > search", () => {
 
           cy.url().should("include", `verified=true`);
 
-          cy.findByTestId("search-result-item").within(() => {
+          const verifiedItem = cy.findByTestId("search-result-item");
+          verifiedItem.within(() => {
             cy.findByLabelText("verified icon").should("exist");
           });
         });
+
         it("should show verified and unverified assets when `All items` is selected", () => {
           cy.visit("/");
 
@@ -332,30 +334,44 @@ describe("scenarios > search", () => {
 
           cy.url().should("not.include", `verified=true`);
 
-          cy.findByTestId("search-result-item").within(() => {
-            cy.findByLabelText("verified icon").should("exist");
-          });
+          let verifiedElementCount = 0;
+          let unverifiedElementCount = 0;
+
+          cy.findAllByTestId("search-result-item")
+            .each($el => {
+              if ($el.find('[aria-label="verified icon"]').length) {
+                verifiedElementCount++;
+              } else {
+                unverifiedElementCount++;
+              }
+            })
+            .then(() => {
+              expect(verifiedElementCount).to.eq(1);
+              expect(unverifiedElementCount).to.be.gt(0);
+            });
         });
       });
 
-      it("should not filter results when `Clear all filters` is applied", () => {
-        cy.visit("/search?q=order&type=card");
-        cy.wait("@search");
+      describe("no filters applied", () => {
+        it("should not filter results when `Clear all filters` is applied", () => {
+          cy.visit("/search?q=order&type=card");
+          cy.wait("@search");
 
-        cy.findAllByTestId("search-result-item-name");
-        cy.findByTestId("search-bar-filter-button").click();
+          cy.findAllByTestId("search-result-item-name");
+          cy.findByTestId("search-bar-filter-button").click();
 
-        getSearchModalContainer().within(() => {
-          cy.findByText("Clear all filters").click();
+          getSearchModalContainer().within(() => {
+            cy.findByText("Clear all filters").click();
+          });
+
+          getSearchBar().clear().type("e{enter}");
+          cy.wait("@search");
+
+          cy.findAllByTestId("type-sidebar-item").should(
+            "have.length",
+            typeFilters.length + 1,
+          );
         });
-
-        getSearchBar().clear().type("e{enter}");
-        cy.wait("@search");
-
-        cy.findAllByTestId("type-sidebar-item").should(
-          "have.length",
-          typeFilters.length + 1,
-        );
       });
     });
   });
