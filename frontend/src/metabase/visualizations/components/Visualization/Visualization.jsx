@@ -49,7 +49,7 @@ import {
 } from "./Visualization.styled";
 
 const defaultProps = {
-  errorView: ErrorView,
+  errorMessageOverride: undefined,
   showTitle: false,
   isDashboard: false,
   isEditing: false,
@@ -323,7 +323,7 @@ class Visualization extends PureComponent {
       actionButtons,
       className,
       dashcard,
-      errorView: ErrorViewComponent,
+      errorMessageOverride,
       showTitle,
       isDashboard,
       width,
@@ -477,8 +477,8 @@ class Visualization extends PureComponent {
           ) : isDashboard && noResults ? (
             <NoResultsView isSmall={small} />
           ) : error ? (
-            <ErrorViewComponent
-              error={error}
+            <ErrorView
+              error={errorMessageOverride ?? error}
               icon={errorIcon}
               isSmall={small}
               isDashboard={isDashboard}

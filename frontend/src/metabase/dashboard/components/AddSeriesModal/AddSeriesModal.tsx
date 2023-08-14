@@ -14,7 +14,6 @@ import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { QuestionList } from "./QuestionList";
-import { MultipleSeriesErrorView } from "./MultipleSeriesErrorView";
 
 /**
  * The first series is the base dashcard.card.
@@ -145,8 +144,10 @@ export class AddSeriesModal extends Component<Props, State> {
             <Visualization
               canRemoveSeries={CAN_REMOVE_SERIES}
               className="spread"
-              errorView={
-                series.length > 1 ? MultipleSeriesErrorView : undefined
+              errorMessageOverride={
+                series.length > 1
+                  ? t`Unable to combine these questions`
+                  : undefined
               }
               rawSeries={series}
               showTitle
