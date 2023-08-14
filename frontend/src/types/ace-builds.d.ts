@@ -31,7 +31,7 @@ declare module "ace-builds" {
       };
 
       bgTokenizer: Tokenizer & {
-        start: (number: index) => void;
+        start: (index: number) => void;
         setTokenizer: (tokenizer: Tokenizer) => void;
       };
 
