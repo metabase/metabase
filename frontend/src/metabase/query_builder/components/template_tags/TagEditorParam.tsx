@@ -56,8 +56,9 @@ import {
 interface Props {
   tag: TemplateTag;
   parameter: Parameter;
-  database: Database;
+  database?: Database | null;
   databases: Database[];
+  databaseFields?: Field[];
   metadata: Metadata;
   setTemplateTag: (tag: TemplateTag) => void;
   setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;

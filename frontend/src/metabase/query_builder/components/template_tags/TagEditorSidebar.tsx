@@ -1,19 +1,49 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
 import PropTypes from "prop-types";
-
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
+
+import type {
+  Card,
+  DatabaseId,
+  NativeDatasetQuery,
+  Parameter,
+  ParameterId,
+  RowValue,
+  TemplateTag,
+  TemplateTagId,
+} from "metabase-types/api";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
+
 import { TagEditorParam } from "./TagEditorParam";
 import { TagEditorHelp } from "./TagEditorHelp";
 
-export default class TagEditorSidebar extends Component {
-  state = {
+interface TagEditorSidebarProps {
+  card: Card;
+  query: NativeQuery;
+  databases: Database[];
+  databaseFields: Field[];
+  sampleDatabaseId: DatabaseId;
+  setDatasetQuery: (query: NativeDatasetQuery) => void;
+  setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
+  setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
+  onClose: () => void;
+}
+
+interface TagEditorSidebarState {
+  section: "settings" | "help";
+}
+
+// eslint-disable-next-line import/no-default-export
+export default class TagEditorSidebar extends Component<TagEditorSidebarProps> {
+  state: TagEditorSidebarState = {
     section: "settings",
   };
 
@@ -28,8 +58,8 @@ export default class TagEditorSidebar extends Component {
     setParameterValue: PropTypes.func.isRequired,
   };
 
-  setSection(section) {
-    this.setState({ section: section });
+  setSection(section: "settings" | "help") {
+    this.setState({ section });
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Template Tag Editor Section Change",
@@ -104,6 +134,17 @@ export default class TagEditorSidebar extends Component {
   }
 }
 
+interface SettingsPaneProps {
+  tags: TemplateTag[];
+  database?: Database | null;
+  databases: Database[];
+  databaseFields: Field[];
+  parametersById: Record<ParameterId, Parameter>;
+  setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
+  setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
+}
+
 const SettingsPane = ({
   tags,
   parametersById,
@@ -113,13 +154,13 @@ const SettingsPane = ({
   setTemplateTag,
   setTemplateTagConfig,
   setParameterValue,
-}) => (
+}: SettingsPaneProps) => (
   <div>
     {tags.map(tag => (
-      <div key={tags.name}>
+      <div key={tag.name}>
         <TagEditorParam
           tag={tag}
-          key={tags.name}
+          key={tag.name}
           parameter={parametersById[tag.id]}
           databaseFields={databaseFields}
           database={database}
@@ -132,12 +173,3 @@ const SettingsPane = ({
     ))}
   </div>
 );
-
-SettingsPane.propTypes = {
-  tags: PropTypes.array.isRequired,
-  query: NativeQuery,
-  databaseFields: PropTypes.array,
-  setDatasetQuery: PropTypes.func.isRequired,
-  setTemplateTag: PropTypes.func.isRequired,
-  setParameterValue: PropTypes.func.isRequired,
-};

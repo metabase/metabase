@@ -4,11 +4,8 @@ import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
-import type {
-  Database,
-  DatabaseId,
-  NativeDatasetQuery,
-} from "metabase-types/api";
+import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
+import type Database from "metabase-lib/metadata/Database";
 
 const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
   variable: {
@@ -221,7 +218,7 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
 );
 
 interface TagEditorHelpProps {
-  database: Database;
+  database?: Database | null;
   sampleDatabaseId: DatabaseId;
   setDatasetQuery: (datasetQuery: NativeDatasetQuery, run?: boolean) => void;
   switchToSettings: () => void;
@@ -233,9 +230,9 @@ export const TagEditorHelp = ({
   setDatasetQuery,
   switchToSettings,
 }: TagEditorHelpProps) => {
-  const driver = database && database.engine;
-  const examples = driver === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
-  const datasetId = driver === "mongo" ? database.id : sampleDatabaseId;
+  const engine = database?.engine;
+  const examples = engine === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
+  const datasetId = engine === "mongo" ? database?.id : sampleDatabaseId;
 
   let setQueryWithDatasetId;
 
