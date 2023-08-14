@@ -53,4 +53,15 @@ describe("ListItem", () => {
     expect(screen.getByText(ITEM_DESCRIPTION)).toBeInTheDocument();
     expect(screen.queryByText("Placeholder text")).not.toBeInTheDocument();
   });
+
+  it("should render without the link when disabled", () => {
+    setup({
+      name: ITEM_NAME,
+      disabled: true,
+      url: "/foo",
+    });
+
+    expect(screen.getByText(ITEM_NAME)).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
 });
