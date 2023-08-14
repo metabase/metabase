@@ -125,8 +125,7 @@
                            (search.config/column-with-model-alias model :id)])
         (sql.helpers/where [:= :moderation_review.status "verified"]
                            [:= :moderation_review.moderated_item_type "card"]
-                           [:= :moderation_review.most_recent true]
-                           ))
+                           [:= :moderation_review.most_recent true]))
     (sql.helpers/where query false-clause)))
 
 (defmethod build-optional-filter-query [:verified "card"]
@@ -138,6 +137,15 @@
   [_filter model query verified]
   (assert (true? verified) "filter for non-verified cards is not supported")
   (default-verified-card-query model query verified))
+
+(defmethod build-optional-filter-query [:verified "dashboard"]
+  [_filter _model query verified]
+  (assert (true? verified) "filter for non-verified dashboards is not supported")
+  (if (premium-features/has-feature? :official-collections)
+    ;; a dashboard is verified if and only if its collection is verified
+    ;; we don't need to join with collecition here because it'll be joined in the API layer
+    (sql.helpers/where query [:= :collection.authority_level "official"])
+    (sql.helpers/where query false-clause)))
 
 (defmethod build-optional-filter-query [:verified "collection"]
   [_filter model query verified]

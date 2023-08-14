@@ -42,12 +42,12 @@
                       :created-by 1})))))
 
     (testing "verified"
-      (is (= #{"card" "collection"}
+      (is (= #{"dashboard" "dataset" "collection" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
 
-      (is (= #{"card"}
+      (is (= #{"dashboard" "dataset" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"card" "dashboard" "dataset" "table"}
@@ -101,13 +101,34 @@
                 base-search-query "card"
                 (merge default-search-ctx {:verified true})))))
 
-      (testing "for collections"
+      (testing "for models"
         (is (= (merge
                 base-search-query
-                {:where [:and [:= :collection.archived false] [:= :collection.authority_level "official"]]})
-             (search.filter/build-filters
-              base-search-query "collection"
-              (merge default-search-ctx {:verified true}))))))
+                {:where  [:and
+                          [:= :card.archived false]
+                          [:= :moderation_review.status "verified"]
+                          [:= :moderation_review.moderated_item_type "card"]
+                          [:= :moderation_review.most_recent true]]
+                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
+               (search.filter/build-filters
+                base-search-query "dataset"
+                (merge default-search-ctx {:verified true})))))
+
+      (testing "for dashboards"
+        (is (= (merge
+                base-search-query
+                {:where [:and [:= :dashboard.archived false] [:= :collection.authority_level "official"]]})
+               (search.filter/build-filters
+                base-search-query "dashboard"
+                (merge default-search-ctx {:verified true})))))
+
+     (testing "for collections"
+       (is (= (merge
+               base-search-query
+               {:where [:and [:= :collection.archived false] [:= :collection.authority_level "official"]]})
+            (search.filter/build-filters
+             base-search-query "collection"
+             (merge default-search-ctx {:verified true}))))))
 
     (premium-features-test/with-premium-features #{}
       (testing "for cards without ee features"

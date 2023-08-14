@@ -846,20 +846,23 @@
          (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
            (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))
 
+(mt/user-http-request :crowberto :get 200 "search" :verified true)
+
 (deftest verified-filter-test
   (let [search-term "Verified filter"]
     (t2.with-temp/with-temp
-      [:model/Card       {v-card-id :id}     {:name (format "%s Verified Card" search-term)}
-       :model/Card       {_card-id :id}      {:name (format "%s Normal Card" search-term)}
-       :model/Card       {v-model-id :id}    {:name (format "%s Verified Model" search-term) :dataset true}
-       :model/Collection {v-coll-id :id}     {:name (format "%s Verified Collection" search-term) :authority_level "official"}
-       :model/Collection {_coll-id :id}      {:name (format "%s Normal Collection" search-term)}]
-
+      [:model/Card       {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
+       :model/Card       {_card-id :id}   {:name (format "%s Normal Card" search-term)}
+       :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}
+       :model/Collection {v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}
+       :model/Collection {coll-id :id}    {:name (format "%s Normal Collection" search-term)}
+       :model/Dashboard  {v-dash-id :id}  {:name (format "%s Verified Dashboard" search-term) :collection_id v-coll-id}
+       :model/Dashboard  {_dash-id-1 :id} {:name (format "%s Normal Dashboard" search-term) :collection_id coll-id}
+       :model/Dashboard  {_dash-id-2 :id} {:name (format "%s Normal Dashboard 2" search-term)}]
       (mt/with-verified-cards [v-card-id v-model-id]
         (premium-features-test/with-premium-features #{:official-collections :content-verification}
           (testing "Able to filter only verified items"
             (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
-
               (testing "do not returns duplicated verified cards"
                 (is (= 1 (->> resp
                               :data
@@ -867,12 +870,13 @@
                               count))))
 
               (testing "only a subset of models are applicable"
-                (is (= #{"card" "collection" "dataset"} (set (:available_models resp)))))
+                (is (= #{"card" "collection" "dataset" "dashboard"} (set (:available_models resp)))))
 
               (testing "results contains only verified entities"
                 (is (= #{[v-coll-id  "collection" "Verified filter Verified Collection"]
                          [v-card-id  "card"       "Verified filter Verified Card"]
-                         [v-model-id "dataset"    "Verified filter Verified Model"]}
+                         [v-model-id "dataset"    "Verified filter Verified Model"]
+                         [v-dash-id  "dashboard"  "Verified filter Verified Dashboard"]}
                        (->> (:data resp)
                             (map (juxt :id :model :name))
                             set))))))
@@ -883,8 +887,9 @@
 
           (testing "Works with models filter"
             (testing "return intersections of supported models with provided models"
-              (is (= #{"card"}
-                     (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true :models "card" :models "dashboard")
+              (is (= #{"card" "dashboard"}
+                     (->> (mt/user-http-request :crowberto :get 200 "search"
+                                                :q search-term :verified true :models "card" :models "dashboard" :model "table")
                           :data
                           (map :model)
                           set))))))
@@ -892,12 +897,12 @@
         (premium-features-test/with-premium-features #{:official-collections}
           (testing "Returns verified collection only if :official-collections is enabled"
             (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
-
               (testing "only a subset of models are applicable"
-                (is (= #{"collection"} (set (:available_models resp)))))
+                (is (= #{"collection" "dashboard"} (set (:available_models resp)))))
 
               (testing "results contains only verified entities"
-                (is (= #{[v-coll-id  "collection" "Verified filter Verified Collection"]}
+                (is (= #{[v-coll-id  "collection" "Verified filter Verified Collection"]
+                         [v-dash-id  "dashboard"  "Verified filter Verified Dashboard"]}
                        (->> (:data resp)
                             (map (juxt :id :model :name))
                             set)))))))
