@@ -174,7 +174,7 @@ describe("admin > database > add", () => {
       );
     });
 
-    it.skip("should add Mongo database and redirect to listing", () => {
+    it("should add Mongo database and redirect to listing", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MongoDB").click({ force: true });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -212,7 +212,7 @@ describe("admin > database > add", () => {
       });
     });
 
-    it.skip("should add Mongo database via the connection string", () => {
+    it("should add Mongo database via the connection string", () => {
       const connectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -250,7 +250,7 @@ describe("admin > database > add", () => {
       });
     });
 
-    it.skip("should add MySQL database and redirect to listing", () => {
+    it("should add MySQL database and redirect to listing", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("MySQL").click({ force: true });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -295,7 +295,7 @@ describe("admin > database > add", () => {
     });
   });
 
-  describe.skip("Google service account JSON upload", () => {
+  describe("Google service account JSON upload", () => {
     const serviceAccountJSON = '{"foo": 123}';
 
     it("should work for BigQuery", () => {
