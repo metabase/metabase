@@ -8,6 +8,7 @@ import cx from "classnames";
 
 import "./LineAreaBarChart.css";
 
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
@@ -428,7 +429,8 @@ function transformSingleSeries(s, series, seriesIndex) {
           // show series title if it's multiseries
           series.length > 1 && card.name,
           // always show grouping value
-          formatValue(breakoutValue, { column: cols[seriesColumnIndex] }),
+          formatValue(breakoutValue, { column: cols[seriesColumnIndex] }) ??
+            NULL_DISPLAY_VALUE,
         ]
           .filter(n => n)
           .join(": "),
