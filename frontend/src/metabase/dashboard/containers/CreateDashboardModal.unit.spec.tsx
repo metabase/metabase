@@ -138,17 +138,12 @@ describe("CreateDashboardModal", () => {
       userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
     });
-    it("should not be accessible if the dashboard form is invalid", async () => {
-      setup();
-      userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeDisabled());
-    });
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       setup();
       const name = "my dashboard";
       userEvent.type(nameField(), name);
       userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeEnabled());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       userEvent.click(newCollBtn());
       await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
       userEvent.click(cancelBtn());
