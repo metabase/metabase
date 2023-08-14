@@ -186,10 +186,10 @@ export class NativeQueryEditor extends Component<
 
   _editor: Ace.Editor | null = null;
   _lastAutoComplete: {
-    timestamp?: number;
-    prefix?: string | null;
-    results?: AutocompleteItem[];
-  } = {};
+    timestamp: number;
+    prefix: string | null;
+    results: AutocompleteItem[];
+  } = { timestamp: 0, prefix: null, results: [] };
   _localUpdate = false;
 
   constructor(props: Props) {
@@ -458,7 +458,6 @@ export class NativeQueryEditor extends Component<
         try {
           let { results, timestamp } = this._lastAutoComplete;
           const cacheHit =
-            typeof timestamp === "number" &&
             Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
             this._lastAutoComplete.prefix === prefix;
           if (!cacheHit) {
