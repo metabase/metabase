@@ -18,6 +18,7 @@ export const isOSS = !isEE;
  * @param {boolean} cond
  */
 const conditionalDescribe = cond => (cond ? describe : describe.skip);
+
 export const describeEE = conditionalDescribe(isEE);
 export const describeOSS = conditionalDescribe(isOSS);
 
