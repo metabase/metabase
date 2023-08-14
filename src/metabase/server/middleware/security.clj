@@ -24,7 +24,7 @@
   []
   (let [chars         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         secure-random (SecureRandom.)]
-    (apply str (take 10 (repeatedly #(nth chars (.nextInt secure-random (count chars))))))))
+    (apply str (repeatedly 10 #(get chars (.nextInt secure-random (count chars)))))))
 
 (defonce ^:private ^:const inline-js-hashes
   (letfn [(file-hash [resource-filename]
