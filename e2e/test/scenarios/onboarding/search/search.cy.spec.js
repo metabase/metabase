@@ -353,7 +353,7 @@ describe("scenarios > search", () => {
       });
 
       describe("no filters applied", () => {
-        it("should not filter results when `Clear all filters` is applied", () => {
+        it("should not filter results by type when `Clear all filters` is applied", () => {
           cy.visit("/search?q=order&type=card");
           cy.wait("@search");
 
@@ -364,6 +364,8 @@ describe("scenarios > search", () => {
             cy.findByText("Clear all filters").click();
           });
 
+          cy.url().should("not.include", "type=card");
+
           getSearchBar().clear().type("e{enter}");
           cy.wait("@search");
 
@@ -371,6 +373,38 @@ describe("scenarios > search", () => {
             "have.length",
             typeFilters.length + 1,
           );
+        });
+
+        it("should not filter unverified assets when `Clear all filters` is applied", () => {
+          cy.visit("/search?q=order&verified=true");
+          cy.wait("@search");
+
+          cy.findAllByTestId("search-result-item-name");
+          cy.findByTestId("search-bar-filter-button").click();
+
+          getSearchModalContainer().within(() => {
+            cy.findByText("Clear all filters").click();
+          });
+
+          getSearchBar().clear().type("Orders{enter}");
+          cy.wait("@search");
+
+          cy.url().should("not.include", "verified=true");
+
+          let verifiedElementCount = 0;
+          let unverifiedElementCount = 0;
+          cy.findAllByTestId("search-result-item")
+            .each($el => {
+              if (!$el.find('[aria-label="verified icon"]').length) {
+                unverifiedElementCount++;
+              } else {
+                verifiedElementCount++;
+              }
+            })
+            .then(() => {
+              expect(verifiedElementCount).to.eq(1);
+              expect(unverifiedElementCount).to.be.gt(0);
+            });
         });
       });
     });
