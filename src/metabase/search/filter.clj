@@ -134,16 +134,16 @@
 
 (defn- default-created-at-filter-clause
   [model created-at]
-  (let [{:keys [start end unit]} (try
-                                  (params.dates/date-string->range created-at)
-                                  (catch Exception _e
-                                    (throw (ex-info (tru "Failed to parse created at param: {0}" created-at) {:status-code 400}))))
-        start                    (when start (-> start u.date/parse (u.date/range unit) :start))
-        end                      (when end   (-> end u.date/parse (u.date/range unit) :end))
-        created-at-col           (search.config/column-with-model-alias model :created_at)
-        created-at-col           (if (some #(instance? LocalDate %) [start end])
-                                  [:cast created-at-col :date]
-                                  created-at-col)]
+  (let [{:keys [start end]} (try
+                             (params.dates/date-string->range created-at {:inclusive-end? false})
+                             (catch Exception _e
+                               (throw (ex-info (tru "Failed to parse created at param: {0}" created-at) {:status-code 400}))))
+        start               (when start (-> start u.date/parse))
+        end                 (when end  (-> end u.date/parse))
+        created-at-col      (search.config/column-with-model-alias model :created_at)
+        created-at-col      (if (some #(instance? LocalDate %) [start end])
+                             [:cast created-at-col :date]
+                             created-at-col)]
     (cond
      (= start end)
      [:= created-at-col start]

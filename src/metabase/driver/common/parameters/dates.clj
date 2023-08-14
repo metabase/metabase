@@ -12,9 +12,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core :as s])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time.temporal Temporal)))
 
@@ -287,6 +285,12 @@
   "Regex to match date exclusion values, e.g. exclude-days-Mon, exclude-months-Jan, etc."
   (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")))
 
+(defn- absolute-date->unit
+  [date-string]
+  (if (str/includes? date-string "T")
+    :second
+    :day))
+
 (def ^:private absolute-date-string-decoders
   ;; year and month
   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
@@ -304,26 +308,26 @@
    ;; single day
    {:parser (regex->parser #"([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
-              {:start date :end date :unit :day})
+              {:start date :end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
               (let [iso8601date (->iso-8601-date date)]
                 [:= (mbql.u/with-temporal-unit field-clause :day) iso8601date]))}
    ;; day range
    {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
-              {:start date-1 :end date-2 :unit :day})
+              {:start date-1 :end date-2 :unit (absolute-date->unit date-1)})
     :filter (fn [{:keys [date-1 date-2]} field-clause]
               [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date-1) (->iso-8601-date date-2)])}
    ;; before day
    {:parser (regex->parser #"~([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
-              {:end date :unit :day})
+              {:end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
               [:< (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
    ;; after day
    {:parser (regex->parser #"([0-9-T:]+)~" [:date])
     :range  (fn [{:keys [date]} _]
-              {:start date :unit :day})
+              {:start date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
               [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
    ;; exclusions
@@ -366,11 +370,16 @@
   (-> temporal-range
       (m/update-existing :start #(if inclusive-start?
                                    %
-                                   ;; seems wrong to add unit day by default, what is the filter unit is hour?
-                                   (u.date/add % :day -1)))
+                                   (u.date/add % (case (:unit temporal-range)
+                                                   (:year :quarter :month :week :day)
+                                                   :day
+                                                   (:unit temporal-range)) -1)))
       (m/update-existing :end #(if inclusive-end?
                                  %
-                                 (u.date/add % :day 1)))))
+                                 (u.date/add % (case (:unit temporal-range)
+                                                   (:year :quarter :month :week :day)
+                                                   :day
+                                                   (:unit temporal-range)) 1)))))
 
 (def ^:private DateStringRange
   "Schema for a valid date range returned by `date-string->range`."

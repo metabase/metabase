@@ -80,7 +80,7 @@
                     base-search-query "card"
                     (merge default-search-ctx {:search-string "a string"})))))))
 
-(deftest  build-created-at-filter-test
+(deftest build-created-at-filter-test
   (testing "created-at filter"
     (mt/with-clock #t "2023-05-04T10:02:05Z[UTC]"
       (are [created-at expected-where]
@@ -96,8 +96,8 @@
                                                       [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
            "2016-04-18~2016-04-23"                   [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
                                                       [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
-           "2016-04-18T10:00:00~2016-04-23T11:00:00" [[:>= :card.created_at #t "2016-04-18T00:00"]
-                                                      [:< :card.created_at #t "2016-04-24T00:00"]]
+           "2016-04-18T10:30:00~2016-04-23T11:30:00" [[:>= :card.created_at #t "2016-04-18T10:30"]
+                                                      [:< :card.created_at #t "2016-04-23T11:30:01"]]
            "~2023-05-04"                             [[:< [:cast :card.created_at :date]  #t "2023-05-05"]]
            "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
            ;; relative datetime

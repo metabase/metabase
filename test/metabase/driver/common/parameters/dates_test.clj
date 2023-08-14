@@ -5,8 +5,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.test :as mt]))
 
 (deftest date-string->filter-test
   (testing "year and month"
@@ -130,88 +129,271 @@
 (deftest date-string->range-test
   (mt/with-clock #t "2016-06-07T12:13:55Z"
     (doseq [[group s->expected]
-            {"absolute datetimes"         {"Q1-2016"               {:start "2016-01-01" :end "2016-03-31" :unit :quarter}
-                                           "2016-02"               {:start "2016-02-01" :end "2016-02-29" :unit :month}
-                                           "2016-04-18"            {:start "2016-04-18" :end "2016-04-18" :unit :day}
-                                           "2016-04-18~2016-04-23" {:start "2016-04-18" :end "2016-04-23" :unit :day}
-                                           "2016-04-18~"           {:start "2016-04-18" :unit :day}
-                                           "~2016-04-18"           {:end "2016-04-18" :unit :day}}
-             "relative (past)"            {"past30seconds"  {:start "2016-06-07T12:13:25" :end "2016-06-07T12:13:54" :unit :second}
-                                           "past5minutes~"  {:start "2016-06-07T12:08:00" :end "2016-06-07T12:13:00" :unit :minute}
-                                           "past3hours"     {:start "2016-06-07T09:00:00" :end "2016-06-07T11:00:00" :unit :hour}
-                                           "past3days"      {:start "2016-06-04" :end "2016-06-06" :unit :day}
-                                           "past3days~"     {:start "2016-06-04" :end "2016-06-07" :unit :day}
-                                           "past7days"      {:start "2016-05-31" :end "2016-06-06" :unit :day}
-                                           "past30days"     {:start "2016-05-08" :end "2016-06-06" :unit :day}
-                                           "past2months"    {:start "2016-04-01" :end "2016-05-31" :unit :month}
-                                           "past2months~"   {:start "2016-04-01" :end "2016-06-30" :unit :month}
-                                           "past13months"   {:start "2015-05-01" :end "2016-05-31" :unit :month}
-                                           "past2quarters"  {:start "2015-10-01" :end "2016-03-31" :unit :quarter}
-                                           "past2quarters~" {:start "2015-10-01" :end "2016-06-30" :unit :quarter}
-                                           "past1years"     {:start "2015-01-01" :end "2015-12-31" :unit :year}
-                                           "past1years~"    {:start "2015-01-01" :end "2016-12-31" :unit :year}
-                                           "past16years"    {:start "2000-01-01" :end "2015-12-31" :unit :year}}
-             "relative (next)"            {"next45seconds"  {:start "2016-06-07T12:13:56" :end "2016-06-07T12:14:40" :unit :second}
-                                           "next20minutes"  {:start "2016-06-07T12:14:00" :end "2016-06-07T12:33:00" :unit :minute}
-                                           "next6hours"     {:start "2016-06-07T13:00:00" :end "2016-06-07T18:00:00" :unit :hour}
-                                           "next3days"      {:start "2016-06-08" :end "2016-06-10" :unit :day}
-                                           "next3days~"     {:start "2016-06-07" :end "2016-06-10" :unit :day}
-                                           "next7days"      {:start "2016-06-08" :end "2016-06-14" :unit :day}
-                                           "next30days"     {:start "2016-06-08" :end "2016-07-07" :unit :day}
-                                           "next2months"    {:start "2016-07-01" :end "2016-08-31" :unit :month}
-                                           "next2months~"   {:start "2016-06-01" :end "2016-08-31" :unit :month}
-                                           "next2quarters"  {:start "2016-07-01" :end "2016-12-31" :unit :quarter}
-                                           "next2quarters~" {:start "2016-04-01" :end "2016-12-31" :unit :quarter}
-                                           "next13months"   {:start "2016-07-01" :end "2017-07-31" :unit :month}
-                                           "next1years"     {:start "2017-01-01" :end "2017-12-31" :unit :year}
-                                           "next1years~"    {:start "2016-01-01" :end "2017-12-31" :unit :year}
-                                           "next16years"    {:start "2017-01-01" :end "2032-12-31" :unit :year}}
-             "relative (this)"            {"thissecond"  {:start "2016-06-07T12:13:55" :end "2016-06-07T12:13:55" :unit :second}
-                                           "thisminute"  {:start "2016-06-07T12:13:00" :end "2016-06-07T12:13:00" :unit :minute}
-                                           "thishour"    {:start "2016-06-07T12:00:00" :end "2016-06-07T12:00:00" :unit :hour}
-                                           "thisday"     {:start "2016-06-07" :end "2016-06-07" :unit :day}
-                                           "thisweek"    {:start "2016-06-05" :end "2016-06-11" :unit :week}
-                                           "thismonth"   {:start "2016-06-01" :end "2016-06-30" :unit :month}
-                                           "thisquarter" {:start "2016-04-01" :end "2016-06-30" :unit :quarter}
-                                           "thisyear"    {:start "2016-01-01" :end "2016-12-31" :unit :year}}
-             "relative (last)"            {"lastsecond"  {:start "2016-06-07T12:13:54" :end "2016-06-07T12:13:54" :unit :second}
-                                           "lastminute"  {:start "2016-06-07T12:12:00" :end "2016-06-07T12:12:00" :unit :minute}
-                                           "lasthour"    {:start "2016-06-07T11:00:00" :end "2016-06-07T11:00:00" :unit :hour}
-                                           "lastweek"    {:start "2016-05-29" :end "2016-06-04" :unit :week}
-                                           "lastmonth"   {:start "2016-05-01" :end "2016-05-31" :unit :month}
-                                           "lastquarter" {:start "2016-01-01" :end "2016-03-31" :unit :quarter}
-                                           "lastyear"    {:start "2015-01-01" :end "2015-12-31" :unit :year}}
-             "relative (today/yesterday)" {"yesterday" {:start "2016-06-06" :end "2016-06-06" :unit :day}
-                                           "today"     {:start "2016-06-07" :end "2016-06-07" :unit :day}}
-             "relative (past) with starting from" {"past1days-from-0days"      {:start "2016-06-06" :end "2016-06-06" :unit :day}
-                                                   "past1months-from-0months"  {:start "2016-05-01" :end "2016-05-31" :unit :month}
-                                                   "past1months-from-36months" {:start "2013-05-01" :end "2013-05-31" :unit :month}
-                                                   "past1years-from-36months"  {:start "2012-01-01" :end "2012-12-31" :unit :year}
-                                                   "past3days-from-3years"     {:start "2013-06-04" :end "2013-06-06" :unit :day}}
-             "relative (next) with starting from" {"next2days-from-1months"    {:start "2016-07-08" :end "2016-07-09" :unit :day}
-                                                   "next1months-from-0months"  {:start "2016-07-01" :end "2016-07-31" :unit :month}
-                                                   "next1months-from-36months" {:start "2019-07-01" :end "2019-07-31" :unit :month}
-                                                   "next1years-from-36months"  {:start "2020-01-01" :end "2020-12-31" :unit :year}
-                                                   "next3days-from-3years"     {:start "2019-06-08" :end "2019-06-10" :unit :day}
-                                                   "next7hours-from-13months"  {:start "2017-07-07T13:00:00" :end "2017-07-07T19:00:00" :unit :hour}}}]
-      (testing group
-        (doseq [[s inclusive-range]   s->expected
-                [options range-xform] (letfn [(adjust [m k amount]
-                                                (if-not (get m k)
-                                                  m
-                                                  (update m k #(u.date/format (u.date/add (u.date/parse %) :day amount)))))
-                                              (adjust-start [m]
-                                                (adjust m :start -1))
-                                              (adjust-end [m]
-                                                (adjust m :end 1))]
-                                        {nil                                              identity
-                                         {:inclusive-start? false}                        adjust-start
-                                         {:inclusive-end? false}                          adjust-end
-                                         {:inclusive-start? false :inclusive-end? false} (comp adjust-start adjust-end)})
-                :let                  [expected (range-xform inclusive-range)]]
-          (is (= expected
-                 (params.dates/date-string->range s options))
-              (format "%s with options %s should parse to %s" (pr-str s) (pr-str options) (pr-str expected))))))))
+            {"absolute datetimes"         {"Q1-2016"               [{:start "2016-01-01" :end "2016-03-31" :unit :quarter}  ;; inclusive start + end = true (default)
+                                                                    {:start "2015-12-31" :end "2016-03-31" :unit :quarter}  ;; inclusive start = false
+                                                                    {:start "2016-01-01" :end "2016-04-01" :unit :quarter}  ;; inclusive end   = false
+                                                                    {:start "2015-12-31" :end "2016-04-01" :unit :quarter}] ;; inclusive start + end = false
+                                           "2016-02"               [{:start "2016-02-01" :end "2016-02-29" :unit :month}
+                                                                    {:start "2016-01-31" :end "2016-02-29" :unit :month}
+                                                                    {:start "2016-02-01" :end "2016-03-01" :unit :month}
+                                                                    {:start "2016-01-31" :end "2016-03-01" :unit :month}]
+                                           "2016-04-18"            [{:start "2016-04-18" :end "2016-04-18" :unit :day}
+                                                                    {:start "2016-04-17" :end "2016-04-18" :unit :day}
+                                                                    {:start "2016-04-18" :end "2016-04-19" :unit :day}
+                                                                    {:start "2016-04-17" :end "2016-04-19" :unit :day}]
+                                           "2016-04-18~2016-04-23" [{:start "2016-04-18" :end "2016-04-23" :unit :day}
+                                                                    {:start "2016-04-17" :end "2016-04-23" :unit :day}
+                                                                    {:start "2016-04-18" :end "2016-04-24" :unit :day}
+                                                                    {:start "2016-04-17" :end "2016-04-24" :unit :day}]
+                                           "2016-04-18~"           [{:start "2016-04-18" :unit :day}
+                                                                    {:start "2016-04-17" :unit :day}
+                                                                    {:start "2016-04-18" :unit :day}
+                                                                    {:start "2016-04-17" :unit :day}]
+                                           "~2016-04-18"           [{:end "2016-04-18" :unit :day}
+                                                                    {:end "2016-04-18" :unit :day}
+                                                                    {:end "2016-04-19" :unit :day}
+                                                                    {:end "2016-04-19" :unit :day}]}
+             "relative (past)"            {"past30seconds"  [{:start "2016-06-07T12:13:25" :end "2016-06-07T12:13:54" :unit :second}
+                                                             {:start "2016-06-07T12:13:24" :end "2016-06-07T12:13:54" :unit :second}
+                                                             {:start "2016-06-07T12:13:25" :end "2016-06-07T12:13:55" :unit :second}
+                                                             {:start "2016-06-07T12:13:24" :end "2016-06-07T12:13:55" :unit :second}]
+                                           "past5minutes~"  [{:start "2016-06-07T12:08:00" :end "2016-06-07T12:13:00" :unit :minute}
+                                                             {:start "2016-06-07T12:07:00" :end "2016-06-07T12:13:00" :unit :minute}
+                                                             {:start "2016-06-07T12:08:00" :end "2016-06-07T12:14:00" :unit :minute}
+                                                             {:start "2016-06-07T12:07:00" :end "2016-06-07T12:14:00" :unit :minute}]
+                                           "past3hours"     [{:start "2016-06-07T09:00:00" :end "2016-06-07T11:00:00" :unit :hour}
+                                                             {:start "2016-06-07T08:00:00" :end "2016-06-07T11:00:00" :unit :hour}
+                                                             {:start "2016-06-07T09:00:00" :end "2016-06-07T12:00:00" :unit :hour}
+                                                             {:start "2016-06-07T08:00:00" :end "2016-06-07T12:00:00" :unit :hour}]
+                                           "past3days"      [{:start "2016-06-04" :end "2016-06-06" :unit :day}
+                                                             {:start "2016-06-03" :end "2016-06-06" :unit :day}
+                                                             {:start "2016-06-04" :end "2016-06-07" :unit :day}
+                                                             {:start "2016-06-03" :end "2016-06-07" :unit :day}]
+                                           "past3days~"     [{:start "2016-06-04" :end "2016-06-07" :unit :day}
+                                                             {:start "2016-06-03" :end "2016-06-07" :unit :day}
+                                                             {:start "2016-06-04" :end "2016-06-08" :unit :day}
+                                                             {:start "2016-06-03" :end "2016-06-08" :unit :day}]
+                                           "past7days"      [{:start "2016-05-31" :end "2016-06-06" :unit :day}
+                                                             {:start "2016-05-30" :end "2016-06-06" :unit :day}
+                                                             {:start "2016-05-31" :end "2016-06-07" :unit :day}
+                                                             {:start "2016-05-30" :end "2016-06-07" :unit :day}]
+                                           "past30days"     [{:start "2016-05-08" :end "2016-06-06" :unit :day}
+                                                             {:start "2016-05-07" :end "2016-06-06" :unit :day}
+                                                             {:start "2016-05-08" :end "2016-06-07" :unit :day}
+                                                             {:start "2016-05-07" :end "2016-06-07" :unit :day}]
+                                           "past2months"    [{:start "2016-04-01" :end "2016-05-31" :unit :month}
+                                                             {:start "2016-03-31" :end "2016-05-31" :unit :month}
+                                                             {:start "2016-04-01" :end "2016-06-01" :unit :month}
+                                                             {:start "2016-03-31" :end "2016-06-01" :unit :month}]
+                                           "past2months~"   [{:start "2016-04-01" :end "2016-06-30" :unit :month}
+                                                             {:start "2016-03-31" :end "2016-06-30" :unit :month}
+                                                             {:start "2016-04-01" :end "2016-07-01" :unit :month}
+                                                             {:start "2016-03-31" :end "2016-07-01" :unit :month}]
+                                           "past13months"   [{:start "2015-05-01" :end "2016-05-31" :unit :month}
+                                                             {:start "2015-04-30" :end "2016-05-31" :unit :month}
+                                                             {:start "2015-05-01" :end "2016-06-01" :unit :month}
+                                                             {:start "2015-04-30" :end "2016-06-01" :unit :month}]
+                                           "past2quarters"  [{:start "2015-10-01" :end "2016-03-31" :unit :quarter}
+                                                             {:start "2015-09-30" :end "2016-03-31" :unit :quarter}
+                                                             {:start "2015-10-01" :end "2016-04-01" :unit :quarter}
+                                                             {:start "2015-09-30" :end "2016-04-01" :unit :quarter}]
+                                           "past2quarters~" [{:start "2015-10-01" :end "2016-06-30" :unit :quarter}
+                                                             {:start "2015-09-30" :end "2016-06-30" :unit :quarter}
+                                                             {:start "2015-10-01" :end "2016-07-01" :unit :quarter}
+                                                             {:start "2015-09-30" :end "2016-07-01" :unit :quarter}]
+                                           "past1years"     [{:start "2015-01-01" :end "2015-12-31" :unit :year}
+                                                             {:start "2014-12-31" :end "2015-12-31" :unit :year}
+                                                             {:start "2015-01-01" :end "2016-01-01" :unit :year}
+                                                             {:start "2014-12-31" :end "2016-01-01" :unit :year}]
+                                           "past1years~"    [{:start "2015-01-01" :end "2016-12-31" :unit :year}
+                                                             {:start "2014-12-31" :end "2016-12-31" :unit :year}
+                                                             {:start "2015-01-01" :end "2017-01-01" :unit :year}
+                                                             {:start "2014-12-31" :end "2017-01-01" :unit :year}]
+                                           "past16years"    [{:start "2000-01-01" :end "2015-12-31" :unit :year}
+                                                             {:start "1999-12-31" :end "2015-12-31" :unit :year}
+                                                             {:start "2000-01-01" :end "2016-01-01" :unit :year}
+                                                             {:start "1999-12-31" :end "2016-01-01" :unit :year}]}
+             "relative (next)"            {"next45seconds"  [{:start "2016-06-07T12:13:56" :end "2016-06-07T12:14:40" :unit :second}
+                                                             {:start "2016-06-07T12:13:55" :end "2016-06-07T12:14:40" :unit :second}
+                                                             {:start "2016-06-07T12:13:56" :end "2016-06-07T12:14:41" :unit :second}
+                                                             {:start "2016-06-07T12:13:55" :end "2016-06-07T12:14:41" :unit :second}]
+                                           "next20minutes"  [{:start "2016-06-07T12:14:00" :end "2016-06-07T12:33:00" :unit :minute}
+                                                             {:start "2016-06-07T12:13:00" :end "2016-06-07T12:33:00" :unit :minute}
+                                                             {:start "2016-06-07T12:14:00" :end "2016-06-07T12:34:00" :unit :minute}
+                                                             {:start "2016-06-07T12:13:00" :end "2016-06-07T12:34:00" :unit :minute}]
+                                           "next6hours"     [{:start "2016-06-07T13:00:00" :end "2016-06-07T18:00:00" :unit :hour}
+                                                             {:start "2016-06-07T12:00:00" :end "2016-06-07T18:00:00" :unit :hour}
+                                                             {:start "2016-06-07T13:00:00" :end "2016-06-07T19:00:00" :unit :hour}
+                                                             {:start "2016-06-07T12:00:00" :end "2016-06-07T19:00:00" :unit :hour}]
+                                           "next3days"      [{:start "2016-06-08" :end "2016-06-10" :unit :day}
+                                                             {:start "2016-06-07" :end "2016-06-10" :unit :day}
+                                                             {:start "2016-06-08" :end "2016-06-11" :unit :day}
+                                                             {:start "2016-06-07" :end "2016-06-11" :unit :day}]
+                                           "next3days~"     [{:start "2016-06-07" :end "2016-06-10" :unit :day}
+                                                             {:start "2016-06-06" :end "2016-06-10" :unit :day}
+                                                             {:start "2016-06-07" :end "2016-06-11" :unit :day}
+                                                             {:start "2016-06-06" :end "2016-06-11" :unit :day}]
+                                           "next7days"      [{:start "2016-06-08" :end "2016-06-14" :unit :day}
+                                                             {:start "2016-06-07" :end "2016-06-14" :unit :day}
+                                                             {:start "2016-06-08" :end "2016-06-15" :unit :day}
+                                                             {:start "2016-06-07" :end "2016-06-15" :unit :day}]
+                                           "next30days"     [{:start "2016-06-08" :end "2016-07-07" :unit :day}
+                                                             {:start "2016-06-07" :end "2016-07-07" :unit :day}
+                                                             {:start "2016-06-08" :end "2016-07-08" :unit :day}
+                                                             {:start "2016-06-07" :end "2016-07-08" :unit :day}]
+                                           "next2months"    [{:start "2016-07-01" :end "2016-08-31" :unit :month}
+                                                             {:start "2016-06-30" :end "2016-08-31" :unit :month}
+                                                             {:start "2016-07-01" :end "2016-09-01" :unit :month}
+                                                             {:start "2016-06-30" :end "2016-09-01" :unit :month}]
+                                           "next2months~"   [{:start "2016-06-01" :end "2016-08-31" :unit :month}
+                                                             {:start "2016-05-31" :end "2016-08-31" :unit :month}
+                                                             {:start "2016-06-01" :end "2016-09-01" :unit :month}
+                                                             {:start "2016-05-31" :end "2016-09-01" :unit :month}]
+                                           "next2quarters"  [{:start "2016-07-01" :end "2016-12-31" :unit :quarter}
+                                                             {:start "2016-06-30" :end "2016-12-31" :unit :quarter}
+                                                             {:start "2016-07-01" :end "2017-01-01" :unit :quarter}
+                                                             {:start "2016-06-30" :end "2017-01-01" :unit :quarter}]
+                                           "next2quarters~" [{:start "2016-04-01" :end "2016-12-31" :unit :quarter}
+                                                             {:start "2016-03-31" :end "2016-12-31" :unit :quarter}
+                                                             {:start "2016-04-01" :end "2017-01-01" :unit :quarter}
+                                                             {:start "2016-03-31" :end "2017-01-01" :unit :quarter}]
+                                           "next13months"   [{:start "2016-07-01" :end "2017-07-31" :unit :month}
+                                                             {:start "2016-06-30" :end "2017-07-31" :unit :month}
+                                                             {:start "2016-07-01" :end "2017-08-01" :unit :month}
+                                                             {:start "2016-06-30" :end "2017-08-01" :unit :month}]
+                                           "next1years"     [{:start "2017-01-01" :end "2017-12-31" :unit :year}
+                                                             {:start "2016-12-31" :end "2017-12-31" :unit :year}
+                                                             {:start "2017-01-01" :end "2018-01-01" :unit :year}
+                                                             {:start "2016-12-31" :end "2018-01-01" :unit :year}]
+                                           "next1years~"    [{:start "2016-01-01" :end "2017-12-31" :unit :year}
+                                                             {:start "2015-12-31" :end "2017-12-31" :unit :year}
+                                                             {:start "2016-01-01" :end "2018-01-01" :unit :year}
+                                                             {:start "2015-12-31" :end "2018-01-01" :unit :year}]
+                                           "next16years"    [{:start "2017-01-01" :end "2032-12-31" :unit :year}
+                                                             {:start "2016-12-31" :end "2032-12-31" :unit :year}
+                                                             {:start "2017-01-01" :end "2033-01-01" :unit :year}
+                                                             {:start "2016-12-31" :end "2033-01-01" :unit :year}]}
+             "relative (this)"            {"thissecond"  [{:start "2016-06-07T12:13:55" :end "2016-06-07T12:13:55" :unit :second}
+                                                          {:start "2016-06-07T12:13:54" :end "2016-06-07T12:13:55" :unit :second}
+                                                          {:start "2016-06-07T12:13:55" :end "2016-06-07T12:13:56" :unit :second}
+                                                          {:start "2016-06-07T12:13:54" :end "2016-06-07T12:13:56" :unit :second}]
+                                           "thisminute"  [{:start "2016-06-07T12:13:00" :end "2016-06-07T12:13:00" :unit :minute}
+                                                          {:start "2016-06-07T12:12:00" :end "2016-06-07T12:13:00" :unit :minute}
+                                                          {:start "2016-06-07T12:13:00" :end "2016-06-07T12:14:00" :unit :minute}
+                                                          {:start "2016-06-07T12:12:00" :end "2016-06-07T12:14:00" :unit :minute}]
+                                           "thishour"    [{:start "2016-06-07T12:00:00" :end "2016-06-07T12:00:00" :unit :hour}
+                                                          {:start "2016-06-07T11:00:00" :end "2016-06-07T12:00:00" :unit :hour}
+                                                          {:start "2016-06-07T12:00:00" :end "2016-06-07T13:00:00" :unit :hour}
+                                                          {:start "2016-06-07T11:00:00" :end "2016-06-07T13:00:00" :unit :hour}]
+                                           "thisday"     [{:start "2016-06-07" :end "2016-06-07" :unit :day}
+                                                          {:start "2016-06-06" :end "2016-06-07" :unit :day}
+                                                          {:start "2016-06-07" :end "2016-06-08" :unit :day}
+                                                          {:start "2016-06-06" :end "2016-06-08" :unit :day}]
+                                           "thisweek"    [{:start "2016-06-05" :end "2016-06-11" :unit :week}
+                                                          {:start "2016-06-04" :end "2016-06-11" :unit :week}
+                                                          {:start "2016-06-05" :end "2016-06-12" :unit :week}
+                                                          {:start "2016-06-04" :end "2016-06-12" :unit :week}]
+                                           "thismonth"   [{:start "2016-06-01" :end "2016-06-30" :unit :month}
+                                                          {:start "2016-05-31" :end "2016-06-30" :unit :month}
+                                                          {:start "2016-06-01" :end "2016-07-01" :unit :month}
+                                                          {:start "2016-05-31" :end "2016-07-01" :unit :month}]
+                                           "thisquarter" [{:start "2016-04-01" :end "2016-06-30" :unit :quarter}
+                                                          {:start "2016-03-31" :end "2016-06-30" :unit :quarter}
+                                                          {:start "2016-04-01" :end "2016-07-01" :unit :quarter}
+                                                          {:start "2016-03-31" :end "2016-07-01" :unit :quarter}]
+                                           "thisyear"    [{:start "2016-01-01" :end "2016-12-31" :unit :year}
+                                                          {:start "2015-12-31" :end "2016-12-31" :unit :year}
+                                                          {:start "2016-01-01" :end "2017-01-01" :unit :year}
+                                                          {:start "2015-12-31" :end "2017-01-01" :unit :year}]}
+             "relative (last)"            {"lastsecond"  [{:start "2016-06-07T12:13:54" :end "2016-06-07T12:13:54" :unit :second}
+                                                          {:start "2016-06-07T12:13:53" :end "2016-06-07T12:13:54" :unit :second}
+                                                          {:start "2016-06-07T12:13:54" :end "2016-06-07T12:13:55" :unit :second}
+                                                          {:start "2016-06-07T12:13:53" :end "2016-06-07T12:13:55" :unit :second}]
+                                           "lastminute"  [{:start "2016-06-07T12:12:00" :end "2016-06-07T12:12:00" :unit :minute}
+                                                          {:start "2016-06-07T12:11:00" :end "2016-06-07T12:12:00" :unit :minute}
+                                                          {:start "2016-06-07T12:12:00" :end "2016-06-07T12:13:00" :unit :minute}
+                                                          {:start "2016-06-07T12:11:00" :end "2016-06-07T12:13:00" :unit :minute}]
+                                           "lasthour"    [{:start "2016-06-07T11:00:00" :end "2016-06-07T11:00:00" :unit :hour}
+                                                          {:start "2016-06-07T10:00:00" :end "2016-06-07T11:00:00" :unit :hour}
+                                                          {:start "2016-06-07T11:00:00" :end "2016-06-07T12:00:00" :unit :hour}
+                                                          {:start "2016-06-07T10:00:00" :end "2016-06-07T12:00:00" :unit :hour}]
+                                           "lastweek"    [{:start "2016-05-29" :end "2016-06-04" :unit :week}
+                                                          {:start "2016-05-28" :end "2016-06-04" :unit :week}
+                                                          {:start "2016-05-29" :end "2016-06-05" :unit :week}
+                                                          {:start "2016-05-28" :end "2016-06-05" :unit :week}]
+                                           "lastmonth"   [{:start "2016-05-01" :end "2016-05-31" :unit :month}
+                                                          {:start "2016-04-30" :end "2016-05-31" :unit :month}
+                                                          {:start "2016-05-01" :end "2016-06-01" :unit :month}
+                                                          {:start "2016-04-30" :end "2016-06-01" :unit :month}]
+                                           "lastquarter" [{:start "2016-01-01" :end "2016-03-31" :unit :quarter}
+                                                          {:start "2015-12-31" :end "2016-03-31" :unit :quarter}
+                                                          {:start "2016-01-01" :end "2016-04-01" :unit :quarter}
+                                                          {:start "2015-12-31" :end "2016-04-01" :unit :quarter}]
+                                           "lastyear"    [{:start "2015-01-01" :end "2015-12-31" :unit :year}
+                                                          {:start "2014-12-31" :end "2015-12-31" :unit :year}
+                                                          {:start "2015-01-01" :end "2016-01-01" :unit :year}
+                                                          {:start "2014-12-31" :end "2016-01-01" :unit :year}]}
+             "relative (today/yesterday)" {"yesterday" [{:start "2016-06-06" :end "2016-06-06" :unit :day}
+                                                        {:start "2016-06-05" :end "2016-06-06" :unit :day}
+                                                        {:start "2016-06-06" :end "2016-06-07" :unit :day}
+                                                        {:start "2016-06-05" :end "2016-06-07" :unit :day}]
+                                           "today"     [{:start "2016-06-07" :end "2016-06-07" :unit :day}
+                                                        {:start "2016-06-06" :end "2016-06-07" :unit :day}
+                                                        {:start "2016-06-07" :end "2016-06-08" :unit :day}
+                                                        {:start "2016-06-06" :end "2016-06-08" :unit :day}]}
+             "relative (past) with starting from" {"past1days-from-0days"      [{:start "2016-06-06" :end "2016-06-06" :unit :day}
+                                                                                {:start "2016-06-05" :end "2016-06-06" :unit :day}
+                                                                                {:start "2016-06-06" :end "2016-06-07" :unit :day}
+                                                                                {:start "2016-06-05" :end "2016-06-07" :unit :day}]
+                                                   "past1months-from-0months"  [{:start "2016-05-01" :end "2016-05-31" :unit :month}
+                                                                                {:start "2016-04-30" :end "2016-05-31" :unit :month}
+                                                                                {:start "2016-05-01" :end "2016-06-01" :unit :month}
+                                                                                {:start "2016-04-30" :end "2016-06-01" :unit :month}]
+                                                   "past1months-from-36months" [{:start "2013-05-01" :end "2013-05-31" :unit :month}
+                                                                                {:start "2013-04-30" :end "2013-05-31" :unit :month}
+                                                                                {:start "2013-05-01" :end "2013-06-01" :unit :month}
+                                                                                {:start "2013-04-30" :end "2013-06-01" :unit :month}]
+                                                   "past1years-from-36months"  [{:start "2012-01-01" :end "2012-12-31" :unit :year}
+                                                                                {:start "2011-12-31" :end "2012-12-31" :unit :year}
+                                                                                {:start "2012-01-01" :end "2013-01-01" :unit :year}
+                                                                                {:start "2011-12-31" :end "2013-01-01" :unit :year}]
+                                                   "past3days-from-3years"     [{:start "2013-06-04" :end "2013-06-06" :unit :day}
+                                                                                {:start "2013-06-03" :end "2013-06-06" :unit :day}
+                                                                                {:start "2013-06-04" :end "2013-06-07" :unit :day}
+                                                                                {:start "2013-06-03" :end "2013-06-07" :unit :day}]}
+             "relative (next) with starting from" {"next2days-from-1months"    [{:start "2016-07-08" :end "2016-07-09" :unit :day}
+                                                                                {:start "2016-07-07" :end "2016-07-09" :unit :day}
+                                                                                {:start "2016-07-08" :end "2016-07-10" :unit :day}
+                                                                                {:start "2016-07-07" :end "2016-07-10" :unit :day}]
+                                                   "next1months-from-0months"  [{:start "2016-07-01" :end "2016-07-31" :unit :month}
+                                                                                {:start "2016-06-30" :end "2016-07-31" :unit :month}
+                                                                                {:start "2016-07-01" :end "2016-08-01" :unit :month}
+                                                                                {:start "2016-06-30" :end "2016-08-01" :unit :month}]
+                                                   "next1months-from-36months" [{:start "2019-07-01" :end "2019-07-31" :unit :month}
+                                                                                {:start "2019-06-30" :end "2019-07-31" :unit :month}
+                                                                                {:start "2019-07-01" :end "2019-08-01" :unit :month}
+                                                                                {:start "2019-06-30" :end "2019-08-01" :unit :month}]
+                                                   "next1years-from-36months"  [{:start "2020-01-01" :end "2020-12-31" :unit :year}
+                                                                                {:start "2019-12-31" :end "2020-12-31" :unit :year}
+                                                                                {:start "2020-01-01" :end "2021-01-01" :unit :year}
+                                                                                {:start "2019-12-31" :end "2021-01-01" :unit :year}]
+                                                   "next3days-from-3years"     [{:start "2019-06-08" :end "2019-06-10" :unit :day}
+                                                                                {:start "2019-06-07" :end "2019-06-10" :unit :day}
+                                                                                {:start "2019-06-08" :end "2019-06-11" :unit :day}
+                                                                                {:start "2019-06-07" :end "2019-06-11" :unit :day}]
+                                                   "next7hours-from-13months"  [{:start "2017-07-07T13:00:00" :end "2017-07-07T19:00:00" :unit :hour}
+                                                                                {:start "2017-07-07T12:00:00" :end "2017-07-07T19:00:00" :unit :hour}
+                                                                                {:start "2017-07-07T13:00:00" :end "2017-07-07T20:00:00" :unit :hour}
+                                                                                {:start "2017-07-07T12:00:00" :end "2017-07-07T20:00:00" :unit :hour}]}}]
+     (testing group
+       (doseq [[s ranges] s->expected
+               [expected-range option] (map vector ranges [nil
+                                                           {:inclusive-start? false}
+                                                           {:inclusive-end? false}
+                                                           {:inclusive-start? false :inclusive-end? false}])]
+         (testing (format "%s with options %s should parse to %s" (pr-str s) (pr-str option) (pr-str ranges))
+           (is (= expected-range
+                  (params.dates/date-string->range s option)))))))))
 
 (deftest relative-dates-with-starting-from-zero-must-match
   (testing "relative dates need to behave the same way, offset or not."

@@ -1023,13 +1023,13 @@
                             ["dataset"    model-old]
                             ["dashboard"  dashboard-old]
                             ["table"      table-old]}]
-
           ;; absolute datetime
          (test-search "Q2-2021" old-result)
          (test-search "2023-05-04" new-result)
          (test-search "2021-05-03~" (set/union old-result new-result))
          ;; range is inclusive of the start but exclusive of the end, so this does not contain new-result
          (test-search "2021-05-04~2023-05-03" old-result)
+         (test-search "2021-05-05~2023-05-04" new-result)
          (test-search "~2023-05-03" old-result)
          (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
 
