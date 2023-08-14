@@ -8,15 +8,32 @@ title: "Configuration file"
 
 On some paid, self-hosted plans, Metabase supports initialization on launch from a config file named `config.yml`. This file should either be in the current directory (the directory where the running Metabase JAR is located), or in a path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
 
-The config file is split up into three main sections:
+The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file).
+
+The config file settings are not treated as a hardcoded source of truth (like [environment variables](./environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
+
+## Config setup
+
+The config file is split up into sections: `version` and `config.` Under `config`, you can specify:
 
 - [Users](#users)
 - [Databases](#databases)
 - [Settings](#settings)
 
-The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file).
+Like so:
 
-The config file settings are not treated as a hardcoded source of truth (like [environment variables](./environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
+```
+version: 1
+config:
+  settings:
+    - ...
+  users:
+    - ...
+  databases:
+    - ...
+```
+
+The config file must also include a `version` key, which is just a convenience field for you to help you keep track of your config file versions.
 
 ## Users
 
@@ -99,9 +116,7 @@ config:
 
 In this config file, you can specify _any_ Admin setting.
 
-In general, the settings you can set in the `settings` section of this config file map to the [environment variables](./environment-variables.md).
-
-The actual key that you include in the config file differs slightly from the format used for environment variables. For environment variables, the form is in screaming snake case, prefixed by an `MB`:
+In general, the settings you can set in the `settings` section of this config file map to the [environment variables](./environment-variables.md), so check them out to see which settings you can use in your config file. The actual key that you include in the config file differs slightly from the format used for environment variables. For environment variables, the form is in screaming snake case, prefixed by an `MB`:
 
 ```
 MB_NAME_OF_VARIABLE
@@ -127,7 +142,7 @@ config:
       details: ...
 ```
 
-Just to give you an idea, here's an incomplete list of settings you can set via the config file:
+Just to give you an idea for some settings, here's an incomplete list of settings you can set via the config file:
 
 ```
 application-colors
@@ -165,7 +180,7 @@ site-url
 site-name
 ```
 
-But you can set any of the Admin settings with the config file, like you can with an [environment variable](./config-file.md).
+But you can set any of the Admin settings with the config file. Check out the list of [environment variable](./config-file.md) to see what you can configure.
 
 ## Loading a new Metabase from a config file
 
