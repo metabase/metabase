@@ -475,7 +475,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Products → Ean").should("exist");
     });
 
-    it.skip("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
+    it("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
       cy.createQuestion(tableQuestionWithJoinAndFields).then(
         ({ body: card }) => {
           cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
@@ -502,17 +502,17 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().findByText("Product → Ean").should("exist");
       additionalColumns().findByText("Ean").should("not.exist");
       scrollVisualization();
-      visualization().findByText("Products → Ean").should("exist");
+      visualization().findByText("Product → Ean").should("exist");
 
       cy.log("show an existing column");
       additionalColumns().within(() => showColumn("Products → Category"));
       cy.wait("@dataset");
       visibleColumns().findByText("Products → Category").should("exist");
-      visibleColumns().findByText("Products → Ean").should("exist");
+      visibleColumns().findByText("Product → Ean").should("exist");
       additionalColumns().findByText("Products → Category").should("not.exist");
       scrollVisualization();
       visualization().findByText("Products → Category").should("exist");
-      visualization().findByText("Products → Ean").should("exist");
+      visualization().findByText("Product → Ean").should("exist");
     });
 
     it("should be able to show and hide implicitly joinable fields for a nested query", () => {
