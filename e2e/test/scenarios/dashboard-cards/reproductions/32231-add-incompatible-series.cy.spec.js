@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "e2e/support/helpers";
+import { editDashboard, restore, visitDashboard } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -63,7 +63,7 @@ describe("issue 32231", () => {
       },
     );
 
-    cy.icon("pencil").click();
+    editDashboard();
     cy.findByTestId("add-series-button").click({ force: true });
     cy.wait("@seriesQuery");
 
