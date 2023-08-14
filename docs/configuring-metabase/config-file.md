@@ -10,9 +10,9 @@ On some paid, self-hosted plans, Metabase supports initialization on launch from
 
 The config file is split up into three main sections:
 
-- [Users](#users-and-admins)
+- [Users](#users)
 - [Databases](#databases)
-- [Settings](#list-of-settings)
+- [Settings](#settings)
 
 The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file).
 
@@ -95,7 +95,7 @@ config:
       details: ...
 ```
 
-## List of settings
+## Settings
 
 In this config file, you can specify _any_ Admin setting.
 
@@ -130,18 +130,12 @@ config:
 Just to give you an idea, here's an incomplete list of settings you can set via the config file:
 
 ```
-site-uuid-for-premium-features-token-checks
 application-colors
 config-from-file-sync-databases
-site-uuid-for-version-info-fetching
-analytics-uuid
-site-uuid
 check-for-updates
 experimental-enable-actions
 persisted-model-refresh-cron-schedule
-version-info-last-checked
 email-smtp-host
-version-info
 enable-query-caching
 email-smtp-username
 start-of-week
@@ -154,7 +148,6 @@ email-reply-to
 premium-embedding-token
 follow-up-email-sent
 persisted-models-enabled
-startup-time-millis
 site-locale
 application-name
 settings-last-updated
