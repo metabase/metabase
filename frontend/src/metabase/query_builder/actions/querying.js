@@ -171,7 +171,27 @@ const loadStartUIControls = createThunkAction(
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
-export const maybeResetDisplay = (question, data, prevData) => {
+export const maybeResetDisplay = (
+  question,
+  originalQuestion,
+  data,
+  prevData,
+) => {
+  const isScalarDisplay = ["scalar", "progress", "gauge"].includes(
+    question.display(),
+  );
+  const isScalarResult = data.rows.length === 1 && data.cols.length === 1;
+  const wasScalarResult =
+    prevData && prevData.rows.length === 1 && prevData.cols.length === 1;
+  if (isScalarDisplay && wasScalarResult && !isScalarResult) {
+    // if there is a scalar display with a non-scalar result, switch the display to table
+    // unless it was already like that
+    return question.setDisplay("table");
+  }
+  if (!question.isDirtyComparedToWithoutParameters(originalQuestion)) {
+    // if only the parameters changed, skip everything else
+    return question;
+  }
   const viz = getVisualization(question.display());
   const wasSensible = prevData && viz.isSensible(prevData);
   const isSensible = viz.isSensible(data);
@@ -180,12 +200,13 @@ export const maybeResetDisplay = (question, data, prevData) => {
     // the display should be unlocked
     question = question.setDisplayIsLocked(false);
   }
-  const isScalarDisplay = ["scalar", "progress", "gauge"].includes(
-    question.display(),
-  );
-  const isScalarResult = data.rows.length === 1 && data.cols.length === 1;
-  if (!isScalarDisplay && isScalarResult && !question.displayIsLocked()) {
-    // if we have a 1x1 result, previously we didn't, and display is unlocked, switch display to scalar
+  if (
+    !isScalarDisplay &&
+    !wasScalarResult &&
+    isScalarResult &&
+    !question.displayIsLocked()
+  ) {
+    // if we have a 1x1 result, and previously we didn't, and display is unlocked, switch display to scalar
     return question.setDisplay("scalar");
   }
   const defaultDisplay = question.setDefaultDisplay().display();
@@ -205,19 +226,15 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestion(getState());
-    const isDirty =
-      question.query().isEditable() &&
-      question.isDirtyComparedTo(originalQuestion);
 
-    if (isDirty) {
+    if (question.query().isEditable()) {
       if (question.isNative()) {
         question = question.syncColumnsAndSettings(
           originalQuestion,
           queryResults[0],
         );
       }
-
-      question = maybeResetDisplay(question, data, prevData);
+      question = maybeResetDisplay(question, originalQuestion, data, prevData);
     }
 
     const card = question.card();
