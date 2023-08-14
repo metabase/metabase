@@ -45,7 +45,7 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
             }}
           >
             <ConnectDatabaseButton small>
-              Connect your database
+              {t`Connect your database`}
             </ConnectDatabaseButton>
           </Link>
         )}
