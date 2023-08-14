@@ -50,7 +50,7 @@ describe("scenarios > visualizations > table", () => {
 
   it("should allow you to reorder columns in the table header", () => {
     openNativeEditor().type("select * from orders LIMIT 2");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.findByTestId("viz-settings-button").click();
 
@@ -241,7 +241,7 @@ describe("scenarios > visualizations > table", () => {
 
   it("should show field metadata popovers for native query tables", () => {
     openNativeEditor().type("select * from products");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.get(".cellData").contains("CATEGORY").trigger("mouseenter");
     popover().within(() => {
