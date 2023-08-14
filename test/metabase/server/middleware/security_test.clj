@@ -83,7 +83,7 @@
               nonce     (json/parse-string @nonceJSON)
               csp       (get-in response [:headers "Content-Security-Policy"])
               style-src (->> (str/split csp #"; *")
-                             (filter #(str/starts-with? % (str "style-src" " ")))
+                             (filter #(str/starts-with? % "style-src "))
                              first)]
           (testing "The nonce is 10 characters long and alphanumeric"
             (is (re-matches #"^[a-zA-Z0-9]{10}$" nonce))
