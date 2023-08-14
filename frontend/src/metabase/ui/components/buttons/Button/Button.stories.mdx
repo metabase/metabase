@@ -1,0 +1,99 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Icon } from "metabase/core/components/Icon";
+import { Button } from "./";
+
+export const args = {
+  variant: "default",
+  disabled: false,
+  fullWidth: false,
+  compact: false,
+  loading: false,
+  loaderPosition: "left",
+};
+
+export const argTypes = {
+  variant: {
+    options: ["default", "filled", "outline", "subtle"],
+    control: { type: "inline-radio" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  fullWidth: {
+    control: { type: "boolean" },
+  },
+  compact: {
+    control: { type: "boolean" },
+  },
+  loading: {
+    control: { type: "boolean" },
+  },
+  loaderPosition: {
+    options: ["left", "center", "right"],
+    control: { type: "inline-radio" },
+  },
+};
+
+<Meta
+  title="Buttons/Button"
+  component={Button}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Button
+
+Our themed wrapper around [Mantine Button](https://mantine.dev/core/button/).
+
+## When to use Button
+
+TBD
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/Ey1rOyIxRHpmRvE9XrGyop/Buttons-%2F-Button?type=design&node-id=1-96&mode=design&t=JaO1GZU7AnpAmx4o-0)
+- [Mantine Menu Docs](https://mantine.dev/core/button/)
+
+## Caveats
+
+N/A
+
+## Usage guidelines
+
+N/A
+
+## General
+
+export const Default = args => <Button {...args}>Button</Button>;
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+export const WithLeftIcon = args => (
+  <Button {...args} leftIcon={<Icon name="play" />}>
+    Button
+  </Button>
+);
+
+<Canvas>
+  <Story name="WithLeftIcon">{WithLeftIcon}</Story>
+</Canvas>
+
+export const WithRightIcon = args => (
+  <Button {...args} rightIcon={<Icon name="chevrondown" />}>
+    Button
+  </Button>
+);
+
+<Canvas>
+  <Story name="WithRightIcon">{WithRightIcon}</Story>
+</Canvas>
+
+export const WithIconOnly = args => (
+  <Button {...args} leftIcon={<Icon name="play" />} />
+);
+
+<Canvas>
+  <Story name="WithIconOnly">{WithIconOnly}</Story>
+</Canvas>
