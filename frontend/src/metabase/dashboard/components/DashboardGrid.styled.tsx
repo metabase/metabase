@@ -7,7 +7,7 @@ interface DashboardCardProps {
 
 export const DashboardCard = styled.div<DashboardCardProps>`
   position: relative;
-  z-index: 2;
+  z-index: 1;
 
   /**
   * Dashcards are positioned absolutely so each one forms a new stacking context.
@@ -18,7 +18,7 @@ export const DashboardCard = styled.div<DashboardCardProps>`
   */
   &:hover,
   &:focus-within {
-    z-index: 3;
+    z-index: 2;
   }
 
   .Card {
