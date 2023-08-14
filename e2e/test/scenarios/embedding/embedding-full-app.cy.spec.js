@@ -311,7 +311,7 @@ describeEE("scenarios > embedding > full app", () => {
       // will force the cursor to move away from the app bar, if
       // the cursor is still on the app bar, the logo will not be
       // be visible, since we'll only see the side bar toggle button.
-      cy.findByRole("button", { name: /Filter/i }).realHover();
+      cy.findByTestId("question-filter-header").realHover();
 
       cy.findByTestId("main-logo").should("be.visible");
     });

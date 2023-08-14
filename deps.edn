@@ -111,7 +111,9 @@
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.3"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.10.0"}             ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.10.0"              ; ssh tunneling and test server
+                                             :exclusions  [org.slf4j/slf4j-api
+                                                           org.slf4j/jcl-over-slf4j]}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.16"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.70"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
