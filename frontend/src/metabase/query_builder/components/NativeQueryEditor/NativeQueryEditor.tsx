@@ -342,7 +342,7 @@ export class NativeQueryEditor extends Component<
     );
     const idStr = match?.[2];
 
-    return (idStr && parseInt(idStr)) || null;
+    return (idStr && parseInt(idStr, 10)) || null;
   };
 
   handleCursorChange = _.debounce(
