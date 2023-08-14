@@ -102,13 +102,8 @@ interface OwnProps {
   query: NativeQuery;
 
   nativeEditorSelectedText?: string;
-
-  snippets?: NativeQuerySnippet[];
   modalSnippet?: NativeQuerySnippet;
-  snippetCollections?: Collection[];
-
   viewHeight: number;
-  width: number;
 
   isOpen?: boolean;
   isInitiallyOpen?: boolean;
@@ -118,7 +113,6 @@ interface OwnProps {
   readOnly?: boolean;
   enableRun?: boolean;
   canChangeDatabase?: boolean;
-  canUsePromptInput?: boolean;
   cancelQueryOnLeave?: boolean;
   hasTopBar?: boolean;
   hasParametersList?: boolean;
@@ -133,7 +127,6 @@ interface OwnProps {
   autocompleteResultsFn: (prefix: string) => Promise<AutocompleteItem[]>;
   cardAutocompleteResultsFn: (prefix: string) => Promise<CardCompletionItem[]>;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
-  fetchQuestion: (cardId: CardId) => Promise<Card>;
   runQuestionQuery: (opts?: {
     overrideWithCard?: Card;
     shouldUpdateUrl?: boolean;
@@ -148,7 +141,29 @@ interface OwnProps {
   closeSnippetModal: () => void;
 }
 
-type Props = OwnProps;
+interface StateProps {
+  canUsePromptInput: boolean;
+}
+
+interface DispatchProps {
+  fetchQuestion: (cardId: CardId) => Promise<Card>;
+}
+
+interface ExplicitSizeProps {
+  width: number;
+  height: number;
+}
+
+interface EntityLoaderProps {
+  snippets?: NativeQuerySnippet[];
+  snippetCollections?: Collection[];
+}
+
+type Props = OwnProps &
+  StateProps &
+  DispatchProps &
+  ExplicitSizeProps &
+  EntityLoaderProps;
 
 interface NativeQueryEditorState {
   initialHeight: number;
