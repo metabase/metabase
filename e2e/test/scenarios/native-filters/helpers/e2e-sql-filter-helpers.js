@@ -73,7 +73,7 @@ export function toggleRequired() {
  * @param {string} [xhrAlias ="dataset"]
  */
 export function runQuery(xhrAlias = "dataset") {
-  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.findByTestId("native-query-editor-container").icon("play").click();
   cy.wait("@" + xhrAlias);
   cy.icon("play").should("not.exist");
 }

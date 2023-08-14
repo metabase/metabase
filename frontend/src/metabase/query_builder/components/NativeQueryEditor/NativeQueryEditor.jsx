@@ -2,9 +2,7 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { createRef, Component } from "react";
-import { ResizableBox } from "react-resizable";
 import { connect } from "react-redux";
-import cx from "classnames";
 import _ from "underscore";
 import slugg from "slugg";
 
@@ -23,6 +21,7 @@ import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
 
+import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
 
@@ -58,7 +57,13 @@ import DataSourceSelectors from "./DataSourceSelectors";
 
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
-import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
+import {
+  DragHandleContainer,
+  DragHandle,
+  EditorRoot,
+  NativeQueryEditorRoot,
+  StyledResizableBox,
+} from "./NativeQueryEditor.styled";
 import "./NativeQueryEditor.css";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
@@ -572,9 +577,9 @@ export class NativeQueryEditor extends Component {
     const parameters = query.question().parameters();
 
     const dragHandle = resizable ? (
-      <div className="NativeQueryEditorDragHandleWrapper">
-        <div className="NativeQueryEditorDragHandle" />
-      </div>
+      <DragHandleContainer>
+        <DragHandle />
+      </DragHandleContainer>
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(
@@ -582,23 +587,18 @@ export class NativeQueryEditor extends Component {
     );
 
     return (
-      <NativeQueryEditorRoot
-        className="NativeQueryEditor bg-light full"
-        data-testid="native-query-editor-container"
-      >
+      <NativeQueryEditorRoot data-testid="native-query-editor-container">
         {hasTopBar && (
-          <div className="flex align-center" data-testid="native-query-top-bar">
+          <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
-              <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
-                <DataSourceSelectors
-                  isNativeEditorOpen={isNativeEditorOpen}
-                  query={query}
-                  readOnly={readOnly}
-                  setDatabaseId={this.setDatabaseId}
-                  setTableId={this.setTableId}
-                  editorContext={editorContext}
-                />
-              </div>
+              <DataSourceSelectors
+                isNativeEditorOpen={isNativeEditorOpen}
+                query={query}
+                readOnly={readOnly}
+                setDatabaseId={this.setDatabaseId}
+                setTableId={this.setTableId}
+                editorContext={editorContext}
+              />
             )}
             {hasParametersList && (
               <ResponsiveParametersList
@@ -610,13 +610,12 @@ export class NativeQueryEditor extends Component {
             )}
             {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
               <VisibilityToggler
-                className={!isNativeEditorOpen ? "hide sm-show" : ""}
                 isOpen={isNativeEditorOpen}
                 readOnly={!!readOnly}
                 toggleEditor={this.toggleEditor}
               />
             )}
-          </div>
+          </Flex>
         )}
         {isPromptInputVisible && (
           <NativeQueryEditorPrompt
@@ -625,9 +624,9 @@ export class NativeQueryEditor extends Component {
             onClose={this.togglePromptVisibility}
           />
         )}
-        <ResizableBox
+        <StyledResizableBox
           ref={this.resizeBox}
-          className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
+          isOpen={isNativeEditorOpen}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
@@ -643,10 +642,9 @@ export class NativeQueryEditor extends Component {
           }}
         >
           <>
-            <div
-              className="flex-full"
-              data-testid="native-query-editor"
+            <EditorRoot
               id={ACE_ELEMENT_ID}
+              data-testid="native-query-editor"
               ref={this.editor}
             />
 
@@ -685,7 +683,7 @@ export class NativeQueryEditor extends Component {
               />
             )}
           </>
-        </ResizableBox>
+        </StyledResizableBox>
       </NativeQueryEditorRoot>
     );
   }
