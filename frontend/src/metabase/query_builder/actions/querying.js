@@ -172,10 +172,6 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const maybeResetDisplay = (question, data, prevData) => {
-  const isScalarDisplay = ["scalar", "progress", "gauge"].includes(
-    question.display(),
-  );
-  const isScalarResult = data.rows.length === 1 && data.cols.length === 1;
   const viz = getVisualization(question.display());
   const wasSensible = prevData && viz.isSensible(prevData);
   const isSensible = viz.isSensible(data);
@@ -184,6 +180,10 @@ export const maybeResetDisplay = (question, data, prevData) => {
     // the display should be unlocked
     question = question.setDisplayIsLocked(false);
   }
+  const isScalarDisplay = ["scalar", "progress", "gauge"].includes(
+    question.display(),
+  );
+  const isScalarResult = data.rows.length === 1 && data.cols.length === 1;
   if (!isScalarDisplay && isScalarResult && !question.displayIsLocked()) {
     // if we have a 1x1 result, previously we didn't, and display is unlocked, switch display to scalar
     return question.setDisplay("scalar");
