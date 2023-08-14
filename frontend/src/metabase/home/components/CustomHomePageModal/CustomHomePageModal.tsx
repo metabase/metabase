@@ -89,11 +89,11 @@ export const CustomHomePageModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalContent
-        title="Customize Homepage"
+        title={t`Customize Homepage`}
         onClose={handleClose}
         footer={[
           <Button onClick={handleClose} key="custom-homepage-modal-cancel">
-            Cancel
+            {t`Cancel`}
           </Button>,
           <Button
             primary
@@ -101,7 +101,7 @@ export const CustomHomePageModal = ({
             key="custom-homepage-modal-save"
             disabled={!dashboardId}
           >
-            Save
+            {t`Save`}
           </Button>,
         ]}
       >

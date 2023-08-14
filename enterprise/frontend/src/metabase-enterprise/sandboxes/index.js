@@ -55,7 +55,7 @@ const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
 if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_USER_FORM_FIELDS.push({
     name: "login_attributes",
-    title: "Attributes",
+    title: t`Attributes`,
     type: LoginAttributesWidget,
   });
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
