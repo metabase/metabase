@@ -1042,19 +1042,19 @@
    (let [search-term "Available models"]
     (with-search-items-in-root-collection search-term
       (testing "GET /api/search"
-        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card")
                    :available_models
                    set)))
 
-        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard")
                    :available_models
                    set))))
 
       (testing "GET /api/search/models"
-        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card"))))
 
-        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
