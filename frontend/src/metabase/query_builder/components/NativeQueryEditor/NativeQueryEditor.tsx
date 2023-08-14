@@ -37,6 +37,7 @@ import Questions from "metabase/entities/questions";
 
 import { getSetting } from "metabase/selectors/settings";
 
+import { checkNotNull } from "metabase/core/utils/types";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
@@ -405,14 +406,15 @@ export class NativeQueryEditor extends Component<
       return;
     }
 
-    this._editor = ace.edit(editorElement) as Ace.Editor;
+    const editor = checkNotNull<Ace.Editor>(ace.edit(editorElement));
+    this._editor = editor;
 
     // listen to onChange events
-    this._editor.getSession().on("change", this.onChange);
-    this._editor.getSelection().on("changeCursor", this.handleCursorChange);
+    editor.getSession().on("change", this.onChange);
+    editor.getSelection().on("changeCursor", this.handleCursorChange);
 
     const minLineNumberWidth = 20;
-    this._editor.getSession().gutterRenderer = {
+    editor.getSession().gutterRenderer = {
       getWidth: (session, lastLineNumber, config) =>
         Math.max(
           minLineNumberWidth,
@@ -423,15 +425,15 @@ export class NativeQueryEditor extends Component<
 
     // initialize the content
     this.handleQueryUpdate(query?.queryText() ?? "");
-    this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN, 0, 0);
+    editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN, 0, 0);
 
     // hmmm, this could be dangerous
     if (!this.props.readOnly) {
-      this._editor.focus();
+      editor.focus();
     }
 
     const aceLanguageTools = ace.require("ace/ext/language_tools");
-    this._editor.setOptions({
+    editor.setOptions({
       enableBasicAutocompletion: true,
       enableSnippets: false,
       enableLiveAutocompletion: true,
