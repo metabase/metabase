@@ -47,6 +47,7 @@ const createListItem = table => (
     key={table.id}
     name={table.display_name || table.name}
     description={table.description}
+    disabled={table.initial_sync_status !== "complete"}
     url={`/reference/databases/${table.db_id}/tables/${table.id}`}
     icon="table2"
   />
