@@ -352,7 +352,10 @@ export function applyChartOrdinalXAxis(
 // The tolerance is arbitrarily set to one millionth of the yExtent.
 const TOLERANCE_TO_Y_EXTENT = 1e6;
 export function maybeRoundValueToZero(value, [yMin, yMax]) {
-  const tolerance = Math.abs(yMax - yMin) / TOLERANCE_TO_Y_EXTENT;
+  const tolerance =
+    yMin !== yMax
+      ? Math.abs(yMax - yMin) / TOLERANCE_TO_Y_EXTENT
+      : 1 / TOLERANCE_TO_Y_EXTENT;
   return Math.abs(value) < tolerance ? 0 : value;
 }
 
