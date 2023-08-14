@@ -364,10 +364,10 @@ describe("scenarios > search", () => {
             cy.findByText("Clear all filters").click();
           });
 
-          cy.url().should("not.include", "type=card");
-
           getSearchBar().clear().type("e{enter}");
           cy.wait("@search");
+
+          cy.url().should("not.include", "type=card");
 
           cy.findAllByTestId("type-sidebar-item").should(
             "have.length",
