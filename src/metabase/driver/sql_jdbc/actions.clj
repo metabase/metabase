@@ -6,7 +6,6 @@
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
    [metabase.actions :as actions]
-   [metabase.actions.error :as actions.error]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -48,22 +47,19 @@
   [_driver _error-type _database _e]
   nil)
 
-(defn- driver->available-error-parser
-  [driver]
-  (->> (keys (methods maybe-parse-sql-error))
-       (filter (fn [x] (and (sequential? x)
-                            (isa? driver/hierarchy driver (first x)))))
-       (map second)))
-
-(defn- parse-sql-error
-  [driver database e]
-  (try
-   (some #(maybe-parse-sql-error driver % database (ex-message e)) (driver->available-error-parser driver))
-   ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
-   ;; We'll still get the original unparsed error message.
-   (catch Throwable new-e
-     (log/error new-e (trs "Error parsing SQL error message {0}: {1}" (pr-str (ex-message e)) (ex-message new-e)))
-     nil)))
+(let [driver->available-error-types (reduce (fn [acc [driver error-type]]
+                                              (update acc driver conj error-type))
+                                            {}
+                                            (keys (dissoc  (methods maybe-parse-sql-error) :default)))]
+  (defn- parse-sql-error
+    [driver database e]
+    (try
+     (some #(maybe-parse-sql-error driver % database (ex-message e)) (get driver->available-error-types driver))
+     ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
+     ;; We'll still get the original unparsed error message.
+     (catch Throwable new-e
+       (log/error new-e (trs "Error parsing SQL error message {0}: {1}" (pr-str (ex-message e)) (ex-message new-e)))
+       nil))))
 
 (defn- do-with-auto-parse-sql-error
   [driver database thunk]
