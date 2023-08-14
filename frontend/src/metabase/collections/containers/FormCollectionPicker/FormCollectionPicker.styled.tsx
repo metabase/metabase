@@ -10,7 +10,6 @@ export const PopoverItemPicker = styled(ItemPicker)<{ width: number }>`
   padding: 1rem;
   overflow: auto;
 `;
-
-export const NewButton = styled(Button)`
+export const NewCollectionButton = styled(Button)`
   margin-top: 0.5rem;
 `;

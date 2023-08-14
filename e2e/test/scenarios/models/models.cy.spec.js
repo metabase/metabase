@@ -548,7 +548,7 @@ describe("scenarios > models", () => {
       openNativeEditor().type("select * from {{#1}}", {
         parseSpecialCharSequences: false,
       });
-      cy.get(".NativeQueryEditor .Icon-play").click();
+      cy.findByTestId("native-query-editor-container").icon("play").click();
       cy.wait("@query");
       cy.findByTestId("TableInteractive-root").within(() => {
         cy.findByText("USER_ID");
