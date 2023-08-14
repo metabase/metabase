@@ -54,48 +54,66 @@ const setup = (options?: Partial<DatabaseTablesPaneProps>) => {
 };
 
 describe("DatabaseTablesPane", () => {
-  it("should show tables with initial_sync_status='incomplete' as non-interactive", () => {
+  it("should show tables with initial_sync_status='incomplete' as non-interactive (disabled)", () => {
     setup({
       searchResults: [incompleteTableSearchResult],
     });
 
-    const searchResultElement = screen.getByText(
+    const textElement = screen.getByText(
       checkNotNull(incompleteTableSearchResult.table_name),
     );
 
-    expect(searchResultElement).toBeInTheDocument();
-    expect(() => {
-      userEvent.click(searchResultElement);
-    }).toThrow();
+    expect(textElement).toBeInTheDocument();
+    expectToBeDisabled(textElement);
   });
 
-  it("should show tables with initial_sync_status='aborted' as non-interactive", () => {
+  it("should show tables with initial_sync_status='aborted' as non-interactive (disabled)", () => {
     setup({
       searchResults: [abortedTableSearchResult],
     });
 
-    const searchResultElement = screen.getByText(
+    const textElement = screen.getByText(
       checkNotNull(abortedTableSearchResult.table_name),
     );
 
-    expect(searchResultElement).toBeInTheDocument();
-    expect(() => {
-      userEvent.click(searchResultElement);
-    }).toThrow();
+    expect(textElement).toBeInTheDocument();
+    expectToBeDisabled(textElement);
   });
 
-  it("should show tables with initial_sync_status='complete' as interactive", () => {
+  it("should show tables with initial_sync_status='complete' as interactive (enabled)", () => {
     setup({
       searchResults: [completeTableSearchResult],
     });
 
-    const searchResultElement = screen.getByText(
+    const textElement = screen.getByText(
       checkNotNull(completeTableSearchResult.table_name),
     );
 
-    expect(searchResultElement).toBeInTheDocument();
-    expect(() => {
-      userEvent.click(searchResultElement);
-    }).not.toThrow();
+    expect(textElement).toBeInTheDocument();
+    expectToBeEnabled(textElement);
   });
 });
+
+/**
+ * We're dealing with <a> here, which are presented as disabled thanks to:
+ * - not having "href" attribute
+ * - using "pointer-events: none"
+ *
+ * Due to this "expect().toBeDisabled()" and "expect().toBeEnabled()" won't work as expected.
+ *
+ * Clicking the element allows us to detect interactiveness (being enabled/disabled) with certainty.
+ */
+function expectToBeDisabled(element: Element) {
+  expect(() => {
+    userEvent.click(element);
+  }).toThrow();
+}
+
+/**
+ * @see expectToBeDisabled
+ */
+function expectToBeEnabled(element: Element) {
+  expect(() => {
+    userEvent.click(element);
+  }).not.toThrow();
+}
