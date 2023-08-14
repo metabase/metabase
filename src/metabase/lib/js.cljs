@@ -401,6 +401,32 @@
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
+(defn ^:export add-field
+  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage of the query, aggregation or breakout:
+      - Add it to the `:fields` list
+      - If `:fields` is missing, it's implicitly `:all`, so do nothing.
+  - Implicit join: add it to the `:fields` list; query processor will do the right thing with it.
+  - Explicit join: add it to that join's `:fields` list.
+  - Custom expression: Do nothing - expressions are always included."
+  [a-query stage-number column]
+  (lib.core/add-field a-query stage-number column))
+
+(defn ^:export remove-field
+  "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
+  query. Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage, aggregations or breakouts:
+      - If `:fields` is missing, it's implicitly `:all` - populate it with all the columns except the removed one.
+      - Remove the target column from the `:fields` list
+  - Implicit join: remove it from the `:fields` list; do nothing if it's not there.
+      - (An implicit join only exists in the `:fields` clause, so if it's not there then it's not anywhere.)
+  - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables).
+  - Custom expression: Throw! Custom expressions are always returned. To remove a custom expression, the expression
+    itself should be removed from the query."
+  [a-query stage-number column]
+  (lib.core/remove-field a-query stage-number column))
+
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
@@ -628,6 +654,12 @@
   [a-query]
   (clj->js (lib.core/native-extras a-query)))
 
+(defn ^:export available-segments
+  "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
+  metadata objects."
+  [a-query]
+  (to-array (lib.core/available-segments a-query)))
+
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."
@@ -650,8 +682,8 @@
 (defn ^:export join-lhs-display-name
   "Get the display name for whatever we are joining. For an existing join, pass in the join clause. When constructing a
   join, pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata."
-  [a-query stage-number join-or-joinable]
-  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable))
+  [a-query stage-number join-or-joinable condition-lhs-column-or-nil]
+  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-column-or-nil))
 
 (defn ^:export database-id
   "Get the Database ID (`:database`) associated with a query. If the query is using
@@ -664,3 +696,11 @@
   `:database-id`; if this is not available for one reason or another this will return `nil`."
   [a-query]
   (lib.core/database-id a-query))
+
+(defn ^:export join-condition-update-temporal-bucketing
+  "Updates the provided join-condition's fields' temporal-bucketing option.
+   Must be called on a standard join condition as per [[standard-join-condition?]].
+   This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
+   Fields that do not support the provided option will be ignored."
+  [a-query stage-number join-condition bucketing-option]
+  (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))

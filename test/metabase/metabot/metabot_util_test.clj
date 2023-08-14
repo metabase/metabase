@@ -34,7 +34,7 @@
                                                  {:role "assistant", :content "%%DATABASE:CREATE_DATABASE_DDL%%"}
                                                  {:role "user", :content "%%USER_PROMPT%%"}]}}})
 
-(deftest normalize-name-test
+(deftest ^:parallel normalize-name-test
   (testing "Testing basic examples of how normalize-name should work"
     (is (= "A_B_C"
            (metabot-util/normalize-name "A B C")))
@@ -123,7 +123,7 @@
                                 {:role "user", :content "A '%%USER_PROMPT%%'"}]}
            prompt)))))
 
-(deftest extract-sql-test
+(deftest ^:parallel extract-sql-test
   (testing "Test that we detect a simple SQL string"
     (let [sql "SELECT * FROM SOMETHING"]
       (is (= (mdb.query/format-sql sql)
@@ -142,7 +142,7 @@
       (is (= (mdb.query/format-sql sql)
              (metabot-util/extract-sql bot-str))))))
 
-(deftest bot-sql->final-sql-test
+(deftest ^:parallell bot-sql->final-sql-test
   (testing "A simple test of interpolation of denormalized data with bot sql"
     (is (= "WITH MY_MODEL AS (SELECT * FROM {{#123}} AS INNER_QUERY) SELECT * FROM MY_MODEL"
            (metabot-util/bot-sql->final-sql

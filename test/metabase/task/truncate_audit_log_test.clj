@@ -13,7 +13,7 @@
 
 (deftest audit-max-retention-days-test
   ;; Tests for the EE implementation are in `metabase-enterprise.task.truncate-audit-log-test`
-  (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+  (with-redefs [premium-features/enable-audit-app? (constantly false)]
     (testing "Self-hosted OSS instances default to infinite retention and cannot be changed"
         (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days)))
 

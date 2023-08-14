@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import type { ColorName } from "metabase/lib/colors/types";
 import * as Lib from "metabase-lib";
 import {
   TriggerButton,
@@ -22,6 +23,7 @@ export interface BaseBucketPickerPopoverProps {
   isEditing: boolean;
   triggerLabel?: string;
   hasArrowIcon?: boolean;
+  color?: ColorName;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => void;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
@@ -35,6 +37,7 @@ function _BaseBucketPickerPopover({
   isEditing,
   triggerLabel,
   hasArrowIcon = true,
+  color = "brand",
   checkBucketIsSelected,
   renderTriggerContent,
   onSelect,
@@ -73,6 +76,7 @@ function _BaseBucketPickerPopover({
               id={item.displayName}
               key={item.displayName}
               name={item.displayName}
+              activeColor={color}
               isSelected={checkBucketIsSelected(item)}
               onSelect={() => {
                 onSelect(item.bucket);

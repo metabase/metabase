@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
+import _ from "underscore";
 
 import Input from "metabase/core/components/Input";
 import SearchResults from "metabase/nav/components/SearchResults";
@@ -29,6 +30,7 @@ import {
   CardLink,
   SearchResultsContainer,
   StyledRecentsList,
+  ExternalLink,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
@@ -55,7 +57,7 @@ export interface LinkVizProps {
   isEditingParameter?: boolean;
 }
 
-function LinkViz({
+function LinkVizInner({
   dashcard,
   isEditing,
   onUpdateVisualizationSettings,
@@ -170,7 +172,8 @@ function LinkViz({
             placeholder={"https://example.com"}
             onChange={e => handleLinkChange(e.target.value)}
             onFocus={onFocusInput}
-            onBlur={onBlurInput}
+            // we need to debounce this or it may close the popover before the click event can fire
+            onBlur={_.debounce(onBlurInput, 100)}
             // the dashcard really wants to turn all mouse events into drag events
             onMouseDown={e => e.stopPropagation()}
           />
@@ -179,17 +182,17 @@ function LinkViz({
     );
   }
 
+  // external link
   return (
     <DisplayLinkCardWrapper
       data-testid="custom-view-text-link"
       fade={isEditingParameter}
     >
-      <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
+      <ExternalLink href={url ?? ""} target="_blank" rel="noreferrer">
         <UrlLinkDisplay url={url} />
-      </CardLink>
+      </ExternalLink>
     </DisplayLinkCardWrapper>
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(LinkViz, settings);
+export const LinkViz = Object.assign(LinkVizInner, settings);

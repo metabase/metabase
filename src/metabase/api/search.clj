@@ -38,7 +38,7 @@
     [:map {:closed true}
      [:search-string                       [:maybe ms/NonBlankString]]
      [:archived?                           :boolean]
-     [:current-user-perms                  [:set perms/PathMalliSchema]]
+     [:current-user-perms                  [:set perms/PathSchema]]
      [:models             {:optional true} [:maybe [:set SearchableModel]]]
      [:table-db-id        {:optional true} [:maybe ms/Int]]
      [:limit-int          {:optional true} [:maybe ms/Int]]

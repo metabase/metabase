@@ -17,7 +17,6 @@
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
-   [metabase.query-processor.middleware.cache.impl-test :as impl-test]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -50,9 +49,6 @@
   "Gets a message whenever old entries are purged from the test backend."
   nil)
 
-(defprotocol ^:private CacheContents
-  (^:private contents [cache-backend]))
-
 (defn- test-backend
   "In in-memory cache backend implementation."
   [save-chan purge-chan]
@@ -64,11 +60,6 @@
              (u/pprint-to-str 'blue
                (for [[hash {:keys [created]}] @store]
                  [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
-
-      CacheContents
-      (contents [_]
-        (into {} (for [[k v] store]
-                   [k (impl-test/deserialize v)])))
 
       i/CacheBackend
       (cached-results [this query-hash max-age-seconds respond]

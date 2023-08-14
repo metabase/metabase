@@ -4,17 +4,21 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util :as u]))
 
 (deftest ^:parallel calculate-names-even-without-metadata-test
   (testing "Even if metadata is missing, we should still be able to calculate reasonable display names"
-    (let [query (-> lib.tu/venues-query
-                    (lib/order-by [:field
-                                   {:lib/uuid  (str (random-uuid))
-                                    :base-type :type/Text}
-                                   "TOTAL"]))]
-      (is (= "Venues, Sorted by Total ascending"
-             (lib.metadata.calculation/suggested-name query))))))
+    (doseq [query [(-> lib.tu/venues-query
+                       (lib/order-by (meta/field-metadata :orders :total)))
+                   (-> lib.tu/venues-query
+                       (lib/order-by [:field
+                                      {:lib/uuid  (str (random-uuid))
+                                       :base-type :type/Text}
+                                      "TOTAL"]))]]
+      (testing (str "\nquery =\n" (u/pprint-to-str query))
+        (is (= "Venues, Sorted by Total ascending"
+               (lib.metadata.calculation/suggested-name query)))))))
 
 (deftest ^:parallel long-display-name-test
   (let [query lib.tu/venues-query

@@ -1,6 +1,7 @@
 (ns metabase.api.action
   "`/api/action/` endpoints."
   (:require
+   [cheshire.core :as json]
    [compojure.core :as compojure :refer [POST]]
    [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
@@ -194,6 +195,16 @@
   (actions/check-actions-enabled! id)
   (t2/update! Action id {:public_uuid nil, :made_public_by_id nil})
   {:status 204, :body nil})
+
+(api/defendpoint GET "/:action-id/execute"
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [action-id parameters]
+  {action-id  ms/PositiveInt
+   parameters ms/JSONString}
+  (actions/check-actions-enabled! action-id)
+  (-> (action/select-action :id action-id :archived false)
+      api/read-check
+      (actions.execution/fetch-values (json/parse-string parameters))))
 
 (api/defendpoint POST "/:id/execute"
   "Execute the Action.

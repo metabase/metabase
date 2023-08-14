@@ -50,7 +50,7 @@ export function ObjectDetailWrapper({
         data={data}
         question={question}
         showHeader={props.settings["detail.showHeader"]}
-        showActions={false}
+        showControls={false}
         showRelations={false}
         closeObjectDetail={closeObjectDetail}
         isDataApp={isDataApp}

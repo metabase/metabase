@@ -165,10 +165,12 @@ describeEE("scenarios > embedding > full app", () => {
         qs: { additional_info: false },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Edited/).should("not.exist");
+      cy.findByTestId("app-bar")
+        .findByText("Our analytics")
+        .should("be.visible");
+      cy.findByTestId("qb-header")
+        .findByText(/Edited/)
+        .should("not.exist");
     });
 
     it("should hide the question's action buttons by a param", () => {
@@ -282,12 +284,15 @@ describeEE("scenarios > embedding > full app", () => {
         qs: { additional_info: false },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Edited/).should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").should("be.visible");
+      cy.findByTestId("dashboard-header")
+        .findByText("Orders in a dashboard")
+        .should("be.visible");
+      cy.findByTestId("dashboard-header")
+        .findByText(/Edited/)
+        .should("not.exist");
+      cy.findByTestId("app-bar")
+        .findByText("Our analytics")
+        .should("be.visible");
     });
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
@@ -306,7 +311,7 @@ describeEE("scenarios > embedding > full app", () => {
       // will force the cursor to move away from the app bar, if
       // the cursor is still on the app bar, the logo will not be
       // be visible, since we'll only see the side bar toggle button.
-      cy.findByRole("button", { name: /Filter/i }).realHover();
+      cy.findByTestId("question-filter-header").realHover();
 
       cy.findByTestId("main-logo").should("be.visible");
     });

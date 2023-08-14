@@ -6,7 +6,7 @@ import {
   HTMLAttributes,
 } from "react";
 import { t } from "ttag";
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
@@ -16,6 +16,10 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+import type {
+  OnClickNewCollection,
+  Values,
+} from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -24,12 +28,10 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
-import { ButtonProps } from "metabase/core/components/Button";
-import Tooltip from "metabase/core/components/Tooltip";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
-  NewButton,
+  NewCollectionButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -38,8 +40,10 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
+  canCreateNew?: boolean;
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  onClickNewCollection?: OnClickNewCollection;
 }
 
 function ItemName({
@@ -56,22 +60,6 @@ function ItemName({
   );
 }
 
-export const NewCollectionButton = (props: ButtonProps) => {
-  const button = (
-    <NewButton light icon="add" {...props}>
-      {t`New collection`}
-    </NewButton>
-  );
-  // button has to be wrapped in a span when disabled or the tooltip doesn’t show
-  return props.disabled === true ? (
-    <Tooltip tooltip={t`You must first fix the required fields above.`}>
-      <span>{button}</span>
-    </Tooltip>
-  ) : (
-    button
-  );
-};
-
 function FormCollectionPicker({
   className,
   style,
@@ -79,9 +67,10 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
+  canCreateNew = false,
   initialOpenCollectionId,
   onOpenCollectionChange,
-  children,
+  onClickNewCollection,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -118,6 +107,10 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
+  const { values } = useFormikContext<Values>();
+  const [openCollectionId, setOpenCollectionId] =
+    useState<CollectionId>("root");
+
   const renderContent = useCallback(
     ({ closePopover }) => {
       // Search API doesn't support collection namespaces yet
@@ -137,9 +130,20 @@ function FormCollectionPicker({
           showSearch={hasSearch}
           width={width}
           initialOpenCollectionId={initialOpenCollectionId}
-          onOpenCollectionChange={onOpenCollectionChange}
+          onOpenCollectionChange={(id: CollectionId) => {
+            onOpenCollectionChange?.(id);
+            setOpenCollectionId(id);
+          }}
         >
-          {children}
+          {canCreateNew && (
+            <NewCollectionButton
+              light
+              icon="add"
+              onClick={() => onClickNewCollection?.(values, openCollectionId)}
+            >
+              {t`New collection`}
+            </NewCollectionButton>
+          )}
         </PopoverItemPicker>
       );
     },
@@ -148,9 +152,12 @@ function FormCollectionPicker({
       type,
       width,
       setValue,
-      children,
       initialOpenCollectionId,
+      openCollectionId,
+      values,
       onOpenCollectionChange,
+      canCreateNew,
+      onClickNewCollection,
     ],
   );
 

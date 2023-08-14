@@ -23,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest get-or-create-advanced-field-values!
+(deftest get-or-create-advanced-field-values!-test
   (doseq [fv-type [:sandbox :linked-filter]]
     (testing "create a new field values and fix up the human readable values"
       (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and

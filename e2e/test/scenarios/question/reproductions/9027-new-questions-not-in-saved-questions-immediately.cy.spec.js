@@ -25,7 +25,7 @@ describe("issue 9027", () => {
     openNativeEditor({ fromCurrentPage: true });
 
     cy.get(".ace_content").type("select 0");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     saveQuestion(QUESTION_NAME);
   });

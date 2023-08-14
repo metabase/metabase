@@ -390,7 +390,9 @@
         (try
           (if raw-setting?
             (upsert-raw-setting! original-value setting-k value)
-            (setting/set! setting-k value))
+            ;; bypass the feature check when setting up mock data
+            (with-redefs [setting/has-feature? (constantly true)]
+              (setting/set! setting-k value)))
           (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
             (thunk))
           (catch Throwable e
@@ -403,7 +405,9 @@
             (try
               (if raw-setting?
                 (restore-raw-setting! original-value setting-k)
-                (setting/set! setting-k original-value))
+                ;; bypass the feature check when reset settings to the original value
+                (with-redefs [setting/has-feature? (constantly true)]
+                  (setting/set! setting-k original-value)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
                                 {:setting        setting-k

@@ -75,7 +75,7 @@
     (bulk-metadata cache metadata-provider metadata-type ids))
 
   #?@(:clj
-      [pretty.core/PrettyPrintable
+      [pretty/PrettyPrintable
        (pretty [_this]
                (list `cached-metadata-provider metadata-provider))]))
 

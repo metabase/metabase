@@ -17,8 +17,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -72,10 +70,6 @@
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
   (driver.common/json-unfolding-default db))
-
-(defmethod driver/database-supports? [:mysql :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
 
 (doseq [feature [:actions :actions/custom]]
   (defmethod driver/database-supports? [:mysql feature]
@@ -215,19 +209,6 @@
 (defmethod driver/db-start-of-week :mysql
   [_]
   :sunday)
-
-(def ^:const max-nested-field-columns
-  "Maximum number of nested field columns."
-  100)
-
-(defmethod sql-jdbc.sync/describe-nested-field-columns :mysql
-  [driver database table]
-  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-        fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
-    (if (> (count fields) max-nested-field-columns)
-      #{}
-      fields)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |

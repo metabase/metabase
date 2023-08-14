@@ -14,7 +14,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -45,6 +45,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.db :as db]
@@ -187,7 +188,7 @@
 (defn- saved-cards-virtual-db-metadata [question-type & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
-             :id                 mbql.s/saved-questions-virtual-database-id
+             :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
       include-tables? (assoc :tables (cards-virtual-tables question-type
@@ -282,16 +283,15 @@
                                                       :include-saved-questions-tables? include-saved-questions-tables?
                                                       :include-editable-data-model?    include_editable_data_model
                                                       :exclude-uneditable-details?     only-editable?
-                                                      :include-analytics?  include_analytics
+                                                      :include-analytics?              include_analytics
                                                       :include-only-uploadable?        include_only_uploadable)
                                             [])]
-    {:data  db-list-res
-     :total (count db-list-res)}))
-
+   {:data  db-list-res
+    :total (count db-list-res)}))
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
-(s/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
+(mu/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
   {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
    :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
 
@@ -418,13 +418,13 @@
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+(api/defendpoint-schema GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden? include-editable-data-model?]
+(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive?]
   (let [db (-> (if include-editable-data-model?
                  (api/check-404 (t2/select-one Database :id id))
                  (api/read-check Database id))
@@ -451,7 +451,11 @@
                           (for [table tables]
                             (-> table
                                 (update :segments (partial filter mi/can-read?))
-                                (update :metrics  (partial filter mi/can-read?)))))))))
+                                (update :metrics  (partial filter mi/can-read?))))))
+        (update :tables (if remove_inactive?
+                          (fn [tables]
+                            (filter :active tables))
+                          identity)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/metadata"
@@ -462,12 +466,14 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include_hidden include_editable_data_model]
+  [id include_hidden include_editable_data_model remove_inactive]
   {include_hidden              (s/maybe su/BooleanString)
-   include_editable_data_model (s/maybe su/BooleanString)}
+   include_editable_data_model (s/maybe su/BooleanString)
+   remove_inactive             (s/maybe su/BooleanString)}
   (db-metadata id
                (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean include_editable_data_model)))
+               (Boolean/parseBoolean include_editable_data_model)
+               (Boolean/parseBoolean remove_inactive)))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -739,9 +745,9 @@
    cache_ttl        (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
   (when cache_ttl
-    (api/check (premium-features/enable-advanced-config?)
+    (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
-                              "advanced-config feature."))]))
+                              "cache granular controls feature."))]))
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
         details-or-error (test-connection-details engine details)
@@ -825,14 +831,14 @@
              (tru "Persisting models is not enabled."))
   (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
-    (if (-> database :options :persist-models-enabled)
+    (if (-> database :settings :persist-models-enabled)
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
       (let [[success? error] (ddl.i/check-can-persist database)
             schema           (ddl.i/schema-name database (public-settings/site-uuid))]
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (t2/update! Database id {:options (assoc (:options database) :persist-models-enabled true)})
+          (do (t2/update! Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
               (task.persist-refresh/schedule-persistence-for-database!
                 database
                 (public-settings/persisted-model-refresh-cron-schedule))
@@ -848,8 +854,8 @@
   {:id su/IntGreaterThanZero}
   (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
-    (if (-> database :options :persist-models-enabled)
-      (do (t2/update! Database id {:options (dissoc (:options database) :persist-models-enabled)})
+    (if (-> database :settings :persist-models-enabled)
+      (do (t2/update! Database id {:settings (dissoc (:settings database) :persist-models-enabled)})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)
@@ -874,13 +880,16 @@
    settings           (s/maybe su/Map)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one Database :id id))
-        details           (driver.u/db-details-client->server engine details)
-        details           (upsert-sensitive-fields existing-database details)
-        conn-error        (when (some? details)
-                            (assert (some? engine))
-                            (test-database-connection engine details))
-        full-sync?        (when-not (nil? is_full_sync)
-                            (boolean is_full_sync))]
+        details           (some->> details
+                                   (driver.u/db-details-client->server (or engine (:engine existing-database)))
+                                   (upsert-sensitive-fields existing-database))
+        ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
+        details-changed?  (some-> details (not= (:details existing-database)))
+        engine-changed?   (some-> engine (not= (:engine existing-database)))
+        conn-error        (when (or details-changed? engine-changed?)
+                            (test-database-connection (or engine (:engine existing-database))
+                                                      (or details (:details existing-database))))
+        full-sync?        (some-> is_full_sync boolean)]
     (if conn-error
       ;; failed to connect, return error
       {:status 400
@@ -923,7 +932,7 @@
 
         ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
         ;; with the advanced-config feature enabled.
-        (when (premium-features/enable-advanced-config?)
+        (when (premium-features/enable-cache-granular-controls?)
           (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]
@@ -1076,7 +1085,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET ["/:virtual-db/schemas"
-                             :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+                             :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
@@ -1087,7 +1096,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET ["/:virtual-db/datasets"
-                             :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+                             :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
@@ -1148,7 +1157,7 @@
                               (schema-tables-list id "" include_hidden include_editable_data_model)))))
 
 (api/defendpoint GET ["/:virtual-db/schema/:schema"
-                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+                      :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [schema]
   (when (public-settings/enable-nested-queries)
@@ -1160,7 +1169,7 @@
          (map api.table/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
-                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+                      :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
   [schema]
   (when (public-settings/enable-nested-queries)
@@ -1170,17 +1179,5 @@
                                      [:= :collection_id nil]
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set Collection :name schema)))])])
          (map api.table/card->virtual-table))))
-
-(api/defendpoint GET "/db-ids-with-deprecated-drivers"
-  "Return a list of database IDs using currently deprecated drivers."
-  []
-  (map
-   u/the-id
-   (filter
-    (fn [database]
-      (let [info (driver.u/available-drivers-info)
-            d    (driver.u/database->driver database)]
-        (some? (:superseded-by (d info)))))
-    (t2/select-pks-set Database))))
 
 (api/define-routes)

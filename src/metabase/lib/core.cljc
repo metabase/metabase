@@ -142,10 +142,12 @@
    upper
    lower]
   [lib.field
+   add-field
    field-id
+   fieldable-columns
    fields
-   with-fields
-   fieldable-columns]
+   remove-field
+   with-fields]
   [lib.filter
    filter
    filters
@@ -174,6 +176,7 @@
    join-condition-lhs-columns
    join-condition-operators
    join-condition-rhs-columns
+   join-condition-update-temporal-bucketing
    join-conditions
    join-fields
    join-lhs-display-name
@@ -221,8 +224,7 @@
   [lib.normalize
    normalize]
   [lib.query
-   query
-   saved-question-query]
+   query]
   [lib.ref
    ref]
   [lib.remove-replace
@@ -231,6 +233,8 @@
    rename-join
    replace-clause
    replace-join]
+  [lib.segment
+   available-segments]
   [lib.stage
    append-stage
    drop-stage]

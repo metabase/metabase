@@ -160,6 +160,19 @@ export function DashCardCardParameterMapper({
             />
           ),
         };
+      } else if (target != null) {
+        return {
+          buttonVariant: "invalid",
+          buttonText: t`Unknown Field`,
+          buttonIcon: (
+            <CloseIconButton
+              onClick={e => {
+                handleChangeTarget(null);
+                e.stopPropagation();
+              }}
+            />
+          ),
+        };
       } else {
         return {
           buttonVariant: "default",
@@ -172,6 +185,7 @@ export function DashCardCardParameterMapper({
       hasPermissionsToMap,
       isDisabled,
       selectedMappingOption,
+      target,
       handleChangeTarget,
       isVirtual,
     ]);
@@ -194,6 +208,7 @@ export function DashCardCardParameterMapper({
 
   const mappingInfoText =
     {
+      heading: t`You can connect widgets to {{variables}} in heading cards.`,
       text: t`You can connect widgets to {{variables}} in text cards.`,
       link: t`You cannot connect variables to link cards.`,
       action: t`Open this card's action settings to connect variables`,

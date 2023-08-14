@@ -78,13 +78,14 @@
                                                        (persistent-data-source driver/*driver* db-name))]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
-              (load-from-h2/load-from-h2! h2-fixture-db-file)
-              (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
-                (t2/insert! Setting {:key "my-site-admin", :value "baz"})
-                (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
-                (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
-                (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
-                (dump-to-h2/dump-to-h2! h2-file-default-enc))
+              (binding [copy/*copy-h2-database-details* true]
+                (load-from-h2/load-from-h2! h2-fixture-db-file)
+                (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+                  (t2/insert! Setting {:key "my-site-admin", :value "baz"})
+                  (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
+                  (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
+                  (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
+                  (dump-to-h2/dump-to-h2! h2-file-default-enc)))
 
               (testing "decodes settings and dashboard.details"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]

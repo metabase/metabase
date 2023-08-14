@@ -85,7 +85,7 @@
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "2.2.1"}              ; EE SAML integration.
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  metosin/malli                             {:mvn/version "0.10.2"}             ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:mvn/version "0.11.0"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.1"}              ; utils for writing macros for both Clojure & ClojureScript
   net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
@@ -110,7 +110,9 @@
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.3"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.9.2"}              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.10.0"              ; ssh tunneling and test server
+                                             :exclusions  [org.slf4j/slf4j-api
+                                                           org.slf4j/jcl-over-slf4j]}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.16"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.70"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
@@ -607,7 +609,6 @@
    :exec-fn     dev.h2-shell/shell
    :java-opts   ["-Dfile.encoding=UTF-8"]}
 
-  ;; clojure -M:generate-automagic-dashboards-pot
   :generate-automagic-dashboards-pot
   {:main-opts ["-m" "metabase.automagic-dashboards.rules"]}
 
@@ -631,7 +632,33 @@
   :liquibase
   {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.4.6"}}
    :extra-paths ["dev/src"]
-   :main-opts   ["-m" "dev.liquibase"]}}}
+   :main-opts   ["-m" "dev.liquibase"]}
+
+  ;; the following aliases are convenience for running tests against certain parts of the codebase.
+  ;;
+  ;;   clj -X:dev:ee:ee-dev:test:test/mbql
+
+  ;; run tests against MLv2. Very fast since this is almost all ^:parallel
+  :test/mlv2
+  {:exec-args {:only ["test/metabase/lib"]}}
+
+  ;; test the Query Processor
+  :test/qp
+  {:exec-args {:only ["test/metadata/driver"
+                      "test/metabase/query_processor"
+                      "test/metabase/query_processor_test"
+                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.mbql` code, and the QP
+  :test/mbql
+  {:exec-args {:only ["shared/test/mbql"
+                      "test/metabase/lib"
+                      "test/metadata/driver"
+                      "test/metabase/query_processor"
+                      "test/metabase/query_processor_test"
+                      metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}}}
+
+
 
   ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.

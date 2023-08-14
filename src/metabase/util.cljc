@@ -31,7 +31,7 @@
 (u.ns/import-fns
   [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
 
-#?(:clj (p/import-vars [metabase.util.jvm
+#?(:clj (p/import-vars [u.jvm
                         all-ex-data
                         auto-retry
                         decode-base64
