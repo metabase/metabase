@@ -300,10 +300,6 @@ describe("scenarios > search", () => {
       });
 
       describe("verified filter", () => {
-        beforeEach(() => {
-          setTokenFeatures("all");
-        });
-
         it("should filter only for `Verified` assets", () => {
           cy.visit("/");
 
