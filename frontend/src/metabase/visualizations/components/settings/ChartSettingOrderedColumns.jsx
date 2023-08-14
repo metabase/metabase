@@ -123,7 +123,7 @@ export const ChartSettingOrderedColumns = ({
   return (
     <div className="list" role="list">
       {enabledColumns.length > 0 ? (
-        <div role="group" title="visible-columns">
+        <div role="group" title="visible-columns" data-testid="visible-columns">
           <ChartSettingOrderedItems
             items={enabledColumns}
             getItemName={getColumnName}
@@ -153,7 +153,7 @@ export const ChartSettingOrderedColumns = ({
         ))}
       </div>
       {additionalFieldOptions.count > 0 && (
-        <div>
+        <div data-testid="additional-columns">
           {additionalFieldOptions.dimensions.map((dimension, index) => (
             <ColumnItem
               key={index}
@@ -163,7 +163,7 @@ export const ChartSettingOrderedColumns = ({
             />
           ))}
           {additionalFieldOptions.fks.map((fk, index) => (
-            <div key={fk.id}>
+            <div key={fk.id} >
               <div className="my2 text-medium text-bold text-uppercase text-small">
                 {fk.name ||
                   (fk.field.target

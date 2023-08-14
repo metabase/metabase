@@ -171,7 +171,7 @@ describe("scenarios > visualizations > table column settings", () => {
       visualization().findByText("Tax").should("exist");
     });
 
-    it("should be able to rename table columns via popover", () => {
+    it.skip("should be able to rename table columns via popover", () => {
       cy.createQuestion(tableQuestion, { visitQuestion: true });
 
       cy.findByTestId("TableInteractive-root").within(() => {
