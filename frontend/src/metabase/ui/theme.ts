@@ -12,6 +12,7 @@ export const theme: MantineThemeOverride = {
   colors: {
     brand: [color("brand-light"), color("brand")],
     text: [color("text-light"), color("text-medium"), color("text-dark")],
+    focus: [color("focus")],
     border: [color("border")],
     bg: [color("bg-light"), color("bg-medium"), color("bg-dark")],
   },
@@ -41,6 +42,13 @@ export const theme: MantineThemeOverride = {
   },
   fontFamily: 'Lato, "Helvetica Neue", Helvetica, sans-serif',
   fontFamilyMonospace: "Monaco, monospace",
+
+  focusRingStyles: {
+    styles: theme => ({
+      outline: `0.125rem solid ${theme.colors.focus[0]}`,
+      outlineOffset: "0.125rem",
+    }),
+  },
 
   components: {
     Radio: {
@@ -215,11 +223,11 @@ export const theme: MantineThemeOverride = {
             padding: theme.spacing.md,
 
             "&:hover, &:focus": {
-              color: theme.colors.brand[1],
+              color: theme.fn.primaryColor(),
               backgroundColor: theme.colors.bg[0],
 
               [`& .${getStylesRef("itemRightSection")}`]: {
-                color: theme.colors.brand[1],
+                color: theme.fn.primaryColor(),
               },
             },
           },
@@ -281,15 +289,15 @@ const getButtonVariantStyles = (
     case "filled":
       return {
         color: theme.white,
-        borderColor: theme.colors.brand[1],
-        backgroundColor: theme.colors.brand[1],
+        borderColor: theme.fn.primaryColor(),
+        backgroundColor: theme.fn.primaryColor(),
       };
     default:
       return {
         color: theme.colors.text[2],
         borderColor: theme.colors.border[0],
         backgroundColor: theme.white,
-        hoverColor: theme.colors.brand[1],
+        hoverColor: theme.fn.primaryColor(),
         hoverBackgroundColor: theme.colors.bg[0],
       };
   }
