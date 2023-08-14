@@ -38,10 +38,11 @@ export const ColumnItem = ({
   return (
     <ColumnItemRoot
       className={className}
-      onClick={onClick}
-      isDraggable={draggable}
-      data-testid={draggable ? `draggable-item-${title}` : null}
+      role={role}
       title={role ? title : undefined}
+      isDraggable={draggable}
+      onClick={onClick}
+      data-testid={draggable ? `draggable-item-${title}` : null}
     >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber" />}
