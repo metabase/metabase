@@ -129,6 +129,9 @@ export type VisualizationSettings = {
   "table.column_formatting"?: ColumnFormattingSetting[];
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
+  // Test
+  smooth?: boolean;
+
   [key: string]: any;
 };
 
