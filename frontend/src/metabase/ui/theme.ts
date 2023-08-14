@@ -1,5 +1,9 @@
-import { getStylesRef } from "@mantine/core";
-import type { MantineThemeOverride } from "@mantine/core";
+import { getStylesRef, rem } from "@mantine/core";
+import type {
+  ContextStylesParams,
+  MantineTheme,
+  MantineThemeOverride,
+} from "@mantine/core";
 
 import { color } from "metabase/lib/colors";
 import { CheckboxIcon } from "metabase/ui/components/inputs/Checkbox/CheckboxIcon";
@@ -37,6 +41,7 @@ export const theme: MantineThemeOverride = {
   },
   fontFamily: 'Lato, "Helvetica Neue", Helvetica, sans-serif',
   fontFamilyMonospace: "Monaco, monospace",
+
   components: {
     Radio: {
       styles(theme) {
@@ -242,5 +247,50 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
+    Button: {
+      styles: (theme, params, context) => {
+        const styles = getButtonVariantStyles(theme, context);
+
+        return {
+          root: {
+            height: "auto",
+            padding: `${rem(11)} ${rem(15)}`,
+            fontSize: theme.fontSizes.md,
+            lineHeight: "1rem",
+            color: styles.color,
+            borderColor: styles.borderColor,
+            "&:hover": {
+              color: styles.hoverColor,
+              backgroundColor: styles.hoverBackgroundColor,
+            },
+          },
+          rightIcon: {
+            marginLeft: theme.spacing.sm,
+          },
+        };
+      },
+    },
   },
+};
+
+const getButtonVariantStyles = (
+  theme: MantineTheme,
+  { variant }: ContextStylesParams,
+) => {
+  switch (variant) {
+    case "filled":
+      return {
+        color: theme.white,
+        borderColor: theme.colors.brand[1],
+        backgroundColor: theme.colors.brand[1],
+      };
+    default:
+      return {
+        color: theme.colors.text[2],
+        borderColor: theme.colors.border[0],
+        backgroundColor: theme.white,
+        hoverColor: theme.colors.brand[1],
+        hoverBackgroundColor: theme.colors.bg[0],
+      };
+  }
 };
