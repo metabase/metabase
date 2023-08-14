@@ -135,7 +135,7 @@ describe("scenarios > dashboard", () => {
       cy.log("Create new collection on the go");
       popover().findByText("New collection").click();
       modal().within(() => {
-        cy.findByLabelText("Name").type(NEW_COLLECTION);
+        cy.findByLabelText("Name").type(NEW_COLLECTION).blur();
         cy.button("Create").click();
       });
 
