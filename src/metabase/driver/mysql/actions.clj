@@ -14,20 +14,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- remove-backticks [id]
-  (when id
-    (-> id
-        (str/replace "``" "`")
-        (str/replace #"^`?(.+?)`?$" "$1"))))
-
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-not-null-constraint]
-  [_driver error-type _database error-message]
-  (when-let [[_ column]
-             (re-find #"Column '(.+)' cannot be null" error-message)]
-    {:type    error-type
-     :message (tru "Value for column {0} must be not null" column)
-     :errors  {column (tru "The value must be not null")}}))
-
 ;;; TODO -- we should probably be TTL caching this information. Otherwise
 ;;; parsing 100 errors for a bulk action will result in 100 identical data
 ;;; warehouse queries. It's not like constraint columns are something we would
@@ -54,6 +40,20 @@
               (reduced nil))))
       [[] nil nil]
       (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false})))))
+
+(defn- remove-backticks [id]
+  (when id
+    (-> id
+        (str/replace "``" "`")
+        (str/replace #"^`?(.+?)`?$" "$1"))))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-not-null-constraint]
+  [_driver error-type _database error-message]
+  (when-let [[_ column]
+             (re-find #"Column '(.+)' cannot be null" error-message)]
+    {:type    error-type
+     :message (tru "Value for column {0} must be not null" column)
+     :errors  {column (tru "The value must be not null")}}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
   [_driver error-type database error-message]

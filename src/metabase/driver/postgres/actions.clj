@@ -11,14 +11,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-not-null-constraint]
-  [_driver error-type _database error-message]
-  (when-let [[_ _value column _table]
-             (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" of relation \"([^\"]+)\" violates not-null constraint"  error-message)]
-    {:type    error-type
-     :message (tru "Value for column {0} must be not null" column)
-     :errors  {column (tru "The value must be not null")}}))
-
 ;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
 ;; result in 100 identical data warehouse queries. It's not like constraint columns are something we would expect to
 ;; change regularly anyway.
@@ -30,6 +22,14 @@
     (into []
           (map :column_name)
           (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false}))))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-not-null-constraint]
+  [_driver error-type _database error-message]
+  (when-let [[_ _value column _table]
+             (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" of relation \"([^\"]+)\" violates not-null constraint"  error-message)]
+    {:type    error-type
+     :message (tru "Value for column {0} must be not null" column)
+     :errors  {column (tru "The value must be not null")}}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-unique-constraint]
   [_driver error-type database error-message]

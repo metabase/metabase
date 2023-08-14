@@ -49,12 +49,12 @@
 
 (defn- parse-sql-error
   [driver database e]
-  (let [parsers-for-driver (keep (fn [[[method-driver _error-type] method]]
+  (let [parsers-for-driver (keep (fn [[[method-driver error-type] method]]
                                    (when (= method-driver driver)
-                                     method))
+                                     (partial method driver error-type)))
                                  (dissoc (methods maybe-parse-sql-error) :default))]
     (try
-     (some #(maybe-parse-sql-error driver % database (ex-message e)) parsers-for-driver)
+     (some #(% database (ex-message e)) parsers-for-driver)
      ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
      ;; We'll still get the original unparsed error message.
      (catch Throwable new-e
