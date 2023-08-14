@@ -162,5 +162,7 @@ function assertQueryBuilderState({ title, mode = null, values } = {}) {
   mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
   cy.findByText(title);
+
+  cy.findByLabelText("Switch to data").click();
   cy.get(".cellData").should("contain", firstValue).and("contain", lastValue);
 }

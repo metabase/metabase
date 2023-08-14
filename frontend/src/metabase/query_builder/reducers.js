@@ -374,6 +374,7 @@ export const card = handleActions(
     [QUERY_COMPLETED]: {
       next: (state, { payload: { card, modelMetadata } }) => ({
         ...state,
+        displayIsLocked: card.displayIsLocked,
         display: card.display,
         result_metadata: modelMetadata
           ? modelMetadata.columns

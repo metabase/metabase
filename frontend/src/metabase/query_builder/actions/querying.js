@@ -184,9 +184,9 @@ export const maybeResetDisplay = (
   const wasScalarResult =
     prevData && prevData.rows.length === 1 && prevData.cols.length === 1;
   if (isScalarDisplay && wasScalarResult && !isScalarResult) {
-    // if there is a scalar display with a non-scalar result, switch the display to table
-    // unless it was already like that
-    return question.setDisplay("table");
+    // if there is a scalar display with a non-scalar result, switch the display to the
+    // default unless it was already like that
+    return question.setDisplayIsLocked(false).setDefaultDisplay();
   }
   if (!question.isDirtyComparedToWithoutParameters(originalQuestion)) {
     // if only the parameters changed, skip everything else
@@ -195,7 +195,7 @@ export const maybeResetDisplay = (
   const viz = getVisualization(question.display());
   const wasSensible = prevData && viz.isSensible(prevData);
   const isSensible = viz.isSensible(data);
-  if ((wasSensible && !isSensible) || !prevData) {
+  if (wasSensible && !isSensible) {
     // if the display was sensible and now it's not, or there was no data to begin with,
     // the display should be unlocked
     question = question.setDisplayIsLocked(false);
@@ -207,7 +207,7 @@ export const maybeResetDisplay = (
     !question.displayIsLocked()
   ) {
     // if we have a 1x1 result, and previously we didn't, and display is unlocked, switch display to scalar
-    return question.setDisplay("scalar");
+    return question.setDisplayIsLocked(false).setDisplay("scalar");
   }
   const defaultDisplay = question.setDefaultDisplay().display();
   if (isSensible && defaultDisplay === "table") {
@@ -226,6 +226,10 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestion(getState());
+
+    if (!prevData) {
+      question = question.setDisplayIsLocked(false);
+    }
 
     if (question.query().isEditable()) {
       if (question.isNative()) {
