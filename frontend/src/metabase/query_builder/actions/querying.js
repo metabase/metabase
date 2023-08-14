@@ -176,17 +176,17 @@ export const maybeResetDisplay = (question, data, prevData) => {
     question.display(),
   );
   const isScalarResult = data.rows.length === 1 && data.cols.length === 1;
-  if (!isScalarDisplay && isScalarResult && !question.displayIsLocked()) {
-    // if we have a 1x1 result, previously we didn't, and display is unlocked, switch display to scalar
-    return question.setDisplay("scalar");
-  }
   const viz = getVisualization(question.display());
   const wasSensible = prevData && viz.isSensible(prevData);
   const isSensible = viz.isSensible(data);
   if ((wasSensible && !isSensible) || !prevData) {
     // if the display was sensible and now it's not, or there was no data to begin with,
-    // unlock display and switch to the default display
-    return question.setDisplayIsLocked(false).setDefaultDisplay();
+    // the display should be unlocked
+    question = question.setDisplayIsLocked(false);
+  }
+  if (!isScalarDisplay && isScalarResult && !question.displayIsLocked()) {
+    // if we have a 1x1 result, previously we didn't, and display is unlocked, switch display to scalar
+    return question.setDisplay("scalar");
   }
   const defaultDisplay = question.setDefaultDisplay().display();
   if (isSensible && defaultDisplay === "table") {
