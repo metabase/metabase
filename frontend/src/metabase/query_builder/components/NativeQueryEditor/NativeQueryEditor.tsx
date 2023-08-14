@@ -678,7 +678,7 @@ export class NativeQueryEditor extends Component<
   setTableId = (tableId: TableId) => {
     const { query, setDatasetQuery } = this.props;
     const table = query.metadata().table(tableId);
-    if (table && table?.name !== query.collection()) {
+    if (table && table.name !== query.collection()) {
       setDatasetQuery(query.setCollectionName(table.name));
     }
   };
