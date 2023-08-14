@@ -67,7 +67,7 @@ describe("issue 32231", () => {
     cy.findByTestId("add-series-button").click({ force: true });
     cy.wait("@seriesQuery");
 
-    cy.get(".AddSeriesModal").within(() => {
+    cy.findByTestId("add-series-modal").within(() => {
       cy.get(".LineAreaBarChart").should("exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
@@ -115,7 +115,7 @@ describe("issue 32231", () => {
     cy.findByTestId("add-series-button").click({ force: true });
     cy.wait("@seriesQuery");
 
-    cy.get(".AddSeriesModal").within(() => {
+    cy.findByTestId("add-series-modal").within(() => {
       cy.get(".LineAreaBarChart").should("not.exist");
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
