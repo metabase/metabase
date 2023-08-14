@@ -56,7 +56,7 @@ describe("ListItem", () => {
     expect(screen.queryByText(PLACEHOLDER_TEXT)).not.toBeInTheDocument();
   });
 
-  it("should render without the link when disabled", () => {
+  it("should not render the link when disabled", () => {
     setup({
       name: ITEM_NAME,
       disabled: true,
