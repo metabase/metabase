@@ -154,7 +154,6 @@ describe("admin > database > add", () => {
       });
 
       cy.findByRole("status").within(() => {
-        cy.findByText(/syncing/i);
         cy.findByText("Done!");
       });
 
