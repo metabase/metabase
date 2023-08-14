@@ -1,12 +1,17 @@
 import {
+  describeEE,
   describeWithSnowplow,
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createMetric,
@@ -130,9 +135,10 @@ describe("scenarios > search", () => {
     });
   });
 
-  describe("applying search filters", () => {
+  describeEE("applying search filters", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       createSegment({
         name: "Segment",
@@ -159,6 +165,27 @@ describe("scenarios > search", () => {
         name: "Orders Model",
         query: { "source-table": ORDERS_ID },
         dataset: true,
+      });
+
+      cy.createModerationReview({
+        status: "verified",
+        moderated_item_type: "card",
+        moderated_item_id: ORDERS_COUNT_QUESTION_ID,
+      });
+    });
+
+    describeEE("rendering `Verified` filter", () => {
+      it("should render if Pro/EE instance", () => {
+        setTokenFeatures("all");
+        cy.visit("/");
+        cy.findByTestId("search-bar-filter-button").click();
+        cy.findByTestId("verified-search-filter").should("exist");
+      });
+      it("should not render if Starter instance", () => {
+        setTokenFeatures("none");
+        cy.visit("/");
+        cy.findByTestId("search-bar-filter-button").click();
+        cy.findByTestId("verified-search-filter").should("not.exist");
       });
     });
 
@@ -242,33 +269,74 @@ describe("scenarios > search", () => {
     });
 
     describe("search filters", () => {
-      typeFilters.forEach(
-        ({ label, sidebarLabel, filterName, resultInfoText }) => {
-          it(`should filter results by ${label}`, () => {
-            cy.visit("/");
+      describe("type filters", () => {
+        typeFilters.forEach(
+          ({ label, sidebarLabel, filterName, resultInfoText }) => {
+            it(`should filter results by ${label}`, () => {
+              cy.visit("/");
 
-            cy.findByTestId("search-bar-filter-button").click();
-            getSearchModalContainer().within(() => {
-              cy.findByText(label).click();
-              cy.findByText("Apply all filters").click();
+              cy.findByTestId("search-bar-filter-button").click();
+              getSearchModalContainer().within(() => {
+                cy.findByText(label).click();
+                cy.findByText("Apply all filters").click();
+              });
+
+              getSearchBar().clear().type("e{enter}");
+              cy.wait("@search");
+
+              cy.url().should("include", `type=${filterName}`);
+
+              cy.findAllByTestId("result-link-info-text").each(result => {
+                cy.wrap(result).should("contain.text", resultInfoText);
+              });
+
+              cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
+              cy.findByTestId("type-sidebar").within(() => {
+                cy.findByText(sidebarLabel).should("exist");
+              });
             });
+          },
+        );
+      });
 
-            getSearchBar().clear().type("e{enter}");
-            cy.wait("@search");
+      describe("verified filter", () => {
+        it("should filter only for `Verified` assets", () => {
+          cy.visit("/");
 
-            cy.url().should("include", `type=${filterName}`);
-
-            cy.findAllByTestId("result-link-info-text").each(result => {
-              cy.wrap(result).should("contain.text", resultInfoText);
-            });
-
-            cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-            cy.findByTestId("type-sidebar").within(() => {
-              cy.findByText(sidebarLabel).should("exist");
-            });
+          cy.findByTestId("search-bar-filter-button").click();
+          getSearchModalContainer().within(() => {
+            cy.findByText("Only verified items").click();
+            cy.findByText("Apply all filters").click();
           });
-        },
-      );
+
+          getSearchBar().clear().type("Orders{enter}");
+          cy.wait("@search");
+
+          cy.url().should("include", `verified=true`);
+
+          cy.findByTestId("search-result-item").within(() => {
+            cy.findByLabelText("verified icon").should("exist");
+          });
+        });
+        it("should show verified and unverified assets when `All items` is selected", () => {
+          cy.visit("/");
+
+          cy.findByTestId("search-bar-filter-button").click();
+          getSearchModalContainer().within(() => {
+            cy.findByText("All items").click();
+            cy.findByText("Apply all filters").click();
+          });
+
+          getSearchBar().clear().type("Orders{enter}");
+          cy.wait("@search");
+
+          cy.url().should("not.include", `verified=true`);
+
+          cy.findByTestId("search-result-item").within(() => {
+            cy.findByLabelText("verified icon").should("exist");
+          });
+        });
+      });
 
       it("should not filter results when `Clear all filters` is applied", () => {
         cy.visit("/search?q=order&type=card");

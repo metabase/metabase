@@ -19,6 +19,7 @@ export const isOSS = !isEE;
  */
 const conditionalDescribe = cond => (cond ? describe : describe.skip);
 
+console.log(isEE);
 export const describeEE = conditionalDescribe(isEE);
 export const describeOSS = conditionalDescribe(isOSS);
 
