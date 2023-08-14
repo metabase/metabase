@@ -5,7 +5,7 @@ import { QuickFilterDrill } from "../drills/QuickFilterDrill";
 import ForeignKeyDrill from "../drills/ForeignKeyDrill";
 import { ColumnFilterDrill } from "../drills/ColumnFilterDrill";
 import UnderlyingRecordsDrill from "../drills/UnderlyingRecordsDrill";
-import { AutomaticInsightsAction } from "../actions/AutomaticInsightsAction";
+import { AutomaticInsightsDrill } from "../drills/AutomaticInsightsDrill";
 import ZoomDrill from "../drills/ZoomDrill";
 import { ColumnFormattingAction } from "../actions/ColumnFormattingAction";
 import { DashboardClickAction } from "../actions/DashboardClickAction";
@@ -20,7 +20,7 @@ export const DefaultMode: QueryMode = {
     QuickFilterDrill,
     ForeignKeyDrill,
     ColumnFilterDrill,
-    AutomaticInsightsAction,
+    AutomaticInsightsDrill,
     ColumnFormattingAction,
     DashboardClickAction,
   ],

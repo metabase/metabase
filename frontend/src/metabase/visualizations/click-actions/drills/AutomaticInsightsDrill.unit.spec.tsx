@@ -9,10 +9,10 @@ import {
   PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
 import { checkNotNull } from "metabase/core/utils/types";
-import type { ClickActionProps } from "metabase/visualizations/click-actions/types";
-import { AutomaticInsightsAction } from "./AutomaticInsightsAction";
+import type { ClickActionProps } from "../types";
+import { AutomaticInsightsDrill } from "./AutomaticInsightsDrill";
 
-describe("AutomaticInsightsAction", () => {
+describe("AutomaticInsightsDrill", () => {
   describe('"enable-xrays" feature is disabled', () => {
     beforeAll(() => {
       MetabaseSettings.set("enable-xrays", false);
@@ -23,14 +23,14 @@ describe("AutomaticInsightsAction", () => {
     });
 
     it("should return empty array", () => {
-      const actions = AutomaticInsightsAction(setupCategoryFieldQuery());
+      const actions = AutomaticInsightsDrill(setupCategoryFieldQuery());
 
       expect(actions).toHaveLength(0);
     });
   });
 
   it("should return one item with popover", () => {
-    const actions = AutomaticInsightsAction(setupCategoryFieldQuery());
+    const actions = AutomaticInsightsDrill(setupCategoryFieldQuery());
 
     expect(actions).toHaveLength(1);
 
@@ -102,7 +102,7 @@ function setupCategoryFieldQuery(): ClickActionProps {
 }
 
 function setup() {
-  const actions = AutomaticInsightsAction(setupCategoryFieldQuery());
+  const actions = AutomaticInsightsDrill(setupCategoryFieldQuery());
   expect(actions).toHaveLength(1);
 
   const { popover: PopoverComponent } = actions[0];

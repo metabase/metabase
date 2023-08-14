@@ -1,11 +1,8 @@
 import { t } from "ttag";
 import { zoomInRow } from "metabase/query_builder/actions";
-import type { RowValue, DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type { ClickActionProps } from "metabase/visualizations/click-actions/types";
-import {
-  QuestionChangeClickAction,
-  ReduxClickAction,
-} from "metabase/visualizations/click-actions/types";
+import { DefaultClickAction } from "metabase/visualizations/click-actions/types";
 import type Question from "metabase-lib/Question";
 import {
   objectDetailDrill,
@@ -63,7 +60,7 @@ function getActionExtraData({
 export const ObjectDetailDrill = ({
   question,
   clicked,
-}: ClickActionProps): [] | [ReduxClickAction | QuestionChangeClickAction] => {
+}: ClickActionProps): [] | DefaultClickAction[] => {
   const drill = objectDetailDrill({ question, clicked });
   if (!drill || !clicked) {
     return [];

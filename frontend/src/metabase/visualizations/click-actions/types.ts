@@ -58,9 +58,12 @@ type ReduxClickActionBase = {
 
 export type ReduxClickAction = ClickActionBase & ReduxClickActionBase;
 
-export type QuestionChangeClickAction = ClickActionBase & {
+export type QuestionChangeClickActionBase = {
   question: () => Question;
 };
+
+export type QuestionChangeClickAction = ClickActionBase &
+  QuestionChangeClickActionBase;
 
 export type PopoverClickAction = ClickActionBase & {
   popoverProps?: Record<string, unknown>;
@@ -80,7 +83,12 @@ export type RegularClickAction =
   | PopoverClickAction
   | UrlClickAction;
 
+export type DefaultClickAction = ClickActionBase & {
+  default: true;
+} & AlwaysDefaultClickActionSubAction;
+
 export type AlwaysDefaultClickActionSubAction =
+  | QuestionChangeClickActionBase
   | ReduxClickActionBase
   | UrlClickActionBase;
 
@@ -89,7 +97,10 @@ export type AlwaysDefaultClickAction = {
   defaultAlways: true;
 } & AlwaysDefaultClickActionSubAction;
 
-export type ClickAction = RegularClickAction | AlwaysDefaultClickAction;
+export type ClickAction =
+  | RegularClickAction
+  | DefaultClickAction
+  | AlwaysDefaultClickAction;
 
 export type Drill = (options: ClickActionProps) => ClickAction[];
 
@@ -117,14 +128,15 @@ export const isQuestionChangeClickAction = (
   clickAction: ClickAction,
 ): clickAction is QuestionChangeClickAction => "question" in clickAction;
 
-export const AlwaysDefaultClickAction = (
+export const isAlwaysDefaultClickAction = (
   clickAction: ClickAction,
 ): clickAction is AlwaysDefaultClickAction =>
   "defaultAlways" in clickAction && clickAction.defaultAlways;
 
 export const isRegularClickAction = (
   clickAction: ClickAction,
-): clickAction is RegularClickAction => !AlwaysDefaultClickAction(clickAction);
+): clickAction is RegularClickAction =>
+  !isAlwaysDefaultClickAction(clickAction);
 
 export interface ModeFooterComponentProps {
   lastRunCard: Card;

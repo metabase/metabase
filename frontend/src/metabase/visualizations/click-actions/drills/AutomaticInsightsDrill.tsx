@@ -1,11 +1,9 @@
 import { t } from "ttag";
 import type {
   ClickActionBase,
+  ClickActionPopoverProps,
   ClickActionProps,
   PopoverClickAction,
-} from "metabase/visualizations/click-actions/types";
-import {
-  ClickActionPopoverProps,
   UrlClickAction,
 } from "metabase/visualizations/click-actions/types";
 import MetabaseSettings from "metabase/lib/settings";
@@ -16,7 +14,7 @@ import {
   compareToRestDrillUrl,
 } from "metabase-lib/queries/drills/automatic-insights-drill";
 
-export const AutomaticInsightsAction = ({
+export const AutomaticInsightsDrill = ({
   question,
   clicked,
 }: ClickActionProps): PopoverClickAction[] => {
