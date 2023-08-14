@@ -1,9 +1,15 @@
+/*
+  Ace autocompletion styles are hard to migrate to CSS-in-JS
+  because the popover is rendered at the top level of the DOM,
+  outside of the NativeQueryEditor component.
+*/
+
 .ace_editor.ace_autocomplete {
   border: none;
-  box-shadow: 0 2px 3px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 3px 2px var(--color-shadow);
   border-radius: 4px;
-  background-color: white;
-  color: #4c5773;
+  background-color: var(--color-white);
+  color: var(--color-text-dark);
   width: 520px;
 }
 

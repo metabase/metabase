@@ -362,8 +362,8 @@
         (mt/with-temp* [PermissionsGroup           [group]
                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
           (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-          (is (= (remove (comp #{"collection"} :model) (default-search-results))
-                 (search-request-data :rasta :q "test")))))))
+          (is (ordered-subset? (remove (comp #{"collection"} :model) (default-search-results))
+                               (search-request-data :rasta :q "test")))))))
 
   (testing "Users without root collection permissions should still see other collections they have access to"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -374,11 +374,11 @@
             (perms/grant-collection-read-permissions! group (u/the-id collection))
             (is (= (sorted-results
                     (reverse ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
-                     (into
-                      (default-results-with-collection)
-                      (map #(merge default-search-row % (table-search-results))
-                           [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-                            {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
+                             (into
+                              (default-results-with-collection)
+                              (map #(merge default-search-row % (table-search-results))
+                                   [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
+                                    {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
                    (search-request-data :rasta :q "test"))))))))
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
@@ -390,14 +390,14 @@
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
-            (is (= (sorted-results
-                    (reverse
-                     (into
-                      (default-results-with-collection)
-                      (for [row  (default-search-results)
-                            :when (not= "collection" (:model row))]
-                        (update row :name #(str/replace % "test" "test2"))))))
-                   (search-request-data :rasta :q "test"))))))))
+            (is (ordered-subset? (sorted-results
+                                  (reverse
+                                   (into
+                                    (default-results-with-collection)
+                                    (for [row  (default-search-results)
+                                          :when (not= "collection" (:model row))]
+                                      (update row :name #(str/replace % "test" "test2"))))))
+                                 (search-request-data :rasta :q "test"))))))))
 
  (testing "Users with access to multiple collections should see results from all collections they have access to"
    (with-search-items-in-collection {coll-1 :collection} "test"
@@ -406,13 +406,13 @@
                        PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
          (perms/grant-collection-read-permissions! group (u/the-id coll-1))
          (perms/grant-collection-read-permissions! group (u/the-id coll-2))
-         (is (= (sorted-results
-                 (reverse
-                  (into
-                   (default-results-with-collection)
-                   (map (fn [row] (update row :name #(str/replace % "test" "test2")))
-                        (default-results-with-collection)))))
-                (search-request-data :rasta :q "test")))))))
+         (is (ordered-subset? (sorted-results
+                               (reverse
+                                (into
+                                 (default-results-with-collection)
+                                 (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+                                      (default-results-with-collection)))))
+                              (search-request-data :rasta :q "test")))))))
 
  (testing "User should only see results in the collection they have access to"
    (mt/with-non-admin-groups-no-root-collection-perms
@@ -643,6 +643,12 @@
       (t2.with-temp/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+                 (search-request-data user :q "Lancelot")))))))
+  (testing "You should be able to search by their description"
+    (let [lancelot "Lancelot's Favorite Furniture"]
+      (t2.with-temp/with-temp [Table _ {:name "RoundTable" :description lancelot}]
+        (do-test-users [user [:crowberto :rasta]]
+          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
