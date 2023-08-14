@@ -39,11 +39,11 @@ const ListItem = ({ name, description, disabled, placeholder, url, icon }) => {
   );
 
   if (disabled) {
-    return <Root>{card}</Root>;
+    return <Root disabled={disabled}>{card}</Root>;
   }
 
   return (
-    <Root>
+    <Root disabled={disabled}>
       <Link to={url}>{card}</Link>
     </Root>
   );
