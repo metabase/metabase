@@ -66,7 +66,7 @@ export const SearchFilterDisplay = ({
   return (
     <>
       {getFilterComponent(SearchFilterKeys.Type)}
-      <SearchFilterView title="Created by">
+      <SearchFilterView title="Created by" align="center">
         <Group grow>
           {getFilterComponent(SearchFilterKeys.CreatedBy)}
           {getFilterComponent(SearchFilterKeys.CreatedAt)}

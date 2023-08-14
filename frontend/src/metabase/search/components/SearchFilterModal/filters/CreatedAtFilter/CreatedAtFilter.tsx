@@ -7,9 +7,13 @@ import {
   getFilterTitle,
 } from "metabase/parameters/utils/date-formatting";
 import Popover from "metabase/components/Popover";
-import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
+import DatePicker, {
+  DATE_OPERATORS,
+} from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
 import { CreatedAtButton } from "metabase/search/components/SearchFilterModal/filters/CreatedAtFilter/CreatedAtFilter.styled";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
+
+const CREATED_AT_FILTERS = DATE_OPERATORS.filter(({name}) => name !== 'exclude');
 
 export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
   value = [],
@@ -50,6 +54,7 @@ export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
           filter={filter}
           onCommit={onCommit}
           onFilterChange={onFilterChange}
+          operators={CREATED_AT_FILTERS}
         />
       </Popover>
     </div>

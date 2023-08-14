@@ -22,10 +22,19 @@ export const CreatedByFilter: SearchFilterComponent<"created_by"> = ({
 
   const selectedUser = useMemo(() => {
     if (data && value.length > 0) {
-      return [data.find(user => user.id === value[0])];
+      const user = data.find(user => {
+        console.log(user.id, value[0]);
+        return user.id === Number(value[0]);
+      });
+      return user ? [user] : [];
     }
     return [];
   }, [data, value]);
+
+  console.log({
+    value,
+    selectedUser,
+  });
 
   return (
     <div>

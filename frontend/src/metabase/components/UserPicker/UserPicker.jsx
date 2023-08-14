@@ -40,6 +40,7 @@ const UserPicker = ({
   }, [users]);
 
   const idKey = useCallback(value => {
+    console.log(value);
     return value.id || value.email;
   }, []);
 
@@ -68,6 +69,8 @@ const UserPicker = ({
       return { email: text };
     }
   }, []);
+
+  console.log(value);
 
   return (
     <UserPickerRoot style={style} className={className}>
