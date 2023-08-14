@@ -163,7 +163,7 @@ export const ChartSettingOrderedColumns = ({
             />
           ))}
           {additionalFieldOptions.fks.map((fk, index) => (
-            <div key={fk.id} >
+            <div key={fk.id}>
               <div className="my2 text-medium text-bold text-uppercase text-small">
                 {fk.name ||
                   (fk.field.target
