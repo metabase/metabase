@@ -14,14 +14,14 @@ import {
   SortControl,
   TokenActionButton,
   TokenFilterActionButton,
-} from "./ChartClickActionControl.styled";
+} from "./ClickActionControl.styled";
 
 interface Props {
   action: ClickAction;
   onClick: (action: ClickAction) => void;
 }
 
-export const ChartClickActionControl = ({
+export const ClickActionControl = ({
   action,
   onClick,
 }: Props): JSX.Element | null => {

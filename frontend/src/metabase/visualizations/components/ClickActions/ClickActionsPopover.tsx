@@ -15,9 +15,9 @@ import {
   isRegularClickAction,
 } from "metabase/visualizations/click-actions/types";
 
-import { ChartClickActionsView } from "./ChartClickActionsView";
+import { ClickActionsView } from "./ClickActionsView";
 import { getGALabelForAction } from "./utils";
-import { FlexTippyPopover } from "./ChartClickActions.styled";
+import { FlexTippyPopover } from "./ClickActionsPopover.styled";
 
 interface ChartClickActionsProps {
   clicked: ClickObject;
@@ -33,7 +33,7 @@ interface State {
   popoverAction: PopoverClickAction | null;
 }
 
-class ChartClickActions extends Component<ChartClickActionsProps, State> {
+class ClickActionsPopover extends Component<ChartClickActionsProps, State> {
   state: State = {
     popoverAction: null,
   };
@@ -171,7 +171,7 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
           popover ? (
             popover
           ) : (
-            <ChartClickActionsView
+            <ClickActionsView
               clickActions={clickActions}
               onClick={this.handleClickAction}
             />
@@ -183,4 +183,4 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
   }
 }
 
-export const ConnectedChartClickActions = connect()(ChartClickActions);
+export const ConnectedClickActionsPopover = connect()(ClickActionsPopover);

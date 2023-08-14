@@ -7,7 +7,7 @@ import type {
   PopoverClickAction,
 } from "metabase/visualizations/click-actions/types";
 import { Card } from "metabase-types/api";
-import { ChartClickActionsView } from "metabase/visualizations/components/ChartClickActions";
+import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   pivotByCategoryDrill,
@@ -128,9 +128,7 @@ export const getPivotDrill =
     );
 
     const Component = ({ onClick }: ClickActionPopoverProps) => {
-      return (
-        <ChartClickActionsView clickActions={clickActions} onClick={onClick} />
-      );
+      return <ClickActionsView clickActions={clickActions} onClick={onClick} />;
     };
 
     return [

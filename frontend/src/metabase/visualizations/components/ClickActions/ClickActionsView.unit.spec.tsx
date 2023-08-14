@@ -12,9 +12,9 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 
-import { ChartClickActionsView } from "./ChartClickActionsView";
+import { ClickActionsView } from "./ClickActionsView";
 
-describe("ChartClickActionsView", () => {
+describe("ClickActionsView", () => {
   it('should render "See this ..." action as the first item', () => {
     setup("CREATED_AT", "2018-05-15T20:25:48.517+03:00");
 
@@ -109,9 +109,7 @@ function setup(
   ) as RegularClickAction[];
   const onClick = jest.fn();
 
-  render(
-    <ChartClickActionsView clickActions={clickActions} onClick={onClick} />,
-  );
+  render(<ClickActionsView clickActions={clickActions} onClick={onClick} />);
 
   return {
     mocks: {

@@ -9,7 +9,7 @@ import {
   UrlClickAction,
 } from "metabase/visualizations/click-actions/types";
 import MetabaseSettings from "metabase/lib/settings";
-import { ChartClickActionsView } from "metabase/visualizations/components/ChartClickActions";
+import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import {
   automaticDashboardDrillUrl,
   automaticInsightsDrill,
@@ -54,9 +54,7 @@ export const AutomaticInsightsAction = ({
   ];
 
   const Component = ({ onClick }: ClickActionPopoverProps) => {
-    return (
-      <ChartClickActionsView clickActions={drillOptions} onClick={onClick} />
-    );
+    return <ClickActionsView clickActions={drillOptions} onClick={onClick} />;
   };
 
   return [

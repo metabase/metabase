@@ -3,7 +3,7 @@ import {
   Section,
   SectionTitle,
   SectionWithTitle,
-} from "metabase/visualizations/components/ChartClickActions/ChartClickActionsSection.styled";
+} from "./ClickActionsViewSection.styled";
 import { ContentDirectionType } from "./utils";
 
 interface Props {
@@ -17,7 +17,7 @@ interface Props {
 
 const testId = "drill-through-section";
 
-export const ChartClickActionsSection = ({
+export const ClickActionsViewSection = ({
   type,
   title,
   contentDirection = "column",

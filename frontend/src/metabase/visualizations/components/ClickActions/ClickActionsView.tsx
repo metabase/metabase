@@ -1,12 +1,12 @@
 import type { RegularClickAction } from "metabase/visualizations/click-actions/types";
-import { Container, Divider } from "./ChartClickActions.styled";
+import { Container, Divider } from "./ClickActionsPopover.styled";
 import {
   getGroupedAndSortedActions,
   getSectionContentDirection,
   getSectionTitle,
 } from "./utils";
-import { ChartClickActionsSection } from "./ChartClickActionsSection";
-import { ChartClickActionControl } from "./ChartClickActionControl";
+import { ClickActionsViewSection } from "./ClickActionsViewSection";
+import { ClickActionControl } from "./ClickActionControl";
 
 interface Props {
   clickActions: RegularClickAction[];
@@ -14,7 +14,7 @@ interface Props {
   onClick: (action: RegularClickAction) => void;
 }
 
-export const ChartClickActionsView = ({
+export const ClickActionsView = ({
   clickActions,
   onClick,
 }: Props): JSX.Element => {
@@ -31,7 +31,7 @@ export const ChartClickActionsView = ({
         const withTopDivider = key === "details" && !hasOnlyOneSection;
 
         return (
-          <ChartClickActionsSection
+          <ClickActionsViewSection
             key={key}
             type={key}
             title={sectionTitle}
@@ -39,14 +39,14 @@ export const ChartClickActionsView = ({
           >
             {withTopDivider && <Divider />}
             {actions.map((action, index) => (
-              <ChartClickActionControl
+              <ClickActionControl
                 key={action.name}
                 action={action}
                 onClick={() => onClick(action)}
               />
             ))}
             {withBottomDivider && <Divider />}
-          </ChartClickActionsSection>
+          </ClickActionsViewSection>
         );
       })}
     </Container>
