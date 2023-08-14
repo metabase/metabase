@@ -174,7 +174,7 @@ describe("scenarios > search", () => {
       });
     });
 
-    describeEE("rendering `Verified` filter", () => {
+    describe("rendering `Verified` filter", () => {
       it("should render if Pro/EE instance", () => {
         setTokenFeatures("all");
         cy.visit("/");
@@ -300,6 +300,10 @@ describe("scenarios > search", () => {
       });
 
       describe("verified filter", () => {
+        beforeEach(() => {
+          setTokenFeatures("all");
+        });
+
         it("should filter only for `Verified` assets", () => {
           cy.visit("/");
 
