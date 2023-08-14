@@ -846,8 +846,6 @@
          (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
            (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))
 
-(mt/user-http-request :crowberto :get 200 "search" :verified true)
-
 (deftest verified-filter-test
   (let [search-term "Verified filter"]
     (t2.with-temp/with-temp
