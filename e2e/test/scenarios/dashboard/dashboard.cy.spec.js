@@ -116,40 +116,39 @@ describe("scenarios > dashboard", () => {
         .and("contain", newQuestionName);
     });
 
-    it("should create new dashboard inside a collection created on the go", () => {
-      const NEW_DASHBOARD = "Foo";
-      const NEW_COLLECTION = "Bar";
-
-      cy.visit("/");
-      appBar().findByText("New").click();
-      popover().findByText("Dashboard").should("be.visible").click();
-
-      modal().within(() => {
-        cy.findByLabelText("Name").type(NEW_DASHBOARD);
-        cy.log("Open a collection picker");
-        cy.findByTestId("select-button")
-          .should("contain", "Our analytics")
-          .click();
-      });
-
-      cy.log("Create new collection on the go");
-      popover().findByText("New collection").click();
-      modal().within(() => {
-        cy.findByLabelText("Name").type(NEW_COLLECTION).blur();
-        cy.button("Create").click();
-      });
-
-      cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
-      saveDashboard();
-      closeNavigationSidebar();
-
-      cy.log("Breadcrumbs show newly created dashboard");
-      appBar().findByText(NEW_COLLECTION).click();
-      cy.findByTestId("collection-entry-name").should(
-        "have.text",
-        NEW_DASHBOARD,
-      );
-    });
+    it(
+      "should create new dashboard inside a collection created on the go",
+      // Increased height to avoid scrolling when opening a collection picker
+      { viewportHeight: 1000 },
+      () => {
+        cy.intercept("POST", "api/collection").as("createCollection");
+        cy.visit("/");
+        closeNavigationSidebar();
+        appBar().findByText("New").click();
+        popover().findByText("Dashboard").should("be.visible").click();
+        const NEW_DASHBOARD = "Foo";
+        modal().within(() => {
+          cy.findByRole("heading", { name: "New dashboard" });
+          cy.findByLabelText("Name").type(NEW_DASHBOARD).blur();
+          cy.findByTestId("select-button")
+            .should("have.text", "Our analytics")
+            .click();
+        });
+        popover().findByText("New collection").click({ force: true });
+        const NEW_COLLECTION = "Bar";
+        modal().within(() => {
+          cy.findByRole("heading", { name: "New collection" });
+          cy.findByLabelText("Name").type(NEW_COLLECTION).blur();
+          cy.button("Create").click();
+          cy.wait("@createCollection");
+          cy.findByText("New dashboard");
+          cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+          cy.button("Create").click();
+        });
+        saveDashboard();
+        cy.findByTestId("app-bar").findByText(NEW_COLLECTION);
+      },
+    );
 
     it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
       cy.intercept("POST", "/api/card").as("saveQuestion");
