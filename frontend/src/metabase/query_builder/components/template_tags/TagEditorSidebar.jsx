@@ -9,7 +9,7 @@ import _ from "underscore";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import TagEditorParam from "./TagEditorParam";
+import { TagEditorParam } from "./TagEditorParam";
 import { TagEditorHelp } from "./TagEditorHelp";
 
 export default class TagEditorSidebar extends Component {

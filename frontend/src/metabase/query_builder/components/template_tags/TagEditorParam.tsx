@@ -1,5 +1,4 @@
 import { Component } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -8,7 +7,10 @@ import { Link } from "react-router";
 import Schemas from "metabase/entities/schemas";
 import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Select, { Option } from "metabase/core/components/Select";
+import Select, {
+  Option,
+  SelectChangeEvent,
+} from "metabase/core/components/Select";
 
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
 
@@ -16,13 +18,32 @@ import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
-import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 
+import type {
+  DimensionReference,
+  FieldId,
+  Parameter,
+  RowValue,
+  TemplateTag,
+  TemplateTagId,
+  TemplateTagType,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/metadata/Field";
+
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import {
   getDefaultParameterOptions,
   getDefaultParameterWidgetType,
   getParameterOptionsForField,
 } from "metabase-lib/parameters/utils/template-tag-options";
+
 import {
   ContainerLabel,
   DefaultParameterValueWidget,
@@ -32,19 +53,27 @@ import {
   TagName,
 } from "./TagEditorParam.styled";
 
-const propTypes = {
-  tag: PropTypes.object.isRequired,
-  parameter: PropTypes.object,
-  database: PropTypes.object,
-  databases: PropTypes.array,
-  setTemplateTag: PropTypes.func.isRequired,
-  setTemplateTagConfig: PropTypes.func.isRequired,
-  setParameterValue: PropTypes.func.isRequired,
-  fetchField: PropTypes.func.isRequired,
-  metadata: PropTypes.object.isRequired,
-};
+interface Props {
+  tag: TemplateTag;
+  parameter: Parameter;
+  database: Database;
+  databases: Database[];
+  metadata: Metadata;
+  setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig: (tag: TemplateTag, config: Parameter) => void;
+  setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
+  fetchField: (fieldId: FieldId, force?: boolean) => void;
+}
 
-export class TagEditorParam extends Component {
+function mapStateToProps(state: State) {
+  return {
+    metadata: getMetadata(state),
+  };
+}
+
+const mapDispatchToProps = { fetchField };
+
+class TagEditorParamInner extends Component<Props> {
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -55,7 +84,7 @@ export class TagEditorParam extends Component {
     }
   }
 
-  setType(type) {
+  setType(type: TemplateTagType) {
     const { tag, setTemplateTag } = this.props;
 
     if (tag.type !== type) {
@@ -69,7 +98,7 @@ export class TagEditorParam extends Component {
     }
   }
 
-  setWidgetType(widgetType) {
+  setWidgetType(widgetType: string) {
     const { tag, setTemplateTag, setParameterValue } = this.props;
 
     if (tag["widget-type"] !== widgetType) {
@@ -87,7 +116,7 @@ export class TagEditorParam extends Component {
     }
   }
 
-  setRequired(required) {
+  setRequired(required: boolean) {
     const { tag, setTemplateTag } = this.props;
 
     if (tag.required !== required) {
@@ -95,7 +124,7 @@ export class TagEditorParam extends Component {
     }
   }
 
-  setQueryType = queryType => {
+  setQueryType = (queryType: ValuesQueryType) => {
     const { tag, parameter, setTemplateTagConfig } = this.props;
 
     setTemplateTagConfig(tag, {
@@ -104,7 +133,10 @@ export class TagEditorParam extends Component {
     });
   };
 
-  setSourceSettings = (sourceType, sourceConfig) => {
+  setSourceSettings = (
+    sourceType: ValuesSourceType,
+    sourceConfig: ValuesSourceConfig,
+  ) => {
     const { tag, parameter, setTemplateTagConfig } = this.props;
 
     setTemplateTagConfig(tag, {
@@ -114,7 +146,7 @@ export class TagEditorParam extends Component {
     });
   };
 
-  setParameterAttribute(attr, val) {
+  setParameterAttribute(attr: keyof TemplateTag, val: string) {
     // only register an update if the value actually changes
     if (this.props.tag[attr] !== val) {
       this.props.setTemplateTag({
@@ -124,10 +156,13 @@ export class TagEditorParam extends Component {
     }
   }
 
-  setDimension(fieldId) {
+  setDimension(fieldId: FieldId) {
     const { tag, setTemplateTag, metadata } = this.props;
-    const dimension = ["field", fieldId, null];
-    if (!_.isEqual(tag.dimension !== dimension)) {
+
+    // TODO Fix raw MBQL usage
+    const dimension: DimensionReference = ["field", fieldId, null];
+
+    if (!_.isEqual(tag.dimension, dimension)) {
       const field = metadata.field(dimension[1]);
       if (!field) {
         return;
@@ -146,7 +181,7 @@ export class TagEditorParam extends Component {
     }
   }
 
-  getFilterWidgetTypeValue = tag => {
+  getFilterWidgetTypeValue = (tag: TemplateTag) => {
     // avoid `undefined` value because it makes the component "uncontrollable"
     // (see Uncontrollable.jsx, metabase#13825)
     const widgetType = tag["widget-type"] || "none";
@@ -161,9 +196,9 @@ export class TagEditorParam extends Component {
 
   render() {
     const { tag, database, databases, metadata, parameter } = this.props;
-    let widgetOptions = [];
-    let field = null;
-    let table = null;
+    let widgetOptions: { name?: string; type: string }[] = [];
+    let field: Field | null = null;
+    let table: Table | null | undefined = null;
     let fieldMetadataLoaded = false;
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
       field = metadata.field(tag.dimension[1]);
@@ -177,7 +212,7 @@ export class TagEditorParam extends Component {
     const isDimension = tag.type === "dimension";
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
-    const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
+    const hasWidgetOptions = widgetOptions?.length > 0;
     const hasNoWidgetType =
       tag["widget-type"] === "none" || !tag["widget-type"];
     const hasNoWidgetLabel = !tag["display-name"];
@@ -191,7 +226,9 @@ export class TagEditorParam extends Component {
           <ContainerLabel>{t`Variable type`}</ContainerLabel>
           <Select
             value={tag.type}
-            onChange={e => this.setType(e.target.value)}
+            onChange={(e: SelectChangeEvent<TemplateTagType>) =>
+              this.setType(e.target.value)
+            }
             isInitiallyOpen={!tag.type}
             placeholder={t`Select…`}
             height={300}
@@ -222,9 +259,11 @@ export class TagEditorParam extends Component {
                     selectedTableId={table?.id || null}
                     selectedField={field || null}
                     selectedFieldId={
-                      hasSelectedDimensionField ? tag.dimension[1] : null
+                      hasSelectedDimensionField ? tag?.dimension?.[1] : null
                     }
-                    setFieldFn={fieldId => this.setDimension(fieldId)}
+                    setFieldFn={(fieldId: FieldId) =>
+                      this.setDimension(fieldId)
+                    }
                     className="AdminSelect flex align-center"
                     isInitiallyOpen={!tag.dimension}
                     triggerIconSize={12}
@@ -244,8 +283,10 @@ export class TagEditorParam extends Component {
             </ContainerLabel>
             <Select
               className="block"
-              value={this.getFilterWidgetTypeValue(tag, widgetOptions)}
-              onChange={e => this.setWidgetType(e.target.value)}
+              value={this.getFilterWidgetTypeValue(tag)}
+              onChange={(e: SelectChangeEvent<string>) =>
+                this.setWidgetType(e.target.value)
+              }
               isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
               placeholder={t`Select…`}
             >
@@ -324,9 +365,7 @@ export class TagEditorParam extends Component {
                   ? parameter || {
                       fields: [],
                       ...tag,
-                      type:
-                        tag["widget-type"] ||
-                        (tag.type === "date" ? "date/single" : null),
+                      type: tag["widget-type"] || null,
                     }
                   : {
                       fields: [],
@@ -348,8 +387,7 @@ export class TagEditorParam extends Component {
   }
 }
 
-TagEditorParam.propTypes = propTypes;
-
-export default connect(state => ({ metadata: getMetadata(state) }), {
-  fetchField,
-})(TagEditorParam);
+export const TagEditorParam = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(TagEditorParamInner);
