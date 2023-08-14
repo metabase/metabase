@@ -185,14 +185,13 @@ export const enableColumnInQuery = (
 
 export const disableColumnInQuery = (
   query: Lib.Query,
-  { datasetColumn, metadataColumn }: ColumnSettingItem,
+  { metadataColumn }: ColumnSettingItem,
 ) => {
-  const column = metadataColumn || datasetColumn;
-  if (!column) {
+  if (!metadataColumn) {
     return query;
   }
 
-  return Lib.removeField(query, STAGE_INDEX, column);
+  return Lib.removeField(query, STAGE_INDEX, metadataColumn);
 };
 
 const findColumnSettingIndex = (

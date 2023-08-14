@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatasetColumn, FieldReference } from "metabase-types/api";
+import type { FieldReference } from "metabase-types/api";
 import type { Clause, ColumnMetadata, Query } from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {
@@ -25,7 +25,7 @@ export function addField(
 export function removeField(
   query: Query,
   stageIndex: number,
-  targetField: ColumnMetadata | DatasetColumn,
+  targetField: ColumnMetadata,
 ): Query {
   return ML.remove_field(query, stageIndex, targetField);
 }
