@@ -322,10 +322,10 @@ describe("Notebook Editor > Join Step", () => {
 
     userEvent.click(screen.getByLabelText("Left column"));
     const popover = await screen.findByLabelText("grid");
-    userEvent.click(within(popover).getByText("Created At"));
+    userEvent.click(within(popover).getByText("User ID"));
 
     const [condition] = getRecentJoin().conditions;
-    expect(condition.lhsColumn.longDisplayName).toBe("Created At: Month");
+    expect(condition.lhsColumn.longDisplayName).toBe("User ID");
     expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
   });
 
@@ -337,13 +337,11 @@ describe("Notebook Editor > Join Step", () => {
 
     userEvent.click(screen.getByLabelText("Right column"));
     const popover = await screen.findByLabelText("grid");
-    userEvent.click(within(popover).getByText("Created At"));
+    userEvent.click(within(popover).getByText("Price"));
 
     const [condition] = getRecentJoin().conditions;
     expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
-    expect(condition.rhsColumn.longDisplayName).toBe(
-      "Products → Created At: Month",
-    );
+    expect(condition.rhsColumn.longDisplayName).toBe("Products → Price");
   });
 
   it("shouldn't allow removing an incomplete condition", async () => {
