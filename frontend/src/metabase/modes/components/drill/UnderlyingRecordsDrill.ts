@@ -22,7 +22,8 @@ export const UnderlyingRecordsDrill: Drill = ({ question, clicked }) => {
       : ngettext(msgid`record`, `records`, rowCount);
 
   const actionTitle = ngettext(
-    msgid`See this ${tableTitle}`,
+    // extra argument is required to avoid a collision with a singular form translation (metabase#33079)
+    msgid`See this ${tableTitle}${""}`,
     `See these ${tableTitle}`,
     rowCount,
   );
