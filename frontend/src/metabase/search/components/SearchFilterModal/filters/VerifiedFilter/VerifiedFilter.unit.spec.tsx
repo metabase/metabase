@@ -18,7 +18,7 @@ const setup = ({ value }: { value?: boolean } = {}) => {
 };
 
 describe("VerifiedFilter", () => {
-  it("renders `All items` button if value is undefined", () => {
+  it("highlights `All items` button if value is undefined", () => {
     setup({ value: undefined });
 
     expect(
@@ -26,7 +26,7 @@ describe("VerifiedFilter", () => {
     ).not.toHaveAttribute("data-is-selected");
   });
 
-  it("renders `Only verified items` button if value is undefined", () => {
+  it("highlights `Only verified items` button if value is true", () => {
     setup({ value: true });
 
     expect(
