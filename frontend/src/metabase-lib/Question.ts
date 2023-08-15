@@ -315,10 +315,18 @@ class QuestionInner {
 
   maybeResetDisplay(sensibleDisplays, previousSensibleDisplays): Question {
     const wasSensible =
-      previousSensibleDisplays == null ||
+      previousSensibleDisplays &&
       previousSensibleDisplays.includes(this.display());
     const isSensible = sensibleDisplays.includes(this.display());
-    const shouldUnlock = wasSensible && !isSensible;
+    // If the display wasn't sensible before and is now, we assume the user wants to
+    // keep the not sensible display. Don't unlock it.
+    // If there was no data before, and the display is sensible, unlock it.
+    // If there was no data before, and the display is not sensible, don't unlock it.
+    // It was previously set to be non-sensible on a previous run. Most likely a user set
+    // the visualisation when the query was largely the same, and they want to keep the
+    // display.
+    const shouldUnlock =
+      (wasSensible && !isSensible) || (!previousSensibleDisplays && isSensible);
     const defaultDisplay = this.setDefaultDisplay().display();
 
     if (isSensible && defaultDisplay === "table") {
