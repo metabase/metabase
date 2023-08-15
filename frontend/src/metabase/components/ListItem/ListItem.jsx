@@ -2,14 +2,11 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo } from "react";
-import { Link } from "react-router";
 
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.css";
-import Ellipsified from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
-
-import { Root } from "./ListItem.styled";
+import { ListItemLink, ListItemName, Root } from "./ListItem.styled";
 
 const ListItem = ({
   "data-testid": dataTestId,
@@ -28,13 +25,13 @@ const ListItem = ({
         </div>
         <div className={S.itemBody}>
           <div className={S.itemTitle}>
-            <Ellipsified
+            <ListItemName
               className={S.itemName}
               tooltip={name}
               tooltipMaxWidth="100%"
             >
               <h3>{name}</h3>
-            </Ellipsified>
+            </ListItemName>
           </div>
           {(description || placeholder) && (
             <div className={cx(S.itemSubtitle)}>
@@ -56,7 +53,7 @@ const ListItem = ({
 
   return (
     <Root data-testid={dataTestId}>
-      <Link to={url}>{card}</Link>
+      <ListItemLink to={url}>{card}</ListItemLink>
     </Root>
   );
 };
