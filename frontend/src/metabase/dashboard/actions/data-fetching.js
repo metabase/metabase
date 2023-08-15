@@ -238,14 +238,9 @@ export const fetchDashboard = createThunkAction(
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
-        : getParameterValuesByIdFromQueryParams(
-            parameters,
-            queryParams,
-            metadata,
-            {
-              forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
-            },
-          );
+        : getParameterValuesByIdFromQueryParams(parameters, queryParams, {
+            forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
+          });
 
       entities = entities ?? normalize(result, dashboard).entities;
 
