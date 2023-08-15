@@ -1,16 +1,15 @@
 /* eslint "react/prop-types": "warn" */
 import { memo } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import cx from "classnames";
-import Ellipsified from "metabase/core/components/Ellipsified";
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.css";
 import { Icon } from "metabase/core/components/Icon";
+import { ListItemLink, ListItemName } from "./ListItem.styled";
 
 const ListItem = ({ name, description, placeholder, url, icon }) => (
   <li className="relative">
-    <Link to={url} className="text-brand-hover">
+    <ListItemLink to={url}>
       <Card hoverable className="mb2 p3 bg-white rounded bordered">
         <div className={cx(S.item)}>
           <div className={S.itemIcons}>
@@ -18,13 +17,9 @@ const ListItem = ({ name, description, placeholder, url, icon }) => (
           </div>
           <div className={S.itemBody}>
             <div className={S.itemTitle}>
-              <Ellipsified
-                className={S.itemName}
-                tooltip={name}
-                tooltipMaxWidth="100%"
-              >
+              <ListItemName tooltip={name} tooltipMaxWidth="100%">
                 <h3>{name}</h3>
-              </Ellipsified>
+              </ListItemName>
             </div>
             {(description || placeholder) && (
               <div className={cx(S.itemSubtitle)}>
@@ -34,7 +29,7 @@ const ListItem = ({ name, description, placeholder, url, icon }) => (
           </div>
         </div>
       </Card>
-    </Link>
+    </ListItemLink>
   </li>
 );
 

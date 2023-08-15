@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
-import cx from "classnames";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
@@ -16,6 +15,7 @@ import {
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../actions";
+import { ModalTrigger } from "./DashboardSharingEmbeddingModal.styled";
 
 const defaultProps = {
   isLinkEnabled: true,
@@ -59,6 +59,7 @@ class DashboardSharingEmbeddingModal extends Component {
         ref={m => (this._modal = m)}
         full
         disabled={!isLinkEnabled}
+        as={ModalTrigger}
         triggerElement={
           <span
             className={linkClassNames}
@@ -76,7 +77,7 @@ class DashboardSharingEmbeddingModal extends Component {
             {linkText}
           </span>
         }
-        triggerClasses={cx(className, "text-brand-hover")}
+        triggerClasses={className}
         className="scroll-y"
       >
         <EmbedModalContent

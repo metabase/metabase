@@ -32,6 +32,7 @@ import {
   reloadSettings,
 } from "../../../settings";
 import { SettingsSection } from "./SettingsSection";
+import { NewVersionIndicator } from "./SettingsEditor.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -223,12 +224,7 @@ class SettingsEditor extends Component {
           !MetabaseSettings.isHosted();
 
         const newVersionIndicator = shouldDisplayNewVersionIndicator ? (
-          <span
-            style={{ padding: "4px 8px 4px 8px" }}
-            className="bg-brand rounded text-white text-bold h6"
-          >
-            1
-          </span>
+          <NewVersionIndicator>1</NewVersionIndicator>
         ) : null;
 
         return (

@@ -38,7 +38,7 @@ import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
-import ErrorView from "./ErrorView";
+import { ErrorView } from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
@@ -49,6 +49,7 @@ import {
 } from "./Visualization.styled";
 
 const defaultProps = {
+  errorMessageOverride: undefined,
   showTitle: false,
   isDashboard: false,
   isEditing: false,
@@ -322,6 +323,7 @@ class Visualization extends PureComponent {
       actionButtons,
       className,
       dashcard,
+      errorMessageOverride,
       showTitle,
       isDashboard,
       width,
@@ -476,7 +478,7 @@ class Visualization extends PureComponent {
             <NoResultsView isSmall={small} />
           ) : error ? (
             <ErrorView
-              error={error}
+              error={errorMessageOverride ?? error}
               icon={errorIcon}
               isSmall={small}
               isDashboard={isDashboard}
