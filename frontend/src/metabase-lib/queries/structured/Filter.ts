@@ -25,6 +25,7 @@ import {
   getFilterOptions,
   setFilterOptions,
 } from "metabase-lib/queries/utils/filter";
+
 import type { FilterOperator } from "../../deprecated-types";
 import Dimension from "../../Dimension";
 import StructuredQuery from "../StructuredQuery";
@@ -339,7 +340,7 @@ export default class Filter extends MBQLClause {
     return dimension ? dimension.filterOperators(selected) : null;
   }
 
-  arguments() {
+  arguments(): MBQLClause {
     return hasFilterOptions(this) ? this.slice(2, -1) : this.slice(2);
   }
 
