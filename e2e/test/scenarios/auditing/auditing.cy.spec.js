@@ -1,4 +1,10 @@
-import { restore, describeEE, visitQuestion } from "e2e/support/helpers";
+import {
+  restore,
+  describeEE,
+  visitQuestion,
+  getDashboardCard,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -81,10 +87,13 @@ describeEE("audit > auditing", () => {
     cy.findByText(/ID/i);
   });
 
-  beforeEach(cy.signInAsAdmin);
+  beforeEach(() => {
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
 
   describe("See expected info on team member pages", () => {
-    it("should load the Overview tab", () => {
+    it.skip(`should load the Overview tab (metabase#32244)`, () => {
       cy.visit("/admin/audit/members/overview");
 
       // We haven't created any new members yet so this should be empty
@@ -199,7 +208,7 @@ describeEE("audit > auditing", () => {
       // All tables tab
       cy.visit("/admin/audit/tables/all");
       cy.findByPlaceholderText("Table name");
-      cy.findAllByText("PUBLIC").should("have.length", 4);
+      cy.findAllByText("PUBLIC").should("have.length", 8);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("REVIEWS"); // Table name in DB
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -211,12 +220,17 @@ describeEE("audit > auditing", () => {
     it("should load both tabs in Questions", () => {
       // Overview tab
       cy.visit("/admin/audit/questions/overview");
+
+      // There should not be any menu buttons on dashcards
+      getDashboardCard().realHover();
+      cy.findByTestId("dashcard-menu").should("not.exist");
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Slowest queries");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Query views and speed per day");
       cy.findAllByText("No results!").should("not.exist");
-      cy.get(".LineAreaBarChart").should("have.length", 3);
+      cy.get(".LineAreaBarChart").should("have.length", 1);
       cy.get("rect");
       cy.get(".voronoi");
 

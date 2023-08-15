@@ -50,8 +50,8 @@ For example, let's say we want to create a filter named "Select Product ID" link
 
 - Our question doesn't include the **Product ID** column.
 - We type the number 4 into the "Select Product ID" filter, when the **Product ID** column only contains the values 1, 2, and 3.
-- **Product ID** is renamed to something else in the database or Data Model page.
-- **Product ID** is deleted from the database, or hidden in the Data Model page.
+- **Product ID** is renamed to something else in the database or Table Metadata page.
+- **Product ID** is deleted from the database, or hidden in the Table Metadata page.
 - **Product ID** is a custom column that's not working as expected.
 - We don't have data permissions to access the **Product ID** column.
 - We made "Select Product ID" a numerical filter, but **Product ID** is a string column (see the section below).
@@ -62,10 +62,10 @@ To debug dashboard and question filters that involve timestamps, UUIDs, or numer
 
 1. Find the [data type](https://www.metabase.com/learn/databases/data-types-overview) of the column that you want to filter on. You can find this info from:
    - the [Data reference](../exploration-and-organization/data-model-reference.md),
-   - the [Data Model page](../data-modeling/metadata-editing.md) (admins only), or
+   - the [Table Metadata page](../data-modeling/metadata-editing.md) (admins only), or
    - directly from the database.
 2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/introduction.md#filter-types). You can:
-   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page, or
+   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page, or
    - change the data type of the column in your database, and [re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the database schema.
 
 If you're not a Metabase admin, you might have to ask your admin to help you with some of these steps.
@@ -80,7 +80,7 @@ Timestamps, in particular, are the root of all evil, so please be patient with y
 
 If your filter dropdown menu displays the wrong values for a column:
 
-1. Go to **Admin settings** > **Data model**.
+1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database, table, and column.
 3. Click the **gear** icon at the right of a column’s settings box.
 4. Scroll to **Cached field values**.

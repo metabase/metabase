@@ -11,6 +11,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database]]
    [metabase.models.interface :as mi]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

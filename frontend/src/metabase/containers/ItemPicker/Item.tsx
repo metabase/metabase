@@ -60,6 +60,8 @@ function Item<TId>({
       isSelected={selected}
       hasChildren={hasChildren}
       data-testid="item-picker-item"
+      aria-selected={selected}
+      role="option"
     >
       <ItemContent>
         <Icon {...iconProps} />

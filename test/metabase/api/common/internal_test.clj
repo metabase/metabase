@@ -182,8 +182,7 @@
         (mt/with-mock-i18n-bundles  {"es" {:messages
                                            {"value must be a non-blank string."
                                             "el valor debe ser una cadena que no esté en blanco."}}}
-          (metabase.test/with-temporary-setting-values [site-locale "es"]
-
+          (mt/with-temporary-setting-values [site-locale "es"]
             (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
                                                                                             ;; TODO remove .'s from ms schemas
                                                                                             ;; TODO translate received (?)

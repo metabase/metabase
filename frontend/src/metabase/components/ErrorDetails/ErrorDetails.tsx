@@ -2,7 +2,9 @@ import { useState } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import { ErrorDetailsProps } from "./types";
+import { ErrorBox } from "./ErrorBox";
+
+import type { ErrorDetailsProps } from "./types";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ErrorDetails({
@@ -32,17 +34,7 @@ export default function ErrorDetails({
         className={cx("pt3", centered ? "text-centered" : "text-left")}
       >
         <h2>{t`Here's the full error message`}</h2>
-        <div
-          style={{ fontFamily: "monospace" }}
-          className="QueryError2-detailBody bordered rounded bg-light text-bold p2 mt1"
-        >
-          {/* ensure we don't try to render anything except a string */}
-          {typeof details === "string"
-            ? details
-            : typeof details.message === "string"
-            ? details.message
-            : String(details)}
-        </div>
+        <ErrorBox>{details}</ErrorBox>
       </div>
     </div>
   );

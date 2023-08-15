@@ -2,7 +2,6 @@ import Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import {
-  MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
   MODE_TYPE_SEGMENT,
   MODE_TYPE_METRIC,
@@ -16,10 +15,6 @@ import { ModeType } from "./types";
 export function getModeType(question: Question): ModeType | null {
   if (!question) {
     return null;
-  }
-
-  if (question.display() === "action") {
-    return MODE_TYPE_ACTION;
   }
 
   const query = question.query();

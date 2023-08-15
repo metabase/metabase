@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
-import type { BucketPickerPopoverProps } from "./types";
+import type { CommonBucketPickerProps } from "./types";
 import type { BucketListItem } from "./BaseBucketPickerPopover";
 import {
   BaseBucketPickerPopover,
@@ -19,7 +19,7 @@ export function TemporalBucketPickerPopover({
   buckets,
   onSelect,
   ...props
-}: BucketPickerPopoverProps) {
+}: CommonBucketPickerProps) {
   const selectedBucket = useMemo(() => Lib.temporalBucket(column), [column]);
 
   const items = useMemo(

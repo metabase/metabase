@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.models.card :refer [Card]]
@@ -19,14 +20,15 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(u/ignore-exceptions
- (classloader/require 'metabase-enterprise.advanced-permissions.common))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"

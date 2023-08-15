@@ -1,4 +1,4 @@
-import { ChangeEvent, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
@@ -89,7 +89,7 @@ const FieldHeaderSection = ({
   onUpdateField,
 }: FieldHeaderSectionProps) => {
   const handleChangeName = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onUpdateField(field, { display_name: event.target.value });
       } else {
@@ -100,7 +100,7 @@ const FieldHeaderSection = ({
   );
 
   const handleChangeDescription = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onUpdateField(field, { description: event.target.value });
       } else {

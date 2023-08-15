@@ -10,7 +10,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
-   [metabase.lib.dev :as lib.dev]
+   [metabase.lib.database :as lib.database]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
@@ -36,7 +36,7 @@
          lib.card/keep-me
          lib.column-group/keep-me
          lib.common/keep-me
-         lib.dev/keep-me
+         lib.database/keep-me
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
@@ -58,6 +58,7 @@
   [lib.aggregation
    aggregate
    aggregation-clause
+   aggregation-ref
    aggregation-operator-columns
    aggregations
    aggregations-metadata
@@ -92,17 +93,14 @@
    group-columns]
   [lib.common
    external-op]
-  [lib.dev
-   field
-   query-for-table-id
-   query-for-table-name
-   table
-   ref-lookup]
+  [lib.database
+   database-id]
   [lib.expression
    expression
    expressions
    expressions-metadata
    expressionable-columns
+   expression-ref
    +
    -
    *
@@ -144,15 +142,19 @@
    upper
    lower]
   [lib.field
+   add-field
+   field-id
+   fieldable-columns
    fields
-   with-fields
-   fieldable-columns]
+   remove-field
+   with-fields]
   [lib.filter
    filter
    filters
    filterable-columns
    filterable-column-operators
    filter-clause
+   filter-operator
    and
    or
    not
@@ -174,10 +176,14 @@
    join-condition-lhs-columns
    join-condition-operators
    join-condition-rhs-columns
+   join-condition-update-temporal-bucketing
    join-conditions
    join-fields
+   join-lhs-display-name
    join-strategy
+   joinable-columns
    joins
+   raw-join-strategy
    suggested-join-condition
    with-join-alias
    with-join-fields
@@ -194,11 +200,21 @@
    display-info
    suggested-name
    type-of]
+  [lib.metric
+   available-metrics]
   [lib.native
    #?@(:cljs [->TemplateTags
               TemplateTags->])
-   recognize-template-tags
-   template-tags]
+   native-query
+   raw-native-query
+   with-native-query
+   template-tags
+   with-template-tags
+   required-native-extras
+   native-extras
+   with-native-extras
+   with-different-database
+   extract-template-tags]
   [lib.order-by
    change-direction
    order-by
@@ -208,14 +224,17 @@
   [lib.normalize
    normalize]
   [lib.query
-   native-query
-   query
-   saved-question-query]
+   query]
   [lib.ref
    ref]
   [lib.remove-replace
    remove-clause
-   replace-clause]
+   remove-join
+   rename-join
+   replace-clause
+   replace-join]
+  [lib.segment
+   available-segments]
   [lib.stage
    append-stage
    drop-stage]

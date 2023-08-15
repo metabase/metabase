@@ -8,6 +8,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
+import { Text } from "metabase/ui";
 import { ErrorMessage } from "./RecipientPicker.styled";
 
 export default class RecipientPicker extends Component {
@@ -72,9 +73,9 @@ export default class RecipientPicker extends Component {
             valueRenderer={value => value.common_name ?? value.email}
             optionRenderer={option => (
               <div className="flex align-center">
-                <span className="text-white">
+                <Text color="white">
                   <UserAvatar user={option.value} />
-                </span>
+                </Text>
                 <span className="ml1">{option.value.common_name}</span>
               </div>
             )}

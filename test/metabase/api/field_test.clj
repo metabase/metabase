@@ -350,8 +350,8 @@
 
       (testing "should be able to unset just the human-readable values"
         (t2.with-temp/with-temp [FieldValues _ {:values                (range 1 5)
-                                      :field_id              field-id
-                                      :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
+                                                :field_id              field-id
+                                                :human_readable_values ["$" "$$" "$$$" "$$$$"]}]
           (testing "before updating values"
             (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
@@ -673,7 +673,7 @@
   (testing "PUT /api/field/:id"
     (testing "Changing a remapped field's type to something that can't be remapped will clear the dimension"
       (t2.with-temp/with-temp [Field {field-id :id} {:name      "Field Test"
-                                           :base_type "type/Integer"}]
+                                                     :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before API request"
           (is (= {:id                      true
@@ -692,7 +692,7 @@
 
     (testing "Change from supported type to supported type will leave the dimension"
       (t2.with-temp/with-temp [Field {field-id :id} {:name      "Field Test"
-                                           :base_type "type/Integer"}]
+                                                     :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (let [expected {:id                      true
                         :entity_id               true
@@ -754,13 +754,13 @@
 (deftest search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
-      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :venues :name))
                                       (t2/select-one Field :id (mt/id :venues :name))
                                       "Red"
                                       nil))))
     (tqpt/test-timeseries-drivers
-      (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
+      (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :checkins :venue_name))
                                       (t2/select-one Field :id (mt/id :checkins :venue_name))
                                       "Red"
@@ -793,7 +793,7 @@
 
 (deftest json-unfolding-initially-true-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
       (mt/dataset json
         ;; Create a new database with the same details as the json dataset, with json unfolding enabled
         (let [database (t2/select-one Database :id (mt/id))]
@@ -834,7 +834,7 @@
 
 (deftest json-unfolding-initially-false-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+    (when-not (mysql-test/is-mariadb? driver/*driver* (u/id (mt/db)))
       (mt/dataset json
         (let [database (t2/select-one Database :id (mt/id))]
           (testing "When json_unfolding is disabled at the DB level on the first sync"

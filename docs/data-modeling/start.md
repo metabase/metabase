@@ -10,7 +10,7 @@ Metabase provides tools for organizing your data and making it easier for people
 
 Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, or a special kind of saved question meant to be used as the starting point for new questions. 
 
-## [Data model admin settings](./metadata-editing.md)
+## [Table metadata admin settings](./metadata-editing.md)
 
 Guide people to the right data by adding display names, hiding outdated tables, configuring filter types, and more.
 

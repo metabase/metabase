@@ -6,7 +6,7 @@ import {
   HTMLAttributes,
 } from "react";
 import { t } from "ttag";
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
@@ -16,6 +16,10 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+import type {
+  OnClickNewCollection,
+  Values,
+} from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -27,6 +31,7 @@ import type { CollectionId } from "metabase-types/api";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
+  NewCollectionButton,
 } from "./FormCollectionPicker.styled";
 
 export interface FormCollectionPickerProps
@@ -35,6 +40,10 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
+  canCreateNew?: boolean;
+  initialOpenCollectionId?: CollectionId;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  onClickNewCollection?: OnClickNewCollection;
 }
 
 function ItemName({
@@ -58,6 +67,10 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
+  canCreateNew = false,
+  initialOpenCollectionId,
+  onOpenCollectionChange,
+  onClickNewCollection,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -94,6 +107,10 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
+  const { values } = useFormikContext<Values>();
+  const [openCollectionId, setOpenCollectionId] =
+    useState<CollectionId>("root");
+
   const renderContent = useCallback(
     ({ closePopover }) => {
       // Search API doesn't support collection namespaces yet
@@ -112,10 +129,36 @@ function FormCollectionPicker({
           }}
           showSearch={hasSearch}
           width={width}
-        />
+          initialOpenCollectionId={initialOpenCollectionId}
+          onOpenCollectionChange={(id: CollectionId) => {
+            onOpenCollectionChange?.(id);
+            setOpenCollectionId(id);
+          }}
+        >
+          {canCreateNew && (
+            <NewCollectionButton
+              light
+              icon="add"
+              onClick={() => onClickNewCollection?.(values, openCollectionId)}
+            >
+              {t`New collection`}
+            </NewCollectionButton>
+          )}
+        </PopoverItemPicker>
       );
     },
-    [value, type, width, setValue],
+    [
+      value,
+      type,
+      width,
+      setValue,
+      initialOpenCollectionId,
+      openCollectionId,
+      values,
+      onOpenCollectionChange,
+      canCreateNew,
+      onClickNewCollection,
+    ],
   );
 
   return (

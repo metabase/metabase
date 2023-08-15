@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { Database, Field, FieldValues, Table } from "metabase-types/api";
+import { Database, Field, FieldValuesResult, Table } from "metabase-types/api";
 import {
   createMockField,
   createMockFieldDimension,
@@ -106,7 +106,7 @@ interface SetupOpts {
   database?: Database;
   table?: Table;
   field?: Field;
-  fieldValues?: FieldValues;
+  fieldValues?: FieldValuesResult;
   hasDataAccess?: boolean;
 }
 

@@ -195,9 +195,9 @@
                            *search-request-results-database-id*)]
     (if (:error (:data raw-results))
       raw-results
-      (update-in raw-results [:data]
-                 (fn [raw-data]
-                   (vec (xf (process-raw-data raw-data keep-database-id))))))))
+      (update raw-results :data
+              (fn [raw-data]
+                (vec (xf (process-raw-data raw-data keep-database-id))))))))
 
 (defn- search-request
   [& args]
@@ -322,8 +322,8 @@
         (mt/with-temp* [PermissionsGroup           [group]
                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
           (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-          (is (= (remove (comp #{"collection"} :model) (default-search-results))
-                 (search-request-data :rasta :q "test")))))))
+          (is (ordered-subset? (remove (comp #{"collection"} :model) (default-search-results))
+                               (search-request-data :rasta :q "test")))))))
 
   (testing "Users without root collection permissions should still see other collections they have access to"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -350,14 +350,14 @@
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (perms/grant-collection-read-permissions! group collection)
-            (is (= (sorted-results
-                    (reverse
-                     (into
-                      (default-results-with-collection)
-                      (for [row  (default-search-results)
-                            :when (not= "collection" (:model row))]
-                        (update row :name #(str/replace % "test" "test2"))))))
-                   (search-request-data :rasta :q "test"))))))))
+            (is (ordered-subset? (sorted-results
+                                  (reverse
+                                   (into
+                                    (default-results-with-collection)
+                                    (for [row  (default-search-results)
+                                          :when (not= "collection" (:model row))]
+                                      (update row :name #(str/replace % "test" "test2"))))))
+                                 (search-request-data :rasta :q "test"))))))))
 
   (testing "Users with access to multiple collections should see results from all collections they have access to"
     (with-search-items-in-collection {coll-1 :collection} "test"
@@ -366,13 +366,13 @@
                         PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
           (perms/grant-collection-read-permissions! group (u/the-id coll-1))
           (perms/grant-collection-read-permissions! group (u/the-id coll-2))
-          (is (= (sorted-results
-                  (reverse
-                   (into
-                    (default-results-with-collection)
-                    (map (fn [row] (update row :name #(str/replace % "test" "test2")))
-                         (default-results-with-collection)))))
-                 (search-request-data :rasta :q "test")))))))
+          (is (ordered-subset? (sorted-results
+                                (reverse
+                                 (into
+                                  (default-results-with-collection)
+                                  (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+                                       (default-results-with-collection)))))
+                               (search-request-data :rasta :q "test")))))))
 
   (testing "User should only see results in the collection they have access to"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -592,7 +592,7 @@
     :model               "table"
     :database_id         true
     :pk_ref              nil
-    :initial_sync_status "incomplete"}))
+    :initial_sync_status "complete"}))
 
 (defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
   `(doseq [user# ~users
@@ -617,6 +617,12 @@
       (t2.with-temp/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+                 (search-request-data user :q "Lancelot")))))))
+  (testing "You should be able to search by their description"
+    (let [lancelot "Lancelot's Favorite Furniture"]
+      (t2.with-temp/with-temp [Table _ {:name "RoundTable" :description lancelot}]
+        (do-test-users [user [:crowberto :rasta]]
+          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
@@ -719,7 +725,7 @@
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
     (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
-      (toucan2.execute/with-call-count [call-count]
+      (t2.execute/with-call-count [call-count]
         (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort

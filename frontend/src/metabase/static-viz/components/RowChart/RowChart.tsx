@@ -1,10 +1,10 @@
 import { Group } from "@visx/group";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
-import {
+import type {
   FontStyle,
-  TextMeasurer,
+  TextWidthMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
-import { measureText } from "metabase/static-viz/lib/text";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
   getGroupedDataset,
@@ -51,8 +51,11 @@ interface StaticRowChartProps {
   getColor: ColorGetter;
 }
 
-const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
-  measureText(
+const staticTextMeasurer: TextWidthMeasurer = (
+  text: string,
+  style: FontStyle,
+) =>
+  measureTextWidth(
     text,
     parseInt(style.size.toString(), 10),
     style.weight ? parseInt(style.weight.toString(), 10) : 400,
@@ -123,7 +126,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
           stackOffset={stackOffset}
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
-          measureText={staticTextMeasurer}
+          measureTextWidth={staticTextMeasurer}
           xLabel={xLabel}
           yLabel={yLabel}
           hasXAxis={hasXAxis}

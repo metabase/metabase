@@ -97,29 +97,32 @@ These snapshot-generating tests have the extension `.cy.snap.js`. When these tes
 ## Running in CI
 Cypress records videos of each test run, which can be helpful in debugging. Additionally, failed tests have higher quality images saved.
 
-
 These files can be found under the “Artifacts” section for each run's summary in GitHub Actions.
 The example of the artifacts for a failed test in "Onboarding" directory:
 ![GitHub Actions artifacts section](https://user-images.githubusercontent.com/31325167/241774190-f19da1d5-8fca-4c48-9342-ead18066bd12.png)
 
 Additionally, you will find a handy [DeploySentinel](https://www.deploysentinel.com/ci/dashboard) recording link for each failed test in the logs.
 
-## Running Cypress tests against EE version of Metabase
+## Running Cypress tests against Metabase® Enterprise Edition™
 
-Prior to running Cypress, make sure you have a valid enterprise token. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the existence of two environment variables:
+Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITION=ee` environment variable. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the edition.
 
-- `MB_EDITION`
-- `MB_PREMIUM_EMBEDDING_TOKEN`
+**Enterprise instance will start without a premium token!**
+
+If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests. We achieve this by prefixing environment variables with `CYPRESS_`.
+You must provide two tokens that correspond to the `EE/PRO` self-hosted (all features enabled) and `STARTER` Cloud (no features enabled) Metabase plans. For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
+
+- `CYPRESS_ALL_FEATURES_TOKEN`
+- `CYPRESS_NO_FEATURES_TOKEN`
 
 ```
-MB_EDITION=ee MB_PREMIUM_EMBEDDING_TOKEN=xxxxxx yarn test-cypress-open
+MB_EDITION=ee CYPRESS_ALL_FEATURES_TOKEN=xxxxxx CYPRESS_NO_FEATURES_TOKEN=xxxxxx yarn test-cypress-open
 ```
 
-If you navigate to the `/admin/settings/license` page, the license input field should be disabled and already populated. It should say: "Using MB_PREMIUM_EMBEDDING_TOKEN".
+If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 
-
-- If tests under `describeEE` block are greyed out and not running, make sure you entered the environment variables correctly.
-- If tests start running but the enterprise features are missing: make sure that the token is still valid.
+- If tests under `describeEE` block are greyed out and not running, make sure you spun up Metabase® Enterprise Edition™.
+- If tests start running but the enterprise features are missing: make sure that the token you use has corresponding feature flags enabled.
 - If everything with the token seems to be okay, go nuclear and destroy all Java processes: run `killall java` and restart Cypress.
 
 ## Tags

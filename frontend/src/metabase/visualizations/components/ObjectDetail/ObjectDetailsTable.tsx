@@ -9,7 +9,12 @@ import EmptyState from "metabase/components/EmptyState";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import { isa, isID } from "metabase-lib/types/utils/isa";
+import {
+  isa,
+  isID,
+  isImageURL,
+  isAvatarURL,
+} from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 
@@ -18,6 +23,7 @@ import {
   ObjectDetailsTable,
   GridContainer,
   GridCell,
+  FitImage,
 } from "./ObjectDetail.styled";
 
 export interface DetailsTableCellProps {
@@ -83,6 +89,12 @@ export function DetailsTableCell({
 
   const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
 
+  const isImage =
+    !isColumnName &&
+    (isImageURL(column) || isAvatarURL(column)) &&
+    typeof value === "string" &&
+    value.startsWith("http");
+
   return (
     <div>
       <span
@@ -103,6 +115,11 @@ export function DetailsTableCell({
       >
         {cellValue}
       </span>
+      {isImage && (
+        <div>
+          <FitImage src={value} alt={value} />
+        </div>
+      )}
     </div>
   );
 }
@@ -158,32 +175,36 @@ export function DetailsTable({
   return (
     <ObjectDetailsTable>
       <GridContainer cols={3}>
-        {cols.map((column, columnIndex) => (
-          <Fragment key={columnIndex}>
-            <GridCell>
-              <DetailsTableCell
-                column={column}
-                value={row[columnIndex] ?? t`Empty`}
-                isColumnName
-                settings={settings}
-                className="text-bold text-medium"
-                onVisualizationClick={onVisualizationClick}
-                visualizationIsClickable={visualizationIsClickable}
-              />
-            </GridCell>
-            <GridCell colSpan={2}>
-              <DetailsTableCell
-                column={column}
-                value={row[columnIndex]}
-                isColumnName={false}
-                settings={settings}
-                className="text-bold text-dark text-spaced text-wrap"
-                onVisualizationClick={onVisualizationClick}
-                visualizationIsClickable={visualizationIsClickable}
-              />
-            </GridCell>
-          </Fragment>
-        ))}
+        {cols.map((column, columnIndex) => {
+          const columnValue = row[columnIndex];
+
+          return (
+            <Fragment key={columnIndex}>
+              <GridCell>
+                <DetailsTableCell
+                  column={column}
+                  value={row[columnIndex] ?? t`Empty`}
+                  isColumnName
+                  settings={settings}
+                  className="text-bold text-medium"
+                  onVisualizationClick={onVisualizationClick}
+                  visualizationIsClickable={visualizationIsClickable}
+                />
+              </GridCell>
+              <GridCell colSpan={2}>
+                <DetailsTableCell
+                  column={column}
+                  value={columnValue}
+                  isColumnName={false}
+                  settings={settings}
+                  className="text-bold text-dark text-spaced text-wrap"
+                  onVisualizationClick={onVisualizationClick}
+                  visualizationIsClickable={visualizationIsClickable}
+                />
+              </GridCell>
+            </Fragment>
+          );
+        })}
       </GridContainer>
     </ObjectDetailsTable>
   );

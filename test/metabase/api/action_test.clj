@@ -1,19 +1,20 @@
 (ns metabase.api.action-test
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.action :as api.action]
    [metabase.models :refer [Action Card Database]]
+   [metabase.models.collection :as collection]
    [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,7 +76,7 @@
                                     :template          {:method "GET"
                                                         :url "https://example.com/{{x}}"}
                                     :parameters        [{:id "x" :type "text"}]
-                                    :public_uuid       (str (UUID/randomUUID))
+                                    :public_uuid       (str (random-uuid))
                                     :made_public_by_id (mt/user->id :crowberto)
                                     :response_handle   ".body"
                                     :error_handle      ".status >= 400"}
@@ -396,7 +397,7 @@
    :made_public_by_id nil})
 
 (defn- shared-action-opts []
-  {:public_uuid       (str (UUID/randomUUID))
+  {:public_uuid       (str (random-uuid))
    :made_public_by_id (mt/user->id :crowberto)})
 
 (deftest fetch-public-actions-test
@@ -538,7 +539,7 @@
 
 (deftest parameter-ignore-test
   (mt/with-actions-test-data-tables #{"users"}
-    (mt/with-actions-enabled
+    (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
                         {action-id :action-id} {:type :implicit :kind "row/update"}]
         (testing "It strips out nil values"
@@ -546,10 +547,89 @@
                                                    :post 200
                                                    (format "action/%s/execute" action-id)
                                                    {:parameters {:id 1 :name % :last_login nil}})]
-            (try
-              (run-action! "Darth Vader")
+            (run-action! "Darth Vader")
+            (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
+              (is (= "Darth Vader" new-name))
+              (is (some? last-login)))))))))
+
+(deftest parameter-default-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-actions-enabled
+        (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                          {action-id :action-id} {:type :implicit :kind "row/update"
+                                                  :visualization_settings {:fields {"last_login" {:id           "last_login"
+                                                                                                  :defaultValue "2023-04-01T00:00:00Z"}}}}]
+          (testing "Missing parameters should be filled in with default values"
+            (let [run-action! #(mt/user-http-request :crowberto
+                                                     :post 200
+                                                     (format "action/%s/execute" action-id)
+                                                     {:parameters (merge {:id 1} %)})]
+              (run-action! {:name "Darth Vader"})
               (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
                 (is (= "Darth Vader" new-name))
-                (is (some? last-login)))
-              (finally
-                (run-action! "Plato Yeshua")))))))))
+                (is (= "2023-04-01T00:00:00Z" last-login)))))
+          (testing "{<param-id>: null} means a parameter is missing, and should not be replaced with a default value"
+            (let [run-action! #(mt/user-http-request :crowberto
+                                                     :post 200
+                                                     (format "action/%s/execute" action-id)
+                                                     {:parameters (merge {:id 1} %)})]
+              (run-action! {:name "Darth Vader" :last_login nil})
+              (let [[new-name last-login] (first (mt/rows (mt/run-mbql-query users {:breakout [$name $last_login] :filter [:= $id 1]})))]
+                (is (= "Darth Vader" new-name))
+                (is (= "2023-04-01T00:00:00Z" last-login))))))))))
+
+(deftest hidden-parameter-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {:keys [action-id]} {:type :implicit :kind "row/update"
+                                                      :visualization_settings {:fields {"name" {:id     "name"
+                                                                                                :hidden true}}}}]
+        (testing "Hidden parameter should fail gracefully"
+          (testing "GET /api/action/:id/execute"
+            (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
+                          (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
+                                                {:parameters {:name "Darth Vader"}})))))))))
+
+(deftest fetch-implicit-action-default-values-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-enabled
+      (mt/with-actions [_                             {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})
+                                                       :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+                        {create-action-id :action-id} {:type :implicit :kind "row/create"}
+                        {update-action-id :action-id} {:type :implicit :kind "row/update"}
+                        {delete-action-id :action-id} {:type :implicit :kind "row/delete"}
+                        {http-action-id :action-id}   {:type :http}
+                        {query-action-id :action-id}  {:type :query}]
+        (testing "403 if user does not have permission to view the action"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+
+        (testing "404 if id does not exist"
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
+
+        (testing "returns empty map for actions that are not implicit"
+          (is (= {}
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" http-action-id) :parameters (json/encode {:id 1}))))
+
+          (is (= {}
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
+
+        (testing "Can't fetch for create action"
+          (is (= "Values can only be fetched for actions that require a Primary Key."
+                 (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" create-action-id) :parameters (json/encode {:id 1})))))
+
+        (testing "fetch for update action return name and id"
+          (is (= {:id 1 :name "Red Medicine"}
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+
+        (testing "fetch for delete action returns the id only"
+          (is (= {:id 1}
+                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))
+
+        (mt/with-actions-disabled
+          (testing "error if actions is disabled"
+            (is (= "Actions are not enabled."
+                 (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))

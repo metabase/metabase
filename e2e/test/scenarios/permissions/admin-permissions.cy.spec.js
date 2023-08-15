@@ -13,6 +13,7 @@ import {
   visitQuestion,
   visitDashboard,
   selectPermissionRow,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
@@ -605,6 +606,7 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("allows editing sandboxed access in the database focused view", () => {
@@ -733,5 +735,51 @@ describeEE("scenarios > admin > permissions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
+  });
+});
+
+describe("scenarios > admin > permissions", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions");
+
+    // Data permissions
+    cy.get("main").within(() => {
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference")
+      .as("permissionsHelpContent")
+      .within(() => {
+        cy.findByText("Data permissions");
+        cy.findByText("Unrestricted");
+        cy.findByText("Impersonated (Pro)");
+        cy.findByLabelText("Close").click();
+      });
+
+    cy.get("main").within(() => {
+      cy.findByText("Collections").click();
+      cy.get("@permissionHelpButton").click();
+    });
+
+    // Collection permissions
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Collection permissions");
+      cy.findByText("Collections Permission Levels");
+    });
+
+    // The help reference keeps being open when switching tabs
+    cy.get("main").within(() => {
+      cy.findByText("Data").click();
+    });
+
+    cy.get("@permissionsHelpContent").within(() => {
+      cy.findByText("Data permissions");
+    });
   });
 });

@@ -70,7 +70,22 @@ export default createEntity({
             : [],
         };
       } else {
-        return searchList(query);
+        const { data, ...rest } = await searchList(query);
+
+        return {
+          ...rest,
+          data: data
+            ? data.map(item => {
+                const collectionKey = item.collection
+                  ? { collection_id: item.collection.id }
+                  : {};
+                return {
+                  ...collectionKey,
+                  ...item,
+                };
+              })
+            : [],
+        };
       }
     },
   },

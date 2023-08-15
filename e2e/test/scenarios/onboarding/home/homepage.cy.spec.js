@@ -5,8 +5,15 @@ import {
   modal,
   dashboardHeader,
   navigationSidebar,
+  describeWithSnowplow,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  enableTracking,
+  main,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { admin } = USERS;
 
@@ -204,19 +211,62 @@ describe("scenarios > home > custom homepage", () => {
     });
 
     it("should give you the option to set a custom home page using home page CTA", () => {
+      cy.request("POST", "/api/collection", {
+        name: "Personal nested Collection",
+        color: "#509ee3",
+        description: `nested 1 level`,
+        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
+      }).then(({ body }) => {
+        cy.request("POST", "/api/collection", {
+          name: "Personal nested nested Collection",
+          color: "#509ee3",
+          description: `nested 2 levels`,
+          parent_id: body.id,
+        }).then(({ body }) => {
+          cy.createDashboard({
+            name: "nested dash",
+            collection_id: body.id,
+          });
+        });
+      });
+
       cy.visit("/");
       cy.get("main").findByText("Customize").click();
-      modal()
-        .findByText(/Select a dashboard/i)
-        .click();
 
-      //Ensure that personal collections have been removed
-      popover().contains("Your personal collection").should("not.exist");
-      popover().contains("All personal collections").should("not.exist");
+      modal().within(() => {
+        cy.findByRole("button", { name: "Save" }).should("be.disabled");
+        cy.findByText(/Select a dashboard/i).click();
+      });
 
-      popover().findByText("Orders in a dashboard").click();
-      modal().findByText("Save").click();
+      popover().within(() => {
+        //Ensure that personal collections have been removed
+        cy.findByText("First collection").should("exist");
+        cy.findByText("Your personal collection").should("not.exist");
+        cy.findByText("All personal collections").should("not.exist");
+        cy.findByText(/nested/i).should("not.exist");
+
+        //Ensure that child dashboards of personal collections do not
+        //appear in search
+        cy.findByRole("button", { name: /search/ }).click();
+        cy.findByPlaceholderText("Search").type("das{enter}");
+        cy.findByText("Orders in a dashboard").should("exist");
+        cy.findByText("nested dash").should("not.exist");
+        cy.findByRole("button", { name: /close/ }).click();
+
+        cy.findByText("Orders in a dashboard").click();
+      });
+
+      modal().findByRole("button", { name: "Save" }).click();
       cy.location("pathname").should("equal", "/dashboard/1");
+
+      cy.findByRole("status").within(() => {
+        cy.findByText("This dashboard has been set as your homepage.").should(
+          "exist",
+        );
+        cy.findByText(
+          "You can change this in Admin > Settings > General.",
+        ).should("exist");
+      });
     });
   });
 
@@ -277,6 +327,75 @@ describe("scenarios > home > custom homepage", () => {
           /Your admin has set this dashboard as your homepage/,
         ).should("have.length", 1);
       });
+    });
+
+    it("should show the default homepage if the dashboard was archived (#31599)", () => {
+      // Archive dashboard
+      visitDashboard(1);
+      dashboardHeader().within(() => {
+        cy.findByLabelText("dashboard-menu-button").click();
+      });
+      popover().within(() => {
+        cy.findByText("Archive").click();
+      });
+      modal().within(() => {
+        cy.findByText("Archive").click();
+      });
+
+      // Navigate to home
+      navigationSidebar().within(() => {
+        cy.findByText("Home").click();
+      });
+      main().within(() => {
+        cy.findByText("We're a little lost...").should("not.exist");
+        cy.findByText("Customize").should("be.visible");
+      });
+    });
+  });
+});
+
+describeWithSnowplow("scenarios > setup", () => {
+  beforeEach(() => {
+    restore();
+    resetSnowplow();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events through admin settings", () => {
+    cy.visit("/admin/settings/general");
+    cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
+
+    cy.findByTestId("custom-homepage-dashboard-setting")
+      .findByRole("button")
+      .click();
+
+    popover().findByText("Orders in a dashboard").click();
+
+    cy.findByRole("status").findByText("Saved");
+
+    expectGoodSnowplowEvent({
+      event: "homepage_dashboard_enabled",
+      source: "admin",
+    });
+  });
+
+  it("should send snowplow events through homepage", () => {
+    cy.visit("/");
+    cy.get("main").findByText("Customize").click();
+    modal()
+      .findByText(/Select a dashboard/i)
+      .click();
+
+    popover().findByText("Orders in a dashboard").click();
+    modal().findByText("Save").click();
+    expectGoodSnowplowEvent({
+      event: "homepage_dashboard_enabled",
+      source: "homepage",
     });
   });
 });

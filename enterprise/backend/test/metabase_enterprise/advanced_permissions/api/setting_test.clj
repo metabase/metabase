@@ -11,9 +11,7 @@
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util UUID)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -180,7 +178,7 @@
 
                 (delete-public-dashboard! [user status]
                   (testing (format "delete public dashboard with %s user" (mt/user-descriptor user))
-                    (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:public_uuid       (str (UUID/randomUUID))
+                    (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:public_uuid       (str (random-uuid))
                                                                            :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "dashboard/%d/public_link" dashboard-id)))))]
 
@@ -221,7 +219,7 @@
 
                   (delete-public-action! [user status]
                     (testing (format "delete public action with %s user" (mt/user-descriptor user))
-                      (mt/with-actions [{:keys [action-id]} {:public_uuid       (str (UUID/randomUUID))
+                      (mt/with-actions [{:keys [action-id]} {:public_uuid       (str (random-uuid))
                                                              :made_public_by_id (mt/user->id :crowberto)}]
                         (mt/user-http-request user :delete status (format "action/%d/public_link" action-id)))))]
 
@@ -262,7 +260,7 @@
 
                 (delete-public-card! [user status]
                   (testing (format "delete public card with %s user" (mt/user-descriptor user))
-                    (t2.with-temp/with-temp [Card {card-id :id} {:public_uuid       (str (UUID/randomUUID))
+                    (t2.with-temp/with-temp [Card {card-id :id} {:public_uuid       (str (random-uuid))
                                                                  :made_public_by_id (mt/user->id :crowberto)}]
                       (mt/user-http-request user :delete status (format "card/%d/public_link" card-id)))))]
 

@@ -12,6 +12,7 @@ There are a few things admins need to do to support CSV uploads:
 
 - [Connect to a database using a database user account with write access](#connect-to-a-database-using-a-database-user-account-with-write-access). This way Metabase will be able to store the uploaded data somewhere.
 - [Select the database and schema you want to store the uploaded data in](#select-the-database-and-schema-that-you-want-to-store-the-data-in).
+- [Add people to a group with unrestricted data access to the upload schema database](#add-people-to-a-group-with-unrestricted-data-access-to-the-upload-schema).
 - (Optional) [specify a prefix for Metabase to prepend to the uploaded tables](#specify-a-prefix-for-metabase-to-prepend-to-the-uploaded-tables).
 
 ### Databases that support uploads
@@ -42,15 +43,19 @@ When people upload a CSV to a collection, Metabase will:
 - Create a table to store that data in the database and schema that the Admin selected to store uploads.
 - Create a [model](../data-modeling/models.md) that wraps the uploaded table, and save that model to the collection the person uploaded the CSV data to.
 
+### Add people to a group with unrestricted data access to the upload schema
+
+In order to upload CSVs, a person must be in a group with Unrestricted access to the schema you've selected to store your uploaded data. Native query editing isn't required for uploading. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
+
 ### Specify a prefix for Metabase to prepend to the uploaded tables
 
 Admins can optionally specify a string of text to add in front of the table that Metabase creates to store the uploaded data.
 
 ## File size limit
 
-CSV files cannot exceed 200 MB in size.
+CSV files cannot exceed 50 MB in size.
 
-> While Metabase limits uploads to 200 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [NGINX is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 200 MB. People on Metabase Cloud don't have to worry about this.
+> While Metabase limits uploads to 50 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [NGINX is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 50 MB. People on Metabase Cloud don't have to worry about this.
 
 If you have a file larger than 200 MB, the workaround here is to:
 

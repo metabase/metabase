@@ -34,7 +34,7 @@ describe("ChartSettingLinkUrlInput", () => {
   it("Shows all options when {{ is typed", async () => {
     const { input, getOptions } = setup();
 
-    userEvent.type(input, "USE - {{");
+    userEvent.type(input, "USE - {{{{");
 
     const options = await getOptions();
 
@@ -46,7 +46,7 @@ describe("ChartSettingLinkUrlInput", () => {
   it("shows filter options while typing", async () => {
     const { input, getOptions } = setup();
 
-    userEvent.type(input, "USE - {{p");
+    userEvent.type(input, "USE - {{{{p");
 
     const options = await getOptions();
 
@@ -57,7 +57,7 @@ describe("ChartSettingLinkUrlInput", () => {
 
   it("shows filter options when clicked", async () => {
     const { input, getOptions } = setup({
-      value: "USE - {{p",
+      value: "USE - {{{{p",
     });
 
     userEvent.click(input);
@@ -75,7 +75,7 @@ describe("ChartSettingLinkUrlInput", () => {
       onChange,
     });
 
-    userEvent.type(input, "Address - {{p");
+    userEvent.type(input, "Address - {{{{p");
 
     const options = await getOptions();
 
@@ -91,7 +91,7 @@ describe("ChartSettingLinkUrlInput", () => {
       onChange,
     });
 
-    userEvent.type(input, "Address - {{p");
+    userEvent.type(input, "Address - {{{{p");
 
     const options = await getOptions();
     expect(options).toHaveLength(2);
@@ -110,7 +110,7 @@ describe("ChartSettingLinkUrlInput", () => {
       onChange,
     });
 
-    userEvent.type(input, "{{c");
+    userEvent.type(input, "{{{{c");
 
     const options = await getOptions();
 

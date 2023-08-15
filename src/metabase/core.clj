@@ -140,7 +140,10 @@
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!))
     (init-status/set-progress! 0.9))
-  (ensure-audit-db-installed!)
+
+  ;; TODO uncomment when audit v2 is ready
+  ; (ensure-audit-db-installed!)
+
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
@@ -192,8 +195,8 @@
 
 ;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
-(defn -main
-  "Launch Metabase in standalone mode."
+(defn entrypoint
+  "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.bootstrap/-main]].)"
   [& [cmd & args]]
   (maybe-enable-tracing)
   (if cmd

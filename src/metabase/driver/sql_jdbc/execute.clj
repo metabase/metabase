@@ -345,9 +345,8 @@
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (set-role-if-supported! driver conn (when (u/id db-or-id-or-spec) (if (integer? db-or-id-or-spec)
-                                                                        (t2/select-one Database db-or-id-or-spec)
-                                                                        db-or-id-or-spec)))
+    (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (t2/select-one Database db-or-id-or-spec)
+                                              (u/id db-or-id-or-spec)     db-or-id-or-spec))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant

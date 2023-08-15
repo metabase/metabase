@@ -1,10 +1,14 @@
 (ns metabase.lib.types.isa-test
   (:require
-   [clojure.test :refer [deftest is are testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.constants :as lib.types.constants]
-   [metabase.lib.types.isa :as lib.types.isa]))
+   [metabase.lib.types.isa :as lib.types.isa]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-isa-test
   (testing "nil doesn't belong to any type"
@@ -28,8 +32,8 @@
               :type/Text)))))
 
 (deftest ^:parallel column-isa-test
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (lib/expression "myadd" (lib/+ 1 (lib/field "VENUES" "CATEGORY_ID"))))
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))
         orderable-columns (lib/orderable-columns query)
         columns-of-type (fn [typ] (filter #(lib.types.isa/isa? % typ)
                                          orderable-columns))]

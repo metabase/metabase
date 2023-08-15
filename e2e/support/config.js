@@ -5,15 +5,7 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 
-/**
- * This env var provides the token to the backend.
- * If it is not present, we skip some tests that depend on a valid token.
- *
- * @type {boolean}
- */
-const hasEnterpriseToken =
-  process.env["MB_PREMIUM_EMBEDDING_TOKEN"] &&
-  process.env["MB_EDITION"] === "ee";
+const isEnterprise = process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
@@ -98,7 +90,7 @@ const defaultConfig = {
     config.env.grepIntegrationFolder = "../../";
     config.env.grepFilterSpecs = true;
 
-    config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
+    config.env.IS_ENTERPRISE = isEnterprise;
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
@@ -126,6 +118,7 @@ const mainConfig = {
   ...defaultConfig,
   viewportHeight: 800,
   viewportWidth: 1280,
+  numTestsKeptInMemory: 1,
   reporter: "mochawesome",
   reporterOptions: {
     reportDir: "cypress/reports/mochareports",

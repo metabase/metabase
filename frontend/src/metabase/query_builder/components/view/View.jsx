@@ -11,6 +11,7 @@ import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 
+import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
@@ -21,13 +22,13 @@ import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
 import TagEditorSidebar from "../template_tags/TagEditorSidebar";
-import SnippetSidebar from "../template_tags/SnippetSidebar";
+import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
 import QueryModals from "../QueryModals";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
-import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
+import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
@@ -147,11 +148,9 @@ class View extends Component {
     const {
       question,
       timelines,
-      isResultDirty,
       isShowingSummarySidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
-      runQuestionQuery,
       updateQuestion,
       visibleTimelineEventIds,
       selectedTimelineEventIds,
@@ -169,13 +168,18 @@ class View extends Component {
     const isSaved = question.isSaved();
 
     if (isShowingSummarySidebar) {
+      const query = question._getMLv2Query();
+      const legacyQuery = question.query();
       return (
         <SummarizeSidebar
-          question={question}
+          query={query}
+          legacyQuery={legacyQuery}
+          onQueryChange={nextQuery => {
+            const datesetQuery = Lib.toLegacyQuery(nextQuery);
+            const nextQuestion = question.setDatasetQuery(datesetQuery);
+            updateQuestion(nextQuestion.setDefaultDisplay(), { run: true });
+          }}
           onClose={onCloseSummary}
-          isResultDirty={isResultDirty}
-          runQuestionQuery={runQuestionQuery}
-          updateQuestion={updateQuestion}
         />
       );
     }
@@ -296,7 +300,8 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, query, card, height, isDirty } = this.props;
+    const { question, query, card, height, isDirty, isNativeEditorOpen } =
+      this.props;
 
     // Normally, when users open native models,
     // they open an ad-hoc GUI question using the model as a data source
@@ -315,6 +320,7 @@ class View extends Component {
           {...this.props}
           viewHeight={height}
           isOpen={query.isEmpty() || isDirty}
+          isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
         />
       </NativeQueryEditorContainer>

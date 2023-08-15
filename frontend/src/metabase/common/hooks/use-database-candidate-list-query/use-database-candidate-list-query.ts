@@ -18,5 +18,6 @@ export const useDatabaseCandidateListQuery = (
     getLoading: DatabaseCandidates.selectors.getLoading,
     getLoaded: DatabaseCandidates.selectors.getLoaded,
     getError: DatabaseCandidates.selectors.getError,
+    getListMetadata: DatabaseCandidates.selectors.getListMetadata,
   });
 };

@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
-import { createAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import Questions from "metabase/entities/questions";
 
@@ -11,8 +11,14 @@ import {
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import { ADD_CARD_TO_DASH } from "./core";
-import { fetchCardData } from "./data-fetching";
+import { trackCardCreated } from "../analytics";
+import { getDashCardById } from "../selectors";
+import {
+  ADD_CARD_TO_DASH,
+  REMOVE_CARD_FROM_DASH,
+  UNDO_REMOVE_CARD_FROM_DASH,
+} from "./core";
+import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
@@ -70,6 +76,28 @@ export const addCardToDashboard =
     dispatch(loadMetadataForDashboard([dashcard]));
   };
 
+export const removeCardFromDashboard = createThunkAction(
+  REMOVE_CARD_FROM_DASH,
+  ({ dashcardId, cardId }) =>
+    (dispatch, _getState) => {
+      dispatch(cancelFetchCardData(cardId, dashcardId));
+      return { dashcardId };
+    },
+);
+
+export const undoRemoveCardFromDashboard = createThunkAction(
+  UNDO_REMOVE_CARD_FROM_DASH,
+  ({ dashcardId }) =>
+    (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const card = dashcard.card;
+
+      dispatch(fetchCardData(card, dashcard));
+
+      return { dashcardId };
+    },
+);
+
 export const addDashCardToDashboard = function ({
   dashId,
   dashcardOverrides,
@@ -100,6 +128,8 @@ export const addDashCardToDashboard = function ({
 };
 
 export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("text", dashId);
+
   const virtualTextCard = {
     ...createCard(),
     display: "text",
@@ -120,6 +150,8 @@ export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
 };
 
 export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("heading", dashId);
+
   const virtualTextCard = {
     ...createCard(),
     display: "heading",
@@ -141,6 +173,8 @@ export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
 };
 
 export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("link", dashId);
+
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -163,6 +197,8 @@ export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
 export const addActionToDashboard =
   async ({ dashId, tabId, action, displayType }) =>
   dispatch => {
+    trackCardCreated("action", dashId);
+
     const virtualActionsCard = {
       ...createCard(),
       id: action.model_id,

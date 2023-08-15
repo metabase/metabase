@@ -6,9 +6,10 @@ import _ from "underscore";
 
 import { capitalize } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import { UtilApi } from "metabase/services";
+import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 
-import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
 
@@ -27,6 +28,9 @@ export default connect(mapStateToProps)(ProfileLink);
 function ProfileLink({ user, adminItems, onLogout }) {
   const [modalOpen, setModalOpen] = useState(null);
   const [bugReportDetails, setBugReportDetails] = useState(null);
+  const version = useSelector(state => getSetting(state, "version"));
+  const { tag, date, ...versionExtra } = version;
+  const isPaidPlan = useSelector(getIsPaidPlan);
 
   const openModal = modalName => {
     setModalOpen(modalName);
@@ -37,7 +41,6 @@ function ProfileLink({ user, adminItems, onLogout }) {
   };
 
   const generateOptionsForUser = () => {
-    const { tag } = MetabaseSettings.get("version");
     const isAdmin = user.is_superuser;
     const showAdminSettingsItem = adminItems?.length > 0;
     const compactBugReportDetailsForUrl = encodeURIComponent(
@@ -61,7 +64,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
         title: t`Help`,
         icon: null,
         link:
-          isAdmin && MetabaseSettings.isPaidPlan()
+          isAdmin && isPaidPlan
             ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}&diag=${compactBugReportDetailsForUrl}`
             : `https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${tag}`,
 
@@ -85,12 +88,11 @@ function ProfileLink({ user, adminItems, onLogout }) {
 
   useEffect(() => {
     const isAdmin = user.is_superuser;
-    if (isAdmin && MetabaseSettings.isPaidPlan()) {
+    if (isAdmin && isPaidPlan) {
       UtilApi.bug_report_details().then(setBugReportDetails);
     }
-  }, [user.is_superuser]);
+  }, [user.is_superuser, isPaidPlan]);
 
-  const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
   // don't show trademark if application name is whitelabeled
   const showTrademark = t`Metabase` === "Metabase";
   return (

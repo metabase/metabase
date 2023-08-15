@@ -33,13 +33,16 @@ const ColumnItem = ({
   onColorChange,
   draggable,
   className = "",
+  ...props
 }) => {
   return (
     <ColumnItemRoot
       className={className}
       onClick={onClick}
       isDraggable={draggable}
-      data-testid={`draggable-item-${title}`}
+      data-testid={draggable ? `draggable-item-${title}` : null}
+      {...props}
+      title={props.role ? title : null}
     >
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber" />}

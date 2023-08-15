@@ -20,6 +20,7 @@
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -36,6 +37,7 @@
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
@@ -200,6 +202,30 @@
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
+(def ^:private action-public-keys
+  "The only keys for an action that should be visible to the general public."
+  #{:name
+    :id
+    :database_id ;; needed to check if the database has actions enabled on the frontend
+    :visualization_settings
+    :parameters})
+
+(defn- public-action
+  "Returns a public version of `action`, removing all data that should not be visible to the general public."
+  [action]
+  (let [hidden-parameter-ids (->> (get-in action [:visualization_settings :fields])
+                                  vals
+                                  (keep (fn [x]
+                                          (when (true? (:hidden x))
+                                            (:id x))))
+                                  set)]
+    (-> action
+        (update :parameters (fn [parameters]
+                              (remove #(contains? hidden-parameter-ids (:id %)) parameters)))
+        (update-in [:visualization_settings :fields] (fn [fields]
+                                                       (m/remove-keys hidden-parameter-ids fields)))
+        (select-keys action-public-keys))))
+
 (defn public-dashboard
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
   general public. Throws a 404 if the Dashboard doesn't exist."
@@ -216,7 +242,8 @@
                                        (update :card remove-card-non-public-columns)
                                        (update :series (fn [series]
                                                          (for [series series]
-                                                           (remove-card-non-public-columns series)))))))))))
+                                                           (remove-card-non-public-columns series))))
+                                       (m/update-existing :action public-action))))))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
@@ -273,15 +300,16 @@
      :export-format :api
      :parameters    parameters)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
+(api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [uuid dashcard-id parameters]
-  {dashcard-id su/IntGreaterThanZero
-   parameters su/JSONString}
+  {dashcard-id ms/PositiveInt
+   parameters  ms/JSONString}
   (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
+  (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
+  (actions.execution/fetch-values
+   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
+   (json/parse-string parameters)))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 
@@ -335,13 +363,6 @@
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
-(def ^:private action-public-keys
-  "The only keys for an action that should be visible to the general public."
-  #{:name
-    :id
-    :visualization_settings
-    :parameters})
-
 (api/defendpoint GET "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
@@ -349,7 +370,7 @@
   (validation/check-public-sharing-enabled)
   (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
-    (select-keys action action-public-keys)))
+    (public-action action)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

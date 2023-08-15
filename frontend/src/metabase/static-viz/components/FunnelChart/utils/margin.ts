@@ -1,5 +1,8 @@
 import { formatNumber } from "metabase/static-viz/lib/numbers";
-import { measureText, measureTextHeight } from "metabase/static-viz/lib/text";
+import {
+  measureTextWidth,
+  measureTextHeight,
+} from "metabase/static-viz/lib/text";
 import { FunnelDatum, FunnelSettings } from "../types";
 
 export const calculateMargin = (
@@ -27,9 +30,9 @@ export const calculateMargin = (
 
   const left =
     Math.max(
-      measureText(firstStep.toString(), stepFontSize),
-      measureText(formattedFirstMeasure, initialMeasureFontSize),
-      measureText(settings.step.name, nameFontSize),
+      measureTextWidth(firstStep.toString(), stepFontSize),
+      measureTextWidth(formattedFirstMeasure, initialMeasureFontSize),
+      measureTextWidth(settings.step.name, nameFontSize),
     ) + paddingLeft;
 
   return {

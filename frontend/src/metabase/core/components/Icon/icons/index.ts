@@ -159,6 +159,8 @@ import hourglass_component from "./hourglass.svg?component";
 import hourglass_source from "./hourglass.svg?source";
 import info_component from "./info.svg?component";
 import info_source from "./info.svg?source";
+import info_filled_component from "./info_filled.svg?component";
+import info_filled_source from "./info_filled.svg?source";
 import info_outline_component from "./info_outline.svg?component";
 import info_outline_source from "./info_outline.svg?source";
 import insight_component from "./insight.svg?component";
@@ -291,6 +293,8 @@ import sidebar_open_component from "./sidebar_open.svg?component";
 import sidebar_open_source from "./sidebar_open.svg?source";
 import slack_component from "./slack.svg?component";
 import slack_source from "./slack.svg?source";
+import slack_colorized_component from "./slack_colorized.svg?component";
+import slack_colorized_source from "./slack_colorized.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
 import snippet_component from "./snippet.svg?component";
@@ -665,6 +669,10 @@ export const Icons = {
     component: info_component,
     source: info_source,
   },
+  info_filled: {
+    component: info_filled_component,
+    source: info_filled_source,
+  },
   info_outline: {
     component: info_outline_component,
     source: info_outline_source,
@@ -928,6 +936,10 @@ export const Icons = {
   slack: {
     component: slack_component,
     source: slack_source,
+  },
+  slack_colorized: {
+    component: slack_colorized_component,
+    source: slack_colorized_source,
   },
   smartscalar: {
     component: smartscalar_component,

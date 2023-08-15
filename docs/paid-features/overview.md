@@ -32,8 +32,9 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 - [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
 - [Download permissions](../permissions/data.md#download-results)
+- [Connection impersonation](../permissions/data.md#impersonation-access)
 - [Database management permissions](../permissions/data.md#manage-database)
-- [Data model management permissions](../permissions/data.md#manage-data-model)
+- [Table metadata management permissions](../permissions/data.md#manage-table-metadata)
 
 ## People and group management
 
@@ -43,7 +44,7 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 
 You can embed all of Metabase in your app.
 
-- [Embedding the entire Metabase app in your app](../embedding/full-app-embedding.md)
+- [Embedding the entire Metabase app in your app](../embedding/interactive-embedding.md)
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md)
 
 ## Dashboard subscription customization

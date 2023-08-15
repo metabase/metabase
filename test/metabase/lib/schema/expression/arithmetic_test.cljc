@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema]
+   [metabase.lib.schema.aggregation :as aggregation]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.test-metadata :as meta]))
 
@@ -151,3 +152,14 @@
               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
               [:interval {:lib/uuid "00000000-0000-0000-0000-000000000002"} 3 :minute]
               [:field {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))))))
+
+
+(deftest ^:parallel metric-test
+  (are [schema] (not (me/humanize (mc/explain schema
+                                              [:+
+                                               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                               [:metric {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
+                                               2])))
+    :mbql.clause/+
+    ::expression/number
+    ::aggregation/aggregation))

@@ -4,7 +4,16 @@
    [malli.core :as mc]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.schema.expression.conditional :as expression.conditional]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.test-runner.assert-exprs.malli-equals]
+   [metabase.util :as u]))
+
+(comment metabase.test-runner.assert-exprs.malli-equals/keep-me)
+
+(deftest ^:parallel best-return-type-test
+  (is (= ::expression/type.unknown
+         (#'expression.conditional/best-return-type :type/Integer ::expression/type.unknown))))
 
 (defn- case-expr [& args]
   (let [clause [:case
@@ -74,24 +83,48 @@
 (deftest ^:parallel case-type-of-with-fields-only-test
   ;; Ideally expression/type-of should have enough information to determine the types of fields.
   (testing "The type of a case expression can be determined even if it consists of fields only."
-    (is (= :type/*
-           (expression/type-of
-            [:case
-             {:lib/uuid "8c6e099e-b856-4aeb-a8f6-2266b5d3d1e3"}
-             [[[:>
-                {:lib/uuid "9c4cc3b0-f3c7-4d34-ab53-640ba6e911e5"}
-                [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6"} 25]
-                0]
-               [:field {:lib/uuid "1c93ba8b-6a39-4ef2-a9e6-e3bcff042800"} 32]]]
-             [:field
-              {:source-field 29
-               :lib/uuid "a5ab7f91-9826-40a7-9499-4a1a0184a450"}
-              23]])))))
+    (doseq [[message expr] {"no default"
+                            [:case
+                             {:lib/uuid "8c6e099e-b856-4aeb-a8f6-2266b5d3d1e3"}
+                             [[[:>
+                                {:lib/uuid "9c4cc3b0-f3c7-4d34-ab53-640ba6e911e5"}
+                                [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6"} 25]
+                                0]
+                               [:field {:lib/uuid "1c93ba8b-6a39-4ef2-a9e6-e3bcff042800"} 32]]]]
+
+                            "with default :field"
+                            [:case
+                             {:lib/uuid "8c6e099e-b856-4aeb-a8f6-2266b5d3d1e3"}
+                             [[[:>
+                                {:lib/uuid "9c4cc3b0-f3c7-4d34-ab53-640ba6e911e5"}
+                                [:field {:lib/uuid "435b08c8-9404-41a5-8c5a-00b415f14da6"} 25]
+                                0]
+                               [:field {:lib/uuid "1c93ba8b-6a39-4ef2-a9e6-e3bcff042800"} 32]]]
+                             [:field
+                              {:source-field 29
+                               :lib/uuid     "a5ab7f91-9826-40a7-9499-4a1a0184a450"}
+                              23]]
+
+                            "with default integer literal"
+                            [:case
+                             {:lib/uuid "66101767-c429-4499-b1b3-512e58267ea4"}
+                             [[[:<
+                                {:lib/uuid "580d9de8-8ade-4d64-a512-1e43a31fe869"}
+                                [:field {:lib/uuid "347d5337-5da8-47ff-bc05-b11154e8d19c"} 139657]
+                                2]
+                               [:field {:lib/uuid "a9f83548-d590-4dec-b7dd-ad2bbd0bbe9d"} 139657]]]
+                             0]}]
+      (testing (str message \newline (u/pprint-to-str expr))
+        (is (malli= :mbql.clause/case expr))
+        (is (= ::expression/type.unknown
+               (expression/type-of expr)))
+        (testing "type.unknown expressions should be allowed to be considered numeric expressions"
+          (is (malli= ::expression/number expr)))))))
 
 (deftest ^:parallel coalasce-type-of-with-fields-only-test
   ;; Ideally expression/type-of should have enough information to determine the types of fields.
   (testing "The type of a case expression can be determined even if it consists of fields only."
-    (is (= :type/*
+    (is (= ::expression/type.unknown
            (expression/type-of
             [:coalesce
              {:lib/uuid "8c6e099e-b856-4aeb-a8f6-2266b5d3d1e3"}

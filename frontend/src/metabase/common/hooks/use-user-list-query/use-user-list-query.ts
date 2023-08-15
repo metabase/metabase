@@ -15,5 +15,6 @@ export const useUserListQuery = (
     getLoading: Users.selectors.getLoading,
     getLoaded: Users.selectors.getLoaded,
     getError: Users.selectors.getError,
+    getListMetadata: Users.selectors.getListMetadata,
   });
 };

@@ -1,4 +1,4 @@
-import { measureText, truncateText } from "metabase/static-viz/lib/text";
+import { measureTextWidth, truncateText } from "metabase/static-viz/lib/text";
 import {
   LEGEND_CIRCLE_MARGIN_RIGHT,
   LEGEND_CIRCLE_SIZE,
@@ -14,7 +14,7 @@ const calculateItemWidth = (
   return (
     LEGEND_CIRCLE_SIZE +
     LEGEND_CIRCLE_MARGIN_RIGHT +
-    measureText(item.name, fontSize, fontWeight)
+    measureTextWidth(item.name, fontSize, fontWeight)
   );
 };
 

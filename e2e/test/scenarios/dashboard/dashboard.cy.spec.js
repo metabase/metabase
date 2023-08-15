@@ -14,6 +14,14 @@ import {
   getDashboardCardMenu,
   addOrUpdateDashboardCard,
   openQuestionsSidebar,
+  describeWithSnowplow,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  closeNavigationSidebar,
+  updateDashboardCards,
+  getDashboardCards,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -69,7 +77,17 @@ describe("scenarios > dashboard", () => {
 
   it("should update the name and description", () => {
     cy.intercept("GET", "/api/dashboard/1").as("getDashboard");
-    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
+    cy.intercept(
+      "PUT",
+      "/api/dashboard/1",
+      cy.spy().as("updateDashboardSpy"),
+    ).as("updateDashboard");
+    cy.intercept(
+      "PUT",
+      "/api/dashboard/*/cards",
+      cy.spy().as("updateDashboardCardsSpy"),
+    );
+
     visitDashboard(1);
     cy.wait("@getDashboard");
 
@@ -106,6 +124,10 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How many orders were placed in each year?").click();
     cy.findByDisplayValue("How many orders were placed in each year?");
+
+    cy.log("should not call unnecessary API requests (metabase#31721)");
+    cy.get("@updateDashboardSpy").should("have.callCount", 2);
+    cy.get("@updateDashboardCardsSpy").should("not.have.been.called");
   });
 
   it("should not take you out of edit mode when updating title", () => {
@@ -736,6 +758,126 @@ describe("scenarios > dashboard", () => {
         });
     });
   });
+
+  it("should create new dashboard inside a collection created on the go", () => {
+    cy.visit("/");
+    appBar().findByText("New").click();
+    popover().findByText("Dashboard").click();
+    const NEW_DASHBOARD = "Foo";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_DASHBOARD);
+      cy.findByTestId("select-button").click();
+    });
+    popover().findByText("New collection").click();
+    const NEW_COLLECTION = "Bar";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+      cy.findByText("New dashboard");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Create").click();
+    });
+    saveDashboard();
+    closeNavigationSidebar();
+    cy.get("header").findByText(NEW_COLLECTION);
+  });
+
+  it("should not allow edit on small screens", () => {
+    cy.viewport(480, 800);
+
+    visitDashboard(1);
+
+    cy.icon("pencil").should("not.be.visible");
+
+    cy.viewport(660, 800);
+
+    cy.icon("pencil").should("be.visible");
+  });
+
+  it("shows sorted cards on mobile screens", () => {
+    cy.viewport(400, 800);
+    cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      const cards = [
+        createTextCard("bottom", 1), // the bottom card intentionally goes first to have unsorted cards coming from the BE
+        createTextCard("top", 0),
+      ];
+
+      updateDashboardCards({ dashboard_id, cards });
+
+      visitDashboard(dashboard_id);
+    });
+
+    getDashboardCards().eq(0).contains("top");
+    getDashboardCards().eq(1).contains("bottom");
+  });
+});
+
+describeWithSnowplow("scenarios > dashboard", () => {
+  beforeEach(() => {
+    cy.intercept("GET", "/api/activity/recent_views").as("recentViews");
+    resetSnowplow();
+    restore();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should allow users to add link cards to dashboards", () => {
+    visitDashboard(1);
+    editDashboard();
+    cy.findByTestId("dashboard-header").icon("link").click();
+
+    cy.wait("@recentViews");
+    cy.findByTestId("custom-edit-text-link").click().type("Orders");
+
+    popover().within(() => {
+      cy.findByText(/Loading/i).should("not.exist");
+      cy.findByText("Orders in a dashboard").click();
+    });
+
+    cy.findByTestId("entity-edit-display-link").findByText(
+      /orders in a dashboard/i,
+    );
+
+    saveDashboard();
+
+    cy.findByTestId("entity-view-display-link").findByText(
+      /orders in a dashboard/i,
+    );
+
+    expectGoodSnowplowEvent({
+      event: "new_link_card_created",
+    });
+  });
+
+  it("should track enabling the hide empty cards setting", () => {
+    visitDashboard(1);
+    editDashboard();
+
+    cy.findByTestId("dashboardcard-actions-panel").within(() => {
+      cy.icon("palette").click({ force: true });
+    });
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByRole("switch", {
+        name: "Hide this card if there are no results",
+      })
+        .click() // enable
+        .click() // disable
+        .click(); // enable
+
+      expectGoodSnowplowEvent(
+        {
+          event: "card_set_to_hide_when_no_results",
+          dashboard_id: 1,
+        },
+        2,
+      );
+    });
+  });
 });
 
 function checkOptionsForFilter(filter) {
@@ -774,4 +916,22 @@ function createDashboardUsingUI(name, description) {
   cy.wait("@createDashboard").then(({ response: { body } }) => {
     cy.url().should("contain", `/dashboard/${body.id}`);
   });
+}
+
+function createTextCard(text, row) {
+  return {
+    row,
+    size_x: 24,
+    size_y: 1,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "text",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      text,
+    },
+  };
 }

@@ -18,6 +18,7 @@ import {
   updateApplicationPermission,
 } from "metabase-enterprise/application_permissions/reducer";
 import { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
+import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 
 const mapDispatchToProps = {
   initialize: initializeApplicationPermissions,
@@ -68,6 +69,7 @@ const ApplicationPermissionsPage = ({
       tab="application"
       isDirty={isDirty}
       route={route}
+      helpContent={<ApplicationPermissionsHelp />}
       onSave={savePermissions}
       onLoad={() => initialize()}
     >

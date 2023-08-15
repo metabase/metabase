@@ -97,10 +97,21 @@
   [:tuple
    [:= :segment]
    ::common/options
-   [:or ::common/int-greater-than-zero ::common/non-blank-string]])
+   [:or ::common/positive-int ::common/non-blank-string]])
 
 (mr/def ::operator
   [:map
-   [:lib/type [:= :mbql.filter/operator]]
+   [:lib/type [:= :operator/filter]]
    [:short [:enum := :!= :inside :between :< :> :<= :>= :is-null :not-null :is-empty :not-empty :contains :does-not-contain :starts-with :ends-with]]
-   [:display-name :string]])
+   ;; this is used for display name and it depends on the arguments to the filter clause itself... e.g.
+   ;;
+   ;; number_a < number_b
+   ;;
+   ;; gets a display name of "less than" for the operator, while
+   ;;
+   ;; timestamp_a < timestamp_b
+   ;;
+   ;; gets a display name of "before" for the operator. We don't want to encode the display name in the `::operator`
+   ;; definition itself, because it forces us to do i18n in the definition itself; it's nicer to have static
+   ;; definitions and only add the display name when we call `display-name` or `display-info`.
+   [:display-name-variant :keyword]])

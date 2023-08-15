@@ -1,4 +1,4 @@
-import { describeEE, restore } from "e2e/support/helpers";
+import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon() {
@@ -17,6 +17,7 @@ describeEE("formatting > whitelabel", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   describe("company name", () => {

@@ -28,6 +28,12 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
     max-width: 100%;
     height: auto;
   }
+
+  hr {
+    border: none;
+    border-bottom: 1px solid
+      ${props => (props.dark ? color("bg-dark") : color("border"))};
+  }
 `;
 
 function getComponent<P>(component: (props: P) => ReactElement): FC<P> {

@@ -1,2 +1,1 @@
-export * from "./BinningStrategyPickerPopover";
-export * from "./TemporalBucketPickerPopover";
+export * from "./BucketPickerPopover";

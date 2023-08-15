@@ -115,6 +115,16 @@ export const CollectionMenuList = styled.ul`
 `;
 
 export const LoadingContainer = styled.div`
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+`;
+
+export const LoadingContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   color: ${color("brand")};
   text-align: center;
 `;

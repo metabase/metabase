@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
+
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { getResponseErrorMessage } from "metabase/core/utils/errors";
 import { Dataset } from "metabase-types/api";
 import { MetabotQueryStatus, State } from "metabase-types/store";
@@ -35,7 +36,7 @@ interface StateProps {
 type MetabotQueryBuilderProps = StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
+  loadingMessage: getWhiteLabeledLoadingMessage(state),
   queryStatus: getQueryStatus(state),
   queryResults: getQueryResults(state),
   queryError: getQueryError(state),

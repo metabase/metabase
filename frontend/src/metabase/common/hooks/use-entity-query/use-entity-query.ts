@@ -58,16 +58,18 @@ export const useEntityQuery = <TId, TItem, TQuery = never>(
   const options = { entityId, requestType };
   const data = useSelector(state => getObject(state, options));
   const isLoading = useSelector(state => getLoading(state, options));
+  const isActive = entityId != null && enabled;
+  const isLoadingOrDefault = isLoading ?? isActive;
   const error = useSelector(state => getError(state, options));
 
   const dispatch = useDispatch();
   useDeepCompareEffect(() => {
-    if (entityId != null && enabled) {
+    if (isActive) {
       const query = { ...entityQuery, id: entityId };
       const action = dispatch(fetch(query, { reload, requestType }));
       Promise.resolve(action).catch(() => undefined);
     }
   }, [dispatch, fetch, entityId, entityQuery, enabled, reload, requestType]);
 
-  return { data, isLoading, error };
+  return { data, isLoading: isLoadingOrDefault, error };
 };
