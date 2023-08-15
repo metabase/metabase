@@ -98,7 +98,7 @@
            "2016-04-18~2016-04-23"                   [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
                                                       [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
            "2016-04-18T10:30:00~2016-04-23T11:30:00" [[:>= :card.created_at #t "2016-04-18T10:30"]
-                                                      [:< :card.created_at #t "2016-04-23T11:30:01"]]
+                                                      [:< :card.created_at #t "2016-04-23T11:31:00"]]
            "~2023-05-04"                             [[:< [:cast :card.created_at :date]  #t "2023-05-05"]]
            "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
            ;; relative datetime

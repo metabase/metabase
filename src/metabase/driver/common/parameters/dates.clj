@@ -287,7 +287,8 @@
 (defn- absolute-date->unit
   [date-string]
   (if (str/includes? date-string "T")
-    :second
+    ;; on the UI you can specify the time up to the minute, so we use minute here
+    :minute
     :day))
 
 (def ^:private absolute-date-string-decoders
