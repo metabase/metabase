@@ -9,6 +9,7 @@ import {
   addOrUpdateDashboardCard,
   visitDashboardAndCreateTab,
   popover,
+  getDashboardCards,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -187,6 +188,33 @@ describe("scenarios > x-rays", () => {
     cy.get(".Card").contains("18,760");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
+  });
+
+  it("should start loading cards from top to bottom", () => {
+    // to check the order of loaded cards this test lets the first intercepted
+    // request to be resolved successfully and then it fails all others
+
+    const totalRequests = 8;
+    const successfullyLoadedCards = 1;
+    const failedCards = totalRequests - successfullyLoadedCards;
+
+    cy.intercept({
+      method: "POST",
+      url: "/api/dataset",
+      times: successfullyLoadedCards,
+    }).as("dataset");
+
+    cy.intercept(
+      { method: "POST", url: "/api/dataset", times: failedCards },
+      { statusCode: 500 },
+    ).as("datasetFailed");
+
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+
+    cy.wait("@dataset");
+    cy.wait("@datasetFailed");
+
+    getDashboardCards().eq(1).contains("Total transactions");
   });
 
   it("should be able to click the title of an x-ray dashcard to see it in the query builder (metabase#19405)", () => {
