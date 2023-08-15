@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import TokenField, {
   parseNumberValue,
   parseStringValue,
@@ -390,70 +391,72 @@ class FieldValuesWidgetInner extends Component {
     };
 
     return (
-      <div
-        style={{
-          width: this.props.expand ? this.props.maxWidth : null,
-          minWidth: this.props.minWidth,
-          maxWidth: this.props.maxWidth,
-        }}
-      >
-        {isListMode && isLoading ? (
-          <LoadingState />
-        ) : isListMode && hasListValues && multi ? (
-          <ListField
-            isDashboardFilter={parameter}
-            placeholder={tokenFieldPlaceholder}
-            value={value.filter(v => v != null)}
-            onChange={onChange}
-            options={options}
-            optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
-          />
-        ) : isListMode && hasListValues && !multi ? (
-          <SingleSelectListField
-            isDashboardFilter={parameter}
-            placeholder={tokenFieldPlaceholder}
-            value={value.filter(v => v != null)}
-            onChange={onChange}
-            options={options}
-            optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
-          />
-        ) : (
-          <TokenField
-            prefix={prefix}
-            value={value.filter(v => v != null)}
-            onChange={onChange}
-            placeholder={tokenFieldPlaceholder}
-            updateOnInputChange
-            // forwarded props
-            multi={multi}
-            autoFocus={autoFocus}
-            color={color}
-            style={{ ...style, minWidth: "inherit" }}
-            className={className}
-            optionsStyle={
-              !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
-            }
-            // end forwarded props
-            options={options}
-            valueKey="0"
-            valueRenderer={valueRenderer}
-            optionRenderer={optionRenderer}
-            layoutRenderer={layoutRenderer}
-            filterOption={(option, filterString) => {
-              const lowerCaseFilterString = filterString.toLowerCase();
-              return option.some(
-                value =>
-                  value != null &&
-                  String(value).toLowerCase().includes(lowerCaseFilterString),
-              );
-            }}
-            onInputChange={this.onInputChange}
-            parseFreeformValue={parseFreeformValue}
-          />
-        )}
-      </div>
+      <ErrorBoundary>
+        <div
+          style={{
+            width: this.props.expand ? this.props.maxWidth : null,
+            minWidth: this.props.minWidth,
+            maxWidth: this.props.maxWidth,
+          }}
+        >
+          {isListMode && isLoading ? (
+            <LoadingState />
+          ) : isListMode && hasListValues && multi ? (
+            <ListField
+              isDashboardFilter={parameter}
+              placeholder={tokenFieldPlaceholder}
+              value={value.filter(v => v != null)}
+              onChange={onChange}
+              options={options}
+              optionRenderer={optionRenderer}
+              checkedColor={checkedColor}
+            />
+          ) : isListMode && hasListValues && !multi ? (
+            <SingleSelectListField
+              isDashboardFilter={parameter}
+              placeholder={tokenFieldPlaceholder}
+              value={value.filter(v => v != null)}
+              onChange={onChange}
+              options={options}
+              optionRenderer={optionRenderer}
+              checkedColor={checkedColor}
+            />
+          ) : (
+            <TokenField
+              prefix={prefix}
+              value={value.filter(v => v != null)}
+              onChange={onChange}
+              placeholder={tokenFieldPlaceholder}
+              updateOnInputChange
+              // forwarded props
+              multi={multi}
+              autoFocus={autoFocus}
+              color={color}
+              style={{ ...style, minWidth: "inherit" }}
+              className={className}
+              optionsStyle={
+                !parameter && !showOptionsInPopover ? { maxHeight: "none" } : {}
+              }
+              // end forwarded props
+              options={options}
+              valueKey="0"
+              valueRenderer={valueRenderer}
+              optionRenderer={optionRenderer}
+              layoutRenderer={layoutRenderer}
+              filterOption={(option, filterString) => {
+                const lowerCaseFilterString = filterString.toLowerCase();
+                return option?.some?.(
+                  value =>
+                    value != null &&
+                    String(value).toLowerCase().includes(lowerCaseFilterString),
+                );
+              }}
+              onInputChange={this.onInputChange}
+              parseFreeformValue={parseFreeformValue}
+            />
+          )}
+        </div>
+      </ErrorBoundary>
     );
   }
 }
