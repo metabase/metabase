@@ -1,7 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
 import { usePrevious } from "react-use";
 
 import * as Urls from "metabase/lib/urls";
@@ -19,12 +18,11 @@ import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
 import * as ML_Urls from "metabase-lib/urls";
-import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionNotebookButton from "./QuestionNotebookButton";
+import { QuestionNotebookButton } from "./QuestionNotebookButton";
 import ConvertQueryButton from "./ConvertQueryButton";
 import QuestionFilters, {
   FilterHeaderToggle,
@@ -48,6 +46,7 @@ import {
   ViewHeaderIconButtonContainer,
   BackButton,
   BackButtonContainer,
+  ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -503,10 +502,7 @@ function ViewTitleHeaderRightSide(props) {
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <ViewHeaderIconButtonContainer>
-          <RunButtonWithTooltip
-            className={cx("text-brand-hover text-dark", {
-              "text-white-hover": isResultDirty,
-            })}
+          <ViewRunButtonWithTooltip
             iconSize={16}
             onlyIcon
             medium
