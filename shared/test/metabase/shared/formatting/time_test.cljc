@@ -8,7 +8,7 @@
   ;; some JVMs use non-breaking space (nbsp) in their formatted strings
   ;; which can cause confusing looking test failures.
   ;; A string replace normalizes on the ascii space char
-  (are [exp input] (= exp (str/replace (time/format-time input) #" " " "))
+  (are [exp input] (= exp (str/replace (time/format-time input) \u202f \space))
     "1:02 AM"  "01:02:03.456+07:00"
     "1:02 AM"  "01:02"
     "10:29 PM" "22:29:59.26816+01:00"
