@@ -1,8 +1,11 @@
-/*global ace*/
+/* global ace */
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { createRef, Component } from "react";
-import cx from "classnames";
+import { connect } from "react-redux";
+import _ from "underscore";
+import slugg from "slugg";
+
 import "ace/ace";
 import "ace/ext-language_tools";
 import "ace/ext-searchbox";
@@ -17,44 +20,51 @@ import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
-import _ from "underscore";
-import { ResizableBox } from "react-resizable";
-import { connect } from "react-redux";
-import slugg from "slugg";
 
-import { isEventOverElement } from "metabase/lib/dom";
-import { getEngineNativeAceMode } from "metabase/lib/engine";
-import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
+import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
-import { getSetting } from "metabase/selectors/settings";
+
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
+import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import Questions from "metabase/entities/questions";
+
+import { getSetting } from "metabase/selectors/settings";
+
+import { isEventOverElement } from "metabase/lib/dom";
+import { getEngineNativeAceMode } from "metabase/lib/engine";
+import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
+
 import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
-import { ResponsiveParametersList } from "./ResponsiveParametersList";
-import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
-import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
-import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
-import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
-import {
-  ACE_ELEMENT_ID,
-  SCROLL_MARGIN,
-  MIN_HEIGHT_LINES,
-} from "./NativeQueryEditor/constants";
+
+import { ResponsiveParametersList } from "../ResponsiveParametersList";
+
+import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 import {
   calcInitialEditorHeight,
   getEditorLineHeight,
   getMaxAutoSizeLines,
-} from "./NativeQueryEditor/utils";
+} from "./utils";
+
+import NativeQueryEditorSidebar from "./NativeQueryEditorSidebar";
+import VisibilityToggler from "./VisibilityToggler";
+import RightClickPopover from "./RightClickPopover";
+import DataSourceSelectors from "./DataSourceSelectors";
+
 import NativeQueryEditorPrompt from "./NativeQueryEditorPrompt";
 
+import {
+  DragHandleContainer,
+  DragHandle,
+  EditorRoot,
+  NativeQueryEditorRoot,
+  StyledResizableBox,
+} from "./NativeQueryEditor.styled";
 import "./NativeQueryEditor.css";
-import { NativeQueryEditorRoot } from "./NativeQueryEditor.styled";
 
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
@@ -567,9 +577,9 @@ export class NativeQueryEditor extends Component {
     const parameters = query.question().parameters();
 
     const dragHandle = resizable ? (
-      <div className="NativeQueryEditorDragHandleWrapper">
-        <div className="NativeQueryEditorDragHandle" />
-      </div>
+      <DragHandleContainer>
+        <DragHandle />
+      </DragHandleContainer>
     ) : null;
 
     const canSaveSnippets = snippetCollections.some(
@@ -577,23 +587,18 @@ export class NativeQueryEditor extends Component {
     );
 
     return (
-      <NativeQueryEditorRoot
-        className="NativeQueryEditor bg-light full"
-        data-testid="native-query-editor-container"
-      >
+      <NativeQueryEditorRoot data-testid="native-query-editor-container">
         {hasTopBar && (
-          <div className="flex align-center" data-testid="native-query-top-bar">
+          <Flex align="center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
-              <div className={!isNativeEditorOpen ? "hide sm-show" : ""}>
-                <DataSourceSelectors
-                  isNativeEditorOpen={isNativeEditorOpen}
-                  query={query}
-                  readOnly={readOnly}
-                  setDatabaseId={this.setDatabaseId}
-                  setTableId={this.setTableId}
-                  editorContext={editorContext}
-                />
-              </div>
+              <DataSourceSelectors
+                isNativeEditorOpen={isNativeEditorOpen}
+                query={query}
+                readOnly={readOnly}
+                setDatabaseId={this.setDatabaseId}
+                setTableId={this.setTableId}
+                editorContext={editorContext}
+              />
             )}
             {hasParametersList && (
               <ResponsiveParametersList
@@ -605,13 +610,12 @@ export class NativeQueryEditor extends Component {
             )}
             {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
               <VisibilityToggler
-                className={!isNativeEditorOpen ? "hide sm-show" : ""}
                 isOpen={isNativeEditorOpen}
                 readOnly={!!readOnly}
                 toggleEditor={this.toggleEditor}
               />
             )}
-          </div>
+          </Flex>
         )}
         {isPromptInputVisible && (
           <NativeQueryEditorPrompt
@@ -620,9 +624,9 @@ export class NativeQueryEditor extends Component {
             onClose={this.togglePromptVisibility}
           />
         )}
-        <ResizableBox
+        <StyledResizableBox
           ref={this.resizeBox}
-          className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
+          isOpen={isNativeEditorOpen}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
@@ -638,10 +642,9 @@ export class NativeQueryEditor extends Component {
           }}
         >
           <>
-            <div
-              className="flex-full"
-              data-testid="native-query-editor"
+            <EditorRoot
               id={ACE_ELEMENT_ID}
+              data-testid="native-query-editor"
               ref={this.editor}
             />
 
@@ -680,7 +683,7 @@ export class NativeQueryEditor extends Component {
               />
             )}
           </>
-        </ResizableBox>
+        </StyledResizableBox>
       </NativeQueryEditorRoot>
     );
   }
