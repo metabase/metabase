@@ -150,10 +150,7 @@ export type ExpressionArg =
   | ColumnMetadata
   | Clause;
 
-// ExternalOp is a JS-friendly representation of a filter clause or aggregation clause.
-declare const ExternalOp: unique symbol;
 export type ExternalOp = {
-  _opaque: typeof ExternalOp;
   operator: string;
   options: Record<string, unknown>;
   args: ExpressionArg[];
