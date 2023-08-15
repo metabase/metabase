@@ -1,5 +1,6 @@
 (ns metabase.lib.card-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -50,26 +51,22 @@
                   (lib/display-info query col))))))))
 
 (deftest ^:parallel card-source-query-metadata-test
-  (doseq [metadata [{:id              1
-                     :name            "My Card"
-                     :result-metadata meta/card-results-metadata
-                     :dataset-query   {}}
-                    ;; in some cases [the FE unit tests are broken] the FE is transforming the metadata like this, not sure why but handle it anyway
+  (doseq [metadata [(:venues lib.tu/mock-cards)
+                    ;; in some cases [the FE unit tests are broken] the FE is transforming the metadata like this, not
+                    ;; sure why but handle it anyway
                     ;; (#29739)
-                    {:id            1
-                     :name          "My Card"
-                     :fields        meta/card-results-metadata
-                     :dataset-query {}}]]
+                    (set/rename-keys (:venues lib.tu/mock-cards) {:result-metadata :fields})]]
     (testing (str "metadata = \n" (u/pprint-to-str metadata))
       (let [query {:lib/type     :mbql/query
                    :lib/metadata (lib.tu/mock-metadata-provider
                                   {:cards [metadata]})
                    :database     (meta/id)
                    :stages       [{:lib/type    :mbql.stage/mbql
-                                   :lib/options {:lib/uuid (str (random-uuid))}
-                                   :source-card 1}]}]
-        (is (=? (for [col meta/card-results-metadata]
-                  (assoc col :lib/source :source/card))
+                                   :source-card (:id metadata)}]}]
+        (is (=? (for [col (get-in lib.tu/mock-cards [:venues :result-metadata])]
+                  (-> col
+                      (assoc :lib/source :source/card)
+                      (dissoc :fk-target-field-id)))
                 (lib.metadata.calculation/returned-columns query)))))))
 
 (deftest ^:parallel card-results-metadata-merge-metadata-provider-metadata-test

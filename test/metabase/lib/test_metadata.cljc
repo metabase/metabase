@@ -123,7 +123,7 @@
   {:arglists '([table-name])}
   keyword)
 
-(defmulti field-metadata-method
+(defmulti ^:private field-metadata-method
   "Metadata for fields"
   {:arglists '([table-name field-name])}
   (fn [table-name field-name]
@@ -186,13 +186,12 @@
    :display-name        "Name"
    :database-position   1
    :database-required   true
-   :fingerprint
-   {:global {:distinct-count 75, :nil% 0.0}
-    :type   {:type/Text {:percent-json   0.0
-                         :percent-url    0.0
-                         :percent-email  0.0
-                         :percent-state  0.0
-                         :average-length 8.333333333333334}}}
+   :fingerprint         {:global {:distinct-count 75, :nil% 0.0}
+                         :type   {:type/Text {:percent-json   0.0
+                                              :percent-url    0.0
+                                              :percent-email  0.0
+                                              :percent-state  0.0
+                                              :average-length 8.333333333333334}}}
    :base-type           :type/Text
    :points-of-interest  nil
    :lib/type            :metadata/column})
@@ -2226,113 +2225,3 @@
   [table-name :- :keyword
    field-name :- :keyword]
   (field-metadata-method table-name field-name))
-
-(def card-results-metadata
-  "Capture of the `result_metadata` saved with a Card with a `SELECT * FROM VENUES;` query. Actually this is a little
-  different because this is pre-massaged into the MLv2 shape (it has `:lib/type` and uses `kebab-case` keys), to make
-  it easier to use in tests. It should not make a difference because transformation to the MLv2 shape is idempotent...
-  and at some point we'll probably update the backend to store stuff in this shape anyway."
-  [{:lib/type       :metadata/column
-    :display-name   "ID"
-    :name           "ID"
-    :base-type      :type/BigInteger
-    :effective-type :type/BigInteger
-    :semantic-type  :type/PK
-    :fingerprint    nil}
-   {:lib/type       :metadata/column
-    :display-name   "NAME"              ; TODO -- these display names are icky
-    :name           "NAME"
-    :base-type      :type/Text
-    :effective-type :type/Text
-    :semantic-type  :type/Name
-    :fingerprint    {:global {:distinct-count 100, :nil% 0.0}
-                     :type   {:type/Text {:percent-json   0.0
-                                          :percent-url    0.0
-                                          :percent-email  0.0
-                                          :percent-state  0.0
-                                          :average-length 15.63}}}}
-   {:lib/type       :metadata/column
-    :display-name   "CATEGORY_ID"
-    :name           "CATEGORY_ID"
-    :base-type      :type/Integer
-    :effective-type :type/Integer
-    :semantic-type  :type/FK
-    :fingerprint    {:global {:distinct-count 28, :nil% 0.0}
-                     :type   {:type/Number
-                              {:min 2.0
-                               :q1  6.89564392373896
-                               :q3  49.240253073352044
-                               :max 74.0
-                               :sd  23.058108414099443
-                               :avg 29.98}}}}
-   {:lib/type       :metadata/column
-    :display-name   "LATITUDE"
-    :name           "LATITUDE"
-    :base-type      :type/Float
-    :effective-type :type/Float
-    :semantic-type  :type/Latitude
-    :fingerprint
-    {:global {:distinct-count 94, :nil% 0.0}
-     :type   {:type/Number {:min 10.0646
-                            :q1  34.06098873016278
-                            :q3  37.77185
-                            :max 40.7794
-                            :sd  3.4346725397190827
-                            :avg 35.505891999999996}}}}
-   {:lib/type       :metadata/column
-    :display-name   "LONGITUDE"
-    :name           "LONGITUDE"
-    :base-type      :type/Float
-    :effective-type :type/Float
-    :semantic-type  :type/Longitude
-    :fingerprint    {:global {:distinct-count 84, :nil% 0.0}
-                     :type   {:type/Number
-                              {:min -165.374
-                               :q1  -122.40857106781186
-                               :q3  -118.2635
-                               :max -73.9533
-                               :sd  14.162810671348238
-                               :avg -115.99848699999998}}}}
-   {:lib/type       :metadata/column
-    :display-name   "PRICE"
-    :name           "PRICE"
-    :base-type      :type/Integer
-    :effective-type :type/Integer
-    :semantic-type  nil
-    :fingerprint    {:global {:distinct-count 4, :nil% 0.0}
-                     :type   {:type/Number
-                              {:min 1.0
-                               :q1  1.4591129021415095
-                               :q3  2.493086095768049
-                               :max 4.0
-                               :sd  0.7713951678941896
-                               :avg 2.03}}}}])
-
-(def qp-results-metadata
-  "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
-  Processor.
-
-  IRL queries actually come back with both `data.cols` and `data.results_metadata.columns`, which are slightly
-  different from one another; the frontend merges these together into one unified metadata map. This is both icky and
-  silly. I'm hoping we can get away with just using one or the other in the future. So let's try to use just the stuff
-  here and see how far we get. If it turns out we need something in `data.cols` that's missing from here, let's just
-  add it to `data.results_metadata.columns` in QP results, and add it here as well, so we can start moving toward a
-  world where we don't have two versions of the metadata in query responses."
-  {:lib/type :metadata/results
-   :columns  card-results-metadata})
-
-(def saved-question
-  "An representative Saved Question, with [[results-metadata]], against `VENUES`. For testing queries that use a Saved
-  Question as their source. See also [[saved-question-CardMetadata]] below."
-  {:dataset-query   {:database (id)
-                     :type     :query
-                     :query    {:source-table (id :venues)}}
-   :result-metadata card-results-metadata})
-
-(def saved-question-CardMetadata
-  "Mock [[metabase.lib.metadata/CardMetadata]] with a query against `VENUES`. See
-  also [[metabase.lib.test-util/categories-mbql-card]] and [[metabase.lib.test-util/categories-native-card]]."
-  (assoc saved-question
-         :lib/type :metadata/card
-         :id       1
-         :name     "Card 1"))

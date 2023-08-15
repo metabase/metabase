@@ -36,7 +36,7 @@ describe("scenarios > question > snippets", () => {
     cy.get("@editor").contains("select {{snippet: stuff-snippet}}");
 
     // Run the query and check the value
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.get(".ScalarValue").contains("stuff");
   });
 
@@ -77,7 +77,7 @@ describe("scenarios > question > snippets", () => {
     cy.get("@editor").contains("select {{snippet: Math}}");
 
     // Run the query and check the new value
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.get(".ScalarValue").contains("2");
   });
 
@@ -139,7 +139,7 @@ describe("scenarios > question > snippets", () => {
       /^select \* from {{snippet: Table: Reviews}} limit 1$/,
     );
     // Rerun the query
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.get("@results").contains(/christ/i);
   });
 });

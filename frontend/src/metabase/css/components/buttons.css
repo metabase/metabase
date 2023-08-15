@@ -70,7 +70,7 @@
 .Button--primary:hover {
   color: var(--color-text-white);
   border-color: var(--color-brand);
-  background-color: color-mod(var(--color-brand) alpha(-12%));
+  background-color: var(--color-brand-alpha-88);
 }
 
 .Button--warning {

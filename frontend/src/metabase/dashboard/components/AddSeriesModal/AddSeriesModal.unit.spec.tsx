@@ -32,6 +32,16 @@ const secondCard = createMockCard({
   display: "bar",
 });
 
+const incompleteCard = createMockCard({
+  id: getNextId(),
+  name: "Incomplete card",
+  display: "bar",
+  visualization_settings: {
+    "graph.dimensions": [],
+    "graph.metrics": [],
+  },
+});
+
 const dataset = createMockDataset({
   data: createMockDatasetData({
     rows: [
@@ -56,20 +66,24 @@ const dataset = createMockDataset({
 const dashcard = createMockDashboardOrderedCard({
   id: getNextId(),
   card: baseCard,
-  series: [firstCard, secondCard],
+  series: [firstCard, secondCard, incompleteCard],
 });
 
-const dashcardData = {
-  [dashcard.id]: {
-    [baseCard.id]: dataset,
-    [firstCard.id]: dataset,
-    [secondCard.id]: dataset,
-  },
-};
+const incompleteDashcard = createMockDashboardOrderedCard({
+  id: getNextId(),
+  card: baseCard,
+  series: [incompleteCard],
+});
 
 const defaultProps = {
   dashcard,
-  dashcardData,
+  dashcardData: {
+    [dashcard.id]: {
+      [baseCard.id]: dataset,
+      [firstCard.id]: dataset,
+      [secondCard.id]: dataset,
+    },
+  },
   fetchCardData: jest.fn(),
   setDashCardAttributes: jest.fn(),
   onClose: jest.fn(),
@@ -80,6 +94,21 @@ const setup = (options?: Partial<AddSeriesModalProps>) => {
 };
 
 describe("AddSeriesModal", () => {
+  it("shows chart settings error message for incomplete charts", () => {
+    setup({
+      dashcard: incompleteDashcard,
+      dashcardData: {
+        [incompleteDashcard.id]: {
+          [incompleteCard.id]: dataset,
+        },
+      },
+    });
+
+    expect(
+      screen.getByText("Which fields do you want to use for the X and Y axes?"),
+    ).toBeInTheDocument();
+  });
+
   it("shows the 'x' button in all legend items in visualization legend except for the base series", () => {
     setup();
 
