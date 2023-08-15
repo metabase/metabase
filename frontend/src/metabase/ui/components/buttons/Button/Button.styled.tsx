@@ -8,13 +8,11 @@ import type {
 
 export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
   Button: {
-    defaultProps: (theme: MantineTheme) => {
-      return {
-        loaderProps: {
-          size: "1rem",
-          color: theme.fn.primaryColor(),
-        },
-      };
+    defaultProps: {
+      loaderProps: {
+        size: "1rem",
+        color: "currentColor",
+      },
     },
     styles: (
       theme: MantineTheme,
@@ -31,6 +29,15 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           lineHeight: "1rem",
           color: styles.color,
           borderColor: styles.borderColor,
+          "&[data-loading]": {
+            "&::before": {
+              backgroundColor: styles.loadingBackgroundColor,
+            },
+
+            [`& .${getStylesRef("leftIcon")}`]: {
+              color: styles.loaderColor,
+            },
+          },
           "&:hover": {
             color: styles.hoverColor,
             borderColor: styles.hoverBorderColor,
@@ -69,6 +76,7 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         color: theme.white,
         borderColor: theme.fn.primaryColor(),
         backgroundColor: theme.fn.primaryColor(),
+        loaderColor: theme.colors.focus[0],
         hoverBorderColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
       };
@@ -76,6 +84,7 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
       return {
         color: theme.fn.primaryColor(),
         borderColor: theme.fn.primaryColor(),
+        loaderColor: theme.fn.primaryColor(),
         hoverColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBorderColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: theme.colors.brand[0],
@@ -83,14 +92,17 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
     case "subtle":
       return {
         color: theme.fn.primaryColor(),
+        loaderColor: theme.fn.primaryColor(),
         hoverColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: "transparent",
+        loadingBackgroundColor: "transparent",
       };
     default:
       return {
         color: theme.colors.text[2],
         borderColor: theme.colors.border[0],
         backgroundColor: theme.white,
+        loaderColor: theme.fn.primaryColor(),
         hoverColor: theme.fn.primaryColor(),
         hoverBackgroundColor: theme.colors.bg[0],
       };
