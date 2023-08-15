@@ -160,7 +160,7 @@
 (defn- render-table [dashcard results]
   (render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
 
-(deftest table-columns-test
+(deftest render-table-columns-test
   (testing "Disabling a column has the same effect as not having the column at all."
     (is (=
          (render-table
