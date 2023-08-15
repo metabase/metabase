@@ -16,7 +16,7 @@ import { zoomInRow } from "metabase/query_builder/actions";
 
 import { getSetting } from "metabase/selectors/settings";
 import RecentsList from "metabase/nav/components/RecentsList";
-import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal";
+import { SearchFilterModal } from "metabase/search/components/SearchFilterModal/SearchFilterModal/SearchFilterModal";
 import SearchResults from "metabase/nav/components/SearchResults";
 
 import { SearchAwareLocation } from "metabase/search/types";

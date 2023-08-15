@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import { Flex, Group } from "metabase/ui";
-import { CloseAllFiltersButton } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter.styled";
+import { CloseAllFiltersButton } from "metabase/search/components/SearchFilterModal/SearchFilterModal/SearchFilterModalFooter/SearchFilterModalFooter.styled";
 
 type SearchFilterModalFooterProps = {
   onApply: () => void;

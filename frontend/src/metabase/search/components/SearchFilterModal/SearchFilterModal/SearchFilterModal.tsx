@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 import Modal from "metabase/components/Modal";
-import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModalFooter";
+import { SearchFilterModalFooter } from "metabase/search/components/SearchFilterModal/SearchFilterModal/SearchFilterModalFooter/SearchFilterModalFooter";
 import {
   FilterTypeKeys,
   SearchFilterComponent,
@@ -13,8 +13,8 @@ import Button from "metabase/core/components/Button";
 import { Title, Flex } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import { TypeFilter } from "../filters";
 import { SearchFilterWrapper } from "./SearchFilterModal.styled";
-import { TypeFilter } from "./filters";
 
 export const SearchFilterModal = ({
   isOpen,
@@ -29,16 +29,30 @@ export const SearchFilterModal = ({
 }) => {
   const [output, setOutput] = useState<SearchFilters>(value);
 
-  const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
-    [SearchFilterKeys.Type]: TypeFilter,
-    [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
-  };
+  const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = useMemo(
+    () => ({
+      [SearchFilterKeys.Type]: TypeFilter,
+      [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+    }),
+    [],
+  );
+
+  const isValidFilterValue = useCallback(
+    (
+      key: FilterTypeKeys,
+      val: SearchFilterPropTypes[FilterTypeKeys],
+    ): boolean =>
+      !!val &&
+      (!Array.isArray(val) || val.length > 0) &&
+      !!filterMap[key as FilterTypeKeys],
+    [filterMap],
+  );
 
   const onOutputChange = (
     key: FilterTypeKeys,
     val: SearchFilterPropTypes[FilterTypeKeys],
   ) => {
-    if (!val || (Array.isArray(val) && val.length === 0)) {
+    if (!isValidFilterValue(key, val)) {
       setOutput(_.omit(output, key));
     } else {
       setOutput({
@@ -49,8 +63,12 @@ export const SearchFilterModal = ({
   };
 
   useEffect(() => {
-    setOutput(value);
-  }, [value]);
+    const cleanedFilterValues = _.pick(value, (val, key) =>
+      isValidFilterValue(key as FilterTypeKeys, val),
+    );
+
+    setOutput(cleanedFilterValues);
+  }, [isValidFilterValue, value]);
 
   const closeModal = () => {
     setIsOpen(false);
@@ -66,13 +84,10 @@ export const SearchFilterModal = ({
     setIsOpen(false);
   };
 
-  const availableFilters: FilterTypeKeys[] = useMemo(() => {
-    const filters: FilterTypeKeys[] = [
-      SearchFilterKeys.Type,
-      SearchFilterKeys.Verified,
-    ];
-    return filters;
-  }, []);
+  const availableFilters: FilterTypeKeys[] = useMemo(
+    () => [SearchFilterKeys.Type, SearchFilterKeys.Verified],
+    [],
+  );
 
   return isOpen ? (
     <Modal isOpen={isOpen} onClose={closeModal}>
@@ -83,14 +98,14 @@ export const SearchFilterModal = ({
         </Flex>
         {availableFilters.map(key => {
           const Filter = filterMap[key];
-          return (
+          return Filter ? (
             <Filter
               key={key}
               data-testid={`${key}-search-filter`}
               value={output[key]}
               onChange={value => onOutputChange(key, value)}
             />
-          );
+          ) : null;
         })}
 
         <SearchFilterModalFooter
