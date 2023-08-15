@@ -153,7 +153,7 @@ export type ExpressionArg =
 export type ExternalOp = {
   operator: string;
   options: Record<string, unknown>;
-  args: ExpressionArg[];
+  args: [ColumnMetadata, ...ExpressionArg[]];
 };
 
 declare const Join: unique symbol;
