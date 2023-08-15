@@ -20,6 +20,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
 import SharingPane from "./SharingPane";
+import { EmbedTitleLabel } from "./EmbedModalContent.styled";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
@@ -252,7 +253,7 @@ function filterValidResourceParameters(embeddingParams, resourceParameters) {
 
 export const EmbedTitle = ({ type, onClick }) => (
   <a className="flex align-center" onClick={onClick}>
-    <span className="text-brand-hover">{t`Sharing`}</span>
+    <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
     {type && <Icon name="chevronright" className="mx1 text-medium" />}
     {type}
   </a>

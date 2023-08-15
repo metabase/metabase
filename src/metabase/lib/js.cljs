@@ -654,6 +654,12 @@
   [a-query]
   (clj->js (lib.core/native-extras a-query)))
 
+(defn ^:export available-segments
+  "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
+  metadata objects."
+  [a-query]
+  (to-array (lib.core/available-segments a-query)))
+
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."

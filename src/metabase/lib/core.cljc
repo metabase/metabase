@@ -224,8 +224,7 @@
   [lib.normalize
    normalize]
   [lib.query
-   query
-   saved-question-query]
+   query]
   [lib.ref
    ref]
   [lib.remove-replace
@@ -234,6 +233,8 @@
    rename-join
    replace-clause
    replace-join]
+  [lib.segment
+   available-segments]
   [lib.stage
    append-stage
    drop-stage]

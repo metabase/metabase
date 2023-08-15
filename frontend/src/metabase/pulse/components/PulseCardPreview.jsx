@@ -3,13 +3,12 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
-import cx from "classnames";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Icon } from "metabase/core/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color, alpha } from "metabase/lib/colors";
+import { AttachmentIcon, RemoveIcon } from "./PulseCardPreview.styled";
 
 export default class PulseCardPreview extends Component {
   constructor(props, context) {
@@ -94,22 +93,15 @@ export default class PulseCardPreview extends Component {
                   : t`Attach file with results`
               }
             >
-              <Icon
+              <AttachmentIcon
                 name="attachment"
                 size={18}
-                className={cx("cursor-pointer py1 pr1 text-brand-hover", {
-                  "text-brand": this.hasAttachment(),
-                })}
+                hasAttachment={this.hasAttachment()}
                 onClick={this.toggleAttachment}
               />
             </Tooltip>
           )}
-          <Icon
-            name="close"
-            size={18}
-            className="cursor-pointer py1 pr1 text-brand-hover"
-            onClick={this.props.onRemove}
-          />
+          <RemoveIcon name="close" size={18} onClick={this.props.onRemove} />
         </div>
         <div
           className="bordered rounded bg-white scroll-x"

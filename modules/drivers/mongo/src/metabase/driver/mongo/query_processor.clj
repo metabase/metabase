@@ -26,11 +26,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [monger.operators :refer [$add $addToSet $and $avg $cond
+   [monger.operators :refer [$add $addToSet $and $avg $concat $cond
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
-                             $group $gt $gte $hour $limit $lookup $lt $lte $match $max $min $minute $mod $month
-                             $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
-                             $sum $toLower $unwind $year]])
+                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute
+                             $mod $month $multiply $ne $not $or $project $regexMatch $second $size $skip $sort
+                             $strcasecmp $subtract $sum $toLower $unwind $year]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -710,17 +710,25 @@
                    [:>= field min-val]
                    [:<= field max-val]]))
 
-(defn- str-match-pattern [options prefix value suffix]
+(defn- str-match-pattern [field options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
-    {$not (str-match-pattern options prefix (second value) suffix)}
-    (let [case-sensitive? (get options :case-sensitive true)]
-      {$regex (str (when-not case-sensitive? "(?i)") prefix (->rvalue value) suffix)})))
+    {$not (str-match-pattern field options prefix (second value) suffix)}
+    (do
+      (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
+        "Wrong prefix or suffix value.")
+      {$regexMatch {"input" (->rvalue field)
+                    "regex" (if (= (first value) :value)
+                              (str prefix (->rvalue value) suffix)
+                              {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
+                                                               (->rvalue value)
+                                                               (when (some? suffix) {$literal suffix})])})
+                    "options" (if (get options :case-sensitive true) "" "i")}})))
 
 ;; these are changed to {field {$regex "regex"}} instead of {field #regex} for serialization purposes. When doing
 ;; native query substitution we need a string and the explicit regex form is better there
-(defmethod compile-filter :contains    [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v nil)})
-(defmethod compile-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
-(defmethod compile-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
+(defmethod compile-filter :contains    [[_ field v opts]] {$expr (str-match-pattern field opts nil v nil)})
+(defmethod compile-filter :starts-with [[_ field v opts]] {$expr (str-match-pattern field opts "^" v nil)})
+(defmethod compile-filter :ends-with   [[_ field v opts]] {$expr (str-match-pattern field opts nil v "$")})
 
 (defn- rvalue-is-field? [rvalue]
   (and (string? rvalue)

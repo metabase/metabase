@@ -94,6 +94,11 @@
 
 (lib.hierarchy/derive :aggregation ::ref)
 
+(mbql-clause/define-tuple-mbql-clause :segment :- :type/Boolean
+  #_segment-id [:schema [:ref ::id/segment]])
+
+(lib.hierarchy/derive :segment ::ref)
+
 (mbql-clause/define-tuple-mbql-clause :metric :- ::expression/type.unknown
   #_metric-id [:schema [:ref ::id/metric]])
 
