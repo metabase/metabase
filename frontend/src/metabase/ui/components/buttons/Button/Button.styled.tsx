@@ -29,6 +29,12 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           lineHeight: "1rem",
           color: styles.color,
           borderColor: styles.borderColor,
+
+          ":disabled": {
+            color: styles.disabledColor,
+            borderColor: styles.disabledBorderColor,
+            backgroundColor: styles.disabledBackgroundColor,
+          },
           "&[data-loading]": {
             "&::before": {
               backgroundColor: styles.loadingBackgroundColor,
@@ -79,6 +85,9 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         loaderColor: theme.colors.focus[0],
         hoverBorderColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
+        disabledColor: theme.colors.text[0],
+        disabledBorderColor: theme.colors.border[0],
+        disabledBackgroundColor: theme.colors.bg[0],
       };
     case "outline":
       return {
@@ -88,6 +97,9 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         hoverColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBorderColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: theme.colors.brand[0],
+        disabledColor: theme.colors.text[0],
+        disabledBorderColor: theme.colors.border[0],
+        disabledBackgroundColor: theme.colors.bg[0],
       };
     case "subtle":
       return {
@@ -96,6 +108,9 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         hoverColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: "transparent",
         loadingBackgroundColor: "transparent",
+        disabledColor: theme.colors.text[0],
+        disabledBorderColor: "transparent",
+        disabledBackgroundColor: "transparent",
       };
     default:
       return {
@@ -105,6 +120,9 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         loaderColor: theme.fn.primaryColor(),
         hoverColor: theme.fn.primaryColor(),
         hoverBackgroundColor: theme.colors.bg[0],
+        disabledColor: theme.colors.text[0],
+        disabledBorderColor: theme.colors.border[0],
+        disabledBackgroundColor: theme.colors.bg[0],
       };
   }
 };
