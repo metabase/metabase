@@ -39,3 +39,11 @@ export const CalendarDay = styled.div<CalendarDayProps>`
       z-index: 1;
     `}
 `;
+
+export const CalendarIconContainer = styled.div`
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;

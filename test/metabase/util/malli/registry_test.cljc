@@ -15,3 +15,11 @@
   (testing "cache explainers"
     (is (identical? (mr/explainer ::int)
                     (mr/explainer ::int)))))
+
+(deftest ^:parallel resolve-test
+  (is (mc/schema? (mr/resolve-schema :int)))
+  (is (mc/schema? (mr/resolve-schema ::int)))
+  #?(:clj
+     (is (= ":int"
+            (pr-str (mr/resolve-schema ::int))
+            (pr-str (mr/resolve-schema [:ref ::int]))))))

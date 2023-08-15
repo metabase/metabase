@@ -1,5 +1,5 @@
 import { visitDashboard } from "./e2e-misc-helpers";
-import { dashboardHeader, popover } from "./e2e-ui-elements-helpers";
+import { popover } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -63,6 +63,15 @@ export function getDashboardCardMenu(index = 0) {
 
 export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
+}
+
+export function removeDashboardCard(index = 0) {
+  showDashboardCardActions(index);
+  cy.findAllByTestId("dashboardcard-actions-panel")
+    .eq(0)
+    .should("be.visible")
+    .icon("close")
+    .click();
 }
 
 export function showDashcardVisualizationSettings(index = 0) {
@@ -144,7 +153,7 @@ export function addHeadingWhileEditing(string, options = {}) {
 }
 
 export function openQuestionsSidebar() {
-  cy.findByLabelText("Add questions").click();
+  cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
 }
 
 export function createNewTab() {
@@ -191,3 +200,7 @@ export function toggleDashboardInfoSidebar() {
 export function openDashboardMenu() {
   dashboardHeader().findByLabelText("dashboard-menu-button").click();
 }
+
+export const dashboardHeader = () => {
+  return cy.findByTestId("dashboard-header");
+};

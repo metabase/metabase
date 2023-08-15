@@ -1,4 +1,4 @@
-import { restore } from "e2e/support/helpers";
+import { popover, restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -180,6 +180,26 @@ describe("scenarios > visualizations > table column settings", () => {
       additionalColumns().findByText("Tax").should("not.exist");
       scrollVisualization();
       visualization().findByText("Tax").should("exist");
+    });
+
+    it("should be able to rename table columns via popover", () => {
+      cy.createQuestion(tableQuestion, { visitQuestion: true });
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText("Product ID").click();
+      });
+
+      popover().within(() => {
+        cy.icon("gear").click();
+        cy.findByDisplayValue("Product ID").clear().type("prod_id");
+      });
+
+      // clicking outside of the popover to close it
+      cy.findByTestId("app-bar").click();
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText("prod_id");
+      });
     });
 
     it("should be able to show and hide table fields with in a join", () => {

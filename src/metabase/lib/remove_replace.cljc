@@ -104,16 +104,16 @@
 (defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-opts target-ref-id]
   (let [stage (lib.util/query-stage query stage-number)
         to-remove (mapcat
-                    (fn [location]
-                      (when-let [clauses (get-in stage location)]
-                        (->> clauses
-                             (keep (fn [clause]
-                                     (mbql.match/match-one clause
-                                       [target-op
-                                        (_ :guard #(or (empty? target-opts)
-                                                       (set/subset? (set target-opts) (set %))))
-                                        target-ref-id] [location clause]))))))
-                    (stage-paths query stage-number))]
+                   (fn [location]
+                     (when-let [clauses (get-in stage location)]
+                       (->> clauses
+                            (keep (fn [clause]
+                                    (mbql.match/match-one clause
+                                      [target-op
+                                       (_ :guard #(or (empty? target-opts)
+                                                      (set/subset? (set target-opts) (set %))))
+                                       target-ref-id] [location clause]))))))
+                   (stage-paths query stage-number))]
     (reduce
      (fn [query [location target-clause]]
        (remove-replace-location query stage-number unmodified-query-for-stage location target-clause lib.util/remove-clause))
@@ -207,12 +207,15 @@
      (replace-join query stage-number target-clause new-clause)
      (remove-replace* query stage-number target-clause :replace new-clause))))
 
+(defn- field-clause-with-join-alias?
+  [field-clause join-alias]
+  (and (lib.util/field-clause? field-clause)
+       (= (lib.join.util/current-join-alias field-clause) join-alias)))
+
 (defn- replace-join-alias
   [a-join old-name new-name]
   (mbql.match/replace a-join
-    (field :guard (fn [field-clause]
-                    (and (lib.util/field-clause? field-clause)
-                         (= (lib.join.util/current-join-alias field-clause) old-name))))
+    (field :guard #(field-clause-with-join-alias? % old-name))
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage
@@ -314,6 +317,14 @@
          (remove-invalidated-refs query-after query stage-number)))
      query)))
 
+(defn- has-field-from-join? [form join-alias]
+  (some? (mbql.match/match-one form
+           (field :guard #(field-clause-with-join-alias? % join-alias)))))
+
+(defn- dependent-join? [join join-alias]
+  (or (= (:alias join) join-alias)
+      (has-field-from-join? join join-alias)))
+
 (mu/defn remove-join :- :metabase.lib.schema/query
   "Remove the join specified by `join-spec` in `query` at `stage-number`.
   The join can be specified either by itself (as returned by [[joins]]), by its alias
@@ -328,7 +339,7 @@
     stage-number :- :int
     join-spec    :- [:or :metabase.lib.schema.join/join :string :int]]
    (update-joins query stage-number join-spec (fn [joins join-alias]
-                                                (not-empty (filterv #(not= (:alias %) join-alias)
+                                                (not-empty (filterv #(not (dependent-join? % join-alias))
                                                                     joins))))))
 
 (mu/defn replace-join :- :metabase.lib.schema/query
