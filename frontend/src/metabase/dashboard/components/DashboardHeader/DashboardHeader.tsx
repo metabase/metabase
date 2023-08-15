@@ -17,6 +17,7 @@ import { Collection, Dashboard } from "metabase-types/api";
 
 import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
+
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { useDispatch } from "metabase/lib/redux";
 import { updateDashboard } from "metabase/dashboard/actions";

@@ -36,7 +36,6 @@
       (t2/select-one-fn :value Setting :key "setup-token")
       (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))
 
-
 (defsetting has-user-setup
   (deferred-tru "A value that is true iff the metabase instance has one or more users registered.")
   :visibility :public
