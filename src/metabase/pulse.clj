@@ -26,13 +26,14 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
-   [schema.core :as s]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -142,6 +143,12 @@
         (when (mi/can-read? instance)
           (link-card->text-part (assoc link-card :entity instance)))))))
 
+(defn- escape-heading-markdown
+  [dashcard]
+  (if (= "heading" (get-in dashcard [:visualization_settings :virtual_card :display]))
+    (update-in dashcard [:visualization_settings :text] #(str "## " (shared.params/escape-chars % shared.params/escaped-chars-regex)))
+    dashcard))
+
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
 
@@ -167,6 +174,7 @@
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]
       (-> dashcard
           (params/process-virtual-dashcard parameters)
+          escape-heading-markdown
           :visualization_settings
           (assoc :type :text)))))
 
@@ -200,7 +208,7 @@
   (or (:database_id card)
       (get-in card [:dataset_query :database])))
 
-(s/defn defaulted-timezone :- s/Str
+(mu/defn defaulted-timezone :- :string
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- (mi/InstanceOf Card)]
   (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)

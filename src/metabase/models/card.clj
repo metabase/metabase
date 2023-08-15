@@ -447,9 +447,9 @@
   (serdes/extract-query-collections Card opts))
 
 (defn- export-result-metadata [card metadata]
-  (when (and (:dataset card) metadata)
+  (when (and metadata (:dataset card))
     (for [m metadata]
-      (-> m
+      (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
           (m/update-existing :id        serdes/*export-field-fk*)
           (m/update-existing :field_ref serdes/export-mbql)))))
@@ -464,10 +464,10 @@
 
 (defn- result-metadata-deps [metadata]
   (when (seq metadata)
-    (reduce set/union (for [m (seq metadata)]
-                        (reduce set/union (serdes/mbql-deps (:field_ref m))
-                                [(when (:table_id m) #{(serdes/table->path (:table_id m))})
-                                 (when (:id m)       #{(serdes/field->path (:id m))})])))))
+    (reduce set/union #{} (for [m (seq metadata)]
+                            (reduce set/union (serdes/mbql-deps (:field_ref m))
+                                    [(when (:table_id m) #{(serdes/table->path (:table_id m))})
+                                     (when (:id m)       #{(serdes/field->path (:id m))})])))))
 
 (defmethod serdes/extract-one "Card"
   [_model-name _opts card]
@@ -509,7 +509,7 @@
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id visualization_settings]}]
   (->> (map serdes/mbql-deps parameter_mappings)
-       (reduce set/union)
+       (reduce set/union #{})
        (set/union (serdes/parameters-deps parameters))
        (set/union #{[{:model "Database" :id database_id}]})
        ; table_id and collection_id are nullable.

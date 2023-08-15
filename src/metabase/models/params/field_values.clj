@@ -31,7 +31,7 @@
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.
   ;; (postprocess-field-values (t2/select-one FieldValues :id 1) (Field 1))
-  ;; => {:values          [1 2 3 4]
+  ;; => {:values          [[1] [2] [3] [4]]
          :field_id        1
          :has_more_values boolean}"
   [field-values field]
@@ -82,12 +82,11 @@
             ;; let's make sure we respect that limit here.
             ;; For a more detailed docs on this limt check out [[field-values/distinct-values]]
             limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
-       {:values          limited-values
-        :has_more_values (or (> (count values)
-                                (count limited-values))
-                             has_more_values)}))
+        {:values          limited-values
+         :has_more_values (or (> (count values)
+                                 (count limited-values))
+                              has_more_values)}))
 
-    :sandbox
     (field-values/distinct-values field)))
 
 (defn hash-key-for-advanced-field-values
@@ -98,15 +97,21 @@
     (field-values/hash-key-for-linked-filters field-id constraints)
 
     :sandbox
-    (field-values/hash-key-for-sandbox field-id)))
+    (field-values/hash-key-for-sandbox field-id)
+
+    :impersonation
+    (field-values/hash-key-for-impersonation field-id)))
 
 (defn create-advanced-field-values!
   "Fetch and create a FieldValues for `field` with type `fv-type`.
   The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
   list of values and human_readable_values of the full FieldValues of the same field."
   [fv-type field hash-key constraints]
-  (when-let [{:keys [values has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
-    (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
+  (when-let [{wrapped-values :values
+              :keys [has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
+    (let [;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
+          values                (map first wrapped-values)
+          ;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
           human-readable-values (field-values/fixup-human-readable-values
                                   (t2/select-one FieldValues
                                                  :field_id (:id field)

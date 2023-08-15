@@ -262,15 +262,17 @@ export default class LineAreaBarChart extends Component {
     const {
       card,
       series,
+      settings,
       visualizationIsClickable,
       onEditSeries,
       onVisualizationClick,
       onChangeCardAndRun,
     } = this.props;
 
-    const single = isReversed
-      ? series[series.length - index - 1]
-      : series[index];
+    const orderedSeries = getOrderedSeries(series, settings, isReversed);
+
+    const single = orderedSeries[index];
+
     const hasBreakout = card._breakoutColumn != null;
 
     if (onEditSeries && !hasBreakout) {
@@ -299,6 +301,7 @@ export default class LineAreaBarChart extends Component {
       onHoverChange,
       onRemoveSeries,
       settings,
+      canRemoveSeries,
     } = this.props;
 
     // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
@@ -336,6 +339,7 @@ export default class LineAreaBarChart extends Component {
           />
         )}
         <LegendLayout
+          canRemoveSeries={canRemoveSeries}
           labels={labels}
           colors={colors}
           hovered={hovered}

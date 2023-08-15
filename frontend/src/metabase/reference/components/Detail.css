@@ -1,0 +1,42 @@
+:root {
+  --title-color: var(--color-text-medium);
+  --muted-color: var(--color-text-light);
+  --blue-color: var(--color-brand);
+}
+
+:local(.detail) {
+  composes: flex align-center from "style";
+  composes: relative from "style";
+}
+
+:local(.detailBody) {
+  composes: pb4 from "style";
+  max-width: 900px;
+}
+
+:local(.detailTitle) {
+  composes: text-bold inline-block from "style";
+  color: var(--title-color);
+}
+
+:local(.detailSubtitle) {
+  composes: text-dark text-paragraph from "style";
+  white-space: pre-wrap;
+  font-size: 16px;
+  line-height: 24px;
+  padding-top: 6px;
+}
+
+:local(.detailSubtitleLight) {
+  composes: text-light from "style";
+  padding-top: 6px;
+}
+
+:local(.detailTextarea) {
+  composes: text-dark input p2 from "style";
+  resize: none;
+  font-size: 16px;
+  width: 100%;
+  min-height: 100px;
+  border-color: var(--color-text-light);
+}

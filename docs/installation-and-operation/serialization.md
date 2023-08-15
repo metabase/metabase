@@ -21,14 +21,14 @@ To help you out in situations like this, Metabase has a serialization feature wh
 
 Metabase only includes some artifacts in its exports.
 
-- Collections (except for personal collections, unless specified by the `--user` flag)
+- Collections (except for personal collections, unless specified by the `--collection` flag)
 - Dashboards
 - Saved questions
 - Actions
 - Models
 - SQL Snippets
-- Data model settings
-- Segments and Metrics defined in the Data Model
+- Table Metadata settings
+- Segments and Metrics defined in the Table Metadata
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#the-general-settings-that-metabase-exports)
 - Database connection settings
@@ -130,15 +130,13 @@ To view a list of `export` options, use the `help` command:
 java -jar metabase.jar help export
 ```
 
-Which will print something like:
+Which will run and then print something like:
 
 ```
 export path & options
 	 Serialize Metabase instance into directory at `path`.
 	 Options:
-	   -u, --user EMAIL                Include collections owned by the specified user
 	   -c, --collection ID             Export only specified ID; may occur multiple times.
-	       --collections ID_LIST       (Legacy-style) Export collections in comma-separated list of IDs, e.g. '123,456'.
 	   -C, --no-collections            Do not export any content in collections.
 	   -S, --no-settings               Do not export settings.yaml
 	   -D, --no-data-model             Do not export any data model entities; useful for subsequent exports.
@@ -146,23 +144,21 @@ export path & options
 	   -s, --include-database-secrets  Include database connection details (in plain text; use caution).
 ```
 
-### `--user`
-
-The `user` flag tells Metabase to include collections owned by the specified user, identified by email. QUESTION: What about accounts created with SSO?
-
 ### `--collection`
+
+By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collection` flag.
 
 The `--collection` flag (alias `-c`) lets you specify by ID one or more collections to include in the export. You can find the collection ID in the collection's URL, e.g., for a collection at: `your-metabase.com/collection/42-terraforming-progress`, the ID would be `42`.
 
 If you want to specify multiple collections, separate the IDs with commas. E.g.,
 
 ```
-java -jar metabase.jar export --collection 1,3,5,9
+java -jar metabase.jar export --collection 1,2,3
 ```
 
-### `--no-collection`
+### `--no-collections`
 
-The `--no-collection` flag (alias `-C`) tells Metabase to exclude all collections from the export.
+The `--no-collections` flag (alias `-C`) tells Metabase to exclude all collections from the export.
 
 ### `--no-settings`
 
@@ -170,7 +166,7 @@ The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.ya
 
 ### `--no-data-model`
 
-The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the data model settings from the export. Admins define the data model settings in the [Data model](../data-modeling/metadata-editing.md) tab of the Admin settings.
+The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the Table Metadata settings from the export. Admins define the metadata settings in the [Table Metadata](../data-modeling/metadata-editing.md) tab of the Admin settings.
 
 ### `--include-field-values`
 
@@ -178,7 +174,7 @@ The `--include-field-values` flag (alias `-f`) tells Metabase to include the sam
 
 ### `--include-database-secrets`
 
-The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase. 
+The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase.
 
 ## Importing to a Metabase
 

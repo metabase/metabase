@@ -3,14 +3,20 @@
    [clojure.test :refer :all]
    [metabase.automagic-dashboards.rules :as rules]))
 
-(deftest ->type-test
+(deftest ^:parallel ga-dimension?-test
+  (are [x expected] (= expected
+                       (rules/ga-dimension? x))
+    "ga:foo" true
+    "foo"    false))
+
+(deftest ^:parallel ->type-test
   (are [x expected] (= expected
                        (#'rules/->type x))
     :foo     :foo
     "ga:foo" "ga:foo"
     "Foo"    :type/Foo))
 
-(deftest get-rules-test
+(deftest ^:parallel get-rules-test
   (testing "This also tests that all the rules are valid (else there would be nils returned)"
     (doseq [s ["table"
                "metrics"
@@ -20,7 +26,7 @@
 
   (is (some? (rules/get-rules ["table" "GenericTable" "ByCountry"]))))
 
-(deftest dimension-form?-test
+(deftest ^:parallel dimension-form?-test
   (are [x expected] (= expected
                        (rules/dimension-form? x))
     [:dimension "Foo"]  true
@@ -29,7 +35,7 @@
     42                  false
     [:baz :bar]         false))
 
-(deftest collect-dimensions-test
+(deftest ^:parallel collect-dimensions-test
   (is (= ["Foo" "Baz" "Bar"]
          (#'rules/collect-dimensions
           [{:metrics [{"Foo" {:metric [:sum [:dimension "Foo"]]}}

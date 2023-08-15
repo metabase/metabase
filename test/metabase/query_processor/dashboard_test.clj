@@ -9,7 +9,8 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;; there are more tests in [[metabase.api.dashboard-test]]
 
@@ -274,22 +275,22 @@
 (deftest ignore-default-values-in-request-parameters-test
   (testing "Parameters passed in from the request with only default values (but no actual values) should get ignored (#20516)"
     (mt/dataset sample-dataset
-      (mt/with-temp* [Card [{card-id :id} {:name          "Orders"
-                                           :dataset_query (mt/mbql-query products
-                                                            {:fields   [$id $title $category]
-                                                             :order-by [[:asc $id]]
-                                                             :limit    2})}]
-                      Dashboard [{dashboard-id :id} {:name       "20516 Dashboard"
-                                                     :parameters [{:name    "Category"
-                                                                   :slug    "category"
-                                                                   :id      "_CATEGORY_"
-                                                                   :type    "category"
-                                                                   :default ["Doohickey"]}]}]
-                      DashboardCard [{dashcard-id :id} {:parameter_mappings [{:parameter_id "_CATEGORY_"
-                                                                              :card_id      card-id
-                                                                              :target       [:dimension [:field (mt/id :products :category) nil]]}]
-                                                        :card_id            card-id
-                                                        :dashboard_id       dashboard-id}]]
+      (t2.with-temp/with-temp [Card {card-id :id} {:name          "Orders"
+                                                   :dataset_query (mt/mbql-query products
+                                                                    {:fields   [$id $title $category]
+                                                                     :order-by [[:asc $id]]
+                                                                     :limit    2})}
+                               Dashboard {dashboard-id :id} {:name       "20516 Dashboard"
+                                                             :parameters [{:name    "Category"
+                                                                           :slug    "category"
+                                                                           :id      "_CATEGORY_"
+                                                                           :type    "category"
+                                                                           :default ["Doohickey"]}]}
+                               DashboardCard {dashcard-id :id} {:parameter_mappings [{:parameter_id "_CATEGORY_"
+                                                                                      :card_id      card-id
+                                                                                      :target       [:dimension [:field (mt/id :products :category) nil]]}]
+                                                                :card_id            card-id
+                                                                :dashboard_id       dashboard-id}]
         (testing "No parameters -- ignore Dashboard default (#20493, #20503)"
           ;; [[metabase.query-processor.middleware.large-int-id]] middleware is converting the IDs to strings I guess
           (is (= [["1" "Rustic Paper Wallet" "Gizmo"]

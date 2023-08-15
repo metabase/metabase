@@ -23,7 +23,7 @@ describe("scenarios > dashboard > filters > date", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
+  it("should work when set through the filter widget", () => {
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
@@ -64,7 +64,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     DateFilter.setMonthAndYear({
       month: "November",
-      year: "2016",
+      year: "2022",
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -80,7 +80,7 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // Make sure we can override the default value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November, 2016").click();
+    cy.findByText("November 2022").click();
     popover().contains("June").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("33.9");
@@ -174,6 +174,7 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
+      DateFilter.setTime({ hours: 11, minutes: 0 });
       cy.findByText("Update filter").click();
       break;
 

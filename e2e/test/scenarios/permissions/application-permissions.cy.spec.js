@@ -6,6 +6,7 @@ import {
   getFullName,
   visitQuestion,
   visitDashboard,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -25,6 +26,24 @@ describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions/application");
+    cy.get("main").within(() => {
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference").within(() => {
+      cy.findAllByText("Applications permissions");
+
+      cy.findByText(
+        "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.",
+      );
+      cy.findByLabelText("Close").click();
+    });
   });
 
   describe("subscriptions permission", () => {
@@ -151,10 +170,6 @@ describeEE("scenarios > admin > permissions > application", () => {
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Admin settings").should("not.exist");
-
-        cy.visit("/admin/tools/errors");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Sorry, you don’t have permission to see that.");
 
         cy.visit("/admin/tools/errors");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

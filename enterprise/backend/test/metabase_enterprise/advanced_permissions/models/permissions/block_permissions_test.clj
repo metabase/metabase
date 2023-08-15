@@ -236,7 +236,7 @@
                   (testing "\nSandboxed permissions"
                     (premium-features-test/with-premium-features #{:advanced-permissions :sandboxing}
                       (mt/with-temp* [Permissions            [_ {:group_id group-2-id
-                                                                 :object   (perms/table-segmented-query-path (mt/id :venues))}]
+                                                                 :object   (perms/table-sandboxed-query-path (mt/id :venues))}]
                                       GroupTableAccessPolicy [_ {:table_id (mt/id :venues), :group_id group-id}]]
                         (testing "Should be able to run the query"
                           (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query

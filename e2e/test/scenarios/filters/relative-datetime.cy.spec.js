@@ -139,8 +139,9 @@ describe("scenarios > question > relative-datetime", () => {
       cy.findByText("There was a problem with your question").should(
         "not.exist",
       );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("No results!").should("exist");
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At This Year")
+        .should("be.visible");
     });
 
     it("Relative dates should default to past filter (metabase#22027)", () => {

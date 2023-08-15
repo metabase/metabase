@@ -23,6 +23,7 @@ export const createMockPermissionsState = (
   return {
     dataPermissions: {},
     originalDataPermissions: {},
+    isHelpReferenceOpen: false,
     ...opts,
   };
 };

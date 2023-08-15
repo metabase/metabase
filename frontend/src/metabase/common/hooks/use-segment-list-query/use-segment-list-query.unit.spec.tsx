@@ -5,13 +5,14 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "__support__/ui";
 import { useSegmentListQuery } from "./use-segment-list-query";
 
 const TEST_SEGMENT = createMockSegment();
 
 const TestComponent = () => {
-  const { data = [], isLoading, error } = useSegmentListQuery();
+  const { data = [], metadata, isLoading, error } = useSegmentListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -22,6 +23,10 @@ const TestComponent = () => {
       {data.map(segment => (
         <div key={segment.id}>{segment.name}</div>
       ))}
+
+      <div data-testid="metadata">
+        {(!metadata || Object.keys(metadata).length === 0) && "No metadata"}
+      </div>
     </div>
   );
 };
@@ -41,5 +46,13 @@ describe("useSegmentListQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText(TEST_SEGMENT.name)).toBeInTheDocument();
+  });
+
+  it("should not have any metadata in the response", async () => {
+    setup();
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    expect(
+      within(screen.getByTestId("metadata")).getByText("No metadata"),
+    ).toBeInTheDocument();
   });
 });

@@ -1,11 +1,12 @@
 (ns metabase.models.moderation-review
-  "TODO -- this should be moved to `metabase-enterprise.content-management.models.moderation-review` since it's a
+  "TODO -- this should be moved to `metabase-enterprise.content-verification.models.moderation-review` since it's a
   premium-only model."
   (:require
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.moderation :as moderation]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,22 +10,15 @@ import {
 export const FieldSearch = ({
   value,
   onChange,
+  isExpanded,
+  setIsExpanded,
 }: {
   value: string;
   onChange: (value: string) => void;
+  isExpanded: boolean;
+  setIsExpanded: (isExpanded: boolean) => void;
 }): JSX.Element => {
-  const [showSearch, setShowSearch] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    const searchToggleListener = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        setShowSearch(true);
-      }
-    };
-    window.addEventListener("keydown", searchToggleListener);
-    return () => window.removeEventListener("keydown", searchToggleListener);
-  }, []);
 
   const shouldClose = () => {
     const input = inputRef.current;
@@ -38,29 +31,30 @@ export const FieldSearch = ({
   };
 
   useEffect(() => {
-    if (showSearch) {
+    if (isExpanded) {
       inputRef.current?.focus();
     }
-  }, [showSearch]);
+  }, [isExpanded]);
 
   return (
     <SearchContainer
-      isActive={showSearch}
-      onMouseEnter={() => setShowSearch(true)}
-      onMouseLeave={e => shouldClose() && setShowSearch(false)}
+      isActive={isExpanded}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={e => shouldClose() && setIsExpanded(false)}
     >
       <SearchIcon
         name="search"
-        onClick={() => setShowSearch(lastShowSearch => !lastShowSearch)}
+        isActive={isExpanded}
+        onClick={() => setIsExpanded(!isExpanded)}
       />
       <SearchInput
         ref={inputRef}
-        isActive={showSearch}
+        isActive={isExpanded}
         type="search"
         placeholder={t`Search for a column...`}
         value={value}
         onChange={e => onChange(e.target.value)}
-        onBlur={() => shouldClose() && setShowSearch(false)}
+        onBlur={() => shouldClose() && setIsExpanded(false)}
       />
     </SearchContainer>
   );

@@ -77,6 +77,15 @@ const SAMPLE_DB_NO_SCHEMA = createSampleDatabase({
   tables: [ORDERS_TABLE_NO_SCHEMA],
 });
 
+const ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE = createOrdersTable({
+  initial_sync_status: "incomplete",
+});
+
+const SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE = createSampleDatabase({
+  name: "Initial sync incomplete",
+  tables: [ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE],
+});
+
 const JSON_FIELD_ROOT = createMockField({
   id: 1,
   name: "JSON",
@@ -234,6 +243,29 @@ describe("MetadataEditor", () => {
       expect(
         screen.getByRole("checkbox", { name: "Irrelevant/Cruft" }),
       ).not.toBeChecked();
+    });
+
+    it("clicking on tables with initial_sync_status='incomplete' should not navigate to the table", async () => {
+      await setup({ databases: [SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE] });
+      expect(
+        screen.getByText(SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE.name),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
+      expect(
+        await screen.findByText(
+          "Select any table to see its schema and add or edit metadata.",
+        ),
+      ).toBeInTheDocument();
+      expect(() =>
+        userEvent.click(
+          screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
+        ),
+      ).toThrow();
+      expect(
+        await screen.findByText(
+          "Select any table to see its schema and add or edit metadata.",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should display sort options", async () => {

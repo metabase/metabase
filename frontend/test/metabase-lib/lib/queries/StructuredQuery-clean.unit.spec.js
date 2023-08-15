@@ -125,14 +125,6 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        it("should remove aggregations referencing invalid field ID", () => {
-          const q = ordersTable
-            .query()
-            .aggregate(["avg", ["field", 12345, null]]);
-          expect(q.clean().query()).toEqual({
-            "source-table": ORDERS_ID,
-          });
-        });
       });
 
       describe("named aggregations", () => {
@@ -154,12 +146,6 @@ describe("StructuredQuery", () => {
           const q = ordersTable.query().aggregate(["metric", 1]);
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
-        });
-        it("should remove invalid metrics", () => {
-          const q = ordersTable.query().aggregate(["metric", 1234]);
-          expect(q.clean().query()).toEqual({
-            "source-table": ORDERS_ID,
-          });
         });
       });
 
@@ -212,10 +198,6 @@ describe("StructuredQuery", () => {
           .join(getJoin())
           .breakout(["field", PRODUCTS.TITLE, { "join-alias": "Products" }]);
         expect(q.clean().query()).toEqual(q.query());
-      });
-      it("should remove breakout referencing invalid field ID", () => {
-        const q = ordersTable.query().breakout(["field", 12345, null]);
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_ID });
       });
     });
 

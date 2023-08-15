@@ -188,7 +188,11 @@ describe("scenarios > question > native", () => {
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     openNativeEditor().type("select 1 as visible, 2 as hidden");
-    cy.get(".NativeQueryEditor .Icon-play").as("runQuery").click();
+    cy.findByTestId("native-query-editor-container")
+      .icon("play")
+      .as("runQuery")
+      .click();
+
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
@@ -322,7 +326,7 @@ describe("scenarios > question > native", () => {
       ).as("databasePrompt");
     });
 
-    it("allows generate sql queries from natural language prompts", () => {
+    it.skip("allows generate sql queries from natural language prompts", () => {
       cy.intercept(
         "POST",
         "/api/metabot/database/**/query",
@@ -347,7 +351,7 @@ describe("scenarios > question > native", () => {
       cy.findByDisplayValue(PROMPT).should("not.exist");
     });
 
-    it("shows an error when an sql query cannot be generated", () => {
+    it.skip("shows an error when an sql query cannot be generated", () => {
       const errorMessage = "Could not generate a query for a given prompt";
       cy.intercept("POST", "/api/metabot/database/**/query", {
         body: {

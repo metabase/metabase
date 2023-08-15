@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -12,19 +13,26 @@
 
 ;;; this stuff is mostly so we can get a sense of what using MLv2 in tests will ultimately look like
 
+(defn- query-for-table-id
+  [table-name]
+  (let [provider       (metadata-provider)
+        table-metadata (lib.metadata/table provider (mt/id table-name))]
+    (lib/query provider table-metadata)))
+
+(declare ^:private $price)
+
 (defmacro ^:private pmbql-query
   {:style/indent 1}
   [table-name & body]
-  `(-> (lib/query-for-table-id (metadata-provider) (mt/id ~(keyword table-name)))
-       ~@body))
+  `(let [query#   (query-for-table-id ~(keyword table-name))
+         ~'$price (lib.metadata/field query# (mt/id :venues :price))]
+     (-> query#
+         ~@body)))
 
 (defmacro ^:private run-pmbql-query
   {:style/indent 1}
   [table-name & body]
   `(qp/process-query (pmbql-query ~table-name ~@body)))
-
-(defn- $price [query stage-number]
-  ((lib/field (mt/id :venues :price)) query stage-number))
 
 (deftest ^:parallel pipeline-queries-test
   (testing "Ensure that the QP can handle pMBQL queries"

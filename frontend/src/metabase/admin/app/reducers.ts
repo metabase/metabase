@@ -24,7 +24,7 @@ const getAdminPaths: () => AdminPath[] = () => {
       key: "databases",
     },
     {
-      name: t`Data Model`,
+      name: t`Table Metadata`,
       path: "/admin/datamodel",
       key: "data-model",
     },
@@ -41,13 +41,8 @@ const getAdminPaths: () => AdminPath[] = () => {
   ];
 
   const isModelPersistenceEnabled = Settings.get("persisted-models-enabled");
-  const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
 
-  if (
-    !hasLoadedSettings ||
-    isModelPersistenceEnabled ||
-    PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0
-  ) {
+  if (isModelPersistenceEnabled || PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
     items.push({
       name: t`Tools`,
       path: "/admin/tools",

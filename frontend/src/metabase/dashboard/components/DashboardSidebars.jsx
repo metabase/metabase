@@ -44,7 +44,6 @@ DashboardSidebars.propTypes = {
   }).isRequired,
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
-  saveDashboardAndCards: PropTypes.func,
   selectedTabId: PropTypes.number,
 };
 
@@ -73,7 +72,6 @@ export function DashboardSidebars({
   sidebar,
   closeSidebar,
   setDashboardAttribute,
-  saveDashboardAndCards,
   selectedTabId,
 }) {
   const handleAddCard = useCallback(
@@ -168,7 +166,6 @@ export function DashboardSidebars({
       return (
         <DashboardInfoSidebar
           dashboard={dashboard}
-          saveDashboardAndCards={saveDashboardAndCards}
           setDashboardAttribute={setDashboardAttribute}
         />
       );

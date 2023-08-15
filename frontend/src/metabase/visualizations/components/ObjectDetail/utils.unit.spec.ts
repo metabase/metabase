@@ -3,6 +3,8 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockImplicitQueryAction,
+  createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -13,19 +15,62 @@ import {
 import Question from "metabase-lib/Question";
 
 import {
-  getObjectName,
+  getActionItems,
   getDisplayId,
   getIdValue,
+  getObjectName,
   getSinglePKIndex,
+  isValidImplicitDeleteAction,
+  isValidImplicitUpdateAction,
 } from "./utils";
+
+const ACTIONS_ENABLED_DB_ID = 10;
+
+const ACTIONS_DISABLED_DB_ID = 11;
 
 const card = createSavedStructuredCard({
   name: "Special Order",
 });
 
+const database = createSampleDatabase();
+
 const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
+  databases: [
+    database,
+    createSampleDatabase({
+      id: ACTIONS_ENABLED_DB_ID,
+      settings: { "database-enable-actions": true },
+    }),
+    createSampleDatabase({
+      id: ACTIONS_DISABLED_DB_ID,
+      settings: { "database-enable-actions": false },
+    }),
+  ],
   questions: [card],
+});
+
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const databaseWithEnabledActions = metadata.database(ACTIONS_ENABLED_DB_ID)!;
+
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const databaseWithDisabledActions = metadata.database(ACTIONS_DISABLED_DB_ID)!;
+
+const implicitCreateAction = createMockImplicitQueryAction({
+  database_id: ACTIONS_ENABLED_DB_ID,
+  name: "Create",
+  kind: "row/create",
+});
+
+const implicitDeleteAction = createMockImplicitQueryAction({
+  database_id: ACTIONS_ENABLED_DB_ID,
+  name: "Delete",
+  kind: "row/delete",
+});
+
+const implicitUpdateAction = createMockImplicitQueryAction({
+  database_id: ACTIONS_ENABLED_DB_ID,
+  name: "Update",
+  kind: "row/update",
 });
 
 describe("ObjectDetail utils", () => {
@@ -216,6 +261,117 @@ describe("ObjectDetail utils", () => {
 
     it("should return undefined if there are no PKs", () => {
       expect(getSinglePKIndex([qtyCol, nameCol])).toBe(undefined);
+    });
+  });
+
+  describe("getActionItems", () => {
+    const onDelete = jest.fn();
+    const onUpdate = jest.fn();
+    const actions = [
+      implicitDeleteAction,
+      implicitUpdateAction,
+      implicitCreateAction,
+    ];
+
+    it("should return delete and update action items", () => {
+      expect(
+        getActionItems({
+          actions,
+          databases: [databaseWithEnabledActions],
+          onDelete,
+          onUpdate,
+        }),
+      ).toMatchObject([
+        { title: "Update", icon: "pencil" },
+        { title: "Delete", icon: "trash" },
+      ]);
+    });
+
+    it("should not return any items when database actions are disabled", () => {
+      expect(
+        getActionItems({
+          actions,
+          databases: [databaseWithDisabledActions],
+          onDelete,
+          onUpdate,
+        }),
+      ).toEqual([]);
+    });
+
+    it("should not return any items when there are no databases", () => {
+      expect(
+        getActionItems({
+          actions,
+          databases: [],
+          onDelete,
+          onUpdate,
+        }),
+      ).toEqual([]);
+    });
+
+    it("should not return any items when there are no actions", () => {
+      expect(
+        getActionItems({
+          actions: [],
+          databases: [databaseWithDisabledActions, databaseWithEnabledActions],
+          onDelete,
+          onUpdate,
+        }),
+      ).toEqual([]);
+    });
+  });
+
+  describe("isValidImplicitDeleteAction", () => {
+    it("should detect implicit delete action", () => {
+      expect(isValidImplicitDeleteAction(implicitCreateAction)).toBe(false);
+      expect(isValidImplicitDeleteAction(implicitDeleteAction)).toBe(true);
+      expect(isValidImplicitDeleteAction(implicitUpdateAction)).toBe(false);
+    });
+
+    it("should ignore archived action", () => {
+      expect(
+        isValidImplicitDeleteAction({
+          ...implicitDeleteAction,
+          archived: true,
+        }),
+      ).toBe(false);
+    });
+
+    it("should ignore non-implicit action", () => {
+      expect(
+        isValidImplicitDeleteAction({
+          ...implicitDeleteAction,
+          type: "query",
+          dataset_query: createMockNativeDatasetQuery(),
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe("isValidImplicitUpdateAction", () => {
+    it("should detect implicit update action", () => {
+      expect(isValidImplicitUpdateAction(implicitCreateAction)).toBe(false);
+      expect(isValidImplicitUpdateAction(implicitDeleteAction)).toBe(false);
+      expect(isValidImplicitUpdateAction(implicitUpdateAction)).toBe(true);
+    });
+
+    it("should ignore archived action", () => {
+      expect(
+        isValidImplicitUpdateAction({
+          ...implicitUpdateAction,
+          archived: true,
+        }),
+      ).toBe(false);
+    });
+
+    it("should ignore non-implicit action", () => {
+      expect(
+        isValidImplicitUpdateAction({
+          ...implicitUpdateAction,
+          type: "query",
+          dataset_query: createMockNativeDatasetQuery(),
+        }),
+      ).toBe(false);
     });
   });
 });

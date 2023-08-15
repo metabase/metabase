@@ -1,21 +1,22 @@
 (ns metabase.driver.druid.query-processor
-  (:require [clojure.core.match :refer [match]]
-            [clojure.string :as str]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.druid.js :as druid.js]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.types :as types]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.log :as log]
-            [schema.core :as s]))
+  (:require
+   [clojure.core.match :refer [match]]
+   [clojure.string :as str]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.druid.js :as druid.js]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.types :as types]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -132,7 +133,7 @@
       :else                                    :dimension)))
 
 (defn- random-query-id []
-  (str (java.util.UUID/randomUUID)))
+  (str (random-uuid)))
 
 (defn- query-type->default-query [query-type]
   (merge
@@ -241,24 +242,36 @@
   (filter:bound field, :lower min-val, :upper max-val))
 
 (defmethod parse-filter* :contains
-  [[_ field string-or-field options]]
-  {:type      :search
-   :dimension (->rvalue field)
-   :query     {:type          :contains
-               :value         (->rvalue string-or-field)
-               :caseSensitive (get options :case-sensitive true)}})
+  [[_ field pattern options]]
+  (if (and (sequential? pattern) (= :value (first pattern)))
+    {:type      :search
+     :dimension (->rvalue field)
+     :query     {:type          :contains
+                 :value         (->rvalue pattern)
+                 :caseSensitive (get options :case-sensitive true)}}
+    (throw (ex-info (tru "Dynamic patterns are not supported.")
+                    {:type qp.error-type/invalid-query
+                     :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :starts-with
-  [[_ field string-or-field options]]
-  (filter:like field
-               (str (escape-like-filter-pattern (->rvalue string-or-field)) \%)
-               (get options :case-sensitive true)))
+  [[_ field pattern options]]
+  (if (and (sequential? pattern) (= :value (first pattern)))
+    (filter:like field
+                 (str (escape-like-filter-pattern (->rvalue pattern)) \%)
+                 (get options :case-sensitive true))
+    (throw (ex-info (tru "Dynamic patterns are not supported.")
+                    {:type qp.error-type/invalid-query
+                     :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :ends-with
-  [[_ field string-or-field options]]
-  (filter:like field
-               (str \% (escape-like-filter-pattern (->rvalue string-or-field)))
-               (get options :case-sensitive true)))
+  [[_ field pattern options]]
+  (if (and (sequential? pattern) (= :value (first pattern)))
+    (filter:like field
+                 (str \% (escape-like-filter-pattern (->rvalue pattern)))
+                 (get options :case-sensitive true))
+    (throw (ex-info (tru "Dynamic patterns are not supported.")
+                    {:type qp.error-type/invalid-query
+                     :field field :pattern pattern :options options}))))
 
 (defmethod parse-filter* :=
   [[_ field value-or-field]]
@@ -307,10 +320,10 @@
       mbql.u/simplify-compound-filter
       parse-filter*))
 
-(s/defn ^:private add-datetime-units* :- mbql.s/DateTimeValue
+(mu/defn ^:private add-datetime-units* :- mbql.s/DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."
   [absolute-or-relative-datetime :- mbql.s/DateTimeValue
-   n                             :- s/Num]
+   n                             :- number?]
   (if (mbql.u/is-clause? :relative-datetime absolute-or-relative-datetime)
     (let [[_ original-n unit] absolute-or-relative-datetime]
       [:relative-datetime (+ n original-n) unit])
@@ -668,7 +681,7 @@
       [:max      _]    [[(or output-name-kwd :max)]
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
-(s/defn ^:private handle-aggregation
+(mu/defn ^:private handle-aggregation
   [query-type ag-clause :- mbql.s/Aggregation druid-query]
   (let [output-name               (annotate/aggregation-name *query* ag-clause)
         [ag-type ag-field & args] (mbql.u/match-one ag-clause
@@ -755,11 +768,14 @@
 (defn- expression->actual-ags
   "Return a flattened list of actual aggregations that are needed for `expression`."
   [[_ & args]]
-  (vec (reduce concat (for [arg   args
-                            :when (not (number? arg))]
-                        (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-                          (expression->actual-ags arg)
-                          [arg])))))
+  (into []
+        (comp (remove number?)
+              (map (fn [arg]
+                     (if (mbql.u/is-clause? #{:+ :- :/ :*} arg)
+                       (expression->actual-ags arg)
+                       [arg])))
+              cat)
+        args))
 
 (defn- unwrap-name
   [x]

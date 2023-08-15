@@ -13,21 +13,28 @@ import {
   formatInitialValue,
   formatSubmitValues,
   getChangedValues,
-  generateFieldSettingsFromParameters,
+  getOrGenerateFieldSettings,
 } from "./utils";
 
 type Opts = {
   action: WritebackAction;
   initialValues?: ActionFormInitialValues;
+  prefetchesInitialValues?: boolean;
 };
 
-function useActionForm({ action, initialValues = {} }: Opts) {
-  const fieldSettings = useMemo(
-    () =>
-      action.visualization_settings?.fields ||
-      generateFieldSettingsFromParameters(action.parameters),
-    [action],
-  );
+const INITIAL_VALUES = {};
+
+function useActionForm({
+  action,
+  initialValues = INITIAL_VALUES,
+  prefetchesInitialValues,
+}: Opts) {
+  const fieldSettings = useMemo(() => {
+    return getOrGenerateFieldSettings(
+      action.parameters,
+      action.visualization_settings?.fields,
+    );
+  }, [action]);
 
   const form = useMemo(
     () => getForm(action.parameters, fieldSettings),
@@ -41,8 +48,10 @@ function useActionForm({ action, initialValues = {} }: Opts) {
 
   const cleanedInitialValues = useMemo(() => {
     const values = validationSchema.cast(initialValues);
+
     return _.mapObject(values, (value, fieldId) => {
       const formField = fieldSettings[fieldId];
+
       return formatInitialValue(value, formField?.inputType);
     });
   }, [initialValues, fieldSettings, validationSchema]);
@@ -52,17 +61,19 @@ function useActionForm({ action, initialValues = {} }: Opts) {
       const allValues = { ...cleanedInitialValues, ...values };
       const formatted = formatSubmitValues(allValues, fieldSettings);
 
-      const isImplicitUpdate =
-        action.type === "implicit" && action.kind === "row/update";
-
-      // For implicit update actions, we sometimes prefetch selected row values,
-      // and pass them as initial values to prefill the form.
-      // In that case, we want to return only changed values
-      return isImplicitUpdate
+      // For some actions (e.g. implicit update actions), we prefetch
+      // selected row values, and pass them as initial values to prefill
+      // the form. In that case, we want to return only changed values.
+      return prefetchesInitialValues
         ? getChangedValues(formatted, initialValues)
         : formatted;
     },
-    [action, initialValues, cleanedInitialValues, fieldSettings],
+    [
+      initialValues,
+      cleanedInitialValues,
+      fieldSettings,
+      prefetchesInitialValues,
+    ],
   );
 
   return {

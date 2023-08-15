@@ -14,5 +14,5 @@ class GroupDetailApp extends Component {
 
 export default _.compose(
   User.loadList(),
-  Group.load({ id: (_state, props) => props.params.groupId }),
+  Group.load({ id: (_state, props) => props.params.groupId, reload: true }),
 )(GroupDetailApp);

@@ -511,7 +511,7 @@ class FieldInner extends Base {
       }));
   };
 
-  clone(fieldMetadata) {
+  clone(fieldMetadata?: FieldMetadata) {
     if (fieldMetadata instanceof Field) {
       throw new Error("`fieldMetadata` arg must be a plain object");
     }

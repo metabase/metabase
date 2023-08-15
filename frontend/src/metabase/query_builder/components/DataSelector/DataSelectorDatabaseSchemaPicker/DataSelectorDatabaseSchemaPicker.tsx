@@ -10,7 +10,6 @@ import Schema from "metabase-lib/metadata/Schema";
 
 import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
-import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];
@@ -93,8 +92,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     return true;
   };
 
-  const renderSectionExtra = ({ active }: { active?: boolean }) =>
-    !active && <PickerSpinner size={16} borderWidth={2} />;
+  const showSpinner = ({ active }: { active?: boolean }) => active === false;
 
   const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
     icon && <Icon className="Icon text-default" name={icon} size={18} />;
@@ -126,11 +124,11 @@ const DataSelectorDatabaseSchemaPicker = ({
       onChange={({ schema }: any) => onChangeSchema(schema)}
       onChangeSection={handleChangeSection}
       itemIsSelected={(schema: Schema) => schema === selectedSchema}
-      renderSectionExtra={renderSectionExtra}
       renderSectionIcon={renderSectionIcon}
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
       alwaysTogglable={true}
+      showSpinner={showSpinner}
       showItemArrows={hasNextStep}
     />
   );

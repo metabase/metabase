@@ -1,16 +1,14 @@
 import { useCallback, useMemo } from "react";
 
-import AccordionList from "metabase/core/components/AccordionList";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Icon, IconName } from "metabase/core/components/Icon";
 import { singularize } from "metabase/lib/formatting";
+import type { ColorName } from "metabase/lib/colors/types";
 
 import * as Lib from "metabase-lib";
 
-import {
-  BinningStrategyPickerPopover,
-  TemporalBucketPickerPopover,
-} from "./BucketPickerPopover";
+import { BucketPickerPopover } from "./BucketPickerPopover";
+import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -26,6 +24,7 @@ export interface QueryColumnPickerProps {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   maxHeight?: number;
+  color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
@@ -45,6 +44,7 @@ function QueryColumnPicker({
   hasBinning = false,
   hasTemporalBucketing = false,
   maxHeight = DEFAULT_MAX_HEIGHT,
+  color = "brand",
   checkIsColumnSelected,
   onSelect,
   onClose,
@@ -85,27 +85,21 @@ function QueryColumnPicker({
         return;
       }
 
-      const isBinned = Lib.binning(item.column) != null;
-      const isBinnable =
-        isBinned || Lib.isBinnable(query, stageIndex, item.column);
-
+      const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
       if (hasBinning && isBinnable) {
-        const column = isBinned
-          ? item.column
-          : Lib.withDefaultBinning(query, stageIndex, item.column);
-        handleSelect(column);
+        handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
         return;
       }
 
-      const isBucketed = Lib.temporalBucket(item.column) != null;
-      const isBucketable =
-        isBucketed || Lib.isTemporalBucketable(query, stageIndex, item.column);
-
-      if (hasTemporalBucketing && isBucketable) {
-        const column = isBucketed
-          ? item.column
-          : Lib.withDefaultTemporalBucket(query, stageIndex, item.column);
-        handleSelect(column);
+      const isTemporalBucketable = Lib.isTemporalBucketable(
+        query,
+        stageIndex,
+        item.column,
+      );
+      if (hasTemporalBucketing && isTemporalBucketable) {
+        handleSelect(
+          Lib.withDefaultTemporalBucket(query, stageIndex, item.column),
+        );
         return;
       }
 
@@ -123,62 +117,32 @@ function QueryColumnPicker({
   );
 
   const renderItemExtra = useCallback(
-    (item: ColumnListItem) => {
-      if (hasBinning && Lib.isBinnable(query, stageIndex, item.column)) {
-        const buckets = Lib.availableBinningStrategies(
-          query,
-          stageIndex,
-          item.column,
-        );
-        const isEditing = checkIsColumnSelected(item);
-        return (
-          <BinningStrategyPickerPopover
-            query={query}
-            stageIndex={stageIndex}
-            column={item.column}
-            buckets={buckets}
-            isEditing={isEditing}
-            onSelect={handleSelect}
-          />
-        );
-      }
-
-      if (
-        hasTemporalBucketing &&
-        Lib.isTemporalBucketable(query, stageIndex, item.column)
-      ) {
-        const buckets = Lib.availableTemporalBuckets(
-          query,
-          stageIndex,
-          item.column,
-        );
-        const isEditing = checkIsColumnSelected(item);
-        return (
-          <TemporalBucketPickerPopover
-            query={query}
-            stageIndex={stageIndex}
-            column={item.column}
-            buckets={buckets}
-            isEditing={isEditing}
-            onSelect={handleSelect}
-          />
-        );
-      }
-
-      return null;
-    },
+    (item: ColumnListItem) =>
+      hasBinning || hasTemporalBucketing ? (
+        <BucketPickerPopover
+          query={query}
+          stageIndex={stageIndex}
+          column={item.column}
+          isEditing={checkIsColumnSelected(item)}
+          hasBinning={hasBinning}
+          hasTemporalBucketing={hasTemporalBucketing}
+          color={color}
+          onSelect={handleSelect}
+        />
+      ) : null,
     [
       query,
       stageIndex,
       hasBinning,
       hasTemporalBucketing,
+      color,
       checkIsColumnSelected,
       handleSelect,
     ],
   );
 
   return (
-    <AccordionList
+    <StyledAccordionList
       className={className}
       sections={sections}
       maxHeight={maxHeight}
@@ -189,6 +153,7 @@ function QueryColumnPicker({
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
       renderItemExtra={renderItemExtra}
+      color={color}
       // Compat with E2E tests around MLv1-based components
       // Prefer using a11y role selectors
       itemTestId="dimension-list-item"

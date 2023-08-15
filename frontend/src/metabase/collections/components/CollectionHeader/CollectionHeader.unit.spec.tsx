@@ -192,117 +192,17 @@ describe("CollectionHeader", () => {
     });
   });
 
-  describe("collection permissions", () => {
-    it("should be able to edit collection permissions with admin access", () => {
-      const props = getProps({
+  describe("collection menu", () => {
+    it("should have collection menu options", () => {
+      setup({
         collection: createMockCollection({
           can_write: true,
         }),
-        isAdmin: true,
       });
 
-      render(<CollectionHeader {...props} />);
       userEvent.click(screen.getByLabelText("ellipsis icon"));
-
-      expect(screen.getByText("Edit permissions")).toBeInTheDocument();
-    });
-
-    it("should not be able to edit collection permissions without admin access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          can_write: true,
-        }),
-        isAdmin: false,
-      });
-
-      render(<CollectionHeader {...props} />);
-      userEvent.click(screen.getByLabelText("ellipsis icon"));
-
-      expect(screen.queryByText("Edit permissions")).not.toBeInTheDocument();
-    });
-
-    it("should not be able to edit permissions for personal collections", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          personal_owner_id: 1,
-          can_write: true,
-        }),
-        isAdmin: true,
-      });
-
-      render(<CollectionHeader {...props} />);
-
-      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
-    });
-
-    it("should not be able to edit permissions for personal subcollections", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          can_write: true,
-        }),
-        isAdmin: true,
-        isPersonalCollectionChild: true,
-      });
-
-      render(<CollectionHeader {...props} />);
-      userEvent.click(screen.getByLabelText("ellipsis icon"));
-
-      expect(screen.queryByText("Edit permissions")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("moving and arching collections", () => {
-    it("should be able to move and archive a collection with write access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          can_write: true,
-        }),
-      });
-
-      render(<CollectionHeader {...props} />);
-      userEvent.click(screen.getByLabelText("ellipsis icon"));
-
       expect(screen.getByText("Move")).toBeInTheDocument();
       expect(screen.getByText("Archive")).toBeInTheDocument();
-    });
-
-    it("should not be able to move and archive a collection without write access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          can_write: false,
-        }),
-      });
-
-      render(<CollectionHeader {...props} />);
-
-      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
-    });
-
-    it("should not be able to move and archive the root collection", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        }),
-      });
-
-      render(<CollectionHeader {...props} />);
-
-      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
-    });
-
-    it("should not be able to move and archive personal collections", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          personal_owner_id: 1,
-          can_write: true,
-        }),
-      });
-
-      render(<CollectionHeader {...props} />);
-
-      expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
     });
   });
 

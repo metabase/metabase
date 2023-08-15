@@ -3,7 +3,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
-import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
+import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
@@ -132,6 +132,7 @@ function getSettingWidget(
       newSettings[settingId] = null;
     }
     onChangeSettings(newSettings);
+    settingDef.onUpdate?.(value, extra);
   };
   if (settingDef.useRawSeries && object._raw) {
     extra.transformedSeries = object;

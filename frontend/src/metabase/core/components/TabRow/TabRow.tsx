@@ -43,7 +43,7 @@ function TabRowInner<T>({
     }
 
     setShowScrollRight(
-      scrollPosition + width < tabListRef.current?.scrollWidth,
+      Math.round(scrollPosition + width) < tabListRef.current?.scrollWidth,
     );
   }, [children, scrollPosition, width]);
 

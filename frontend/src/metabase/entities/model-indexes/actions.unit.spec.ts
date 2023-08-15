@@ -6,7 +6,7 @@ import {
   createMockModelIndex,
 } from "metabase-types/api/mocks";
 
-import { setupModelIndexEndpoints } from "__support__/server-mocks/model-indexes";
+import { setupModelIndexEndpoints } from "__support__/server-mocks";
 
 import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
 

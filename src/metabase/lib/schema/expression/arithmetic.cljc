@@ -24,7 +24,7 @@
   [:and
    [:catn
     [:expr      [:schema [:ref ::expression/temporal]]]
-    [:intervals [:+ :mbql.clause/interval]]]
+    [:intervals [:+ [:ref :mbql.clause/interval]]]]
    [:fn
     {:error/message "Temporal arithmetic expression with valid interval units for the expression type"}
     (fn [[expr & intervals]]

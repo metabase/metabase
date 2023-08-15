@@ -13,7 +13,8 @@
    :week-of-year
    :month-of-year
    :quarter-of-year
-   :year])
+   :year
+   :year-of-era])
 
 (def date-extraction-units
   "Units that you can EXTRACT from a date or datetime. These return integers in temporal bucketing expressions."
@@ -49,7 +50,9 @@
 (def ordered-time-extraction-units
   "Units that you can EXTRACT from a time or datetime. These return integers in temporal bucketing expressions.
   The front end shows the options in this order."
-  [:minute-of-hour :hour-of-day])
+  [:second-of-minute
+   :minute-of-hour
+   :hour-of-day])
 
 (def time-extraction-units
   "Units that you can EXTRACT from a time or datetime. These return integers in temporal bucketing expressions."
@@ -75,13 +78,12 @@
   "Valid time bucketing units for either truncation or extraction operations.
   The front end shows the options in this order."
   (into []
-        (comp (remove #{:millisecond :second})
-              (distinct))
+        (distinct)
         (concat ordered-time-truncation-units ordered-time-extraction-units)))
 
 (def time-bucketing-units
   "Valid time bucketing units for either truncation or extraction operations."
-  (set ordered-time-extraction-units))
+  (set ordered-time-bucketing-units))
 
 (mr/def ::unit.time
   (into [:enum {:error/message "Valid time bucketing unit"}] time-bucketing-units))
@@ -90,8 +92,7 @@
   "Valid datetime bucketing units for either truncation or extraction operations.
   The front end shows the options in this order."
   (into []
-        (comp (remove #{:millisecond :second})
-              (distinct))
+        (distinct)
         (concat ordered-time-truncation-units ordered-date-truncation-units
                 ordered-time-extraction-units ordered-date-extraction-units)))
 
@@ -100,7 +101,7 @@
   (set ordered-datetime-bucketing-units))
 
 (mr/def ::unit.date-time
-  (into [:enum {:error/message "Valid datetime bucketing unit"}] datetime-bucketing-units))
+  (into [:enum {:error/message "Valid datetime bucketing unit"}] ordered-datetime-bucketing-units))
 
 (def temporal-bucketing-units
   "This is the same as [[datetime-bucketing-units]], but also includes `:default`."
@@ -150,6 +151,6 @@
 
 (mr/def ::option
   [:map
-   [:lib/type [:= :type/temporal-bucketing-option]]
+   [:lib/type [:= :option/temporal-bucketing]]
    [:unit ::unit]
    [:default {:optional true} :boolean]])

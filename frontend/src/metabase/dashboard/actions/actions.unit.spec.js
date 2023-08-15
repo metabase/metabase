@@ -12,7 +12,7 @@ import {
   openAddQuestionSidebar,
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
-  saveDashboardAndCards,
+  updateDashboardAndCards,
 } from "./index";
 
 DashboardApi.parameterSearch = jest.fn();
@@ -153,7 +153,7 @@ describe("dashboard actions", () => {
     });
   });
 
-  describe("saveDashboardAndCards", () => {
+  describe("updateDashboardAndCards", () => {
     it("should not save anything if the dashboard has not changed", async () => {
       const dashboard = {
         id: 1,
@@ -182,7 +182,7 @@ describe("dashboard actions", () => {
         },
       });
 
-      await saveDashboardAndCards()(dispatch, getState);
+      await updateDashboardAndCards()(dispatch, getState);
 
       // if this is called only once, it means that the dashboard was not saved
       expect(dispatch).toHaveBeenCalledTimes(1);

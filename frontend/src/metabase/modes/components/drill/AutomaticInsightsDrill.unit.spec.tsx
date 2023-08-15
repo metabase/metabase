@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { DatasetColumn } from "metabase-types/api";
 import MetabaseSettings from "metabase/lib/settings";
@@ -45,6 +46,27 @@ describe("AutomaticInsightsDrill", () => {
       expect(screen.getByText("Automatic insights…")).toBeInTheDocument();
       expect(screen.getByText("Compare to the rest")).toBeInTheDocument();
       expect(screen.getByText("X-ray")).toBeInTheDocument();
+    });
+
+    it(`should return "url" prop with a relative link on action item click`, () => {
+      const stringStartingWithWordChar = /^\w+/;
+      const {
+        props: { onClick },
+      } = setup();
+
+      userEvent.click(screen.getByText("Compare to the rest"));
+      expect(onClick).toHaveBeenCalledTimes(1);
+
+      expect(onClick.mock.lastCall[0].url()).toMatch(
+        stringStartingWithWordChar,
+      );
+
+      userEvent.click(screen.getByText("X-ray"));
+      expect(onClick).toHaveBeenCalledTimes(2);
+
+      expect(onClick.mock.lastCall[0].url()).toMatch(
+        stringStartingWithWordChar,
+      );
     });
   });
 });
@@ -95,4 +117,6 @@ function setup() {
   };
 
   renderWithProviders(<PopoverComponent {...props} />);
+
+  return { props };
 }

@@ -75,27 +75,27 @@
                                             payload)))))]
       (testing "sync just table when table is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
-          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
+          (with-redefs [sync/sync-table!                                 (fn [_table] (deliver long-sync-called? true))
                         metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
             (post {:scan :full, :table_name table-name})
             (is @long-sync-called?)
             (is (not (realized? short-sync-called?))))))
       (testing "only a quick sync when quick parameter is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
-          (with-redefs [metabase.sync/sync-table!                        (fn [_table] (deliver long-sync-called? true))
+          (with-redefs [sync/sync-table!                                 (fn [_table] (deliver long-sync-called? true))
                         metabase.sync.sync-metadata/sync-table-metadata! (fn [_table] (deliver short-sync-called? true))]
             (post {:scan :schema, :table_name table-name})
             (is (not (realized? long-sync-called?)))
             (is @short-sync-called?))))
       (testing "full db sync by default"
         (let [full-sync? (promise)]
-          (with-redefs [metabase.sync/sync-database! (fn [_db] (deliver full-sync? true))]
+          (with-redefs [sync/sync-database! (fn [_db] (deliver full-sync? true))]
             (post {})
             (is @full-sync?))))
       (testing "simple sync with params"
         (let [full-sync?   (promise)
               smaller-sync (promise)]
-          (with-redefs [metabase.sync/sync-database!                  (fn [_db] (deliver full-sync? true))
+          (with-redefs [sync/sync-database!                           (fn [_db] (deliver full-sync? true))
                         metabase.sync.sync-metadata/sync-db-metadata! (fn [_db] (deliver smaller-sync true))]
             (post {:scan :schema})
             (is (not (realized? full-sync?)))

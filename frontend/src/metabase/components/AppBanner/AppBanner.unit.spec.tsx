@@ -5,7 +5,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase-types/store/mocks";
 import {
   createMockDatabase,
-  createMockTokenFeatures,
+  createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
@@ -38,9 +38,9 @@ function setup({
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
-      "token-status": { status: tokenStatusStatus },
-      "token-features": createMockTokenFeatures({
-        sso: shouldShowDatabasePromptBanner ? true : false,
+      "token-status": createMockTokenStatus({
+        status: tokenStatusStatus,
+        valid: shouldShowDatabasePromptBanner,
       }),
     }),
   });

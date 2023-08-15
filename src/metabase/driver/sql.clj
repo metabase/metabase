@@ -9,6 +9,7 @@
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [potemkin :as p]
    [schema.core :as s]))
@@ -36,6 +37,12 @@
   (defmethod driver/database-supports? [:sql join-feature]
     [driver _feature db]
     (driver/database-supports? driver :foreign-keys db)))
+
+(defmethod driver/database-supports? [:sql :persist-models-enabled]
+  [driver _feat db]
+  (and
+    (driver/database-supports? driver :persist-models db)
+    (-> db :settings :persist-models-enabled)))
 
 (defmethod driver/mbql->native :sql
   [driver query]

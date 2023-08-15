@@ -89,7 +89,7 @@ const STEPS: NotebookStepDef[] = [
       query.hasAggregations() || query.hasBreakouts()
         ? query.clearBreakouts().clearAggregations()
         : query,
-    clean: query => query.cleanBreakouts().cleanAggregations(),
+    clean: query => query,
   },
   {
     type: "sort",

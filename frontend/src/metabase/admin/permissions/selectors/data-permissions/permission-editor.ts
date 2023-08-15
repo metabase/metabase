@@ -240,6 +240,7 @@ export const getDatabasesPermissionEditor = createSelector(
               isAdmin,
               permissions,
               defaultGroup,
+              database,
             ),
           };
         });
@@ -364,6 +365,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             isAdmin,
             permissions,
             defaultGroup,
+            database,
           );
         }
 

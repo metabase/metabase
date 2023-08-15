@@ -1,4 +1,4 @@
-import { ChangeEvent, ReactNode, useCallback } from "react";
+import { ReactNode, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { Link } from "react-router";
@@ -40,7 +40,7 @@ const MetadataTableColumn = ({
   onUpdateField,
 }: MetadataTableColumnProps) => {
   const handleChangeName = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onUpdateField(field, { display_name: event.target.value });
       } else {
@@ -51,7 +51,7 @@ const MetadataTableColumn = ({
   );
 
   const handleChangeDescription = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onUpdateField(field, { description: event.target.value });
       } else {

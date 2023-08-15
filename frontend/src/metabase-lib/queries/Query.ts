@@ -113,6 +113,10 @@ class QueryInner {
     return [];
   }
 
+  setDefaultQuery(): QueryInner {
+    return this;
+  }
+
   parseFieldReference(fieldRef, query = this): Dimension | null | undefined {
     return Dimension.parseMBQL(fieldRef, this._metadata, query);
   }

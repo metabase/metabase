@@ -7,7 +7,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.ref :as lib.ref]
    [metabase.mbql.util.match :as mbql.u.match]))
 
 (defmulti =
@@ -91,17 +91,6 @@
     (sequential? x) ((get-method = :dispatch-type/sequential) x y)
     :else           (clojure.core/= x y)))
 
-(defn ^:deprecated ref=
-  "Are two refs `x` and `y` equal?
-
-  DEPRECATED: use [[find-closest-matching-ref]] instead. This does not work if things like `:base-type` are missing or
-  differ slightly, or handle `:binning` correctly, let alone when things are broken more significantly. If we improve
-  type calculation it shouldn't break existing queries... right?"
-  [x y]
-  (or (= x y)
-      (= (lib.util/with-default-effective-type x)
-         (lib.util/with-default-effective-type y))))
-
 (defn- update-options-remove-namespaced-keys [a-ref]
   (lib.options/update-options a-ref (fn [options]
                                       (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
@@ -131,6 +120,8 @@
                                        update-options-remove-namespaced-keys
                                        ;; ignore type info
                                        #(lib.options/update-options % dissoc :base-type :effective-type)
+                                       ;; ignore temporal-unit
+                                       #(lib.options/update-options % dissoc :temporal-unit)
                                        ;; ignore join alias
                                        #(lib.options/update-options % dissoc :join-alias)]]
      (or (let [a-ref (xform a-ref)]
@@ -141,7 +132,33 @@
 
   ([metadata-providerable a-ref refs]
    (or (find-closest-matching-ref a-ref refs)
-       (mbql.u.match/match-one a-ref
-         [:field opts (field-id :guard integer?)]
-         (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-           (find-closest-matching-ref [:field opts field-name] refs))))))
+       (when metadata-providerable
+         (mbql.u.match/match-one a-ref
+           [:field opts (field-id :guard integer?)]
+           (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
+             (find-closest-matching-ref [:field opts field-name] refs)))))))
+
+(defn mark-selected-columns
+  "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching
+  with [[find-closest-matching-ref]].
+
+  Example usage:
+
+    ;; example (simplified) implementation of [[metabase.lib.field/fieldable-columns]]
+    ;;
+    ;; return (visibile-columns query), but if any of those appear in `:fields`, mark then `:selected?`
+    (mark-selected-columns (visibile-columns query) (:fields stage))"
+  ([columns selected-columns-or-refs]
+   (mark-selected-columns nil columns selected-columns-or-refs))
+
+  ([metadata-providerable columns selected-columns-or-refs]
+   (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
+         refs                   (mapv lib.ref/ref columns)
+         matching-selected-refs (into #{}
+                                      (map (fn [selected-ref]
+                                             (find-closest-matching-ref metadata-providerable selected-ref refs)))
+                                      selected-refs)]
+     (mapv (fn [col a-ref]
+             (assoc col :selected? (contains? matching-selected-refs a-ref)))
+           columns
+           refs))))
