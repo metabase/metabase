@@ -1,6 +1,6 @@
 import type { EChartsOption } from "echarts";
 
-import type { VisualizationSettings } from "metabase-types/api";
+import { VisualizationProps } from "../types";
 
 type EChartsEventHandler = {
   // TODO better types
@@ -23,8 +23,7 @@ export type EChartsConfig = {
 
 type EChartsMixin = (params: {
   chartType: any;
-  data: any;
-  settings: VisualizationSettings;
+  props: VisualizationProps;
   option: EChartsOption;
 }) => {
   option: EChartsOption;
@@ -32,12 +31,7 @@ type EChartsMixin = (params: {
   zrEventHandlers?: ZREventHandler[];
 };
 
-export const lineSeriesMixin: EChartsMixin = ({
-  chartType,
-  data,
-  settings,
-  option,
-}) => {
+export const lineSeriesMixin: EChartsMixin = () => {
   return {
     option: {
       xAxis: {
@@ -58,7 +52,10 @@ export const lineSeriesMixin: EChartsMixin = ({
   };
 };
 
-export const smoothSettingMixin: EChartsMixin = ({ settings, option }) => {
+export const smoothSettingMixin: EChartsMixin = ({
+  props: { settings },
+  option,
+}) => {
   if (Array.isArray(option?.series)) {
     option.series.forEach(series => {
       series.smooth = settings.smooth;
@@ -68,24 +65,34 @@ export const smoothSettingMixin: EChartsMixin = ({ settings, option }) => {
   return { option };
 };
 
-export const clickActionsMixin: EChartsMixin = ({ option }) => {
+export const clickActionsMixin: EChartsMixin = ({
+  props: { onVisualizationClick, data },
+  option,
+}) => {
   return {
     option,
     eventHandlers: [
-      { eventName: "click", handler: e => console.log("clicked", e) },
+      {
+        eventName: "click",
+        handler: e => {
+          // TODO replace placeholders and add all data needed
+          onVisualizationClick({
+            event: e.event.event,
+            dimensions: [{ value: 1, column: data.cols[0] }],
+          });
+        },
+      },
     ],
   };
 };
 
 export function useEChartsConfig({
   chartType,
-  data,
-  settings,
+  props,
   mixins,
 }: {
   chartType: any;
-  data: any;
-  settings: VisualizationSettings;
+  props: VisualizationProps;
   mixins: EChartsMixin[];
 }) {
   const emptyConfig: EChartsConfig = {
@@ -97,8 +104,7 @@ export function useEChartsConfig({
   return mixins.reduce((currentConfig: EChartsConfig, currentMixin) => {
     const next = currentMixin({
       chartType,
-      data,
-      settings,
+      props,
       option: currentConfig.option,
     });
 

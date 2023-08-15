@@ -28,8 +28,7 @@ Object.assign(EChartsTest, {
 export function EChartsTest(props: VisualizationProps) {
   const config = useEChartsConfig({
     chartType: "line",
-    data: props.data,
-    settings: props.settings,
+    props,
     mixins: [clickActionsMixin, lineSeriesMixin, smoothSettingMixin],
   });
 
