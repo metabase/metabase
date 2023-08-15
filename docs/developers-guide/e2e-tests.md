@@ -86,7 +86,7 @@ Please note the minus sign before the `@external` tag. For more details, consult
 
 ### Running tests with Snowplow involved
 
-Some tests depend on Snowplow and expect a running locally server. To run those tests, you need to:
+Tests that depend on Snowplow expect a running server. To run them, you need to:
 
 - run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
 - pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
