@@ -43,4 +43,41 @@ describe("scenarios > visualizations > rows", () => {
       },
     );
   });
+
+  it(`should display a row chart`, () => {
+    cy.createNativeQuestion(
+      {
+        name: "14285",
+        native: {
+          query: `
+            with temp as (
+              select 'a' col1, 51 column_two union all
+              select 'b', 41 union all
+              select 'c', 31 union all
+              select 'd', 21 union all
+              select 'e', 11 union all
+              select 'f', 4
+            ) select * from temp
+            order by 2 desc
+          `,
+          "template-tags": {},
+        },
+        display: "row",
+        visualization_settings: {
+          "graph.show_values": true, // so we can assert on them
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.get(".Visualization").within(() => {
+      ["a", "b", "c", "d", "e", "f"].forEach(letter => {
+        cy.findByText(letter);
+      });
+      [51, 41, 31, 21, 11, 4].forEach(value => {
+        cy.findByText(value);
+      });
+      cy.findByText("COLUMN_TWO");
+    });
+  });
 });

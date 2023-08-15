@@ -5,15 +5,15 @@ const PG_DB_ID = 2;
 const questionDetails = {
   native: {
     query: `select mytz as "ts", mytz::text as "tsAStext", state, mytz::time as "time - LOOK AT THIS COLUMN", mytz::time::text as "timeAStext", mytz::time(0) as "time(0) - ALL INCORRECT", mytz::time(3) as "time(3) - MOSTLY WORKING" from (
-      select '2016-05-04 16:29:59.268160-04:00'::timestamptz as mytz, 'incorrect' AS state union all
-      select '2016-05-04 16:29:59.412459-04:00'::timestamptz, 'good' union all
-      select '2016-05-08 13:14:42.926221-04:00'::timestamptz, 'incorrect' union all
-      select '2016-05-08 13:14:42.132020-04:00'::timestamptz, 'good' union all
-      select '2016-05-10 07:38:58.987352-04:00'::timestamptz, 'incorrect' union all
-      select '2016-05-10 07:38:58.001001-04:00'::timestamptz, 'good' union all
-      select '2016-05-12 11:01:23.000000-04:00'::timestamptz, 'ALWAYS incorrect' union all
-      select '2016-05-12 11:01:23.000-04:00'::timestamptz, 'ALWAYS incorrect' union all
-      select '2016-05-12 11:01:23-04:00'::timestamptz, 'ALWAYS incorrect'
+      select '2022-05-04 16:29:59.268160-04:00'::timestamptz as mytz, 'incorrect' AS state union all
+      select '2022-05-04 16:29:59.412459-04:00'::timestamptz, 'good' union all
+      select '2022-05-08 13:14:42.926221-04:00'::timestamptz, 'incorrect' union all
+      select '2022-05-08 13:14:42.132026-04:00'::timestamptz, 'good' union all
+      select '2022-05-10 07:38:58.987352-04:00'::timestamptz, 'incorrect' union all
+      select '2022-05-10 07:38:58.001001-04:00'::timestamptz, 'good' union all
+      select '2022-05-12 11:01:23.000000-04:00'::timestamptz, 'ALWAYS incorrect' union all
+      select '2022-05-12 11:01:23.000-04:00'::timestamptz, 'ALWAYS incorrect' union all
+      select '2022-05-12 11:01:23-04:00'::timestamptz, 'ALWAYS incorrect'
   )x`,
   },
   database: PG_DB_ID,

@@ -15,6 +15,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as schema]
    [toucan2.connection :as t2.conn]
@@ -221,7 +223,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn ^:private token-features :- #{su/NonBlankString}
+  (schema/defn token-features :- #{su/NonBlankString}
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -243,6 +245,24 @@
     (has-feature? :toucan-management)  ; -> false"
   [feature]
   (contains? (token-features) (name feature)))
+
+(defn ee-feature-error
+  "Returns an error that can be used to throw when an enterprise feature check fails."
+  [feature-name]
+  (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                feature-name)
+           {:status-code 402}))
+
+(mu/defn assert-has-feature
+  "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.
+   `feature-name` should be a localized string unless used in a CLI context.
+
+  (assert-has-feature :sandboxes (tru \"Sandboxing\"))
+  => throws an error with a message using \"Sandboxing\" as the feature name."
+  [feature-flag :- keyword?
+   feature-name :- [:or string? mu/localized-string-schema]]
+  (when-not (has-feature? feature-flag)
+    (throw (ee-feature-error feature-name))))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -284,31 +304,81 @@
   "Should we enable the Audit Logs interface in the Admin UI?"
   :audit-app)
 
+(define-premium-feature ^{:added "0.41.0"} enable-email-allow-list?
+  "Should we enable restrict email domains for subscription recipients?"
+  :email-allow-list)
+
+(define-premium-feature ^{:added "0.41.0"} enable-cache-granular-controls?
+  "Should we enable granular controls for cache TTL at the database, dashboard, and card level?"
+  :cache-granular-controls)
+
+(define-premium-feature ^{:added "0.41.0"} enable-config-text-file?
+  "Should we enable initialization on launch from a config file?"
+  :config-text-file)
+
 (define-premium-feature enable-sandboxes?
   "Should we enable data sandboxes (row-level permissions)?"
   :sandboxes)
 
-(define-premium-feature enable-sso?
-  "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
-  :sso)
+(define-premium-feature enable-sso-jwt?
+  "Should we enable JWT-based authentication?"
+  :sso-jwt)
 
-(define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
-  "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
-  notifications, more in the future)?"
-  :advanced-config)
+(define-premium-feature enable-sso-saml?
+  "Should we enable SAML-based authentication?"
+  :sso-saml)
+
+(define-premium-feature enable-sso-ldap?
+  "Should we enable advanced configuration for LDAP authentication?"
+  :sso-ldap)
+
+(define-premium-feature enable-sso-google?
+  "Should we enable advanced configuration for Google Sign-In authentication?"
+  :sso-google)
+
+(defn enable-any-sso?
+  "Should we enable any SSO-based authentication?"
+  []
+  (or (enable-sso-jwt?)
+      (enable-sso-saml?)
+      (enable-sso-ldap?)
+      (enable-sso-google?)))
+
+(define-premium-feature enable-session-timeout-config?
+  "Should we enable configuring session timeouts?"
+  :session-timeout-config)
+
+(define-premium-feature can-disable-password-login?
+  "Can we disable login by password?"
+  :disable-password-login)
+
+(define-premium-feature ^{:added "0.41.0"} enable-dashboard-subscription-filters?
+  "Should we enable filters for dashboard subscriptions?"
+  :dashboard-subscription-filters)
 
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-permissions?
   "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level
   permissions, etc.)?"
   :advanced-permissions)
 
-(define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
-  etc.)?"
-  :content-management)
+(define-premium-feature ^{:added "0.41.0"} enable-content-verification?
+  "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
+  :content-verification)
+
+(define-premium-feature ^{:added "0.41.0"} enable-official-collections?
+  "Should we enable Official Collections?"
+  :official-collections)
+
+(define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
+  "Should we enable SQL snippet folders?"
+  :snippet-collections)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"
+  :serialization)
+
+(define-premium-feature ^{:added "0.47.0"} enable-email-restrict-recipients?
+  "Enable restrict email recipients?"
   :serialization)
 
 (defsetting is-hosted?
@@ -363,10 +433,7 @@
 (defn- check-feature
   [feature]
   (or (= feature :none)
-      (if (= feature :any)
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        (enable-enhancements?)
-        (has-feature? feature))))
+      (has-feature? feature)))
 
 (defn dynamic-ee-oss-fn
   "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the
@@ -473,9 +540,9 @@
 
   ###### `:feature`
 
-  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:any` to
-  require a valid premium token with at least one feature, but no specific feature. Use `:none` to always run the
-  EE implementation if available, regardless of token.
+  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:none` to
+  always run the EE implementation if available, regardless of token (WARNING: this is not recommended for most use
+  cases. You probably want to gate your code by a specific premium feature.)
 
   ###### `:fallback`
 

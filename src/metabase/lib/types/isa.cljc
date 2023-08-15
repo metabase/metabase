@@ -3,7 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.types.constants :as lib.types.constants]
-   [metabase.lib.util :as lib.u]
+   [metabase.lib.util :as lib.util]
    [metabase.types])
   (:refer-clojure :exclude [isa? any? boolean? number? string? integer?]))
 
@@ -105,13 +105,13 @@
   "Is `column` a dimension?"
   [column]
   (and column
-       (not= (:lib/source column) :source/aggregation)
+       (not= (:lib/source column) :source/aggregations)
        (not (description? column))))
 
 (defn ^:export metric?
   "Is `column` a metric?"
   [column]
-  (and (not= (:lib/source column) :source/breakout)
+  (and (not= (:lib/source column) :source/breakouts)
        (summable? column)))
 
 (defn ^:export foreign-key?
@@ -253,6 +253,6 @@
       ;; comment from isa.js:
       ;; > FIXME: columns of nested questions at this moment miss table_id value
       ;; > which makes it impossible to match them with their tables that are nested cards
-      (if (lib.u/string-table-id->card-id table-id)
+      (if (lib.util/legacy-string-table-id->card-id table-id)
         pk?
         (and pk? (= (:table-id column) table-id))))))

@@ -29,6 +29,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -583,7 +584,7 @@
    (fn [^Connection conn]
      (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
                        (all-schemas driver conn catalog))]
-       {:tables (reduce set/union schemas)}))))
+       {:tables (reduce set/union #{} schemas)}))))
 
 (defmethod driver/describe-table :presto-jdbc
   [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]

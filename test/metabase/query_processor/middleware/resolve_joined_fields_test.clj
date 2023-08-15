@@ -5,8 +5,7 @@
    [metabase.query-processor.middleware.resolve-joined-fields
     :as resolve-joined-fields]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.util :as u]))
 
 (defn- wrap-joined-fields [query]
   (mt/with-everything-store
@@ -106,10 +105,8 @@
                              (mt/$ids [:= [:field %products.category {:join-alias "products"}] "Widget"]))
                    (wrap-joined-fields joins-in-joins-query)))
             (testing "Can we actually run the join-in-joins query?"
-              (is (schema= {:status    (s/eq :completed)
-                            :row_count (s/eq 1)
-                            s/Keyword  s/Any}
-                           (qp/process-query (assoc-in joins-in-joins-query [:query :limit] 1))))))))
+              (is (=? {:status :completed, :row_count 1}
+                      (qp/process-query (assoc-in joins-in-joins-query [:query :limit] 1))))))))
 
       (testing "multiple joins in joins query"
         (let [joins-in-joins-query
@@ -191,10 +188,9 @@
         (testing "Middleware should handle the query"
           (is (some? (wrap-joined-fields query))))
         (testing "Should be able tor run query end-to-end"
-          (is (schema= {:status    (s/eq :completed)
-                        :row_count (s/eq 10)
-                        s/Keyword  s/Any}
-                       (qp/process-query query))))))))
+          (is (=? {:status    :completed
+                   :row_count 10}
+                  (qp/process-query query))))))))
 
 (deftest handle-unwrapped-joined-fields-correctly-test
   (mt/dataset sample-dataset

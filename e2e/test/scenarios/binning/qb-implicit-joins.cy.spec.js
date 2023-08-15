@@ -45,7 +45,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
-      cy.get(".cellData").should("contain", "April, 1958").and("contain", "37");
+      cy.get(".cellData").should("contain", "April 1958").and("contain", "37");
     });
 
     it("should work for number", () => {
@@ -110,7 +110,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
-      cy.get(".cellData").should("contain", "April, 1958").and("contain", "37");
+      cy.get(".cellData").should("contain", "April 1958").and("contain", "37");
     });
 
     it("should work for number", () => {

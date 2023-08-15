@@ -2,8 +2,8 @@
   (:require
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Shared Util Functions                                                 |
@@ -83,7 +83,7 @@
       (doseq [[table-id table-perms] new-schema-perms]
         (update-table-download-permissions! group-id db-id schema table-id table-perms)))))
 
-(s/defn update-db-download-permissions!
+(mu/defn update-db-download-permissions!
   "Update the download permissions graph for a database.
 
   This mostly works similar to [[metabase.models.permission/update-db-data-access-permissions!]], with a few key
@@ -91,7 +91,7 @@
     - Permissions have three levels: full, limited, and none.
     - Native query download permissions are fully inferred from the non-native download permissions. For more details,
       see the docstring for [[metabase.models.permissions/update-native-download-permissions!]]."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-download-perms :- perms/DownloadPermissionsGraph]
+  [group-id :- ms/PositiveInt db-id :- ms/PositiveInt new-download-perms :- perms/DownloadPermissionsGraph]
   (when-not (premium-features/enable-advanced-permissions?)
     (throw (perms/ee-permissions-exception :download)))
   (when-let [schemas (:schemas new-download-perms)]
@@ -155,9 +155,9 @@
       (doseq [[table-id table-perms] new-schema-perms]
         (update-table-data-model-permissions! group-id db-id schema table-id table-perms)))))
 
-(s/defn update-db-data-model-permissions!
+(mu/defn update-db-data-model-permissions!
   "Update the data model permissions graph for a database."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-data-model-perms :- perms/DataModelPermissionsGraph]
+  [group-id :- ms/PositiveInt db-id :- ms/PositiveInt new-data-model-perms :- perms/DataModelPermissionsGraph]
   (when-not (premium-features/enable-advanced-permissions?)
     (throw (perms/ee-permissions-exception :data-model)))
   (when-let [schemas (:schemas new-data-model-perms)]
@@ -186,9 +186,9 @@
   [db-id]
   (perms/feature-perms-path :details :yes db-id))
 
-(s/defn update-db-details-permissions!
+(mu/defn update-db-details-permissions!
   "Update the DB details permissions for a database."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/DetailsPermissions]
+  [group-id :- ms/PositiveInt db-id :- ms/PositiveInt new-perms :- perms/DetailsPermissions]
   (when-not (premium-features/enable-advanced-permissions?)
     (throw (perms/ee-permissions-exception :details)))
   (case new-perms
@@ -200,9 +200,9 @@
     :no
     (revoke-permissions! :details :yes group-id db-id)))
 
-(s/defn update-db-execute-permissions!
+(mu/defn update-db-execute-permissions!
   "Update the DB details permissions for a database."
-  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/ExecutePermissions]
+  [group-id :- ms/PositiveInt db-id :- ms/PositiveInt new-perms :- perms/ExecutePermissions]
   (when-not (premium-features/enable-advanced-permissions?)
     (throw (perms/ee-permissions-exception :execute)))
   (revoke-permissions! :execute :all group-id db-id)

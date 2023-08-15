@@ -6,9 +6,8 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema :as lib.schema]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -29,18 +28,9 @@
   place, [[metabase.models.query.permissions-test/invalid-queries-test]]."
   false)
 
-(defn- skip-metadata-calculation-tests? [legacy-query]
-   ;; #29907: wrong column name for joined columns in `:breakout`
-   (mbql.u/match-one legacy-query
-     {:breakout breakouts}
-     (mbql.u/match-one breakouts
-       [:field _id-or-name {:join-alias _join-alias}]
-       "#29907")))
-
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}
-  (when-not (or *skip-conversion-tests*
-                (skip-metadata-calculation-tests? original-query))
+  (when-not *skip-conversion-tests*
     (do-with-legacy-query-testing-context
      original-query
      (^:once fn* []
@@ -51,9 +41,8 @@
           (do-with-pMBQL-query-testing-context
            pMBQL
            (^:once fn* []
-            (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
-                  mlv2-query        (lib/query metadata-provider pMBQL)
-                  mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
+            (let [mlv2-query    (lib/query (qp.store/metadata-provider) pMBQL)
+                  mlv2-metadata (lib.metadata.calculation/returned-columns mlv2-query)]
               ;; Just make sure we can calculate some metadata (any metadata, even nothing) without throwing an
               ;; Exception at this point; making sure it is CORRECT will be the next step after this.
               (is (any? mlv2-metadata)))))))))))

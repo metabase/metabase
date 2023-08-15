@@ -1,4 +1,4 @@
-import { ChangeEvent, useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
@@ -47,7 +47,7 @@ const ParameterSettings = ({
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
   const handleNameChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       onChangeName(event.target.value);
     },
     [onChangeName],

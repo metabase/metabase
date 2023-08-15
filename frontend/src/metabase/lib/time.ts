@@ -10,8 +10,10 @@ addAbbreviatedLocale();
 const TIME_FORMAT_24_HOUR = "HH:mm";
 
 const TEXT_UNIT_FORMATS = {
-  "day-of-week": (value: string) =>
-    moment.parseZone(value, "ddd").startOf("day"),
+  "day-of-week": (value: string) => {
+    const day = moment.parseZone(value, "ddd").startOf("day");
+    return day.isValid() ? day : moment.parseZone(value).startOf("day");
+  },
 };
 
 const NUMERIC_UNIT_FORMATS = {

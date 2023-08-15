@@ -46,7 +46,7 @@ const INSTANCE_ANALYTICS_COLLECTION = createMockCollection({
 });
 
 const setup = async ({ dashboard }: { dashboard: Dashboard }) => {
-  setupCollectionsEndpoints({collections: []});
+  setupCollectionsEndpoints({ collections: [] });
   setupCollectionByIdEndpoint({ collections: [INSTANCE_ANALYTICS_COLLECTION] });
   setupBookmarksEndpoints([]);
 
@@ -64,7 +64,7 @@ const setup = async ({ dashboard }: { dashboard: Dashboard }) => {
     addTextDashCardToDashboard: jest.fn(),
     addLinkDashCardToDashboard: jest.fn(),
     fetchDashboard: jest.fn(),
-    saveDashboardAndCards: jest.fn(),
+    updateDashboardAndCards: jest.fn(),
     setDashboardAttribute: jest.fn(),
     onEditingChange: jest.fn(),
     onRefreshPeriodChange: jest.fn(),
@@ -77,11 +77,14 @@ const setup = async ({ dashboard }: { dashboard: Dashboard }) => {
       name: "",
       props: {},
     },
-    location: {},
+    location: {
+      query: {},
+    },
     setSidebar: jest.fn(),
     closeSidebar: jest.fn(),
     addActionToDashboard: jest.fn(),
     databases: {},
+    params: { tabSlug: undefined },
   };
 
   renderWithProviders(<DashboardHeader {...dashboardHeaderProps} />);

@@ -48,8 +48,8 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
       )}
       {modelCard.creator && (
         <ModelInfoSection>
-          <ModelInfoTitle>{t`Contact`}</ModelInfoTitle>
-          <ModelInfoText aria-label={t`Contact`}>
+          <ModelInfoTitle>{t`Created by`}</ModelInfoTitle>
+          <ModelInfoText aria-label={t`Created by`}>
             {modelCard.creator.common_name}
           </ModelInfoText>
         </ModelInfoSection>

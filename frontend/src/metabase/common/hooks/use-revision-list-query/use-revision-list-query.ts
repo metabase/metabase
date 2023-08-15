@@ -15,5 +15,6 @@ export const useRevisionListQuery = (
     getLoading: RevisionEntity.selectors.getLoading,
     getLoaded: RevisionEntity.selectors.getLoaded,
     getError: RevisionEntity.selectors.getError,
+    getListMetadata: RevisionEntity.selectors.getListMetadata,
   });
 };

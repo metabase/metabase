@@ -34,7 +34,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByLabelText("Date").type("10/20/2018");
+      cy.findByLabelText("Date").type("10/20/2024");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -47,7 +47,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should create an event within the default timeline", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -60,7 +60,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC2");
-      cy.findByLabelText("Date").type("10/30/2018");
+      cy.findByLabelText("Date").type("10/30/2024");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -76,9 +76,9 @@ describe("scenarios > organization > timelines > question", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "v1", timestamp: "2015-01-01T00:00:00Z" },
-          { name: "v2", timestamp: "2017-01-01T00:00:00Z" },
-          { name: "v3", timestamp: "2020-01-01T00:00:00Z" },
+          { name: "v1", timestamp: "2027-01-01T00:00:00Z" },
+          { name: "v2", timestamp: "2023-01-01T00:00:00Z" },
+          { name: "v3", timestamp: "2026-01-01T00:00:00Z" },
         ],
       });
 
@@ -107,7 +107,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should edit an event", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -139,7 +139,7 @@ describe("scenarios > organization > timelines > question", () => {
       });
       cy.createTimelineWithEvents({
         timeline: { name: "Builds" },
-        events: [{ name: "RC2", timestamp: "2018-10-20T00:00:00Z" }],
+        events: [{ name: "RC2", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -167,7 +167,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should archive and unarchive an event", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -201,6 +201,7 @@ describe("scenarios > organization > timelines > question", () => {
           {
             name: "RC1",
             description: "[Release notes](https://metabase.test)",
+            timestamp: "2024-10-20T00:00:00Z",
           },
         ],
       });
@@ -217,7 +218,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should show events for ad-hoc questions", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
       visitQuestionAdhoc({
@@ -245,7 +246,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should not show events for non-timeseries questions", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
       visitQuestionAdhoc({
@@ -275,7 +276,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should show events for native queries", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2018-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
       visitQuestionAdhoc({
@@ -302,14 +303,14 @@ describe("scenarios > organization > timelines > question", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2018-10-20T00:00:00Z", icon: "cloud" },
+          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "cloud" },
         ],
       });
 
       cy.createTimelineWithEvents({
         timeline: { name: "Timeline for collection", collection_id: 1 },
         events: [
-          { name: "TC1", timestamp: "2016-05-20T00:00:00Z", icon: "warning" },
+          { name: "TC1", timestamp: "2022-05-20T00:00:00Z", icon: "warning" },
         ],
       });
 
@@ -339,7 +340,7 @@ describe("scenarios > organization > timelines > question", () => {
       // should show a newly created event
       cy.button("Add an event").click();
       cy.findByLabelText("Event name").type("RC2");
-      cy.findByLabelText("Date").type("10/20/2017");
+      cy.findByLabelText("Date").type("10/20/2023");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -424,7 +425,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.signInAsAdmin();
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1" }],
+        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
       cy.signOut();
       cy.signIn("readonly");

@@ -7,16 +7,19 @@
    TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
    At some point this ought to be reworked to be case-insensitive and cleaned up."
   (:require
+   [malli.core :as mc]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.schema.helpers :as helpers]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.segment :refer [Segment]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -33,7 +36,7 @@
     (or (:filter (segment-id->definition segment-id))
         (throw (IllegalArgumentException. (tru "Segment {0} does not exist, or is invalid." segment-id))))))
 
-(s/defn ^:private expand-segments :- mbql.s/Query
+(mu/defn ^:private expand-segments :- mbql.s/Query
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-let [segments (mbql.u/match inner-query :segment)]
     (replace-segment-clauses outer-query (segment-clauses->id->definition segments))
@@ -51,16 +54,18 @@
   (mbql.u/match query [:metric (_ :guard (complement mbql.u/ga-id?))]))
 
 (def ^:private MetricInfo
-  {:id         su/IntGreaterThanZero
-   :name       su/NonBlankString
-   :definition {:aggregation             [(s/one mbql.s/Aggregation "aggregation clause")]
-                (s/optional-key :filter) (s/maybe mbql.s/Filter)
-                s/Keyword                s/Any}})
+  [:map
+   [:id         ms/PositiveInt]
+   [:name       ms/NonBlankString]
+   [:definition [:map
+                 [:aggregation [:tuple mbql.s/Aggregation]]
+                 [:filter {:optional true} [:maybe mbql.s/Filter]]]]])
 
-(def ^:private ^{:arglists '([metric-info])} metric-info-validation-errors (s/checker MetricInfo))
+(defn- metric-info-validation-errors [metric-info]
+  (me/humanize (mc/explain MetricInfo metric-info)))
 
-(s/defn ^:private metric-clauses->id->info :- {su/IntGreaterThanZero MetricInfo}
-  [metric-clauses :- [mbql.s/metric]]
+(mu/defn ^:private metric-clauses->id->info :- [:map-of ms/PositiveInt MetricInfo]
+  [metric-clauses :- [:sequential mbql.s/metric]]
   (when (seq metric-clauses)
     (m/index-by :id (for [metric (t2/select [Metric :id :name :definition] :id [:in (set (map second metric-clauses))])
                           :let   [errors (u/prog1 (metric-info-validation-errors metric)
@@ -69,17 +74,18 @@
                           :when  (not errors)]
                       metric))))
 
-(s/defn ^:private add-metrics-filters-this-level :- mbql.s/MBQLQuery
-  [inner-query :- mbql.s/MBQLQuery this-level-metric-id->info :- {su/IntGreaterThanZero MetricInfo}]
+(mu/defn ^:private add-metrics-filters-this-level :- mbql.s/MBQLQuery
+  [inner-query                :- mbql.s/MBQLQuery
+   this-level-metric-id->info :- [:map-of ms/PositiveInt MetricInfo]]
   (let [filters (for [{{filter-clause :filter} :definition} (vals this-level-metric-id->info)
                       :when filter-clause]
                   filter-clause)]
     (reduce mbql.u/add-filter-clause-to-inner-query inner-query filters)))
 
-(s/defn ^:private metric-info->ag-clause :- mbql.s/Aggregation
+(mu/defn ^:private metric-info->ag-clause :- mbql.s/Aggregation
   "Return an appropriate aggregation clause from `metric-info`."
   [{{[aggregation] :aggregation} :definition, metric-name :name} :- MetricInfo
-   {:keys [use-metric-name-as-display-name?]}                    :- {:use-metric-name-as-display-name? s/Bool}]
+   {:keys [use-metric-name-as-display-name?]}                    :- [:map [:use-metric-name-as-display-name? :boolean]]]
   (if-not use-metric-name-as-display-name?
     aggregation
     ;; try to give the resulting aggregation the name of the Metric it came from, unless it already has a display
@@ -94,8 +100,9 @@
       _
       [:aggregation-options &match {:display-name metric-name}])))
 
-(s/defn ^:private replace-metrics-aggregations-this-level :- mbql.s/MBQLQuery
-  [inner-query :- mbql.s/MBQLQuery this-level-metric-id->info :- {su/IntGreaterThanZero MetricInfo}]
+(mu/defn ^:private replace-metrics-aggregations-this-level :- mbql.s/MBQLQuery
+  [inner-query                :- mbql.s/MBQLQuery
+   this-level-metric-id->info :- [:map-of ms/PositiveInt MetricInfo]]
   (letfn [(metric [metric-id]
             (or (get this-level-metric-id->info metric-id)
                 (throw (ex-info (tru "Metric {0} does not exist, or is invalid." metric-id)
@@ -119,7 +126,7 @@
       [:metric (metric-id :guard (complement mbql.u/ga-id?))]
       (metric-info->ag-clause (metric metric-id) {:use-metric-name-as-display-name? true}))))
 
-(s/defn ^:private metric-ids-this-level :- (s/maybe #{su/IntGreaterThanZero})
+(mu/defn ^:private metric-ids-this-level :- [:maybe [:set ms/PositiveInt]]
   [inner-query]
   (when (map? inner-query)
     (when-let [aggregations (:aggregation inner-query)]
@@ -129,23 +136,25 @@
           [:metric (metric-id :guard (complement mbql.u/ga-id?))]
           metric-id))))))
 
-(s/defn ^:private expand-metrics-clauses-this-level :- (s/constrained
-                                                        mbql.s/MBQLQuery
-                                                        (complement metric-ids-this-level)
-                                                        "Inner MBQL query with no :metric clauses at this level")
-  [inner-query :- mbql.s/MBQLQuery metric-id->info :- {su/IntGreaterThanZero MetricInfo}]
+(mu/defn ^:private expand-metrics-clauses-this-level :- [:and
+                                                         mbql.s/MBQLQuery
+                                                         [:fn
+                                                          {:error/message "Inner MBQL query with no :metric clauses at this level"}
+                                                          (complement metric-ids-this-level)]]
+  [inner-query     :- mbql.s/MBQLQuery
+   metric-id->info :- [:map-of ms/PositiveInt MetricInfo]]
   (let [this-level-metric-ids      (metric-ids-this-level inner-query)
         this-level-metric-id->info (select-keys metric-id->info this-level-metric-ids)]
     (-> inner-query
         (add-metrics-filters-this-level this-level-metric-id->info)
         (replace-metrics-aggregations-this-level this-level-metric-id->info))))
 
-(s/defn ^:private expand-metrics-clauses :- su/Map
+(mu/defn ^:private expand-metrics-clauses :- ms/Map
   "Add appropriate `filter` and `aggregation` clauses for a sequence of Metrics.
 
     (expand-metrics-clauses {:query {}} [[:metric 10]])
     ;; -> {:query {:aggregation [[:count]], :filter [:= [:field-id 10] 20]}}"
-  [query :- su/Map metric-id->info :- (su/non-empty {su/IntGreaterThanZero MetricInfo})]
+  [query :- ms/Map metric-id->info :- (helpers/non-empty [:map-of ms/PositiveInt MetricInfo])]
   (mbql.u/replace query
     (m :guard metric-ids-this-level)
     (-> m
@@ -154,7 +163,7 @@
         ;; then recursively expand things at any other levels.
         (expand-metrics-clauses metric-id->info))))
 
-(s/defn ^:private expand-metrics :- mbql.s/Query
+(mu/defn ^:private expand-metrics :- mbql.s/Query
   [query :- mbql.s/Query]
   (if-let [metrics (metrics query)]
     (expand-metrics-clauses query (metric-clauses->id->info metrics))
@@ -165,7 +174,7 @@
 ;;; |                                                   MIDDLEWARE                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private expand-metrics-and-segments  :- mbql.s/Query
+(mu/defn ^:private expand-metrics-and-segments  :- mbql.s/Query
   "Expand the macros (`segment`, `metric`) in a `query`."
   [query  :- mbql.s/Query]
   (-> query

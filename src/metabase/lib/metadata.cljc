@@ -65,7 +65,8 @@
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
   [:map
-   [:lib/type  [:= :metadata/field]] ; TODO -- should this be changed to `:metadata/column`?
+   {:error/message "Valid column metadata"}
+   [:lib/type  [:= :metadata/column]]
    [:name      ::lib.schema.common/non-blank-string]
    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
    [:base-type ::lib.schema.common/base-type]
@@ -107,6 +108,7 @@
   massaged into a sequence of `ColumnMetadata`s just yet. See [[metabase.lib.card/card-metadata-columns]] that
   converts these as needed."
   [:map
+   {:error/message "Valid Card metadata"}
    [:lib/type [:= :metadata/card]]
    [:id   ::lib.schema.id/card]
    [:name ::lib.schema.common/non-blank-string]
@@ -115,26 +117,52 @@
    [:dataset-query   {:optional true} :map]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential :map]]]])
+   [:result-metadata {:optional true} [:maybe [:sequential :map]]]
+   ;; whether this Card is a Model or not.
+   [:dataset         {:optional true} :boolean]
+   ;; I think Database ID is always supposed to be present for a Card, altho our mock metadata in tests might not have
+   ;; it. It's `NOT NULL` in the application database. Probably safe to generally assume it's there.
+   ;;
+   ;; TODO -- confirm whether we can make this non-optional in the schema or not.
+   [:database-id     {:optional true} [:maybe ::lib.schema.id/database]]
+   ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
+   ;; particular Table (unless they are against MongoDB)... for MBQL queries it should be populated however.
+   [:table-id        {:optional true} [:maybe ::lib.schema.id/table]]])
 
-(def ^:private SegmentMetadata
+(def SegmentMetadata
   "More or less the same as a [[metabase.models.segment]], but with kebab-case keys."
   [:map
+   {:error/message "Valid Segment metadata"}
    [:lib/type [:= :metadata/segment]]
    [:id       ::lib.schema.id/segment]
-   [:name     ::lib.schema.common/non-blank-string]])
+   [:name     ::lib.schema.common/non-blank-string]
+   [:table-id   ::lib.schema.id/table]
+   ;; the MBQL snippet defining this Segment; this may still be in legacy
+   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
+   [:definition :map]
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(def ^:private MetricMetadata
-  "More or less the same as a [[metabase.models.metric]], but with kebab-case keys."
+(def MetricMetadata
+  "Malli schema for a legacy v1 [[metabase.models.metric]], but with kebab-case keys. A Metric defines an MBQL snippet
+  with an aggregation and optionally a filter clause. You can add a `:metric` reference to the `:aggregations` in an
+  MBQL stage, and the QP treats it like a macro and expands it to the underlying clauses --
+  see [[metabase.query-processor.middleware.expand-macros]]."
   [:map
-   [:lib/type [:= :metadata/metric]]
-   [:id       ::lib.schema.id/metric]
-   [:name     ::lib.schema.common/non-blank-string]])
+   {:error/message "Valid Metric metadata"}
+   [:lib/type   [:= :metadata/metric]]
+   [:id         ::lib.schema.id/metric]
+   [:name       ::lib.schema.common/non-blank-string]
+   [:table-id   ::lib.schema.id/table]
+   ;; the MBQL snippet defining this Metric; this may still be in legacy
+   ;; format. [[metabase.lib.metric/metric-definition]] handles conversion to pMBQL if needed.
+   [:definition :map]
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def TableMetadata
   "Schema for metadata about a specific [[metabase.models.table]]. More or less the same as a [[metabase.models.table]],
   but with kebab-case keys."
   [:map
+   {:error/message "Valid Table metadata"}
    [:lib/type [:= :metadata/table]]
    [:id       ::lib.schema.id/table]
    [:name     ::lib.schema.common/non-blank-string]
@@ -145,6 +173,7 @@
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
   the frontend Query Builder."
   [:map
+   {:error/message "Valid Database metadata"}
    [:lib/type [:= :metadata/database]]
    [:id ::lib.schema.id/database]
    ;; Like `:fields` for [[TableMetadata]], this is now optional -- we can fetch the Tables separately if needed.
@@ -155,7 +184,9 @@
 
 (def MetadataProvider
   "Schema for something that satisfies the [[lib.metadata.protocols/MetadataProvider]] protocol."
-  [:fn lib.metadata.protocols/metadata-provider?])
+  [:fn
+   {:error/message "Valid MetadataProvider"}
+   #'lib.metadata.protocols/metadata-provider?])
 
 (def MetadataProviderable
   "Something that can be used to get a MetadataProvider. Either a MetadataProvider, or a map with a MetadataProvider in
@@ -183,59 +214,23 @@
   [metadata-providerable :- MetadataProviderable]
   (lib.metadata.protocols/tables (->metadata-provider metadata-providerable)))
 
-(mu/defn table :- [:or TableMetadata CardMetadata]
+(mu/defn table :- TableMetadata
   "Find metadata for a specific Table, either by string `table-name`, and optionally `schema`, or by ID."
-  ([metadata-providerable :- MetadataProviderable
-    table-id :- [:or
-                 ::lib.schema.id/table
-                 ::lib.schema.id/table-card-id-string]]
-   (if-let [card-id (lib.util/string-table-id->card-id table-id)]
-     (lib.metadata.protocols/card  (->metadata-provider metadata-providerable) card-id)
-     (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id)))
-
-  ([metadata-providerable :- MetadataProviderable
-    table-schema          :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name            :- ::lib.schema.common/non-blank-string]
-   (some (fn [table-metadata]
-           (when (and (or (nil? table-schema)
-                          (= (:schema table-metadata) table-schema))
-                      (= (:name table-metadata) table-name))
-             table-metadata))
-         (tables metadata-providerable))))
+  [metadata-providerable :- MetadataProviderable
+   table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
 (mu/defn fields :- [:sequential ColumnMetadata]
   "Get metadata about all the Fields belonging to a specific Table."
-  ([metadata-providerable :- MetadataProviderable
-    table-id              :- ::lib.schema.id/table]
-   (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
-
-  ([metadata-provider
-    table-schema      :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name        :- ::lib.schema.common/non-blank-string]
-   (fields metadata-provider
-           (:id (table metadata-provider table-schema table-name)))))
+  [metadata-providerable :- MetadataProviderable
+   table-id              :- ::lib.schema.id/table]
+  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
 
 (mu/defn field :- ColumnMetadata
   "Get metadata about a specific Field in the Database we're querying."
-  ([metadata-providerable :- MetadataProviderable
-    field-id              :- ::lib.schema.id/field]
-   (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
-
-  ;; TODO -- we need to figure out how to deal with nested fields... should field-name be a varargs thing?
-  ([metadata-providerable :- MetadataProviderable
-    table-id              :- ::lib.schema.id/table
-    field-name            :- ::lib.schema.common/non-blank-string]
-   (some (fn [field-metadata]
-           (when (= (:name field-metadata) field-name)
-             field-metadata))
-         (fields metadata-providerable table-id)))
-
-  ([metadata-providerable :- MetadataProviderable
-    table-schema          :- [:maybe ::lib.schema.common/non-blank-string]
-    table-name            :- ::lib.schema.common/non-blank-string
-    field-name            :- ::lib.schema.common/non-blank-string]
-   (let [table-metadata (table metadata-providerable table-schema table-name)]
-     (field metadata-providerable (:id table-metadata) field-name))))
+  [metadata-providerable :- MetadataProviderable
+   field-id              :- ::lib.schema.id/field]
+  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
 
 ;;;; Stage metadata
 
@@ -323,3 +318,15 @@
   [metadata-providerable :- MetadataProviderable
    metric-id             :- ::lib.schema.id/metric]
   (lib.metadata.protocols/metric (->metadata-provider metadata-providerable) metric-id))
+
+(mu/defn table-or-card :- [:maybe [:or CardMetadata TableMetadata]]
+  "Convenience, for frontend JS usage (see #31915): look up metadata based on Table ID, handling legacy-style
+  `card__<id>` strings as well. Throws an Exception (Clj-only, due to Malli validation) if passed an integer Table ID
+  and the Table does not exist, since this is a real error; however if passed a `card__<id>` that does not exist,
+  simply returns `nil` (since we do not have a strict expectation that Cards always be present in the
+  MetadataProvider)."
+  [metadata-providerable :- MetadataProviderable
+   table-id              :- [:or ::lib.schema.id/table :string]]
+  (if-let [card-id (lib.util/legacy-string-table-id->card-id table-id)]
+    (card metadata-providerable card-id)
+    (table metadata-providerable table-id)))

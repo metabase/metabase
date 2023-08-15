@@ -4,6 +4,7 @@ import {
   visitDashboard,
   openPeopleTable,
   describeEE,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -75,6 +76,7 @@ describeEE("search > recently viewed > enterprise features", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     cy.request("POST", "/api/moderation-review", {
       status: "verified",

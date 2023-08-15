@@ -27,7 +27,7 @@ describe.skip("issue 18219", () => {
           visitQuestion(questionId);
 
           cy.findByText("Created At: Year");
-          cy.findByText("2016");
+          cy.findByText("2022");
           cy.findByText("744");
 
           downloadAndAssert({ fileType, questionId, raw: true }, assertion);
@@ -39,7 +39,7 @@ describe.skip("issue 18219", () => {
       expect(sheet["A1"].v).to.eq("Created At: Year");
 
       if (fileType === "csv") {
-        expect(sheet["A2"].v).to.eq("2016");
+        expect(sheet["A2"].v).to.eq("2022");
       }
 
       if (fileType === "xlsx") {
@@ -55,7 +55,7 @@ describe.skip("issue 18219", () => {
          * Because of the excel date format, we cannot assert on the raw value `v`.
          * Rather, we have to do it on the parsed value `w`.
          */
-        expect(sheet["A2"].w).to.eq("2016");
+        expect(sheet["A2"].w).to.eq("2022");
       }
     }
   });

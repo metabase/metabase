@@ -25,8 +25,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (clojure.lang ExceptionInfo)
-   (java.util UUID)))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,7 +58,7 @@
 
 (deftest set-session-cookie-test
   (mt/with-temporary-setting-values [session-timeout nil]
-    (let [uuid (UUID/randomUUID)
+    (let [uuid (random-uuid)
           request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
       (testing "should unset the old SESSION_ID if it's present"
         (is (= {:value     (str uuid)
@@ -102,7 +101,7 @@
                               [{"origin" "http://mysite.com"}   false]]]
     (testing (format "With headers %s we %s set the 'secure' attribute on the session cookie"
                      (pr-str headers) (if expected "SHOULD" "SHOULD NOT"))
-      (let [session {:id   (UUID/randomUUID)
+      (let [session {:id   (random-uuid)
                      :type :normal}
             actual  (-> (mw.session/set-session-cookies {:headers headers} {} session (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))
                         (get-in [:cookies "metabase.SESSION" :secure])
@@ -119,7 +118,7 @@
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
           (t2.with-temp/with-temp [User {user-id :id}]
-            (let [session-id (str (UUID/randomUUID))]
+            (let [session-id (str (random-uuid))]
               (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
                 (if expected
@@ -408,7 +407,7 @@
     (testing "w/ Session"
       (testing "for user with no `:locale`"
         (t2.with-temp/with-temp [User {user-id :id}]
-          (let [session-id (str (UUID/randomUUID))]
+          (let [session-id (str (random-uuid))]
             (t2/insert! Session {:id session-id, :user_id user-id})
             (is (= nil
                    (session-locale session-id)))
@@ -419,7 +418,7 @@
 
       (testing "for user *with* `:locale`"
         (t2.with-temp/with-temp [User {user-id :id} {:locale "es-MX"}]
-          (let [session-id (str (UUID/randomUUID))]
+          (let [session-id (str (random-uuid))]
             (t2/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
                    (session-locale session-id)))

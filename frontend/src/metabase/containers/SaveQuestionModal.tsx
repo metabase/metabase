@@ -1,4 +1,4 @@
-import { Component } from "react";
+import { useCallback } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -6,6 +6,10 @@ import * as Yup from "yup";
 import ModalContent from "metabase/components/ModalContent";
 import FormProvider from "metabase/core/components/FormProvider/FormProvider";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
+import {
+  CreateCollectionOnTheGo,
+  OnClickNewCollection,
+} from "metabase/containers/CreateCollectionOnTheGo";
 import Form from "metabase/core/components/Form";
 import FormInput from "metabase/core/components/FormInput";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -17,6 +21,8 @@ import FormRadio from "metabase/core/components/FormRadio";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { CollectionId } from "metabase-types/api";
 import * as Errors from "metabase/core/utils/errors";
+import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/lib/redux";
 import Question from "metabase-lib/Question";
 
 import "./SaveQuestionModal.css";
@@ -50,6 +56,7 @@ interface SaveQuestionModalProps {
   onClose: () => void;
   multiStep?: boolean;
   initialCollectionId?: number;
+  onClickNewCollection?: OnClickNewCollection;
 }
 
 interface FormValues {
@@ -66,163 +73,173 @@ const isOverwriteMode = (
   return saveType === "overwrite";
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
-  handleSubmit = async (details: FormValues) => {
-    const { originalQuestion } = this.props;
+export const SaveQuestionModal = ({
+  question,
+  originalQuestion,
+  onCreate,
+  onSave,
+  onClose,
+  multiStep,
+  initialCollectionId,
+  onClickNewCollection,
+}: SaveQuestionModalProps) => {
+  const handleOverwrite = useCallback(
+    async (originalQuestion: Question, details: FormValues) => {
+      const collectionId = canonicalCollectionId(
+        originalQuestion.collectionId(),
+      );
+      const displayName = originalQuestion.displayName();
+      const description = originalQuestion.description();
 
-    if (isOverwriteMode(originalQuestion, details.saveType)) {
-      await this.handleOverwrite(originalQuestion, details);
-    } else {
-      await this.handleCreate(details);
-    }
+      const newQuestion = question
+        .setDisplayName(displayName)
+        .setDescription(description)
+        .setCollectionId(collectionId);
+
+      await onSave(newQuestion.setId(originalQuestion.id()));
+    },
+    [question, onSave],
+  );
+
+  const handleCreate = useCallback(
+    async (details: FormValues) => {
+      if (details.saveType !== "create") {
+        return;
+      }
+
+      const collectionId = canonicalCollectionId(details.collection_id);
+      const displayName = details.name.trim();
+      const description = details.description
+        ? details.description.trim()
+        : null;
+
+      const newQuestion = question
+        .setDisplayName(displayName)
+        .setDescription(description)
+        .setCollectionId(collectionId);
+
+      await onCreate(newQuestion);
+    },
+    [question, onCreate],
+  );
+
+  const handleSubmit = useCallback(
+    async (details: FormValues) => {
+      if (isOverwriteMode(originalQuestion, details.saveType)) {
+        await handleOverwrite(originalQuestion, details);
+      } else {
+        await handleCreate(details);
+      }
+    },
+    [originalQuestion, handleOverwrite, handleCreate],
+  );
+
+  const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
+
+  const initialValues: FormValues = {
+    name: question.generateQueryDescription() || "",
+    description: question.description() || "",
+    collection_id:
+      question.collectionId() === undefined || isReadonly
+        ? initialCollectionId
+        : question.collectionId(),
+    saveType:
+      originalQuestion &&
+      !originalQuestion.isDataset() &&
+      originalQuestion.canWrite()
+        ? "overwrite"
+        : "create",
   };
 
-  async handleOverwrite(originalQuestion: Question, details: FormValues) {
-    const { question, onSave } = this.props;
+  const questionType = question.isDataset() ? "model" : "question";
 
-    const collectionId = canonicalCollectionId(originalQuestion.collectionId());
-    const displayName = originalQuestion.displayName();
-    const description = originalQuestion.description();
+  const multiStepTitle =
+    questionType === "question"
+      ? t`First, save your question`
+      : t`First, save your model`;
 
-    const newQuestion = question
-      .setDisplayName(displayName)
-      .setDescription(description)
-      .setCollectionId(collectionId);
+  const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
+  const showSaveType =
+    isSavedQuestionChanged &&
+    originalQuestion != null &&
+    originalQuestion.canWrite();
 
-    await onSave(newQuestion.setId(originalQuestion.id()));
-  }
+  const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
 
-  async handleCreate(details: FormValues) {
-    if (details.saveType !== "create") {
-      return;
-    }
+  const title = multiStep ? multiStepTitle : singleStepTitle;
 
-    const { question, onCreate } = this.props;
+  const nameInputPlaceholder =
+    questionType === "question"
+      ? t`What is the name of your question?`
+      : t`What is the name of your model?`;
 
-    const collectionId = canonicalCollectionId(details.collection_id);
-    const displayName = details.name.trim();
-    const description = details.description ? details.description.trim() : null;
-
-    const newQuestion = question
-      .setDisplayName(displayName)
-      .setDescription(description)
-      .setCollectionId(collectionId);
-
-    await onCreate(newQuestion);
-  }
-
-  render() {
-    const { question, originalQuestion, initialCollectionId } = this.props;
-
-    const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
-
-    const initialValues: FormValues = {
-      name: question.generateQueryDescription(),
-      description: question.description() || "",
-      collection_id:
-        question.collectionId() === undefined || isReadonly
-          ? initialCollectionId
-          : question.collectionId(),
-      saveType:
-        originalQuestion &&
-        !originalQuestion.isDataset() &&
-        originalQuestion.canWrite()
-          ? "overwrite"
-          : "create",
-    };
-
-    const questionType = question.isDataset() ? "model" : "question";
-
-    const multiStepTitle =
-      questionType === "question"
-        ? t`First, save your question`
-        : t`First, save your model`;
-
-    const showSaveType =
-      !question.isSaved() &&
-      !!originalQuestion &&
-      !originalQuestion.isDataset() &&
-      originalQuestion.canWrite();
-
-    const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
-
-    const title = this.props.multiStep ? multiStepTitle : singleStepTitle;
-
-    const nameInputPlaceholder =
-      questionType === "question"
-        ? t`What is the name of your question?`
-        : t`What is the name of your model?`;
-
-    return (
-      <ModalContent
-        id="SaveQuestionModal"
-        title={title}
-        onClose={this.props.onClose}
-      >
-        <FormProvider
-          initialValues={initialValues}
-          onSubmit={this.handleSubmit}
-          validationSchema={SAVE_QUESTION_SCHEMA}
-          enableReinitialize
-        >
-          {({ values }) => (
-            <Form>
-              {showSaveType && (
-                <FormRadio
-                  name="saveType"
-                  title={t`Replace or save as new?`}
-                  options={[
-                    {
-                      name: t`Replace original question, "${originalQuestion?.displayName()}"`,
-                      value: "overwrite",
-                    },
-                    { name: t`Save as new question`, value: "create" },
-                  ]}
-                  vertical
-                />
-              )}
-              <TransitionGroup>
-                {values.saveType === "create" && (
-                  <CSSTransition
-                    classNames="saveQuestionModalFields"
-                    timeout={{
-                      enter: 500,
-                      exit: 500,
-                    }}
-                  >
-                    <div className="saveQuestionModalFields">
-                      <FormInput
-                        autoFocus
-                        name="name"
-                        title={t`Name`}
-                        placeholder={nameInputPlaceholder}
-                      />
-                      <FormTextArea
-                        name="description"
-                        title={t`Description`}
-                        placeholder={t`It's optional but oh, so helpful`}
-                      />
-                      <FormCollectionPicker
-                        name="collection_id"
-                        title={t`Which collection should this go in?`}
-                      />
-                    </div>
-                  </CSSTransition>
+  return (
+    <CreateCollectionOnTheGo>
+      {(resumedValues, onClickNewCollection) => (
+        <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
+          <FormProvider
+            initialValues={{ ...initialValues, ...resumedValues }}
+            onSubmit={handleSubmit}
+            validationSchema={SAVE_QUESTION_SCHEMA}
+            enableReinitialize
+          >
+            {({ values }) => (
+              <Form>
+                {showSaveType && (
+                  <FormRadio
+                    name="saveType"
+                    title={t`Replace or save as new?`}
+                    options={[
+                      {
+                        name: t`Replace original question, "${originalQuestion?.displayName()}"`,
+                        value: "overwrite",
+                      },
+                      { name: t`Save as new question`, value: "create" },
+                    ]}
+                    vertical
+                  />
                 )}
-              </TransitionGroup>
-              <FormFooter>
-                <FormErrorMessage inline />
-                <Button
-                  type="button"
-                  onClick={this.props.onClose}
-                >{t`Cancel`}</Button>
-                <FormSubmitButton title={t`Save`} primary />
-              </FormFooter>
-            </Form>
-          )}
-        </FormProvider>
-      </ModalContent>
-    );
-  }
-}
+                <TransitionGroup>
+                  {values.saveType === "create" && (
+                    <CSSTransition
+                      classNames="saveQuestionModalFields"
+                      timeout={{
+                        enter: 500,
+                        exit: 500,
+                      }}
+                    >
+                      <div className="saveQuestionModalFields">
+                        <FormInput
+                          autoFocus
+                          name="name"
+                          title={t`Name`}
+                          placeholder={nameInputPlaceholder}
+                        />
+                        <FormTextArea
+                          name="description"
+                          title={t`Description`}
+                          placeholder={t`It's optional but oh, so helpful`}
+                        />
+                        <FormCollectionPicker
+                          name="collection_id"
+                          title={t`Which collection should this go in?`}
+                          canCreateNew={true}
+                          onClickNewCollection={onClickNewCollection}
+                        />
+                      </div>
+                    </CSSTransition>
+                  )}
+                </TransitionGroup>
+                <FormFooter>
+                  <FormErrorMessage inline />
+                  <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
+                  <FormSubmitButton title={t`Save`} primary />
+                </FormFooter>
+              </Form>
+            )}
+          </FormProvider>
+        </ModalContent>
+      )}
+    </CreateCollectionOnTheGo>
+  );
+};

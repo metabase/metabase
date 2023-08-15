@@ -3,7 +3,6 @@
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.ref :as ref]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
@@ -15,8 +14,9 @@
 ;;;
 ;;; *  `:all`: will include all of the Fields from the joined table or query
 ;;;
-;;; *  a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level
-;;;    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will
+;;; * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here!
+;;;    References to expressions or aggregations in the thing we're joining should use column literal (string column
+;;;    name) `:field` references. This should be non-empty and all elements should be distinct. The normalizer will
 ;;;    automatically remove duplicate fields for you, and replace empty clauses with `:none`.
 ;;;
 ;;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
@@ -24,8 +24,9 @@
 (mr/def ::fields
   [:or
    [:enum :all :none]
-   ;; TODO -- Pretty sure fields are supposed to be unique, even excluding `:lib/uuid`
-   [:sequential {:min 1} [:ref ::ref/ref]]])
+   ;; TODO -- `:fields` is supposed to be distinct (ignoring UUID), e.g. you can't have `[:field {} 1]` in there
+   ;; twice. (#32489)
+   [:sequential {:min 1} [:ref :mbql.clause/field]]])
 
 ;;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
 ;;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
@@ -72,3 +73,9 @@
       (if-let [aliases (not-empty (filter some? (map :alias joins)))]
         (apply distinct? aliases)
         true))]])
+
+(mr/def ::strategy.option
+  [:map
+   [:lib/type [:= :option/join.strategy]]
+   [:strategy [:ref ::strategy]]
+   [:default {:optional true} :boolean]])

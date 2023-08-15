@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import Groups from "metabase/entities/groups";
 import Collections from "metabase/entities/collections";
+import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 
 import {
   PermissionsEditor,
@@ -98,6 +99,7 @@ function CollectionsPermissionsPage({
       route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
+      helpContent={<CollectionPermissionsHelp />}
     >
       <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
 

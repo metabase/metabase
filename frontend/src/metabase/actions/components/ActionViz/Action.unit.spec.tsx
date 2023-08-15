@@ -128,6 +128,7 @@ async function setup({
   const card = checkNotNull(dashcard.card);
 
   if (getActionIsEnabledInDatabase(dashcard)) {
+    fetchMock.get(ACTION_EXEC_MOCK_PATH, {});
     fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
 
     // for ActionCreator modal (action edit modal)
@@ -325,7 +326,7 @@ describe("Actions > ActionViz > Action", () => {
     it("should NOT allow to edit underlying action if a user does not has edit permissions for this database", async () => {
       const readOnlyDB: Database = {
         ...DATABASE,
-        native_permissions: "read",
+        native_permissions: "none",
       };
 
       await setup({ database: readOnlyDB });

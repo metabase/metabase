@@ -59,7 +59,7 @@ describe("scenarios > permissions", () => {
     cy.signIn("nodata");
     visitQuestion(ORDERS_QUESTION_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("February 11, 2019, 9:40 PM"); // check that the data loads
+    cy.contains("February 11, 2025, 9:40 PM"); // check that the data loads
   });
 });
 

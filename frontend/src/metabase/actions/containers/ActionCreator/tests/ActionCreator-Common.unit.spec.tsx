@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 
 import {
+  createMockActionParameter,
   createMockImplicitQueryAction,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
@@ -93,6 +94,26 @@ describe("ActionCreator > Common", () => {
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.returnValue).toBeUndefined();
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it("should be able to hide fields", async () => {
+        await setup({
+          action: getAction({
+            visualization_settings: getDefaultFormSettings(),
+            parameters: [createMockActionParameter({ name: "FooBar" })],
+          }),
+        });
+
+        const checkbox = screen.getByLabelText("Show field");
+        const input = screen.getByRole("textbox", { name: /foobar/i });
+
+        expect(input).toBeEnabled();
+        expect(checkbox).toBeChecked();
+
+        userEvent.click(checkbox);
+
+        expect(checkbox).not.toBeChecked();
+        expect(input).toBeDisabled();
       });
     });
 

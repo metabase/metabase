@@ -108,7 +108,7 @@ describe("issue 17514", () => {
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("110.93").click();
+      cy.findByText("79.37").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter by this value");
     });

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (deftest ^:parallel nfc-field->parent-identifier-test

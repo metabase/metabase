@@ -90,7 +90,7 @@
               init
               (reducible-result-set (.. conn getMetaData getSchemas))))))
 
-(def ^Long HOURS-BEFORE-EXPIRED-THRESHOLD
+(def ^Long ^:private hours-before-expired-threshold
   "Number of hours that elapse before a persisted schema is considered expired."
   1)
 
@@ -100,11 +100,11 @@
 
   {:old-style-cache    schemas without a `cache_info` table
    :recent             schemas with a `cache_info` table and are recently created
-   :expired            `cache_info` table and created [[HOURS-BEFORE-EXPIRED-THRESHOLD]] ago
+   :expired            `cache_info` table and created [[hours-before-expired-threshold]] ago
    :lacking-created-at should never happen, but if they lack an entry for `created-at`
    :unknown-error      if an error was thrown while classifying the schema}"
   [^java.sql.Connection conn schemas]
-  (let [threshold (t/minus (t/instant) (t/hours HOURS-BEFORE-EXPIRED-THRESHOLD))]
+  (let [threshold (t/minus (t/instant) (t/hours hours-before-expired-threshold))]
     (with-open [stmt (.createStatement conn)]
       (let [classify! (fn [schema-name]
                         (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"

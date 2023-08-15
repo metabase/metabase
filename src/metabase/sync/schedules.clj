@@ -4,6 +4,7 @@
   `metabase_database` table."
   (:require
    [metabase.util.cron :as u.cron]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 

@@ -6,7 +6,7 @@ import _ from "underscore";
 import { Motion, spring } from "react-motion";
 import Modal from "metabase/components/Modal";
 
-import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";

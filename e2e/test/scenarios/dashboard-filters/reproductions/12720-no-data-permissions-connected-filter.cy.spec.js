@@ -8,9 +8,9 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
-// After January 1st, 2020
+// After January 1st, 2026
 const dashboardFilter = {
-  default: "2020-01-01~",
+  default: "2026-01-01~",
   id: "d3b78b27",
   name: "Date Filter",
   slug: "date_filter",
@@ -99,5 +99,5 @@ function clickThrough(title) {
   cy.get(".DashCard").contains(title).click();
 
   cy.location("search").should("contain", dashboardFilter.default);
-  filterWidget().contains("After January 1, 2020");
+  filterWidget().contains("After January 1, 2026");
 }

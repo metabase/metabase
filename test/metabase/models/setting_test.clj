@@ -8,6 +8,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -80,6 +82,13 @@
   :type       :string
   :default    "setting-default"
   :enabled?   (fn [] *enabled?*))
+
+(defsetting test-feature-setting
+  "Setting to test the `:feature` property of settings. This only shows up in dev."
+  :visibility :internal
+  :type       :string
+  :default    "setting-default"
+  :feature    :test-feature)
 
 ;; ## HELPER FUNCTIONS
 
@@ -334,6 +343,26 @@
           (mt/with-user-locale "zz"
             (is (= "TEST SETTING - WITH I18N"
                    (description)))))))))
+
+(defsetting test-dynamic-i18n-setting
+  (deferred-tru "Test setting - with i18n: {0}" (test-i18n-setting)))
+
+(deftest dynamic-description-test
+  (testing "Descriptions with i18n string should update if it depends on another setting's value."
+    (mt/with-test-user :crowberto
+      (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n: {0}" "TEST SETTING - WITH I18N: {0}"}}}
+        (letfn [(description []
+                  (some (fn [{:keys [key description]}]
+                          (when (= :test-dynamic-i18n-setting key)
+                            description))
+                        (setting/admin-writable-site-wide-settings)))]
+          (test-i18n-setting! "test-setting-value!")
+          (is (= "Test setting - with i18n: test-setting-value!"
+                 (description)))
+          (mt/with-user-locale "zz"
+            (is (= "TEST SETTING - WITH I18N: test-setting-value!"
+                   (description))))
+          (test-i18n-setting! nil))))))
 
 
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
@@ -866,20 +895,49 @@
   (testing "Settings can be disabled"
     (testing "With no default returns nil"
       (is (nil? (test-enabled-setting-no-default)))
-      (testing "Updating the value succeeds but still get nil because no default"
-        (test-enabled-setting-default! "a value")
-        (is (nil? (test-enabled-setting-no-default)))))
+      (testing "Updating the value throws an exception"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting test-enabled-setting-no-default is not enabled"
+             (test-enabled-setting-no-default! "a value")))))
     (testing "Returns default value"
       (is (= "setting-default" (test-enabled-setting-default)))
-      (testing "Updating the value succeeds but still get default"
-        (test-enabled-setting-default! "non-default-value")
-        (is (= "setting-default" (test-enabled-setting-default))))))
-  (testing "When enabled get the value"
-    (test-enabled-setting-default! "custom")
-    (test-enabled-setting-no-default! "custom")
+      (testing "Updating the value throws an exception"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting test-enabled-setting-default is not enabled"
+             (test-enabled-setting-default! "a value"))))))
+  (testing "When enabled, the setting can be read and written as normal"
     (binding [*enabled?* true]
+      (test-enabled-setting-default! "custom")
+      (test-enabled-setting-no-default! "custom")
       (is (= "custom" (test-enabled-setting-default)))
       (is (= "custom" (test-enabled-setting-no-default))))))
+
+(deftest feature-test
+  (testing "Settings can be assigned an Enterprise feature flag, required for them to be enabled"
+    (premium-features-test/with-premium-features #{:test-feature}
+      (test-feature-setting! "custom")
+      (is (= "custom" (test-feature-setting))))
+
+    (premium-features-test/with-premium-features #{}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting test-feature-setting is not enabled because feature :test-feature is not available"
+           (test-feature-setting! "custom 2")))
+      (is (= "setting-default" (test-feature-setting)))))
+
+  (testing "A setting cannot have both the :enabled? and :feature options at once"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Setting :test-enabled-and-feature uses both :enabled\? and :feature options, which are mutually exclusive"
+         (defsetting test-enabled-and-feature
+           "Setting with both :enabled? and :feature options"
+           :visibility :internal
+           :type       :string
+           :default    "setting-default"
+           :enabled?   (fn [] false)
+           :feature    :test-feature)))))
 
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
@@ -1024,7 +1082,7 @@
                  (validate tag value)))))))))
 
 (deftest validate-description-translation-test
-  (with-redefs [metabase.models.setting/in-test? (constantly false)]
+  (with-redefs [setting/in-test? (constantly false)]
     (testing "When not in a test, defsetting descriptions must be i18n'ed"
       (try
         (walk/macroexpand-all

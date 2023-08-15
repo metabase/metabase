@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
+import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
 import {
   DataReferenceTriggerButton,
   DataReferenceInline,
@@ -122,6 +122,7 @@ export default function ActionCreatorView({
         <ModalRight>
           {activeSideView === "actionForm" ? (
             <FormCreator
+              actionType={action.type ?? "query"}
               parameters={action.parameters ?? []}
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}

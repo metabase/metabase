@@ -4,7 +4,8 @@
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time :as t]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -196,7 +197,7 @@
 (defn- add-time-format
   "Adds the appropriate time setting to a date format string if necessary, producing a datetime format string."
   [format-settings unit format-string]
-  (if (or (not unit) (mbql.s/time-bucketing-units unit))
+  (if (or (not unit) (lib.schema.temporal-bucketing/time-bucketing-units unit))
     (if-let [time-format (time-format format-settings)]
       (str format-string ", " time-format)
       format-string)
@@ -412,6 +413,15 @@
   formatting can be applied. This should be enabled for generation of pulse/dashboard subscription attachments."
   false)
 
+(defn- maybe-parse-temporal-value
+  [value col]
+  (when (and *parse-temporal-string-values*
+             (isa? (:effective_type col) :type/Temporal)
+             (string? value))
+    (try (u.date/parse value)
+         ;; Fallback to plain string value if it couldn't be parsed
+         (catch Exception _ value
+                value))))
 (defn- add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -430,11 +440,9 @@
                            value)
             ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
             ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-            parsed-value (if (and *parse-temporal-string-values* (string? value))
-                           (try (u.date/parse value)
-                                ;; Fallback to plain string value if it couldn't be parsed
-                                (catch Exception _ value))
-                           scaled-val)]
+            parsed-value (or
+                          (maybe-parse-temporal-value value col)
+                          scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
 

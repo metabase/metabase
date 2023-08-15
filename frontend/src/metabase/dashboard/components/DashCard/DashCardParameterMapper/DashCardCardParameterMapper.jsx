@@ -4,6 +4,11 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
+import {
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
+  MOBILE_DEFAULT_CARD_HEIGHT,
+} from "metabase/visualizations/shared/utils/sizes";
+
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -21,6 +26,7 @@ import {
 } from "metabase/dashboard/utils";
 
 import { isActionDashCard } from "metabase/actions/utils";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Question from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
@@ -154,6 +160,19 @@ export function DashCardCardParameterMapper({
             />
           ),
         };
+      } else if (target != null) {
+        return {
+          buttonVariant: "invalid",
+          buttonText: t`Unknown Field`,
+          buttonIcon: (
+            <CloseIconButton
+              onClick={e => {
+                handleChangeTarget(null);
+                e.stopPropagation();
+              }}
+            />
+          ),
+        };
       } else {
         return {
           buttonVariant: "default",
@@ -166,29 +185,37 @@ export function DashCardCardParameterMapper({
       hasPermissionsToMap,
       isDisabled,
       selectedMappingOption,
+      target,
       handleChangeTarget,
       isVirtual,
     ]);
 
   const headerContent = useMemo(() => {
-    if (!isVirtual && !(isNative && isDisabled)) {
-      return t`Column to filter on`;
-    } else if (dashcard.size_y !== 1 || isMobile) {
-      return t`Variable to map to`;
-    } else {
-      return null;
+    const layoutHeight = isMobile
+      ? MOBILE_HEIGHT_BY_DISPLAY_TYPE[dashcard.card.display] ||
+        MOBILE_DEFAULT_CARD_HEIGHT
+      : dashcard.size_y;
+
+    if (layoutHeight > 2) {
+      if (!isVirtual && !(isNative && isDisabled)) {
+        return t`Column to filter on`;
+      } else {
+        return t`Variable to map to`;
+      }
     }
+    return null;
   }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
   const mappingInfoText =
     {
+      heading: t`You can connect widgets to {{variables}} in heading cards.`,
       text: t`You can connect widgets to {{variables}} in text cards.`,
       link: t`You cannot connect variables to link cards.`,
       action: t`Open this card's action settings to connect variables`,
     }[virtualCardType] ?? "";
 
   return (
-    <Container>
+    <Container isSmall={!isMobile && dashcard.size_y < 2}>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
       {isVirtual && isDisabled ? (
         showVirtualDashCardInfoText(dashcard, isMobile) ? (
@@ -220,7 +247,11 @@ export function DashCardCardParameterMapper({
         </NativeCardDefault>
       ) : (
         <>
-          {headerContent && <Header>{headerContent}</Header>}
+          {headerContent && (
+            <Header>
+              <Ellipsified>{headerContent}</Ellipsified>
+            </Header>
+          )}
           <Tooltip tooltip={buttonTooltip}>
             <TippyPopover
               visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
@@ -253,7 +284,9 @@ export function DashCardCardParameterMapper({
                 }}
               >
                 {buttonText && (
-                  <TargetButtonText>{buttonText}</TargetButtonText>
+                  <TargetButtonText>
+                    <Ellipsified>{buttonText}</Ellipsified>
+                  </TargetButtonText>
                 )}
                 {buttonIcon}
               </TargetButton>

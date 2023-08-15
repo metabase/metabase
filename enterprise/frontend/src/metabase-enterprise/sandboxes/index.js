@@ -55,7 +55,7 @@ const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
 if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_USER_FORM_FIELDS.push({
     name: "login_attributes",
-    title: "Attributes",
+    title: t`Attributes`,
     type: LoginAttributesWidget,
   });
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
@@ -87,13 +87,13 @@ if (hasPremiumFeature("sandboxes")) {
     query: "segmented",
   };
 
-  PLUGIN_DATA_PERMISSIONS.getPermissionsPayloadExtraData = state => {
+  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
     const sandboxes = getDraftPolicies(state);
     return {
       sandboxes,
     };
-  };
+  });
 
-  PLUGIN_DATA_PERMISSIONS.hasChanges = hasPolicyChanges;
+  PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);
   PLUGIN_REDUCERS.sandboxingPlugin = sandboxingReducer;
 }

@@ -3,7 +3,7 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.util.honey-sql-2 :as h2x]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 ;; WITH counts AS (
 ;;     SELECT db."name" AS db_name, t."schema" AS db_schema
@@ -118,10 +118,10 @@
 ;;
 ;; DEPRECATED Query that returns a data for a table full of fascinating information about the different schemas in use
 ;; in our application.
-(s/defmethod audit.i/internal-query ::table
+(mu/defmethod audit.i/internal-query ::table
   ([query-type]
    (audit.i/internal-query query-type nil))
-  ([_ query-string :- (s/maybe s/Str)]
+  ([_query-type query-string :- [:maybe :string]]
    {:metadata [[:database_id   {:display_name "Database ID",   :base_type :type/Integer, :remapped_to   :database}]
                [:database      {:display_name "Database",      :base_type :type/Title,   :remapped_from :database_id}]
                [:schema_id     {:display_name "Schema ID",     :base_type :type/Text,    :remapped_to   :schema}]

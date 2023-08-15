@@ -8,31 +8,13 @@ function mockMainElementScroll(scrollTop) {
 }
 
 describe("updateParametersWidgetStickiness", () => {
-  it("initializes parametersWidgetOffsetTop", () => {
-    const setState = jest.fn();
-
-    mockMainElementScroll(0);
-
-    const dashboard = {
-      parametersWidgetRef: { offsetTop },
-      state: {},
-      setState,
-    };
-
-    updateParametersWidgetStickiness(dashboard);
-
-    expect(setState).toHaveBeenCalledWith({
-      parametersWidgetOffsetTop: offsetTop,
-    });
-  });
-
   it("makes filters sticky with enough scrolling down", () => {
     const setState = jest.fn();
 
     mockMainElementScroll(offsetTop + 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {},
       setState,
     };
@@ -50,7 +32,7 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop - 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {},
       setState,
     };
@@ -68,10 +50,9 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop + 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {
         isParametersWidgetSticky: true,
-        parametersWidgetOffsetTop: offsetTop,
       },
       setState,
     };
@@ -87,10 +68,9 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop - 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {
         isParametersWidgetSticky: false,
-        parametersWidgetOffsetTop: offsetTop,
       },
       setState,
     };

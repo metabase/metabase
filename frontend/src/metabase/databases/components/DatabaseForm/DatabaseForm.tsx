@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
+import { useSelector } from "metabase/lib/redux";
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -9,6 +10,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { DatabaseData, Engine } from "metabase-types/api";
+import { getEngines, getIsCachingEnabled, getIsHosted } from "../../selectors";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -21,29 +23,28 @@ import DatabaseDetailField from "../DatabaseDetailField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
-export interface DatabaseFormProps {
-  engines: Record<string, Engine>;
+interface DatabaseFormProps {
   initialValues?: DatabaseData;
-  isHosted?: boolean;
+  autofocusFieldName?: string;
   isAdvanced?: boolean;
-  isCachingEnabled?: boolean;
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
 }
 
-const DatabaseForm = ({
-  engines,
+export const DatabaseForm = ({
   initialValues: initialData,
-  isHosted = false,
+  autofocusFieldName,
   isAdvanced = false,
-  isCachingEnabled = false,
   onSubmit,
   onCancel,
   onEngineChange,
   setIsDirty,
 }: DatabaseFormProps): JSX.Element => {
+  const engines = useSelector(getEngines);
+  const isHosted = useSelector(getIsHosted);
+  const isCachingEnabled = useSelector(getIsCachingEnabled);
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
   const engine = getEngine(engines, engineKey);
@@ -85,6 +86,7 @@ const DatabaseForm = ({
         engine={engine}
         engineKey={engineKey}
         engines={engines}
+        autofocusFieldName={autofocusFieldName}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
         isCachingEnabled={isCachingEnabled}
@@ -100,6 +102,7 @@ interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: string | undefined;
   engines: Record<string, Engine>;
+  autofocusFieldName?: string;
   isHosted: boolean;
   isAdvanced: boolean;
   isCachingEnabled: boolean;
@@ -112,6 +115,7 @@ const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
+  autofocusFieldName,
   isHosted,
   isAdvanced,
   isCachingEnabled,
@@ -145,7 +149,12 @@ const DatabaseFormBody = ({
       />
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
-        <DatabaseDetailField key={field.name} field={field} />
+        <DatabaseDetailField
+          key={field.name}
+          field={field}
+          autoFocus={field.name === autofocusFieldName}
+          data-kek={field.name}
+        />
       ))}
       {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
       <DatabaseFormFooter
@@ -216,6 +225,3 @@ const getEngineKey = (
     return getDefaultEngineKey(engines);
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseForm;
