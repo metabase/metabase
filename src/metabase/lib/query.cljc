@@ -10,8 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (defmethod lib.normalize/normalize :mbql/query
@@ -86,21 +84,6 @@
   [metadata-providerable :- lib.metadata/MetadataProviderable
    x]
   (->query metadata-providerable x))
-
-(mu/defn saved-question-query :- ::lib.schema/query
-  "Convenience for creating a query from a Saved Question (i.e., a Card)."
-  [metadata-providerable :- lib.metadata/MetadataProviderable
-   {mbql-query :dataset-query, metadata :result-metadata, :as saved-question}]
-  (assert mbql-query (i18n/tru "Saved Question is missing query"))
-  (when-not metadata
-    (log/warn (i18n/trs "Saved Question {0} {1} is missing result metadata"
-                        (:id saved-question)
-                        (pr-str (:name saved-question-query)))))
-  (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
-                                  :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
-                     metadata
-                     (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.util/->stage-metadata metadata)))]
-    (query metadata-providerable mbql-query)))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."

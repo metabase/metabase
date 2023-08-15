@@ -105,14 +105,12 @@ const config = (module.exports = {
       {
         test: /\.css$/,
         use: [
-          devMode
-            ? "style-loader"
-            : {
-                loader: MiniCssExtractPlugin.loader,
-                options: {
-                  publicPath: "./",
-                },
-              },
+          {
+            loader: MiniCssExtractPlugin.loader,
+            options: {
+              publicPath: "./",
+            },
+          },
           { loader: "css-loader", options: CSS_CONFIG },
           { loader: "postcss-loader" },
         ],

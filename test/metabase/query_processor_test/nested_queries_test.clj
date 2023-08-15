@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -75,19 +76,21 @@
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
                             :or   {has-source-metadata? true
                                    native-source?       false}}]
-  {:rows [[1 22]
-          [2 59]
-          [3 13]
-          [4  6]]
-   :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
-            native-source?
-            (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
-                       :effective_type :type/Integer)
-                (dissoc :description :parent_id :nfc_path :visibility_type))
+  (let [{base-type :base_type effective-type :effective_type :keys [name] :as breakout-col}
+        (qp.test/breakout-col (qp.test/col :venues :price))]
+    {:rows [[1 22]
+            [2 59]
+            [3 13]
+            [4  6]]
+     :cols [(cond-> breakout-col
+              native-source?
+              (-> (assoc :field_ref [:field name {:base-type base-type}]
+                         :effective_type effective-type)
+                  (dissoc :description :parent_id :nfc_path :visibility_type))
 
-            (not has-source-metadata?)
-            (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
-          (qp.test/aggregate-col :count)]})
+              (not has-source-metadata?)
+              (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
+            (qp.test/aggregate-col :count)]}))
 
 (deftest mbql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -312,25 +315,30 @@
                  (query-with-source-card card)))))))))
 
 (deftest card-id-native-source-queries-test
-  (let [run-native-query
-        (fn [sql]
-          (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id), :type :native, :native {:query sql}}}]
-            (qp.test/rows-and-cols
-             (mt/format-rows-by [int int]
-               (qp/process-query
-                (query-with-source-card card
-                                        (mt/$ids venues
-                                          {:aggregation [:count]
-                                           :breakout    [*price]})))))))]
-    (is (= (breakout-results :has-source-metadata? false :native-source? true)
-           (run-native-query "SELECT * FROM VENUES"))
-        "make sure `card__id`-style queries work with native source queries as well")
-    (is (= (breakout-results :has-source-metadata? false :native-source? true)
-           (run-native-query "SELECT * FROM VENUES -- small comment here"))
-        "Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail")
-    (is (= (breakout-results :has-source-metadata? false :native-source? true)
-           (run-native-query "SELECT * FROM VENUES -- small comment here\n"))
-        "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail")))
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
+                                     (descendants driver/hierarchy :sql))
+    (let [native-sub-query (-> (mt/mbql-query venues {:source-table $$venues}) qp/compile :query)
+          run-native-query
+          (fn [sql]
+            (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
+                                                                :type :native
+                                                                :native {:query sql}}}]
+              (qp.test/rows-and-cols
+               (mt/format-rows-by [int int]
+                 (qp/process-query
+                  (query-with-source-card card
+                                          (mt/$ids venues
+                                                   {:aggregation [:count]
+                                                    :breakout    [*price]})))))))]
+      (is (= (breakout-results :has-source-metadata? false :native-source? true)
+             (run-native-query native-sub-query))
+          "make sure `card__id`-style queries work with native source queries as well")
+      (is (= (breakout-results :has-source-metadata? false :native-source? true)
+             (run-native-query (str native-sub-query " -- small comment here")))
+          "Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail")
+      (is (= (breakout-results :has-source-metadata? false :native-source? true)
+             (run-native-query (str native-sub-query " -- small comment here\n")))
+          "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail"))))
 
 (deftest filter-by-field-literal-test
   (testing "make sure we can filter by a field literal"

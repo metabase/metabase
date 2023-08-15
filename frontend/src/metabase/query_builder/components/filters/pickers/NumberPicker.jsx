@@ -48,6 +48,7 @@ export default class NumberPicker extends Component {
     return (
       <TextPicker
         {...this.props}
+        data-testid="number-picker"
         isSingleLine
         prefix={this.props.prefix}
         values={values}

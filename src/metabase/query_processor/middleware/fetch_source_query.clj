@@ -23,7 +23,6 @@
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
@@ -99,19 +98,6 @@
 ;;; |                                       Resolving card__id -> source query                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private trim-sql-query :- ms/NonBlankString
-  "Native queries can have trailing SQL comments. This works when executed directly, but when we use the query in a
-  nested query, we wrap it in another query, which can cause the last part of the query to be unintentionally
-  commented out, causing it to fail. This function removes any trailing SQL comment."
-  [card-id   :- ms/PositiveInt
-   query-str :- ms/NonBlankString]
-  (let [trimmed-string (str/replace query-str #"--.*(\n|$)" "")]
-    (if (= query-str trimmed-string)
-      query-str
-      (do
-        (log/info (trs "Trimming trailing comment from card with id {0}" card-id))
-        trimmed-string))))
-
 (defn- source-query
   "Get the query to be run from the card"
   [{dataset-query :dataset_query card-id :id :as card}]
@@ -124,18 +110,10 @@
      (when-some [native-query (set/rename-keys native-query {:query :native})]
        (let [mongo? (= (driver.u/database->driver db-id) :mongo)]
          (cond-> native-query
-                 ;; MongoDB native  queries consist of a collection and a pipelne (query)
-                 mongo?
-                 (update :native (fn [pipeline] {:collection (:collection native-query)
-                                                 :query      pipeline}))
-
-                 ;; trim trailing comments from SQL, but not other types of native queries
-                 (and (not mongo?)
-                      (string? (:native native-query)))
-                 (update :native (partial trim-sql-query card-id))
-
-                 (empty? template-tags)
-                 (dissoc :template-tags))))
+           ;; MongoDB native  queries consist of a collection and a pipelne (query)
+           mongo? (update :native (fn [pipeline] {:collection (:collection native-query)
+                                                  :query      pipeline}))
+           (empty? template-tags) (dissoc :template-tags))))
      (throw (ex-info (tru "Missing source query in Card {0}" card-id)
                      {:card card})))))
 
