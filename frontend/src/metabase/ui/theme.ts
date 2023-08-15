@@ -34,6 +34,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     xs: "4px",
     sm: "6px",
     md: "8px",
+    xl: "40px",
   },
   fontSizes: {
     xs: "11px",

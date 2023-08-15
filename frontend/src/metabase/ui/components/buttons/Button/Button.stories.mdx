@@ -7,6 +7,7 @@ export const args = {
   disabled: false,
   fullWidth: false,
   compact: false,
+  radius: "md",
   loading: false,
   loaderPosition: "left",
 };
@@ -25,11 +26,15 @@ export const argTypes = {
   compact: {
     control: { type: "boolean" },
   },
+  radius: {
+    options: ["md", "xl"],
+    control: { type: "inline-radio" },
+  },
   loading: {
     control: { type: "boolean" },
   },
   loaderPosition: {
-    options: ["left", "center", "right"],
+    options: ["left", "right"],
     control: { type: "inline-radio" },
   },
 };

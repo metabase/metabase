@@ -1,12 +1,21 @@
+import { getStylesRef, rem } from "@mantine/core";
 import type {
   ButtonStylesParams,
   ContextStylesParams,
   MantineTheme,
+  MantineThemeOverride,
 } from "@mantine/core";
-import { getStylesRef, rem } from "@mantine/core";
 
-export const getButtonOverrides = () => ({
+export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
   Button: {
+    defaultProps: (theme: MantineTheme) => {
+      return {
+        loaderProps: {
+          size: "1rem",
+          color: theme.fn.primaryColor(),
+        },
+      };
+    },
     styles: (
       theme: MantineTheme,
       { compact }: ButtonStylesParams,
