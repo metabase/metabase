@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 import {
   getAccordionOverrides,
   getAnchorOverrides,
+  getButtonOverrides,
   getCheckboxOverrides,
   getMenuOverrides,
   getRadioOverrides,
@@ -45,6 +46,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   components: {
     ...getAccordionOverrides(),
     ...getAnchorOverrides(),
+    ...getButtonOverrides(),
     ...getCheckboxOverrides(),
     ...getMenuOverrides(),
     ...getRadioOverrides(),
