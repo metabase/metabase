@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { CSSProperties, ReactNode } from "react";
 import { Grid, Title } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Icon } from "metabase/core/components/Icon";
@@ -10,15 +10,17 @@ export const SearchFilterView = ({
   isLoading,
   "data-testid": dataTestId,
   children,
+  align = "center",
 }: {
   title: string;
   tooltip?: string;
   isLoading?: boolean;
   "data-testid"?: string;
   children: ReactNode;
+  align?: CSSProperties["alignItems"];
 }) => {
   return (
-    <Grid data-testid={dataTestId}>
+    <Grid data-testid={dataTestId} align={align}>
       <Grid.Col span={2} p={0}>
         <Title order={5}>{title}</Title>
         {tooltip && (

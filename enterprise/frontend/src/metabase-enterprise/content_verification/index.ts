@@ -4,7 +4,4 @@ import { VerifiedSearchFilter } from "metabase-enterprise/content_verification/c
 
 if (hasPremiumFeature("content_verification")) {
   PLUGIN_CONTENT_VERIFICATION.VerifiedFilter = VerifiedSearchFilter;
-  PLUGIN_CONTENT_VERIFICATION.verifiedSearchKey = {
-    verified: "Verified",
-  };
 }

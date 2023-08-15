@@ -29,11 +29,16 @@ export const TypeFilter: SearchFilterComponent<"type"> = ({
   return isLoading ? (
     <LoadingSpinner />
   ) : (
-    <SearchFilterView data-testid={dataTestId} title={t`Type`}>
+    <SearchFilterView
+      data-testid={dataTestId}
+      title={t`Type`}
+      align="flex-start"
+    >
       <Checkbox.Group
         value={value}
         onChange={onChange}
         data-testid="type-filter-checkbox-group"
+        size="md"
         inputContainer={children => (
           <TypeCheckboxGroupWrapper>{children}</TypeCheckboxGroupWrapper>
         )}

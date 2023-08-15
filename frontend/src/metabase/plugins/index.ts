@@ -290,5 +290,4 @@ export const PLUGIN_EMBEDDING = {
 
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: PluginPlaceholder as any,
-  verifiedSearchKey: {} as Record<string, string>,
 };
