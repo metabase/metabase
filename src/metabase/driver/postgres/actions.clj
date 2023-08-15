@@ -51,10 +51,18 @@
          :message (tru "Other tables rely on this row so it cannot be updated/deleted.")
          :errors  {}})
       (when-let [[_match _table _constraint column _value ref-table]
-                 (re-find #"ERROR: insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" #p error-message)]
+                 (re-find #"ERROR: insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
         {:type    error-type
          :message (tru "Your row contains foreign key that is not existed, so it cannot be created/updated.")
          :errors  {column (tru "This value does not exist in {0} table" ref-table)}})))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/incorrect-value-type]
+  [_driver error-type _database error-message]
+  (when-let [[_ _expected-type _value]
+             (re-find #"ERROR:\s+invalid input syntax for type ([^\"]+):\s+.*" error-message)]
+    {:type          error-type
+     :message (tru "Some of your values aren’t of the correct type for the database")
+     :errors  {}}))
 
 (comment
  (sql-jdbc.actions/maybe-parse-sql-error
