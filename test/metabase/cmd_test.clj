@@ -49,8 +49,12 @@
     ["--collection" "123"]
     {:collection-ids [123]}
 
-    ["-c" "123" "-c" "456"]
+    ["-c" "123, 456"]
     {:collection-ids [123 456]}
+
+    ["-c" "123,456,789"]
+    {:collection-ids [123 456 789]}
+
 
     ["--include-field-values"]
     {:include-field-values true}
