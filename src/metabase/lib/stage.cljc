@@ -226,9 +226,18 @@
 ;;;
 ;;; Formula for the so-called 'default' columns is
 ;;;
-;;; 1a. Columns returned by the previous stage of the query (if there is one), OR
+;;; 1a. Columns returned by the previous stage of the query (if there is one),
 ;;;
-;;; 1b. Default 'visible' Fields for our `:source-table`, OR
+;;; OR
+;;;
+;;; 1b1. Default returned Fields for our `:source-table`,
+;;;
+;;; PLUS
+;;;
+;;; 1b2. Human-readable remap values (external remaps) from the Dimension
+;;;      table (see [[metabase.query-processor.middleware.add-dimension-projections]]
+;;;
+;;; OR
 ;;;
 ;;; 1c. Metadata associated with a Saved Question, if we have `:source-card` (`:source-table` is a `card__<id>` string
 ;;;     in legacy MBQL), OR
@@ -249,7 +258,12 @@
    {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
   {:pre [(fn? unique-name-fn)]}
   (mapv
-   #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)
+   (fn [col]
+     (cond-> col
+       true                                             (dissoc ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning)
+       ;; don't really remember why we're removing this key at all, but we don't want to do it for external remap
+       ;; columns because it breaks stuff.
+       (not= (:lib/source col) :source/external-remaps) (dissoc :fk-field-id)))
    (or
     ;; 1a. columns returned by previous stage
     (previous-stage-metadata query stage-number unique-name-fn)

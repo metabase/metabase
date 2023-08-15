@@ -15,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]))
 
 (def DisplayNameStyle
   "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
@@ -367,20 +368,21 @@
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table-id query) (:id table))}))
 
-(def ColumnMetadataWithSource
-  "Schema for the column metadata that should be returned by [[metadata]]."
+(mr/def ::column.with-source
   [:merge
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:map
-    [:lib/source ::lib.metadata/column-source]]])
+    [:lib/source [:ref ::lib.schema.metadata/column.source]]]])
 
-(def ColumnsWithUniqueAliases
-  "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
-  to power metadata calculation for stages (see [[metabase.lib.stage]]."
+(def ^:deprecated ColumnMetadataWithSource
+  "Schema for the column metadata that should be returned by [[metadata]]."
+  [:ref ::column.with-source])
+
+(mr/def ::columns.with-unique-aliases
   [:and
    [:sequential
     [:merge
-     ColumnMetadataWithSource
+     [:ref ::column.with-source]
      [:map
       [:lib/source-column-alias  ::lib.schema.common/non-blank-string]
       [:lib/desired-column-alias [:string {:min 1, :max 60}]]]]]
@@ -394,6 +396,11 @@
       (or
        (empty? columns)
        (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
+
+(def ^:deprecated ColumnsWithUniqueAliases
+  "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
+  to power metadata calculation for stages (see [[metabase.lib.stage]]."
+  [:ref ::columns.with-unique-aliases])
 
 (def ^:private UniqueNameFn
   [:=>

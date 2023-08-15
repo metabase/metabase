@@ -29,7 +29,7 @@
      :field_name                "CATEGORY_ID"
      :human_readable_field_name "NAME"}))
 
-(defn- do-with-fake-remappings-for-category-id [f]
+(defn- do-with-fake-remappings-for-category-id! [f]
   (with-redefs [qp.add-dimension-projections/fields->field-id->remapping-dimension
                 (constantly
                  {(mt/id :venues :category_id) @remapped-field})]
@@ -37,7 +37,7 @@
 
 (deftest remap-column-infos-test
   (testing "make sure we create the remap column tuples correctly"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        (is (= [{:original-field-clause [:field (mt/id :venues :category_id) nil]
                 :new-field-clause      [:field
@@ -52,7 +52,7 @@
                   [:field (mt/id :venues :category_id) nil]]))))))))
 
 (deftest add-fk-remaps-add-fields-test
-  (do-with-fake-remappings-for-category-id
+  (do-with-fake-remappings-for-category-id!
    (fn []
      (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
        (let [{:keys [remaps query]} (add-fk-remaps
@@ -74,7 +74,7 @@
 
 (deftest add-fk-remaps-do-not-add-duplicate-fields-test
   (testing "make sure we don't duplicate remappings"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        ;; make sure that we don't add duplicate columns even if the column has some weird unexpected options, i.e. we
        ;; need to do 'normalized' Field comparison for preventing duplicates.
@@ -110,7 +110,7 @@
 
 (deftest add-fk-remaps-replace-order-bys-test
   (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
@@ -136,7 +136,7 @@
 
 (deftest add-fk-remaps-replace-breakouts-test
   (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
@@ -157,7 +157,7 @@
 
 (deftest add-fk-remaps-nested-queries-test
   (testing "make sure FK remaps work with nested queries"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
@@ -242,7 +242,7 @@
                         [2 "banana" 11 2]
                         [3 "kiwi"   11 2]])))))))
 
-(deftest transform-values-for-col-test
+(deftest ^:parallel transform-values-for-col-test
   (testing "test that different columns types are transformed"
     (is (= (map list [123M 123.0 123N 123 "123"])
            (map #(#'qp.add-dimension-projections/transform-values-for-col {:base_type %} [123])
@@ -296,29 +296,29 @@
           (doseq [nesting-level [0 1]
                   :let          [query (mt/nest-query query nesting-level)]]
             (testing (format "nesting level = %d" nesting-level)
-              (is (= (-> query
-                         (assoc-in
-                          (concat [:query] (repeat nesting-level :source-query) [:fields])
-                          (mt/$ids orders
-                            [$id
-                             $user_id
-                             [:field %product_id {::qp.add-dimension-projections/original-field-dimension-id dimension-id}]
-                             $subtotal
-                             $tax
-                             $total
-                             $discount
-                             !default.created_at
-                             $quantity
-                             [:field %products.title {:source-field                                %product_id
-                                                      ::qp.add-dimension-projections/new-field-dimension-id dimension-id}]]))
-                         (assoc ::qp.add-dimension-projections/external-remaps [{:id                        dimension-id
-                                                                                 :field_id                  (mt/id :orders :product_id)
-                                                                                 :name                      "Product ID [external remap]"
-                                                                                 :human_readable_field_id   (mt/id :products :title)
-                                                                                 :field_name                "PRODUCT_ID"
-                                                                                 :human_readable_field_name "TITLE"}]))
-                     (mt/with-everything-store
-                       (#'qp.add-dimension-projections/add-remapped-columns query)))))))))))
+              (is (query= (-> query
+                              (assoc-in
+                               (concat [:query] (repeat nesting-level :source-query) [:fields])
+                               (mt/$ids orders
+                                 [$id
+                                  $user_id
+                                  [:field %product_id {::qp.add-dimension-projections/original-field-dimension-id dimension-id}]
+                                  $subtotal
+                                  $tax
+                                  $total
+                                  $discount
+                                  !default.created_at
+                                  $quantity
+                                  [:field %products.title {:source-field                                %product_id
+                                                           ::qp.add-dimension-projections/new-field-dimension-id dimension-id}]]))
+                              (assoc ::qp.add-dimension-projections/external-remaps [{:id                        dimension-id
+                                                                                      :field_id                  (mt/id :orders :product_id)
+                                                                                      :name                      "Product ID [external remap]"
+                                                                                      :human_readable_field_id   (mt/id :products :title)
+                                                                                      :field_name                "PRODUCT_ID"
+                                                                                      :human_readable_field_name "TITLE"}]))
+                          (mt/with-everything-store
+                            (#'qp.add-dimension-projections/add-remapped-columns query)))))))))))
 
 (deftest fk-remaps-with-multiple-columns-with-same-name-test
   (testing "Make sure we remap to the correct column when some of them have duplicate names"

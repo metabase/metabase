@@ -16,8 +16,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 (def LegacyColumn
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -28,7 +27,7 @@
    [:name         :string]
    [:display_name :string]
    ;; type of the Field. For Native queries we look at the values in the first 100 rows to make an educated guess
-   [:base_type    ms/FieldType]
+   [:base_type    [:ref ::lib.schema.common/base-type]]
    ;; effective_type, coercion, etc don't go here. probably best to rename base_type to effective type in the return
    ;; from the metadata but that's for another day
    ;; where this column came from in the original query.
@@ -65,6 +64,7 @@
     :source/native              :native
     :source/previous-stage      :fields
     :source/table-defaults      :fields
+    :source/external-remaps     :fields
     :source/fields              :fields
     :source/aggregations        :aggregation
     :source/breakouts           :breakout

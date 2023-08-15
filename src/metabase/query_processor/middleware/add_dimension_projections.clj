@@ -22,7 +22,9 @@
   In both cases, to accomplish values replacement on the frontend, the post-processing part of this middleware adds
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
-  `name` is `:remapped_from` `:category_id`."
+  `name` is `:remapped_from` `:category_id`.
+
+  See also the docstring for [[metabase.models.params.chain-filter]] which has a good explanation of this."
   (:require
    [clojure.data :as data]
    [clojure.walk :as walk]

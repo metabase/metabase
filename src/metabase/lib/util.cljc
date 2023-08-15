@@ -16,6 +16,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -357,11 +358,6 @@
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
        (subs s 0 (.-read result)))))
 
-(def ^:private truncate-alias-max-length-bytes
-  "Length to truncate column and table identifiers to. See [[metabase.driver.impl/default-alias-max-length-bytes]] for
-  reasoning."
-  60)
-
 (def ^:private truncated-alias-hash-suffix-length
   "Length of the hash suffixed to truncated strings by [[truncate-alias]]."
   ;; 8 bytes for the CRC32 plus one for the underscore
@@ -381,7 +377,7 @@
         (recur (str \0 s))
         s))))
 
-(mu/defn truncate-alias :- [:string {:min 1, :max 60}]
+(mu/defn truncate-alias :- ::lib.schema.metadata/column.desired-alias
   "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
   checksum of the original string. Truncated string is truncated to [[truncate-alias-max-length-bytes]]
   minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is
@@ -391,7 +387,7 @@
     (truncate-alias \"some_really_long_string\" 15) ;   -> \"some_r_8e0f9bc2\"
     (truncate-alias \"some_really_long_string_2\" 15) ; -> \"some_r_2a3c73eb\""
   ([s]
-   (truncate-alias s truncate-alias-max-length-bytes))
+   (truncate-alias s lib.schema.metadata/truncate-alias-max-length-bytes))
 
   ([s         :- ::lib.schema.common/non-blank-string
     max-bytes :- [:int {:min 0}]]

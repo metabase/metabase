@@ -3,10 +3,12 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]))
+   [metabase.util.humanization :as u.humanization]
+   [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/table
   [_query _stage-number table-metadata _style]
@@ -44,17 +46,56 @@
              [(or position 0) (u/lower-case-en (or field-name ""))])
            field-metadatas))
 
+(mu/defn ^:private remap-fields :- [:sequential ::lib.schema.metadata/column]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   unique-name-fn        :- fn?
+   original-fields       :- [:sequential ::lib.schema.metadata/column]]
+  (into []
+        (comp (filter :lib/external-remap)
+              (map (fn [{{external-remap-field-id :field-id} :lib/external-remap, :as field}]
+                     (when-let [remap-field (lib.metadata/field metadata-providerable external-remap-field-id)]
+                       (assoc remap-field
+                              :lib/source               :source/external-remaps
+                              :lib/source-column-alias  (:name remap-field)
+                              :lib/desired-column-alias (unique-name-fn (or (:name remap-field) ""))
+                              :fk-field-id              (:id field)
+                              :remapped-from            (:lib/desired-column-alias field)))))
+              (filter some?))
+        original-fields))
+
+(mu/defn ^:private add-remapping-info :- [:sequential ::lib.schema.metadata/column]
+  [original-fields :- [:sequential ::lib.schema.metadata/column]
+   remapped-fields :- [:sequential ::lib.schema.metadata/column]]
+  (mapv (fn [{{external-remap-field-id :field-id} :lib/external-remap, :as field}]
+          (let [remapped-name (when external-remap-field-id
+                                (some (fn [remap-field]
+                                        (when (= (:id remap-field) external-remap-field-id)
+                                          (:lib/desired-column-alias remap-field)))
+                                      remapped-fields))]
+            (cond-> field
+              remapped-name (assoc :remapped-to remapped-name))))
+        original-fields))
+
+(mu/defn ^:private add-external-remaps :- [:sequential ::lib.schema.metadata/column]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   unique-name-fn        :- fn?
+   field-metadatas       :- [:sequential ::lib.schema.metadata/column]]
+  (if-let [remaps (not-empty (remap-fields metadata-providerable unique-name-fn field-metadatas))]
+    (into [] cat [(add-remapping-info field-metadatas remaps) remaps])
+    field-metadatas))
+
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/table
   [query _stage-number table-metadata {:keys [unique-name-fn], :as _options}]
   (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
     (->> field-metadatas
          remove-hidden-default-fields
          sort-default-fields
-         (map (fn [col]
-                (assoc col
-                       :lib/source               :source/table-defaults
-                       :lib/source-column-alias  (:name col)
-                       :lib/desired-column-alias (unique-name-fn (or (:name col) ""))))))))
+         (mapv (fn [col]
+                 (assoc col
+                        :lib/source               :source/table-defaults
+                        :lib/source-column-alias  (:name col)
+                        :lib/desired-column-alias (unique-name-fn (or (:name col) "")))))
+         (add-external-remaps query unique-name-fn))))
 
 (defmethod lib.join/join-clause-method :metadata/table
   [{::keys [join-alias join-fields], :as table-metadata}]

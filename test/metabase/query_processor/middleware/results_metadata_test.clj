@@ -213,7 +213,7 @@
 (defn- results-metadata [query]
   (-> (qp/process-query query) :data :results_metadata :columns))
 
-(deftest valid-results-metadata-test
+(deftest ^:parallel valid-results-metadata-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "MBQL queries should come back with valid results metadata"
       (is (schema= (su/non-empty qr/ResultsMetadata)
@@ -262,8 +262,8 @@
                   (testing "Card results metadata shouldn't differ wildly from QP expected cols"
                     (letfn [(select-keys-to-compare [cols]
                               (map #(select-keys % [:name :base_type :id :field_ref]) cols))]
-                      (is (= (select-keys-to-compare results-metadata)
-                             (select-keys-to-compare expected-cols)))))))]
+                      (is (query= (select-keys-to-compare results-metadata)
+                                  (select-keys-to-compare expected-cols)))))))]
         (do-test)
         (testing "With an FK column remapping"
           ;; Add column remapping from Orders Product ID -> Products.Title
@@ -274,7 +274,7 @@
                                                   :human_readable_field_id %products.title})]
             (do-test)))))))
 
-(deftest field-refs-should-be-correct-fk-forms-test
+(deftest ^:parallel field-refs-should-be-correct-fk-forms-test
   (testing "Field refs included in results metadata should be wrapped correctly e.g. in `fk->` form"
     (mt/dataset sample-dataset
       (doseq [[description query]
