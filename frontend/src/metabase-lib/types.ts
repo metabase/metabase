@@ -136,6 +136,12 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
+export type FilterOperatorDisplayInfo = {
+  displayName: string;
+  shortName: string;
+  default?: boolean;
+};
+
 export type ExpressionArg =
   | null
   | boolean
