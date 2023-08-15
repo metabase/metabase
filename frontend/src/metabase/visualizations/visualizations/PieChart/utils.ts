@@ -1,5 +1,5 @@
+import { StackedTooltipModel } from "metabase/visualizations/types";
 import _ from "underscore";
-import { StackedTooltipModel } from "metabase/visualizations/components/ChartTooltip/types";
 
 export function getMaxLabelDimension(
   d3Arc: d3.svg.Arc<d3.svg.arc.Arc>,

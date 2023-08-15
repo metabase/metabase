@@ -1,10 +1,8 @@
 import { SeriesSettings, VisualizationSettings } from "metabase-types/api";
 import { MultipleMetricsChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
-import {
-  GroupedDatum,
-  RemappingHydratedDatasetColumn,
-} from "metabase/visualizations/shared/types/data";
+import { GroupedDatum } from "metabase/visualizations/shared/types/data";
+import { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import { getHoverData } from "./events";
 
 const datasetColumns = [

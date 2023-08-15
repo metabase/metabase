@@ -26,7 +26,7 @@ export interface ClickObject {
   dimensions?: ClickObjectDimension[];
   dimension?: Dimension; // used in table visualization for QuickFilterDrill
   event?: MouseEvent;
-  element?: HTMLElement;
+  element?: Element;
   seriesIndex?: number;
   settings?: Record<string, unknown>;
   origin?: {

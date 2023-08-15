@@ -1,6 +1,6 @@
 import { Icon, IconName } from "metabase/core/components/Icon";
 
-import { HoveredTimelineEvent } from "./types";
+import { HoveredTimelineEvent } from "metabase/visualizations/types";
 import {
   TimelineEventDate,
   TimelineEventIconContainer,

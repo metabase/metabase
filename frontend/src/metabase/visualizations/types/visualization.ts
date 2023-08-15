@@ -1,6 +1,5 @@
 import {
   Card,
-  DatasetColumn,
   DatasetData,
   RawSeries,
   Series,
@@ -11,6 +10,9 @@ import type { ClickObject } from "metabase/visualizations/click-actions/types";
 import { IconName, IconProps } from "metabase/core/components/Icon";
 import type Query from "metabase-lib/queries/Query";
 
+import { HoveredObject } from "./hover";
+import { RemappingHydratedDatasetColumn } from "./columns";
+
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
   nextCard: Card;
@@ -19,15 +21,10 @@ type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
-type HoverData = Array<{ key: string; value: unknown; col?: DatasetColumn }>;
-
-type HoverObject = {
-  index?: number;
-  axisIndex?: number;
-  data?: HoverData;
-  element?: HTMLElement;
-  event?: MouseEvent;
-  datumIndex?: number;
+export type ComputedVisualizationSettings = VisualizationSettings & {
+  column?: (
+    col: RemappingHydratedDatasetColumn,
+  ) => RemappingHydratedDatasetColumn;
 };
 
 export interface VisualizationProps {
@@ -35,7 +32,7 @@ export interface VisualizationProps {
   card: Card;
   data: DatasetData;
   rawSeries: RawSeries;
-  settings: VisualizationSettings;
+  settings: ComputedVisualizationSettings;
   headerIcon: IconProps;
   actionButtons: React.ReactNode;
   fontFamily: string;
@@ -46,7 +43,7 @@ export interface VisualizationProps {
   isDashboard: boolean;
   isEditing: boolean;
   isSettings: boolean;
-  hovered?: HoverObject;
+  hovered?: HoveredObject;
   className?: string;
 
   gridSize?: VisualizationGridSize;
@@ -65,7 +62,7 @@ export interface VisualizationProps {
   }) => void;
   onRenderError: (error?: Error) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
-  onHoverChange: (hoverObject?: HoverObject | null) => void;
+  onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
 
@@ -79,7 +76,7 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   section?: string;
   title?: string;
   group?: string;
-  widget?: string | React.ComponentType<TProps>; // or react component?
+  widget?: string | React.ComponentType<TProps>;
   isValid?: (series: Series, settings: VisualizationSettings) => boolean;
   getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
   getDefault?: (series: Series, settings: VisualizationSettings) => TValue;

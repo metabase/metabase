@@ -13,7 +13,6 @@ import {
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { DatasetData, VisualizationSettings } from "metabase-types/api";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
-import { RemappingHydratedChartData } from "metabase/visualizations/shared/types/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import {
   getAxesVisibility,
@@ -26,6 +25,7 @@ import {
   getStaticFormatters,
 } from "metabase/static-viz/lib/format";
 import { extractRemappedColumns } from "metabase/visualizations";
+import { RemappingHydratedChartData } from "metabase/visualizations/types";
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
 

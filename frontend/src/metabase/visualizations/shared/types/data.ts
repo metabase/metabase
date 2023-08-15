@@ -1,19 +1,4 @@
-import {
-  DatasetColumn,
-  DatasetData,
-  RowValue,
-  RowValues,
-} from "metabase-types/api";
-
-export type RemappingHydratedDatasetColumn = DatasetColumn & {
-  remapped_from_index?: number;
-  remapped_to_column?: DatasetColumn;
-  remapping?: Map<any, any>;
-};
-
-export type RemappingHydratedChartData = DatasetData & {
-  cols: RemappingHydratedDatasetColumn[];
-};
+import { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
 export type SeriesInfo = {
   metricColumn: DatasetColumn;

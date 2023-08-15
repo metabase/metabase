@@ -34,7 +34,6 @@ import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/uti
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
   GroupedDatum,
-  RemappingHydratedChartData,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import {
@@ -49,7 +48,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { VisualizationProps } from "metabase/visualizations/types";
+import { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -71,6 +70,7 @@ import {
   getFormatters,
   getLabelsFormatter,
 } from "./utils/format";
+import { RemappingHydratedChartData } from "metabase/visualizations/types";
 
 const RowChartRenderer = ExplicitSize({
   wrapped: true,
@@ -159,7 +159,7 @@ const RowChartVisualization = ({
     }
 
     const clickData = getClickData(bar, settings, chartColumns, data.cols);
-    onVisualizationClick({ ...clickData, element: event.target });
+    onVisualizationClick({ ...clickData, element: event.currentTarget });
   };
 
   const handleHover = (
@@ -182,7 +182,7 @@ const RowChartVisualization = ({
     onHoverChange?.({
       ...hoverData,
       event: event.nativeEvent,
-      element: event.target,
+      element: event.currentTarget,
     });
   };
 

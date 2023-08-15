@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import { Icon, IconName } from "metabase/core/components/Icon";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 
 import { StyledButton, StyledButtonContent } from "./ActionButton.styled";
 

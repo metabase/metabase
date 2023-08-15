@@ -40,8 +40,11 @@ export interface RowChartViewProps<TDatum> {
   isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
-  onHover?: (event: React.MouseEvent, bar: BarData<TDatum> | null) => void;
-  onClick?: (event: React.MouseEvent, bar: BarData<TDatum>) => void;
+  onHover?: (
+    event: React.MouseEvent<Element>,
+    bar: BarData<TDatum> | null,
+  ) => void;
+  onClick?: (event: React.MouseEvent<Element>, bar: BarData<TDatum>) => void;
 }
 
 const RowChartView = <TDatum,>({

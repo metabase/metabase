@@ -4,7 +4,7 @@ import * as tippy from "tippy.js";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
-import { OnChangeCardAndRun } from "metabase/visualizations/types";
+import { OnChangeCardAndRun } from "metabase/visualizations/types/visualization";
 import { Dispatch } from "metabase-types/store";
 import { Series } from "metabase-types/api";
 import {
@@ -77,7 +77,7 @@ class ClickActionsPopover extends Component<ChartClickActionsProps, State> {
     }
   };
 
-  getPopoverReference = (clicked: ClickObject): HTMLElement | null => {
+  getPopoverReference = (clicked: ClickObject): Element | null => {
     if (clicked.element) {
       if (clicked.element.firstChild instanceof HTMLElement) {
         return clicked.element.firstChild;

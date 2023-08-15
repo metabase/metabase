@@ -164,7 +164,7 @@ export const trimData = (
 };
 
 const getBreakoutDistinctValues = (
-  data: Pick<DatasetData, "rows" | "cols">,
+  data: DatasetData,
   breakout: ColumnDescriptor,
   columnFormatter: ColumnFormatter,
 ) => {
@@ -226,7 +226,7 @@ const getMultipleMetricSeries = (
 };
 
 export const getSeries = (
-  data: Pick<DatasetData, "rows" | "cols">,
+  data: DatasetData,
   chartColumns: ChartColumns,
   columnFormatter: ColumnFormatter,
 ): Series<GroupedDatum, SeriesInfo>[] => {
