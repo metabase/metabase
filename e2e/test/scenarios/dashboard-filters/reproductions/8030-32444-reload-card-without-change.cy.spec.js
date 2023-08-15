@@ -1,4 +1,13 @@
-import { restore, popover, updateDashboardCards } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  updateDashboardCards,
+  visitDashboard,
+  filterWidget,
+  editDashboard,
+  setFilter,
+  saveDashboard,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -19,6 +28,16 @@ const question1Details = {
 const question2Details = {
   name: "Q2",
   query: { "source-table": ORDERS_ID, limit: 2 },
+};
+
+const questionWithFilter = {
+  name: "Question with Filter",
+  type: "query",
+  query: {
+    "source-table": ORDERS_ID,
+    limit: 2,
+    filter: [">", ["field", ORDERS.TOTAL, null], 100],
+  },
 };
 
 const dashboardDetails = {
@@ -54,6 +73,38 @@ describe("issue 8030", () => {
         });
       },
     );
+  });
+});
+
+describe("issue 32444", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not reload dashboard cards with filter not connected to a filter (metabase#32444)", () => {
+    cy.createDashboardWithQuestions({
+      dashboardName: "Dashboard with a card and filter",
+      questions: [questionWithFilter],
+    }).then(({ dashboard }) => {
+      cy.intercept(
+        "POST",
+        `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
+      ).as("getCardQuery");
+
+      visitDashboard(dashboard.id);
+      editDashboard(dashboard.id);
+
+      setFilter("Text or Category", "Is");
+      saveDashboard();
+
+      cy.wait("@getCardQuery");
+      cy.get("@getCardQuery.all").should("have.length", 1);
+
+      addFilterValue();
+
+      cy.get("@getCardQuery.all").should("have.length", 1);
+    });
   });
 });
 
@@ -105,7 +156,7 @@ const setFilterMapping = ({ dashboard_id, card1_id, card2_id }) => {
           },
         ],
       },
-    ],
+    ].filter(Boolean),
   });
 };
 
@@ -120,3 +171,9 @@ const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {
     `/api/dashboard/${dashboard_id}/dashcard/*/card/${card2_id}/query`,
   ).as("getCardQuery2");
 };
+
+function addFilterValue() {
+  filterWidget().click();
+  cy.findByPlaceholderText("Enter some text").type("5{enter}");
+  cy.button("Add filter").click();
+}
