@@ -249,6 +249,9 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
   }
 }
 
+/**
+ * Save a question using UI
+ */
 export function saveQuestion(
   name,
   { wrapId = false, idAlias = "questionId" } = {},
