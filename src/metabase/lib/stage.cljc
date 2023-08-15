@@ -86,7 +86,7 @@
      (assoc breakout
             :lib/source               :source/breakouts
             :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) breakout)
-            :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query breakout))))))
+            :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query stage-number breakout))))))
 
 (mu/defn ^:private aggregations-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
@@ -118,7 +118,7 @@
        (assoc metadata
               :lib/source               source
               :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
-              :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query metadata)))))))
+              :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query stage-number metadata)))))))
 
 (mu/defn ^:private summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
@@ -219,7 +219,7 @@
                                                       :lib/source               :source/implicitly-joinable
                                                       :lib/source-column-alias  (:name field))]]
                               (assoc field :lib/desired-column-alias (unique-name-fn
-                                                                      (lib.field/desired-alias query field))))))))
+                                                                      (lib.field/desired-alias query stage-number field))))))))
           column-metadatas)))
 
 ;;; Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.

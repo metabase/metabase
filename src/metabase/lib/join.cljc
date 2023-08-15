@@ -20,7 +20,9 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -47,7 +49,7 @@
 
 (def ^:private Field
   [:or
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:ref :mbql.clause/field]])
 
 (def ^:private FieldOrPartialJoin
@@ -57,7 +59,9 @@
   (= (lib.dispatch/dispatch-value x) :mbql/join))
 
 (def ^:private Joinable
-  [:or lib.metadata/TableMetadata lib.metadata/CardMetadata])
+  [:or
+   [:ref ::lib.schema.metadata/table]
+   [:ref ::lib.schema.metadata/card]])
 
 (def ^:private JoinOrJoinable
   [:or
@@ -223,7 +227,7 @@
   display name."
   [query           :- ::lib.schema/query
    stage-number    :- :int
-   column-metadata :- lib.metadata/ColumnMetadata
+   column-metadata :- ::lib.schema.metadata/column
    join-alias      :- ::lib.schema.common/non-blank-string]
   (let [column-metadata (assoc column-metadata :source-alias join-alias)
         col             (-> (assoc column-metadata
@@ -573,6 +577,22 @@
   [a-join :- PartialJoin]
   (:conditions a-join))
 
+(mu/defn reusable-explicit-join :- [:maybe ::lib.schema.join/join]
+  "The QP will actually reuse existing explicit joins for implicitly joinable columns if a suitable one already
+  exists; this function will return such a join for the `:source-field` (`:field` ref) or
+  `:fk-field-id` (ColumnMetadata) if one exists."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   fk-field-id  :- ::lib.schema.id/field]
+  (some (fn [a-join]
+          (let [conditions (join-conditions a-join)]
+            (when (= (count conditions) 1)
+              (when-let [lhs (standard-join-condition-lhs (first conditions))]
+                (when (mbql.u.match/match-one lhs
+                        [:field _opts (id :guard (partial = fk-field-id))])
+                  a-join)))))
+        (joins query stage-number)))
+
 (mu/defn join-fields :- [:maybe ::lib.schema.join/fields]
   "Get all join conditions for the given join"
   [a-join :- PartialJoin]
@@ -660,11 +680,11 @@
 ;;; options for each respective part. At the time of this writing, selecting one does not filter out incompatible
 ;;; options for the other parts, but hopefully we can implement this in the future -- see #31174
 
-(mu/defn ^:private sort-join-condition-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn ^:private sort-join-condition-columns :- [:sequential ::lib.schema.metadata/column]
   "Sort potential join condition columns as returned by [[join-condition-lhs-columns]]
   or [[join-condition-rhs-columns]]. PK columns are returned first, followed by FK columns, followed by other columns.
   Otherwise original order is maintained."
-  [columns :- [:sequential lib.metadata/ColumnMetadata]]
+  [columns :- [:sequential ::lib.schema.metadata/column]]
   (let [{:keys [pk fk other]} (group-by (fn [column]
                                           (cond
                                             (lib.types.isa/primary-key? column) :pk
@@ -678,7 +698,7 @@
     columns
     (lib.equality/mark-selected-columns metadata-providerable columns [existing-column-or-nil])))
 
-(mu/defn join-condition-lhs-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn join-condition-lhs-columns :- [:sequential ::lib.schema.metadata/column]
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
 
@@ -733,10 +753,10 @@
           (mark-selected-column query lhs-column-or-nil)
           sort-join-condition-columns))))
 
-(mu/defn join-condition-rhs-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn join-condition-rhs-columns :- [:sequential ::lib.schema.metadata/column]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
   is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
-  Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
+  Table ([[metabase.::lib.schema.metadata/table]]), Saved Question/Model ([[metabase.::lib.schema.metadata/card]]),
   another query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
   If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
@@ -782,12 +802,12 @@
   ([_query             :- ::lib.schema/query
     _stage-number      :- :int
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible options out.
-    _lhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]
-    _rhs-column-or-nil :- [:maybe lib.metadata/ColumnMetadata]]
+    _lhs-column-or-nil :- [:maybe ::lib.schema.metadata/column]
+    _rhs-column-or-nil :- [:maybe ::lib.schema.metadata/column]]
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
    lib.filter.operator/join-operators))
 
-(mu/defn ^:private pk-column :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private pk-column :- [:maybe ::lib.schema.metadata/column]
   "Given something `x` (e.g. a Table metadata) find the PK column."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -795,11 +815,11 @@
   (m/find-first lib.types.isa/primary-key?
                 (lib.metadata.calculation/visible-columns query stage-number x)))
 
-(mu/defn ^:private fk-column-for :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private fk-column-for :- [:maybe ::lib.schema.metadata/column]
   "Given a query stage find an FK column that points to the PK `pk-col`."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   pk-col       :- [:maybe lib.metadata/ColumnMetadata]]
+   pk-col       :- [:maybe ::lib.schema.metadata/column]]
   (when-let [pk-id (:id pk-col)]
     (m/find-first (fn [{:keys [fk-target-field-id], :as col}]
                     (and (lib.types.isa/foreign-key? col)
@@ -841,7 +861,7 @@
                         cols)
       (lib.equality/mark-selected-columns cols j-fields))))
 
-(mu/defn joinable-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn joinable-columns :- [:sequential ::lib.schema.metadata/column]
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
   something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
   selected columns (those in the join's `:fields`) will include `:selected true` information."
@@ -939,7 +959,7 @@
   ([query                       :- ::lib.schema/query
     stage-number                :- :int
     join-or-joinable            :- [:maybe JoinOrJoinable]
-    condition-lhs-column-or-nil :- [:maybe [:or lib.metadata/ColumnMetadata :mbql.clause/field]]]
+    condition-lhs-column-or-nil :- [:maybe [:or ::lib.schema.metadata/column :mbql.clause/field]]]
    (or
     (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-column-or-nil)
     (join-lhs-display-name-for-first-join-in-first-stage query stage-number join-or-joinable)

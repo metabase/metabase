@@ -8,7 +8,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [metabase.lib.join :as lib.join]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -46,16 +47,18 @@
       (mu/disable-enforcement
         (is (sequential? (lib.metadata.calculation/visible-columns query)))))))
 
+(def ^:private metadata-provider-with-external-remap
+  (lib.metadata.composed-provider/composed-metadata-provider
+   (lib.tu/mock-metadata-provider
+    {:fields [(assoc (meta/field-metadata :venues :category-id)
+                     :lib/external-remap {:id       100
+                                          :name     "Category name [external remap]"
+                                          :field-id (meta/id :categories :name)})]})
+   meta/metadata-provider))
+
 (deftest ^:parallel include-external-remappings-test
   (testing "calculated metadata should include external remappings (#33091)"
-    (let [metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
-                             (lib.tu/mock-metadata-provider
-                              {:fields [(assoc (meta/field-metadata :venues :category-id)
-                                               :lib/external-remap {:id       100
-                                                                    :name     "Category name [external remap]"
-                                                                    :field-id (meta/id :categories :name)})]})
-                             meta/metadata-provider)
-          query             (lib/query metadata-provider (meta/table-metadata :venues))]
+    (let [query (lib/query metadata-provider-with-external-remap (meta/table-metadata :venues))]
       (is (=? [{:id                       (meta/id :venues :id)
                 :lib/desired-column-alias "ID"}
                {:id                       (meta/id :venues :name)
@@ -65,7 +68,7 @@
                 :lib/external-remap       {:id       100
                                            :name     "Category name [external remap]"
                                            :field-id (meta/id :categories :name)}
-                :remapped-to              "NAME_2"}
+                :remapped-to              "CATEGORIES__via__CATEGORY_ID__NAME"}
                {:id                       (meta/id :venues :latitude)
                 :lib/desired-column-alias "LATITUDE"}
                {:id                       (meta/id :venues :longitude)
@@ -74,7 +77,42 @@
                 :lib/desired-column-alias "PRICE"}
                {:lib/source               :source/external-remaps
                 :id                       (meta/id :categories :name)
-                :lib/desired-column-alias "NAME_2"
+                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"
+                :remapped-from            "CATEGORY_ID"
+                :fk-field-id              (meta/id :venues :category-id)}]
+              (lib.metadata.calculation/returned-columns query))))))
+
+(deftest ^:parallel reuse-explicit-joins-test
+  (testing "Metadata should assume existing joins will be reused for implicit joins where appropriate"
+    (let [query (lib/query metadata-provider-with-external-remap (meta/table-metadata :venues))
+          query (-> query
+                    (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
+                                  (lib/with-join-conditions [(lib.join/suggested-join-condition query (meta/table-metadata :categories))]))))]
+      (is (=? [{:id                       (meta/id :venues :id)
+                :lib/desired-column-alias "ID"}
+               {:id                       (meta/id :venues :name)
+                :lib/desired-column-alias "NAME"}
+               {:id                       (meta/id :venues :category-id)
+                :lib/desired-column-alias "CATEGORY_ID"
+                :lib/external-remap       {:id       100
+                                           :name     "Category name [external remap]"
+                                           :field-id (meta/id :categories :name)}
+                :remapped-to              "Categories__NAME_2"}
+               {:id                       (meta/id :venues :latitude)
+                :lib/desired-column-alias "LATITUDE"}
+               {:id                       (meta/id :venues :longitude)
+                :lib/desired-column-alias "LONGITUDE"}
+               {:id                       (meta/id :venues :price)
+                :lib/desired-column-alias "PRICE"}
+               {:lib/source               :source/joins
+                :id                       (meta/id :categories :id)
+                :lib/desired-column-alias "Categories__ID"}
+               {:lib/source               :source/joins
+                :id                       (meta/id :categories :name)
+                :lib/desired-column-alias "Categories__NAME"}
+               {:lib/source               :source/external-remaps
+                :id                       (meta/id :categories :name)
+                :lib/desired-column-alias "Categories__NAME_2"
                 :remapped-from            "CATEGORY_ID"
                 :fk-field-id              (meta/id :venues :category-id)}]
               (lib.metadata.calculation/returned-columns query))))))

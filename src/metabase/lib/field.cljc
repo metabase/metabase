@@ -17,11 +17,13 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
@@ -48,7 +50,7 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
-(mu/defn resolve-field-id :- lib.metadata/ColumnMetadata
+(mu/defn resolve-field-id :- ::lib.schema.metadata/column
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available."
   [query        :- ::lib.schema/query
@@ -69,9 +71,9 @@
     ;; if no Card metadata is present, this should propagate errors from [[lib.metadata/field]]
     (lib.metadata/field query field-id)))
 
-(mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   [column-name      :- ::lib.schema.common/non-blank-string
-   column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
+   column-metadatas :- [:sequential ::lib.schema.metadata/column]]
   (or (m/find-first #(= (:lib/desired-column-alias %) column-name)
                     column-metadatas)
       (m/find-first #(= (:name %) column-name)
@@ -82,7 +84,7 @@
                             (pr-str (mapv :lib/desired-column-alias column-metadatas))))
         nil)))
 
-(mu/defn ^:private resolve-column-name :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private resolve-column-name :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
@@ -108,7 +110,7 @@
                                   (assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                   (assoc :lib/source :source/previous-stage))))))
 
-(mu/defn ^:private resolve-field-metadata :- lib.metadata/ColumnMetadata
+(mu/defn ^:private resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
   [query                                                                 :- ::lib.schema/query
@@ -138,7 +140,7 @@
 (mu/defn ^:private add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."
   [query    :- ::lib.schema/query
-   metadata :- lib.metadata/ColumnMetadata]
+   metadata :- ::lib.schema.metadata/column]
   (let [parent-metadata     (lib.metadata/field query (:parent-id metadata))
         {parent-name :name} (cond->> parent-metadata
                               (:parent-id parent-metadata) (add-parent-column-metadata query))]
@@ -201,10 +203,10 @@
   TODO: It would probably be nice to have the metadata providers parse these into a `:card-id` or something as they
   come in, sort of like what we do with legacy queries in [[metabase.lib.convert]], but this will have to be good
   enough for now."
-  [query table-id]
+  [metadata-providerable table-id]
   (cond
-    (string? table-id)  (lib.metadata/card query (lib.util/legacy-string-table-id->card-id table-id))
-    (integer? table-id) (lib.metadata/table query table-id)))
+    (string? table-id)  (lib.metadata/card metadata-providerable (lib.util/legacy-string-table-id->card-id table-id))
+    (integer? table-id) (lib.metadata/table metadata-providerable table-id)))
 
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
@@ -458,12 +460,15 @@
                            (column-metadata->field-ref metadata))
     (column-metadata->field-ref metadata)))
 
-(defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
+(defn- implicit-join-name [query stage-number {:keys [fk-field-id table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
-    (when-let [table (table-metadata query table-id)]
-      (let [table-name           (:name table)
-            source-field-id-name (:name (lib.metadata/field query fk-field-id))]
-        (lib.join/implicit-join-name table-name source-field-id-name)))))
+    (or
+     (when-let [explicit-join (lib.join/reusable-explicit-join query stage-number fk-field-id)]
+       (lib.join/current-join-alias explicit-join))
+     (when-let [table (table-metadata query table-id)]
+       (let [table-name           (:name table)
+             source-field-id-name (:name (lib.metadata/field query fk-field-id))]
+         (lib.join/implicit-join-name table-name source-field-id-name))))))
 
 (mu/defn desired-alias :- ::lib.schema.common/non-blank-string
   "Desired alias for a Field e.g.
@@ -475,12 +480,13 @@
     MyJoin__my_field
 
   You should pass the results thru a unique name function."
-  [query          :- ::lib.schema/query
-   field-metadata :- lib.metadata/ColumnMetadata]
-  (if-let [join-alias (or (lib.join/current-join-alias field-metadata)
-                          (implicit-join-name query field-metadata))]
-    (lib.join/joined-field-desired-alias join-alias (:name field-metadata))
-    (:name field-metadata)))
+  [query           :- ::lib.schema/query
+   stage-number    :- :int
+   column-metadata :- ::lib.schema.metadata/column]
+  (if-let [join-alias (or (lib.join/current-join-alias column-metadata)
+                          (implicit-join-name query stage-number column-metadata))]
+    (lib.join/joined-field-desired-alias join-alias (:name column-metadata))
+    (:name column-metadata)))
 
 (defn- expression-refs
   "Create refs for all the expressions in a stage of a query."
@@ -524,7 +530,7 @@
     stage-number :- :int]
    (:fields (lib.util/query-stage query stage-number))))
 
-(mu/defn fieldable-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn fieldable-columns :- [:sequential ::lib.schema.metadata/column]
   "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query. This is
   basically just the columns returned by the source Table/Saved Question/Model or previous query stage.
 
@@ -551,7 +557,7 @@
 
 (mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
   "Find the field id for something or nil."
-  [field-metadata :- lib.metadata/ColumnMetadata]
+  [field-metadata :- ::lib.schema.metadata/column]
   (:id field-metadata))
 
 (defn- populate-fields-for-stage
