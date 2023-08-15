@@ -38,9 +38,85 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  build:
+  download_uberjar:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.files-changed.outputs.e2e_specs == 'true'
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Artifact zip URL
+        run: |
+          get_parent () {
+            parent_commit=$(git rev-parse $1^)
+            echo $parent_commit
+          }
+
+          main () {
+            parent_commit=$(get_parent $1)
+            echo $parent_commit
+
+            current_page=${2:-1}
+
+            artifacts=$(curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/metabase/metabase/actions/artifacts?name=metabase-${{ matrix.edition }}-uberjar&per_page=100&page=$current_page")
+
+
+            zip=$(echo $artifacts | jq '[.artifacts[] | {url: .url, dl: .archive_download_url, run: .workflow_run}]' \
+            | jq -c --arg COMMIT "$parent_commit" '[.[] | select(.run.head_sha | contains($COMMIT))'.dl] | jq '.[0] | select (.!=null)')
+
+            if [[ $zip ]]; then
+                echo "Found metabase-${{ matrix.edition }} uberjar for '$parent_commit'!"
+                echo "download_link=$(echo $zip)" >> $GITHUB_OUTPUT
+            elif [[ $current_page -le 5 ]]; then
+                echo "Didn't find the artifact for '$parent_commit' on the page: $current_page."
+                current_page=$((++current_page))
+                main $parent_commit $current_page
+            else
+              parent_commit=$(get_parent $parent_commit)
+              echo "Switching to a new parent $parent_commit"
+              main $parent_commit
+            fi
+          }
+
+          main "HEAD"
+        id: saved_artifact
+        shell: bash
+
+      - name: Download Metabase uberjar from a previously stored artifact
+        run: |
+          curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            ${{ steps.saved_artifact.outputs.download_link }} \
+            -o mb.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+
+      - name: Unzip Metabase artifact containing an uberjar
+        run: unzip mb.zip
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+
+  build:
+    needs: [download_uberjar, files-changed]
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.download_uberjar.result == 'skipped' &&
+      needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
@@ -264,11 +340,12 @@ jobs:
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [build, files-changed]
+    needs: [build, files-changed, download_uberjar]
     if: |
       !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'false' &&
-      needs.build.result == 'skipped'
+      needs.build.result == 'skipped' &&
+      needs.download_uberjar.result == 'skipped'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
