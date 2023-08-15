@@ -44,6 +44,7 @@ const mapDispatchToProps = {
 
 const createListItem = table => (
   <ListItem
+    data-testid="table-list-item"
     key={table.id}
     name={table.display_name || table.name}
     description={table.description}

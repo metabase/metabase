@@ -32,16 +32,17 @@ const completeTable = createMockTable({
   initial_sync_status: "complete",
 });
 
+const tables = [incompleteTable, abortedTable, completeTable];
+
 const database = createMockDatabase({
   id: databaseId,
   name: "Test Database",
-  tables: [incompleteTable, abortedTable, completeTable],
+  tables,
 });
 
 const storeInitialState = createMockState({
   entities: createMockEntitiesState({
     databases: [database],
-    tables: [incompleteTable, abortedTable, completeTable],
   }),
 });
 
@@ -67,5 +68,38 @@ describe("TableList", () => {
     expect(screen.getByText(incompleteTable.display_name)).toBeInTheDocument();
     expect(screen.getByText(abortedTable.display_name)).toBeInTheDocument();
     expect(screen.getByText(completeTable.display_name)).toBeInTheDocument();
+  });
+
+  it("should show tables with initial_sync_status='incomplete' as non-interactive (disabled)", () => {
+    setup();
+
+    const table = incompleteTable;
+    const index = tables.indexOf(table);
+    const tableItem = screen.getAllByTestId("table-list-item")[index];
+    const href = `/reference/databases/${databaseId}/tables/${table.id}`;
+
+    expect(tableItem).not.toContainHTML(href);
+  });
+
+  it("should show tables with initial_sync_status='aborted' as non-interactive (disabled)", () => {
+    setup();
+
+    const table = abortedTable;
+    const index = tables.indexOf(table);
+    const tableItem = screen.getAllByTestId("table-list-item")[index];
+    const href = `/reference/databases/${databaseId}/tables/${table.id}`;
+
+    expect(tableItem).not.toContainHTML(href);
+  });
+
+  it("should show tables with initial_sync_status='complete' as interactive", () => {
+    setup();
+
+    const table = completeTable;
+    const index = tables.indexOf(table);
+    const tableItem = screen.getAllByTestId("table-list-item")[index];
+    const href = `/reference/databases/${databaseId}/tables/${table.id}`;
+
+    expect(tableItem).toContainHTML(href);
   });
 });
