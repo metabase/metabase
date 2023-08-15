@@ -1,6 +1,9 @@
 import { DatasetData, VisualizationSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/core/utils/types";
-import { RemappingHydratedChartData, RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
+import {
+  RemappingHydratedChartData,
+  RemappingHydratedDatasetColumn,
+} from "metabase/visualizations/types";
 
 export type ColumnDescriptor = {
   index: number;
