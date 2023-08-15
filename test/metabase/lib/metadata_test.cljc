@@ -7,6 +7,7 @@
    [metabase.lib.test-util :as lib.tu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
+(comment lib/keep-me)
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel field-metadata-test
@@ -16,7 +17,7 @@
           (lib.metadata/field meta/metadata-provider (meta/id :venues :category-id)))))
 
 (deftest ^:parallel stage-metadata-test
-  (let [query (lib/saved-question-query meta/metadata-provider meta/saved-question)]
+  (let [query (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))]
     (is (=? {:columns [{:name "ID"}
                        {:name "NAME"}
                        {:name "CATEGORY_ID"}
@@ -26,9 +27,9 @@
             (lib.metadata/stage query -1)))))
 
 (deftest ^:parallel stage-column-metadata-test
-  (let [query (lib/saved-question-query meta/metadata-provider meta/saved-question)]
+  (let [query (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))]
     (are [x] (=? {:lib/type       :metadata/column
-                  :display-name   "CATEGORY_ID"
+                  :display-name   "Category ID"
                   :name           "CATEGORY_ID"
                   :base-type      :type/Integer
                   :effective-type :type/Integer

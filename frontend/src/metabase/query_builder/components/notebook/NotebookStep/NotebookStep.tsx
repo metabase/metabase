@@ -25,6 +25,7 @@ import {
   StepHeader,
   StepButtonContainer,
   StepRoot,
+  PreviewButton,
 } from "./NotebookStep.styled";
 
 function hasLargeButton(action: NotebookStepAction) {
@@ -146,15 +147,13 @@ function NotebookStep({
             </StepContent>
             {!readOnly && (
               <StepButtonContainer>
-                <ActionButton
-                  className={cx("ml1", {
-                    "hidden disabled": !hasPreviewButton,
-                    "text-brand-hover": hasPreviewButton,
-                  })}
+                <PreviewButton
+                  as={ActionButton}
                   icon="play"
                   title={t`Preview`}
                   color={c("text-light")}
                   transparent
+                  hasPreviewButton={hasPreviewButton}
                   onClick={openPreview}
                 />
               </StepButtonContainer>

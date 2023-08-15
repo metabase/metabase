@@ -18,9 +18,9 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel field-from-results-metadata-test
-  (let [field-metadata (lib.metadata/stage-column (lib/saved-question-query
+  (let [field-metadata (lib.metadata/stage-column (lib.tu/query-with-stage-metadata-from-card
                                                    meta/metadata-provider
-                                                   meta/saved-question)
+                                                   (:venues lib.tu/mock-cards))
                                                   "ID")]
     (is (=? {:lib/type :metadata/column
              :name     "ID"}
@@ -148,9 +148,7 @@
           ;; legacy result metadata will already include the Join name in the `:display-name`, so simulate that. Make
           ;; sure we're not including it twice.
           result-metadata (for [col (lib/returned-columns
-                                     (lib/saved-question-query
-                                      meta/metadata-provider
-                                      {:dataset-query card-query}))]
+                                     (lib/query meta/metadata-provider card-query))]
                             (cond-> col
                               (:source-alias col)
                               (update :display-name (fn [display-name]
@@ -456,18 +454,16 @@
                         (lib/display-info query))))))))
 
 (deftest ^:parallel joined-field-column-name-test
-  (let [card  {:dataset-query {:database (meta/id)
-                               :type     :query
-                               :query    {:source-table (meta/id :venues)
-                                          :joins        [{:fields       :all
-                                                          :source-table (meta/id :categories)
-                                                          :conditions   [[:=
-                                                                          [:field (meta/id :venues :category-id) nil]
-                                                                          [:field (meta/id :categories :id) {:join-alias "Cat"}]]]
-                                                          :alias        "Cat"}]}}}
-        query (lib/saved-question-query
-               meta/metadata-provider
-               card)]
+  (let [legacy-query {:database (meta/id)
+                      :type     :query
+                      :query    {:source-table (meta/id :venues)
+                                 :joins        [{:fields       :all
+                                                 :source-table (meta/id :categories)
+                                                 :conditions   [[:=
+                                                                 [:field (meta/id :venues :category-id) nil]
+                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]]
+                                                 :alias        "Cat"}]}}
+        query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
              {:lib/desired-column-alias "NAME"}
              {:lib/desired-column-alias "CATEGORY_ID"}

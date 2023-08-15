@@ -13,7 +13,8 @@
 (deftest ^:parallel describe-query-test
   (let [query (-> lib.tu/venues-query
                   (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
-        ;; wrong arity: there's a bug in our Kondo config, see https://metaboat.slack.com/archives/C04DN5VRQM6/p1679022185079739?thread_ts=1679022025.317059&cid=C04DN5VRQM6
+        ;; wrong arity: there's a bug in our Kondo config, see
+        ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1679022185079739?thread_ts=1679022025.317059&cid=C04DN5VRQM6
         query (-> #_{:clj-kondo/ignore [:invalid-arity]}
                   (lib/filter query (lib/= (meta/field-metadata :venues :name) "Toucannery"))
                   (lib/breakout (meta/field-metadata :venues :category-id))
@@ -28,17 +29,6 @@
            (lib/display-name query)
            (lib/describe-query query)
            (lib/suggested-name query)))))
-
-(deftest ^:parallel card-source-query-test
-  (is (=? {:lib/type :mbql/query
-           :database (meta/id)
-           :stages   [{:lib/type    :mbql.stage/native
-                       :native      "SELECT * FROM VENUES;"}]}
-          (lib/saved-question-query meta/metadata-provider
-                                    {:dataset-query   {:database (meta/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT * FROM VENUES;"}}
-                                     :result-metadata meta/card-results-metadata}))))
 
 (deftest ^:parallel notebook-query-test
   (is (=? {:lib/type :mbql/query
