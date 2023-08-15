@@ -57,7 +57,7 @@ declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 
 declare const ColumnWithOperators: unique symbol;
-export type ColumnWithOperators = unknown & {
+export type ColumnWithOperators = ColumnMetadata & {
   _opaque: typeof ColumnWithOperators;
 };
 
