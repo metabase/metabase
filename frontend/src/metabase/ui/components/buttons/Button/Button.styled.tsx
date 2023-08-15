@@ -1,9 +1,9 @@
-import { rem } from "@mantine/core";
 import type {
   ButtonStylesParams,
   ContextStylesParams,
   MantineTheme,
 } from "@mantine/core";
+import { getStylesRef, rem } from "@mantine/core";
 
 export const getButtonOverrides = () => ({
   Button: {
@@ -26,8 +26,25 @@ export const getButtonOverrides = () => ({
             color: styles.hoverColor,
             backgroundColor: styles.hoverBackgroundColor,
           },
+          [`&:has(.${getStylesRef("label")}:empty)`]: {
+            padding: compact ? `${rem(7)} ${rem(7)}` : `${rem(11)} ${rem(11)}`,
+            [`.${getStylesRef("leftIcon")}`]: {
+              marginRight: 0,
+            },
+            [`.${getStylesRef("rightIcon")}`]: {
+              marginLeft: 0,
+            },
+          },
+        },
+        label: {
+          ref: getStylesRef("label"),
+        },
+        leftIcon: {
+          ref: getStylesRef("leftIcon"),
+          marginRight: theme.spacing.sm,
         },
         rightIcon: {
+          ref: getStylesRef("rightIcon"),
           marginLeft: theme.spacing.sm,
         },
       };
