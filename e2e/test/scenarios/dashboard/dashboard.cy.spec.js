@@ -26,6 +26,7 @@ import {
   toggleDashboardInfoSidebar,
   dashboardHeader,
   openProductsTable,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -421,6 +422,26 @@ describe("scenarios > dashboard", () => {
         cy.findByTestId("edit-bar").findByText(
           "You're editing this dashboard.",
         );
+      },
+    );
+
+    it(
+      "shows sorted cards on mobile screens",
+      { viewportWidth: 400, viewportHeight: 800 },
+      () => {
+        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+          const cards = [
+            createTextCard("bottom", 1), // the bottom card intentionally goes first to have unsorted cards coming from the BE
+            createTextCard("top", 0),
+          ];
+
+          updateDashboardCards({ dashboard_id, cards });
+
+          visitDashboard(dashboard_id);
+        });
+
+        getDashboardCards().eq(0).contains("top");
+        getDashboardCards().eq(1).contains("bottom");
       },
     );
   });
@@ -951,4 +972,22 @@ function assertScrollBarExists() {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
+}
+
+function createTextCard(text, row) {
+  return {
+    row,
+    size_x: 24,
+    size_y: 1,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "text",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      text,
+    },
+  };
 }
