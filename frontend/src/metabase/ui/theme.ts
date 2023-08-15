@@ -12,7 +12,7 @@ import {
 
 export const getThemeOverrides = (): MantineThemeOverride => ({
   colors: {
-    brand: [color("brand-light"), color("brand")],
+    brand: [color("brand-lighter"), color("brand")],
     text: [color("text-light"), color("text-medium"), color("text-dark")],
     focus: [color("focus")],
     border: [color("border")],
