@@ -113,7 +113,6 @@ export default class ChartSettingsTableFormatting extends Component {
           cols={cols}
           isNew={editingRuleIsNew}
           onChange={rule => {
-            console.log(rule);
             onChange([
               ...value.slice(0, editingRule),
               rule,
@@ -338,17 +337,13 @@ const RuleEditor = ({
     rule.operator !== "is-false";
 
   const handleColumnChange = columns => {
-    console.log(columns);
     const _cols = columns.map(name => _.findWhere(cols, { name }));
-    console.log(_cols, _cols.every(isBoolean));
-
     const operatorUpdate =
       columns.length === 1 && columns[0] === columns.changedItem
         ? {
             operator: _cols.every(isBoolean) ? "is-true" : "=",
           }
         : {};
-
     onChange({ ...rule, columns, ...operatorUpdate });
   };
 
@@ -404,6 +399,9 @@ const RuleEditor = ({
           <Select
             value={rule.operator}
             onChange={e => onChange({ ...rule, operator: e.target.value })}
+            buttonProps={{
+              "data-testid": "conditional-formatting-value-operator-button",
+            }}
           >
             {Object.entries({
               ...COMMON_OPERATOR_NAMES,
