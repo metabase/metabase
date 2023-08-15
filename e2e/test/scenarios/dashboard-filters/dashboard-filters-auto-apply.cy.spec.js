@@ -206,7 +206,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       dashboardParametersContainer().button("Apply").should("be.visible");
 
       editDashboard();
-      dashboardHeader().button("Cancel").click();
+      cy.findByTestId("edit-bar").button("Cancel").click();
       filterWidget().findByText("Gadget").should("be.visible");
       dashboardParametersContainer().button("Apply").should("be.visible");
     });
