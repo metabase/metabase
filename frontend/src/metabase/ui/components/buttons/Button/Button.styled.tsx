@@ -1,19 +1,23 @@
 import { rem } from "@mantine/core";
-import type { MantineTheme, ContextStylesParams } from "@mantine/core";
+import type {
+  ButtonStylesParams,
+  ContextStylesParams,
+  MantineTheme,
+} from "@mantine/core";
 
 export const getButtonOverrides = () => ({
   Button: {
     styles: (
       theme: MantineTheme,
-      params: unknown,
-      context: ContextStylesParams,
+      { compact }: ButtonStylesParams,
+      { variant }: ContextStylesParams,
     ) => {
-      const styles = getButtonVariantStyles(theme, context);
+      const styles = getButtonVariantStyles(theme, variant);
 
       return {
         root: {
           height: "auto",
-          padding: `${rem(11)} ${rem(15)}`,
+          padding: compact ? `${rem(3)} ${rem(7)}` : `${rem(11)} ${rem(15)}`,
           fontSize: theme.fontSizes.md,
           lineHeight: "1rem",
           color: styles.color,
@@ -31,10 +35,7 @@ export const getButtonOverrides = () => ({
   },
 });
 
-const getButtonVariantStyles = (
-  theme: MantineTheme,
-  { variant }: ContextStylesParams,
-) => {
+const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
   switch (variant) {
     case "filled":
       return {
