@@ -84,7 +84,7 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         color: theme.white,
         borderColor: theme.fn.primaryColor(),
         backgroundColor: theme.fn.primaryColor(),
-        loaderColor: theme.colors.focus[0],
+        loaderColor: theme.colors.brand[1],
         hoverBorderColor: hoverColor,
         hoverBackgroundColor: hoverColor,
         disabledColor: theme.colors.text[0],
