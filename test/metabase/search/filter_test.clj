@@ -42,15 +42,15 @@
                       :created-by 1})))))
 
     (testing "verified"
-      (is (= #{"dashboard" "dataset" "collection" "card"}
+      (is (= #{"dataset" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
 
-      (is (= #{"dashboard" "dataset" "card"}
+      (is (= #{"dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:models   #{"card" "dashboard" "dataset" "table"}
+                     {:models   #{"dashboard" "dataset" "table"}
                       :verified true})))))))
 
 (def ^:private base-search-query
