@@ -202,15 +202,14 @@
 
 (defn v2-dump
   "Exports Metabase app data to directory at path"
-  [path {:keys [user-email collection-ids] :as opts}]
+  [path {:keys [collection-ids] :as opts}]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (mdb/setup-db!)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (serdes/with-cache
     (-> (cond-> opts
-          (seq collection-ids) (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids))
-          user-email        (assoc :user-id (t2/select-one-pk User :email user-email :is_superuser true)))
+          (seq collection-ids) (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
         v2.extract/extract
         (v2.storage/store! path)))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦"))
