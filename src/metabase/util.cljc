@@ -19,6 +19,7 @@
               [metabase.config :as config]
               #_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.util.jvm :as u.jvm]
+              [metabase.util.string :as u.str]
               [potemkin :as p]
               [ring.util.codec :as codec]]))
   #?(:clj (:import
@@ -48,7 +49,9 @@
                         sorted-take
                         varargs
                         with-timeout
-                        with-us-locale]))
+                        with-us-locale]
+                       [u.str
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."

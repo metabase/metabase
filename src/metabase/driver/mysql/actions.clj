@@ -52,8 +52,8 @@
   (when-let [[_ column]
              (re-find #"Column '(.+)' cannot be null" error-message)]
     {:type    error-type
-     :message (tru "Value for column {0} must be not null" column)
-     :errors  {column (tru "The value must be not null")}}))
+     :message (tru "{0} must have values." (str/capitalize column))
+     :errors  {column (tru "You must provide a value.")}}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
   [_driver error-type database error-message]
@@ -63,24 +63,18 @@
           table      (remove-backticks table)
           columns    (constraint->column-names database table constraint)]
       {:type    error-type
-       :message (tru "Value for column(s) {0} is duplicated" (str/join ", " columns))
+       :message (tru "{0} already exist." (u/build-sentence (map str/capitalize columns) :stop? false))
        :errors  (reduce (fn [acc col]
-                          (assoc acc col (tru "This column has unique constraint and this value is existed")))
+                          (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
                         {}
                         columns)})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
   [_driver error-type _database error-message]
-  (when-let [[_match ref-table _constraint _fkey-cols _table key-cols]
+  (when-let [[_match _ref-table _constraint _fkey-cols _table _key-cols]
              (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
-    (let [ref-table  (-> ref-table (str/split #"\.") last remove-backticks)
-          columns    (map remove-backticks (str/split key-cols #", "))]
-      {:type       error-type
-       :message (tru "Column(s) {0} is referenced from {1} table" (str/join ", " columns) ref-table)
-       :errors  (reduce (fn [acc col]
-                          (assoc acc col (tru "The value is referenced from {0} table" ref-table)))
-                        {}
-                        columns)})))
+    {:type    error-type
+     :message (tru "Other tables rely on this row so it cannot be updated/deleted.")}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
   [_driver error-type _database error-message]
@@ -88,8 +82,8 @@
              (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)"  error-message)]
     (let [column (-> column (str/replace #"^'(.*)'$" "$1") remove-backticks)]
       {:type    error-type
-       :message (tru "Value for column {0} should be of type {1}" column expected-type)
-       :errors  {column (tru "The value should be of type {0}" expected-type)}})))
+       :message (tru "Some of your values aren’t of the correct type for the database.")
+       :errors  {column (tru "This value should be of type {0}." (str/capitalize expected-type))}})))
 
 (comment
   (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-foreign-key-constraint nil

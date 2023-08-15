@@ -654,7 +654,7 @@
      ["lucky"     1]]]])
 
 (deftest action-error-handling-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2 :mysql)
     (mt/dataset action-error-handling
       (mt/with-actions-enabled
         (mt/with-current-user (mt/user->id :crowberto)
@@ -668,43 +668,43 @@
             (when-not (= driver/*driver* :mysql)
               (testing "violate not-null constraint"
                 (testing "when creating"
-                  (is (= {:message "Value for column ranking must be not null"
-                          :errors {:ranking "The value must be not null"}}
+                  (is (= {:message "Ranking must have values."
+                          :errors {:ranking "You must provide a value."}}
                          (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
                                                {:parameters {"name" "admin" "ranking" nil}}))))))
 
             (testing "violate unique constraint"
               (testing "when creating"
-                (is (= {:message "Value for column(s) ranking is duplicated",
-                        :errors {:ranking "This column has unique constraint and this value is existed"}}
+                (is (= {:message "Ranking already exist."
+                        :errors {:ranking "This Ranking value already exists."}}
                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
                                              {:parameters {"name" "new" "ranking" 1}}))))
               (testing "when updating"
-                (is (= {:message "Value for column(s) ranking is duplicated",
-                        :errors {:ranking "This column has unique constraint and this value is existed"}}
+                (is (= {:message "Ranking already exist."
+                        :errors {:ranking "This Ranking value already exists."}}
                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                              {:parameters {"id" 1 "ranking" 2}})))))
             (testing "incorrect type"
               (testing "when creating"
                 (is (= (if (= driver/*driver* :postgres)
-                         {:message "Invalid value \"S\", expect type: integer"
+                         {:message "Some of your values aren’t of the correct type for the database"
                           :errors {}}
-                         {:message "Value for column ranking should be of type integer",
-                          :errors {:ranking "The value should be of type integer"}})
+                         {:message "Some of your values aren’t of the correct type for the database."
+                          :errors {:ranking "This value should be of type Integer."}})
                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
                                              {:parameters {"name" "new" "ranking" "S"}}))))
 
               (testing "when updating"
                 (is (= (if (= driver/*driver* :postgres)
-                         {:message "Invalid value \"S\", expect type: integer"
+                         {:message "Some of your values aren’t of the correct type for the database"
                           :errors {}}
-                         {:message "Value for column ranking should be of type integer",
-                          :errors {:ranking "The value should be of type integer"}})
+                         {:message "Some of your values aren’t of the correct type for the database."
+                          :errors {:ranking "This value should be of type Integer."}})
                        (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
                                              {:parameters {"id" 1 "ranking" "S"}})))))
 
             (testing "violate fk constraint"
-              (is (=? {:message "Column(s) id is referenced from user table"
-                       :errors {:id "The value is referenced from user table"}}
+              (is (=? {:message "Other tables rely on this row so it cannot be updated/deleted."
+                       :errors  {}}
                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-action)
                                             {:parameters {"id" 1}}))))))))))

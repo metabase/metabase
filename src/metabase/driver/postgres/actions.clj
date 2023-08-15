@@ -28,8 +28,8 @@
   (when-let [[_ _value column _table]
              (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" of relation \"([^\"]+)\" violates not-null constraint"  error-message)]
     {:type    error-type
-     :message (tru "Value for column {0} must be not null" column)
-     :errors  {column (tru "The value must be not null")}}))
+     :message (tru "{0} must have values." (str/capitalize column))
+     :errors  {column (tru "You must provide a value.")}}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-unique-constraint]
   [_driver error-type database error-message]
@@ -37,31 +37,26 @@
              (re-find #"ERROR:\s+duplicate key value violates unique constraint \"([^\"]+)\"" error-message)]
     (let [columns (constraint->column-names database constraint)]
       {:type    error-type
-       :message (tru "Value for column(s) {0} is duplicated" (str/join ", " columns))
+       :message (tru "{0} already exist." (u/build-sentence (map str/capitalize columns) :stop? false))
        :errors  (reduce (fn [acc col]
-                          (assoc acc col (tru "This column has unique constraint and this value is existed")))
+                          (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
                         {}
                         columns)})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/violate-foreign-key-constraint]
-  [_driver error-type database error-message]
-  (when-let [[_match _table constraint ref-table _columns _value]
-             (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
-    (let [columns (constraint->column-names database constraint)]
-      {:type    error-type
-       :message (tru "Column(s) {0} is referenced from {1} table" (str/join ", " columns) ref-table)
-       :errors  (reduce (fn [acc col]
-                          (assoc acc col (tru "The value is referenced from {0} table" ref-table)))
-                        {}
-                        columns)})))
+  [_driver error-type _database error-message]
+  (when-let [[_match _table _constraint _ref-table _columns _value]
+             #p (re-find #"ERROR:\s+update or delete on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\" on table \"([^\"]+)\"" error-message)]
+    {:type    error-type
+     :message (tru "Other tables rely on this row so it cannot be updated/deleted.")
+     :errors  {}}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres actions.error/incorrect-value-type]
   [_driver error-type _database error-message]
-  (when-let [[_ expected-type value]
+  (when-let [[_ _expected-type _value]
              (re-find #"ERROR:\s+invalid input syntax for type ([^\"]+):\s+\"([^\"]+)\"" error-message)]
-    (def incorrect-value-msg error-message)
     {:type          error-type
-     :message (tru "Invalid value \"{0}\", expect type: {1}" value expected-type)
+     :message (tru "Some of your values aren’t of the correct type for the database")
      :errors  {}}))
 
 (comment
