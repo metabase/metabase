@@ -130,15 +130,3 @@ export const auditLog = () => ({
     },
   ],
 });
-
-export const dashboardViews = () => ({
-  card: {
-    name: "Dashboard views",
-    display: "table",
-    dataset_query: {
-      type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.users/dashboard-views",
-      args: [],
-    },
-  },
-});

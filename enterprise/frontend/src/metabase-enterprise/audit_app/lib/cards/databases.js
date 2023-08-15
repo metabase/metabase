@@ -37,22 +37,6 @@ export const queryExecutionsPerDbPerDay = () => ({
   },
 });
 
-export const queryExecutionsByTime = () => ({
-  card: {
-    name: "Query executions per day",
-    display: "line",
-    dataset_query: {
-      type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.databases/query-executions-by-time",
-      args: ["day"],
-    },
-    visualization_settings: {
-      "graph.dimensions": ["date", "database_id"],
-      "graph.metrics": ["count"],
-    },
-  },
-});
-
 export const table = searchString => ({
   card: {
     name: "Databases",
