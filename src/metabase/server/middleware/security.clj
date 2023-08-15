@@ -62,8 +62,7 @@
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
-                                 ["'self'"
-                                  "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
+                                  ["'self'"
                                    "https://maps.google.com"
                                   "https://accounts.google.com"
                                   (when (public-settings/anon-tracking-enabled)
