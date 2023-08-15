@@ -8,10 +8,10 @@ import Task from "metabase/entities/tasks";
 
 import PaginationControls from "metabase/components/PaginationControls";
 import AdminHeader from "metabase/components/AdminHeader";
-import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
+  InfoIcon,
   SectionControls,
   SectionHeader,
   SectionRoot,
@@ -46,11 +46,7 @@ class TasksAppInner extends Component {
             <Tooltip
               tooltip={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
             >
-              <Icon
-                name="info"
-                style={{ marginTop: 5 }}
-                className="ml1 text-brand-hover cursor-pointer text-medium"
-              />
+              <InfoIcon name="info" />
             </Tooltip>
           </SectionTitle>
           <SectionControls>
