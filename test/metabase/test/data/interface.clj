@@ -77,13 +77,14 @@
 
 (def ^:private ValidDatabaseDefinition
   (s/constrained
-   {:database-name     su/NonBlankString
+   {:database-name     su/NonBlankString ; this must be unique
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
 ;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
-  "Return a definition of a dataset, so a test database can be created from it."
+  "Return a definition of a dataset, so a test database can be created from it. Returns a map matching
+  the [[ValidDatabaseDefinition]] schema."
   {:arglists '([this])}
   class)
 
