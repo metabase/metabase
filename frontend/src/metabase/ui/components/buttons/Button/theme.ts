@@ -48,6 +48,11 @@ const getButtonVariantStyles = (
         borderColor: theme.fn.primaryColor(),
         hoverBackgroundColor: theme.colors.brand[0],
       };
+    case "subtle":
+      return {
+        color: theme.fn.primaryColor(),
+        hoverBackgroundColor: "transparent",
+      };
     default:
       return {
         color: theme.colors.text[2],
