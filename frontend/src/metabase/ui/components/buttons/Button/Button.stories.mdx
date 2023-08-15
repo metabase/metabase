@@ -4,6 +4,8 @@ import { Group, Stack } from "metabase/ui";
 import { Button } from "./";
 
 export const args = {
+  variant: "default",
+  compact: false,
   disabled: false,
   fullWidth: false,
   radius: "md",
@@ -12,6 +14,13 @@ export const args = {
 };
 
 export const argTypes = {
+  variant: {
+    options: ["default", "filled", "outline", "subtle"],
+    control: { type: "inline-radio" },
+  },
+  compact: {
+    control: { type: "boolean" },
+  },
   disabled: {
     control: { type: "boolean" },
   },
@@ -63,7 +72,6 @@ N/A
 
 export const TemplateRow = args => (
   <Group>
-    <Button {...args}>Button</Button>
     <Button {...args} leftIcon={<Icon name="play" />}>
       Button
     </Button>
@@ -76,14 +84,15 @@ export const TemplateRow = args => (
 
 export const Template = args => (
   <Stack>
-    <TemplateRow {...args} variant="filled" />
-    <TemplateRow {...args} variant="outline" />
-    <TemplateRow {...args} variant="default" />
-    <TemplateRow {...args} variant="subtle" />
+    {argTypes.variant.options.map(variant => (
+      <TemplateRow key={variant} {...args} variant={variant} />
+    ))}
   </Stack>
 );
 
-### Default
+### Default size
+
+#### Default state
 
 export const Default = args => <Template {...args} />;
 
@@ -91,10 +100,44 @@ export const Default = args => <Template {...args} />;
   <Story name="Default">{Default}</Story>
 </Canvas>
 
-### Compact
+#### Disabled state
+
+export const DefaultDisabled = args => <Template {...args} disabled />;
+
+<Canvas>
+  <Story name="DefaultDisabled">{DefaultDisabled}</Story>
+</Canvas>
+
+#### Loading state
+
+export const DefaultLoading = args => <Template {...args} loading />;
+
+<Canvas>
+  <Story name="DefaultLoading">{DefaultLoading}</Story>
+</Canvas>
+
+### Compact size
+
+#### Default state
 
 export const Compact = args => <Template {...args} compact />;
 
 <Canvas>
   <Story name="Compact">{Compact}</Story>
+</Canvas>
+
+#### Disabled state
+
+export const CompactDisabled = args => <Template {...args} compact disabled />;
+
+<Canvas>
+  <Story name="CompactDisabled">{CompactDisabled}</Story>
+</Canvas>
+
+#### Loading state
+
+export const CompactLoading = args => <Template {...args} compact loading />;
+
+<Canvas>
+  <Story name="CompactLoading">{CompactLoading}</Story>
 </Canvas>
