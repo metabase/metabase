@@ -83,7 +83,7 @@
                                              :exclusions  [org.clojure/data.avl]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.1"}              ; EE SAML integration.
+  metabase/saml20-clj                       {:mvn/version "2.2.2"}              ; EE SAML integration.
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   metosin/malli                             {:mvn/version "0.10.2"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
