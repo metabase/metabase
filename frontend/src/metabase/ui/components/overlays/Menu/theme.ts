@@ -6,6 +6,7 @@ export const getMenuOverrides = () => ({
     defaultProps: {
       radius: "sm",
       shadow: "md",
+      withinPortal: true,
     },
     styles: (theme: MantineTheme) => ({
       dropdown: {
