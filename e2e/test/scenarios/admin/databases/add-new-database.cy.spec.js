@@ -26,29 +26,6 @@ describe("admin > database > add", () => {
     cy.findByLabelText("Database type").click();
   });
 
-  it.skip("should add a new database", () => {
-    typeAndBlurUsingLabel("Display name", "Test");
-    typeAndBlurUsingLabel("Connection String", "invalid");
-
-    // should surface an error if the connection string is invalid
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(": check your connection string");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Implicitly relative file paths are not allowed.");
-
-    // should be able to recover from an error and add database with the correct connection string
-    cy.findByDisplayValue("invalid")
-      .clear()
-      .type(
-        "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
-        { delay: 0 },
-      );
-    cy.button("Save", { timeout: 10000 }).click();
-    cy.wait("@createDatabase");
-  });
-
   describe("external databases", { tags: "@external" }, () => {
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
       popover().within(() => {
