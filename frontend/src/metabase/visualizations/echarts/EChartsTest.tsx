@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import type { VisualizationProps } from "../types";
-import { RowChartLegendLayout } from "../visualizations/RowChart/RowChart.styled";
 import { EChartsRenderer } from "./EChartsRenderer";
 import {
   clickActionsMixin,
+  legendMixin,
   lineSeriesMixin,
   smoothSettingMixin,
   tooltipMixin,
@@ -34,22 +34,17 @@ export function EChartsTest(props: VisualizationProps) {
     mixins: [
       clickActionsMixin,
       tooltipMixin,
+      legendMixin,
       lineSeriesMixin,
       smoothSettingMixin,
     ],
   });
 
   return (
-    <RowChartLegendLayout
-      labels={["one", "two", "three"]}
-      colors={["red", "green", "blue"]}
-      hasLegend={true}
-    >
-      <EChartsRenderer
-        config={config}
-        width={props.width}
-        height={props.height}
-      />
-    </RowChartLegendLayout>
+    <EChartsRenderer
+      config={config}
+      width={props.width}
+      height={props.height}
+    />
   );
 }

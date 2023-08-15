@@ -72,9 +72,11 @@ type EChartsMixin = (params: {
   zrEventHandlers?: ZREventHandler[];
 };
 
-export const lineSeriesMixin: EChartsMixin = () => {
+export const lineSeriesMixin: EChartsMixin = ({ option }) => {
+  // TODO real implementation
   return {
     option: {
+      ...option,
       xAxis: {
         type: "category",
         data: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -84,7 +86,7 @@ export const lineSeriesMixin: EChartsMixin = () => {
       },
       series: [
         {
-          id: "data",
+          name: "Some Series Name",
           data: [150, 230, 224, 218, 135, 147, 260],
           type: "line",
         },
@@ -151,6 +153,15 @@ export const tooltipMixin: EChartsMixin = ({
       },
     ],
   };
+};
+
+export const legendMixin: EChartsMixin = ({ option }) => {
+  // TODO real implementation
+  option.legend = {
+    show: true,
+  };
+
+  return { option };
 };
 
 export function useEChartsConfig({
