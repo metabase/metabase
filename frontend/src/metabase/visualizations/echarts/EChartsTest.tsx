@@ -6,6 +6,7 @@ import {
   clickActionsMixin,
   lineSeriesMixin,
   smoothSettingMixin,
+  tooltipMixin,
   useEChartsConfig,
 } from "./mixins";
 
@@ -29,7 +30,12 @@ export function EChartsTest(props: VisualizationProps) {
   const config = useEChartsConfig({
     chartType: "line",
     props,
-    mixins: [clickActionsMixin, lineSeriesMixin, smoothSettingMixin],
+    mixins: [
+      clickActionsMixin,
+      tooltipMixin,
+      lineSeriesMixin,
+      smoothSettingMixin,
+    ],
   });
 
   return (

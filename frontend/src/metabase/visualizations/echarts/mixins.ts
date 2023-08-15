@@ -2,6 +2,47 @@ import type { EChartsOption } from "echarts";
 
 import { VisualizationProps } from "../types";
 
+const MOCK_TOOLTIP_DATA = {
+  index: 3,
+  event: {
+    isTrusted: true,
+  },
+  stackedTooltipModel: {
+    headerTitle: "Total",
+    headerRows: [
+      {
+        name: "80  –  100",
+        value: 65,
+        color: "#EF8C8C",
+      },
+    ],
+    bodyRows: [
+      {
+        name: "20  –  40",
+        value: 94,
+        color: "#98D9D9",
+      },
+      {
+        name: "40  –  60",
+        value: 77,
+        color: "#F9D45C",
+      },
+      {
+        name: "60  –  80",
+        value: 52,
+        color: "#A989C5",
+      },
+      {
+        name: "Other",
+        value: 10,
+        color: "#949AAB",
+      },
+    ],
+    showTotal: true,
+    showPercentages: true,
+  },
+};
+
 type EChartsEventHandler = {
   // TODO better types
   eventName: string;
@@ -81,6 +122,32 @@ export const clickActionsMixin: EChartsMixin = ({
             dimensions: [{ value: 1, column: data.cols[0] }],
           });
         },
+      },
+    ],
+  };
+};
+
+export const tooltipMixin: EChartsMixin = ({
+  props: { onHoverChange },
+  option,
+}) => {
+  return {
+    option,
+    eventHandlers: [
+      {
+        eventName: "mouseover",
+        handler: e => {
+          // TODO real implementation
+          onHoverChange?.({
+            ...MOCK_TOOLTIP_DATA,
+            event: e.event.event?.nativeEvent,
+            element: e.event.event?.target,
+          });
+        },
+      },
+      {
+        eventName: "mouseout",
+        handler: () => onHoverChange?.(undefined),
       },
     ],
   };
