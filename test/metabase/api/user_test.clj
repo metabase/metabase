@@ -60,34 +60,21 @@
 
 (deftest user-list-test
   (testing "GET /api/user"
-    (testing "Check that anyone can get a list of all active Users"
+    (testing "Check that only admins can get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (= [{:id          (mt/user->id :crowberto)
-                 :email       "crowberto@metabase.com"
-                 :first_name  "Crowberto"
-                 :last_name   "Corv"
-                 :common_name "Crowberto Corv"}
-                {:id          (mt/user->id :lucky)
-                 :email       "lucky@metabase.com"
-                 :first_name  "Lucky"
-                 :last_name   "Pigeon"
-                 :common_name "Lucky Pigeon"}
-                {:id          (mt/user->id :rasta)
-                 :email       "rasta@metabase.com"
-                 :first_name  "Rasta"
-                 :last_name   "Toucan"
-                 :common_name "Rasta Toucan"}]
-               (->> ((mt/user-http-request :rasta :get 200 "user") :data)
-                    (filter mt/test-user?))))))
-    (testing "Get list of users with a query"
+        (is (= ["crowberto@metabase.com"
+                "lucky@metabase.com"
+                "rasta@metabase.com"]
+               (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
+                    (filter mt/test-user?)
+                    (map :email))))
+        (testing "with a query"
+          (is (= "lucky@metabase.com"
+                 (-> (mt/user-http-request :crowberto :get 200 "user" :query "lUck") :data first :email))))))
+    (testing "Check that non-admins cannot get a list of all active Users"
       (mt/with-non-admin-groups-no-root-collection-perms
-        (is (= [{:id          (mt/user->id :lucky)
-                 :email       "lucky@metabase.com"
-                 :first_name  "Lucky"
-                 :last_name   "Pigeon"
-                 :common_name "Lucky Pigeon"}]
-               (->> ((mt/user-http-request :rasta :get 200 "user" :query "lUck") :data)
-                    (filter mt/test-user?))))))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :lucky :get 403 "user")))))))
 
 (defn- group-ids->sets [users]
   (for [user users]
@@ -321,11 +308,11 @@
       (is (= (t2/count User :is_active true)
              ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
-      (let [first-three-users (:data (mt/user-http-request :rasta :get 200 "user" :limit "3", :offset "0"))]
+      (let [first-three-users (:data (mt/user-http-request :crowberto :get 200 "user" :limit "3", :offset "0"))]
         (is (= 3
                (count first-three-users)))
         (is (= (drop 1 first-three-users)
-               (:data (mt/user-http-request :rasta :get 200 "user" :limit "2", :offset "1") :data)))))))
+               (:data (mt/user-http-request :crowberto :get 200 "user" :limit "2", :offset "1") :data)))))))
 
 (deftest get-current-user-test
   (testing "GET /api/user/current"
