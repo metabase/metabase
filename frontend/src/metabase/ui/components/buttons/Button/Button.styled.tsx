@@ -34,7 +34,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               backgroundColor: styles.loadingBackgroundColor,
             },
 
-            [`& .${getStylesRef("leftIcon")}`]: {
+            [`& .${getStylesRef("icon")}`]: {
               color: styles.loaderColor,
             },
           },
@@ -45,23 +45,23 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           },
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(7)} ${rem(7)}` : `${rem(11)} ${rem(11)}`,
-            [`.${getStylesRef("leftIcon")}`]: {
-              marginRight: 0,
-            },
-            [`.${getStylesRef("rightIcon")}`]: {
+
+            [`.${getStylesRef("icon")}`]: {
               marginLeft: 0,
+              marginRight: 0,
             },
           },
         },
         label: {
           ref: getStylesRef("label"),
         },
+        icon: {
+          ref: getStylesRef("icon"),
+        },
         leftIcon: {
-          ref: getStylesRef("leftIcon"),
           marginRight: theme.spacing.sm,
         },
         rightIcon: {
-          ref: getStylesRef("rightIcon"),
           marginLeft: theme.spacing.sm,
         },
       };
