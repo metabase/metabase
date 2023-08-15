@@ -76,6 +76,8 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
 });
 
 const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
+  const hoverColor = theme.fn.lighten(theme.fn.primaryColor(), 0.12);
+
   switch (variant) {
     case "filled":
       return {
@@ -83,8 +85,8 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         borderColor: theme.fn.primaryColor(),
         backgroundColor: theme.fn.primaryColor(),
         loaderColor: theme.colors.focus[0],
-        hoverBorderColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
-        hoverBackgroundColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
+        hoverBorderColor: hoverColor,
+        hoverBackgroundColor: hoverColor,
         disabledColor: theme.colors.text[0],
         disabledBorderColor: theme.colors.border[0],
         disabledBackgroundColor: theme.colors.bg[0],
@@ -94,8 +96,8 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         color: theme.fn.primaryColor(),
         borderColor: theme.fn.primaryColor(),
         loaderColor: theme.fn.primaryColor(),
-        hoverColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
-        hoverBorderColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
+        hoverColor: hoverColor,
+        hoverBorderColor: hoverColor,
         hoverBackgroundColor: theme.colors.brand[0],
         disabledColor: theme.colors.text[0],
         disabledBorderColor: theme.colors.border[0],
@@ -105,7 +107,7 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
       return {
         color: theme.fn.primaryColor(),
         loaderColor: theme.fn.primaryColor(),
-        hoverColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
+        hoverColor: hoverColor,
         hoverBackgroundColor: "transparent",
         loadingBackgroundColor: "transparent",
         disabledColor: theme.colors.text[0],
