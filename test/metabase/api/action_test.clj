@@ -653,8 +653,6 @@
      ["rasta"     2]
      ["lucky"     1]]]])
 
-(t2/select-one :model/Database :name "action-error-handling" :engine :h2)
-
 (deftest action-error-handling-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions))
     (mt/dataset action-error-handling
