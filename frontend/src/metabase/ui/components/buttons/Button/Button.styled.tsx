@@ -30,7 +30,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           color: styles.color,
           borderColor: styles.borderColor,
 
-          ":disabled": {
+          "&:disabled": {
             color: styles.disabledColor,
             borderColor: styles.disabledBorderColor,
             backgroundColor: styles.disabledBackgroundColor,
