@@ -1092,5 +1092,5 @@
       (testing "temporal bucket returns with column metadata"
         (let [[lhs-column] (filter :selected? (lib/join-condition-lhs-columns query 0 join lhs rhs))]
           (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket lhs-column))))
-        (let [[rhs-column] (filter :selected? (lib/join-condition-lhs-columns query 0 join lhs rhs))]
+        (let [[rhs-column] (filter :selected? (lib/join-condition-rhs-columns query 0 join lhs rhs))]
           (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket rhs-column))))))))
