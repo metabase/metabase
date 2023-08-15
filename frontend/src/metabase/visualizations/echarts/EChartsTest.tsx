@@ -3,9 +3,10 @@ import { t } from "ttag";
 import type { VisualizationProps } from "../types";
 import { EChartsRenderer } from "./EChartsRenderer";
 import {
+  clickActionsMixin,
   lineSeriesMixin,
   smoothSettingMixin,
-  useEChartsMixins,
+  useEChartsConfig,
 } from "./mixins";
 
 Object.assign(EChartsTest, {
@@ -25,16 +26,16 @@ Object.assign(EChartsTest, {
 });
 
 export function EChartsTest(props: VisualizationProps) {
-  const option = useEChartsMixins({
+  const config = useEChartsConfig({
     chartType: "line",
     data: props.data,
     settings: props.settings,
-    mixins: [lineSeriesMixin, smoothSettingMixin],
+    mixins: [clickActionsMixin, lineSeriesMixin, smoothSettingMixin],
   });
 
   return (
     <EChartsRenderer
-      echartsOption={option}
+      config={config}
       width={props.width}
       height={props.height}
     />

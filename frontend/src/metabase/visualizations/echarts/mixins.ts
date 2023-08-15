@@ -2,6 +2,25 @@ import type { EChartsOption } from "echarts";
 
 import type { VisualizationSettings } from "metabase-types/api";
 
+type EChartsEventHandler = {
+  // TODO better types
+  eventName: string;
+  query?: string;
+  handler: (event: any) => void;
+};
+
+type ZREventHandler = {
+  // TODO better types
+  eventName: string;
+  handler: (event: any) => void;
+};
+
+export type EChartsConfig = {
+  option: EChartsOption;
+  eventHandlers: EChartsEventHandler[];
+  zrEventHandlers: ZREventHandler[];
+};
+
 type EChartsMixin = (params: {
   chartType: any;
   data: any;
@@ -9,8 +28,8 @@ type EChartsMixin = (params: {
   option: EChartsOption;
 }) => {
   option: EChartsOption;
-  eventHandlers?: any;
-  zrEventHandlers?: any;
+  eventHandlers?: EChartsEventHandler[];
+  zrEventHandlers?: ZREventHandler[];
 };
 
 export const lineSeriesMixin: EChartsMixin = ({
@@ -49,7 +68,16 @@ export const smoothSettingMixin: EChartsMixin = ({ settings, option }) => {
   return { option };
 };
 
-export function useEChartsMixins({
+export const clickActionsMixin: EChartsMixin = ({ option }) => {
+  return {
+    option,
+    eventHandlers: [
+      { eventName: "click", handler: e => console.log("clicked", e) },
+    ],
+  };
+};
+
+export function useEChartsConfig({
   chartType,
   data,
   settings,
@@ -60,14 +88,30 @@ export function useEChartsMixins({
   settings: VisualizationSettings;
   mixins: EChartsMixin[];
 }) {
-  return mixins.reduce(
-    (currentOption: EChartsOption, currentMixin) =>
-      currentMixin({
-        chartType,
-        data,
-        settings,
-        option: currentOption,
-      }).option,
-    {},
-  );
+  const emptyConfig: EChartsConfig = {
+    option: {},
+    eventHandlers: [],
+    zrEventHandlers: [],
+  };
+
+  return mixins.reduce((currentConfig: EChartsConfig, currentMixin) => {
+    const next = currentMixin({
+      chartType,
+      data,
+      settings,
+      option: currentConfig.option,
+    });
+
+    return {
+      option: next.option,
+      eventHandlers: [
+        ...currentConfig.eventHandlers,
+        ...(next.eventHandlers ?? []),
+      ],
+      zrEventHandlers: [
+        ...currentConfig.zrEventHandlers,
+        ...(next.zrEventHandlers ?? []),
+      ],
+    };
+  }, emptyConfig);
 }
