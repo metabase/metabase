@@ -42,6 +42,7 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         color: theme.white,
         borderColor: theme.fn.primaryColor(),
         backgroundColor: theme.fn.primaryColor(),
+        hoverBackgroundColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
       };
     case "outline":
       return {
