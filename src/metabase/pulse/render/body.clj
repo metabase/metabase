@@ -214,25 +214,27 @@
   {:arglists '([chart-type render-type timezone-id card dashcard data])}
   (fn [chart-type _ _ _ _ _] chart-type))
 
-(defn- filter-rows [column-order rows]
-  (let [keep-filtered-idx #(keep-indexed (fn [idx header-call] (when (some #{idx} column-order) header-call)) %)
-        filtered-rows (map #(update % :row keep-filtered-idx) rows)]
+(defn- filter-rows [data table-columns rows]
+  (let [column-order      (qp.streaming/export-column-order (:cols data) table-columns)
+        keep-filtered-idx (fn [col] (map #(nth col %) column-order))
+        filtered-rows     (map #(update % :row keep-filtered-idx) rows)]
     filtered-rows))
 
 (s/defmethod render :table :- common/RenderedPulseCard
   [_ render-type timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows viz-settings] :as data}]
-  (let [filter-columns? (some? (::mb.viz/table-columns viz-settings))
+  (let [table-columns          (::mb.viz/table-columns viz-settings)
+        filter-columns?        (some? table-columns)
         filtered-columns-names (if filter-columns?
-                                 (mapv ::mb.viz/table-column-name (filter ::mb.viz/table-column-enabled (::mb.viz/table-columns viz-settings)))
+                                 (mapv ::mb.viz/table-column-name (filter ::mb.viz/table-column-enabled table-columns))
                                  (mapv :name (:cols data)))
-        filtered-rows (cond->> (prep-for-html-rendering timezone-id card data)
-                           filter-columns? (filter-rows (qp.streaming/export-column-order (:cols data) (::mb.viz/table-columns viz-settings))))
-        table-body   [:div
-                      (table/render-table
-                       (color/make-color-selector data viz-settings)
-                       filtered-columns-names
-                       filtered-rows)
-                      (render-truncation-warning rows-limit (count rows))]]
+        filtered-rows          (cond->> (prep-for-html-rendering timezone-id card data)
+                                 filter-columns? (filter-rows data table-columns))
+        table-body             [:div
+                                (table/render-table
+                                 (color/make-color-selector data viz-settings)
+                                 filtered-columns-names
+                                 filtered-rows)
+                                (render-truncation-warning rows-limit (count rows))]]
     {:attachments
      nil
 

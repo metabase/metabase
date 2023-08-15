@@ -160,27 +160,55 @@
 (defn- render-table [dashcard results]
   (render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
 
-(deftest table-enabled-columns-test
+(deftest table-columns-test
   (testing "Disabling a column has the same effect as not having the column at all."
     (is (=
          (render-table
           {:visualization_settings {:table.columns
                                     [{:name "b" :enabled true}]}}
-          {:cols [{:name         "b",
-                   :display_name "b",
-                   :base_type    :type/BigInteger
-                   :semantic_type nil}]
-           :rows [[2] [4]]})
+          {:data {:cols [{:name         "b",
+                          :display_name "b",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[2] [4]]}})
          (render-table
           {:visualization_settings {:table.columns
                                     [{:name "a" :enabled false}
                                      {:name "b" :enabled true}]}}
-          {:cols [{:name         "a",
-                   :display_name "a",
-                   :base_type    :type/BigInteger
-                   :semantic_type nil}
-                  {:name         "b",
-                   :display_name "b",
-                   :base_type    :type/BigInteger
-                   :semantic_type nil}]
-           :rows [[1 2] [3 4]]})))))
+          {:data {:cols [{:name         "a",
+                          :display_name "a",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}
+                         {:name         "b",
+                          :display_name "b",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[1 2] [3 4]]}}))))
+  (testing "Column order in table.columns is respected."
+    (is (=
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "b" :enabled true}
+                                     {:name "a" :enabled true}]}}
+          {:data {:cols [{:name         "a",
+                          :display_name "a",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}
+                         {:name         "b",
+                          :display_name "b",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[1 2] [3 4]]}})
+         (render-table
+          {:visualization_settings {:table.columns
+                                    [{:name "b" :enabled true}
+                                     {:name "a" :enabled true}]}}
+          {:data {:cols [{:name         "b",
+                          :display_name "b",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}
+                         {:name         "a",
+                          :display_name "a",
+                          :base_type    :type/BigInteger
+                          :semantic_type nil}]
+                  :rows [[2 1] [4 3]]}})))))
