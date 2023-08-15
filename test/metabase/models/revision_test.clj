@@ -17,7 +17,7 @@
 (methodical/defmethod t2/table-name :model/FakedCard [_model] :report_card)
 (derive :model/FakedCard :metabase/model)
 
-(defn- do-with-model-i18n-strs [thunk]
+(defn- do-with-model-i18n-strs! [thunk]
   (with-redefs [metabase.models.revision.diff/model-str->i18n-str (fn [model-str]
                                                                     (case model-str
                                                                       "Dashboard"     (deferred-tru "Dashboard")
@@ -333,8 +333,8 @@
              (->> (revision/revisions :model/FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id)))))))))
 
-(deftest ^:parallel generic-models-revision-title+description-test
-  (do-with-model-i18n-strs
+(deftest generic-models-revision-title+description-test
+  (do-with-model-i18n-strs!
    (fn []
      (doseq [model ["NonExistModel" "Card" "Dashboard"]]
        (testing (format "revision for %s models" (if (nil? model) "generic" model))
