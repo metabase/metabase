@@ -204,7 +204,7 @@
                               [[:field %id #::add{:source-table  ::add/source
                                                   :source-alias  "ID"
                                                   :desired-alias "ID"}]
-                               [:field "x" {:base-type          :type/Float
+                               [:field "x" {:base-type          :type/Integer
                                             ::add/source-table  ::add/source
                                             ::add/source-alias  "x"
                                             ::add/desired-alias "x"}]
@@ -383,7 +383,7 @@
                                                                                         ::add/source-alias  "PRICE"
                                                                                         ::add/desired-alias "PRICE"
                                                                                         ::add/position      5}]
-                                                                        [:field "AvgPrice" {:base-type          :type/Integer
+                                                                        [:field "AvgPrice" {:base-type          :type/Float
                                                                                             :join-alias         "CategoriesStats"
                                                                                             ::add/source-table  "CategoriesStats"
                                                                                             ::add/source-alias  "AvgPrice"
@@ -478,7 +478,7 @@
                                                             ::add/desired-alias "CategoriesStats__MaxPrice"
                                                             ::add/source-table  ::add/source
                                                             ::add/position      8}]
-                                        [:field "AvgPrice" {:base-type          :type/Integer
+                                        [:field "AvgPrice" {:base-type          :type/Float
                                                             :join-alias         "CategoriesStats"
                                                             ::add/source-alias  "CategoriesStats__AvgPrice"
                                                             ::add/desired-alias "CategoriesStats__AvgPrice"
