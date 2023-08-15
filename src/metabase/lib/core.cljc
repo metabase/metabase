@@ -224,8 +224,7 @@
   [lib.normalize
    normalize]
   [lib.query
-   query
-   saved-question-query]
+   query]
   [lib.ref
    ref]
   [lib.remove-replace
