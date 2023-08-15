@@ -26,7 +26,7 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should only display cards on the selected tab", () => {
-    // Create new tab
+    // Create a new tab
     visitDashboardAndCreateTab({ dashboardId: 1, save: false });
     dashboardCards().within(() => {
       cy.findByText("Orders").should("not.exist");
