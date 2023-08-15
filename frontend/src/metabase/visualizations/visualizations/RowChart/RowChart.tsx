@@ -37,7 +37,6 @@ import {
   RemappingHydratedChartData,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
-import { IconProps } from "metabase/core/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,
@@ -50,6 +49,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import { VisualizationProps } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -82,29 +82,6 @@ const RowChartRenderer = ExplicitSize({
   </RowChartContainer>
 ));
 
-interface RowChartVisualizationProps {
-  className: string;
-  width: number;
-  height: number;
-  rawSeries: { data: DatasetData }[];
-  series: { data: DatasetData }[];
-  settings: VisualizationSettings;
-  visualizationIsClickable: (data: Record<string, unknown>) => boolean;
-  onVisualizationClick: (data: Record<string, unknown>) => void;
-  card: any;
-  isPlaceholder?: boolean;
-  hovered: any;
-  headerIcon: IconProps;
-  actionButtons: React.ReactNode;
-  isFullscreen: boolean;
-  isQueryBuilder: boolean;
-  showTitle: boolean;
-  onRender: (data: Record<string, unknown>) => void;
-  onHoverChange: (data: Record<string, unknown> | null) => void;
-  onChangeCardAndRun: (data: Record<string, unknown>) => void;
-  fontFamily: string;
-}
-
 const RowChartVisualization = ({
   card,
   className,
@@ -124,7 +101,7 @@ const RowChartVisualization = ({
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
   fontFamily,
-}: RowChartVisualizationProps) => {
+}: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
   }, []);

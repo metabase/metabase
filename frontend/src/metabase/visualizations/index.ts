@@ -1,8 +1,11 @@
 import { t } from "ttag";
 import _ from "underscore";
+import { DatasetData, Series, TransformedSeries } from "metabase-types/api";
+import { Visualization } from "./types";
+import { RemappingHydratedDatasetColumn } from "./shared/types/data";
 
-const visualizations = new Map();
-const aliases = new Map();
+const visualizations = new Map<string, Visualization>();
+const aliases = new Map<string, Visualization>();
 visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -11,7 +14,7 @@ visualizations.get = function (key) {
   );
 };
 
-export function getSensibleDisplays(data) {
+export function getSensibleDisplays(data: DatasetData) {
   return Array.from(visualizations)
     .filter(
       ([, viz]) =>
@@ -21,12 +24,12 @@ export function getSensibleDisplays(data) {
     .map(([display]) => display);
 }
 
-let defaultVisualization;
-export function setDefaultVisualization(visualization) {
+let defaultVisualization: Visualization;
+export function setDefaultVisualization(visualization: Visualization) {
   defaultVisualization = visualization;
 }
 
-export function registerVisualization(visualization) {
+export function registerVisualization(visualization: Visualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
@@ -49,17 +52,20 @@ export function registerVisualization(visualization) {
   }
 }
 
-export function getVisualizationRaw(series) {
-  return {
-    series: series,
-    visualization: visualizations.get(series[0].card.display),
-  };
+export function getVisualizationRaw(series: Series) {
+  return visualizations.get(series[0].card.display);
 }
 
-export function getVisualizationTransformed(series) {
+export function getVisualizationTransformed(series: TransformedSeries) {
   // don't transform if we don't have the data
-  if (_.any(series, s => s.data == null) || _.any(series, s => s.error)) {
-    return getVisualizationRaw(series);
+  if (
+    _.any(series, s => s.data == null) ||
+    _.any(series, s => s.error != null)
+  ) {
+    return {
+      series,
+      visualization: getVisualizationRaw(series),
+    };
   }
 
   // if a visualization has a transformSeries function, do the transformation until it returns the same visualization / series
@@ -74,20 +80,19 @@ export function getVisualizationTransformed(series) {
       series = visualization.transformSeries(series);
     }
     if (series !== lastSeries) {
-      series = [...series];
-      series._raw = lastSeries;
+      series = Object.assign([...series], { _raw: lastSeries });
     }
   } while (series !== lastSeries);
 
   return { series, visualization };
 }
 
-export function getIconForVisualizationType(display) {
+export function getIconForVisualizationType(display: string) {
   const viz = visualizations.get(display);
-  return viz && viz.iconName;
+  return viz?.iconName ?? "unknown";
 }
 
-export const extractRemappings = series => {
+export const extractRemappings = (series: Series) => {
   const se = series.map(s => ({
     ...s,
     data: s.data && extractRemappedColumns(s.data),
@@ -95,29 +100,30 @@ export const extractRemappings = series => {
   return se;
 };
 
-export function getMaxMetricsSupported(display) {
+export function getMaxMetricsSupported(display: string) {
   const visualization = visualizations.get(display);
-  return visualization.maxMetricsSupported || Infinity;
+  return visualization?.maxMetricsSupported || Infinity;
 }
 
-export function getMaxDimensionsSupported(display) {
+export function getMaxDimensionsSupported(display: string) {
   const visualization = visualizations.get(display);
-  return visualization.maxDimensionsSupported || 2;
+  return visualization?.maxDimensionsSupported || 2;
 }
 
-export function canSavePng(display) {
+export function canSavePng(display: string) {
   const visualization = visualizations.get(display);
-  return visualization.canSavePng ?? true;
+  return visualization?.canSavePng ?? true;
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
-export const extractRemappedColumns = data => {
-  const cols = data.cols.map(col => ({
+export const extractRemappedColumns = (data: DatasetData) => {
+  const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({
     ...col,
     remapped_from_index:
-      col.remapped_from &&
-      _.findIndex(data.cols, c => c.name === col.remapped_from),
-    remapping: col.remapped_to && new Map(),
+      col.remapped_from != null
+        ? _.findIndex(data.cols, c => c.name === col.remapped_from)
+        : undefined,
+    remapping: col.remapped_to != null ? new Map() : undefined,
   }));
 
   const rows = data.rows.map((row, rowIndex) =>
@@ -125,6 +131,7 @@ export const extractRemappedColumns = data => {
       const col = cols[colIndex];
       if (col.remapped_from != null) {
         if (
+          col.remapped_from_index == null ||
           !cols[col.remapped_from_index] ||
           !cols[col.remapped_from_index].remapping
         ) {
@@ -132,7 +139,7 @@ export const extractRemappedColumns = data => {
           return true;
         }
         cols[col.remapped_from_index].remapped_to_column = col;
-        cols[col.remapped_from_index].remapping.set(
+        cols[col.remapped_from_index].remapping?.set(
           row[col.remapped_from_index],
           row[colIndex],
         );
@@ -149,4 +156,5 @@ export const extractRemappedColumns = data => {
   };
 };
 
+// eslint-disable-next-line import/no-default-export
 export default visualizations;

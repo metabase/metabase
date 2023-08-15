@@ -5,16 +5,13 @@ import {
   RowValues,
 } from "metabase-types/api";
 
-export type TwoDimensionalChartData = Pick<DatasetData, "rows" | "cols">;
-
 export type RemappingHydratedDatasetColumn = DatasetColumn & {
   remapped_from_index?: number;
   remapped_to_column?: DatasetColumn;
   remapping?: Map<any, any>;
 };
 
-export type RemappingHydratedChartData = {
-  rows: DatasetData["rows"];
+export type RemappingHydratedChartData = DatasetData & {
   cols: RemappingHydratedDatasetColumn[];
 };
 
