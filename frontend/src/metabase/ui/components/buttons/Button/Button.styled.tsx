@@ -50,7 +50,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
             backgroundColor: styles.hoverBackgroundColor,
           },
           [`&:has(.${getStylesRef("label")}:empty)`]: {
-            padding: compact ? `${rem(7)} ${rem(7)}` : `${rem(11)} ${rem(11)}`,
+            padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
 
             [`.${getStylesRef("icon")}`]: {
               marginLeft: 0,

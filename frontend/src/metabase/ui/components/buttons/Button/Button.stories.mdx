@@ -1,9 +1,9 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Icon } from "metabase/core/components/Icon";
+import { Group, Stack } from "metabase/ui";
 import { Button } from "./";
 
 export const args = {
-  variant: "default",
   disabled: false,
   fullWidth: false,
   compact: false,
@@ -13,10 +13,6 @@ export const args = {
 };
 
 export const argTypes = {
-  variant: {
-    options: ["default", "filled", "outline", "subtle"],
-    control: { type: "inline-radio" },
-  },
   disabled: {
     control: { type: "boolean" },
   },
@@ -69,44 +65,40 @@ N/A
 
 ## Examples
 
-### No icons
+export const TemplateRow = args => (
+  <Group>
+    <Button {...args}>Button</Button>
+    <Button {...args} leftIcon={<Icon name="play" />}>
+      Button
+    </Button>
+    <Button {...args} rightIcon={<Icon name="chevrondown" />}>
+      Button
+    </Button>
+    <Button {...args} leftIcon={<Icon name="play" />} />
+  </Group>
+);
 
-export const Default = args => <Button {...args}>Button</Button>;
+export const Template = args => (
+  <Stack>
+    <TemplateRow {...args} variant="filled" />
+    <TemplateRow {...args} variant="outline" />
+    <TemplateRow {...args} variant="default" />
+    <TemplateRow {...args} variant="subtle" />
+  </Stack>
+);
+
+### Default
+
+export const Default = args => <Template {...args} />;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
 </Canvas>
 
-### Left icon
+### Compact
 
-export const LeftIcon = args => (
-  <Button {...args} leftIcon={<Icon name="play" />}>
-    Button
-  </Button>
-);
+export const Compact = args => <Template {...args} compact />;
 
 <Canvas>
-  <Story name="Left icon">{LeftIcon}</Story>
-</Canvas>
-
-### Right icon
-
-export const RightIcon = args => (
-  <Button {...args} rightIcon={<Icon name="chevrondown" />}>
-    Button
-  </Button>
-);
-
-<Canvas>
-  <Story name="Right icon">{RightIcon}</Story>
-</Canvas>
-
-### No label
-
-export const NoLabel = args => (
-  <Button {...args} leftIcon={<Icon name="play" />} />
-);
-
-<Canvas>
-  <Story name="No label">{NoLabel}</Story>
+  <Story name="Compact">{Compact}</Story>
 </Canvas>
