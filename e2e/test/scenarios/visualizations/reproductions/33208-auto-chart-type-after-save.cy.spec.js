@@ -7,7 +7,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
-describe("issue ....", () => {
+describe("issue 33208", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
