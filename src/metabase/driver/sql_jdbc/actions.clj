@@ -37,7 +37,8 @@
   The methods should returns a map of:
   - type: the error type. Check [[metabase.actions.error]] for the full list
   - message: a nice message summarized of what went wrong
-  - errors: a map from field-name => sepcific error message. This is used by UI to display per fields error.
+  - errors: a map from field-name => sepcific error message. This is used by UI to display per fields error
+    If non per-column error is available, returns an empty map.
 
   Or return `nil` if the parser doesn't match."
   {:arglists '([driver error-type database error-message]), :added "0.48.0"}

@@ -74,7 +74,8 @@
   (when-let [[_match _ref-table _constraint _fkey-cols _table _key-cols]
              (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
     {:type    error-type
-     :message (tru "Other tables rely on this row so it cannot be updated/deleted.")}))
+     :message (tru "Other tables rely on this row so it cannot be updated/deleted.")
+     :errors  {}}))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
   [_driver error-type _database error-message]

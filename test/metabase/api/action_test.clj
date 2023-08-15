@@ -659,52 +659,66 @@
       (mt/with-actions-enabled
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-actions [{_card-id :id}             {:dataset_query (mt/mbql-query group) :dataset true}
-                            {create-action :action-id} {:type :implicit
+                            {create-group :action-id} {:type :implicit
+                                                       :kind "row/create"}
+                            {update-group :action-id} {:type :implicit
+                                                       :kind "row/update"}
+                            {delete-group :action-id} {:type :implicit
+                                                       :kind "row/delete"}]
+            (mt/with-actions [{_card-id :id}           {:dataset_query (mt/mbql-query user) :dataset true}
+                              {create-user :action-id} {:type :implicit
                                                         :kind "row/create"}
-                            {update-action :action-id} {:type :implicit
+                              {update-user :action-id} {:type :implicit
                                                         :kind "row/update"}
-                            {delete-action :action-id} {:type :implicit
+                              {delete-user :action-id} {:type :implicit
                                                         :kind "row/delete"}]
-            (when-not (= driver/*driver* :mysql)
-              (testing "violate not-null constraint"
+
+              (when-not (= driver/*driver* :mysql)
+                (testing "violate not-null constraint"
+                  (testing "when creating"
+                    (is (= {:message "Ranking must have values."
+                            :errors {:ranking "You must provide a value."}}
+                           (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
+                                                 {:parameters {"name" "admin" "ranking" nil}}))))))
+
+              (testing "violate unique constraint"
                 (testing "when creating"
-                  (is (= {:message "Ranking must have values."
-                          :errors {:ranking "You must provide a value."}}
-                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
-                                               {:parameters {"name" "admin" "ranking" nil}}))))))
+                  (is (= {:message "Ranking already exist."
+                          :errors {:ranking "This Ranking value already exists."}}
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
+                                               {:parameters {"name" "new" "ranking" 1}}))))
+                (testing "when updating"
+                  (is (= {:message "Ranking already exist."
+                          :errors {:ranking "This Ranking value already exists."}}
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
+                                               {:parameters {"id" 1 "ranking" 2}})))))
+              (testing "incorrect type"
+                (testing "when creating"
+                  (is (= (if (= driver/*driver* :postgres)
+                           {:message "Some of your values aren’t of the correct type for the database"
+                            :errors {}}
+                           {:message "Some of your values aren’t of the correct type for the database."
+                            :errors {:ranking "This value should be of type Integer."}})
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
+                                               {:parameters {"name" "new" "ranking" "S"}}))))
 
-            (testing "violate unique constraint"
-              (testing "when creating"
-                (is (= {:message "Ranking already exist."
-                        :errors {:ranking "This Ranking value already exists."}}
-                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
-                                             {:parameters {"name" "new" "ranking" 1}}))))
-              (testing "when updating"
-                (is (= {:message "Ranking already exist."
-                        :errors {:ranking "This Ranking value already exists."}}
-                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
-                                             {:parameters {"id" 1 "ranking" 2}})))))
-            (testing "incorrect type"
-              (testing "when creating"
-                (is (= (if (= driver/*driver* :postgres)
-                         {:message "Some of your values aren’t of the correct type for the database"
-                          :errors {}}
-                         {:message "Some of your values aren’t of the correct type for the database."
-                          :errors {:ranking "This value should be of type Integer."}})
-                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-action)
-                                             {:parameters {"name" "new" "ranking" "S"}}))))
+                (testing "when updating"
+                  (is (= (if (= driver/*driver* :postgres)
+                           {:message "Some of your values aren’t of the correct type for the database"
+                            :errors {}}
+                           {:message "Some of your values aren’t of the correct type for the database."
+                            :errors {:ranking "This value should be of type Integer."}})
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
+                                               {:parameters {"id" 1 "ranking" "S"}})))))
 
-              (testing "when updating"
-                (is (= (if (= driver/*driver* :postgres)
-                         {:message "Some of your values aren’t of the correct type for the database"
-                          :errors {}}
-                         {:message "Some of your values aren’t of the correct type for the database."
-                          :errors {:ranking "This value should be of type Integer."}})
-                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)
-                                             {:parameters {"id" 1 "ranking" "S"}})))))
+              (testing "violate fk constraint"
+                (is (= {:message "Your row contains foreign key that is not existed, so it cannot be created/updated."
+                        :errors {:group-id "This value does not exist in group table"}}
+                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-user)
+                                             {:parameters {"name" "new user"
+                                                           "group_id" 999}})))
 
-            (testing "violate fk constraint"
-              (is (=? {:message "Other tables rely on this row so it cannot be updated/deleted."
-                       :errors  {}}
-                      (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-action)
-                                            {:parameters {"id" 1}}))))))))))
+                (is (= {:message "Other tables rely on this row so it cannot be updated/deleted."
+                        :errors  {}}
+                       (mt/user-http-request :rasta :post 400 (format "action/%d/execute" delete-group)
+                                             {:parameters {"id" 1}})))))))))))
