@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { Route } from "react-router";
 
 import { createMockEntitiesState } from "__support__/store";
@@ -74,32 +74,40 @@ describe("TableList", () => {
     setup();
 
     const table = incompleteTable;
-    const index = tables.indexOf(table);
-    const tableItem = screen.getAllByTestId("table-list-item")[index];
-    const href = `/reference/databases/${databaseId}/tables/${table.id}`;
 
-    expect(tableItem).not.toContainHTML(href);
+    const tableIndex = tables.indexOf(table);
+    const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
+    const link = within(tableItem).queryByRole("link");
+
+    expect(link).not.toBeInTheDocument();
   });
 
   it("should show tables with initial_sync_status='aborted' as non-interactive (disabled)", () => {
     setup();
 
     const table = abortedTable;
-    const index = tables.indexOf(table);
-    const tableItem = screen.getAllByTestId("table-list-item")[index];
-    const href = `/reference/databases/${databaseId}/tables/${table.id}`;
 
-    expect(tableItem).not.toContainHTML(href);
+    const tableIndex = tables.indexOf(table);
+    const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
+    const link = within(tableItem).queryByRole("link");
+
+    expect(link).not.toBeInTheDocument();
   });
 
   it("should show tables with initial_sync_status='complete' as interactive", () => {
     setup();
 
     const table = completeTable;
-    const index = tables.indexOf(table);
-    const tableItem = screen.getAllByTestId("table-list-item")[index];
-    const href = `/reference/databases/${databaseId}/tables/${table.id}`;
 
-    expect(tableItem).toContainHTML(href);
+    const tableIndex = tables.indexOf(table);
+    const tableItem = screen.getAllByTestId("table-list-item")[tableIndex];
+
+    const link = within(tableItem).queryByRole("link");
+
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute(
+      "href",
+      `/reference/databases/${databaseId}/tables/${table.id}`,
+    );
   });
 });
