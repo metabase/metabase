@@ -14,12 +14,7 @@ import { Title, Flex } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { SearchFilterWrapper } from "./SearchFilterModal.styled";
-import { TypeFilter, VerifiedFilter } from "./filters";
-
-const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
-  [SearchFilterKeys.Type]: TypeFilter,
-  [SearchFilterKeys.Verified]: VerifiedFilter,
-};
+import { TypeFilter } from "./filters";
 
 export const SearchFilterModal = ({
   isOpen,
@@ -33,6 +28,11 @@ export const SearchFilterModal = ({
   onChangeFilters: (filters: SearchFilters) => void;
 }) => {
   const [output, setOutput] = useState<SearchFilters>(value);
+
+  const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
+    [SearchFilterKeys.Type]: TypeFilter,
+    [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+  };
 
   const onOutputChange = (
     key: FilterTypeKeys,
@@ -67,10 +67,10 @@ export const SearchFilterModal = ({
   };
 
   const availableFilters: FilterTypeKeys[] = useMemo(() => {
-    const filters: FilterTypeKeys[] = [SearchFilterKeys.Type];
-    if (PLUGIN_CONTENT_VERIFICATION.isEnabled()) {
-      filters.push(SearchFilterKeys.Verified);
-    }
+    const filters: FilterTypeKeys[] = [
+      SearchFilterKeys.Type,
+      SearchFilterKeys.Verified,
+    ];
     return filters;
   }, []);
 

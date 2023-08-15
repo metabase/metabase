@@ -289,5 +289,6 @@ export const PLUGIN_EMBEDDING = {
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
-  isEnabled: () => false,
+  VerifiedFilter: PluginPlaceholder as any,
+  verifiedSearchKey: {} as Record<string, string>,
 };

@@ -2,9 +2,9 @@
 import { SearchFilterComponent } from "metabase/search/types";
 import { SearchFilterView } from "metabase/search/components/SearchFilterModal/filters/SearchFilterView";
 import { Group } from "metabase/ui";
-import { VerifiedFilterButton } from "metabase/search/components/SearchFilterModal/filters/VerifiedFilter/VerifiedFilter.styled";
+import { VerifiedFilterButton } from "metabase-enterprise/content_verification/components/VerifiedSearchFilter/VerifiedSearchFilter.styled";
 
-export const VerifiedFilter: SearchFilterComponent<"verified"> = ({
+export const VerifiedSearchFilter: SearchFilterComponent<"verified"> = ({
   value = undefined,
   onChange,
   "data-testid": dataTestId,
