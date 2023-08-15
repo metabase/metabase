@@ -6,6 +6,7 @@
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
   in [[allowed-parallel-forms]] is not allowed."
   '#{clojure.core/with-redefs
+     metabase.test.util.timezone/with-system-timezone-id
      metabase.test/with-actions
      metabase.test/with-actions-disabled
      metabase.test/with-actions-enabled
@@ -14,7 +15,6 @@
      metabase.test/with-actions-test-data-tables
      metabase.test/with-all-users-permission
      metabase.test/with-bigquery-fks!
-     metabase.test/with-clock
      metabase.test/with-column-remappings
      metabase.test/with-current-user
      metabase.test/with-discarded-collections-perms-changes
@@ -37,7 +37,6 @@
      metabase.test/with-temporary-raw-setting-values
      metabase.test/with-temporary-setting-values
      metabase.test/with-user-in-groups
-     metabase.test/with-user-locale
      toucan2.tools.with-temp/with-temp})
 
 ;;; TODO -- we should disallow `metabase.test/user-http-request` with any method other than `:get`
