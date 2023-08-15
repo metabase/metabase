@@ -343,9 +343,6 @@ class QuestionInner {
       return this.setDisplayIsLocked(false).setDefaultDisplay();
     }
 
-    if (this.displayIsLocked()) {
-      return this;
-    }
     return this.setDefaultDisplay();
   }
 
