@@ -654,7 +654,7 @@
      ["lucky"     1]]]])
 
 (deftest action-error-handling-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2 :mysql)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
     (mt/dataset action-error-handling
       (mt/with-actions-enabled
         (mt/with-current-user (mt/user->id :crowberto)
@@ -667,19 +667,17 @@
                                                        :kind "row/delete"}]
             (mt/with-actions [{_card-id :id}           {:dataset_query (mt/mbql-query user) :dataset true}
                               {create-user :action-id} {:type :implicit
-                                                        :kind "row/create"}
-                              {update-user :action-id} {:type :implicit
-                                                        :kind "row/update"}
-                              {delete-user :action-id} {:type :implicit
-                                                        :kind "row/delete"}]
-
-              (when-not (= driver/*driver* :mysql)
-                (testing "violate not-null constraint"
-                  (testing "when creating"
-                    (is (= {:message "Ranking must have values."
-                            :errors {:ranking "You must provide a value."}}
-                           (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
-                                                 {:parameters {"name" "admin" "ranking" nil}}))))))
+                                                        :kind "row/create"}]
+              (testing "violate not-null constraint"
+                (testing "when creating"
+                  (is (= {:message "Ranking must have values."
+                          :errors {:ranking "You must provide a value."}}
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" create-group)
+                                               {:parameters {"name" "admin" "ranking" nil}}))))
+                (testing "when updating"
+                  (is (= "Implicit parameters must be provided."
+                         (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-group)
+                                               {:parameters {"id" "admin" "ranking" nil}})))))
 
               (testing "violate unique constraint"
                 (testing "when creating"

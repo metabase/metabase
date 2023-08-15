@@ -49,11 +49,17 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-not-null-constraint]
   [_driver error-type _database error-message]
-  (when-let [[_ column]
-             (re-find #"Column '(.+)' cannot be null" error-message)]
-    {:type    error-type
-     :message (tru "{0} must have values." (str/capitalize column))
-     :errors  {column (tru "You must provide a value.")}}))
+  (or
+   (when-let [[_ column]
+              (re-find #"Column '(.+)' cannot be null" error-message)]
+     {:type    error-type
+      :message (tru "{0} must have values." (str/capitalize column))
+      :errors  {column (tru "You must provide a value.")}})
+   (when-let [[_ column]
+              (re-find #"Field '(.+)' doesn't have a default value" error-message)]
+     {:type    error-type
+      :message (tru "{0} must have values." (str/capitalize column))
+      :errors  {column (tru "You must provide a value.")}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-unique-constraint]
   [_driver error-type database error-message]
@@ -71,11 +77,17 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/violate-foreign-key-constraint]
   [_driver error-type _database error-message]
-  (when-let [[_match _ref-table _constraint _fkey-cols _table _key-cols]
-             (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
-    {:type    error-type
-     :message (tru "Other tables rely on this row so it cannot be updated/deleted.")
-     :errors  {}}))
+  (or
+   (when-let [[_match _ref-table _constraint _fkey-cols _table _key-cols]
+              (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
+     {:type    error-type
+      :message (tru "Other tables rely on this row so it cannot be updated/deleted.")
+      :errors  {}})
+   (when-let [[_match _ref-table _constraint column ref-table _ref-column]
+              (re-find #"Cannot add or update a child row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
+     {:type    error-type
+      :message (tru "Your row contains foreign key that is not existed, so it cannot be created/updated.")
+      :errors  {(remove-backticks column) (tru "This value does not exist in {0} table" (remove-backticks ref-table))}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql actions.error/incorrect-value-type]
   [_driver error-type _database error-message]
@@ -89,6 +101,9 @@
 (comment
   (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-foreign-key-constraint nil
                                           "(conn=21) Cannot delete or update a parent row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")
+
+  (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-foreign-key-constraint nil
+                                          "(conn=45) Cannot add or update a child row: a foreign key constraint fails (`action-error-handling`.`user`, CONSTRAINT `user_group-id_group_-159406530` FOREIGN KEY (`group-id`) REFERENCES `group` (`id`))")
   (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-unique-constraint {:id 3}
                                           "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")
   (sql-jdbc.actions/maybe-parse-sql-error :mysql actions.error/violate-not-null-constraint nil
