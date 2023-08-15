@@ -6,7 +6,35 @@
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
   in [[allowed-parallel-forms]] is not allowed."
   '#{clojure.core/with-redefs
+     metabase.actions.test-util/with-actions
+     metabase.actions.test-util/with-actions-disabled
+     metabase.actions.test-util/with-actions-enabled
+     metabase.actions.test-util/with-actions-test-data
+     metabase.actions.test-util/with-actions-test-data-and-actions-enabled
+     metabase.actions.test-util/with-actions-test-data-tables
+     metabase.email-test/with-expected-messages
+     metabase.email-test/with-fake-inbox
+     metabase.query-processor-test/with-bigquery-fks!
+     metabase.server.middleware.session/with-current-user
+     metabase.test.data.users/with-group
+     metabase.test.data.users/with-group-for-user
+     metabase.test.persistence/with-persistence-enabled
+     metabase.test.util.log/with-log-level
+     metabase.test.util.log/with-log-messages-for-level
+     metabase.test.util.misc/with-single-admin-user
      metabase.test.util.timezone/with-system-timezone-id
+     metabase.test.util/with-all-users-permission
+     metabase.test.util/with-column-remappings
+     metabase.test.util/with-discarded-collections-perms-changes
+     metabase.test.util/with-env-keys-renamed-by
+     metabase.test.util/with-locale
+     metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
+     metabase.test.util/with-non-admin-groups-no-root-collection-perms
+     metabase.test.util/with-temp-env-var-value
+     metabase.test.util/with-temp-vals-in-db
+     metabase.test.util/with-temporary-raw-setting-values
+     metabase.test.util/with-temporary-setting-values
+     metabase.test.util/with-user-in-groups
      metabase.test/with-actions
      metabase.test/with-actions-disabled
      metabase.test/with-actions-enabled
@@ -37,6 +65,7 @@
      metabase.test/with-temporary-raw-setting-values
      metabase.test/with-temporary-setting-values
      metabase.test/with-user-in-groups
+     toucan.util.test/with-temp*
      toucan2.tools.with-temp/with-temp})
 
 ;;; TODO -- we should disallow `metabase.test/user-http-request` with any method other than `:get`
