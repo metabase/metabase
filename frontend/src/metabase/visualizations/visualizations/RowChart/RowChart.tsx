@@ -48,8 +48,10 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { VisualizationProps } from "metabase/visualizations/types/visualization";
-import { RemappingHydratedChartData } from "metabase/visualizations/types";
+import {
+  RemappingHydratedChartData,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {

@@ -10,7 +10,7 @@ import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 
 import { UpdateQuestionOpts } from "metabase/query_builder/actions";
 
-import { Visualization } from "metabase/visualizations/types/visualization";
+import { Visualization } from "metabase/visualizations/types";
 import Question from "metabase-lib/Question";
 import Query from "metabase-lib/queries/Query";
 

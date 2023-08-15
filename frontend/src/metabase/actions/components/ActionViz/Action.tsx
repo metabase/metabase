@@ -7,7 +7,7 @@ import {
   reloadDashboardCards,
 } from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
-import type { VisualizationProps } from "metabase/visualizations/types/visualization";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
   Dashboard,
