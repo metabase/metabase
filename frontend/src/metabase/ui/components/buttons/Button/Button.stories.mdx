@@ -67,13 +67,17 @@ N/A
 
 N/A
 
-## General
+## Examples
+
+### No icons
 
 export const Default = args => <Button {...args}>Button</Button>;
 
 <Canvas>
   <Story name="Default">{Default}</Story>
 </Canvas>
+
+### Left icon
 
 export const WithLeftIcon = args => (
   <Button {...args} leftIcon={<Icon name="play" />}>
@@ -85,6 +89,8 @@ export const WithLeftIcon = args => (
   <Story name="WithLeftIcon">{WithLeftIcon}</Story>
 </Canvas>
 
+### Right icon
+
 export const WithRightIcon = args => (
   <Button {...args} rightIcon={<Icon name="chevrondown" />}>
     Button
@@ -94,6 +100,8 @@ export const WithRightIcon = args => (
 <Canvas>
   <Story name="WithRightIcon">{WithRightIcon}</Story>
 </Canvas>
+
+### No label
 
 export const WithIconOnly = args => (
   <Button {...args} leftIcon={<Icon name="play" />} />

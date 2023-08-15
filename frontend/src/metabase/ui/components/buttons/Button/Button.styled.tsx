@@ -33,6 +33,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           borderColor: styles.borderColor,
           "&:hover": {
             color: styles.hoverColor,
+            borderColor: styles.hoverBorderColor,
             backgroundColor: styles.hoverBackgroundColor,
           },
           [`&:has(.${getStylesRef("label")}:empty)`]: {
@@ -68,17 +69,21 @@ const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
         color: theme.white,
         borderColor: theme.fn.primaryColor(),
         backgroundColor: theme.fn.primaryColor(),
+        hoverBorderColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
       };
     case "outline":
       return {
         color: theme.fn.primaryColor(),
         borderColor: theme.fn.primaryColor(),
+        hoverColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
+        hoverBorderColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: theme.colors.brand[0],
       };
     case "subtle":
       return {
         color: theme.fn.primaryColor(),
+        hoverColor: theme.fn.lighten(theme.fn.primaryColor(), 0.12),
         hoverBackgroundColor: "transparent",
       };
     default:
