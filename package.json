@@ -57,7 +57,6 @@
     "humanize-plus": "^1.8.1",
     "icepick": "2.4.0",
     "iframe-resizer": "^4.3.2",
-    "immer": "^10.0.2",
     "inflection": "^1.7.1",
     "js-cookie": "^2.1.2",
     "jspdf": "^2.5.1",

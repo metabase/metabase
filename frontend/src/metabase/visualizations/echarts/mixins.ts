@@ -1,4 +1,3 @@
-import { produce } from "immer";
 import type { EChartsOption } from "echarts";
 
 import type { VisualizationSettings } from "metabase-types/api";
@@ -41,19 +40,16 @@ export const lineSeriesMixin: EChartsMixin = ({
 };
 
 export const smoothSettingMixin: EChartsMixin = ({ settings, option }) => {
-  // TODO automatically use draft state in hook so no need to call produce in every hook
-  const nextOption = produce(option, draft => {
-    if (Array.isArray(draft?.series)) {
-      draft.series.forEach(series => {
-        series.smooth = settings.smooth;
-      });
-    }
-  });
+  if (Array.isArray(option?.series)) {
+    option.series.forEach(series => {
+      series.smooth = settings.smooth;
+    });
+  }
 
-  return { option: nextOption };
+  return { option };
 };
 
-export function useEChartsOption({
+export function useEChartsMixins({
   chartType,
   data,
   settings,

@@ -33,5 +33,7 @@ export function EChartsRenderer({
     chartRef.current?.resize({ width, height });
   }, [width, height]);
 
+  // TODO register event handlers
+
   return <div ref={chartElemRef} />;
 }

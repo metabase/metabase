@@ -5,7 +5,7 @@ import { EChartsRenderer } from "./EChartsRenderer";
 import {
   lineSeriesMixin,
   smoothSettingMixin,
-  useEChartsOption,
+  useEChartsMixins,
 } from "./mixins";
 
 Object.assign(EChartsTest, {
@@ -25,9 +25,7 @@ Object.assign(EChartsTest, {
 });
 
 export function EChartsTest(props: VisualizationProps) {
-  console.log("data", props.data);
-
-  const option = useEChartsOption({
+  const option = useEChartsMixins({
     chartType: "line",
     data: props.data,
     settings: props.settings,
