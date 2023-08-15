@@ -10,10 +10,12 @@
    [metabase.api.common :as api]
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
+
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response])
   (:import
    (java.net URLEncoder)))
@@ -77,7 +79,7 @@
 (defn- login-jwt-user
   [jwt {{redirect :return_to} :params, :as request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
-    (sso-utils/check-sso-redirect redirect-url)
+    (when (not= redirect nil) (sso-utils/check-sso-redirect redirect-url))
     (let [jwt-data     (try
                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)
                                      {:max-age three-minutes-in-seconds})
@@ -92,11 +94,11 @@
           user         (fetch-or-create-user! first-name last-name email login-attrs)
           session      (api.session/create-session! :sso user (request.u/device-info request))]
       (sync-groups! user jwt-data)
-      (mw.session/set-session-cookies request (response/redirect redirect-url) session (t/zoned-date-time (t/zone-id "GMT"))))))
+      (mw.session/set-session-cookies request (if redirect (response/redirect redirect-url) (response/status 204)) session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-enabled)
-    [400 (tru "JWT SSO has not been enabled and/or configured")]))
+             [400 (tru "JWT SSO has not been enabled and/or configured")]))
 
 (defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect]} :params, :as request}]
@@ -107,7 +109,7 @@
     (let [idp (sso-settings/jwt-identity-provider-uri)
           return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
       (response/redirect (str idp (when redirect
-                                   (str return-to-param redirect)))))))
+                                    (str return-to-param redirect)))))))
 
 (defmethod sso.i/sso-post :jwt
   [_]

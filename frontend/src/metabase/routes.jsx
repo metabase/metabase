@@ -93,6 +93,8 @@ import {
   IsNotAuthenticated,
 } from "./route-guards";
 
+import { FullAppEmbed } from "metabase/public/containers/FullAppEmbed";
+
 export const getRoutes = store => (
   <Route title={t`Metabase`} component={App}>
     {/* SETUP */}
@@ -115,6 +117,8 @@ export const getRoutes = store => (
       <Route path="question/:uuid" component={PublicQuestion} />
       <Route path="dashboard/:uuid(/:tabSlug)" component={PublicDashboard} />
     </Route>
+
+    <Route path="full-app-embed" component={FullAppEmbed} />
 
     {/* APP */}
     <Route

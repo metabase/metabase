@@ -33,10 +33,10 @@
   reuse it"
   [user :- UserAttributes]
   (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
-    (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
+           (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
     ;; send an email to everyone including the site admin if that's set
-    (when (integrations.common/send-new-sso-user-admin-email?)
-      (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))
+           (when (integrations.common/send-new-sso-user-admin-email?)
+             (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))
 
 (defn fetch-and-update-login-attributes!
   "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.

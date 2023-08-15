@@ -15,6 +15,8 @@ export const loginSSO = createAsyncThunk<void, string | undefined, ThunkConfig>(
   (redirectUrl: string | undefined, { getState }) => {
     trackLoginSSO();
 
+    console.log("testing");
+
     const siteUrl = getSetting(getState(), "site-url");
     const ssoUrl = getSSOUrl(siteUrl, redirectUrl);
 

@@ -444,6 +444,10 @@ export const SessionApi = {
   undo_unsubscribe: POST("/api/session/pulse/unsubscribe/undo"),
 };
 
+export const SsoApi = {
+  jwt: GET("/auth/sso"),
+};
+
 export const SettingsApi = {
   list: GET("/api/setting"),
   put: PUT("/api/setting/:key"),
