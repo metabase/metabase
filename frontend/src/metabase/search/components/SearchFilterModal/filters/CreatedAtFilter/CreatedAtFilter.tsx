@@ -14,6 +14,7 @@ import { CreatedAtButton } from "metabase/search/components/SearchFilterModal/fi
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 const CREATED_AT_FILTERS = DATE_OPERATORS.filter(({name}) => name !== 'exclude');
+console.log(CREATED_AT_FILTERS);
 
 export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
   value = [],
