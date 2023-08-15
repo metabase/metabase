@@ -23,7 +23,7 @@
                      :expressions [[:+ {:lib/uuid string? :lib/expression-name "myadd"}
                                     1
                                     [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]]}]}
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
               (dissoc :lib/metadata)))))
 
@@ -76,7 +76,7 @@
                           (lib/upper string-field) :type/Text
                           (lib/lower string-field) :type/Text])]
       (testing (str "expression: " (pr-str expr))
-        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        (let [query (-> lib.tu/venues-query
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
@@ -107,7 +107,7 @@
               :display-name "prev_month"
               :base-type    :type/DateTime
               :lib/source   :source/expressions}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add
@@ -240,7 +240,7 @@
   (testing "expressions should include the original expression name"
     (is (=? [{:name         "expr"
               :display-name "expr"}]
-            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+            (-> lib.tu/venues-query
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions-metadata))))
   (testing "collisions with other column names are detected and rejected"
@@ -263,15 +263,15 @@
             :name "expr",
             :display-name "expr",
             :lib/source :source/expressions}]
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
   (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Integer} 100]]
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/expression "expr" 100)
               (lib/expressions))))
   (is (=? [[:value {:lib/expression-name "expr" :effective-type :type/Text} "value"]]
-          (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          (-> lib.tu/venues-query
               (lib/expression "expr" "value")
               (lib/expressions)))))
 

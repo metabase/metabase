@@ -31,11 +31,10 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,12 +56,12 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [session-id (str (UUID/randomUUID))
+  (let [session-id (str (random-uuid))
         new-user   (first (t2/insert-returning-instances! User
                                                           :email        email
                                                           :first_name   first-name
                                                           :last_name    last-name
-                                                          :password     (str (UUID/randomUUID))
+                                                          :password     (str (random-uuid))
                                                           :is_superuser true))
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
@@ -90,6 +89,8 @@
     (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
       (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
         (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
+    (when-let [error (api.database/test-database-connection driver details)]
+      (throw (ex-info (:message error (tru "Cannot connect to Database")) (assoc error :status-code 400))))
     (first (t2/insert-returning-instances! Database
                                            (merge
                                              {:name name, :engine driver, :details details, :creator_id creator-id}
@@ -177,6 +178,9 @@
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
    engine DBEngineString}
+  (when (setup/has-user-setup)
+    (throw (ex-info (tru "Instance already initialized")
+                    {:status-code 400})))
   (let [engine       (keyword engine)
         error-or-nil (api.database/test-database-connection engine details)]
     (when error-or-nil

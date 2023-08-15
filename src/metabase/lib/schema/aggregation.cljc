@@ -220,7 +220,7 @@
 
 (mr/def ::operator
   [:map
-   [:lib/type [:= :mbql.aggregation/operator]]
+   [:lib/type [:= :operator/aggregation]]
    [:short (into [:enum] (map :short) aggregation-operators)]
    [:supported-field {:optional true} [:maybe :keyword]] ; TODO more precise type?
    [:requires-column? :boolean]

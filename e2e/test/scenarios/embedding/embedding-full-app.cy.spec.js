@@ -3,13 +3,16 @@ import {
   popover,
   appBar,
   restore,
+  setTokenFeatures,
+  describeEE,
 } from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-describe("scenarios > embedding > full app", () => {
+describeEE("scenarios > embedding > full app", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
     cy.intercept("POST", `/api/card/*/query`).as("getCardQuery");
     cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
     cy.intercept("GET", `/api/dashboard/*`).as("getDashboard");
@@ -17,19 +20,30 @@ describe("scenarios > embedding > full app", () => {
   });
 
   describe("home page navigation", () => {
+    it("should show the top and side nav by default", () => {
+      visitUrl({ url: "/" });
+      cy.wait("@getXrayDashboard");
+
+      appBar()
+        .should("be.visible")
+        .within(() => {
+          cy.findByTestId("main-logo").should("be.visible");
+          cy.button(/New/).should("not.exist");
+          cy.findByPlaceholderText("Search").should("not.exist");
+        });
+
+      sideNav().should("be.visible");
+    });
+
     it("should hide the top nav when nothing is shown", () => {
       visitUrl({ url: "/", qs: { side_nav: false, logo: false } });
+      cy.wait("@getXrayDashboard");
       appBar().should("not.exist");
     });
 
-    it("should show the top nav by default", () => {
-      visitUrl({ url: "/" });
-      appBar().should("be.visible");
-      cy.findByTestId("main-logo").should("be.visible");
-    });
-
-    it("should hide the top nav by a param", () => {
+    it("should hide the top nav by an explicit param", () => {
       visitUrl({ url: "/", qs: { top_nav: false } });
+      cy.wait("@getXrayDashboard");
       appBar().should("not.exist");
     });
 
@@ -38,8 +52,10 @@ describe("scenarios > embedding > full app", () => {
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { breadcrumbs: false },
       });
-      cy.findByTestId("main-logo").should("be.visible");
+      cy.wait("@getCardQuery");
+
       appBar().within(() => {
+        cy.findByTestId("main-logo").should("be.visible");
         cy.findByText("Our analytics").should("not.exist");
       });
     });
@@ -54,28 +70,24 @@ describe("scenarios > embedding > full app", () => {
           new_button: false,
         },
       });
+      cy.wait("@getXrayDashboard");
 
-      appBar().should("be.visible");
-      cy.button("Toggle sidebar").should("be.visible");
-    });
-
-    it("should show the top nav by a param", () => {
-      visitUrl({ url: "/" });
-      appBar().should("be.visible");
-      cy.findByTestId("main-logo").should("be.visible");
-      appBar().within(() => {
-        cy.button(/New/).should("not.exist");
-        cy.findByPlaceholderText("Search").should("not.exist");
-      });
+      sideNav().should("be.visible");
+      appBar()
+        .should("be.visible")
+        .within(() => {
+          cy.button("Toggle sidebar").should("be.visible").click();
+        });
+      sideNav().should("not.be.visible");
     });
 
     it("should hide the side nav by a param", () => {
       visitUrl({ url: "/", qs: { side_nav: false } });
       appBar().within(() => {
         cy.findByTestId("main-logo").should("be.visible");
+        cy.button("Toggle sidebar").should("not.exist");
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").should("not.exist");
+      sideNav().should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
@@ -99,10 +111,11 @@ describe("scenarios > embedding > full app", () => {
         cy.findByPlaceholderText("Search…").should("be.visible");
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("be.visible");
+      sideNav().findByText("Our analytics").click();
+
+      cy.findAllByRole("rowgroup")
+        .should("contain", "Orders in a dashboard")
+        .and("be.visible");
 
       appBar().within(() => {
         cy.findByPlaceholderText("Search…").should("be.visible");
@@ -152,10 +165,12 @@ describe("scenarios > embedding > full app", () => {
         qs: { additional_info: false },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Edited/).should("not.exist");
+      cy.findByTestId("app-bar")
+        .findByText("Our analytics")
+        .should("be.visible");
+      cy.findByTestId("qb-header")
+        .findByText(/Edited/)
+        .should("not.exist");
     });
 
     it("should hide the question's action buttons by a param", () => {
@@ -218,10 +233,8 @@ describe("scenarios > embedding > full app", () => {
           url: "/question/" + ORDERS_QUESTION_ID,
           qs: { side_nav: false, logo: false, breadcrumbs: false },
         });
-        cy.findAllByRole("banner")
-          .should("have.length", 1)
-          .findByText("Connect to your database to get the most from Metabase.")
-          .should("exist");
+        cy.findByDisplayValue("Orders");
+        cy.findByTestId("app-bar").should("not.exist");
         cy.findByTestId("main-logo").should("not.exist");
         cy.icon("sidebar_closed").should("not.exist");
         cy.button("Toggle sidebar").should("not.exist");
@@ -239,10 +252,8 @@ describe("scenarios > embedding > full app", () => {
           url: "/question/" + ORDERS_QUESTION_ID,
           qs: { side_nav: false, logo: false, breadcrumbs: false },
         });
-        cy.findAllByRole("banner")
-          .should("have.length", 1)
-          .findByText("Connect to your database to get the most from Metabase.")
-          .should("exist");
+        cy.findByDisplayValue("Orders");
+        cy.findByTestId("app-bar").should("not.exist");
         cy.findByTestId("main-logo").should("not.exist");
         cy.icon("sidebar_closed").should("not.exist");
         cy.button("Toggle sidebar").should("not.exist");
@@ -273,12 +284,15 @@ describe("scenarios > embedding > full app", () => {
         qs: { additional_info: false },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Edited/).should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Our analytics").should("be.visible");
+      cy.findByTestId("dashboard-header")
+        .findByText("Orders in a dashboard")
+        .should("be.visible");
+      cy.findByTestId("dashboard-header")
+        .findByText(/Edited/)
+        .should("not.exist");
+      cy.findByTestId("app-bar")
+        .findByText("Our analytics")
+        .should("be.visible");
     });
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
@@ -297,7 +311,7 @@ describe("scenarios > embedding > full app", () => {
       // will force the cursor to move away from the app bar, if
       // the cursor is still on the app bar, the logo will not be
       // be visible, since we'll only see the side bar toggle button.
-      cy.findByRole("button", { name: /Filter/i }).realHover();
+      cy.findByTestId("question-filter-header").realHover();
 
       cy.findByTestId("main-logo").should("be.visible");
     });
@@ -325,9 +339,10 @@ describe("scenarios > embedding > full app", () => {
   });
 });
 
-const visitUrl = url => {
+const visitUrl = ({ url, qs }) => {
   cy.visit({
-    ...url,
+    url,
+    qs,
     onBeforeLoad(window) {
       // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
       // by removing the property the app would work in embedding mode
@@ -336,19 +351,19 @@ const visitUrl = url => {
   });
 };
 
-const visitQuestionUrl = url => {
-  visitUrl(url);
+const visitQuestionUrl = urlOptions => {
+  visitUrl(urlOptions);
   cy.wait("@getCardQuery");
 };
 
-const visitDashboardUrl = url => {
-  visitUrl(url);
+const visitDashboardUrl = urlOptions => {
+  visitUrl(urlOptions);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
 
-const visitXrayDashboardUrl = url => {
-  visitUrl(url);
+const visitXrayDashboardUrl = urlOptions => {
+  visitUrl(urlOptions);
   cy.wait("@getXrayDashboard");
 };
 
@@ -367,4 +382,8 @@ const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
       })),
     });
   });
+};
+
+const sideNav = () => {
+  return cy.findByTestId("main-navbar-root");
 };

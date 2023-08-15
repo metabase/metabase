@@ -43,7 +43,6 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
-  SET_LOADING_DASHCARDS_COMPLETE,
 } from "./actions";
 import { syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -309,7 +308,11 @@ const slowCards = handleActions(
 
 const parameterValues = handleActions(
   {
-    [INITIALIZE]: { next: () => ({}) }, // reset values
+    [INITIALIZE]: {
+      next: (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    },
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
@@ -328,7 +331,6 @@ const parameterValues = handleActions(
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
-    [RESET]: { next: state => ({}) },
   },
   INITIAL_DASHBOARD_STATE.parameterValues,
 );
@@ -369,12 +371,9 @@ const loadingDashCards = handleActions(
       }),
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: (state, { payload: { currentTime, dashcardIds } }) => {
-        const loadingIds = Array.isArray(dashcardIds) ? dashcardIds : [];
-
+      next: (state, { payload: { currentTime, loadingIds } }) => {
         return {
           ...state,
-          dashcardIds: loadingIds,
           loadingIds,
           loadingStatus: loadingIds.length > 0 ? "running" : "idle",
           startTime: loadingIds.length > 0 ? currentTime : null,
@@ -400,15 +399,6 @@ const loadingDashCards = handleActions(
           ...state,
           loadingIds,
           ...(loadingIds.length === 0 ? { startTime: null } : {}),
-        };
-      },
-    },
-    [SET_LOADING_DASHCARDS_COMPLETE]: {
-      next: state => {
-        return {
-          ...state,
-          loadingIds: [],
-          loadingStatus: "complete",
         };
       },
     },

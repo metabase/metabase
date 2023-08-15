@@ -27,6 +27,7 @@ frontend_sources: &frontend_sources
 frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/**"
+  - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
   - "jest.unit.conf.json"
   - "jest.tz.unit.conf.json"

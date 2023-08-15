@@ -4,11 +4,13 @@
   (:require
    [compojure.core :refer [GET POST]]
    [crypto.random :as crypto-random]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.logger :as logger]
    [metabase.troubleshooting :as troubleshooting]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.util.response :as response]))
 
@@ -54,8 +56,8 @@
   "Returns database connection pool info for the current Metabase instance."
   []
   (validation/check-has-application-permission :monitoring)
-  (let [pool-info (troubleshooting/connection-pool-info)
+  (let [pool-info (prometheus/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
-    (assoc (response/response pool-info) :headers headers, :status 200)))
+    (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
 
 (api/define-routes)

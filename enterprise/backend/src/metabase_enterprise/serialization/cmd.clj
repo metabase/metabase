@@ -22,10 +22,12 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
    [metabase.plugins :as plugins]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -46,11 +48,15 @@
      (s/optional-key :mode)     Mode}
     (deferred-trs "invalid context seed value")))
 
+(defn- check-premium-token! []
+  (premium-features/assert-has-feature :serialization (trs "Serialization")))
+
 (s/defn v1-load
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)
   (mdb/setup-db!)
+  (check-premium-token!)
   (when-not (load/compatible? path)
     (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (let [context (merge {:mode     :skip
@@ -72,20 +78,33 @@
         (log/error e (trs "ERROR LOAD from {0}: {1}" path (.getMessage e)))
         (throw e)))))
 
-(mu/defn v2-load
-  "SerDes v2 load entry point.
+(mu/defn v2-load-internal
+  "SerDes v2 load entry point for internal users.
 
-   opts are passed to load-metabase"
+  `opts` are passed to [[v2.load/load-metabase]]."
   [path
-   opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
+   opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]
+   ;; Deliberately separate from the opts so it can't be set from the CLI.
+   & {:keys [token-check?]
+      :or   {token-check? true}}]
   (plugins/load-plugins!)
   (mdb/setup-db!)
+  (when token-check?
+    (check-premium-token!))
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
   (log/info (trs "Loading serialized Metabase files from {0}" path))
   (serdes/with-cache
     (v2.load/load-metabase (v2.ingest/ingest-yaml path) opts)))
+
+(mu/defn v2-load
+  "SerDes v2 load entry point.
+
+   opts are passed to load-metabase"
+  [path
+   opts :- [:map [:abort-on-error {:optional true} [:maybe :boolean]]]]
+  (v2-load-internal path opts :token-check? true))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -144,6 +163,7 @@
   [path {:keys [state user] :or {state :active} :as opts}]
   (log/info (trs "BEGIN DUMP to {0} via user {1}" path user))
   (mdb/setup-db!)
+  (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [users       (if user
                       (let [user (t2/select-one User
@@ -186,6 +206,7 @@
   [path {:keys [user-email collection-ids] :as opts}]
   (log/info (trs "Exporting Metabase to {0}" path) (u/emoji "🏭 🚛💨"))
   (mdb/setup-db!)
+  (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (serdes/with-cache
     (-> (cond-> opts

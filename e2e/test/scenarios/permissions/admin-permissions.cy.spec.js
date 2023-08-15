@@ -13,6 +13,7 @@ import {
   visitQuestion,
   visitDashboard,
   selectPermissionRow,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
@@ -605,6 +606,7 @@ describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("allows editing sandboxed access in the database focused view", () => {

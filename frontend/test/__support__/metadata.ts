@@ -1,13 +1,19 @@
-import { getMetadata, MetadataSelectorOpts } from "metabase/selectors/metadata";
-import { createMockState } from "metabase-types/store/mocks";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Settings } from "metabase-types/api";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 import { createMockEntitiesState, EntitiesStateOpts } from "./store";
 
 export function createMockMetadata(
   entities: EntitiesStateOpts,
-  opts?: MetadataSelectorOpts,
+  settings?: Settings,
 ) {
   const state = createMockState({
     entities: createMockEntitiesState(entities),
+    settings: createMockSettingsState(settings),
   });
-  return getMetadata(state, opts);
+
+  return getMetadata(state);
 }

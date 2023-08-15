@@ -41,6 +41,7 @@ import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
+import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -138,6 +139,7 @@ function DashCardVisualization({
             link: t`Link`,
             action: t`Action Button`,
             text: t`Text Card`,
+            heading: t`Heading Card`,
           }[virtualDashcardType] ??
           t`This card does not support click mappings`;
 
@@ -159,7 +161,7 @@ function DashCardVisualization({
       );
     }
 
-    if (isEditingParameter) {
+    if (shouldShowParameterMapper({ dashcard, isEditingParameter })) {
       return (
         <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
       );

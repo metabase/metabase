@@ -238,6 +238,19 @@
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
   (are [query] (test-round-trip query)
+    ;; query with segment
+    {:database 282,
+     :type :query,
+     :query {:source-table 661,
+             :aggregation [[:metric "ga:totalEvents"]],
+             :filter [:and
+                      [:segment "gaid::-4"]
+                      [:segment 42]
+                      [:= [:field 1972 nil] "Run Query"]
+                      [:time-interval [:field 1974 nil] -30 :day]
+                      [:!= [:field 1973 nil] "(not set)" "url"]],
+             :breakout [[:field 1973 nil]]}}
+
     ;; :aggregation-options on a non-aggregate expression with an inner aggregate.
     {:database 194
      :query {:aggregation [[:aggregation-options
@@ -381,7 +394,26 @@
     ;; card__<id> source table syntax.
     {:database 1
      :type     :query
-     :query    {:source-table "card__1"}}))
+     :query    {:source-table "card__1"}}
+
+    ;; #32055
+    {:type :query
+     :database 5
+     :query {:source-table 5822,
+             :expressions {"Additional Information Capture" [:coalesce
+                                                             [:field 519195 nil]
+                                                             [:field 519196 nil]
+                                                             [:field 519194 nil]
+                                                             [:field 519193 nil]
+                                                             "None"],
+                           "Additional Info Present" [:case
+                                                      [[[:= [:expression "Additional Information Capture"] "None"]
+                                                        "No"]]
+                                                      {:default "Yes"}]},
+             :filter [:= [:field 518086 nil] "active"],
+             :aggregation [[:aggregation-options
+                            [:share [:= [:expression "Additional Info Present"] "Yes"]]
+                            {:name "Additional Information", :display-name "Additional Information"}]]}}))
 
 (deftest ^:parallel round-trip-aggregation-with-case-test
   (test-round-trip
@@ -576,4 +608,16 @@
                                  :fields [[:xfield 2 nil]]}]
                         :source-table 4}}
                lib.convert/->pMBQL
-               (get-in [:stages 0 :joins 0 :fields]))))))
+               (get-in [:stages 0 :joins 0 :fields]))))
+    (testing "references to missing expressions are removed (#32625)"
+      (let [query {:database 2762
+                   :type     :query
+                   :query    {:aggregation [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+                              :expressions {"custom" [:+ 1 1]}
+                              :breakout    [[:expression "expr1" nil] [:expression "expr2" nil]]
+                              :order-by    [[:expression "expr2" nil]]
+                              :limit       4
+                              :source-table 33674}}
+            converted (lib.convert/->pMBQL query)]
+        (is (empty? (get-in converted [:stages 0 :breakout])))
+        (is (empty? (get-in converted [:stages 0 :group-by])))))))

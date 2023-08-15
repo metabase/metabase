@@ -142,38 +142,49 @@
   "Get the current temporal bucketing option associated with something, if any."
   [x]
   (when-let [unit (temporal-bucket-method x)]
-    {:lib/type :type/temporal-bucketing-option
+    {:lib/type :option/temporal-bucketing
      :unit unit}))
+
+(def ^:private hidden-bucketing-options
+  "Options that are technically legal in MBQL, but that should be hidden in the UI."
+  #{:millisecond
+    :second
+    :second-of-minute
+    :year-of-era})
 
 (def time-bucket-options
   "The temporal bucketing options for time type expressions."
-  (mapv (fn [unit]
-          (cond-> {:lib/type :type/temporal-bucketing-option
-                   :unit unit}
-            (= unit :hour) (assoc :default true)))
+  (into []
+        (comp (remove hidden-bucketing-options)
+              (map (fn [unit]
+                     (cond-> {:lib/type :option/temporal-bucketing
+                              :unit unit}
+                       (= unit :hour) (assoc :default true)))))
         lib.schema.temporal-bucketing/ordered-time-bucketing-units))
 
 (def date-bucket-options
   "The temporal bucketing options for date type expressions."
   (mapv (fn [unit]
-          (cond-> {:lib/type :type/temporal-bucketing-option
+          (cond-> {:lib/type :option/temporal-bucketing
                    :unit unit}
             (= unit :day) (assoc :default true)))
         lib.schema.temporal-bucketing/ordered-date-bucketing-units))
 
 (def datetime-bucket-options
   "The temporal bucketing options for datetime type expressions."
-  (mapv (fn [unit]
-          (cond-> {:lib/type :type/temporal-bucketing-option
-                   :unit unit}
-            (= unit :day) (assoc :default true)))
+  (into []
+        (comp (remove hidden-bucketing-options)
+              (map (fn [unit]
+                     (cond-> {:lib/type :option/temporal-bucketing
+                              :unit unit}
+                       (= unit :day) (assoc :default true)))))
         lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
 
-(defmethod lib.metadata.calculation/display-name-method :type/temporal-bucketing-option
+(defmethod lib.metadata.calculation/display-name-method :option/temporal-bucketing
   [_query _stage-number {:keys [unit]} _style]
   (describe-temporal-unit unit))
 
-(defmethod lib.metadata.calculation/display-info-method :type/temporal-bucketing-option
+(defmethod lib.metadata.calculation/display-info-method :option/temporal-bucketing
   [query stage-number option]
   (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)}
          (select-keys option [:default :selected])))

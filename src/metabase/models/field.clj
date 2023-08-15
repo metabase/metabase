@@ -440,7 +440,8 @@
     (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
         (update :table_id           serdes/*export-table-fk*)
-        (update :fk_target_field_id serdes/*export-field-fk*))))
+        (update :fk_target_field_id serdes/*export-field-fk*)
+        (dissoc :fingerprint :last_analyzed :fingerprint_version))))
 
 (defmethod serdes/load-xform "Field"
   [field]

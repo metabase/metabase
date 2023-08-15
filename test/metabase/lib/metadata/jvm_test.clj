@@ -25,18 +25,16 @@
     (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
 (deftest ^:parallel saved-question-metadata-test
-  (let [card  {:dataset-query {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :venues)
-                                          :joins        [{:fields       :all
-                                                          :source-table (mt/id :categories)
-                                                          :condition    [:=
-                                                                         [:field (mt/id :venues :category_id) nil]
-                                                                         [:field (mt/id :categories :id) {:join-alias "Cat"}]]
-                                                          :alias        "Cat"}]}}}
-        query (lib/saved-question-query
-               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-               card)]
+  (let [query  {:database (mt/id)
+                :type     :query
+                :query    {:source-table (mt/id :venues)
+                           :joins        [{:fields       :all
+                                           :source-table (mt/id :categories)
+                                           :condition    [:=
+                                                          [:field (mt/id :venues :category_id) nil]
+                                                          [:field (mt/id :categories :id) {:join-alias "Cat"}]]
+                                           :alias        "Cat"}]}}
+        query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)]
     (is (=? [{:lib/desired-column-alias "ID"}
              {:lib/desired-column-alias "NAME"}
              {:lib/desired-column-alias "CATEGORY_ID"}
@@ -45,7 +43,7 @@
              {:lib/desired-column-alias "PRICE"}
              {:lib/desired-column-alias "Cat__ID"}
              {:lib/desired-column-alias "Cat__NAME"}]
-            (lib.metadata.calculation/metadata query)))))
+            (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel join-with-aggregation-reference-in-fields-metadata-test
   (mt/dataset sample-dataset
@@ -92,7 +90,7 @@
                 :lib/desired-column-alias "Orders__sum"
                 :display-name "Sum of Quantity"
                 :source-alias "Orders"}]
-              (lib.metadata.calculation/metadata mlv2-query))))))
+              (lib.metadata.calculation/returned-columns mlv2-query))))))
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
   (t2.with-temp/with-temp [Card card {:dataset_query
@@ -144,7 +142,7 @@
                 :effective-type :type/Text
                 :semantic-type :type/Name}]
               (map #(lib/display-info mlv2-query %)
-                   (lib.metadata.calculation/metadata mlv2-query))))
+                   (lib.metadata.calculation/returned-columns mlv2-query))))
       (is (=? [{:display-name "Name"
                 :long-display-name "Name"
                 :effective-type :type/Text
@@ -154,4 +152,4 @@
                 :effective-type :type/Text
                 :semantic-type :type/Name}]
               (map #(lib/display-info agg-query %)
-                   (lib.metadata.calculation/metadata agg-query)))))))
+                   (lib.metadata.calculation/returned-columns agg-query)))))))

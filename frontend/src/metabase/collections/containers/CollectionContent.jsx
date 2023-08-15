@@ -60,9 +60,11 @@ function mapStateToProps(state, props) {
   const canAccessUploadsDb =
     uploadsEnabled &&
     uploadDbId &&
-    !!Databases.selectors.getObject(state, {
-      entityId: uploadDbId,
-    });
+    Databases.selectors
+      .getObject(state, {
+        entityId: uploadDbId,
+      })
+      ?.canWrite();
 
   return {
     isAdmin: getUserIsAdmin(state),
@@ -301,7 +303,7 @@ function CollectionContent({
                     if (isEmpty && !loadingUnpinnedItems) {
                       return (
                         <CollectionEmptyContent>
-                          <CollectionEmptyState collectionId={collectionId} />
+                          <CollectionEmptyState collection={collection} />
                         </CollectionEmptyContent>
                       );
                     }

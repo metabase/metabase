@@ -452,11 +452,11 @@
 (defmethod sql-jdbc.describe-table/get-table-pks :snowflake
   [_driver ^Connection conn db-name-or-nil table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
-    (into #{} (sql-jdbc.sync.common/reducible-results
-               #(.getPrimaryKeys metadata db-name-or-nil
-                                 (-> table :schema escape-name-for-metadata)
-                                 (-> table :name escape-name-for-metadata))
-               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+    (into [] (sql-jdbc.sync.common/reducible-results
+              #(.getPrimaryKeys metadata db-name-or-nil
+                                (-> table :schema escape-name-for-metadata)
+                                (-> table :name escape-name-for-metadata))
+              (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defn- describe-table-fks*
   "Stolen from [[sql-jdbc.describe-table]].

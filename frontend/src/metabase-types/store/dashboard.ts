@@ -56,7 +56,6 @@ export interface DashboardState {
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
 
   loadingDashCards: {
-    dashcardIds: DashCardId[];
     loadingIds: DashCardId[];
     loadingStatus: "idle" | "running" | "complete";
     startTime: number | null;

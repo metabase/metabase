@@ -49,6 +49,10 @@ class Table {
     return this.fields ?? [];
   }
 
+  getMetrics() {
+    return this.metrics ?? [];
+  }
+
   isVirtualCard() {
     return isVirtualCardId(this.id);
   }
@@ -65,7 +69,7 @@ class Table {
   }
 
   newQuestion() {
-    return this.question().setDefaultDisplay();
+    return this.question().setDefaultQuery().setDefaultDisplay();
   }
 
   question() {

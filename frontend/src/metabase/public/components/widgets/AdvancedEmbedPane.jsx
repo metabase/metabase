@@ -33,7 +33,10 @@ const AdvancedEmbedPane = ({
   onDiscard,
 }) => (
   <div className="full flex">
-    <div className="flex-full p4 flex flex-column">
+    <div
+      className="flex-full p4 flex flex-column"
+      data-testid="embedding-preview"
+    >
       {!resource.enable_embedding ||
       !_.isEqual(resource.embedding_params, embeddingParams) ? (
         <div className="mb2 p2 bordered rounded flex align-center flex-no-shrink">

@@ -4,6 +4,8 @@
    [clojure.set :as set]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.config :as config]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -12,12 +14,10 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:dynamic *card-id*
@@ -49,16 +49,16 @@
   in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE code is
   present. This feature is only enabled if we have a valid Enterprise Edition™ token."
   (let [dlay (delay
-               (u/ignore-exceptions
-                 (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
-                 (resolve 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions)))]
+              (when config/ee-available?
+                (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
+                (resolve 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions)))]
     (fn [query]
       (when-let [f @dlay]
         (f query)))))
 
-(s/defn ^:private check-card-read-perms
+(mu/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
-  [card-id :- su/IntGreaterThanZero]
+  [card-id :- ::lib.schema.id/card]
   (let [card (or (t2/select-one [Card :collection_id] :id card-id)
                  (throw (ex-info (tru "Card {0} does not exist." card-id)
                                  {:type    qp.error-type/invalid-query
@@ -81,7 +81,7 @@
 (defn- has-data-perms? [required-perms]
   (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms))
 
-(s/defn ^:private check-ad-hoc-query-perms
+(mu/defn ^:private check-ad-hoc-query-perms
   [outer-query]
   (let [required-perms (required-perms outer-query)]
     (when-not (has-data-perms? required-perms)
@@ -136,9 +136,9 @@
 ;;; |                                                Writeback fns                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn check-query-action-permissions*
+(mu/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
-  [outer-query :- su/Map]
+  [outer-query :- ms/Map]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
     (check-card-read-perms *card-id*))

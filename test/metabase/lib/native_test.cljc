@@ -3,11 +3,12 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]
               [metabase.test.util.js :as test.js]))
    [clojure.test :refer [are deftest is testing]]
-   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util.humanization :as u.humanization]))
 
 (deftest ^:parallel variable-tag-test
@@ -41,16 +42,16 @@
     (is (=? {"snippet:foo" {:type         :snippet
                             :name         "snippet:foo"
                             :snippet-name "foo"
-                            :id           uuid?}}
+                            :id           string?}}
             (lib.native/extract-template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
     (is (=? {"snippet:foo"  {:type         :snippet
                              :name         "snippet:foo"
                              :snippet-name "foo"
-                             :id           uuid?}
+                             :id           string?}
              "snippet: foo" {:type         :snippet
                              :name         "snippet: foo"
                              :snippet-name "foo"
-                             :id           uuid?}}
+                             :id           string?}}
             ;; TODO: This should probably be considered a bug - whitespace matters for the name.
             (lib.native/extract-template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
 
@@ -58,7 +59,7 @@
     (let [old-tag {:type         :text
                    :name         "foo"
                    :display-name "Foo"
-                   :id           (m/random-uuid)}]
+                   :id           (str (random-uuid))}]
       (testing "changes display-name if the original is not customized"
         (is (=? {"bar" {:type         :text
                         :name         "bar"
@@ -78,7 +79,7 @@
         (let [other {:type         :text
                      :name         "other"
                      :display-name "Some Var"
-                     :id           (m/random-uuid)}]
+                     :id           (str (random-uuid))}]
           (is (=? {"other" other
                    "bar"   {:type         :text
                             :name         "bar"
@@ -92,7 +93,7 @@
     (let [mktag (fn [base]
                   (merge {:type    :text
                           :display-name (u.humanization/name->human-readable-name :simple (:name base))
-                          :id           uuid?}
+                          :id           string?}
                          base))
           v1    (mktag {:name "foo"})
           v2    (mktag {:name "bar"})
@@ -121,22 +122,22 @@
                "#321"                    c2}
               (lib.native/extract-template-tags
                 "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
-                {"foo"                   (assoc v1 :id (random-uuid))
-                 "#123-card-1"           (assoc c1 :id (random-uuid))
-                 "snippet:first snippet" (assoc s1 :id (random-uuid))}))))))
+                {"foo"                   (assoc v1 :id (str (random-uuid)))
+                 "#123-card-1"           (assoc c1 :id (str (random-uuid)))
+                 "snippet:first snippet" (assoc s1 :id (str (random-uuid)))}))))))
 
 #?(:cljs
-   (deftest converters-test
-     (let [clj-tags {"a"         {:id           #uuid "c5ad010c-632a-4498-b667-9188fbe965f9"
+   (deftest ^:parallel converters-test
+            (let [clj-tags {"a"  {:id           "c5ad010c-632a-4498-b667-9188fbe965f9"
                                   :name         "a"
                                   :display-name "A"
                                   :type         :text}
-                     "#123-foo"  {:id           #uuid "7e58e086-5d63-4986-8fe7-87e05dfa4089"
+                     "#123-foo"  {:id           "7e58e086-5d63-4986-8fe7-87e05dfa4089"
                                   :name         "#123-foo"
                                   :display-name "#123-foo"
                                   :type         :card
                                   :card-id      123}
-                     "snippet:b" {:id           #uuid "604131d0-a74c-4822-b113-8e9515b1a985"
+                     "snippet:b" {:id           "604131d0-a74c-4822-b113-8e9515b1a985"
                                   :name         "snippet:b"
                                   :display-name "Snippet B"
                                   :type         :snippet
@@ -163,16 +164,29 @@
          (is (=         clj-tags (-> clj-tags (#'lib.native/TemplateTags->) (#'lib.native/->TemplateTags))))
          (is (test.js/= js-tags  (-> js-tags  (#'lib.native/->TemplateTags) (#'lib.native/TemplateTags->))))))))
 
+(def ^:private qp-results-metadata
+  "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
+  Processor.
+
+  IRL queries actually come back with both `data.cols` and `data.results_metadata.columns`, which are slightly
+  different from one another; the frontend merges these together into one unified metadata map. This is both icky and
+  silly. I'm hoping we can get away with just using one or the other in the future. So let's try to use just the stuff
+  here and see how far we get. If it turns out we need something in `data.cols` that's missing from here, let's just
+  add it to `data.results_metadata.columns` in QP results, and add it here as well, so we can start moving toward a
+  world where we don't have two versions of the metadata in query responses."
+  {:lib/type :metadata/results
+   :columns  (get-in lib.tu/mock-cards [:venues :result-metadata])})
+
 (deftest ^:parallel native-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
            :stages   [{:lib/type    :mbql.stage/native
                        :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
-          (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;"))))
+          (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" qp-results-metadata nil))))
 
 (deftest ^:parallel native-query-suggested-name-test
-  (let [query (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;")]
+  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM VENUES;" qp-results-metadata nil)]
     (is (= "Native query"
            (lib.metadata.calculation/describe-query query)))
     (is (nil? (lib.metadata.calculation/suggested-name query)))))
@@ -183,7 +197,7 @@
       (is (=? ["select * from venues where id = {{myid}}"
                {"myid" {:type :text,
                         :name "myid",
-                        :id uuid?
+                        :id string?
                         :display-name "Myid"}}]
               ((juxt lib/raw-native-query lib/template-tags) query)))
       (is (=? ["select * from venues where id = {{myid}} and x = {{y}}"
@@ -199,7 +213,12 @@
       (is (empty?
             (-> query
                 (lib/with-native-query "select * from venues")
-                lib/template-tags))))))
+                lib/template-tags))))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Must be a native query"
+          (-> lib.tu/venues-query
+              (lib/with-native-query "foobar"))))))
 
 (deftest ^:parallel with-template-tags-test
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")
@@ -218,4 +237,63 @@
       (is (= original-tags
              (-> query
                  (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :display-name "Foobar")})
-                 lib/template-tags))))))
+                 lib/template-tags))))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Must be a native query"
+          (-> lib.tu/venues-query
+              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
+
+(defn ^:private metadata-provider-requiring-collection []
+  (meta.graph-provider/->SimpleGraphMetadataProvider (-> meta/metadata
+                                                         (update :features conj :native-requires-specified-collection))))
+
+(deftest ^:parallel native-query+collection-test
+  (testing "building when collection is not required"
+    (is (=? {:stages [(complement :collection)]}
+            (lib/native-query meta/metadata-provider "myquery")))
+    (is (=? {:stages [(complement :collection)]}
+            (lib/native-query meta/metadata-provider "myquery" nil {:collection "mycollection"}))))
+  (testing "building when requires collection"
+    (is (=? {:stages [{:collection "mycollection"}]}
+            (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Missing extra, required keys for native query: .*:collection.*"
+          (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
+
+(deftest ^:parallel with-different-database-test
+  (let [query (lib/native-query meta/metadata-provider "myquery")]
+    (testing "database id should change"
+      (is (=? {:database 9999}
+              (-> query
+                  (lib/with-different-database
+                    (meta.graph-provider/->SimpleGraphMetadataProvider
+                      (assoc meta/metadata :id 9999)))))))
+    (testing "Checks collection requirement"
+      (is (=? {:stages [(complement :collection)]}
+              (-> query
+                  (lib/with-different-database meta/metadata-provider {:collection "mycollection"}))))
+      (is (thrown-with-msg?
+            #?(:clj Throwable :cljs :default)
+            #"Missing extra, required keys for native query: .*:collection.*"
+            (-> query
+                (lib/with-different-database (metadata-provider-requiring-collection))))))
+    (is (thrown-with-msg?
+          #?(:clj Throwable :cljs :default)
+          #"Must be a native query"
+          (-> lib.tu/venues-query
+              (lib/with-different-database meta/metadata-provider))))))
+
+(deftest ^:parallel with-native-collection-test
+  (is (=? {:stages [{:collection "mynewcollection"}]}
+          (-> (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})
+              (lib/with-native-extras {:collection "mynewcollection"}))))
+  (is (=? {:stages [(complement :collection)]}
+        (-> (lib/native-query meta/metadata-provider "myquery")
+            (lib/with-native-extras {:collection "mycollection"}))))
+  (is (thrown-with-msg?
+        #?(:clj Throwable :cljs :default)
+        #"Must be a native query"
+        (-> (lib/query (metadata-provider-requiring-collection) (meta/table-metadata :venues))
+            (lib/with-native-extras {:collection "mycollection"})))))

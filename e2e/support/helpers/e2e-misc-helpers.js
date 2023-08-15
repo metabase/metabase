@@ -45,7 +45,7 @@ export function openNativeEditor({
  */
 export function runNativeQuery({ wait = true } = {}) {
   cy.intercept("POST", "api/dataset").as("dataset");
-  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.findByTestId("native-query-editor-container").icon("play").click();
 
   if (wait) {
     cy.wait("@dataset");
@@ -291,4 +291,24 @@ export function visitPublicDashboard(id, { params = {} } = {}) {
       });
     },
   );
+}
+
+/**
+ * Returns a matcher function to find text content that is broken up by multiple elements
+ * There is also a version of this for unit tests - frontend/test/__support__/ui.tsx
+ * In case of changes, please, add them there as well
+ *
+ * @param {string} textToFind
+ * @example
+ * cy.findByText(getBrokenUpTextMatcher("my text with a styled word"))
+ */
+export function getBrokenUpTextMatcher(textToFind) {
+  return (content, element) => {
+    const hasText = node => node?.textContent === textToFind;
+    const childrenDoNotHaveText = element
+      ? Array.from(element.children).every(child => !hasText(child))
+      : true;
+
+    return hasText(element) && childrenDoNotHaveText;
+  };
 }

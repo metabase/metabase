@@ -106,10 +106,10 @@
 (t2/define-before-update :model/PermissionsGroup
   [group]
   (let [changes (t2/changes group)]
-   (u/prog1 group
-     (check-not-magic-group group)
-     (when-let [group-name (:name changes)]
-       (check-name-not-already-taken group-name)))))
+    (u/prog1 group
+      (check-not-magic-group group)
+      (when-let [group-name (:name changes)]
+        (check-name-not-already-taken group-name)))))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 

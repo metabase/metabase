@@ -5,11 +5,15 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [metabase.util.malli :as mu]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel join-table-metadata-test
   (testing "You should be able to pass :metadata/table to lib/join INDIRECTLY VIA join-clause"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (let [query (-> lib.tu/venues-query
                     (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all)
@@ -38,5 +42,5 @@
             (fields   [_this table-id] (mapv #(assoc % :name nil)
                                              (metadata.protocols/fields meta/metadata-provider table-id))))
           query (lib/query metadata-provider (meta/table-metadata :venues))]
-      (binding [mu/*enforce* false]
+      (mu/disable-enforcement
         (is (sequential? (lib.metadata.calculation/visible-columns query)))))))

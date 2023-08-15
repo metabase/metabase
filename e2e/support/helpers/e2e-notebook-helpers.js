@@ -62,6 +62,14 @@ export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
   });
 }
 
+export function removeSummaryGroupingField({ field, stage = 0, index = 0 }) {
+  getNotebookStep("summarize", { stage, index })
+    .findByTestId("breakout-step")
+    .findByText(field)
+    .icon("close")
+    .click();
+}
+
 export function selectSavedQuestionsToJoin(
   firstQuestionName,
   secondQuestionName,

@@ -24,6 +24,7 @@ import type {
   UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
+import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type Question from "metabase-lib/Question";
 
 import type Database from "metabase-lib/metadata/Database";
@@ -54,7 +55,9 @@ export const PLUGIN_ADMIN_TOOLS = {
 };
 
 // functions that update the sections
-export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
+export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
+  sections: typeof ADMIN_SETTINGS_SECTIONS,
+) => void)[] = [];
 
 // admin permissions
 export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];
@@ -198,18 +201,18 @@ export const PLUGIN_MODERATION = {
     question?: Question,
     isModerator?: boolean,
     reload?: () => void,
-  ) => ({}),
+  ) => [],
 };
 
 export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
-  databaseCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (question?: any) => null,
   QuestionCacheSection: PluginPlaceholder,
   DashboardCacheSection: PluginPlaceholder,
   DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
+  hasQuestionCacheSection: (question: Question) => false,
 };
 
 export const PLUGIN_REDUCERS: {
@@ -229,7 +232,7 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
     permissions,
   addTablePermissionOptions: (permissions: any[], _value: string) =>
     permissions,
-  isBlockPermission: (_value: string) => false,
+  getDatabaseLimitedAccessPermission: (_value: string) => null,
   isAccessPermissionDisabled: (
     _value: string,
     _subject: "schemas" | "tables" | "fields",
@@ -279,4 +282,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
   getMenuItems: (question?: any, onChange?: any) => ({}),
+};
+
+export const PLUGIN_EMBEDDING = {
+  isEnabled: () => false,
 };

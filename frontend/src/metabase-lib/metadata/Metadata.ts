@@ -65,6 +65,10 @@ class Metadata {
     return Object.values(this.tables);
   }
 
+  fieldsList(): Field[] {
+    return Object.values(this.fields);
+  }
+
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
    * @returns {Metric[]}

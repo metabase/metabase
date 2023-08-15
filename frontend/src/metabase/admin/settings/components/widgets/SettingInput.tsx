@@ -1,4 +1,3 @@
-import * as React from "react";
 import cx from "classnames";
 import { SettingInputBlurChange } from "./SettingInput.styled";
 
@@ -35,7 +34,7 @@ const SettingInput = ({
   id,
   type = "text",
 }: SettingInputProps) => {
-  const changeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const changeHandler = (e: { target: HTMLInputElement }) => {
     const value = getValue(e.target.value, type);
     onChange(value);
   };

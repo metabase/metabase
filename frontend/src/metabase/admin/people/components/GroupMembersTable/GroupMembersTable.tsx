@@ -61,7 +61,7 @@ function GroupMembersTable({
   const canRemove = (user: IUser) =>
     !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
 
-  const hasMembers = groupMemberships.length > 0;
+  const hasMembers = group.members.length > 0;
 
   const handleAddUser: GroupMembersTableProps["onAddUserDone"] =
     async userIds => {

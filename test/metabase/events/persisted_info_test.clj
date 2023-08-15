@@ -9,7 +9,7 @@
 
 (deftest event-test
   (mt/with-temporary-setting-values [persisted-models-enabled true]
-    (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]
+    (mt/with-temp* [Database [db {:settings {:persist-models-enabled true}}]
                     Card     [card {:database_id (u/the-id db)}]]
       (events.persisted-info/process-event {:topic :card-create
                                             :item  card})

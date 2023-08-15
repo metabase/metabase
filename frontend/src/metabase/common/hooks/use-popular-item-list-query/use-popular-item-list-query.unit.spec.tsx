@@ -5,13 +5,14 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "__support__/ui";
 import { usePopularItemListQuery } from "./use-popular-item-list-query";
 
 const TEST_ITEM = createMockPopularItem();
 
 const TestComponent = () => {
-  const { data = [], isLoading, error } = usePopularItemListQuery();
+  const { data = [], metadata, isLoading, error } = usePopularItemListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -22,6 +23,10 @@ const TestComponent = () => {
       {data.map((item, index) => (
         <div key={index}>{item.model_object.name}</div>
       ))}
+
+      <div data-testid="metadata">
+        {(!metadata || Object.keys(metadata).length === 0) && "No metadata"}
+      </div>
     </div>
   );
 };
@@ -41,5 +46,12 @@ describe("usePopularItemListQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText(TEST_ITEM.model_object.name)).toBeInTheDocument();
+  });
+  it("should not have any metadata in the response", async () => {
+    setup();
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    expect(
+      within(screen.getByTestId("metadata")).getByText("No metadata"),
+    ).toBeInTheDocument();
   });
 });

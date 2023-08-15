@@ -1,10 +1,15 @@
-import { popover, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  visitDashboard,
+  filterWidget,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
-  query: { "source-table": PRODUCTS_ID },
+  query: { "source-table": PRODUCTS_ID, limit: 5 },
 };
 
 const parameter = {
@@ -37,8 +42,7 @@ describe("issue 24235", () => {
       },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(parameter.name).click();
+    filterWidget().contains(parameter.name).click();
 
     popover().within(() => {
       cy.findByText("Exclude...").click();
@@ -49,8 +53,7 @@ describe("issue 24235", () => {
     });
 
     cy.wait("@getCardQuery");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rows 1-11 of 200").should("be.visible");
+    cy.get(".cellData").should("contain", "Price, Schultz and Daniel");
   });
 });
 

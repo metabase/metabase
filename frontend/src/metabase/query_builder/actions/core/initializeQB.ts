@@ -13,6 +13,7 @@ import Snippets from "metabase/entities/snippets";
 import Questions from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
 
 import { Card } from "metabase-types/api";
 import {
@@ -28,12 +29,12 @@ import Question from "metabase-lib/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
 } from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
-import { cancelQuery, runQuestionQuery } from "../querying";
 
+import { cancelQuery, runQuestionQuery } from "../querying";
 import { resetQB } from "./core";
 import {
   propagateDashboardParameters,
@@ -303,15 +304,22 @@ async function handleQBInit(
   const metadata = getMetadata(getState());
 
   let question = new Question(card, metadata);
+
   if (question.isSaved()) {
-    // Don't set viz automatically for saved questions
-    question = question.lockDisplay();
+    if (!question.isDataset()) {
+      question = question.lockDisplay();
+    }
 
     const currentUser = getUser(getState());
     if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
       MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
     }
+  }
+
+  if (question.isNative()) {
+    const isEditing = getIsEditingInDashboard(getState());
+    uiControls.isNativeEditorOpen = isEditing || !question.isSaved();
   }
 
   if (question.isNative() && !question.query().readOnly()) {

@@ -50,13 +50,15 @@ export const DashboardCardActionsPanel = styled.div`
   right: 20px;
   border-radius: 8px;
   box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
-  z-index: 3;
   cursor: default;
   transition: opacity 200ms;
   opacity: 0;
   pointer-events: none;
+  // react-resizable covers panel, we have to override it
+  z-index: 2;
 
-  .Card:hover & {
+  .Card:hover &,
+  .Card:focus-within & {
     opacity: 1;
     pointer-events: all;
   }

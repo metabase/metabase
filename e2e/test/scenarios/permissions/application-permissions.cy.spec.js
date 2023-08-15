@@ -6,6 +6,7 @@ import {
   getFullName,
   visitQuestion,
   visitDashboard,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -25,6 +26,7 @@ describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
   });
 
   it("shows permissions help", () => {
@@ -168,10 +170,6 @@ describeEE("scenarios > admin > permissions > application", () => {
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Admin settings").should("not.exist");
-
-        cy.visit("/admin/tools/errors");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Sorry, you don’t have permission to see that.");
 
         cy.visit("/admin/tools/errors");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

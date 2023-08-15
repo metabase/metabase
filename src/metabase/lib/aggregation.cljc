@@ -274,11 +274,11 @@
    [:map
     [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]]])
 
-(defmethod lib.metadata.calculation/display-name-method :mbql.aggregation/operator
+(defmethod lib.metadata.calculation/display-name-method :operator/aggregation
   [_query _stage-number {:keys [display-info]} _display-name-style]
   (:display-name (display-info)))
 
-(defmethod lib.metadata.calculation/display-info-method :mbql.aggregation/operator
+(defmethod lib.metadata.calculation/display-info-method :operator/aggregation
   [_query _stage-number {:keys [display-info requires-column? selected?] short-name :short}]
   (cond-> (assoc (display-info)
                  :short-name (u/qualified-name short-name)
@@ -320,7 +320,7 @@
                             (let [feature (:driver-feature op)]
                               (or (nil? feature) (db-features feature)))))
                   (keep with-columns)
-                  (map #(assoc % :lib/type :mbql.aggregation/operator)))
+                  (map #(assoc % :lib/type :operator/aggregation)))
             lib.schema.aggregation/aggregation-operators)))))
 
 (mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation
@@ -360,19 +360,14 @@
                     (m/update-existing
                      :columns
                      (fn [cols]
-                       (let [refs (mapv lib.ref/ref cols)
-                             match (lib.equality/find-closest-matching-ref
-                                    (lib.options/update-options agg-col dissoc :temporal-unit)
-                                    refs)]
-                         (if match
-                           (mapv (fn [r c]
-                                   (cond-> c
-                                     (= r match) (assoc :selected? true)
-
-                                     (some? agg-temporal-unit)
-                                     (lib.temporal-bucket/with-temporal-bucket agg-temporal-unit)))
-                                 refs cols)
-                           cols)))))))
+                       (let [cols (lib.equality/mark-selected-columns
+                                   cols
+                                   [(lib.options/update-options agg-col dissoc :temporal-unit)])]
+                         (mapv (fn [c]
+                                 (cond-> c
+                                   (some? agg-temporal-unit)
+                                   (lib.temporal-bucket/with-temporal-bucket agg-temporal-unit)))
+                               cols)))))))
             agg-operators))))
 
 (mu/defn aggregation-ref :- :mbql.clause/aggregation

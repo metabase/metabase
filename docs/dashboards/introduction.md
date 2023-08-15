@@ -56,19 +56,22 @@ Once you add a question to your dashboard, it’ll look something like this:
 
 ## Adding headings or descriptions with text cards
 
-Another neat thing you can do is add text cards to your dashboards. Text cards allow you to include descriptions, explanations, notes, or even images and GIFs to your dashboards. You can also use text cards to create separations between sections of charts in your dashboards, or include links to other dashboards, questions, or websites.
+Another neat thing you can do is add heading and text cards to your dashboards. Text cards allow you to include descriptions, explanations, notes, or even images and GIFs to your dashboards. You can also use text cards to create separations between sections of charts in your dashboards, or include links to other dashboards, questions, or websites.
 
-To add a new text card, create a new dashboard (or edit an existing one) and click on the text card button, **Aa**, in the top-right:
+To add a new text card, create a new dashboard (or edit an existing one) and click on the text card button, **T**, in the top-right:
 
 ![Text card button](images/text-card-button.png)
 
-Your new, empty text card will appear. It has two modes: writing and previewing. Toggle between the modes by clicking the **eye** to preview the card, or the **document with pencil** icon to edit the card.
+You have two options:
 
-You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends).
+- **Heading**: a preformatted heading text card that spans the width of the dashboard.
+- **Text**: a customizable text card that will render Markdown-formatted text.
+
+Each text card has two modes: writing and previewing. When you click to focus on the card, the card will enter editing mode. When you click away from the card, Metabase will render the card to show you what it will look like on the live dashboard.
 
 ![Markdown](images/markdown.png)
 
-Click the **eye** icon to see what your formatted Markdown will look like when you save the card:
+You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
 
 ![Result](images/result.png)
 

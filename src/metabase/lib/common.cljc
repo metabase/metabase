@@ -44,6 +44,10 @@
   [field-metadata]
   (lib.ref/ref field-metadata))
 
+(defmethod ->op-arg :metadata/metric
+  [metric-def]
+  (lib.ref/ref metric-def))
+
 (defmethod ->op-arg :lib/external-op
   [{:keys [operator options args] :or {options {}}}]
   (->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]

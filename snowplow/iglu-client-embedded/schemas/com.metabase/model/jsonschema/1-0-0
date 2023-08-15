@@ -1,6 +1,6 @@
 {
   "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
-  "description": "Search events",
+  "description": "Model events",
   "self": {
     "vendor": "com.metabase",
     "name": "model",

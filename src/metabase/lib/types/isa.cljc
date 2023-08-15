@@ -105,13 +105,13 @@
   "Is `column` a dimension?"
   [column]
   (and column
-       (not= (:lib/source column) :source/aggregation)
+       (not= (:lib/source column) :source/aggregations)
        (not (description? column))))
 
 (defn ^:export metric?
   "Is `column` a metric?"
   [column]
-  (and (not= (:lib/source column) :source/breakout)
+  (and (not= (:lib/source column) :source/breakouts)
        (summable? column)))
 
 (defn ^:export foreign-key?

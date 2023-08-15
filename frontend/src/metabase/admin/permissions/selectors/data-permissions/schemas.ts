@@ -78,13 +78,7 @@ const buildAccessPermission = (
     ),
     postActions: {
       controlled: () =>
-        limitDatabasePermission(
-          groupId,
-          entityId,
-          PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(accessPermissionValue)
-            ? DATA_PERMISSION_OPTIONS.noSelfService.value
-            : null,
-        ),
+        limitDatabasePermission(groupId, entityId, accessPermissionValue),
       ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
     },
     actions: PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,

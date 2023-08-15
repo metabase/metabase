@@ -26,6 +26,7 @@ import {
 } from "./ExpressionEditorTextfield.styled";
 
 ace.config.set("basePath", "/assets/ui/");
+ace.config.set("useStrictCSP", true);
 
 type ErrorWithMessage = { message: string; pos?: number; len?: number };
 
@@ -47,6 +48,7 @@ interface ExpressionEditorTextfieldProps {
   startRule?: string;
   width?: number;
   reportTimezone?: string;
+  textAreaId?: string;
 
   onChange: (expression: Expression | null) => void;
   onError: (error: ErrorWithMessage | null) => void;
@@ -154,6 +156,14 @@ class ExpressionEditorTextfield extends React.Component<
       }
 
       this.triggerAutosuggest();
+    }
+  }
+
+  componentDidUpdate() {
+    const { textAreaId } = this.props;
+    if (this.input.current && textAreaId) {
+      const textArea = this.input.current.editor.textInput.getElement?.();
+      textArea?.setAttribute?.("id", textAreaId);
     }
   }
 
@@ -398,7 +408,9 @@ class ExpressionEditorTextfield extends React.Component<
     });
 
     this.setState({ helpText: helpText || null });
-    this.updateSuggestions(suggestions);
+    if (this.state.isFocused) {
+      this.updateSuggestions(suggestions);
+    }
   }
 
   errorAsMarkers(errorMessage: ErrorWithMessage | null = null): IMarker[] {

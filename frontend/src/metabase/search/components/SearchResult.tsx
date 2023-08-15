@@ -1,6 +1,5 @@
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
-
 import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
 
@@ -8,8 +7,7 @@ import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
 import type { SearchScore, SearchModelType } from "metabase-types/api";
 
-import type { WrappedResult } from "./types";
-
+import type { WrappedResult } from "metabase/search/types";
 import {
   IconWrapper,
   ResultButton,
@@ -129,7 +127,7 @@ export function SearchResult({
       active={active}
       compact={compact}
       to={!onClick ? result.getUrl() : ""}
-      onClick={onClick ? () => onClick(result) : undefined}
+      onClick={onClick && active ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
       <ResultLinkContent>
@@ -144,7 +142,7 @@ export function SearchResult({
               size={12}
             />
           </TitleWrapper>
-          <Text>
+          <Text data-testid="result-link-info-text">
             <InfoText result={result} />
           </Text>
           {hasDescription && result.description && (
@@ -152,7 +150,15 @@ export function SearchResult({
           )}
           <Score scores={result.scores} />
         </div>
-        {loading && <ResultSpinner size={24} borderWidth={3} />}
+        {loading && (
+          // SearchApp also uses `loading-spinner`, using a different test ID
+          // to not confuse unit tests waiting for loading-spinner to disappear
+          <ResultSpinner
+            data-testid="search-result-loading-spinner"
+            size={24}
+            borderWidth={3}
+          />
+        )}
       </ResultLinkContent>
       {compact || <Context context={result.context} />}
     </ResultContainer>

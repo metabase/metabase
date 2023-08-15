@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+import { BaseBucketPickerPopover } from "./BaseBucketPickerPopover";
 import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
 import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";
 import { CommonBucketPickerProps } from "./types";
@@ -9,7 +10,7 @@ interface BucketPickerPopoverProps
   hasTemporalBucketing?: boolean;
 }
 
-export function BucketPickerPopover({
+function _BucketPickerPopover({
   query,
   stageIndex,
   column,
@@ -51,3 +52,8 @@ export function BucketPickerPopover({
 
   return null;
 }
+
+export const BucketPickerPopover = Object.assign(_BucketPickerPopover, {
+  displayName: "BucketPickerPopover",
+  TriggerButton: BaseBucketPickerPopover.TriggerButton,
+});

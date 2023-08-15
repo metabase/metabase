@@ -176,8 +176,8 @@ export function resetTestTable({ type, table }) {
   cy.task("resetTable", { type, table });
 }
 
-export function createTestRoles({ type }) {
-  cy.task("createTestRoles", { type });
+export function createTestRoles({ type, isWritable }) {
+  cy.task("createTestRoles", { type, isWritable });
 }
 
 // will this work for multiple schemas?
@@ -185,7 +185,8 @@ export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      return body?.tables?.find(table => table.name === name)?.id;
+      const table = body?.tables?.find(table => table.name === name);
+      return table ? table.id : null;
     });
 }
 
@@ -219,7 +220,7 @@ export function waitForSyncToFinish({
 }) {
   // 100 x 100ms should be plenty of time for the sync to finish.
   if (iteration === 100) {
-    return;
+    throw new Error("The sync is taking too long. Something is wrong.");
   }
 
   cy.wait(100);
@@ -228,7 +229,10 @@ export function waitForSyncToFinish({
     if (!body.tables.length) {
       waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
     } else if (tableName) {
-      const hasTable = body.tables.some(table => table.name === tableName);
+      const hasTable = body.tables.some(
+        table =>
+          table.name === tableName && table.initial_sync_status === "complete",
+      );
       if (!hasTable) {
         waitForSyncToFinish({ iteration: ++iteration, dbId, tableName });
       }

@@ -13,7 +13,7 @@
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"
-  metabase-enterprise.enhancements.models.native-query-snippet.permissions
+  metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   ([_]
    (has-any-native-permissions?))
 
@@ -22,7 +22,7 @@
 
 (defenterprise can-write?
   "Can the current User edit this `snippet`?"
-  metabase-enterprise.enhancements.models.native-query-snippet.permissions
+  metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   ([_]
    (has-any-native-permissions?))
 
@@ -31,12 +31,12 @@
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"
-  metabase-enterprise.enhancements.models.native-query-snippet.permissions
+  metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   [_ _]
   (has-any-native-permissions?))
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"
-  metabase-enterprise.enhancements.models.native-query-snippet.permissions
+  metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   [_ _]
   (has-any-native-permissions?))

@@ -1,6 +1,6 @@
 import { CardId } from "./card";
 import { Collection } from "./collection";
-import { DatabaseId } from "./database";
+import { DatabaseId, InitialSyncStatus } from "./database";
 import { FieldReference } from "./query";
 import { TableId } from "./table";
 
@@ -15,7 +15,8 @@ export type SearchModelType =
   | "pulse"
   | "segment"
   | "metric"
-  | "action";
+  | "action"
+  | "snippet";
 
 export interface SearchScore {
   weight: number;
@@ -66,7 +67,7 @@ export interface SearchResult {
   model_name: string | null;
   table_description: string | null;
   table_name: string | null;
-  initial_sync_status: "complete" | "incomplete" | null;
+  initial_sync_status: InitialSyncStatus | null;
   dashboard_count: number | null;
   context: any; // this might be a dead property
   scores: SearchScore[];

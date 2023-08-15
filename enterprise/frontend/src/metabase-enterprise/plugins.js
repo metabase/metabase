@@ -10,6 +10,7 @@ import "./shared";
 
 // PLUGINS:
 
+import "./hosting";
 import "./tools";
 import "./sandboxes";
 import "./auth";
@@ -20,7 +21,8 @@ import "./embedding";
 import "./snippets";
 import "./sharing";
 import "./moderation";
-import "./advanced_config";
+import "./email_allow_list";
+import "./email_restrict_recipients";
 import "./advanced_permissions";
 import "./audit_app";
 import "./license";

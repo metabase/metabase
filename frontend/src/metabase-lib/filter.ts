@@ -42,3 +42,11 @@ export function filter(
 export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
 }
+
+export function filterOperator(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+) {
+  return ML.filter_operator(query, stageIndex, filterClause);
+}

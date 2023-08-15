@@ -282,4 +282,29 @@ describe("scenarios > question > new", () => {
       cy.findByTestId("select-button").should("have.text", "Third collection");
     });
   });
+
+  it("should be able to save a question to a collection created on the go", () => {
+    getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+      visitCollection(THIRD_COLLECTION_ID);
+    });
+    cy.findByLabelText("Navigation bar").findByText("New").click();
+    popover().findByText("Question").click();
+    popover().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("qb-header").findByText("Save").click();
+    modal().findByTestId("select-button").click();
+    popover().findByText("New collection").click();
+
+    const NEW_COLLECTION = "Foo";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+      cy.findByText("Save new question");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Save").click();
+    });
+    cy.get("header").findByText(NEW_COLLECTION);
+  });
 });

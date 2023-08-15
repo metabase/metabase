@@ -11,7 +11,9 @@
    [medley.core :as m]
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.stage :as lib.stage]
    [metabase.mbql.js :as mbql.js]
@@ -121,6 +123,11 @@
       (update-keys u/->camelCaseEn)
       (update :table update-keys u/->camelCaseEn)
       (clj->js :keyword-fn u/qualified-name)))
+
+(defn ^:export field-id
+  "Find the field id for something or nil."
+  [field-metadata]
+  (lib.core/field-id field-metadata))
 
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
@@ -360,6 +367,11 @@
   [filter-operator column & args]
   (apply lib.core/filter-clause filter-operator column args))
 
+(defn ^:export filter-operator
+  "Returns the filter operator of `filter-clause`."
+  [a-query stage-number a-filter-clause]
+  (lib.core/filter-operator a-query stage-number a-filter-clause))
+
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
   [a-query stage-number boolean-expression]
@@ -389,25 +401,61 @@
   [a-query stage-number]
   (to-array (lib.core/fieldable-columns a-query stage-number)))
 
+(defn ^:export add-field
+  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage of the query, aggregation or breakout:
+      - Add it to the `:fields` list
+      - If `:fields` is missing, it's implicitly `:all`, so do nothing.
+  - Implicit join: add it to the `:fields` list; query processor will do the right thing with it.
+  - Explicit join: add it to that join's `:fields` list.
+  - Custom expression: Do nothing - expressions are always included."
+  [a-query stage-number column]
+  (lib.core/add-field a-query stage-number column))
+
+(defn ^:export remove-field
+  "Removes the field (a `ColumnMetadata`, as returned from eg. [[visible-columns]]) from those fields returned by the
+  query. Exactly what this means depends on the source of the field:
+  - Source table/card, previous stage, aggregations or breakouts:
+      - If `:fields` is missing, it's implicitly `:all` - populate it with all the columns except the removed one.
+      - Remove the target column from the `:fields` list
+  - Implicit join: remove it from the `:fields` list; do nothing if it's not there.
+      - (An implicit join only exists in the `:fields` clause, so if it's not there then it's not anywhere.)
+  - Explicit join: remove it from that join's `:fields` list (handle `:fields :all` like for source tables).
+  - Custom expression: Throw! Custom expressions are always returned. To remove a custom expression, the expression
+    itself should be removed from the query."
+  [a-query stage-number column]
+  (lib.core/remove-field a-query stage-number column))
+
 (defn ^:export join-strategy
-  "Get the strategy (type) of a given join as a plain string like `left-join`."
+  "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]
-  (u/qualified-name (lib.core/join-strategy a-join)))
+  (lib.core/join-strategy a-join))
 
 (defn ^:export with-join-strategy
-  "Return a copy of `a-join` with its `:strategy` set to `strategy`."
+  "Return a copy of `a-join` with its `:strategy` set to an opaque JoinStrategy."
   [a-join strategy]
-  (lib.core/with-join-strategy a-join (keyword strategy)))
+  (lib.core/with-join-strategy a-join strategy))
 
 (defn ^:export available-join-strategies
   "Get available join strategies for the current Database (based on the Database's
-  supported [[metabase.driver/driver-features]]) as strings like `left-join`."
+  supported [[metabase.driver/driver-features]]) as opaque JoinStrategy objects."
   [a-query stage-number]
-  (to-array (map u/qualified-name (lib.core/available-join-strategies a-query stage-number))))
+  (to-array (lib.core/available-join-strategies a-query stage-number)))
 
 (defn ^:export join-condition-lhs-columns
   "Get a sequence of columns that can be used as the left-hand-side (source column) in a join condition. This column
   is the one that comes from the source Table/Card/previous stage of the query or a previous join.
+
+  If you are changing the LHS of a condition for an existing join, pass in that existing join as `join-or-joinable` so
+  we can filter out the columns added by it (it doesn't make sense to present the columns added by a join as options
+  for its own LHS) or added by later joins (joins can only depend on things from previous joins). Otherwise you can
+  either pass in `nil` or something joinable (Table or Card metadata) we're joining against when building a new
+  join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
+  of [[join-condition-rhs-columns]].) See #32005 for more info.
+
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
 
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen RHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
@@ -415,21 +463,24 @@
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  [a-query stage-number rhs-column-or-nil]
-  (to-array (lib.core/join-condition-lhs-columns a-query stage-number rhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-lhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-rhs-columns
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
-  is the one that belongs to the thing being joined, `joinable`, which can be something like a
+  is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
   Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
-  another query, etc. -- anything you can pass to [[join-clause]].
+  another query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
-  If the lhs-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
+  If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
+  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-column-or-nil` so we can
+  mark the current column as `:selected` in the metadata/display info.
+
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  [a-query stage-number joinable lhs-column-or-nil]
-  (to-array (lib.core/join-condition-rhs-columns a-query stage-number joinable lhs-column-or-nil)))
+  [a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil]
+  (to-array (lib.core/join-condition-rhs-columns a-query stage-number join-or-joinable lhs-column-or-nil rhs-column-or-nil)))
 
 (defn ^:export join-condition-operators
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
@@ -465,14 +516,18 @@
   (lib.core/suggested-join-condition a-query stage-number joinable))
 
 (defn ^:export join-fields
-  "Get the join conditions for a given join."
+  "Get the `:fields` associated with a join."
   [a-join]
-  (to-array (lib.core/join-fields a-join)))
+  (let [joined-fields (lib.core/join-fields a-join)]
+    (if (keyword? joined-fields)
+      (u/qualified-name joined-fields)
+      (to-array joined-fields))))
 
 (defn ^:export with-join-fields
   "Set the `:fields` for `a-join`."
   [a-join new-fields]
-  (lib.core/with-join-fields a-join new-fields))
+  (lib.core/with-join-fields a-join (cond-> new-fields
+                                      (string? new-fields) keyword)))
 
 (defn ^:export join-clause
   "Create a join clause (an `:mbql/join` map) against something `joinable` (Table metadata, a Saved Question, another
@@ -520,6 +575,25 @@
   [a-query stage-number join-spec]
   (lib.core/remove-join a-query stage-number join-spec))
 
+(defn ^:export joined-thing
+  "Return metadata about the origin of `join` using `metadata-providerable` as the source of information."
+  [a-query a-join]
+  (lib.join/joined-thing a-query a-join))
+
+(defn ^:export picker-info
+  "Temporary solution providing access to internal IDs for the FE to pass on to MLv1 functions."
+  [a-query metadata]
+  (case (:lib/type metadata)
+    :metadata/table #js {:databaseId (:database a-query)
+                         :tableId (:id metadata)}
+    :metadata/card  #js {:databaseId (:database a-query)
+                         :tableId (str "card__" (:id metadata))
+                         :cardId (:id metadata)
+                         :isModel (:dataset metadata)}
+    (do
+      (log/warn "Cannot provide picker-info for" (:lib/type metadata))
+      nil)))
+
 (defn ^:export external-op
   "Convert the internal operator `clause` to the external format."
   [clause]
@@ -556,8 +630,77 @@
   [a-query]
   (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
 
+(defn ^:export required-native-extras
+  "Returns whether the extra keys required by the database."
+  [database-id metadata]
+  (to-array (lib.core/required-native-extras (metadataProvider database-id metadata))))
+
+(defn ^:export with-different-database
+  "Changes the database for this query. The first stage must be a native type.
+   Native extras must be provided if the new database requires it."
+  ([a-query database-id metadata]
+   (with-different-database a-query database-id metadata nil))
+  ([a-query database-id metadata native-extras]
+   (lib.core/with-different-database a-query (metadataProvider database-id metadata) (js->clj native-extras :keywordize-keys true))))
+
+(defn ^:export with-native-extras
+  "Updates the extras required for the db to run this query.
+   The first stage must be a native type. Will ignore extras not in `required-native-extras`"
+  [a-query native-extras]
+  (lib.core/with-native-extras a-query (js->clj native-extras :keywordize-keys true)))
+
+(defn ^:export native-extras
+  "Returns the extra keys for native queries associated with this query."
+  [a-query]
+  (clj->js (lib.core/native-extras a-query)))
+
+(defn ^:export available-segments
+  "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
+  metadata objects."
+  [a-query]
+  (to-array (lib.core/available-segments a-query)))
+
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."
   [a-query]
   (to-array (lib.core/available-metrics a-query)))
+
+(defn ^:export joinable-columns
+  "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
+  something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
+  selected columns (those in the join's `:fields`) will include `:selected true` information."
+  [a-query stage-number join-or-joinable]
+  (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
+
+(defn ^:export table-or-card-metadata
+  "Get TableMetadata if passed an integer `table-id`, or CardMetadata if passed a legacy-style `card__<id>` string.
+  Returns `nil` if no matching metadata is found."
+  [query-or-metadata-provider table-id]
+  (lib.metadata/table-or-card query-or-metadata-provider table-id))
+
+(defn ^:export join-lhs-display-name
+  "Get the display name for whatever we are joining. For an existing join, pass in the join clause. When constructing a
+  join, pass in the thing we are joining against, e.g. a TableMetadata or CardMetadata."
+  [a-query stage-number join-or-joinable condition-lhs-column-or-nil]
+  (lib.core/join-lhs-display-name a-query stage-number join-or-joinable condition-lhs-column-or-nil))
+
+(defn ^:export database-id
+  "Get the Database ID (`:database`) associated with a query. If the query is using
+  the [[metabase.mbql.schema/saved-questions-virtual-database-id]] (used in some situations for queries with a
+  `:source-card`)
+
+    {:database -1337}
+
+  we will attempt to resolve the correct Database ID by getting metadata for the source Card and returning its
+  `:database-id`; if this is not available for one reason or another this will return `nil`."
+  [a-query]
+  (lib.core/database-id a-query))
+
+(defn ^:export join-condition-update-temporal-bucketing
+  "Updates the provided join-condition's fields' temporal-bucketing option.
+   Must be called on a standard join condition as per [[standard-join-condition?]].
+   This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
+   Fields that do not support the provided option will be ignored."
+  [a-query stage-number join-condition bucketing-option]
+  (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))

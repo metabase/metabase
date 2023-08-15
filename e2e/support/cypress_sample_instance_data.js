@@ -29,3 +29,8 @@ export const ADMIN_PERSONAL_COLLECTION_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.collections,
   { name: "Bobby Tables's Personal Collection" },
 ).id;
+
+export const NORMAL_PERSONAL_COLLECTION_ID = _.findWhere(
+  SAMPLE_INSTANCE_DATA.collections,
+  { name: "Robert Tableton's Personal Collection" },
+).id;

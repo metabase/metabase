@@ -1,7 +1,6 @@
-import { ChangeEvent, ReactNode, useCallback } from "react";
+import { ReactNode, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Link } from "react-router";
 import * as Urls from "metabase/lib/urls";
 import Fields from "metabase/entities/fields";
 import Button from "metabase/core/components/Button/Button";
@@ -9,7 +8,7 @@ import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
-import { ColumnInput } from "./MetadataTableColumn.styled";
+import { ColumnInput, FieldSettingsLink } from "./MetadataTableColumn.styled";
 
 interface OwnProps {
   field: Field;
@@ -40,7 +39,7 @@ const MetadataTableColumn = ({
   onUpdateField,
 }: MetadataTableColumnProps) => {
   const handleChangeName = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onUpdateField(field, { display_name: event.target.value });
       } else {
@@ -51,7 +50,7 @@ const MetadataTableColumn = ({
   );
 
   const handleChangeDescription = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       if (event.target.value) {
         onUpdateField(field, { description: event.target.value });
       } else {
@@ -97,18 +96,17 @@ const MetadataTableColumn = ({
                     onUpdateField={onUpdateField}
                   />
                 </div>
-                <Link
+                <FieldSettingsLink
                   to={Urls.dataModelField(
                     selectedDatabaseId,
                     selectedSchemaId,
                     selectedTableId,
                     Number(field.id),
                   )}
-                  className="text-brand-hover mr1"
                   aria-label={t`Field settings`}
                 >
                   <Button icon="gear" style={{ padding: 10 }} />
-                </Link>
+                </FieldSettingsLink>
               </div>
             </div>
           </div>

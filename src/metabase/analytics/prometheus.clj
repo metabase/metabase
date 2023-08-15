@@ -5,13 +5,14 @@
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
+  (:refer-clojure :exclude [inc])
   (:require
+   [clojure.java.jmx :as jmx]
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.server :as server]
-   [metabase.troubleshooting :as troubleshooting]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [potemkin :as p]
@@ -22,6 +23,7 @@
    (io.prometheus.client.hotspot GarbageCollectorExports MemoryPoolsExports StandardExports ThreadExports)
    (io.prometheus.client.jetty JettyStatisticsCollector)
    (java.util ArrayList List)
+   (javax.management ObjectName)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -44,8 +46,6 @@
                                                raw-value))))]
                   (setting/get-raw-value :prometheus-server-port integer? parse))))
 
-(defonce ^:private ^{:doc "Prometheus System for prometheus metrics"} system nil)
-
 (p.types/defprotocol+ PrometheusActions
   (stop-web-server [this]))
 
@@ -57,6 +57,8 @@
     (when-let [^Server web-server web-server]
       (.stop web-server))))
 
+(defonce ^:private ^{:doc "Prometheus System for prometheus metrics"} ^PrometheusSystem system nil)
+
 (declare setup-metrics! start-web-server!)
 
 (defn- make-prometheus-system
@@ -64,7 +66,7 @@
   serving metrics from that port."
   [port registry-name]
   (try
-    (let [registry (setup-metrics! registry-name)
+    (let [registry   (setup-metrics! registry-name)
           web-server (start-web-server! port registry)]
       (->PrometheusSystem registry web-server))
     (catch Exception e
@@ -75,7 +77,7 @@
 ;;; Collectors
 
 (defn c3p0-stats
-  "Takes `raw-stats` from [[metabase.troubleshooting/connection-pool-info]] and groups by each property type rather than each database.
+  "Takes `raw-stats` from [[connection-pool-info]] and groups by each property type rather than each database.
   {\"metabase-postgres-app-db\" {:numConnections 15,
                                  :numIdleConnections 15,
                                  :numBusyConnections 0,
@@ -142,11 +144,21 @@
                        raw-label))))
     arr))
 
+(defn- conn-pool-bean-diag-info [acc ^ObjectName jmx-bean]
+  (let [bean-id   (.getCanonicalName jmx-bean)
+        props     [:numConnections :numIdleConnections :numBusyConnections
+                   :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
+    (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))
+
+(defn connection-pool-info
+  "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."
+  []
+  (reduce conn-pool-bean-diag-info {} (jmx/mbean-names "com.mchange.v2.c3p0:type=PooledDataSource,*")))
+
 (def c3p0-collector
   "c3p0 collector delay"
   (letfn [(collect-metrics []
-            (-> (troubleshooting/connection-pool-info)
-                :connection-pools
+            (-> (connection-pool-info)
                 c3p0-stats
                 stats->prometheus))]
     (delay
@@ -192,7 +204,12 @@
     (apply prometheus/register registry
            (concat (jvm-collectors)
                    (jetty-collectors)
-                   [@c3p0-collector]))))
+                   [@c3p0-collector]
+                   ; Iapetos will use "default" if we do not provide a namespace, so explicitly set `metabase-email`:
+                   [(prometheus/counter :metabase-email/messages
+                                        {:description (trs "Number of emails sent.")})
+                    (prometheus/counter :metabase-email/message-errors
+                                        {:description (trs "Number of errors when sending emails.")})]))))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
@@ -229,10 +246,17 @@
     (locking #'system
       (when system
         (try (stop-web-server system)
+             (prometheus/clear (.-registry system))
              (alter-var-root #'system (constantly nil))
              (log/info (trs "Prometheus web-server shut down"))
              (catch Exception e
                (log/warn e (trs "Error stopping prometheus web-server"))))))))
+
+(defn inc
+  "Call iapetos.core/inc on the metric in the global registry,
+   if it has already been initialized and the metric is registered."
+  [metric]
+  (some-> system .-registry metric prometheus/inc))
 
 (comment
   (require 'iapetos.export)

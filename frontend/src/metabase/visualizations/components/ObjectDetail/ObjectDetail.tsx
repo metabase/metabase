@@ -1,69 +1,81 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
-
 import { useMount, usePrevious } from "react-use";
+
 import { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
   DatasetData,
   VisualizationSettings,
+  WritebackActionId,
 } from "metabase-types/api";
 
+import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import {
+  useActionListQuery,
+  useDatabaseListQuery,
+} from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
+import EntityMenu from "metabase/components/EntityMenu";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Modal from "metabase/components/Modal";
+import { Flex } from "metabase/ui/components";
 
 import Tables from "metabase/entities/tables";
 import {
-  loadObjectDetailFKReferences,
-  followForeignKey,
-  viewPreviousObjectDetail,
-  viewNextObjectDetail,
   closeObjectDetail,
+  followForeignKey,
+  loadObjectDetailFKReferences,
+  runQuestionQuery,
+  viewNextObjectDetail,
+  viewPreviousObjectDetail,
 } from "metabase/query_builder/actions";
 import {
-  getQuestion,
-  getTableMetadata,
-  getTableForeignKeys,
-  getTableForeignKeyReferences,
-  getZoomRow,
-  getZoomedObjectId,
-  getCanZoomPreviousRow,
   getCanZoomNextRow,
+  getCanZoomPreviousRow,
+  getQuestion,
+  getTableForeignKeyReferences,
+  getTableForeignKeys,
+  getTableMetadata,
+  getZoomedObjectId,
+  getZoomRow,
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 
-import { MetabaseApi } from "metabase/services";
+import { useDispatch } from "metabase/lib/redux";
+import { ActionsApi, MetabaseApi } from "metabase/services";
+import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
 import ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type {
+  ObjectDetailProps,
   ObjectId,
   OnVisualizationClickType,
-  ObjectDetailProps,
 } from "./types";
 
+import { DeleteObjectModal } from "./DeleteObjectModal";
 import {
-  getObjectName,
+  getActionItems,
   getDisplayId,
   getIdValue,
-  getSingleResultsRow,
+  getObjectName,
   getSinglePKIndex,
+  getSingleResultsRow,
 } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
-  RootModal,
-  ObjectDetailContainer,
-  ObjectDetailHeaderWrapper,
-  ObjectDetailBodyWrapper,
-  ObjectIdLabel,
   CloseButton,
   ErrorWrapper,
-  PaginationFooter,
+  ObjectDetailBodyWrapper,
+  ObjectDetailContainer,
+  ObjectDetailHeaderWrapper,
   ObjectDetailWrapperDiv,
+  ObjectIdLabel,
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
@@ -130,7 +142,7 @@ export function ObjectDetailView({
   canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
-  showActions = true,
+  showControls = true,
   showRelations = true,
   showHeader,
   onVisualizationClick,
@@ -149,6 +161,20 @@ export function ObjectDetailView({
   const prevData = usePrevious(passedData);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
   const [data, setData] = useState<DatasetData>(passedData);
+  const [actionId, setActionId] = useState<WritebackActionId>();
+  const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
+
+  const isActionExecuteModalOpen = typeof actionId === "number";
+  const isDeleteModalOpen = typeof deleteActionId === "number";
+  const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
+
+  const handleExecuteModalClose = () => {
+    setActionId(undefined);
+  };
+
+  const handleDeleteModalClose = () => {
+    setDeleteActionId(undefined);
+  };
 
   const pkIndex = useMemo(
     () => getSinglePKIndex(passedData?.cols),
@@ -199,12 +225,9 @@ export function ObjectDetailView({
         Escape: closeObjectDetail,
       };
 
-      if (capturedKeys[event.key]) {
+      if (capturedKeys[event.key] && !isModalOpen) {
         event.preventDefault();
         capturedKeys[event.key]();
-      }
-      if (event.key === "Escape") {
-        closeObjectDetail();
       }
     };
 
@@ -215,6 +238,7 @@ export function ObjectDetailView({
     viewPreviousObjectDetail,
     viewNextObjectDetail,
     closeObjectDetail,
+    isModalOpen,
   ]);
 
   useEffect(() => {
@@ -280,6 +304,57 @@ export function ObjectDetailView({
     [zoomedRowID, followForeignKey],
   );
 
+  const areImplicitActionsEnabled =
+    question &&
+    question.canWrite() &&
+    question.isDataset() &&
+    question.supportsImplicitActions();
+
+  const { data: actions = [] } = useActionListQuery({
+    enabled: areImplicitActionsEnabled,
+    query: { "model-id": question?.id() },
+  });
+
+  const { data: databases = [] } = useDatabaseListQuery({
+    enabled: areImplicitActionsEnabled,
+  });
+
+  const actionItems = areImplicitActionsEnabled
+    ? getActionItems({
+        actions,
+        databases,
+        onDelete: action => setDeleteActionId(action.id),
+        onUpdate: action => setActionId(action.id),
+      })
+    : [];
+
+  const fetchInitialValues = useCallback(async () => {
+    if (typeof actionId !== "number") {
+      return {};
+    }
+
+    return ActionsApi.prefetchValues({
+      id: actionId,
+      parameters: JSON.stringify({ id: String(zoomedRowID) }),
+    });
+  }, [actionId, zoomedRowID]);
+
+  const initialValues = useMemo(
+    () => ({ id: zoomedRowID ?? null }),
+    [zoomedRowID],
+  );
+
+  const dispatch = useDispatch();
+
+  const handleActionSuccess = useCallback(() => {
+    dispatch(runQuestionQuery());
+  }, [dispatch]);
+
+  const handleDeleteSuccess = useCallback(() => {
+    handleActionSuccess();
+    closeObjectDetail();
+  }, [closeObjectDetail, handleActionSuccess]);
+
   if (!data) {
     return null;
   }
@@ -303,136 +378,104 @@ export function ObjectDetailView({
     showRelations && !_.isEmpty(tableForeignKeys) && hasPk;
 
   return (
-    <ObjectDetailContainer wide={hasRelationships} className={className}>
-      {maybeLoading ? (
-        <ErrorWrapper>
-          <LoadingSpinner />
-        </ErrorWrapper>
-      ) : hasNotFoundError ? (
-        <ErrorWrapper>
-          <NotFound message={t`We couldn't find that record`} />
-        </ErrorWrapper>
-      ) : (
-        <ObjectDetailWrapperDiv
-          className="ObjectDetail"
-          data-testid="object-detail"
-        >
-          {showHeader && (
-            <ObjectDetailHeader
-              canZoom={Boolean(
-                canZoom && (canZoomNextRow || canZoomPreviousRow),
-              )}
-              objectName={objectName}
-              objectId={displayId}
-              canZoomPreviousRow={!!canZoomPreviousRow}
-              canZoomNextRow={canZoomNextRow}
-              showActions={showActions}
-              viewPreviousObjectDetail={viewPreviousObjectDetail}
-              viewNextObjectDetail={viewNextObjectDetail}
-              closeObjectDetail={closeObjectDetail}
-            />
-          )}
-          <ObjectDetailBody
-            data={data}
-            objectName={objectName}
-            zoomedRow={zoomedRow ?? []}
-            settings={settings}
-            hasRelationships={hasRelationships}
-            onVisualizationClick={onVisualizationClick}
-            visualizationIsClickable={visualizationIsClickable}
-            tableForeignKeys={tableForeignKeys}
-            tableForeignKeyReferences={tableForeignKeyReferences}
-            followForeignKey={onFollowForeignKey}
-          />
-        </ObjectDetailWrapperDiv>
-      )}
-    </ObjectDetailContainer>
-  );
-}
-
-export function ObjectDetailWrapper({
-  question,
-  isDataApp,
-  data,
-  closeObjectDetail,
-  card,
-  dashcard,
-  isObjectDetail,
-  ...props
-}: ObjectDetailProps) {
-  const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
-
-  // only show modal if this object detail was triggered via an object detail zoom action
-  const shouldShowModal = isObjectDetail;
-
-  if (shouldShowModal) {
-    return (
-      <RootModal
-        isOpen
-        full={false}
-        onClose={closeObjectDetail}
-        className={""} // need an empty className to override the Modal default width
-      >
-        <ObjectDetailView
-          {...props}
-          showHeader
-          data={data}
-          question={question}
-          closeObjectDetail={closeObjectDetail}
-        />
-      </RootModal>
-    );
-  }
-
-  const hasPagination = data?.rows?.length > 1;
-
-  return (
     <>
-      <ObjectDetailView
-        {...props}
-        zoomedRow={data.rows[currentObjectIndex]}
-        data={data}
-        question={question}
-        showHeader={props.settings["detail.showHeader"]}
-        showActions={false}
-        showRelations={false}
-        closeObjectDetail={closeObjectDetail}
-        isDataApp={isDataApp}
-      />
-      {hasPagination && (
-        <PaginationFooter
-          data-testid="pagination-footer"
-          start={currentObjectIndex}
-          end={currentObjectIndex}
-          total={data.rows.length}
-          onNextPage={() => setCurrentObjectIndex(prev => prev + 1)}
-          onPreviousPage={() => setCurrentObjectIndex(prev => prev - 1)}
-          singleItem
+      <ObjectDetailContainer wide={hasRelationships} className={className}>
+        {maybeLoading ? (
+          <ErrorWrapper>
+            <LoadingSpinner />
+          </ErrorWrapper>
+        ) : hasNotFoundError ? (
+          <ErrorWrapper>
+            <NotFound message={t`We couldn't find that record`} />
+          </ErrorWrapper>
+        ) : (
+          <ObjectDetailWrapperDiv
+            className="ObjectDetail"
+            data-testid="object-detail"
+          >
+            {showHeader && (
+              <ObjectDetailHeader
+                actionItems={actionItems}
+                canZoom={Boolean(
+                  canZoom && (canZoomNextRow || canZoomPreviousRow),
+                )}
+                objectName={objectName}
+                objectId={displayId}
+                canZoomPreviousRow={!!canZoomPreviousRow}
+                canZoomNextRow={canZoomNextRow}
+                showControls={showControls}
+                viewPreviousObjectDetail={viewPreviousObjectDetail}
+                viewNextObjectDetail={viewNextObjectDetail}
+                closeObjectDetail={closeObjectDetail}
+              />
+            )}
+            <ObjectDetailBody
+              data={data}
+              objectName={objectName}
+              zoomedRow={zoomedRow ?? []}
+              settings={settings}
+              hasRelationships={hasRelationships}
+              onVisualizationClick={onVisualizationClick}
+              visualizationIsClickable={visualizationIsClickable}
+              tableForeignKeys={tableForeignKeys}
+              tableForeignKeyReferences={tableForeignKeyReferences}
+              followForeignKey={onFollowForeignKey}
+            />
+          </ObjectDetailWrapperDiv>
+        )}
+      </ObjectDetailContainer>
+
+      <Modal
+        isOpen={isActionExecuteModalOpen}
+        onClose={handleExecuteModalClose}
+      >
+        <ActionExecuteModal
+          actionId={actionId}
+          initialValues={initialValues}
+          fetchInitialValues={fetchInitialValues}
+          shouldPrefetch
+          onClose={handleExecuteModalClose}
+          onSuccess={handleActionSuccess}
         />
-      )}
+      </Modal>
+
+      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
+        <DeleteObjectModal
+          actionId={deleteActionId}
+          objectId={zoomedRowID}
+          onClose={handleDeleteModalClose}
+          onSuccess={handleDeleteSuccess}
+        />
+      </Modal>
     </>
   );
 }
 
 export interface ObjectDetailHeaderProps {
+  actionItems: {
+    title: string;
+    icon: string;
+    action: () => void;
+  }[];
   canZoom: boolean;
   objectName: string;
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
-  showActions?: boolean;
+  showControls?: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
 }
 
 export function ObjectDetailHeader({
+  actionItems,
   canZoom,
   objectName,
   objectId,
   canZoomPreviousRow,
   canZoomNextRow,
-  showActions = true,
+  showControls = true,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
@@ -445,41 +488,51 @@ export function ObjectDetailHeader({
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
-      {showActions && (
-        <div className="flex align-center">
-          <div className="flex p2">
-            {!!canZoom && (
-              <>
-                <Button
-                  data-testid="view-previous-object-detail"
-                  onlyIcon
-                  borderless
-                  className="mr1"
-                  disabled={!canZoomPreviousRow}
-                  onClick={viewPreviousObjectDetail}
-                  icon="chevronup"
-                />
-                <Button
-                  data-testid="view-next-object-detail"
-                  onlyIcon
-                  borderless
-                  disabled={!canZoomNextRow}
-                  onClick={viewNextObjectDetail}
-                  icon="chevrondown"
-                />
-              </>
-            )}
-            <CloseButton>
+
+      {showControls && (
+        <Flex align="center" gap="0.5rem" p="1rem">
+          {canZoom && (
+            <>
               <Button
-                data-testid="object-detail-close-button"
+                data-testid="view-previous-object-detail"
                 onlyIcon
                 borderless
-                onClick={closeObjectDetail}
-                icon="close"
+                disabled={!canZoomPreviousRow}
+                onClick={viewPreviousObjectDetail}
+                icon="chevronup"
               />
-            </CloseButton>
-          </div>
-        </div>
+              <Button
+                data-testid="view-next-object-detail"
+                onlyIcon
+                borderless
+                disabled={!canZoomNextRow}
+                onClick={viewNextObjectDetail}
+                icon="chevrondown"
+              />
+            </>
+          )}
+
+          {actionItems.length > 0 && (
+            <EntityMenu
+              horizontalAttachments={["right", "left"]}
+              items={actionItems}
+              triggerIcon="ellipsis"
+              triggerProps={{
+                "data-testid": "actions-menu",
+              }}
+            />
+          )}
+
+          <CloseButton>
+            <Button
+              data-testid="object-detail-close-button"
+              onlyIcon
+              borderless
+              onClick={closeObjectDetail}
+              icon="close"
+            />
+          </CloseButton>
+        </Flex>
       )}
     </ObjectDetailHeaderWrapper>
   );

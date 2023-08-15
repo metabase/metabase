@@ -1,9 +1,19 @@
+import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import { setupEnterpriseTest } from "__support__/enterprise";
-import { createMockSearchResult } from "metabase-types/api/mocks";
-import { getIcon, queryIcon } from "__support__/ui";
+import {
+  setupTableEndpoints,
+  setupDatabaseEndpoints,
+} from "__support__/server-mocks";
+import {
+  createMockSearchResult,
+  createMockTable,
+  createMockDatabase,
+} from "metabase-types/api/mocks";
+import { getIcon, renderWithProviders, queryIcon } from "__support__/ui";
 
-import type { WrappedResult } from "./types";
+import type { InitialSyncStatus } from "metabase-types/api";
+import type { WrappedResult } from "metabase/search/types";
 import { SearchResult } from "./SearchResult";
 
 const createWrappedSearchResult = (
@@ -52,6 +62,59 @@ describe("SearchResult", () => {
     expect(screen.getByText("Collection")).toBeInTheDocument();
     expect(screen.queryByText(result.collection.name)).not.toBeInTheDocument();
     expect(getIcon("folder")).toBeInTheDocument();
+  });
+});
+
+describe("SearchResult > Tables", () => {
+  interface SetupOpts {
+    name: string;
+    initial_sync_status: InitialSyncStatus;
+  }
+
+  const setup = (setupOpts: SetupOpts) => {
+    const TEST_TABLE = createMockTable(setupOpts);
+    const TEST_DATABASE = createMockDatabase();
+    setupTableEndpoints(TEST_TABLE);
+    setupDatabaseEndpoints(TEST_DATABASE);
+    const result = createWrappedSearchResult({
+      model: "table",
+      table_id: TEST_TABLE.id,
+      database_id: TEST_DATABASE.id,
+      getUrl: () => `/table/${TEST_TABLE.id}`,
+      getIcon: () => ({ name: "table" }),
+      ...setupOpts,
+    });
+    const onClick = jest.fn();
+    renderWithProviders(<SearchResult result={result} onClick={onClick} />);
+    const link = screen.getByText(result.name);
+    return { link, onClick };
+  };
+
+  it("tables with initial_sync_status='complete' are clickable", () => {
+    const { link, onClick } = setup({
+      name: "Complete Table",
+      initial_sync_status: "complete",
+    });
+    userEvent.click(link);
+    expect(onClick).toHaveBeenCalled();
+  });
+
+  it("tables with initial_sync_status='incomplete' are not clickable", () => {
+    const { link, onClick } = setup({
+      name: "Incomplete Table",
+      initial_sync_status: "incomplete",
+    });
+    userEvent.click(link);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("tables with initial_sync_status='aborted' are not clickable", () => {
+    const { link, onClick } = setup({
+      name: "Aborted Table",
+      initial_sync_status: "aborted",
+    });
+    userEvent.click(link);
+    expect(onClick).not.toHaveBeenCalled();
   });
 });
 

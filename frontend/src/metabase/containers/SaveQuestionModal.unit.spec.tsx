@@ -10,9 +10,20 @@ import {
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import {
+  CollectionEndpoints,
+  setupCollectionsEndpoints,
+} from "__support__/server-mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
-import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { openCollection } from "metabase/containers/ItemPicker/test-utils";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { CollectionId } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
@@ -26,17 +37,60 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
+const TEST_COLLECTIONS = [
+  {
+    can_write: false,
+    effective_ancestors: [],
+    effective_location: null,
+    id: "root",
+    name: "Our analytics",
+    parent_id: null,
+  },
+  {
+    archived: false,
+    can_write: true,
+    color: "#31698A",
+    description: null,
+    id: 1,
+    location: "/",
+    name: "Bobby Tables's Personal Collection",
+    namespace: null,
+    personal_owner_id: 100,
+    slug: "bobby_tables_s_personal_collection",
+  },
+];
+
 const setup = async (
   question: Question,
   originalQuestion: Question | null = null,
-  { isCachingEnabled = false } = {},
+  {
+    isCachingEnabled,
+    collectionEndpoints,
+  }: {
+    isCachingEnabled?: boolean;
+    collectionEndpoints?: CollectionEndpoints;
+  } = {},
 ) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
 
+  if (collectionEndpoints) {
+    setupCollectionsEndpoints(collectionEndpoints);
+  } else {
+    fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
+    fetchMock.get("path:/api/collection/root", TEST_COLLECTIONS);
+  }
+
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
+  const state = createMockState({
+    settings,
+    qb: createMockQueryBuilderState({
+      card: question.card(),
+      originalCard: originalQuestion?.card(),
+    }),
+  });
   renderWithProviders(
     <SaveQuestionModal
       question={question}
@@ -46,9 +100,7 @@ const setup = async (
       onClose={onCloseMock}
     />,
     {
-      storeInitialState: {
-        settings,
-      },
+      storeInitialState: state,
     },
   );
   await screen.findByRole("button", { name: "Save" });
@@ -129,34 +181,6 @@ describe("SaveQuestionModal", () => {
   beforeAll(() => {
     console.error = jest.fn();
     console.warn = jest.fn();
-  });
-
-  const TEST_COLLECTIONS = [
-    {
-      can_write: false,
-      effective_ancestors: [],
-      effective_location: null,
-      id: "root",
-      name: "Our analytics",
-      parent_id: null,
-    },
-    {
-      archived: false,
-      can_write: true,
-      color: "#31698A",
-      description: null,
-      id: 1,
-      location: "/",
-      name: "Bobby Tables's Personal Collection",
-      namespace: null,
-      personal_owner_id: 1,
-      slug: "bobby_tables_s_personal_collection",
-    },
-  ];
-
-  beforeEach(() => {
-    fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
-    fetchMock.get("path:/api/collection/root", TEST_COLLECTIONS);
   });
 
   describe("new question", () => {
@@ -637,6 +661,78 @@ describe("SaveQuestionModal", () => {
         expect(
           screen.queryByText("Cache all question results for"),
         ).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("new collection modal", () => {
+    const collDropdown = () => screen.getByTestId("select-button");
+    const newCollBtn = () =>
+      screen.getByRole("button", {
+        name: /new collection/i,
+      });
+    const collModalTitle = () =>
+      screen.getByRole("heading", { name: /new collection/i });
+    const questionModalTitle = () =>
+      screen.getByRole("heading", { name: /new question/i });
+    const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
+
+    it("should have a new collection button in the collection picker", async () => {
+      await setup(getQuestion());
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+    });
+    it("should open new collection modal and return to dashboard modal when clicking close", async () => {
+      await setup(getQuestion());
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      userEvent.click(newCollBtn());
+      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+      userEvent.click(cancelBtn());
+      await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
+    });
+    describe("new collection location", () => {
+      const COLLECTION = {
+        ROOT: createMockCollection({
+          ...ROOT_COLLECTION,
+          can_write: true,
+        }),
+        PARENT: createMockCollection({
+          id: 1,
+          name: "Parent collection",
+          can_write: true,
+        }),
+        CHILD: createMockCollection({
+          id: 2,
+          name: "Child collection",
+          can_write: true,
+        }),
+      };
+      COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
+
+      beforeEach(async () => {
+        await setup(getQuestion(), null, {
+          collectionEndpoints: {
+            collections: Object.values(COLLECTION),
+            rootCollection: COLLECTION.ROOT,
+          },
+        });
+      });
+
+      it("should create collection inside nested folder", async () => {
+        userEvent.click(collDropdown());
+        await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+        openCollection(COLLECTION.PARENT.name);
+        userEvent.click(newCollBtn());
+        await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+        expect(collDropdown()).toHaveTextContent(COLLECTION.PARENT.name);
+      });
+      it("should create collection inside root folder", async () => {
+        userEvent.click(collDropdown());
+        await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+        userEvent.click(newCollBtn());
+        await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+        expect(collDropdown()).toHaveTextContent(COLLECTION.ROOT.name);
       });
     });
   });

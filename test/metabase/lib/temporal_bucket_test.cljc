@@ -5,7 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel describe-temporal-interval-test
   (doseq [unit [:day nil]]
@@ -107,7 +108,7 @@
                          :minute-of-hour :hour-of-day
                          :day-of-week :day-of-month :day-of-year
                          :week-of-year :month-of-year :quarter-of-year}
-        expected-defaults [{:lib/type :type/temporal-bucketing-option, :unit :day, :default true}]]
+        expected-defaults [{:lib/type :option/temporal-bucketing, :unit :day, :default true}]]
     (testing "missing fingerprint"
       (let [column (dissoc column :fingerprint)
             options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
@@ -150,15 +151,15 @@
             {:unit :week-of-year}
             {:unit :month-of-year}
             {:unit :quarter-of-year}]
-           (->> (lib.metadata.calculation/metadata query)
+           (->> (lib.metadata.calculation/returned-columns query)
                 first
                 (lib/available-temporal-buckets query)
                 (mapv #(select-keys % [:unit :default])))))))
 
 (deftest ^:parallel temporal-bucketing-options-expressions-test
   (testing "There should be no bucketing options for expressions as they are not supported (#31367)"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (let [query (-> lib.tu/venues-query
                     (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
-      (is (empty? (->> (lib.metadata.calculation/metadata query)
+      (is (empty? (->> (lib.metadata.calculation/returned-columns query)
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-temporal-buckets query)))))))

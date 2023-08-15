@@ -13,6 +13,7 @@ import type {
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
+import { isImplicitDeleteAction } from "metabase/actions/utils";
 
 type ActionParameterTuple = [ParameterId, ActionParameterValue];
 
@@ -100,9 +101,7 @@ export const shouldShowConfirmation = (action?: WritebackAction) => {
   }
   const hasConfirmationMessage =
     !!action.visualization_settings?.confirmMessage;
-  const isImplicitDelete =
-    action.type === "implicit" && action.kind === "row/delete";
-  return hasConfirmationMessage || isImplicitDelete;
+  return hasConfirmationMessage || isImplicitDeleteAction(action);
 };
 
 export const isParameterHidden = (

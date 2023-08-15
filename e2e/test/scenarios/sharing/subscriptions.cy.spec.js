@@ -10,6 +10,12 @@ import {
   sendEmailAndAssert,
   addOrUpdateDashboardCard,
   addTextBox,
+  setTokenFeatures,
+  main,
+  emailSubscriptionRecipients,
+  openEmailPage,
+  setupSubscriptionWithRecipient,
+  openPulseSubscription,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -33,7 +39,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       .should("have.attr", "aria-disabled", "true")
       .click();
 
-    cy.icon("subscription").should("not.exist");
+    cy.findByLabelText("subscriptions").should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Share this dashboard with people *./i).should("not.exist");
   });
@@ -52,7 +58,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     // without a menu with sharing and dashboard subscription options.
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
-    cy.icon("subscription").should("not.exist");
+    cy.findByLabelText("subscriptions").should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Share this dashboard with people *./i);
   });
@@ -125,6 +131,104 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly");
+      });
+    });
+
+    describe("let non-users unsubscribe from subscriptions", () => {
+      it("should allow non-user to unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const dashboardName = "Orders in a dashboard";
+
+        visitDashboard(1);
+
+        setupSubscriptionWithRecipient(nonUserEmail);
+
+        emailSubscriptionRecipients();
+
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
+        });
+
+        openDashboardSubscriptions(1);
+        openPulseSubscription();
+
+        cy.findByLabelText("subscriptions sidebar")
+          .findByText(nonUserEmail)
+          .should("not.exist");
+      });
+
+      it("should allow non-user to undo-unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const dashboardName = "Orders in a dashboard";
+        visitDashboard(1);
+
+        setupSubscriptionWithRecipient(nonUserEmail);
+
+        emailSubscriptionRecipients();
+
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.intercept("/api/session/pulse/unsubscribe/undo").as("resubscribe");
+
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
+
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
+
+          cy.findByText("Undo").click();
+          cy.wait("@resubscribe");
+
+          cy.contains(
+            `Okay, ${nonUserEmail} is subscribed to the "${dashboardName}" alert again.`,
+          ).should("exist");
+        });
+
+        openDashboardSubscriptions(1);
+        openPulseSubscription();
+
+        cy.findByLabelText("subscriptions sidebar")
+          .findByText(nonUserEmail)
+          .should("exist");
+      });
+
+      it("should show 404 page when missing required parameters", () => {
+        const nonUserEmail = "non-user@example.com";
+
+        const params = {
+          hash: "459a8e9f8d9e",
+          email: nonUserEmail,
+        }; // missing pulse-id
+
+        cy.visit({
+          url: `/unsubscribe`,
+          qs: params,
+        });
+
+        cy.findByLabelText("error page").should("exist");
+      });
+
+      it("should show error message when server responds with an error", () => {
+        const nonUserEmail = "non-user@example.com";
+
+        const params = {
+          hash: "459a8e9f8d9e",
+          email: nonUserEmail,
+          "pulse-id": "f", // invalid pulse-id
+        };
+
+        cy.visit({
+          url: `/unsubscribe`,
+          qs: params,
+        });
+
+        cy.findByLabelText("error message").should("exist");
       });
     });
 
@@ -311,8 +415,27 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describeEE("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
-      cy.visit(`/dashboard/1`);
+      setTokenFeatures("all");
       setupSMTP();
+      cy.visit(`/dashboard/1`);
+    });
+
+    it("should only show current user in recipients dropdown if `user-visiblity` setting is `none`", () => {
+      openRecipientsWithUserVisibilitySetting("none");
+
+      popover().find("span").should("have.length", 1);
+    });
+
+    it("should only show users in same group in recipients dropdown if `user-visiblity` setting is `group`", () => {
+      openRecipientsWithUserVisibilitySetting("group");
+
+      popover().find("span").should("have.length", 5);
+    });
+
+    it("should show all users in recipients dropdown if `user-visiblity` setting is `all`", () => {
+      openRecipientsWithUserVisibilitySetting("all");
+
+      popover().find("span").should("have.length", 9);
     });
 
     describe("with no parameters", () => {
@@ -372,7 +495,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = 1) {
   // Orders in a dashboard
   visitDashboard(dashboard_id);
-  cy.icon("subscription").click();
+  cy.findByLabelText("subscriptions").click();
 }
 
 function assignRecipient({ user = admin, dashboard_id = 1 } = {}) {
@@ -391,6 +514,19 @@ function clickButton(button_name) {
 function createEmailSubscription() {
   assignRecipient();
   clickButton("Done");
+}
+
+function openRecipientsWithUserVisibilitySetting(setting) {
+  cy.request("PUT", "/api/setting/user-visibility", {
+    value: setting,
+  });
+  cy.signInAsNormalUser();
+  openDashboardSubscriptions();
+
+  main().within(() => {
+    cy.findByText("Email it").click();
+    cy.findByPlaceholderText("Enter user names or email addresses").click();
+  });
 }
 
 function addParametersToDashboard() {

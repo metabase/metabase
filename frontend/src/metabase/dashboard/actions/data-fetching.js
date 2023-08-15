@@ -44,6 +44,7 @@ import {
   getDashboardType,
   fetchDataOrError,
   getDatasetQueryParams,
+  getCurrentTabDashboardCards,
 } from "../utils";
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
@@ -97,9 +98,8 @@ function isNewAdditionalSeriesCard(card, dashcard) {
 
 const updateLoadingTitle = createThunkAction(
   SET_DOCUMENT_TITLE,
-  () => (dispatch, getState) => {
+  totalCards => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
-    const totalCards = loadingDashCards.dashcardIds.length;
     const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
     return `${loadingComplete}/${totalCards} loaded`;
   },
@@ -418,41 +418,69 @@ export const fetchCardData = createThunkAction(
   },
 );
 
-export const fetchDashboardCardData = createThunkAction(
-  FETCH_DASHBOARD_CARD_DATA,
-  options => (dispatch, getState) => {
+export const fetchDashboardCardData =
+  ({ isRefreshing, ...options } = {}) =>
+  (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
-    const dashcardIds = [];
 
-    const promises = getAllDashboardCards(dashboard)
-      .map(({ card, dashcard }) => {
-        if (
-          isVirtualDashCard(dashcard) ||
-          (selectedTabId !== undefined &&
-            dashcard.dashboard_tab_id !== selectedTabId)
-        ) {
-          return;
-        }
+    const loadingIds = getLoadingDashCards(getState()).loadingIds;
+    const nonVirtualDashcards = getCurrentTabDashboardCards(
+      dashboard,
+      selectedTabId,
+    ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
 
-        dashcardIds.push(dashcard.id);
-        return dispatch(fetchCardData(card, dashcard, options)).then(() => {
-          return dispatch(updateLoadingTitle());
-        });
-      })
-      .filter(p => !!p);
+    let nonVirtualDashcardsToFetch = [];
+    if (isRefreshing) {
+      nonVirtualDashcardsToFetch = nonVirtualDashcards.filter(
+        ({ dashcard }) => {
+          return !loadingIds.includes(dashcard.id);
+        },
+      );
+      const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
+        return dashcard.id;
+      });
 
-    dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
+      dispatch({
+        type: FETCH_DASHBOARD_CARD_DATA,
+        payload: {
+          currentTime: performance.now(),
+          loadingIds: loadingIds.concat(newLoadingIds),
+        },
+      });
+    } else {
+      nonVirtualDashcardsToFetch = nonVirtualDashcards;
+      const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
+        return dashcard.id;
+      });
 
-    // XXX: There is a race condition here, when refreshing a dashboard before
-    // the previous API calls finished.
-    Promise.all(promises).then(() => {
-      dispatch(loadingComplete());
+      dispatch({
+        type: FETCH_DASHBOARD_CARD_DATA,
+        payload: {
+          currentTime: performance.now(),
+          loadingIds: newLoadingIds,
+        },
+      });
+    }
+
+    const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
+      return dispatch(fetchCardData(card, dashcard, options)).then(() => {
+        return dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
+      });
     });
 
-    return { currentTime: performance.now(), dashcardIds };
-  },
-);
+    if (nonVirtualDashcardsToFetch.length > 0) {
+      dispatch(
+        setDocumentTitle(t`0/${nonVirtualDashcardsToFetch.length} loaded`),
+      );
+
+      // TODO: There is a race condition here, when refreshing a dashboard before
+      // the previous API calls finished.
+      Promise.all(promises).then(() => {
+        dispatch(loadingComplete());
+      });
+    }
+  };
 
 export const fetchDashboardCardMetadata = createThunkAction(
   FETCH_DASHBOARD_CARD_METADATA,

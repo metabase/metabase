@@ -73,6 +73,7 @@ export const ResultButton = styled.button<ResultStylesProps>`
   padding-right: 0.5rem;
   text-align: left;
   cursor: pointer;
+  width: 100%;
   &:hover {
     ${Title} {
       color: ${color("brand")};
@@ -136,6 +137,7 @@ const resultStyles = ({ compact, active, isSelected }: ResultStylesProps) => `
 export const ResultLinkContent = styled.div`
   display: flex;
   align-items: start;
+  overflow-wrap: anywhere;
 `;
 
 export const Description = styled(Text)`

@@ -1,4 +1,4 @@
-import { restore, describeEE } from "e2e/support/helpers";
+import { restore, describeEE, setTokenFeatures } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -18,6 +18,7 @@ describeEE("issue 23689", () => {
 
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     visitGroupPermissionsPage(COLLECTION_GROUP);
 
