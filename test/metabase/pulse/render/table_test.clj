@@ -1,7 +1,7 @@
 (ns metabase.pulse.render.table-test
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.render.body :as body]
+   [metabase.pulse.render :as render]
    [metabase.pulse.render.color :as color]
    [metabase.pulse.render.common :as common]
    [metabase.pulse.render.table :as table]
@@ -158,7 +158,7 @@
                  (->> (map second)))))))))
 
 (defn- render-table [dashcard results]
-  (body/render :table :inline "America/Los_Angeles" render.tu/test-card dashcard results))
+  (render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
 
 (deftest table-enabled-columns-test
   (testing "Disabling a column has the same effect as not having the column at all."
