@@ -24206,10 +24206,10 @@ tsutils@^3.21.0:
   dependencies:
     tslib "^1.8.1"
 
-ttag@1.7.19:
-  version "1.7.19"
-  resolved "https://registry.yarnpkg.com/ttag/-/ttag-1.7.19.tgz#e6cb038f47737d8df1a778be80a88d4904beecbd"
-  integrity sha512-5s8Lhs1BM9lSGybOKwWwsZBm2kPa6rS2ecBQMjlhYHqpUiCjrgSVz/xcccE1ri+nVLjCrlkjrT86tbONnOu+2w==
+ttag@1.7.21:
+  version "1.7.21"
+  resolved "https://registry.yarnpkg.com/ttag/-/ttag-1.7.21.tgz#8883ac987b6f251e083db940bab984e67d55bf3e"
+  integrity sha512-CcFhnLKl03YZqDVUWxDqxEj3ErtOdvLyyCCkW6KAgOUOi2nzUeoV+vVHwJO8KhVU7Dntj+0/vQCqC5r9XXOk8g==
   dependencies:
     dedent "^0.7.0"
     plural-forms "^0.3.10"
