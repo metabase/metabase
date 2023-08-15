@@ -49,6 +49,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { VisualizationProps } from "metabase/visualizations/types/visualization";
+import { RemappingHydratedChartData } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -70,7 +71,6 @@ import {
   getFormatters,
   getLabelsFormatter,
 } from "./utils/format";
-import { RemappingHydratedChartData } from "metabase/visualizations/types";
 
 const RowChartRenderer = ExplicitSize({
   wrapped: true,
