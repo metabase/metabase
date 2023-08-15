@@ -11,7 +11,15 @@ import { Icon } from "metabase/core/components/Icon";
 
 import { Root } from "./ListItem.styled";
 
-const ListItem = ({ name, description, disabled, placeholder, url, icon }) => {
+const ListItem = ({
+  "data-testid": dataTestId,
+  name,
+  url,
+  description,
+  disabled,
+  placeholder,
+  icon,
+}) => {
   const card = (
     <Card hoverable className="mb2 p3 bg-white rounded bordered">
       <div className={cx(S.item)}>
@@ -39,17 +47,22 @@ const ListItem = ({ name, description, disabled, placeholder, url, icon }) => {
   );
 
   if (disabled) {
-    return <Root disabled>{card}</Root>;
+    return (
+      <Root data-testid={dataTestId} disabled>
+        {card}
+      </Root>
+    );
   }
 
   return (
-    <Root>
+    <Root data-testid={dataTestId}>
       <Link to={url}>{card}</Link>
     </Root>
   );
 };
 
 ListItem.propTypes = {
+  "data-testid": PropTypes.string,
   name: PropTypes.string.isRequired,
   url: PropTypes.string,
   description: PropTypes.string,
