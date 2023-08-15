@@ -1,9 +1,15 @@
 import type { MantineThemeOverride } from "@mantine/core";
-
 import { color } from "metabase/lib/colors";
-import { getCheckboxOverrides, getMenuOverrides } from "./components";
+import {
+  getAccordionOverrides,
+  getAnchorOverrides,
+  getCheckboxOverrides,
+  getMenuOverrides,
+  getRadioOverrides,
+  getTextOverrides,
+} from "./components";
 
-export const theme: MantineThemeOverride = {
+export const getThemeOverrides = (): MantineThemeOverride => ({
   colors: {
     brand: [color("brand-light"), color("brand")],
     text: [color("text-light"), color("text-medium"), color("text-dark")],
@@ -37,94 +43,11 @@ export const theme: MantineThemeOverride = {
   fontFamily: 'Lato, "Helvetica Neue", Helvetica, sans-serif',
   fontFamilyMonospace: "Monaco, monospace",
   components: {
-    Radio: {
-      styles(theme) {
-        return {
-          root: {
-            marginBottom: theme.spacing.md,
-          },
-          label: {
-            color: theme.colors.text[2],
-            fontWeight: 700,
-          },
-        };
-      },
-    },
-    RadioGroup: {
-      styles(theme) {
-        return {
-          label: {
-            fontWeight: 700,
-            color: theme.colors.text[2],
-          },
-          description: {
-            marginBottom: theme.spacing.md,
-          },
-        };
-      },
-    },
-    Accordion: {
-      styles(theme) {
-        return {
-          control: {
-            paddingLeft: 14,
-            "&:hover": {
-              background: "unset",
-            },
-          },
-          label: {
-            color: theme.colors.brand[1],
-            fontWeight: 700,
-          },
-          item: {
-            border: `1px solid ${theme.colors.border}`,
-            borderRadius: theme.spacing.sm,
-            "&[data-active]": {
-              border: `1px solid ${theme.colors.border}`,
-            },
-            "& + &": {
-              marginTop: "0.75rem",
-            },
-          },
-          content: {
-            borderTop: `1px solid ${theme.colors.border}`,
-            color: theme.colors.text[2],
-          },
-          chevron: {
-            color: theme.colors.text[2],
-            border: `1px solid ${theme.colors.border}`,
-            borderRadius: "100%",
-            marginLeft: "1rem",
-            height: "1.75rem",
-            width: "1.75rem",
-          },
-        };
-      },
-    },
-    Text: {
-      defaultProps: {
-        color: "text.2",
-      },
-    },
-    Anchor: {
-      styles(theme) {
-        return {
-          root: {
-            fontFamily: "inherit",
-            color: theme.colors.brand[1],
-            "&:focus": {
-              outline: `2px solid ${theme.colors.brand[0]}`,
-              outlineOffset: "2px",
-            },
-            "&:active": {
-              color: theme.colors.text[2],
-              textDecoration: "underline",
-            },
-          },
-        };
-      },
-    },
+    ...getAccordionOverrides(),
+    ...getAnchorOverrides(),
     ...getCheckboxOverrides(),
     ...getMenuOverrides(),
+    ...getRadioOverrides(),
+    ...getTextOverrides(),
   },
-};
+});
