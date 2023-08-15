@@ -197,7 +197,7 @@
           [locale expected] expected]
     (mt/with-user-locale locale
       (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
-        (let [actual (u.date/format-human-readable t)]
+        (let [actual (str/replace (u.date/format-human-readable t) \u202f \space)]
           (if (set? expected)
             (is (contains? expected actual))
             (is (= expected actual))))))))
