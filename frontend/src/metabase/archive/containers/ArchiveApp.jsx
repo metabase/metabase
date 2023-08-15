@@ -55,14 +55,14 @@ class ArchiveApp extends Component {
       this.props.openNavbar();
     }
 
-    this.setWritableItems();
+    this.setWritableList();
   }
 
   componentDidUpdate(prevProps) {
-    this.setWritableItems({ prevList: prevProps.list });
+    this.setWritableList({ prevList: prevProps.list });
   }
 
-  setWritableItems({ prevList } = { prevList: [] }) {
+  setWritableList({ prevList } = { prevList: [] }) {
     const { isAdmin, list, collectionsById } = this.props;
 
     if (_.isEqual(prevList, list)) {
