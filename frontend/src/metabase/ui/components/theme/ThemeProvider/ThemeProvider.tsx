@@ -1,17 +1,19 @@
-import { ReactNode } from "react";
-import type { EmotionCache } from "@emotion/cache";
-import { withEmotionCache } from "@emotion/react";
+import type { ReactNode } from "react";
 import { MantineProvider } from "@mantine/core";
-import { theme } from "../../../theme";
+import { withEmotionCache } from "@emotion/react";
+import type { EmotionCache } from "@emotion/react";
+import { getThemeOverrides } from "../../../theme";
 
 interface ThemeProviderProps {
-  children?: ReactNode;
+  children: ReactNode;
 }
 
 export const ThemeProvider = withEmotionCache(
-  ({ children }: ThemeProviderProps, emotionCache: EmotionCache) => {
+  ({ children }: ThemeProviderProps, cache: EmotionCache) => {
+    const theme = getThemeOverrides();
+
     return (
-      <MantineProvider theme={theme} emotionCache={emotionCache}>
+      <MantineProvider theme={theme} emotionCache={cache}>
         {children}
       </MantineProvider>
     );
