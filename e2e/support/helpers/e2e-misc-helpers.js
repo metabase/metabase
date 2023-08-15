@@ -215,6 +215,11 @@ export function visitDashboard(dashboard_id, { params = {} } = {}) {
   });
 }
 
+/**
+ *
+ * @param {number} statusCode
+ * @returns boolean
+ */
 function hasAccess(statusCode) {
   return statusCode !== 403;
 }
