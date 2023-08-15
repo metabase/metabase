@@ -1,8 +1,9 @@
+import { ResizableBox } from "react-resizable";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 
-export const NativeQueryEditorRoot = styled.div`
+const aceEditorStyle = css`
   .ace_editor {
     height: 100%;
     background-color: ${color("bg-light")};
@@ -121,4 +122,47 @@ export const aceEditorStyles = css`
   .ace_editor.ace_autocomplete .ace_completion-meta {
     font-weight: 400;
   }
+`;
+
+export const NativeQueryEditorRoot = styled.div`
+  width: 100%;
+  background-color: ${color("bg-light")};
+
+  ${aceEditorStyle}
+
+  .GuiBuilder-data {
+    border-right: none;
+  }
+`;
+
+export const DragHandleContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  width: 100%;
+  height: 8px;
+
+  position: absolute;
+  bottom: -4px;
+
+  cursor: row-resize;
+`;
+
+export const DragHandle = styled.div`
+  width: 100px;
+  height: 5px;
+  background-color: ${darken("border", 0.03)};
+  border-radius: 4px;
+`;
+
+export const EditorRoot = styled.div`
+  flex: 1 0 auto;
+`;
+
+export const StyledResizableBox = styled(ResizableBox)<{
+  isOpen: boolean;
+}>`
+  display: ${props => (props.isOpen ? "flex" : "none")};
+  border-top: 1px solid ${color("border")};
 `;
