@@ -440,8 +440,8 @@
     ;; so we break ties by looking at the poisition of the field reference.
     (mbql.u.match/replace condition
       [op op-opts (lhs :guard lib.util/field-clause?) (rhs :guard lib.util/field-clause?)]
-      (let [lhs-alias (current-join-alias lhs)
-            rhs-alias (current-join-alias rhs)]
+      (let [lhs-alias (lib.join.util/current-join-alias lhs)
+            rhs-alias (lib.join.util/current-join-alias rhs)]
         (cond
           ;; no sides obviously belong to joined
           (not (or lhs-alias rhs-alias))
