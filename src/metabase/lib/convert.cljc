@@ -274,7 +274,7 @@
   (and (qualified-keyword? k)
        (when-let [symb-namespace (namespace k)]
          (or (= symb-namespace "lib")
-             (str/starts-with? symb-namespace "metabase.lib")))))
+             (str/starts-with? symb-namespace "metabase.lib.")))))
 
 (defn- disqualify
   "Remove any keys starting with the `:lib/` `:metabase.lib.*/` namespaces from map `m`.
