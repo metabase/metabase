@@ -32,12 +32,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti maybe-parse-sql-error
-  "Try to parse the error message returned by JDBC driver.
+  "Try to parse the SQL error message returned by JDBC driver.
 
   The methods should returns a map of:
   - type: the error type. Check [[metabase.actions.error]] for the full list
   - message: a nice message summarized of what went wrong
-  - errors: a map from field-name => sepcific error message. This is used by UI to display per fields error."
+  - errors: a map from field-name => sepcific error message. This is used by UI to display per fields error.
+
+  Or return `nil` if the parser doesn't match."
   {:arglists '([driver error-type database error-message]), :added "0.48.0"}
   (fn [driver error-type _database _error-message]
    [(driver/dispatch-on-initialized-driver driver) error-type])
