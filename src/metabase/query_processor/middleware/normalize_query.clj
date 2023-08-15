@@ -10,17 +10,23 @@
 
 (set! *warn-on-reflection* true)
 
+(defn normalize-without-convering
+  "Normalize either a pMBQL or legacy MBQL query without converting it to legacy."
+  [query]
+  (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
+        f          (case query-type
+                     :mbql/query      lib/normalize
+                     (:query :native) mbql.normalize/normalize)]
+    (f query)))
+
 (defn- normalize* [query]
   (try
-    (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
-          normalized (case query-type
-                       :mbql/query      ; pMBQL pipeline query
-                       (lib.convert/->legacy-MBQL (lib/normalize query))
-
-                       (:query :native)
-                       (mbql.normalize/normalize query))]
-      (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str normalized))
-      normalized)
+    (let [normalized   (normalize-without-convering query)
+          legacy-query (case ((some-fn :lib/type :type) normalized)
+                         :mbql/query      (lib.convert/->legacy-MBQL normalized)
+                         (:query :native) normalized)]
+      (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str legacy-query))
+      legacy-query)
     (catch Throwable e
       (throw (ex-info (.getMessage e)
                       {:type  qp.error-type/qp

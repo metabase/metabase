@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.add-source-metadata
   (:require
    [clojure.walk :as walk]
-   [metabase.api.common :as api]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -44,20 +44,39 @@
          {:source-query source-query}))
       nil)))
 
+(def ^:private source-metadata-keys
+  "Actual keys this middleware should include for the source metadata. Doesn't have all the columns that come back from
+  [[metabase.query-processor/query->expected-cols]]. The main reason for discarding other keys is historical, so the
+  query is not impossible to look at in the REPL. With MLv2, this is probably no longer needed; we can probably remove
+  this soon."
+  #{:base_type
+    :coercion_strategy
+    :display_name
+    :effective_type
+    :field_ref
+    :fingerprint
+    :id
+    :name
+    :nfc_path
+    :parent_id
+    :semantic_type
+    :settings
+    :source_alias
+    :table_id
+    :unit})
+
 (mu/defn mbql-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query :- mbql.s/MBQLQuery]
   (try
-    (let [cols (binding [api/*current-user-id* nil]
-                 ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-                  {:database (:id (qp.store/database))
-                   :type     :query
-                   ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
-                   ;; to end up adding it again when the middleware runs at the top level
-                   :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
+    (let [cols (qp.metadata/query->expected-cols
+                {:database (:id (qp.store/database))
+                 :type     :query
+                 ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
+                 ;; to end up adding it again when the middleware runs at the top level
+                 :query    (assoc-in source-query [:middleware :disable-remaps?] true)})]
       (for [col cols]
-        (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
+        (select-keys col source-metadata-keys)))
     (catch Throwable e
       (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
       nil)))

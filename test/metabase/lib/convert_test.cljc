@@ -524,6 +524,14 @@
       (is (= query
              (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
 
+(deftest ^:parallel round-trip-preserve-qp-namespaced-keys-test
+  (let [query {:database             1
+               :type                 :query
+               :query                {:source-table 2}
+               :some.namespace/perms {:gtaps #{"/db/3570/schema/PUBLIC/table/41117/query/"}}}]
+    (is (= query
+           (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
+
 (deftest ^:parallel value-test
   (testing "For some crazy person reason legacy `:value` has `snake_case` options."
     (let [original [:value

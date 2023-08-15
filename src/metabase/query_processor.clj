@@ -10,9 +10,8 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-default-temporal-unit
     :as qp.add-default-temporal-unit]
    [metabase.query-processor.middleware.add-dimension-projections
@@ -92,10 +91,11 @@
    [metabase.query-processor.middleware.wrap-value-literals
     :as qp.wrap-value-literals]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [potemkin :as p]
    [schema.core :as s]))
+
+(comment qp.metadata/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -307,25 +307,6 @@
               (preprocess* query)))]
     (qp query nil nil)))
 
-(defn- restore-join-aliases [preprocessed-query]
-  (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
-    (escape-join-aliases/restore-aliases preprocessed-query replacement)))
-
-(defn query->expected-cols
-  "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
-  it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
-  queries with native source queries won't work, since we don't need the results."
-  [{query-type :type, :as query}]
-  (when-not (= (mbql.u/normalize-token query-type) :query)
-    (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-                    {:type qp.error-type/qp})))
-  ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
-  ;; check where this is used.
-  (qp.store/with-store
-    (let [preprocessed (-> query preprocess restore-join-aliases)]
-      (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
-
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
   SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
@@ -404,3 +385,9 @@
 
   ([query info context]
    (process-query-and-save-execution! (add-default-constraints query) info context)))
+
+;;; Convenience import. Prefer using [[qp.metadata/query->expected-cols]] going forward.
+
+(p/import-vars
+ [qp.metadata
+  query->expected-cols])

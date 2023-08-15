@@ -14,6 +14,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -52,7 +53,7 @@
   [table-id]
   (classloader/require 'metabase.query-processor)
   (into {} (for [col (mw.session/with-current-user nil
-                       ((resolve 'metabase.query-processor/query->expected-cols)
+                       (qp.metadata/query->expected-cols
                         {:database (table/table-id->database-id table-id)
                          :type     :query
                          :query    {:source-table table-id}}))]

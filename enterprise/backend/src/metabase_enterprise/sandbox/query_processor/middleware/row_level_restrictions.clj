@@ -21,6 +21,7 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -157,11 +158,10 @@
 
 (s/defn ^:private mbql-query-metadata :- (su/non-empty [su/Map])
   [inner-query]
-  (binding [*current-user-id* nil]
-    ((requiring-resolve 'metabase.query-processor/query->expected-cols)
-     {:database (u/the-id (qp.store/database))
-      :type     :query
-      :query    inner-query})))
+  (qp.metadata/query->expected-cols
+   {:database (u/the-id (qp.store/database))
+    :type     :query
+    :query    inner-query}))
 
 ;; cache the original metadata for a little bit so we don't have to preprocess a query every time we apply sandboxing
 (def ^:private ^{:arglists '([table-id])} original-table-metadata
@@ -320,10 +320,6 @@
         (_ :guard (every-pred map? :source-table))
         (assoc &match ::gtap? true)))))
 
-(defn- expected-cols [query]
-  (binding [*current-user-id* nil]
-    ((requiring-resolve 'metabase.query-processor/query->expected-cols) query)))
-
 (defn- gtapped-query
   "Apply GTAPs to `query` and return the updated version of `query`."
   [original-query table-id->gtap]
@@ -331,7 +327,7 @@
     (if (= sandboxed-query original-query)
       original-query
       (-> sandboxed-query
-          (assoc ::original-metadata (expected-cols original-query))
+          (assoc ::original-metadata (qp.metadata/query->expected-cols original-query))
           (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (sandboxes->perms-set (vals table-id->gtap)))))))))
 
 (def ^:private default-recursion-limit 20)

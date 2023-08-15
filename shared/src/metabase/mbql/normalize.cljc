@@ -35,7 +35,9 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   #?@(:clj
+       ([metabase.util.date-2 :as u.date]))))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -326,13 +328,24 @@
 
 (declare canonicalize-mbql-clauses)
 
+#?(:clj
+   (defn- maybe-parse-temporal-string [t]
+     (cond-> t
+       (string? t) u.date/parse)))
+
 (defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
   [metadata]
   {:pre [(map? metadata)]}
-  (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
+  (-> (reduce #(m/update-existing %1 %2 keyword)
+              metadata
+              [:base_type :effective_type :semantic_type :visibility_type :source :unit :has_field_values])
       (m/update-existing :field_ref (comp canonicalize-mbql-clauses normalize-tokens))
-      (m/update-existing :fingerprint walk/keywordize-keys)))
+      (m/update-existing :fingerprint walk/keywordize-keys)
+      #?@(:clj
+          ((m/update-existing :created_at    maybe-parse-temporal-string)
+           (m/update-existing :updated_at    maybe-parse-temporal-string)
+           (m/update-existing :last_analyzed maybe-parse-temporal-string)))))
 
 (defn- normalize-native-query
   "For native queries, normalize the top-level keys, and template tags, but nothing else."

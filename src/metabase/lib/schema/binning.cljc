@@ -11,6 +11,7 @@
 (mr/def ::binning-strategies
   [:enum :bin-width :default :num-bins])
 
+;; TODO -- rename this to options? so we can refer to it as `::lib.schema.binning/options`
 (mr/def ::binning
   [:and
    [:map

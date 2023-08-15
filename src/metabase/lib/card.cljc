@@ -37,7 +37,7 @@
 (mu/defn ^:private infer-returned-columns
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card-query            :- :map]
-  (when (some? card-query)
+  (when (seq card-query)
     (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable (lib.convert/->pMBQL card-query)))))
 
 (def ^:private Card

@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -318,3 +320,60 @@
     "Customer"       "Customer ID"
     "Customer"       "Customer id"
     "some id number" "some id number"))
+
+(deftest ^:parallel update-stages-and-join-stages
+  (let [query (-> lib.tu/venues-query
+                  (lib/join (-> (lib/join-clause (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                                                     lib/append-stage
+                                                     lib/append-stage))
+                                (lib/with-join-alias "Cat")
+                                (lib/with-join-conditions [(lib/=
+                                                            (meta/field-metadata :venues :category-id)
+                                                            (meta/field-metadata :categories :id))])))
+                  (lib/join (-> (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :categories)))
+                                (lib/with-join-alias "Cat_2")
+                                (lib/with-join-conditions [(lib/=
+                                                            (meta/field-metadata :venues :category-id)
+                                                            (meta/field-metadata :categories :id))])))
+                  lib/append-stage
+                  lib/append-stage)]
+    (is (=? {:stages [{:joins [{:stages     [{:source-table (meta/id :categories)}
+                                             {}
+                                             {}]
+                                :alias      "Cat"
+                                :conditions [[:=
+                                              {}
+                                              [:field {} (meta/id :venues :category-id)]
+                                              [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}
+                               {:stages     [{:source-table (meta/id :categories)}]
+                                :alias      "Cat_2"
+                                :conditions [[:=
+                                              {}
+                                              [:field {} (meta/id :venues :category-id)]
+                                              [:field {:join-alias "Cat_2"} (meta/id :categories :id)]]]}]}
+                      {}
+                      {}]}
+            query))
+    (is (=? {:stages [{::stage 0
+                       :joins  [{:stages     [{::stage       0
+                                               :source-table (meta/id :categories)}
+                                              {::stage 1}
+                                              {::stage 2}]
+                                 :alias      "Cat"
+                                 :conditions [[:=
+                                               {}
+                                               [:field {} (meta/id :venues :category-id)]
+                                               [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}
+                                {:stages     [{::stage       0
+                                               :source-table (meta/id :categories)}]
+                                 :alias      "Cat_2"
+                                 :conditions [[:=
+                                               {}
+                                               [:field {} (meta/id :venues :category-id)]
+                                               [:field {:join-alias "Cat_2"} (meta/id :categories :id)]]]}]}
+                      {::stage 1}
+                      {::stage 2}]}
+            (lib.util/update-stages-and-join-stages
+             query
+             (fn [_query stage-number stage]
+               (assoc stage ::stage stage-number)))))))
