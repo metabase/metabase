@@ -76,7 +76,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
 });
 
 const getButtonVariantStyles = (theme: MantineTheme, variant?: string) => {
-  const hoverColor = theme.fn.lighten(theme.fn.primaryColor(), 0.12);
+  const hoverColor = theme.fn.rgba(theme.fn.primaryColor(), 0.88);
 
   switch (variant) {
     case "filled":
