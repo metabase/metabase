@@ -112,7 +112,7 @@
     "slugg": "^1.2.1",
     "tether": "^1.2.0",
     "tippy.js": "^6.3.5",
-    "ttag": "1.7.19",
+    "ttag": "1.7.15",
     "underscore": "~1.13.3",
     "yarn.lock": "^0.0.1-security",
     "yup": "^0.32.11",
