@@ -644,7 +644,7 @@
                                                                     (lib/with-join-alias "O")
                                                                     lib/ref
                                                                     (lib/with-temporal-bucket :year)))]))))]
-        (testing "sanity check: the pMBQL query should namespaced keys (:metabase.lib.field/original-effective-type)"
+        (testing "sanity check: the pMBQL query should namespaced have keys (:metabase.lib.field/original-effective-type)"
           (is (=? {:stages [{:joins [{:alias      "O"
                                       :conditions [[:=
                                                     {}
