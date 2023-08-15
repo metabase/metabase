@@ -30,10 +30,6 @@ function computeExpression(node, x) {
   throw new Error(`Invalid expression: ${node}`);
 }
 
-export function compileExpression(node) {
-  return x => computeExpression(node, x);
-}
-
 const msToDays = ms => ms / (24 * 60 * 60 * 1000);
 
 export function getNormalizedStackedTrendDatas(trendDatas) {
@@ -51,7 +47,7 @@ export function getTrendDataPointsFromInsight(insight, xDomain, count = 10) {
 
   let fn;
   if (insight["best-fit"]) {
-    fn = compileExpression(insight["best-fit"]);
+    fn = x => computeExpression(insight["best-fit"], x);
   } else {
     fn = x => x * insight.slope + insight.offset;
   }
