@@ -1,7 +1,3 @@
-:root {
-  --default-link-color: var(--color-brand);
-}
-
 .no-decoration,
 :local(.no-decoration) {
   text-decoration: none;

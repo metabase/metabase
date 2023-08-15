@@ -1,18 +1,13 @@
-import { getStylesRef, rem } from "@mantine/core";
-import type {
-  ContextStylesParams,
-  MantineTheme,
-  MantineThemeOverride,
-} from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
 
 import { color } from "metabase/lib/colors";
 import { CheckboxIcon } from "metabase/ui/components/inputs/Checkbox/CheckboxIcon";
+import { getMenuOverrides } from "metabase/ui/components/overlays/Menu/theme";
 
 export const theme: MantineThemeOverride = {
   colors: {
     brand: [color("brand-light"), color("brand")],
     text: [color("text-light"), color("text-medium"), color("text-dark")],
-    focus: [color("focus")],
     border: [color("border")],
     bg: [color("bg-light"), color("bg-medium"), color("bg-dark")],
   },
@@ -42,14 +37,6 @@ export const theme: MantineThemeOverride = {
   },
   fontFamily: 'Lato, "Helvetica Neue", Helvetica, sans-serif',
   fontFamilyMonospace: "Monaco, monospace",
-
-  focusRingStyles: {
-    styles: theme => ({
-      outline: `0.125rem solid ${theme.colors.focus[0]}`,
-      outlineOffset: "0.125rem",
-    }),
-  },
-
   components: {
     Radio: {
       styles(theme) {
@@ -80,6 +67,7 @@ export const theme: MantineThemeOverride = {
     Checkbox: {
       defaultProps: {
         icon: CheckboxIcon,
+        size: "md",
       },
       styles(theme, params) {
         return {
@@ -110,18 +98,22 @@ export const theme: MantineThemeOverride = {
               background: theme.colors.brand[1],
               border: `1px solid ${theme.colors.brand[1]}`,
             }),
+            transform: `scale(0.75)`,
           },
-          ...(params.indeterminate && {
-            icon: {
+          icon: {
+            ...(params.indeterminate && {
               "& > *": {
                 fill: color("white"),
               },
-            },
-          }),
+            }),
+          },
         };
       },
     },
     CheckboxGroup: {
+      defaultProps: {
+        size: "md",
+      },
       styles(theme) {
         /* Note: we need the ':has' selector to target the space just
          * above the first checkbox since we don't seem to have selector
@@ -205,100 +197,6 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
-    Menu: {
-      defaultProps: {
-        radius: "sm",
-        shadow: "md",
-      },
-      styles(theme) {
-        return {
-          dropdown: {
-            padding: "0.75rem !important",
-            minWidth: "11.5rem",
-          },
-          item: {
-            color: theme.colors.text[2],
-            fontSize: theme.fontSizes.md,
-            fontWeight: 700,
-            padding: theme.spacing.md,
-
-            "&:hover, &:focus": {
-              color: theme.fn.primaryColor(),
-              backgroundColor: theme.colors.bg[0],
-
-              [`& .${getStylesRef("itemRightSection")}`]: {
-                color: theme.fn.primaryColor(),
-              },
-            },
-          },
-          itemIcon: {
-            marginRight: "0.75rem",
-          },
-          itemRightSection: {
-            ref: getStylesRef("itemRightSection"),
-            color: theme.colors.text[0],
-            marginLeft: "0.75rem",
-          },
-          label: {
-            color: theme.colors.text[0],
-            fontSize: theme.fontSizes.md,
-            fontWeight: 700,
-            padding: `0.375rem ${theme.spacing.md}`,
-          },
-          divider: {
-            marginTop: theme.spacing.sm,
-            marginBottom: theme.spacing.sm,
-            marginLeft: theme.spacing.md,
-            marginRight: theme.spacing.md,
-            borderTopColor: theme.colors.border[0],
-          },
-        };
-      },
-    },
-    Button: {
-      styles: (theme, params, context) => {
-        const styles = getButtonVariantStyles(theme, context);
-
-        return {
-          root: {
-            height: "auto",
-            padding: `${rem(11)} ${rem(15)}`,
-            fontSize: theme.fontSizes.md,
-            lineHeight: "1rem",
-            color: styles.color,
-            borderColor: styles.borderColor,
-            "&:hover": {
-              color: styles.hoverColor,
-              backgroundColor: styles.hoverBackgroundColor,
-            },
-          },
-          rightIcon: {
-            marginLeft: theme.spacing.sm,
-          },
-        };
-      },
-    },
+    ...getMenuOverrides(),
   },
-};
-
-const getButtonVariantStyles = (
-  theme: MantineTheme,
-  { variant }: ContextStylesParams,
-) => {
-  switch (variant) {
-    case "filled":
-      return {
-        color: theme.white,
-        borderColor: theme.fn.primaryColor(),
-        backgroundColor: theme.fn.primaryColor(),
-      };
-    default:
-      return {
-        color: theme.colors.text[2],
-        borderColor: theme.colors.border[0],
-        backgroundColor: theme.white,
-        hoverColor: theme.fn.primaryColor(),
-        hoverBackgroundColor: theme.colors.bg[0],
-      };
-  }
 };
