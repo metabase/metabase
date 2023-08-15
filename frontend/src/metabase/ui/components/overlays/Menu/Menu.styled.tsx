@@ -1,14 +1,14 @@
 import { getStylesRef } from "@mantine/core";
-import type { MantineTheme } from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
 
-export const getMenuOverrides = () => ({
+export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
   Menu: {
     defaultProps: {
       radius: "sm",
       shadow: "md",
       withinPortal: true,
     },
-    styles: (theme: MantineTheme) => ({
+    styles: theme => ({
       dropdown: {
         padding: "0.75rem !important",
         minWidth: "11.5rem",
