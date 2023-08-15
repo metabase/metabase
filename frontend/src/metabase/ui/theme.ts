@@ -2,6 +2,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 
 import { color } from "metabase/lib/colors";
 import { CheckboxIcon } from "metabase/ui/components/inputs/Checkbox/CheckboxIcon";
+import { getButtonOverrides } from "metabase/ui/components/buttons/Button/theme";
 import { getMenuOverrides } from "metabase/ui/components/overlays/Menu/theme";
 
 export const theme: MantineThemeOverride = {
@@ -197,6 +198,7 @@ export const theme: MantineThemeOverride = {
         };
       },
     },
+    ...getButtonOverrides(),
     ...getMenuOverrides(),
   },
 };
