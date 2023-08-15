@@ -27,7 +27,7 @@
 (use-fixtures :each disable-other-sso-types)
 
 (def ^:private default-idp-uri      "http://test.idp.metabase.com")
-(def ^:private default-redirect-uri "http://localhost:3000/test")
+(def ^:private default-redirect-uri "/")
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
 (deftest sso-prereqs-test
