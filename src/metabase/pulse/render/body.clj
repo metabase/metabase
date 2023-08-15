@@ -12,6 +12,7 @@
    [metabase.pulse.render.style :as style]
    [metabase.pulse.render.table :as table]
    [metabase.pulse.util :as pu]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -213,11 +214,8 @@
   {:arglists '([chart-type render-type timezone-id card dashcard data])}
   (fn [chart-type _ _ _ _ _] chart-type))
 
-(defn- filter-columns [filtered-column-names rows]
-  (let [filtered-headers-idx
-        (keep-indexed (fn [idx header-cell] (when (some #{(h header-cell)} filtered-column-names) idx))
-                      (:row (first rows)))
-        keep-filtered-idx #(keep-indexed (fn [idx header-call] (when (some #{idx} filtered-headers-idx) header-call)) %)
+(defn- filter-rows [column-order rows]
+  (let [keep-filtered-idx #(keep-indexed (fn [idx header-call] (when (some #{idx} column-order) header-call)) %)
         filtered-rows (map #(update % :row keep-filtered-idx) rows)]
     filtered-rows))
 
@@ -226,14 +224,14 @@
   (let [filter-columns? (some? (::mb.viz/table-columns viz-settings))
         filtered-columns-names (if filter-columns?
                                  (mapv ::mb.viz/table-column-name (filter ::mb.viz/table-column-enabled (::mb.viz/table-columns viz-settings)))
-                                 (mapv ::mb.viz/table-column-name (:cols data)))
-        filtered-columns (cond->> (prep-for-html-rendering timezone-id card data)
-                           filter-columns? (filter-columns filtered-columns-names))
+                                 (mapv :name (:cols data)))
+        filtered-rows (cond->> (prep-for-html-rendering timezone-id card data)
+                           filter-columns? (filter-rows (qp.streaming/export-column-order (:cols data) (::mb.viz/table-columns viz-settings))))
         table-body   [:div
                       (table/render-table
                        (color/make-color-selector data viz-settings)
                        filtered-columns-names
-                       filtered-columns)
+                       filtered-rows)
                       (render-truncation-warning rows-limit (count rows))]]
     {:attachments
      nil
