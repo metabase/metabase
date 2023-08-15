@@ -20,6 +20,8 @@ import {
   expectNoBadSnowplowEvents,
   expectGoodSnowplowEvent,
   closeNavigationSidebar,
+  updateDashboardCards,
+  getDashboardCards,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -788,6 +790,23 @@ describe("scenarios > dashboard", () => {
 
     cy.icon("pencil").should("be.visible");
   });
+
+  it("shows sorted cards on mobile screens", () => {
+    cy.viewport(400, 800);
+    cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      const cards = [
+        createTextCard("bottom", 1), // the bottom card intentionally goes first to have unsorted cards coming from the BE
+        createTextCard("top", 0),
+      ];
+
+      updateDashboardCards({ dashboard_id, cards });
+
+      visitDashboard(dashboard_id);
+    });
+
+    getDashboardCards().eq(0).contains("top");
+    getDashboardCards().eq(1).contains("bottom");
+  });
 });
 
 describeWithSnowplow("scenarios > dashboard (snowplow)", () => {
@@ -894,4 +913,22 @@ function createDashboardUsingUI(name, description) {
   cy.wait("@createDashboard").then(({ response: { body } }) => {
     cy.url().should("contain", `/dashboard/${body.id}`);
   });
+}
+
+function createTextCard(text, row) {
+  return {
+    row,
+    size_x: 24,
+    size_y: 1,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "text",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      text,
+    },
+  };
 }
