@@ -22,7 +22,7 @@
 (defonce ^:private dataset-locks
   (atom {}))
 
-(defn- dataset-lock
+(defmulti dataset-lock
   "We'll have a very bad time if any sort of test runs that calls [[metabase.test.data/db]] for the first time calls it
   multiple times in parallel -- for example my Oracle test that runs 30 sync calls at the same time to make sure
   nothing explodes and cursors aren't leaked. To make sure this doesn't happen we'll keep a map of
@@ -48,7 +48,12 @@
 
   Because each driver and dataset has its own lock, various datasets can be loaded in parallel, but this will prevent
   the same dataset from being loaded multiple times."
-  ^ReentrantReadWriteLock [driver dataset-name]
+  {:arglists '(^java.util.concurrent.locks.ReentrantReadWriteLock [driver dataset-name])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod dataset-lock :default
+  [driver dataset-name]
   {:pre [(keyword? driver) (string? dataset-name)]}
   (let [key-path [driver dataset-name]]
     (or
