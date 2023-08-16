@@ -101,7 +101,7 @@ describe("issue 32444", () => {
       cy.wait("@getCardQuery");
       cy.get("@getCardQuery.all").should("have.length", 1);
 
-      addFilterValue();
+      addFilterValue(5);
 
       cy.get("@getCardQuery.all").should("have.length", 1);
     });
@@ -172,8 +172,8 @@ const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {
   ).as("getCardQuery2");
 };
 
-function addFilterValue() {
+function addFilterValue(value) {
   filterWidget().click();
-  cy.findByPlaceholderText("Enter some text").type("5{enter}");
+  cy.findByPlaceholderText("Enter some text").type(`${value}{enter}`);
   cy.button("Add filter").click();
 }
