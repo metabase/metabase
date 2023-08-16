@@ -8,6 +8,9 @@
    [metabase.driver.googleanalytics]
    [metabase.driver.googleanalytics.execute :as ga.execute]
    [metabase.driver.googleanalytics.query-processor :as ga.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Card Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
@@ -37,12 +40,15 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (binding [qp.store/*store* (atom {:tables {1 (t2/instance :model/Table {:name   "0123456"
-                                                                          :schema nil
-                                                                          :id     1})}})]
+  (qp.store/with-metadata-provider (lib/composed-metadata-provider
+                                    (lib.tu/mock-metadata-provider
+                                     {:tables [{:name   "0123456"
+                                                :schema nil
+                                                :id     1}]})
+                                    meta/metadata-provider)
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
-(deftest basic-compilation-test
+(deftest ^:paralell basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
     (is (= (ga-query {})
            (mbql->native {}))))
@@ -70,7 +76,7 @@
 (defn- ga-date-field [unit]
   [:field "ga:date" {:temporal-unit unit}])
 
-(deftest filter-by-absolute-datetime-test
+(deftest ^:parallel filter-by-absolute-datetime-test
   (is (= (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
          (mbql->native {:query {:filter [:= (ga-date-field :day) [:absolute-datetime (t/local-date "2016-11-08") :day]]}})))
   (testing "tests off by one day correction for gt/lt operators (GA doesn't support exclusive ranges)"
@@ -151,7 +157,7 @@
                                         [:relative-datetime -4 :month]
                                         [:relative-datetime -1 :month]]}}))))))))))
 
-(deftest limit-test
+(deftest ^:parallel limit-test
   (is (= (ga-query {:max-results 25})
          (mbql->native {:query {:limit 25}}))))
 

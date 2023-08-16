@@ -26,8 +26,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
-
 (def ^:private uninitialized-store
   (reify
     clojure.lang.IDeref
@@ -38,35 +36,18 @@
   "Dynamic var used as the QP store for a given query execution."
   uninitialized-store)
 
+;; TODO -- rename this to something like `store-bound?` because the store is not really initialized until the Database
+;; ID is set.
 (defn initialized?
   "Is the QP store currently initialized?"
   []
   (not (identical? *store* uninitialized-store)))
 
-(defn do-with-store
-  "Execute `f` with an initialized `*store*` if one is not already bound.
-
-  DEPRECATED: use [[with-metadata-provider]] instead."
-  [f]
-  (if (initialized?)
-    (f)
-    (binding [*store* (atom {})]
-      (f))))
-
-(defmacro ^:deprecated with-store
-  "Execute `body` with an initialized QP `*store*`. The `store` middleware takes care of setting up a store as needed
-  for each query execution; you should have no need to use this macro yourself outside of that namespace.
-
-  DEPRECATED: use [[with-metadata-provider]] instead."
-  {:style/indent 0}
-  [& body]
-  `(do-with-store (fn [] ~@body)))
-
 (mu/defn store-miscellaneous-value!
   "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
   calls."
   [ks v]
-  (swap! *store* assoc-in (cons :misc ks) v))
+  (swap! *store* assoc-in ks v))
 
 (mu/defn miscellaneous-value
   "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
@@ -74,7 +55,7 @@
    (miscellaneous-value ks nil))
 
   ([ks not-found]
-   (get-in @*store* (cons :misc ks) not-found)))
+   (get-in @*store* ks not-found)))
 
 (defn cached-fn
   "Attempt to fetch a miscellaneous value from the cache using key sequence `ks`; if not found, runs `thunk` to get the
@@ -82,7 +63,6 @@
   during the duration of a QP execution.
 
   See also `cached` macro."
-  {:style/indent 1}
   [ks thunk]
   (let [cached-value (miscellaneous-value ks ::not-found)]
     (if-not (= cached-value ::not-found)
@@ -102,48 +82,71 @@
     ;; cache lookups of Card.dataset_query
     (qp.store/cached card-id
       (t2/select-one-fn :dataset_query Card :id card-id))"
-  {:style/indent 1}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
 
-(mu/defn ^:private database-id :- ::lib.schema.common/positive-int
+(mu/defn metadata-provider :- lib.metadata/MetadataProvider
+  "Get the [[metabase.lib.metadata.protocols/MetadataProvider]] that should be used inside the QP. "
   []
-  (or (miscellaneous-value [::database-id])
-      (throw (ex-info "Cannot use metadata-provider before Database ID is set; initialize it with qp.store/with-metadata-provider"
+  (or (miscellaneous-value [::metadata-provider])
+      (throw (ex-info "QP Store Metadata Provider is not initialized yet; initialize it with `qp.store/with-metadata-provider`."
                       {}))))
 
-(mu/defn metadata-provider :- lib.metadata/MetadataProvider
-  "Create a new MLv2 metadata provider that uses the QP store."
-  ([]
-   (metadata-provider (database-id)))
+(mu/defn ^:private ->metadata-provider :- lib.metadata/MetadataProvider
+  [database-id-or-metadata-provider :- [:or
+                                        ::lib.schema.id/database
+                                        lib.metadata/MetadataProvider]]
+  (if (integer? database-id-or-metadata-provider)
+    (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-provider)
+    database-id-or-metadata-provider))
 
-  ([database-id :- ::lib.schema.id/database]
-   (if-let [existing-database-id (miscellaneous-value [::database-id])]
-     (when-not (= database-id existing-database-id)
-       (throw (ex-info (tru "Attempting to fetch second Database. Queries can only reference one Database.")
-                       {:existing-id existing-database-id, :attempted-to-fetch database-id})))
-     (store-miscellaneous-value! [::database-id] database-id))
-   (cached ::metadata-provider
-           (lib.metadata.jvm/application-database-metadata-provider database-id))))
+(mu/defn ^:private maybe-set-metadata-provider!
+  [database-id-or-metadata-provider :- [:or
+                                        ::lib.schema.id/database
+                                        lib.metadata/MetadataProvider]]
+  (if-let [old-provider (miscellaneous-value [::metadata-provider])]
+    ;; if there's already a provider, just make sure we're not trying to change the database; we don't need to replace
+    ;; it.
+    (when-not (identical? old-provider database-id-or-metadata-provider)
+      (let [new-database-id      (if (integer? database-id-or-metadata-provider)
+                                   database-id-or-metadata-provider
+                                   (throw (ex-info "Cannot replace MetadataProvider with another one after it has been bound"
+                                                   {:old-provider old-provider, :new-provider database-id-or-metadata-provider})))
+            existing-database-id (u/the-id (lib.metadata/database old-provider))]
+        (when-not (= new-database-id existing-database-id)
+          (throw (ex-info (tru "Attempting to initialize metadata provider with second Database. Queries can only reference one Database.")
+                          {:existing-id existing-database-id, :new-id new-database-id})))))
+    ;; create a new metadata provider and save it.
+    (let [new-provider (->metadata-provider database-id-or-metadata-provider)]
+      ;; validate the new provider.
+      (try
+        (lib.metadata/database new-provider)
+        (catch Throwable e
+          (throw (ex-info (format "Invalid MetadataProvider; failed to return Database: %s" (ex-message e))
+                          {:metadata-provider new-provider}))))
+      (store-miscellaneous-value! [::metadata-provider] new-provider))))
 
 (defn do-with-metadata-provider
   "Implementation for [[with-metadata-provider]]."
-  [database-id thunk]
-  (let [thunk* (^:once fn* []
-                (metadata-provider database-id)
-                (thunk))]
-    (if (initialized?)
-      (thunk*)
-      (binding [*store* (atom {})]
-        (thunk*)))))
+  [database-id-or-metadata-provider thunk]
+  (if-not (initialized?)
+    (binding [*store* (atom {})]
+      (do-with-metadata-provider database-id-or-metadata-provider thunk))
+    (do
+      (maybe-set-metadata-provider! database-id-or-metadata-provider)
+      (thunk))))
 
 (defmacro with-metadata-provider
-  "Execute `body` with an initialized QP store and metadata provider for `database-id` bound."
+  "Execute `body` with an initialized QP store and metadata provider bound. You can either pass
+  a [[metabase.lib.metadata.protocols/MetadataProvider]] directly, or pass a Database ID, for which we will create
+  a [[metabase.lib.metadata.jvm/application-database-metadata-provider]].
+
+  If a MetadataProvider is already bound, this is a no-op."
   {:style/indent [:defn]}
-  [database-id & body]
-  `(do-with-metadata-provider ~database-id (^:once fn* [] ~@body)))
+  [database-id-or-metadata-provider & body]
+  `(do-with-metadata-provider ~database-id-or-metadata-provider (^:once fn* [] ~@body)))
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   [:map
@@ -175,36 +178,6 @@
    [:effective_type    {:optional true} [:maybe ms/FieldType]]
    [:coercion_strategy {:optional true} [:maybe ms/CoercionStrategy]]])
 
-(mu/defn store-database!
-  "Store the Database referenced by this query for the duration of the current query execution. Throws an Exception if
-  database is invalid or doesn't have all the required keys."
-  [database :- DatabaseInstanceWithRequiredStoreKeys]
-  (lib.metadata.protocols/store-database!
-   (metadata-provider (u/the-id database))
-   (lib.metadata.jvm/instance->metadata database :metadata/database)))
-
-;; TODO ­ I think these can be made private
-
-(mu/defn store-table!
-  "Store a `table` in the QP Store for the duration of the current query execution. Throws an Exception if table is
-  invalid or doesn't have all required keys."
-  [table :- TableInstanceWithRequiredStoreKeys]
-  (lib.metadata.protocols/store-metadata!
-   (metadata-provider)
-   :metadata/table
-   (u/the-id table)
-   (lib.metadata.jvm/instance->metadata table :metadata/table)))
-
-(mu/defn store-field!
-  "Store a `field` in the QP Store for the duration of the current query execution. Throws an Exception if field is
-  invalid or doesn't have all required keys."
-  [field :- FieldInstanceWithRequiredStorekeys]
-  (lib.metadata.protocols/store-metadata!
-   (metadata-provider)
-   :metadata/column
-   (u/the-id field)
-   (lib.metadata.jvm/instance->metadata field :metadata/column)))
-
 (def ^:private IDs
   [:maybe
    [:or
@@ -220,7 +193,7 @@
     (doseq [table-id table-ids]
       (when-not (contains? fetched-table-ids table-id)
         (throw (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." table-id)
-                        {:table table-id, :database (database-id)})))))
+                        {:table table-id, :database (u/the-id (lib.metadata/database (metadata-provider)))})))))
   nil)
 
 (mu/defn fetch-and-store-fields! :- :nil
@@ -232,7 +205,7 @@
     (doseq [field-id field-ids]
       (when-not (contains? fetched-field-ids field-id)
         (throw (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." field-id)
-                        {:field field-id, :database (database-id)})))))
+                        {:field field-id, :database (u/the-id (lib.metadata/database (metadata-provider)))})))))
   nil)
 
 (defn ->legacy-metadata
@@ -256,16 +229,15 @@
   "Fetch the Database referenced by the current query from the QP Store. Throws an Exception if valid item is not
   returned."
   []
-  (-> (or (lib.metadata.protocols/database (metadata-provider))
-          (throw (ex-info (tru "Database {0} does not exist." (pr-str (database-id)))
+  (-> (or (lib.metadata/database (metadata-provider))
+          (throw (ex-info (tru "Invalid MetadataProvider: Metadata provider failed to return a Database.")
                           {:status-code 404
-                           :type        qp.error-type/invalid-query
-                           :database-id (database-id)})))
+                           :type        qp.error-type/invalid-query})))
       ->legacy-metadata))
 
-(defn- default-table
-  "Default implementation of [[table]]."
-  [table-id]
+(mu/defn table :- TableInstanceWithRequiredStoreKeys
+  "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
+  [table-id :- ::lib.schema.id/table]
   (-> (or (lib.metadata.protocols/table (metadata-provider) table-id)
           (throw (ex-info (tru "Table {0} does not exist." (pr-str table-id))
                           {:status-code 404
@@ -273,30 +245,12 @@
                            :table-id    table-id})))
       ->legacy-metadata))
 
-(def ^:dynamic *table*
-  "Implementation of [[table]]. Dynamic so this can be overridden as needed by tests."
-  default-table)
-
-(mu/defn table :- TableInstanceWithRequiredStoreKeys
-  "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
-  [table-id :- ::lib.schema.id/table]
-  (*table* table-id))
-
-(defn- default-field
-  "Default implementation of [[field]]."
-  [field-id]
+(mu/defn field :- FieldInstanceWithRequiredStorekeys
+  "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
+  [field-id :- ::lib.schema.id/field]
   (-> (or (lib.metadata.protocols/field (metadata-provider) field-id)
           (throw (ex-info (tru "Field {0} does not exist." (pr-str field-id))
                           {:status-code 404
                            :type        qp.error-type/invalid-query
                            :field-id    field-id})))
       ->legacy-metadata))
-
-(def ^:dynamic *field*
-  "Implementation of [[field]]. Dynamic so this can be overridden as needed by tests."
-  default-field)
-
-(mu/defn field :- FieldInstanceWithRequiredStorekeys
-  "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
-  [field-id :- ::lib.schema.id/field]
-  (*field* field-id))

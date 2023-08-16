@@ -206,8 +206,6 @@
     log-progress-fn
     continue?]
    (qp.store/with-metadata-provider (u/the-id database)
-     ;; store is bound so DB timezone can be used in date coercion logic
-     (qp.store/store-database! database)
      (reduce (fn [acc table]
                (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
                (let [results (if (= :googleanalytics (:engine database))

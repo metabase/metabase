@@ -8,6 +8,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.sql.query-processor.deprecated]
+   [metabase.lib.test-metadata :as meta]
    [metabase.models.field :refer [Field]]
    [metabase.models.setting :as setting]
    [metabase.query-processor :as qp]
@@ -18,8 +19,7 @@
    [metabase.test.data.env :as tx.env]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+   [schema.core :as s]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
@@ -65,7 +65,7 @@
              :breakout     2})))))
 
 (defn- mbql->native [query]
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (driver/with-driver :h2
       (-> (sql.qp/mbql->native :h2 (qp/preprocess query))
           :query
@@ -224,30 +224,7 @@
 
 (defn- compile-join [driver]
   (driver/with-driver driver
-    (qp.store/with-store
-      (qp.store/store-database! (t2/instance :model/Database
-                                             {:id       1
-                                              :name     "test-data"
-                                              :engine   driver
-                                              :details  {}
-                                              :settings {}}))
-      (qp.store/store-table!    (t2/instance :model/Table
-                                             {:id     1
-                                              :db_id  1
-                                              :schema "public"
-                                              :name   "checkins"}))
-      (qp.store/store-field!    (t2/instance :model/Field
-                                             {:id            1
-                                              :table_id      1
-                                              :name          "id"
-                                              :description   nil
-                                              :database_type "integer"
-                                              :semantic_type nil
-                                              :nfc_path      nil
-                                              :parent_id     nil
-                                              :display_name  "ID"
-                                              :fingerprint   nil
-                                              :base_type     :type/Integer}))
+    (qp.store/with-metadata-provider meta/metadata-provider
       (sql.qp/with-driver-honey-sql-version driver
         (let [join (sql.qp/join->honeysql
                     driver
@@ -255,8 +232,8 @@
                      :alias        "card"
                      :strategy     :left-join
                      :condition    [:=
-                                    [:field 1 {::add/source-table 1
-                                               ::add/source-alias "VENUE_ID"}]
+                                    [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
+                                                                     ::add/source-alias "VENUE_ID"}]
                                     [:field "id" {:base-type         :type/Text
                                                   ::add/source-table "card"
                                                   ::add/source-alias "id"}]]})]
@@ -266,9 +243,9 @@
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
     (are [driver expected] (= [expected]
                               (compile-join driver))
-      :sql      "INNER JOIN (SELECT * FROM VENUES) \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\""
-      :h2       "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\""
-      :postgres "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"public\".\"checkins\".\"VENUE_ID\" = \"card\".\"id\"")))
+      :sql      "INNER JOIN (SELECT * FROM VENUES) \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""
+      :h2       "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""
+      :postgres "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\"")))
 
 (deftest adjust-start-of-week-test
   (driver/with-driver :h2

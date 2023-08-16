@@ -11,7 +11,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :refer [Field]]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -20,10 +20,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [schema.core :as s]
-   [toucan2.core :as t2]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm])
+   [schema.core :as s])
   (:import
    (java.sql Connection PreparedStatement)))
 
@@ -391,11 +388,15 @@
 
 (defn- table-id->pk-field-name->id
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [table-id]
-  (t2/select-fn->pk :name Field
-    {:where [:and
-             [:= :table_id table-id]
-             (mdb.u/isa :semantic_type :type/PK)]}))
+  [database-id table-id]
+  (into {}
+        (comp (filter (fn [{:keys [semantic-type], :as _field}]
+                        (mdb.u/isa semantic-type :type/PK)))
+              (map (juxt :name :id)))
+        (qp.store/with-metadata-provider database-id
+          (lib.metadata.protocols/fields
+           (qp.store/metadata-provider)
+           table-id))))
 
 (defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
@@ -464,7 +465,7 @@
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/delete]
   [driver _action {database-id :id, :as database} {:keys [table-id rows]}]
   (log/tracef "Deleting %d rows" (count rows))
-  (let [pk-name->id (table-id->pk-field-name->id table-id)]
+  (let [pk-name->id (table-id->pk-field-name->id database-id table-id)]
     ;; validate the keys in `rows`
     (check-consistent-row-keys rows)
     (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
@@ -516,7 +517,7 @@
   passed to `:row/update`."
   [{database-id :id, :as _database} table-id]
   ;; TODO -- make sure all rows specify the PK columns
-  (let [pk-name->id (table-id->pk-field-name->id table-id)
+  (let [pk-name->id (table-id->pk-field-name->id database-id table-id)
         pk-names    (set (keys pk-name->id))]
     (fn [row]
       (check-row-has-all-pk-columns row pk-names)
