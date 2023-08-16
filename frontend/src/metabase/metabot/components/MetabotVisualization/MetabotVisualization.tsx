@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import MetabotMode from "metabase/modes/components/modes/MetabotMode";
+import { MetabotMode } from "metabase/visualizations/click-actions/modes/MetabotMode";
 import { State } from "metabase-types/store";
 import Metadata from "metabase-lib/metadata/Metadata";
 import { getQueryResultsError, getRawSeries } from "../../selectors";

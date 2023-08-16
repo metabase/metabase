@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import _ from "underscore";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
-import { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
   getChartColumns,
@@ -34,10 +34,8 @@ import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/uti
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
   GroupedDatum,
-  RemappingHydratedChartData,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
-import { IconProps } from "metabase/core/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,
@@ -50,6 +48,10 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type {
+  RemappingHydratedChartData,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -82,29 +84,6 @@ const RowChartRenderer = ExplicitSize({
   </RowChartContainer>
 ));
 
-interface RowChartVisualizationProps {
-  className: string;
-  width: number;
-  height: number;
-  rawSeries: { data: DatasetData }[];
-  series: { data: DatasetData }[];
-  settings: VisualizationSettings;
-  visualizationIsClickable: (data: Record<string, unknown>) => boolean;
-  onVisualizationClick: (data: Record<string, unknown>) => void;
-  card: any;
-  isPlaceholder?: boolean;
-  hovered: any;
-  headerIcon: IconProps;
-  actionButtons: React.ReactNode;
-  isFullscreen: boolean;
-  isQueryBuilder: boolean;
-  showTitle: boolean;
-  onRender: (data: Record<string, unknown>) => void;
-  onHoverChange: (data: Record<string, unknown> | null) => void;
-  onChangeCardAndRun: (data: Record<string, unknown>) => void;
-  fontFamily: string;
-}
-
 const RowChartVisualization = ({
   card,
   className,
@@ -124,7 +103,7 @@ const RowChartVisualization = ({
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
   fontFamily,
-}: RowChartVisualizationProps) => {
+}: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
   }, []);
@@ -182,7 +161,7 @@ const RowChartVisualization = ({
     }
 
     const clickData = getClickData(bar, settings, chartColumns, data.cols);
-    onVisualizationClick({ ...clickData, element: event.target });
+    onVisualizationClick({ ...clickData, element: event.currentTarget });
   };
 
   const handleHover = (
@@ -205,7 +184,7 @@ const RowChartVisualization = ({
     onHoverChange?.({
       ...hoverData,
       event: event.nativeEvent,
-      element: event.target,
+      element: event.currentTarget,
     });
   };
 

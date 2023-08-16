@@ -269,6 +269,26 @@ custom-formatting
 
 For more on Metabase settings, see [Configuring Metabase](../configuring-metabase/start.md)
 
+## Migrating from the old serialization commands
+
+If you're upgrading from Metabase version 46.X or older, here's what you need to know:
+
+- The `export` command replaces the `dump` command.
+- The `import` command replace the `load` command.
+
+A few other changes to call out:
+
+- The exported YAML files have a slightly different structure:
+  - Metabase will prefix each file with a 24-character entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
+  - The file tree is slightly different.
+- To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
+
+If you've written scripts to automate serialization, you'll need to:
+
+- Reserialize your Metabase using the upgraded Metabase (which uses the new `export` and `import` commands). Note that serialization will only work if you export and import your Metabase using the same Metabase version.
+- Update those scripts with the new commands. See the new [export options](#export-options).
+- If your scripts do any post-processing of the exported YAML files, you may need to update your scripts to accommodate the slightly different directory and YAML file structures.
+
 ## Further reading
 
 - [Serialization tutorial](https://www.metabase.com/learn/administration/serialization).

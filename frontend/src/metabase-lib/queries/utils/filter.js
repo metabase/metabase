@@ -22,7 +22,7 @@ export function getFilters(filter) {
 }
 
 // turns a list of Filters into the canonical FilterClause, either `undefined`, `filter`, or `["and", filter...]`
-function getFilterClause(filters) {
+export function getFilterClause(filters) {
   if (filters.length === 0) {
     return undefined;
   } else if (filters.length === 1) {

@@ -5,8 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -166,7 +164,7 @@
                 :id          (meta/id :categories :name)
                 :fk-field-id (meta/id :venues :category-id)
                 :lib/source  :source/fields}]
-              (lib.metadata.calculation/returned-columns query -1 query))))))
+              (lib/returned-columns query -1 query))))))
 
 (deftest ^:parallel col-info-explicit-join-test
   (testing "Display name for a joined field should include a nice name for the join; include other info like :source-alias"
@@ -192,7 +190,7 @@
                                                                 :source-table (meta/id :categories)}]}]}]
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}]
-      (let [metadata (lib.metadata.calculation/returned-columns query)]
+      (let [metadata (lib/returned-columns query)]
         (is (=? [(merge (meta/field-metadata :categories :name)
                         {:display-name         "Name"
                          :lib/source           :source/fields
@@ -213,7 +211,7 @@
                                            :query    {:source-table (meta/id :checkins)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field (meta/id :checkins :user-id) nil]]}}}
-        metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+        metadata-provider (lib/composed-metadata-provider
                            meta/metadata-provider
                            (lib.tu/mock-metadata-provider
                             {:cards [card-1]}))
@@ -248,7 +246,7 @@
               :lib/source               :source/joins
               :lib/source-column-alias  "count"
               :lib/desired-column-alias "checkins_by_user__count"}]
-            (lib.metadata.calculation/returned-columns query -1 join)))
+            (lib/returned-columns query -1 join)))
     (is (= (assoc card-1 :lib/type :metadata/card)
            (lib.join/joined-thing query join)))))
 
@@ -277,7 +275,7 @@
               :lib/desired-column-alias "Cat__NAME"
               ::lib.join/join-alias     "Cat"
               :lib/source               :source/joins}]
-            (lib.metadata.calculation/returned-columns query)))
+            (lib/returned-columns query)))
     (is (=? {:lib/type :metadata/table
              :db-id (meta/id)
              :name "CATEGORIES"
@@ -306,7 +304,7 @@
               :long-display-name "Cat → Name"
               :display-name      "Name"}]
             (map #(lib/display-info query %)
-                 (lib.metadata.calculation/returned-columns query))))
+                 (lib/returned-columns query))))
     (testing "Introduce a new stage"
       (let [query' (lib/append-stage query)]
         (is (=? [{:name                     "ID"
@@ -321,7 +319,7 @@
                   :lib/source-column-alias  "Cat__NAME"
                   :lib/desired-column-alias "Cat__NAME"
                   :lib/source               :source/previous-stage}]
-                (lib.metadata.calculation/returned-columns query')))))))
+                (lib/returned-columns query')))))))
 
 (deftest ^:parallel default-columns-added-by-joins-deduplicate-names-test
   (let [join-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -360,7 +358,7 @@
               :display-name             "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
-            (lib.metadata.calculation/returned-columns query)))))
+            (lib/returned-columns query)))))
 
 (deftest ^:parallel join-strategy-test
   (let [query  lib.tu/query-with-join
@@ -408,7 +406,7 @@
 (deftest ^:parallel join-strategy-display-name-test
   (let [query lib.tu/query-with-join]
     (is (= ["Left outer join" "Right outer join" "Inner join"]
-           (map (partial lib.metadata.calculation/display-name query)
+           (map (partial lib/display-name query)
                 (lib/available-join-strategies query))))))
 
 (deftest ^:parallel join-strategy-display-info-test
@@ -416,7 +414,7 @@
     (is (= [{:short-name "left-join", :display-name "Left outer join", :default true}
             {:short-name "right-join", :display-name "Right outer join"}
             {:short-name "inner-join", :display-name "Inner join"}]
-           (map (partial lib.metadata.calculation/display-info query)
+           (map (partial lib/display-info query)
                 (lib/available-join-strategies query))))))
 
 (deftest ^:parallel with-join-alias-update-fields-test
@@ -1126,4 +1124,9 @@
                   {:name "RATING", :selected? false}
                   {:name "CREATED_AT", :selected? true}]
                  (mapv #(select-keys % [:name :selected?])
-                       (lib/join-condition-rhs-columns query join lhs rhs)))))))))
+                       (lib/join-condition-rhs-columns query join lhs rhs))))))
+      (testing "temporal bucket returns with column metadata"
+        (let [[lhs-column] (filter :selected? (lib/join-condition-lhs-columns query 0 join lhs rhs))]
+          (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket lhs-column))))
+        (let [[rhs-column] (filter :selected? (lib/join-condition-rhs-columns query 0 join lhs rhs))]
+          (is (= {:lib/type :option/temporal-bucketing, :unit :month} (lib/temporal-bucket rhs-column))))))))
