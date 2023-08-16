@@ -6,7 +6,7 @@ import type { VisualizationSettings } from "metabase-types/api";
 import type {
   ClickActionPopoverProps,
   Drill,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import { PopoverRoot } from "./ColumnFormattingAction.styled";

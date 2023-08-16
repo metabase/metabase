@@ -17,11 +17,11 @@ import type {
   RowValue,
   StructuredDatasetQuery,
 } from "metabase-types/api";
-import {
-  isQuestionChangeClickAction,
+import type {
   PopoverClickAction,
   QuestionChangeClickAction,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
+import { isQuestionChangeClickAction } from "metabase/visualizations/types";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 import Question from "metabase-lib/Question";

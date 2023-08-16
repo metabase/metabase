@@ -1,12 +1,6 @@
-import { MouseEvent } from "react";
-import { TimelineEvent } from "metabase-types/api/timeline";
-import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
-
-export type VisualizationSettings = Record<string, unknown> & {
-  column?: (
-    col: RemappingHydratedDatasetColumn,
-  ) => RemappingHydratedDatasetColumn;
-};
+import { TimelineEvent } from "metabase-types/api";
+import { RemappingHydratedDatasetColumn } from "./columns";
+import { ComputedVisualizationSettings } from "./visualization";
 
 export interface DataPoint {
   key: string;
@@ -21,7 +15,7 @@ export interface HoveredDimension {
 
 export interface HoveredTimelineEvent {
   timelineEvents: TimelineEvent[];
-  element: HTMLElement;
+  element: Element;
 }
 
 export interface TooltipRowModel {
@@ -45,13 +39,14 @@ export interface HoveredObject {
   index?: number;
   axisIndex?: number;
   seriesIndex?: number;
+  datumIndex?: number;
   value?: unknown;
   column?: RemappingHydratedDatasetColumn;
   timelineEvents?: TimelineEvent[];
   data?: DataPoint[];
   dimensions?: HoveredDimension[];
-  settings?: VisualizationSettings;
-  element?: HTMLElement;
+  settings?: ComputedVisualizationSettings;
+  element?: Element;
   event?: MouseEvent;
   stackedTooltipModel?: StackedTooltipModel;
 }

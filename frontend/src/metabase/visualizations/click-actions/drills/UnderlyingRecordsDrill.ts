@@ -1,6 +1,6 @@
 import { msgid, ngettext } from "ttag";
 import { inflect } from "metabase/lib/formatting/strings";
-import type { Drill } from "metabase/visualizations/click-actions/types";
+import type { Drill } from "metabase/visualizations/types";
 import {
   underlyingRecordsDrill,
   underlyingRecordsDrillQuestion,

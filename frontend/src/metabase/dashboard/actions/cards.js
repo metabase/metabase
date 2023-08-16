@@ -52,7 +52,7 @@ export const addCardToDashboard =
     const card = Questions.selectors
       .getObject(getState(), { entityId: cardId })
       .card();
-    const { visualization } = getVisualizationRaw([{ card }]);
+    const visualization = getVisualizationRaw([{ card }]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
     const dashcard = {
@@ -104,7 +104,7 @@ export const addDashCardToDashboard = function ({
   tabId,
 }) {
   return function (dispatch, getState) {
-    const { visualization } = getVisualizationRaw([dashcardOverrides]);
+    const visualization = getVisualizationRaw([dashcardOverrides]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
     const dashcard = {

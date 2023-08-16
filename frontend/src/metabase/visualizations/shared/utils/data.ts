@@ -17,7 +17,6 @@ import {
   MetricDatum,
   MetricValue,
   SeriesInfo,
-  TwoDimensionalChartData,
 } from "metabase/visualizations/shared/types/data";
 import { Series } from "metabase/visualizations/shared/components/RowChart/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
@@ -165,7 +164,7 @@ export const trimData = (
 };
 
 const getBreakoutDistinctValues = (
-  data: TwoDimensionalChartData,
+  data: DatasetData,
   breakout: ColumnDescriptor,
   columnFormatter: ColumnFormatter,
 ) => {
@@ -227,7 +226,7 @@ const getMultipleMetricSeries = (
 };
 
 export const getSeries = (
-  data: TwoDimensionalChartData,
+  data: DatasetData,
   chartColumns: ChartColumns,
   columnFormatter: ColumnFormatter,
 ): Series<GroupedDatum, SeriesInfo>[] => {

@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { Drill } from "metabase/visualizations/click-actions/types";
+import type { Drill } from "metabase/visualizations/types";
 import { getColumnFilterDrillPopover } from "metabase/visualizations/click-actions/components/ColumnFilterDrillPopover";
 import { columnFilterDrill } from "metabase-lib/queries/drills/column-filter-drill";
 

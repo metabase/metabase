@@ -32,7 +32,7 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { isRegularClickAction } from "metabase/visualizations/click-actions/types";
+import { isRegularClickAction } from "metabase/visualizations/types";
 import Question from "metabase-lib/Question";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";

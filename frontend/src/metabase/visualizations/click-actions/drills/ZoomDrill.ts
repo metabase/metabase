@@ -1,7 +1,7 @@
 import type {
   ClickActionProps,
   QuestionChangeClickAction,
-} from "metabase/visualizations/click-actions/types";
+} from "metabase/visualizations/types";
 import {
   getNextZoomDrilldown,
   getZoomDrillTitle,

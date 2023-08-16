@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { ModeFooterComponentProps } from "metabase/visualizations/click-actions/types";
+import type { ModeFooterComponentProps } from "metabase/visualizations/types";
 import type Question from "metabase-lib/Question";
 import { TimeseriesFilterWidget } from "./TimeseriesFilterWidget";
 import { TimeseriesGroupingWidget } from "./TimeseriesGroupingWidget";
