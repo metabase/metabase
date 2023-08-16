@@ -375,9 +375,15 @@
   [columns              :- [:maybe [:sequential :map]]
    remapping-dimensions :- [:maybe [:sequential ExternalRemappingDimension]]
    internal-cols-info   :- [:maybe InternalColumnsInfo]]
-  (-> columns
-      (merge-metadata-for-internal-remaps internal-cols-info)
-      (merge-metadata-for-external-remaps remapping-dimensions)))
+  ;; remove the MLv2-specific keys with remap info now that we're done with them so tests don't blow up. When we convert
+  ;; more of the QP over to MLv2 we can remove this and leave them in
+  (letfn [(remove-mlv2-remap-info [cols]
+            (mapv #(dissoc % :lib/internal-remap :lib/external-remap)
+                  cols))]
+    (-> columns
+        (merge-metadata-for-internal-remaps internal-cols-info)
+        (merge-metadata-for-external-remaps remapping-dimensions)
+        remove-mlv2-remap-info)))
 
 
 ;;;; Transform to add additional cols to results

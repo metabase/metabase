@@ -77,7 +77,9 @@
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
     metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
+    metabase.query-processor.test-util/with-everything-store                     {:namespaces ["^metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
+    metabase.test/with-everything-store                                          {:namespaces ["metabase.*"]}
     metabase.util.honeysql-extensions/*                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
     metabase.util.honeysql-extensions/*honey-sql-version*                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
     metabase.util.honeysql-extensions/+                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}

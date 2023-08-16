@@ -270,7 +270,7 @@
   (-> (or (lib.metadata.protocols/field (metadata-provider) field-id)
           (throw (ex-info (tru "Field {0} does not exist." (pr-str field-id))
                           {:field-id field-id})))
-      (dissoc :lib/type :lib/external-remap :lib/internal-remap)
+      (dissoc :lib/type)
       (update-keys u/->snake_case_en)
       (vary-meta assoc :type :model/Field)))
 

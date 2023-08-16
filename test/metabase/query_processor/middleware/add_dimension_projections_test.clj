@@ -4,6 +4,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.middleware.add-dimension-projections
     :as qp.add-dimension-projections]
@@ -497,3 +498,16 @@
                                                    &Q1.orders.product_id]}]
                           :fields [&Q1.orders.id &Q1.orders.product_id]
                           :limit  2})))))))))
+
+(deftest ^:parallel internal-remap-e2e-test
+  (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+    (let [results (qp/process-query
+                   {:database (mt/id)
+                    :type     :query
+                    :query    {:source-table (mt/id :venues)
+                               :limit        2}})]
+      (is (= ["ID" "Name"  "Category ID" "Latitude" "Longitude" "Price" "Category ID [internal remap]"]
+             (mapv :display_name (get-in results [:data :cols]))))
+      (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Asian"]
+              [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "Burger"]]
+             (mt/rows results))))))

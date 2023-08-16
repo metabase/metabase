@@ -8,11 +8,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 ;; TODO - I don't think we different QP test util namespaces? We should roll this namespace into
@@ -41,7 +42,8 @@
 
   DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
   [& body]
-  `(do-with-everything-store (fn [] ~@body)))
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  `(do-with-everything-store (^:once fn* [] ~@body)))
 
 (defn store-contents
   "Fetch the names of all the objects currently in the QP Store."
