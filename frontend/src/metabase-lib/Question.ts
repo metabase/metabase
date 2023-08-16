@@ -337,14 +337,14 @@ class QuestionInner {
 
     if (isSensible && defaultDisplay === "table") {
       // any sensible display is better than the default table display
-      return question;
+      return this;
     }
 
-    if (shouldUnlock && question.displayIsLocked()) {
-      return question.setDisplayIsLocked(false).setDefaultDisplay();
+    if (shouldUnlock && this.displayIsLocked()) {
+      return this.setDisplayIsLocked(false).setDefaultDisplay();
     }
 
-    return question.setDefaultDisplay();
+    return this.setDefaultDisplay();
   }
 
   setDefaultDisplay(): Question {
