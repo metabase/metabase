@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const mostQueried = () => ({
   card: {
-    name: "Most-queried schemas",
+    name: t`Most-queried schemas`,
     display: "row",
     dataset_query: {
       type: "internal",
@@ -12,7 +14,7 @@ export const mostQueried = () => ({
 
 export const slowestSchemas = () => ({
   card: {
-    name: "Slowest schemas",
+    name: t`Slowest schemas`,
     display: "row",
     dataset_query: {
       type: "internal",
@@ -24,7 +26,7 @@ export const slowestSchemas = () => ({
 
 export const table = searchString => ({
   card: {
-    name: "Schemas",
+    name: t`Schemas`,
     display: "table",
     dataset_query: {
       type: "internal",

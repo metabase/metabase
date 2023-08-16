@@ -213,7 +213,7 @@ export const getCollectionsPermissionEditor = createSelector(
     return {
       title: t`Permissions for ${collection.name}`,
       filterPlaceholder: t`Search for a group`,
-      columns: [{ name: `Group name` }, { name: t`Collection access` }],
+      columns: [{ name: t`Group name` }, { name: t`Collection access` }],
       entities,
     };
   },

@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const viewsByTime = dashboardId => ({
   card: {
-    name: "Views per day",
+    name: t`Views per day`,
     display: "line",
     dataset_query: {
       type: "internal",
@@ -12,7 +14,7 @@ export const viewsByTime = dashboardId => ({
 
 export const revisionHistory = dashboardId => ({
   card: {
-    name: "Revision history",
+    name: t`Revision history`,
     display: "table",
     dataset_query: {
       type: "internal",
@@ -32,7 +34,7 @@ export const revisionHistory = dashboardId => ({
 
 export const cards = dashboardId => ({
   card: {
-    name: "Cards",
+    name: t`Cards`,
     display: "table",
     dataset_query: {
       type: "internal",
@@ -44,7 +46,7 @@ export const cards = dashboardId => ({
 
 export const auditLog = dashboardId => ({
   card: {
-    name: "Audit log",
+    name: t`Audit log`,
     display: "table",
     dataset_query: {
       type: "internal",
