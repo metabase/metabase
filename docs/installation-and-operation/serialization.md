@@ -289,7 +289,7 @@ A few other changes to call out:
 
 If you've written scripts to automate serialization, you'll need to:
 
-- Reserialize your Metabase using the new commands.
+- Reserialize your Metabase using the upgraded Metabase (which uses the new `export` and `import` commands). Note that serialization will only work if you export and import your Metabase using the same Metabase version.
 - Update those scripts with the new commands. See the new [export options](#export-options).
 - If your scripts do any post-processing of the exported YAML files, you may need to update your scripts to accommodate the slightly different directory and YAML file structures.
 
