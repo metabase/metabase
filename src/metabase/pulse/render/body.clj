@@ -885,7 +885,7 @@
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
-  (let [value        (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
+  (let [value (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
     {:attachments
      nil
 
