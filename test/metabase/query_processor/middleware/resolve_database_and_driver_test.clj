@@ -5,6 +5,7 @@
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.resolve-database-and-driver
     :as qp.resolve-database-and-driver]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -20,8 +21,8 @@
                                                 :settings {:resolve-db-test-database-only-setting
                                                            {:number-of-cans 2}}}]
       (mt/with-db database
-        (mt/with-everything-store
-          (let [qp (qp.resolve-database-and-driver/resolve-database-and-driver
+        (qp.store/with-metadata-provider (mt/id)
+          (let [qp (qp.resolve-database-and-driver/resolve-driver-and-database-local-values
                     (fn [_query _rff _context]
                       (is (= {:resolve-db-test-database-only-setting {:number-of-cans 2}}
                              setting/*database-local-values*))

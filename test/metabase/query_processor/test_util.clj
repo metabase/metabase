@@ -12,70 +12,50 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [toucan2.core :as t2]))
 
 ;; TODO - I don't think we different QP test util namespaces? We should roll this namespace into
 ;; `metabase.query-processor-test`
 
-(s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZero)]
-  (assert (= (:id (qp.store/database)) (data/id))
-    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
-  (or (get-in @@#'qp.store/*store* [:tables table-id])
-      (do
-        (qp.store/fetch-and-store-tables! [table-id])
-        (qp.store/table table-id))))
-
-(s/defn ^:private everything-store-field [field-id :- (s/maybe su/IntGreaterThanZero)]
-  (assert (= (:id (qp.store/database)) (data/id))
-    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
-  (or (get-in @@#'qp.store/*store* [:fields field-id])
-      (do
-        (qp.store/fetch-and-store-fields! [field-id])
-        (qp.store/field field-id))))
-
 (def ^:dynamic ^:private *already-have-everything-store?* false)
 
-(defn do-with-everything-store
-  "Impl for [[with-everything-store]]."
+(defn ^:deprecated do-with-everything-store
+  "Impl for [[with-everything-store]].
+
+  DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
   [thunk]
   (if *already-have-everything-store?*
     (thunk)
-    (binding [*already-have-everything-store?* true
-              qp.store/*table*                 everything-store-table
-              qp.store/*field*                 everything-store-field]
-      (qp.store/with-store
-        (qp.store/fetch-and-store-database! (data/id))
+    (binding [*already-have-everything-store?* true]
+      (qp.store/with-metadata-provider (data/id)
         (thunk)))))
 
-(defmacro with-everything-store
+(defmacro ^:deprecated with-everything-store
   "When testing a specific piece of middleware, you often need to load things into the QP Store, but doing so can be
   tedious. This macro swaps out the normal QP Store backend with one that fetches Tables and Fields from the DB
   on-demand, making tests a lot nicer to write.
 
   When fetching the database, this assumes you're using the 'current' database bound to `(data/db)`, so be sure to use
-  `data/with-db` if needed."
+  `data/with-db` if needed.
+
+  DEPRECATED: use [[qp.store/with-metadata-provider]] instead."
   [& body]
   `(do-with-everything-store (fn [] ~@body)))
-
-(defn store-referenced-database!
-  "Store the Database for a `query` in the QP Store."
-  [{:keys [database]}]
-  (qp.store/fetch-and-store-database! database))
 
 (defn store-contents
   "Fetch the names of all the objects currently in the QP Store."
   []
-  (let [store @@#'qp.store/*store*]
-    (-> store
-        (update :database :name)
-        (update :tables (comp set (partial map :name) vals))
-        (update :fields (fn [fields]
-                          (set
-                           (for [[_ {table-id :table_id, field-name :name}] fields]
-                             [(get-in store [:tables table-id :name]) field-name]))))
-        (dissoc :misc))))
+  (let [provider  (qp.store/metadata-provider)
+        table-ids (t2/select-pks-set :model/Table :db_id (data/id))]
+    {:tables (into #{}
+                   (keep (fn [table-id]
+                           (:name (lib.metadata.protocols/cached-metadata provider :metadata/table table-id))))
+                   table-ids)
+     :fields (into #{}
+                   (keep (fn [field-id]
+                           (:name (lib.metadata.protocols/cached-metadata provider :metadata/column field-id))))
+                   (t2/select-pks-set :model/Field :table_id [:in table-ids]))}))
 
 (defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.

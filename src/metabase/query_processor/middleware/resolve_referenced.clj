@@ -1,17 +1,19 @@
 (ns metabase.query-processor.middleware.resolve-referenced
   (:require
-   [metabase.models.card :refer [Card]]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
    [metabase.query-processor.middleware.resolve-fields
     :as qp.resolve-fields]
    [metabase.query-processor.middleware.resolve-source-table
     :as qp.resolve-source-table]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.tag-referenced-cards
     :as qp.u.tag-referenced-cards]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
    [weavejester.dependency :as dep])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -26,8 +28,8 @@
 (mu/defn ^:private resolve-referenced-card-resources* :- :map
   [query]
   (doseq [referenced-card (qp.u.tag-referenced-cards/tags-referenced-cards query)
-          :let [referenced-query (:dataset_query referenced-card)
-                resolved-query (fetch-source-query/resolve-card-id-source-tables* referenced-query)]]
+          :let            [referenced-query (:dataset-query referenced-card)
+                           resolved-query (fetch-source-query/resolve-card-id-source-tables* referenced-query)]]
     (check-query-database-id= referenced-query (:database query))
     (qp.resolve-source-table/resolve-source-tables resolved-query)
     (qp.resolve-fields/resolve-fields resolved-query))
@@ -35,7 +37,7 @@
 
 (defn- card-subquery-graph
   [graph card-id]
-  (let [card-query (t2/select-one-fn :dataset_query Card :id card-id)]
+  (let [card-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))]
     (reduce
      (fn [g sub-card-id]
        (card-subquery-graph (dep/depend g card-id sub-card-id)
@@ -43,9 +45,17 @@
      graph
      (qp.u.tag-referenced-cards/query->tag-card-ids card-query))))
 
-(defn- circular-ref-error
-  [from-card to-card]
-  (let [[from-name to-name] (map :name (t2/select [Card :name] :id [:in [from-card to-card]]))]
+(mu/defn ^:private circular-ref-error :- ::lib.schema.common/non-blank-string
+  [from-card :- ::lib.schema.id/card
+   to-card   :- ::lib.schema.id/card]
+  (let [cards               (into {}
+                                  (map (juxt :id :name))
+                                  (lib.metadata.protocols/bulk-metadata
+                                   (qp.store/metadata-provider)
+                                   :metadata/card
+                                   #{from-card to-card}))
+        from-name           (get cards from-card)
+        to-name             (get cards to-card)]
     (str
      (tru "This query has circular referencing sub-queries. ")
      (tru "These questions seem to be part of the problem: \"{0}\" and \"{1}\"." from-name to-name))))

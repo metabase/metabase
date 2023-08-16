@@ -2,42 +2,28 @@
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require
    [clojure.walk :as walk]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Add Implicit Fields                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- table->sorted-fields*
-  [table-id]
-  (t2/select [Field :id :base_type :effective_type :coercion_strategy :semantic_type]
-    :table_id        table-id
-    :active          true
-    :visibility_type [:not-in ["sensitive" "retired"]]
-    :parent_id       nil
-    {:order-by table/field-order-rule}))
-
 (defn- table->sorted-fields
   "Return a sequence of all Fields for table that we'd normally include in the equivalent of a `SELECT *`."
   [table-id]
-  (if (qp.store/initialized?)
-    ;; cache duplicate calls to this function in the same QP run.
-    (qp.store/cached-fn [::table-sorted-fields (u/the-id table-id)] #(table->sorted-fields* table-id))
-    ;; if QP store is not initialized don't try to cache the value (this is mainly for the benefit of tests and code
-    ;; that uses this outside of the normal QP execution context)
-    (table->sorted-fields* table-id)))
+  (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
+       (remove :parent-id)
+       (sort-by (juxt :position (comp u/lower-case-en :name)))))
 
 (mu/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
@@ -52,7 +38,7 @@
      (fn [field]
        ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
        ;; default bucketing of `:day`
-       [:field (u/the-id field) (when (types/temporal-field? field)
+       [:field (u/the-id field) (when (lib.types.isa/date? field) ; misnomer; this is for all temporal columns.
                                   {:temporal-unit :default})])
      fields)))
 

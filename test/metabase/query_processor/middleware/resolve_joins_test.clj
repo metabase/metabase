@@ -26,7 +26,7 @@
 
 (defn- resolve-joins-and-inspect-store [query]
   (qp.store/with-store
-    (qp.test-util/store-referenced-database! query)
+    (qp.store/metadata-provider (:database query))
     {:resolved (resolve-joins query)
      :store    (qp.test-util/store-contents)}))
 

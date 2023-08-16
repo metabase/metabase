@@ -13,12 +13,17 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.store :as qp.store]))
 
 (deftest ordering-test
   (testing "check we fetch Fields in the right order"
     (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:position -1}
-      (let [ids       (map second (#'qp.add-implicit-clauses/sorted-implicit-fields-for-table (mt/id :venues)))
+      (let [ids       (map second
+                           (mt/with-everything-store
+                             (#'qp.add-implicit-clauses/sorted-implicit-fields-for-table (mt/id :venues))))
             id->field (m/index-by :id (t2/select [Field :id :position :name :semantic_type] :id [:in ids]))]
         (is (= [ ;; sorted first because it has lowest positon
                 {:position -1, :name "PRICE", :semantic_type :type/Category}
@@ -33,7 +38,7 @@
                (for [id ids]
                  (into {} (dissoc (id->field id) :id)))))))))
 
-(deftest add-order-bys-for-breakouts-test
+(deftest ^:parallel add-order-bys-for-breakouts-test
   (testing "we should add order-bys for breakout clauses"
     (is (= {:source-table 1
             :breakout     [[:field 1 nil]]
@@ -75,8 +80,13 @@
                  :breakout     [[:field 1 {:temporal-unit :day}]]
                  :order-by     [[:asc [:field 1 nil]]]})))))))
 
+(defn- add-implicit-fields [inner-query]
+  (mt/with-everything-store
+    (#'qp.add-implicit-clauses/add-implicit-fields inner-query)))
+
 (deftest add-order-bys-for-no-aggregations-test
   (testing "We should add sorted implicit Fields for a query with no aggregations"
+    ()
     (is (= (:query
             (mt/mbql-query venues
               {:fields [ ;; :type/PK Fields should get sorted first
@@ -85,12 +95,12 @@
                         $name
                         ;; followed by other Fields sorted by name
                         $category_id $latitude $longitude $price]}))
-           (#'qp.add-implicit-clauses/add-implicit-fields (:query (mt/mbql-query venues)))))))
+           (add-implicit-fields (:query (mt/mbql-query venues)))))))
 
 (deftest sort-by-field-position-test
   (testing "when adding sorted implicit Fields, Field positions should be taken into account"
-    (mt/with-temp* [Field [field-1 {:table_id (mt/id :venues), :position 100, :name "bbbbb"}]
-                    Field [field-2 {:table_id (mt/id :venues), :position 101, :name "aaaaa"}]]
+    (t2.with-temp/with-temp [Field field-1 {:table_id (mt/id :venues), :position 100, :name "bbbbb"}
+                             Field field-2 {:table_id (mt/id :venues), :position 101, :name "aaaaa"}]
       (is (= (:query
               (mt/mbql-query venues
                 {:fields [ ;; all fields with lower positions should get sorted first according to rules above
@@ -98,17 +108,19 @@
                           ;; followed by position = 100, then position = 101
                           [:field (u/the-id field-1) nil]
                           [:field (u/the-id field-2) nil]]}))
-             (#'qp.add-implicit-clauses/add-implicit-fields (:query (mt/mbql-query venues))))))))
+             (add-implicit-fields (:query (mt/mbql-query venues))))))))
 
 (deftest default-bucketing-test
   (testing "datetime Fields should get default bucketing of :day"
     (t2.with-temp/with-temp [Field field {:table_id (mt/id :venues), :position 2, :name "aaaaa", :base_type :type/DateTime}]
-      (is (= (:query
-              (mt/mbql-query venues
-                {:fields [$id $name
-                          [:field (u/the-id field) {:temporal-unit :default}]
-                          $category_id $latitude $longitude $price]}))
-             (#'qp.add-implicit-clauses/add-implicit-fields (:query (mt/mbql-query venues))))))))
+      (mt/with-everything-store
+        (is (lib.types.isa/date? (lib.metadata/field (qp.store/metadata-provider) (:id field)))))
+      (is (query= (:query
+                   (mt/mbql-query venues
+                     {:fields [$id $name
+                               [:field (u/the-id field) {:temporal-unit :default}]
+                               $category_id $latitude $longitude $price]}))
+                  (add-implicit-fields (:query (mt/mbql-query venues))))))))
 
 (deftest add-implicit-fields-for-source-queries-test
   (testing "We should add implicit Fields for source queries that have source-metadata as appropriate"
@@ -120,7 +132,7 @@
               :breakout    [!month.$date]}))]
       (is (=? {:fields [[:field (mt/id :checkins :date) nil]
                         [:field "count" {:base-type :type/BigInteger}]]}
-              (#'qp.add-implicit-clauses/add-implicit-fields
+              (add-implicit-fields
                (:query (mt/mbql-query checkins
                          {:source-query    source-query
                           :source-metadata source-metadata}))))))))
@@ -202,6 +214,10 @@
                    :query
                    :fields)))))))
 
+(defn- add-implicit-clauses [query]
+  (mt/with-everything-store
+    (qp.add-implicit-clauses/add-implicit-clauses query)))
+
 (deftest add-implicit-fields-for-source-query-inside-join-test
   (testing "Should add implicit `:fields` for `:source-query` inside a join"
     (is (query= (mt/mbql-query venues
@@ -218,7 +234,7 @@
                               $venues.price]
                    :order-by [[:asc $venues.name]]
                    :limit    3})
-                (qp.add-implicit-clauses/add-implicit-clauses
+                (add-implicit-clauses
                  (mt/mbql-query venues
                    {:joins    [{:alias        "cat"
                                 :source-query {:source-table $$categories}

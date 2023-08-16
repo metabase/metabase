@@ -12,7 +12,7 @@
    [metabase.util :as u]
    [schema.core :as s]))
 
-(deftest resolve-implicit-joins-test
+(deftest ^:parallel resolve-implicit-joins-test
   (mt/dataset sample-dataset
     (let [query (mt/nest-query
                  (mt/mbql-query orders
@@ -45,16 +45,15 @@
                                                 :strategy     :left-join}]
                                 :order-by     [[:asc $id]]
                                 :limit        2}}))
-             (mt/with-everything-store
+             (qp.store/with-metadata-provider (mt/id)
                (#'qp.add-implicit-joins/resolve-implicit-joins (:query query))))))))
 
 (defn- add-implicit-joins [query]
   (driver/with-driver (tx/driver)
-    (qp.store/with-store
-      (qp.store/fetch-and-store-database! (mt/id))
+    (qp.store/with-metadata-provider (mt/id)
       (qp.add-implicit-joins/add-implicit-joins query))))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (testing "make sure `:joins` get added automatically for `:fk->` clauses"
     (is (= (mt/mbql-query venues
              {:source-table $$venues
@@ -71,7 +70,7 @@
               {:source-table $$venues
                :fields       [$name $category_id->categories.name]}))))))
 
-(deftest nested-queries-test
+(deftest ^:parallel nested-queries-test
   (testing "For FK clauses inside nested source queries, we should add the `:joins` info to the nested query instead of at the top level (#8972)"
     (is (= (mt/mbql-query venues
              {:source-query
@@ -90,7 +89,7 @@
                {:source-table $$venues
                 :fields       [$name $category_id->categories.name]}}))))))
 
-(deftest already-has-join?-test
+(deftest ^:parallel already-has-join?-test
   (is (#'qp.add-implicit-joins/already-has-join?
        {:joins [{:alias "x"}]}
        {:alias "x"}))
@@ -107,7 +106,7 @@
             {:joins [{:source-query {:joins [{:alias "x"}]}}]}
             {:alias "x"}))))
 
-(deftest reuse-existing-joins-test
+(deftest ^:parallel reuse-existing-joins-test
   (testing "Should reuse existing joins rather than creating new ones"
     (is (= (mt/mbql-query venues
              {:source-query
@@ -132,77 +131,78 @@
                                 :strategy     :left-join
                                 :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
                                                                          :source-field %category_id}]]
-                                :fk-field-id  %category_id}]}}))))
+                                :fk-field-id  %category_id}]}}))))))
 
-    (testing "Should work at arbitrary levels of nesting"
-      (mt/dataset sample-dataset
-        (doseq [level (range 4)]
-          (testing (format "(%d levels of nesting)" level)
-            (let [query (-> (mt/mbql-query orders
-                              {:source-table $$orders
-                               :fields       [$id
-                                              &Products.products.title
-                                              $product_id->products.title]
-                               :joins        [{:fields       :all
-                                               :source-table $$products
-                                               :condition    [:= $product_id [:field %products.id {:join-alias "Products"}]]
-                                               :alias        "Products"}]
-                               :order-by     [[:asc $id]]
-                               :limit        2})
-                            (mt/nest-query level))]
-              (testing (format "\nquery =\n%s" (u/pprint-to-str query))
-                (testing "sanity check: we should actually be able to run this query"
-                  (is (schema= {:status   (s/eq :completed)
-                                s/Keyword s/Any}
-                               (qp/process-query query)))
-                  (when (pos? level)
-                    (testing "if it has source metadata"
-                      (let [query-with-metadata (assoc-in query
-                                                          (concat [:query]
-                                                                  (repeat (dec level) :source-query)
-                                                                  [:source-metadata])
-                                                          (mt/$ids orders
-                                                            [{:name         "ID"
-                                                              :display_name "ID"
-                                                              :base_type    :type/Integer
-                                                              :id           %id
-                                                              :field_ref    $id}
-                                                             {:name         "TITLE"
-                                                              :display_name "Title"
-                                                              :base_type    :type/Text
-                                                              :id           %products.title
-                                                              :field_ref    &Products.products.title}
-                                                             {:name         "TITLE"
-                                                              :display_name "Title"
-                                                              :base_type    :type/Text
-                                                              :id           %products.title
-                                                              :field_ref    $product_id->products.title}]))]
-                        (is (schema= {:status   (s/eq :completed)
-                                      s/Keyword s/Any}
-                                     (qp/process-query query-with-metadata)))))))
-                (is (= (-> (mt/mbql-query orders
-                             {:source-table $$orders
-                              :fields       [$id
-                                             &Products.products.title
-                                             [:field %products.title {:join-alias   "PRODUCTS__via__PRODUCT_ID"
-                                                                      :source-field %product_id}]]
-                              :joins        [{:source-table $$products
-                                              :alias        "Products"
-                                              :fields       :all
-                                              :condition    [:= $product_id &Products.products.id]}
-                                             {:source-table $$products
-                                              :alias        "PRODUCTS__via__PRODUCT_ID"
-                                              :strategy     :left-join
-                                              :fields       :none
-                                              :fk-field-id  %product_id
-                                              :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
-                              :order-by     [[:asc $id]]
-                              :limit        2})
-                           (mt/nest-query level))
-                       (-> (add-implicit-joins query)
-                           (m/dissoc-in [:query :source-metadata]))))))))))))
+(deftest ^:parallel reuse-existing-joins-test-2
+  (testing "Should work at arbitrary levels of nesting"
+    (mt/dataset sample-dataset
+      (doseq [level (range 4)]
+        (testing (format "(%d levels of nesting)" level)
+          (let [query (-> (mt/mbql-query orders
+                            {:source-table $$orders
+                             :fields       [$id
+                                            &Products.products.title
+                                            $product_id->products.title]
+                             :joins        [{:fields       :all
+                                             :source-table $$products
+                                             :condition    [:= $product_id [:field %products.id {:join-alias "Products"}]]
+                                             :alias        "Products"}]
+                             :order-by     [[:asc $id]]
+                             :limit        2})
+                          (mt/nest-query level))]
+            (testing (format "\nquery =\n%s" (u/pprint-to-str query))
+              (testing "sanity check: we should actually be able to run this query"
+                (is (schema= {:status   (s/eq :completed)
+                              s/Keyword s/Any}
+                             (qp/process-query query)))
+                (when (pos? level)
+                  (testing "if it has source metadata"
+                    (let [query-with-metadata (assoc-in query
+                                                        (concat [:query]
+                                                                (repeat (dec level) :source-query)
+                                                                [:source-metadata])
+                                                        (mt/$ids orders
+                                                          [{:name         "ID"
+                                                            :display_name "ID"
+                                                            :base_type    :type/Integer
+                                                            :id           %id
+                                                            :field_ref    $id}
+                                                           {:name         "TITLE"
+                                                            :display_name "Title"
+                                                            :base_type    :type/Text
+                                                            :id           %products.title
+                                                            :field_ref    &Products.products.title}
+                                                           {:name         "TITLE"
+                                                            :display_name "Title"
+                                                            :base_type    :type/Text
+                                                            :id           %products.title
+                                                            :field_ref    $product_id->products.title}]))]
+                      (is (schema= {:status   (s/eq :completed)
+                                    s/Keyword s/Any}
+                                   (qp/process-query query-with-metadata)))))))
+              (is (= (-> (mt/mbql-query orders
+                           {:source-table $$orders
+                            :fields       [$id
+                                           &Products.products.title
+                                           [:field %products.title {:join-alias   "PRODUCTS__via__PRODUCT_ID"
+                                                                    :source-field %product_id}]]
+                            :joins        [{:source-table $$products
+                                            :alias        "Products"
+                                            :fields       :all
+                                            :condition    [:= $product_id &Products.products.id]}
+                                           {:source-table $$products
+                                            :alias        "PRODUCTS__via__PRODUCT_ID"
+                                            :strategy     :left-join
+                                            :fields       :none
+                                            :fk-field-id  %product_id
+                                            :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                            :order-by     [[:asc $id]]
+                            :limit        2})
+                         (mt/nest-query level))
+                     (-> (add-implicit-joins query)
+                         (m/dissoc-in [:query :source-metadata])))))))))))
 
-(deftest reuse-existing-joins-test-2
+(deftest ^:parallel reuse-existing-joins-test-3
   (testing "We DEFINITELY need to reuse joins if adding them again would break the query."
     (mt/dataset sample-dataset
       (is (= (mt/mbql-query orders
@@ -233,7 +233,7 @@
                                 :breakout     [!month.created_at !month.product_id->products.created_at]}
                  :limit        5})))))))
 
-(deftest add-fields-for-reused-joins-test
+(deftest ^:parallel add-fields-for-reused-joins-test
   (mt/dataset sample-dataset
     (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
       (is (= (mt/mbql-query orders
@@ -276,8 +276,10 @@
                                                [:= $product_id->products.category "Doohickey"]]}
                  :filter       [:= $product_id->products.category "Doohickey"]
                  :order-by     [[:asc $product_id->products.category]]
-                 :limit        5})))))
+                 :limit        5})))))))
 
+(deftest ^:parallel add-fields-for-reused-joins-test-2
+  (mt/dataset sample-dataset
     (testing "don't add fields for a native source query."
       (is (= (mt/mbql-query orders
                {:source-query {:native "SELECT * FROM my_table"}
@@ -300,7 +302,7 @@
                  :order-by     [[:asc $product_id->products.category]]
                  :limit        5})))))))
 
-(deftest reuse-joins-sanity-check-test
+(deftest ^:parallel reuse-joins-sanity-check-test
   (mt/dataset sample-dataset
     (testing "Reusing existing joins shouldn't break access to columns we're referencing at the top level"
       (let [query (mt/mbql-query orders
@@ -315,7 +317,7 @@
           (is (schema= {:status (s/eq :completed), s/Keyword s/Any}
                        (qp/process-query query))))))))
 
-(deftest nested-nested-queries-test
+(deftest ^:parallel nested-nested-queries-test
   (testing "we should handle nested-nested queries correctly as well"
     (is (= (mt/mbql-query venues
              {:source-query
@@ -336,7 +338,7 @@
                 {:source-table $$venues
                  :fields       [$name $category_id->categories.name]}}}))))))
 
-(deftest wtf-test
+(deftest ^:parallel wtf-test
   (testing (str "ok, so apparently if you specify a source table at a deeper level of nesting we should still "
                 "add JOINs as appropriate for that Table if you specify an `fk->` clause in an a higher level. "
                 "Does this make any sense at all?")
@@ -365,7 +367,7 @@
                :breakout     [$venue_id->venues.price]
                :order-by     [[:asc $venue_id->venues.price]]}))))))
 
-(deftest topologically-sort-joins-test
+(deftest ^:parallel topologically-sort-joins-test
   (let [parent        {:alias     "Parent"
                        :condition [:=
                                    [:field 2 nil]
@@ -410,7 +412,7 @@
             (is (= expected
                    (mapv :alias (#'qp.add-implicit-joins/topologically-sort-joins (mapv alias->join original)))))))))))
 
-(deftest mix-implicit-and-explicit-joins-test
+(deftest ^:parallel mix-implicit-and-explicit-joins-test
   (testing "Test that adding implicit joins still works correctly if the query also contains explicit joins"
     (is (= (mt/mbql-query checkins
              {:source-table $$checkins
@@ -435,8 +437,10 @@
                :joins        [{:alias        "u"
                                :source-table $$users
                                :condition    [:= *user_id &u.users.id]}]
-               :limit        10}))))
+               :limit        10}))))))
 
+(deftest ^:parallel mix-implicit-and-explicit-joins-test-2
+  (testing "Test that adding implicit joins still works correctly if the query also contains explicit joins"
     (testing "in nested source queries"
       (is (= (mt/mbql-query checkins
                {:source-query {:source-table $$checkins
@@ -463,7 +467,7 @@
                                  :condition    [:= *user_id &u.users.id]}]
                  :limit        10})))))))
 
-(deftest dont-add-duplicate-fields-test
+(deftest ^:parallel dont-add-duplicate-fields-test
   (testing "Don't add duplicate `:fields` to parent query if they are only different because of namespaced options"
     (mt/dataset sample-dataset
       (is (query= (mt/mbql-query orders
@@ -516,7 +520,7 @@
                       add-implicit-joins
                       (m/dissoc-in [:query :source-metadata])))))))
 
-(deftest resolve-implicit-joins-in-join-conditions-test
+(deftest ^:parallel resolve-implicit-joins-in-join-conditions-test
   (testing "Should be able to resolve implicit joins inside a join `:condition`"
     (mt/dataset sample-dataset
       (is (query= (mt/mbql-query orders
@@ -552,7 +556,7 @@
                                                      &Products.products.category]
                                       :fields       :none}]})))))))
 
-(deftest use-source-query-implicit-joins-for-join-conditions-test
+(deftest ^:parallel use-source-query-implicit-joins-for-join-conditions-test
   (testing "Implicit join inside a join `:condition` should use implicit join from source query if available (#20519)"
     (mt/dataset sample-dataset
       (is (query= (mt/mbql-query orders
@@ -598,7 +602,7 @@
                                       :fields       :none}]
                       :fields       [$product_id->products.category]})))))))
 
-(deftest metadata-join-alias-test
+(deftest ^:parallel metadata-join-alias-test
   (mt/dataset sample-dataset
     ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
     ;;   See [[metabase.models.params.custom-values-test/with-mbql-card-test]].

@@ -26,23 +26,22 @@
    [medley.core :as m]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.persisted-info
-    :as persisted-info
-    :refer [PersistedInfo]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
    [weavejester.dependency :as dep]))
 
 (set! *warn-on-reflection* true)
@@ -97,7 +96,7 @@
 
 (defn- source-query
   "Get the query to be run from the card"
-  [{dataset-query :dataset_query card-id :id :as card}]
+  [{dataset-query :dataset-query, card-id :id, :as card}]
   (let [{db-id                                           :database
          mbql-query                                      :query
          {template-tags :template-tags :as native-query} :native} dataset-query]
@@ -121,13 +120,12 @@
    (card-id->source-query-and-metadata card-id false))
   ([card-id :- ms/PositiveInt log? :- :boolean]
    (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
-         card           (or (t2/select-one Card :id card-id)
+         card           (or (lib.metadata/card (qp.store/metadata-provider) card-id)
                             (throw (ex-info (tru "Card {0} does not exist." card-id)
                                             {:card-id card-id})))
-         persisted-info (t2/select-one PersistedInfo :card_id card-id)
-
-         {{database-id :database} :dataset_query
-          result-metadata         :result_metadata
+         persisted-info (:lib/persisted-info card)
+         {{database-id :database} :dataset-query
+          result-metadata         :result-metadata
           dataset?                :dataset} card
          persisted?     (qp.persisted/can-substitute? card persisted-info)
          source-query   (source-query card)]
@@ -151,10 +149,6 @@
               :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
        dataset? (assoc :source-query/dataset? dataset?)))))
 
-(mu/defn ^:private source-table-str->card-id :- ms/PositiveInt
-  [source-table-str :- mbql.s/source-table-card-id-regex]
-  (when-let [[_ card-id-str] (re-find #"^card__(\d+)$" source-table-str)]
-    (Integer/parseInt card-id-str)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Logic for traversing the query                                         |
@@ -169,7 +163,7 @@
 
 (mu/defn ^:private resolve-one :- MapWithResolvedSourceQuery
   [{:keys [source-table], :as m} :- [:map [:source-table mbql.s/source-table-card-id-regex]]]
-  (let [card-id                   (-> source-table source-table-str->card-id)
+  (let [card-id                   (-> source-table lib.util/legacy-string-table-id->card-id)
         source-query-and-metadata (-> card-id (card-id->source-query-and-metadata true))]
     (merge
      (dissoc m :source-table)
@@ -206,7 +200,7 @@
   ([g m]
    (transduce (comp (filter map-with-card-id-source-table?)
                     (map (comp card-id->source-query-and-metadata
-                               source-table-str->card-id
+                               lib.util/legacy-string-table-id->card-id
                                :source-table)))
               (fn
                 ([] g)
@@ -294,7 +288,7 @@
   (fn [query rff context]
     (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
       (if card-id
-        (let [dataset? (t2/select-one-fn :dataset Card :id card-id)]
+        (let [dataset? (:dataset (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))]
           (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
             (qp query
                 (fn [metadata]

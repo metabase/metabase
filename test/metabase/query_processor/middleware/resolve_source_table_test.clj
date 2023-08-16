@@ -12,12 +12,9 @@
 (defn- resolve-source-tables [query]
   (qp.resolve-source-table/resolve-source-tables query))
 
-(defn- do-with-store-contents [f]
-  ;; force creation of test data DB so things don't get left in the cache before running tests below
-  (mt/id)
-  (qp.store/with-store
-    (qp.store/fetch-and-store-database! (mt/id))
-    (f)
+(defn- do-with-store-contents [thunk]
+  (qp.store/with-metadata-provider (mt/id)
+    (thunk)
     (mt/store-contents)))
 
 (defmacro ^:private with-store-contents {:style/indent 0} [& body]
@@ -29,7 +26,7 @@
 
 (deftest ^:parallel basic-test
   (testing "does `resolve-source-tables` resolve source tables?"
-    (is (= {:database "test-data", :tables #{"VENUES"}, :fields #{}}
+    (is (= {:tables #{"VENUES"}, :fields #{}}
            (resolve-and-return-store-contents (mt/mbql-query venues))))))
 
 (deftest validate-database-test
@@ -65,19 +62,19 @@
 
 (deftest ^:parallel nested-queries-test
   (testing "Does `resolve-source-tables` resolve source tables in nested source queries?"
-    (is (= {:database "test-data", :tables #{"VENUES"}, :fields #{}}
+    (is (= {:tables #{"VENUES"}, :fields #{}}
            (resolve-and-return-store-contents
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}}))))
 
-    (is (= {:database "test-data", :tables #{"VENUES"}, :fields #{}}
+    (is (= {:tables #{"VENUES"}, :fields #{}}
            (resolve-and-return-store-contents
             (mt/mbql-query nil
               {:source-query {:source-query {:source-table $$venues}}}))))))
 
 (deftest ^:parallel joins-test
   (testing "Does `resolve-source-tables` resolve source tables in joins?"
-    (is (= {:database "test-data", :tables #{"CATEGORIES" "VENUES"}, :fields #{}}
+    (is (= {:tables #{"CATEGORIES" "VENUES"}, :fields #{}}
            (resolve-and-return-store-contents
             (mt/mbql-query venues
               {:joins [{:source-table $$categories
@@ -86,7 +83,7 @@
 
 (deftest ^:parallel joins-in-nested-queries-test
   (testing "Does `resolve-source-tables` resolve source tables in joins inside nested source queries?"
-    (is (= {:database "test-data", :tables #{"CATEGORIES" "VENUES"}, :fields #{}}
+    (is (= {:tables #{"CATEGORIES" "VENUES"}, :fields #{}}
            (resolve-and-return-store-contents
             (mt/mbql-query venues
               {:source-query {:source-table $$venues
@@ -96,7 +93,7 @@
 
 (deftest ^:parallel nested-queries-in-joins-test
   (testing "Does `resolve-source-tables` resolve source tables inside nested source queries inside joins?"
-    (is (= {:database "test-data", :tables #{"CATEGORIES" "VENUES"}, :fields #{}}
+    (is (= {:tables #{"CATEGORIES" "VENUES"}, :fields #{}}
            (resolve-and-return-store-contents
             (mt/mbql-query venues
               {:joins [{:source-query {:source-table $$categories}
@@ -106,7 +103,7 @@
 (deftest ^:parallel nested-queries-in-joins-in-nested-queries-test
   (testing (str "Does `resolve-source-tables` resolve source tables inside nested source queries inside joins inside "
                 "nested source queries?")
-    (is (= {:database "test-data", :tables #{"CATEGORIES" "VENUES"}, :fields #{}}
+    (is (= {:tables #{"CATEGORIES" "VENUES"}, :fields #{}}
            (resolve-and-return-store-contents
             (mt/mbql-query venues
               {:source-query {:source-table $$venues

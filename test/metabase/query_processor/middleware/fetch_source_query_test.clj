@@ -8,13 +8,15 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- resolve-card-id-source-tables [query]
-  (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))
+  (qp.store/with-metadata-provider (mt/id)
+    (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query))))
 
 (defn- wrap-inner-query [query]
   {:database lib.schema.id/saved-questions-virtual-database-id
@@ -109,11 +111,11 @@
 
 (deftest nested-nested-queries-test
   (testing "make sure that nested nested queries work as expected"
-    (mt/with-temp* [Card [card-1 {:dataset_query (mt/mbql-query venues
-                                                   {:limit 100})}]
-                    Card [card-2 {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                  :type     :query
-                                                  :query    {:source-table (str "card__" (u/the-id card-1)), :limit 50}}}]]
+    (t2.with-temp/with-temp [Card card-1 {:dataset_query (mt/mbql-query venues
+                                                           {:limit 100})}
+                             Card card-2 {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                          :type     :query
+                                                          :query    {:source-table (str "card__" (u/the-id card-1)), :limit 50}}}]
       (is (= (-> (default-result-with-inner-query
                   {:limit          25
                    :source-query   {:limit           50
@@ -128,29 +130,33 @@
                  (assoc :info {:card-id (u/the-id card-2)}))
              (resolve-card-id-source-tables
               (wrap-inner-query
-               {:source-table (str "card__" (u/the-id card-2)), :limit 25}))))))
+               {:source-table (str "card__" (u/the-id card-2)), :limit 25})))))))
+
+(deftest nested-nested-queries-test-2
   (testing "Marks datasets as from a dataset"
     (testing "top level dataset queries are marked as such"
-      (mt/with-temp* [Card [card {:dataset_query (mt/mbql-query venues {:limit 100})
-                                  :dataset       true}]]
+      (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues {:limit 100})
+                                          :dataset       true}]
         (let [results (qp/process-query {:type     :query
                                          :query    {:source-table (str "card__" (u/the-id card))
                                                     :limit        1}
                                          :database lib.schema.id/saved-questions-virtual-database-id})]
           (is (= {:dataset true :rows 1}
-                 (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))
-    (testing "But not when the dataset is lower than top level"
-      (mt/with-temp* [Card [dataset {:dataset_query (mt/mbql-query venues {:limit 100})
-                                     :dataset       true}]
-                      Card [card    {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                     :type     :query
-                                                     :query    {:source-table (str "card__" (u/the-id dataset))}}}]]
-        (let [results (qp/process-query {:type     :query
-                                         :query    {:source-table (str "card__" (u/the-id card))
-                                                    :limit        1}
-                                         :database lib.schema.id/saved-questions-virtual-database-id})]
-          (is (= {:rows 1}
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
+
+(deftest nested-nested-queries-test-3
+  (testing "But not when the dataset is lower than top level"
+    (t2.with-temp/with-temp [Card dataset {:dataset_query (mt/mbql-query venues {:limit 100})
+                                           :dataset       true}
+                             Card card    {:dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
+                                                           :type     :query
+                                                           :query    {:source-table (str "card__" (u/the-id dataset))}}}]
+      (let [results (qp/process-query {:type     :query
+                                       :query    {:source-table (str "card__" (u/the-id card))
+                                                  :limit        1}
+                                       :database lib.schema.id/saved-questions-virtual-database-id})]
+        (is (= {:rows 1}
+               (-> results :data (select-keys [:dataset :rows]) (update :rows count))))))))
 
 
 
@@ -325,6 +331,10 @@
                       :info {:card-id Integer/MAX_VALUE})
                (resolve-card-id-source-tables query)))))))
 
+(defn- card-id->source-query-and-metadata [card-id]
+  (qp.store/with-metadata-provider (mt/id)
+    (#'fetch-source-query/card-id->source-query-and-metadata card-id)))
+
 (deftest card-id->source-query-and-metadata-test
   (testing "card-id->source-query-and-metadata-test should preserve non-SQL native queries"
     (let [query {:type     :native
@@ -334,6 +344,7 @@
                             :collection  "checkins"
                             :mbql?       true}
                  :database (mt/id)}]
+      ;; TODO -- won't this blow up if the Mongo code is unavailable?
       (with-redefs [driver.u/database->driver (constantly :mongo)]
         (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query query}]
           (is (= {:source-metadata nil
@@ -344,7 +355,9 @@
                                     :collection  "checkins"
                                     :mbql?       true}
                   :database        (mt/id)}
-                 (#'fetch-source-query/card-id->source-query-and-metadata card-id)))))))
+                 (card-id->source-query-and-metadata card-id))))))))
+
+(deftest card-id->source-query-and-metadata-test-2
   (testing "card-id->source-query-and-metadata-test should preserve mongodb native queries in string format (#30112)"
     (let [query-str (str "[{\"$project\":\n"
                          "   {\"_id\":\"$_id\",\n"
@@ -362,4 +375,4 @@
                                                   :query      query-str}
                                     :collection  "checkins"}
                   :database        (mt/id)}
-                 (#'fetch-source-query/card-id->source-query-and-metadata card-id))))))))
+                 (card-id->source-query-and-metadata card-id))))))))

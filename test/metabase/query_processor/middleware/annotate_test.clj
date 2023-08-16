@@ -9,19 +9,14 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
 (defn- add-column-info [query metadata]
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (driver/with-driver :h2
       ((annotate/add-column-info query identity) metadata))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             column-info (:native)                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest ^:parallel native-column-info-test
   (testing "native column info"
@@ -49,50 +44,35 @@
               {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
                :rows [[1 nil]]}))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       (MBQL) Col info for Field clauses                                        |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- info-for-field
-  ([field-id]
-   (into {} (t2/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
-                           :id field-id)))
-
-  ([table-key field-key]
-   (info-for-field (mt/id table-key field-key))))
-
 (deftest ^:parallel col-info-field-ids-test
   (testing {:base-type "make sure columns are comming back the way we'd expect for :field clauses"}
-    (mt/with-everything-store
+    (qp.store/with-metadata-provider (mt/id)
       (mt/$ids venues
-        (is (= [(merge (info-for-field :venues :price)
-                       {:source    :fields
-                        :field_ref $price})]
-               (annotate/column-info
-                {:type :query, :query {:fields [$price]}}
-                {:columns [:price]})))))))
+        (is (=? [{:source    :fields
+                  :field_ref $price}]
+                (annotate/column-info
+                 {:type :query, :query {:fields [$price]}}
+                 {:columns [:price]})))))))
 
 (deftest ^:parallel col-info-for-implicit-joins-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (mt/$ids venues
       (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
                     "info about the source Field")
-        (is (= [(merge (info-for-field :categories :name)
-                       {:fk_field_id  %category_id
-                        :source       :fields
-                        :field_ref    $category_id->categories.name
-                        ;; for whatever reason this is what the `annotate` middleware traditionally returns here, for
-                        ;; some reason we use the `:long` style inside aggregations and the `:default` style elsewhere,
-                        ;; who knows why. See notes
-                        ;; on [[metabase.query-processor.middleware.annotate/col-info-for-aggregation-clause]]
-                        :display_name "Name"})]
-               (annotate/column-info
-                {:type :query, :query {:fields [$category_id->categories.name]}}
-                {:columns [:name]})))))))
+        (is (=? [{:fk_field_id  %category_id
+                  :source       :fields
+                  :field_ref    $category_id->categories.name
+                  ;; for whatever reason this is what the `annotate` middleware traditionally returns here, for
+                  ;; some reason we use the `:long` style inside aggregations and the `:default` style elsewhere,
+                  ;; who knows why. See notes
+                  ;; on [[metabase.query-processor.middleware.annotate/col-info-for-aggregation-clause]]
+                  :display_name "Name"}]
+                (annotate/column-info
+                 {:type :query, :query {:fields [$category_id->categories.name]}}
+                 {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-implicit-joins-aggregation-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (mt/$ids venues
       (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
                     "info about the source Field")
@@ -106,60 +86,56 @@
                  {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-explicit-joins-with-fk-field-id-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (mt/$ids venues
       (testing (str "we should get `:fk_field_id` and information where possible when using joins; "
                     "display_name should include the display name of the FK field (for IMPLICIT JOINS)")
-        (is (= [(merge (info-for-field :categories :name)
-                       {:display_name "Category → Name"
-                        :source       :fields
-                        :field_ref    $category_id->categories.name
-                        :fk_field_id  %category_id
-                        :source_alias "CATEGORIES__via__CATEGORY_ID"})]
-               (annotate/column-info
-                {:type  :query
-                 :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
-                         :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
-                                   :source-table $$venues
-                                   :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
-                                   :strategy     :left-join
-                                   :fk-field-id  %category_id}]}}
-                {:columns [:name]})))))))
+        (is (=? [{:display_name "Category → Name"
+                  :source       :fields
+                  :field_ref    $category_id->categories.name
+                  :fk_field_id  %category_id
+                  :source_alias "CATEGORIES__via__CATEGORY_ID"}]
+                (annotate/column-info
+                 {:type  :query
+                  :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                          :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                                    :source-table $$venues
+                                    :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                                    :strategy     :left-join
+                                    :fk-field-id  %category_id}]}}
+                 {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-explicit-joins-without-fk-field-id-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (mt/$ids venues
       (testing (str "for EXPLICIT JOINS (which do not include an `:fk-field-id` in the Join info) the returned "
                     "`:field_ref` should be have only `:join-alias`, and no `:source-field`")
-        (is (= [(merge (info-for-field :categories :name)
-                       {:display_name "Categories → Name"
-                        :source       :fields
-                        :field_ref    &Categories.categories.name
-                        :source_alias "Categories"})]
-               (annotate/column-info
-                {:type  :query
-                 :query {:fields [&Categories.categories.name]
-                         :joins  [{:alias        "Categories"
-                                   :source-table $$venues
-                                   :condition    [:= $category_id &Categories.categories.id]
-                                   :strategy     :left-join}]}}
-                {:columns [:name]})))))))
+        (is (=? [{:display_name "Categories → Name"
+                  :source       :fields
+                  :field_ref    &Categories.categories.name
+                  :source_alias "Categories"}]
+                (annotate/column-info
+                 {:type  :query
+                  :query {:fields [&Categories.categories.name]
+                          :joins  [{:alias        "Categories"
+                                    :source-table $$venues
+                                    :condition    [:= $category_id &Categories.categories.id]
+                                    :strategy     :left-join}]}}
+                 {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-field-with-temporal-unit-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (mt/$ids venues
       (testing "when a `:field` with `:temporal-unit` is used, we should add in info about the `:unit`"
-        (is (= [(merge (info-for-field :venues :price)
-                       {:unit      :month
-                        :source    :fields
-                        :field_ref !month.price})]
-               (doall
+        (is (=? [{:unit      :month
+                  :source    :fields
+                  :field_ref !month.price}]
                 (annotate/column-info
                  {:type :query, :query {:fields (mt/$ids venues [!month.price])}}
-                 {:columns [:price]}))))))))
+                 {:columns [:price]})))))))
 
 (deftest ^:parallel col-info-for-field-literal-with-temporal-unit-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (mt/$ids venues
       (testing "datetime unit should work on field literals too"
         (is (= [{:name         "price"
@@ -174,7 +150,7 @@
                  {:columns [:price]}))))))))
 
 (deftest ^:parallel col-info-for-field-with-temporal-unit-from-nested-query-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (testing "should add the correct info if the Field originally comes from a nested query"
       (mt/$ids checkins
         (is (= [{:name "DATE", :unit :month, :field_ref [:field %date {:temporal-unit :default}]}
@@ -236,53 +212,53 @@
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (t2.with-temp/with-temp [Field parent {:name "parent", :table_id (mt/id :venues)}
                              Field child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]
-      (mt/with-everything-store
-        (is (= {:description     nil
-                :table_id        (mt/id :venues)
-                :semantic_type   nil
-                :effective_type  nil
-                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
-                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
-                ;; when the info is inferred. the solution to this might be quite extensive renaming
-                :coercion_strategy nil
-                :name            "parent.child"
-                :settings        nil
-                :field_ref       [:field (u/the-id child) nil]
-                :nfc_path        nil
-                :parent_id       (u/the-id parent)
-                :id              (u/the-id child)
-                :visibility_type :normal
-                :display_name    "Child"
-                :fingerprint     nil
-                :base_type       :type/Text}
-               (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil]))))))))
+      (qp.store/with-metadata-provider (mt/id)
+        (is (=? {:description     nil
+                 :table_id        (mt/id :venues)
+                 :semantic_type   nil
+                 :effective_type  nil
+                 ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                 ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                 ;; when the info is inferred. the solution to this might be quite extensive renaming
+                 :coercion_strategy nil
+                 :name            "parent.child"
+                 :settings        nil
+                 :field_ref       [:field (u/the-id child) nil]
+                 :nfc_path        nil
+                 :parent_id       (u/the-id parent)
+                 :id              (u/the-id child)
+                 :visibility_type :normal
+                 :display_name    "Child"
+                 :fingerprint     nil
+                 :base_type       :type/Text}
+                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil]))))))))
 
 (deftest col-info-combine-grandparent-field-names-test
   (testing "nested-nested fields should include grandparent name (etc)"
     (t2.with-temp/with-temp [Field grandparent {:name "grandparent", :table_id (mt/id :venues)}
                              Field parent      {:name "parent", :table_id (mt/id :venues), :parent_id (u/the-id grandparent)}
                              Field child       {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]
-      (mt/with-everything-store
-        (is (= {:description     nil
-                :table_id        (mt/id :venues)
-                :semantic_type   nil
-                :effective_type  nil
-                :coercion_strategy nil
-                :name            "grandparent.parent.child"
-                :settings        nil
-                :field_ref       [:field (u/the-id child) nil]
-                :nfc_path        nil
-                :parent_id       (u/the-id parent)
-                :id              (u/the-id child)
-                :visibility_type :normal
-                :display_name    "Child"
-                :fingerprint     nil
-                :base_type       :type/Text}
-               (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil]))))))))
+      (qp.store/with-metadata-provider (mt/id)
+        (is (=? {:description     nil
+                 :table_id        (mt/id :venues)
+                 :semantic_type   nil
+                 :effective_type  nil
+                 :coercion_strategy nil
+                 :name            "grandparent.parent.child"
+                 :settings        nil
+                 :field_ref       [:field (u/the-id child) nil]
+                 :nfc_path        nil
+                 :parent_id       (u/the-id parent)
+                 :id              (u/the-id child)
+                 :visibility_type :normal
+                 :display_name    "Child"
+                 :fingerprint     nil
+                 :base_type       :type/Text}
+                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil]))))))))
 
 (deftest ^:parallel col-info-field-literals-test
   (testing "field literals should get the information from the matching `:source-metadata` if it was supplied"
-    (mt/with-everything-store
+    (qp.store/with-metadata-provider (mt/id)
       (is (= {:name          "sum"
               :display_name  "sum of User ID"
               :base_type     :type/Integer
@@ -295,7 +271,7 @@
               [:field "sum" {:base-type :type/Integer}]))))))
 
 (deftest ^:parallel col-info-expressions-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (testing "col info for an `expression` should work as expected"
       (is (= {:base_type       :type/Float
               :name            "double-price"
@@ -341,10 +317,6 @@
                 (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
               (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 ;; test that added information about aggregations looks the way we'd expect
 (defn- aggregation-names
   ([ag-clause]
@@ -352,7 +324,7 @@
 
   ([inner-query ag-clause]
    (binding [driver/*driver* :h2]
-     (mt/with-everything-store
+     (qp.store/with-metadata-provider (mt/id)
        (select-keys (#'annotate/col-info-for-aggregation-clause inner-query ag-clause) [:name :display_name])))))
 
 (deftest ^:parallel aggregation-names-test
@@ -423,7 +395,7 @@
      (#'annotate/col-info-for-aggregation-clause inner-query clause))))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (testing "basic aggregation clauses"
       (testing "`:count` (no field)"
         (is (=? {:base_type :type/Float, :name "expression", :display_name "Count ÷ 2"}
@@ -480,11 +452,6 @@
                  {:source-table (mt/id :venues)
                   :expressions {"double-price" [:* $price 2]}}
                  [:sum [:expression "double-price"]])))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Other MBQL col info tests                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- infered-col-type
   [expr]

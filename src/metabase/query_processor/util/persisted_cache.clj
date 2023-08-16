@@ -16,11 +16,11 @@
        (:active persisted-info)
        (= (:state persisted-info) "persisted")
        (:definition persisted-info)
-       (:query_hash persisted-info)
-       (= (:query_hash persisted-info) (persisted-info/query-hash (:dataset_query card)))
+       (:query-hash persisted-info)
+       (= (:query-hash persisted-info) (persisted-info/query-hash (:dataset_query card)))
        (= (:definition persisted-info)
-          (persisted-info/metadata->definition (:result_metadata card)
-                                               (:table_name persisted-info)))))
+          (persisted-info/metadata->definition (:result-metadata card)
+                                               (:table-name persisted-info)))))
 
 (defn persisted-info-native-query
   "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if

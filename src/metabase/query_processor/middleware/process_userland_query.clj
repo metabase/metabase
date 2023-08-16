@@ -12,6 +12,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

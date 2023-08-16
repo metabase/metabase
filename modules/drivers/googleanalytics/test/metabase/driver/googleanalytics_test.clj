@@ -233,8 +233,7 @@
         (is (= expected-ga-query
                (do-with-some-fields
                 (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
-                  (qp.store/with-store
-                    (qp.store/fetch-and-store-database! (u/the-id db))
+                  (qp.store/with-metadata-provider (u/the-id db)
                     (qp.store/fetch-and-store-tables! [(u/the-id table)])
                     (qp.store/fetch-and-store-fields! (map u/the-id [event-action-field event-label-field date-field]))
                     (ga.qp/mbql->native (preprocessed-query-with-some-fields objects)))))))))))

@@ -2,15 +2,15 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -24,13 +24,17 @@
 
 (derive :model/PersistedInfo :metabase/model)
 
+(defn transform-definition-out
+  "Parse the value of `:definition` when it comes out of the application Database."
+  [definition]
+  (when-let [definition (not-empty (mi/json-out-with-keywordization definition))]
+    (update definition :field-definitions (fn [field-definitions]
+                                            (mapv #(update % :base-type keyword)
+                                                  field-definitions)))))
+
 (t2/deftransforms :model/PersistedInfo
   {:definition {:in  mi/json-in
-                :out (fn [definition]
-                       (when-let [definition (not-empty (mi/json-out-with-keywordization definition))]
-                         (update definition :field-definitions (fn [field-definitions]
-                                                                 (mapv #(update % :base-type keyword)
-                                                                       field-definitions)))))}})
+                :out transform-definition-out}})
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
@@ -41,17 +45,24 @@
 
 (def ^:private Metadata
   "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
-  [(su/open-schema
-    {:name s/Str, (s/optional-key :effective_type) s/Keyword, :base_type s/Keyword})])
+  [:maybe
+   [:sequential
+    [:map
+     [:name      :string]
+     [:base_type ::lib.schema.common/base-type]
+     [:effective_type {:optional true} ::lib.schema.common/base-type]]]])
 
 (def Definition
   "Definition spec for a cached table."
-  {:table-name su/NonBlankString
-   :field-definitions [{:field-name su/NonBlankString
-                        ;; TODO check (isa? :type/Integer :type/*)
-                        :base-type  s/Keyword}]})
+  [:map
+   [:table-name        ms/NonBlankString]
+   [:field-definitions [:maybe [:sequential
+                                [:map
+                                 [:field-name ms/NonBlankString]
+                                 ;; TODO check (isa? :type/Integer :type/*)
+                                 [:base-type  ::lib.schema.common/base-type]]]]]])
 
-(s/defn metadata->definition :- Definition
+(mu/defn metadata->definition :- Definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
   [metadata :- Metadata table-name]
   {:table-name        table-name

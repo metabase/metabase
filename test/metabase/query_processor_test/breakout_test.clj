@@ -24,21 +24,21 @@
                 :cols [(qp.test/breakout-col :checkins :user_id)
                        (qp.test/aggregate-col :count)]}
                (qp.test/rows-and-cols
-                 (mt/format-rows-by [int int]
-                   (mt/run-mbql-query checkins
-                     {:aggregation [[:count]]
-                      :breakout    [$user_id]
-                      :order-by    [[:asc $user_id]]}))))))
+                (mt/format-rows-by [int int]
+                  (mt/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :breakout    [$user_id]
+                     :order-by    [[:asc $user_id]]}))))))
 
       (testing "without breakout"
         (testing "This should act as a \"distinct values\" query and return ordered results"
           (is (= {:cols [(qp.test/breakout-col :checkins :user_id)]
                   :rows [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
                  (qp.test/rows-and-cols
-                   (mt/format-rows-by [int]
-                     (mt/run-mbql-query checkins
-                       {:breakout [$user_id]
-                        :limit    10}))))))))
+                  (mt/format-rows-by [int]
+                    (mt/run-mbql-query checkins
+                      {:breakout [$user_id]
+                       :limit    10}))))))))
 
     (testing "multiple columns"
       (testing "without explicit order by"
@@ -48,11 +48,11 @@
                          (qp.test/breakout-col :checkins :venue_id)
                          (qp.test/aggregate-col :count)]}
                  (qp.test/rows-and-cols
-                   (mt/format-rows-by [int int int]
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :breakout    [$user_id $venue_id]
-                        :limit       10})))))))
+                  (mt/format-rows-by [int int int]
+                    (mt/run-mbql-query checkins
+                      {:aggregation [[:count]]
+                       :breakout    [$user_id $venue_id]
+                       :limit       10})))))))
 
       (testing "with explicit order by"
         (testing "`breakout` should not implicitly order by any fields specified in `order-by`"
@@ -61,12 +61,12 @@
                          (qp.test/breakout-col :checkins :venue_id)
                          (qp.test/aggregate-col :count)]}
                  (qp.test/rows-and-cols
-                   (mt/format-rows-by [int int int]
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :breakout    [$user_id $venue_id]
-                        :order-by    [[:desc $user_id]]
-                        :limit       10}))))))))))
+                  (mt/format-rows-by [int int int]
+                    (mt/run-mbql-query checkins
+                      {:aggregation [[:count]]
+                       :breakout    [$user_id $venue_id]
+                       :order-by    [[:desc $user_id]]
+                       :limit       10}))))))))))
 
 (deftest internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)

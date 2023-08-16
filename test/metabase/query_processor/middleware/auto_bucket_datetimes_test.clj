@@ -4,19 +4,18 @@
    [metabase.models.field :refer [Field]]
    [metabase.query-processor.middleware.auto-bucket-datetimes
     :as qp.auto-bucket-datetimes]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest should-not-be-autobucketed?-test
+(deftest ^:parallel should-not-be-autobucketed?-test
   (testing "Don't auto-bucket fields that are already bucketed"
-    (is (= true
-           (boolean
-            (#'qp.auto-bucket-datetimes/should-not-be-autobucketed?
-             [:field 1 {:temporal-unit :month}]))))))
+    (is (#'qp.auto-bucket-datetimes/should-not-be-autobucketed? [:field 1 {:temporal-unit :month}]))))
 
 (defn- auto-bucket [query]
-  (qp.auto-bucket-datetimes/auto-bucket-datetimes query))
+  (qp.store/with-metadata-provider (mt/id)
+    (qp.auto-bucket-datetimes/auto-bucket-datetimes query)))
 
 (defn- auto-bucket-mbql [mbql-query]
   (-> (auto-bucket {:database (mt/id), :type :query, :query mbql-query})
@@ -53,8 +52,8 @@
 
 (deftest auto-bucket-in-compound-filter-clause-test
   (testing "Fields should still get auto-bucketed when present in compound filter clauses (#9127)"
-    (mt/with-temp* [Field [field-1 {:effective_type :type/DateTime}]
-                    Field [field-2 {:effective_type :type/Text}]]
+    (t2.with-temp/with-temp [Field field-1 {:effective_type :type/DateTime}
+                             Field field-2 {:effective_type :type/Text}]
       (is (= {:source-table 1
               :filter       [:and
                              [:= [:field (u/the-id field-1) {:temporal-unit :day}] "2018-11-19"]
@@ -65,7 +64,7 @@
                               [:= [:field (u/the-id field-1) nil] "2018-11-19"]
                               [:= [:field (u/the-id field-2) nil] "ABC"]]}))))))
 
-(deftest auto-bucket-field-literals-test
+(deftest ^:parallel auto-bucket-field-literals-test
   (testing "DateTime field literals should also get auto-bucketed (#9007)"
     (is (= {:source-query {:source-table 1}
             :filter       [:= [:field "timestamp" {:base-type :type/DateTime, :temporal-unit :day}] "2018-11-19"]}
@@ -190,7 +189,7 @@
               {:source-table 1
                :breakout     [[:field (u/the-id field) {:temporal-unit :month}]]}))))))
 
-(deftest do-not-fail-on-invalid-field-test
+(deftest ^:parallel do-not-fail-on-invalid-field-test
   (testing "does the middleware avoid barfing if for some reason the Field could not be resolved in the DB?"
     ;; (That is the job of the resolve middleware to worry about that stuff.)
     (is (= {:source-table 1
@@ -199,7 +198,7 @@
             {:source-table 1
              :breakout     [[:field Integer/MAX_VALUE nil]]})))))
 
-(deftest auto-bucket-unix-timestamp-fields-test
+(deftest ^:parallel auto-bucket-unix-timestamp-fields-test
   (testing "do UNIX TIMESTAMP fields get auto-bucketed?"
     (mt/dataset sad-toucan-incidents
       (mt/$ids incidents
@@ -209,7 +208,7 @@
                 {:source-table $$incidents
                  :breakout     [$timestamp]})))))))
 
-(deftest relative-datetime-test
+(deftest ^:parallel relative-datetime-test
   (testing "Fields being compared against `:relative-datetime`s should be subject to auto-bucketing. (#9014)"
     (is (= (->
             (mt/mbql-query checkins
@@ -221,7 +220,7 @@
                {:filter [:= $date [:relative-datetime :current]]}))
             :query :filter)))))
 
-(deftest auto-bucket-joined-fields-test
+(deftest ^:parallel auto-bucket-joined-fields-test
   (testing "Joined fields should get auto-bucketed (#12872)"
     (testing "only joined-field reference to Field"
       (let [query (mt/mbql-query checkins
@@ -266,7 +265,7 @@
           (is (= filter-clause
                  (get-in (auto-bucket query) [:query :filter]))))))))
 
-(deftest nested-queries-test
+(deftest ^:parallel nested-queries-test
   (testing "Datetime fields inside nested MBQL queries should get auto-bucketed the same way as at the top-level (#15352)"
     (mt/dataset sample-dataset
       (let [q1 (mt/mbql-query orders

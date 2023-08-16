@@ -342,7 +342,7 @@
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   [results]
-  (or (some->> (data results) :cols (mapv #(into {} %)))
+  (or (some->> (data results) :cols (mapv #(into {} (dissoc % :position))))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols

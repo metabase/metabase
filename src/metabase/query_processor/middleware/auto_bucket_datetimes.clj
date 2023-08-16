@@ -3,16 +3,15 @@
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
   (:require
-   [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mbql.predicates :as mbql.preds]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private FieldTypeInfo
   [:map
@@ -38,15 +37,16 @@
                   :when                              (string? id-or-name)]
               [id-or-name {:base-type base-type}]))
    ;; build map of field ID -> <info from DB>
-   (when-let [field-ids (seq (filter integer? (map second unbucketed-fields)))]
-     (into {} (for [{id :id, :as field}
-                    (t2/select [Field :id :base_type :effective_type :semantic_type]
-                      :id [:in (set field-ids)])]
-                [id (set/rename-keys (select-keys field
-                                                  [:base_type :effective_type :semantic_type])
-                                     {:base_type      :base-type
-                                      :effective_type :effective-type
-                                      :semantic_type  :semantic-type})])))))
+   (when-let [field-ids (not-empty (into #{}
+                                         (comp (map second)
+                                               (filter integer?))
+                                         unbucketed-fields))]
+     (into {} (for [{id :id, :as field} (lib.metadata.protocols/bulk-metadata
+                                         (qp.store/metadata-provider)
+                                         :metadata/column
+                                         field-ids)
+                    :when               field]
+                [id (select-keys field [:base-type :effective-type :semantic-type])])))))
 
 (defn- yyyy-MM-dd-date-string? [x]
   (and (string? x)

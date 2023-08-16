@@ -1,11 +1,13 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.middleware.add-dimension-projections
     :as qp.add-dimension-projections]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
@@ -17,19 +19,19 @@
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
 (defn- add-fk-remaps [query]
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (#'qp.add-dimension-projections/add-fk-remaps query)))
 
 (def ^:private remapped-field
   (delay
     {:id                        1000
      :name                      "Product"
-     :field_id                  (mt/id :venues :category_id)
-     :human_readable_field_id   (mt/id :categories :name)
-     :field_name                "CATEGORY_ID"
-     :human_readable_field_name "NAME"}))
+     :field-id                  (mt/id :venues :category_id)
+     :human-readable-field-id   (mt/id :categories :name)
+     :field-name                "CATEGORY_ID"
+     :human-readable-field-name "NAME"}))
 
-(defn- do-with-fake-remappings-for-category-id [f]
+(defn- do-with-fake-remappings-for-category-id! [f]
   (with-redefs [qp.add-dimension-projections/fields->field-id->remapping-dimension
                 (constantly
                  {(mt/id :venues :category_id) @remapped-field})]
@@ -37,7 +39,7 @@
 
 (deftest remap-column-infos-test
   (testing "make sure we create the remap column tuples correctly"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        (is (= [{:original-field-clause [:field (mt/id :venues :category_id) nil]
                 :new-field-clause      [:field
@@ -45,14 +47,14 @@
                                         {:source-field                                (mt/id :venues :category_id)
                                          ::qp.add-dimension-projections/new-field-dimension-id 1000}]
                 :dimension             @remapped-field}]
-              (mt/with-everything-store
+              (qp.store/with-metadata-provider (mt/id)
                 (#'qp.add-dimension-projections/remap-column-infos
                  [[:field (mt/id :venues :price) nil]
                   [:field (mt/id :venues :longitude) nil]
                   [:field (mt/id :venues :category_id) nil]]))))))))
 
 (deftest add-fk-remaps-add-fields-test
-  (do-with-fake-remappings-for-category-id
+  (do-with-fake-remappings-for-category-id!
    (fn []
      (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
        (let [{:keys [remaps query]} (add-fk-remaps
@@ -74,7 +76,7 @@
 
 (deftest add-fk-remaps-do-not-add-duplicate-fields-test
   (testing "make sure we don't duplicate remappings"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        ;; make sure that we don't add duplicate columns even if the column has some weird unexpected options, i.e. we
        ;; need to do 'normalized' Field comparison for preventing duplicates.
@@ -110,7 +112,7 @@
 
 (deftest add-fk-remaps-replace-order-bys-test
   (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
@@ -136,7 +138,7 @@
 
 (deftest add-fk-remaps-replace-breakouts-test
   (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
@@ -157,7 +159,7 @@
 
 (deftest add-fk-remaps-nested-queries-test
   (testing "make sure FK remaps work with nested queries"
-    (do-with-fake-remappings-for-category-id
+    (do-with-fake-remappings-for-category-id!
      (fn []
        (let [{:keys [remaps query]} (add-fk-remaps
                                      (mt/mbql-query venues
@@ -182,9 +184,10 @@
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
-  (let [rff (qp.add-dimension-projections/remap-results query context.default/default-rff)
-        rf  (rff metadata)]
-    (transduce identity rf rows)))
+  (qp.store/with-metadata-provider (mt/id)
+    (let [rff (qp.add-dimension-projections/remap-results query context.default/default-rff)
+          rf  (rff metadata)]
+      (transduce identity rf rows))))
 
 (deftest remap-human-readable-values-test
   (testing "remapping columns with `human_readable_values`"
@@ -205,10 +208,14 @@
                                           {:name "Foo [internal remap]", :remapped_from "CATEGORY_ID"}]}}
                       (remap-results
                        {}
-                       {:cols [{:name "ID"}
-                               {:name "NAME"}
-                               {:name "CATEGORY_ID", :id (mt/id :venues :category_id)}
-                               {:name "PRICE"}]}
+                       {:cols (qp.store/with-metadata-provider (mt/id)
+                                (lib.metadata.protocols/bulk-metadata
+                                 (qp.store/metadata-provider)
+                                 :metadata/column
+                                 [(mt/id :venues :id)
+                                  (mt/id :venues :name)
+                                  (mt/id :venues :category_id)
+                                  (mt/id :venues :price)]))}
                        [[1 "Red Medicine"                   4 3]
                         [2 "Stout Burgers & Beers"         11 2]
                         [3 "The Apple Pan"                 11 2]
@@ -234,10 +241,14 @@
                                           {:name "Foo [internal remap]", :remapped_from "NAME"}]}}
                       (remap-results
                        {}
-                       {:cols [{:name "ID"}
-                               {:name "NAME", :id (mt/id :venues :name)}
-                               {:name "CATEGORY_ID"}
-                               {:name "PRICE"}]}
+                       {:cols (qp.store/with-metadata-provider (mt/id)
+                                (lib.metadata.protocols/bulk-metadata
+                                 (qp.store/metadata-provider)
+                                 :metadata/column
+                                 [(mt/id :venues :id)
+                                  (mt/id :venues :name)
+                                  (mt/id :venues :category_id)
+                                  (mt/id :venues :price)]))}
                        [[1 "apple"   4 3]
                         [2 "banana" 11 2]
                         [3 "kiwi"   11 2]])))))))
@@ -263,21 +274,28 @@
                                          :remapped_from "CATEGORY_ID"
                                          :display_name  "My Venue Category"}]}}
                     (remap-results
-                      {::qp.add-dimension-projections/external-remaps [{:id                        1000
-                                                                        :name                      "My Venue Category"
-                                                                        :field_id                  (mt/id :venues :category_id)
-                                                                        :field_name                "category_id"
-                                                                        :human_readable_field_id   category-id
-                                                                        :human_readable_field_name "category_name"}]}
-                     {:cols [{:name "ID"}
-                             {:name "NAME"}
-                             {:name    "CATEGORY_ID"
-                              :id      (mt/id :venues :category_id)
-                              :options {::qp.add-dimension-projections/original-field-dimension-id 1000}}
-                             {:name "PRICE"}
-                             {:name    "CATEGORY"
-                              :id      category-id
-                              :options {::qp.add-dimension-projections/new-field-dimension-id 1000}}]}
+                     {::qp.add-dimension-projections/external-remaps [{:id                        1000
+                                                                       :name                      "My Venue Category"
+                                                                       :field-id                  (mt/id :venues :category_id)
+                                                                       :field-name                "category_id"
+                                                                       :human-readable-field-id   category-id
+                                                                       :human-readable-field-name "category_name"}]}
+                     {:cols (let [[venues-id venues-name venues-category-id venues-price]
+                                  (qp.store/with-metadata-provider (mt/id)
+                                    (lib.metadata.protocols/bulk-metadata
+                                     (qp.store/metadata-provider)
+                                     :metadata/column
+                                     [(mt/id :venues :id)
+                                      (mt/id :venues :name)
+                                      (mt/id :venues :category_id)
+                                      (mt/id :venues :price)]))]
+                              [venues-id
+                               venues-name
+                               (assoc-in venues-category-id [:options ::qp.add-dimension-projections/original-field-dimension-id] 1000)
+                               venues-price
+                               (-> venues-category-id
+                                   (assoc :name "CATEGORY")
+                                   (assoc-in [:options ::qp.add-dimension-projections/new-field-dimension-id] 1000))])}
                      []))))))
 
 (deftest dimension-remappings-test
@@ -312,12 +330,12 @@
                              [:field %products.title {:source-field                                %product_id
                                                       ::qp.add-dimension-projections/new-field-dimension-id dimension-id}]]))
                          (assoc ::qp.add-dimension-projections/external-remaps [{:id                        dimension-id
-                                                                                 :field_id                  (mt/id :orders :product_id)
+                                                                                 :field-id                  (mt/id :orders :product_id)
                                                                                  :name                      "Product ID [external remap]"
-                                                                                 :human_readable_field_id   (mt/id :products :title)
-                                                                                 :field_name                "PRODUCT_ID"
-                                                                                 :human_readable_field_name "TITLE"}]))
-                     (mt/with-everything-store
+                                                                                 :human-readable-field-id   (mt/id :products :title)
+                                                                                 :field-name                "PRODUCT_ID"
+                                                                                 :human-readable-field-name "TITLE"}]))
+                     (qp.store/with-metadata-provider (mt/id)
                        (#'qp.add-dimension-projections/add-remapped-columns query)))))))))))
 
 (deftest fk-remaps-with-multiple-columns-with-same-name-test
@@ -336,11 +354,11 @@
           (testing "Remap info"
             (is (query= (mt/$ids venues
                           [{:id                        dimension-id
-                            :field_id                  %category_id
+                            :field-id                  %category_id
                             :name                      "Category ID [external remap]"
-                            :human_readable_field_id   %categories.name
-                            :field_name                "CATEGORY_ID"
-                            :human_readable_field_name "NAME"}])
+                            :human-readable-field-id   %categories.name
+                            :field-name                "CATEGORY_ID"
+                            :human-readable-field-name "NAME"}])
                         remap-info)))
           (testing "query"
             (is (query= (mt/mbql-query venues
@@ -391,17 +409,17 @@
             (testing "Remap info"
               (is (query= (mt/$ids messages
                             [{:id                        sender-dimension-id
-                              :field_id                  %sender_id
+                              :field-id                  %sender_id
                               :name                      "Sender ID [external remap]"
-                              :human_readable_field_id   %users.name
-                              :field_name                "SENDER_ID"
-                              :human_readable_field_name "NAME"}
+                              :human-readable-field-id   %users.name
+                              :field-name                "SENDER_ID"
+                              :human-readable-field-name "NAME"}
                              {:id                        receiver-dimension-id
-                              :field_id                  %receiver_id
+                              :field-id                  %receiver_id
                               :name                      "Receiver ID [external remap]"
-                              :human_readable_field_id   %users.name
-                              :field_name                "RECEIVER_ID"
-                              :human_readable_field_name "NAME_2"}])
+                              :human-readable-field-id   %users.name
+                              :field-name                "RECEIVER_ID"
+                              :human-readable-field-name "NAME_2"}])
                           remap-info))))
           (testing "query"
             (is (query= (mt/mbql-query messages

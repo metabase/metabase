@@ -328,7 +328,6 @@
                                :bigquery-cloud-sdk))
       (premium-features-test/with-premium-features #{:serialization}
         (let [fingerprint (ts/with-world
-                            (qp.store/fetch-and-store-database! db-id)
                             (qp.store/fetch-and-store-tables! [table-id
                                                                table-id-categories
                                                                table-id-users

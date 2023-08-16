@@ -51,6 +51,34 @@
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
    :source/implicitly-joinable])
 
+;;; External remapping (Dimension) for a column. From the [[metabase.models.dimension]] with `type = external`
+;;; associated with a `Field` in the application database.
+;;; See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.
+(mr/def ::column.remapping.external
+  [:map
+   [:lib/type [:= :metadata.column.remapping/external]]
+   [:id       ::lib.schema.id/dimension]
+   ;; from `dimension.name`
+   [:name     ::lib.schema.common/non-blank-string]
+   ;; `dimension.human_readable_field_id` in the application database. ID of the Field to get human-readable values
+   ;; from. e.g. if the column in question is `venues.category-id`, then this would be the ID of `categories.name`
+   [:field-id ::lib.schema.id/field]])
+
+;;; Internal remapping (FieldValues) for a column. From [[metabase.models.dimension]] with `type = internal` and
+;;; the [[metabase.models.field-values]] associated with a `Field` in the application database.
+;;; See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means.
+(mr/def ::column.remapping.internal
+  [:map
+   [:lib/type              [:= :metadata.column.remapping/internal]]
+   [:id                    ::lib.schema.id/dimension]
+   ;; from `dimension.name`
+   [:name                  ::lib.schema.common/non-blank-string]
+   ;; From `metabase_fieldvalues.values`. Original values
+   [:values                [:sequential :any]]
+   ;; From `metabase_fieldvalues.human_readable_values`. Human readable remaps for the values at the same indexes in
+   ;; `:values`
+   [:human-readable-values [:sequential :any]]])
+
 (def ColumnMetadata
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -99,7 +127,12 @@
    ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
    ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.
    ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
-   [:selected? {:optional true} :boolean]])
+   [:selected? {:optional true} :boolean]
+   ;;
+   ;; REMAPPING
+   ;;
+   [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
+   [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]])
 
 (def CardMetadata
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
