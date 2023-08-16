@@ -8,9 +8,8 @@
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.test :as t]
-   [java-time]
-   [metabase.async.streaming-response :as streaming-response]
+   [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.config :as config]
    [metabase.server.handler :as handler]
    [metabase.server.middleware.session :as mw.session]
@@ -36,27 +35,29 @@
   "Prefix to automatically prepend to the URL of calls made with `client`."
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
+(defn- build-query-string
+  [query-parameters]
+  (str/join \& (letfn [(url-encode [s]
+                                  (cond-> s
+                                    (keyword? s)       u/qualified-name
+                                    true               codec/url-encode))
+                       (encode-key-value [k v]
+                         (str (url-encode k) \= (url-encode v)))]
+                      (flatten (for [[k value-or-values] query-parameters]
+                                 (if (sequential? value-or-values)
+                                   (for [v value-or-values]
+                                     (encode-key-value k v))
+                                   [(encode-key-value k value-or-values)]))))))
+
 (defn build-url
   "Build an API URL for `localhost` and `MB_JETTY_PORT` with `query-parameters`.
 
     (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
   [url query-parameters]
   {:pre [(string? url) (u/maybe? map? query-parameters)]}
-  (let [url (if (= (first url) \/)
-              (subs url 1)
-              url)]
+  (let [url (if (= (first url) \/) (subs url 1) url)]
     (str *url-prefix* url (when (seq query-parameters)
-                            (str "?" (str/join \& (letfn [(url-encode [s]
-                                                            (cond-> s
-                                                              (keyword? s)       u/qualified-name
-                                                              true               codec/url-encode))
-                                                          (encode-key-value [k v]
-                                                            (str (url-encode k) \= (url-encode v)))]
-                                                    (flatten (for [[k value-or-values] query-parameters]
-                                                               (if (sequential? value-or-values)
-                                                                 (for [v value-or-values]
-                                                                   (encode-key-value k v))
-                                                                 [(encode-key-value k value-or-values)]))))))))))
+                            (str "?" (build-query-string query-parameters))))))
 
 ;;; parse-response
 
@@ -80,8 +81,8 @@
                          (contains? auto-deserialize-dates-keys k)
                          (try
                            (let [parsed (u.date/parse v)]
-                             (if (java-time/zoned-date-time? parsed)
-                               (java-time/offset-date-time parsed)
+                             (if (t/zoned-date-time? parsed)
+                               (t/offset-date-time parsed)
                                parsed))
                            (catch Throwable _
                              v))
@@ -183,10 +184,10 @@
       (throw (ex-info message {:status-code actual-status-code, :body body}))))
   ;; all other status codes should be test assertions against the expected status code if one was specified
   (when expected-status-code
-    (t/is (= expected-status-code
-             actual-status-code)
-          (format "%s %s expected a status code of %d, got %d."
-                  method-name url expected-status-code actual-status-code))))
+    (is (= expected-status-code
+           actual-status-code)
+        (format "%s %s expected a status code of %d, got %d."
+                method-name url expected-status-code actual-status-code))))
 
 (def ^:private method->request-fn
   {:get    http/get
@@ -227,9 +228,19 @@
 
              (some? http-body)
              (ring.mock/json-body http-body))
-           {:content-type :json
+           {:content-type  :json
             :cookie-policy :standard
             :accept        :json})))
+
+(reduce (fn [acc query]
+          (let [[k v] (str/split query #"=")]
+            (assoc acc k v)))
+        {}
+        (-> (java.net.URI. "/api?abc=1&a=1")
+         .getRawQuery
+         (str/split #"&")))
+
+(.getRawQuery (java.net.URI. "/api?abc=1&a=1"))
 
 (defn- read-streaming-response [streaming-response]
   (with-open [os (java.io.ByteArrayOutputStream.)]
@@ -249,17 +260,72 @@
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
         method-name (u/upper-case-en (name method))
-        req         (merge (build-mock-request method url query-parameters credentials http-body) request-options)
-        _           (log/debug method-name (pr-str url) (pr-str req))
+        _           (log/debug method-name (pr-str url) (pr-str request-map))
         thunk       (fn []
                       (try
-                       (let [resp (metabase.server.handler/app req identity identity)]
+                        (request-fn url #p request-map)
+                        (catch clojure.lang.ExceptionInfo e
+                          (log/debug e method-name url)
+                          (ex-data e))
+                        (catch Exception e
+                          (throw (ex-info (.getMessage e)
+                                          {:method  method-name
+                                           :url     url
+                                           :request request-map}
+                                          e)))))
+        ;; Now perform the HTTP request
+        {:keys [status body], :as response} (thunk)]
+    (log/debug method-name url status)
+    (check-status-code method-name url body expected-status status)
+    (update response :body parse-response)))
+
+#_(-mock-client parsed)
+
+(schema/defn ^:private -mock-client
+  ;; Since the params for this function can get a little complicated make sure we validate them
+  [{:keys [credentials method expected-status url http-body query-parameters _request-options]} :- ClientParamsMap]
+  (initialize/initialize-if-needed! :db :web-server)
+  (let [http-body   (test-runner.assert-exprs/derecordize http-body)
+        method-name (u/upper-case-en (name method))
+        query-parameters (merge query-parameters
+                                (reduce (fn [acc query]
+                                          (let [[k v] (str/split query #"=")]
+                                            (assoc acc k v)))
+                                        {}
+                                        (some-> (java.net.URI. url)
+                                                .getRawQuery
+                                                (str/split #"&"))))
+        url         (first (str/split  url #"\?"))
+        request     (merge {:accept :json
+                            :content-type "application/json"
+                            :cookie-policy :standard
+                            :headers (merge
+                                      {"host"         (str "localhost:" (config/config-str :mb-jetty-port))
+                                       "content-type" "application/json"}
+                                      {@#'mw.session/metabase-session-header (when credentials
+                                                                               (if (map? credentials)
+                                                                                 (authenticate credentials)
+                                                                                 credentials))})
+                            :protocol "HTTP/1.1"
+                            :query-string (build-query-string query-parameters)
+                            :remote-addr "127.0.0.1"
+                            :request-method method
+                            :scheme :http
+                            :server-name "localhost"
+                            :server-port (config/config-int :mb-jetty-port)
+                            :uri (str "/api/" (if (= (first url) \/) (subs url 1) url))}
+                           (when (seq http-body)
+                             {:body (java.io.ByteArrayInputStream. (.getBytes (json/generate-string http-body)))}))
+        _           (log/debug method-name (pr-str url) (pr-str request))
+        thunk       (fn []
+                      (try
+                       (let [resp (handler/app request identity identity)]
                          (update resp :body
                                  (fn [body]
                                    (cond
                                     ;; read the text respone
                                     (instance? PipedInputStream body)
-                                    (with-open [r (clojure.java.io/reader body)]
+                                    (with-open [r (io/reader body)]
                                       (slurp r))
 
                                     (instance? StreamingResponse body)
@@ -267,7 +333,6 @@
 
                                     :else
                                     body))))
-                       #_(request-fn url request-map)
                        (catch clojure.lang.ExceptionInfo e
                          (log/debug e method-name url)
                          (ex-data e))
@@ -275,13 +340,16 @@
                          (throw (ex-info (.getMessage e)
                                          {:method  method-name
                                           :url     url
-                                          :request req}
+                                          :request request}
                                          e)))))
         ;; Now perform the HTTP request
         {:keys [status body], :as response} (thunk)]
     (log/debug method-name url status)
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
+
+#_(metabase.test/user-http-request :crowberto :get 200 "user" :group_id 2)
+
 
 #_(try
    #_(metabase.test/user-http-request :crowberto :post 202 "card/328/query")
@@ -329,9 +397,10 @@
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
+    (def parsed parsed)
     (log/trace parsed)
     (u/with-timeout response-timeout-ms
-      (-client parsed))))
+      (-mock-client parsed))))
 
 (defn client
   "Perform an API call and return the response (for test purposes).

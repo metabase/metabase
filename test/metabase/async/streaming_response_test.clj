@@ -172,11 +172,3 @@
                (deref complete-promise 1000 ::timed-out)))
         (is (= "2 cans"
                (String. (.toByteArray os) "UTF-8")))))))
-
-#_(let [streaming-response (streaming-response/streaming-response nil [os _]
-                                                                  (.write os (.getBytes (format "%s cans" *number-of-cans*) "UTF-8")))]
-    (with-open [os (java.io.ByteArrayOutputStream.)]
-      (let [f     (.f streaming-response)]
-        (f os nil)
-        (String. (.toByteArray os) "UTF-8"))))
-

@@ -1837,7 +1837,7 @@
   (testing "no parameters"
     (with-temp-native-card [_ card]
       (with-cards-in-readable-collection card
-        (is (= [{:ctl "COUNT(*)"} {:col 75.0}]
+        (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
                                       {:request-options {:as :byte-array}})))))))
