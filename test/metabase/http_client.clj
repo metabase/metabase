@@ -3,12 +3,16 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :as t]
    [java-time]
+   [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
+   [metabase.server.handler :as handler]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
@@ -17,8 +21,12 @@
    [metabase.util.log :as log]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
+   [ring.mock.request :as ring.mock]
    [ring.util.codec :as codec]
-   [schema.core :as schema]))
+   [schema.core :as schema])
+  (:import
+   (metabase.async.streaming_response StreamingResponse)
+   (java.io PipedInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,18 +42,21 @@
     (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
   [url query-parameters]
   {:pre [(string? url) (u/maybe? map? query-parameters)]}
-  (str *url-prefix* url (when (seq query-parameters)
-                          (str "?" (str/join \& (letfn [(url-encode [s]
-                                                          (cond-> s
-                                                            (keyword? s)       u/qualified-name
-                                                            true               codec/url-encode))
-                                                        (encode-key-value [k v]
-                                                          (str (url-encode k) \= (url-encode v)))]
-                                                  (flatten (for [[k value-or-values] query-parameters]
-                                                             (if (sequential? value-or-values)
-                                                               (for [v value-or-values]
-                                                                 (encode-key-value k v))
-                                                               [(encode-key-value k value-or-values)])))))))))
+  (let [url (if (= (first url) \/)
+              (subs url 1)
+              url)]
+    (str *url-prefix* url (when (seq query-parameters)
+                            (str "?" (str/join \& (letfn [(url-encode [s]
+                                                            (cond-> s
+                                                              (keyword? s)       u/qualified-name
+                                                              true               codec/url-encode))
+                                                          (encode-key-value [k v]
+                                                            (str (url-encode k) \= (url-encode v)))]
+                                                    (flatten (for [[k value-or-values] query-parameters]
+                                                               (if (sequential? value-or-values)
+                                                                 (for [v value-or-values]
+                                                                   (encode-key-value k v))
+                                                                 [(encode-key-value k value-or-values)]))))))))))
 
 ;;; parse-response
 
@@ -196,6 +207,39 @@
    (schema/optional-key :query-parameters) (schema/maybe su/Map)
    (schema/optional-key :request-options)  (schema/maybe su/Map)})
 
+(defn- build-header
+  [req headers]
+  (reduce (fn [acc [k v]]
+              (ring.mock.request/header acc k v))
+          req
+          headers))
+
+(defn- build-mock-request
+  [method url params credentials http-body]
+  (let [headers {@#'mw.session/metabase-session-header
+                 (when credentials
+                   (if (map? credentials)
+                     (authenticate credentials)
+                     credentials))}]
+    (merge (cond-> (ring.mock/request method url params)
+             (some? headers)
+             (build-header headers)
+
+             (some? http-body)
+             (ring.mock/json-body http-body))
+           {:content-type :json
+            :cookie-policy :standard
+            :accept        :json})))
+
+(defn- read-streaming-response [streaming-response]
+  (with-open [os (java.io.ByteArrayOutputStream.)]
+    (let [f             (.f streaming-response)
+          canceled-chan (a/promise-chan)]
+      (f os canceled-chan)
+      ;; not all types need to be converted to string tho
+      ;; should be depended on the content type
+      (String. (.toByteArray os) "UTF-8"))))
+
 (schema/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
@@ -205,24 +249,50 @@
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
         method-name (u/upper-case-en (name method))
-        _           (log/debug method-name (pr-str url) (pr-str request-map))
+        req         (merge (build-mock-request method url query-parameters credentials http-body) request-options)
+        _           (log/debug method-name (pr-str url) (pr-str req))
         thunk       (fn []
                       (try
-                        (request-fn url request-map)
-                        (catch clojure.lang.ExceptionInfo e
-                          (log/debug e method-name url)
-                          (ex-data e))
-                        (catch Exception e
-                          (throw (ex-info (.getMessage e)
-                                          {:method  method-name
-                                           :url     url
-                                           :request request-map}
-                                          e)))))
+                       (let [resp (metabase.server.handler/app req identity identity)]
+                         (update resp :body
+                                 (fn [body]
+                                   (cond
+                                    ;; read the text respone
+                                    (instance? PipedInputStream body)
+                                    (with-open [r (clojure.java.io/reader body)]
+                                      (slurp r))
+
+                                    (instance? StreamingResponse body)
+                                    (read-streaming-response body)
+
+                                    :else
+                                    body))))
+                       #_(request-fn url request-map)
+                       (catch clojure.lang.ExceptionInfo e
+                         (log/debug e method-name url)
+                         (ex-data e))
+                       (catch Exception e
+                         (throw (ex-info (.getMessage e)
+                                         {:method  method-name
+                                          :url     url
+                                          :request req}
+                                         e)))))
         ;; Now perform the HTTP request
         {:keys [status body], :as response} (thunk)]
     (log/debug method-name url status)
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
+
+#_(try
+   #_(metabase.test/user-http-request :crowberto :post 202 "card/328/query")
+   (metabase.test/user-http-request :rasta :post 200 "card/328/query/json")
+   nil
+   (catch Throwable e
+     e))
+; (metabase.async.streaming-response/->StreamingResponse
+;  #function[clojure.core/bound-fn*/fn--5818]
+;  {:content-type "application/json; charset=utf-8"}
+;  #object[clojure.core.async.impl.channels.ManyToManyChannel 0x328d7b37 "clojure.core.async.impl.channels.ManyToManyChannel@328d7b37"])
 
 (s/def ::http-client-args
   (s/cat

@@ -1809,8 +1809,9 @@
         (is (= ["COUNT(*)"
                 "8"]
                (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv?parameters=%s"
-                                                               (u/the-id card) encoded-params)))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
+                                                               (u/the-id card))
+                                      :parameters encoded-params))))))))
 
 (deftest json-download-test
   (testing "no parameters"
@@ -1822,8 +1823,8 @@
     (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 8}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json?parameters=%s"
-                                                              (u/the-id card) encoded-params))))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
+                                     :parameters encoded-params)))))))
 
 (defn- parse-xlsx-results [results]
   (->> results
@@ -1836,7 +1837,7 @@
   (testing "no parameters"
     (with-temp-native-card [_ card]
       (with-cards-in-readable-collection card
-        (is (= [{:col "COUNT(*)"} {:col 75.0}]
+        (is (= [{:ctl "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
                                       {:request-options {:as :byte-array}})))))))
@@ -1845,9 +1846,9 @@
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx?parameters=%s"
-                                                               (u/the-id card) encoded-params)
-                                      {:request-options {:as :byte-array}}))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                      {:request-options {:as :byte-array}}
+                                      :parameters encoded-params))))))))
 
 (deftest download-default-constraints-test
   (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database   (mt/id)
