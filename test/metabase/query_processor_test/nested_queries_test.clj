@@ -27,7 +27,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with MBQL source-query"
       (is (= {:rows [[1 "Red Medicine"                  4 10.0646 -165.374 3]
@@ -562,7 +562,8 @@
           (let [[date-col count-col] (for [col (-> (qp/process-query {:database (mt/id), :type :query, :query source-query})
                                                    :data :cols)]
                                        (-> (into {} col)
-                                           (assoc :source :fields)))]
+                                           (assoc :source :fields)
+                                           (dissoc :position)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
             ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't

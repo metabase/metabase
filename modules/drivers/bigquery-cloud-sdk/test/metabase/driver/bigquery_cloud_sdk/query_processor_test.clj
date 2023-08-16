@@ -13,6 +13,7 @@
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -39,7 +40,7 @@
     (symbol? x) (-> x str with-test-db-name symbol)
     :else       x))
 
-(deftest native-query-test
+(deftest ^:parallel native-query-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= [[100] [99]]
            (mt/rows
@@ -107,7 +108,7 @@
                  :type     :native
                  :database (mt/id)})))))))
 
-(deftest aggregations-test
+(deftest ^:parallel aggregations-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing (str "make sure queries with two or more of the same aggregation type still work. Aggregations used to be "
                   "deduplicated here in the BigQuery driver; now they are deduplicated as part of the main QP "
@@ -202,7 +203,7 @@
         (qp/process-query query))
       @native-query)))
 
-(deftest remark-test
+(deftest ^:parallel remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
              (str "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
@@ -225,7 +226,7 @@
         "if I run a BigQuery query, does it get a remark added to it?")))
 
 ;; if I run a BigQuery query with include-user-id-and-hash set to false, does it get a remark added to it?
-(deftest remove-remark-test
+(deftest ^:parallel remove-remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
              (str "SELECT `v3_test_data.venues`.`id` AS `id`,"
@@ -252,7 +253,7 @@
                :info     {:executed-by 1000
                           :query-hash  (byte-array [1 2 3 4])}}))))))
 
-(deftest unprepare-params-test
+(deftest ^:parallel unprepare-params-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= [["Red Medicine"]]
            (qp.test/rows
@@ -294,7 +295,7 @@
       :as    {:date     (hx/call :date unix-ts)
               :datetime (hx/call :datetime unix-ts)}})])
 
-(deftest temporal-type-test
+(deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
     (doseq [[expr expected-type] {[:field "x" {:base-type :type/DateTime}]                              :datetime
                                   [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil}]
@@ -303,7 +304,7 @@
                (#'bigquery.qp/temporal-type expr)))))))
 
 (deftest reconcile-temporal-types-test
-  (mt/with-everything-store
+  (qp.store/with-metadata-provider (mt/id)
     (t2.with-temp/with-temp [Field date-field      {:name "date", :base_type :type/Date, :database_type "date"}
                              Field datetime-field  {:name "datetime", :base_type :type/DateTime, :database_type "datetime"}
                              Field timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ, :database_type "timestamp"}]
@@ -388,7 +389,7 @@
                                              [:field %id {:add/source-table $$reviews}]]]
                                  :limit    1})
                 filter-clause (get-in query [:query :filter])]
-            (mt/with-everything-store
+            (qp.store/with-metadata-provider (mt/id)
               (is (= [(str (format "timestamp_millis(%s.reviews.rating)" sample-dataset-name)
                            " = "
                            "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
@@ -398,7 +399,7 @@
 
 (deftest temporal-type-conversion-test
   (mt/with-driver :bigquery-cloud-sdk
-    (mt/with-everything-store
+    (qp.store/with-metadata-provider (mt/id)
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
         (let [temporal-string "2022-01-01"
               convert         (fn [from-t to-t]
@@ -430,9 +431,9 @@
                 (is (= [(str (name to-t) "(timestamp(?, 'US/Pacific'), 'US/Pacific')") temporal-string]
                        (convert :timestamp to-t)))))))))))
 
-(deftest reconcile-relative-datetimes-test
+(deftest ^:parallel reconcile-relative-datetimes-test-1
   (mt/with-driver :bigquery-cloud-sdk
-    (mt/with-everything-store
+    (qp.store/with-metadata-provider (mt/id)
       (testing "relative-datetime clauses on their own"
         (doseq [[t [unit expected-sql]]
                 {:time      [:hour "time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)"]
@@ -448,8 +449,11 @@
               (testing "Should get converted to the correct SQL"
                 (is (= [(str "WHERE " expected-sql)]
                        (sql.qp/format-honeysql :bigquery-cloud-sdk
-                                               {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)}))))))))
+                                               {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)})))))))))))
 
+(deftest reconcile-relative-datetimes-test-2
+  (mt/with-driver :bigquery-cloud-sdk
+    (qp.store/with-metadata-provider (mt/id)
       (testing "relative-datetime clauses on their own when a reporting timezone is set"
         (doseq [timezone ["UTC" "US/Pacific"]]
           (mt/with-temporary-setting-values [report-timezone timezone]
@@ -467,8 +471,11 @@
                   (testing "Should get converted to the correct SQL"
                     (is (= [(str "WHERE " expected-sql)]
                            (sql.qp/format-honeysql :bigquery-cloud-sdk
-                                                   {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)}))))))))))
+                                                   {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)})))))))))))))
 
+(deftest ^:parallel reconcile-relative-datetimes-test-3
+  (mt/with-driver :bigquery-cloud-sdk
+    (qp.store/with-metadata-provider (mt/id)
       (testing "relative-datetime clauses inside filter clauses"
         (doseq [[expected-type t] {:date      #t "2020-01-31"
                                    :datetime  #t "2020-01-31T20:43:00.000"
@@ -484,19 +491,20 @@
 
 (deftest field-literal-trunc-form-test
   (testing "`:field` clauses with literal string names should be quoted correctly when doing date truncation (#20806)"
-    (is (= ["datetime_trunc(datetime(`source`.`date`), week(sunday))"]
-           (sql.qp/format-honeysql
-            :bigquery-cloud-sdk
-            (sql.qp/->honeysql
-             :bigquery-cloud-sdk
-             [:field "date" {:temporal-unit      :week
-                             :base-type          :type/Date
-                             ::add/source-table  ::add/source
-                             ::add/source-alias  "date"
-                             ::add/desired-alias "date"
-                             ::add/position      0}]))))))
+    (mt/with-temporary-setting-values [start-of-week :sunday]
+      (is (= ["datetime_trunc(datetime(`source`.`date`), week(sunday))"]
+             (sql.qp/format-honeysql
+              :bigquery-cloud-sdk
+              (sql.qp/->honeysql
+               :bigquery-cloud-sdk
+               [:field "date" {:temporal-unit      :week
+                               :base-type          :type/Date
+                               ::add/source-table  ::add/source
+                               ::add/source-alias  "date"
+                               ::add/desired-alias "date"
+                               ::add/position      0}])))))))
 
-(deftest between-test
+(deftest ^:parallel between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
     (letfn [(between->sql [clause]
               (sql.qp/format-honeysql :bigquery-cloud-sdk
@@ -526,7 +534,7 @@
                               (t/local-date "2019-11-11")
                               (t/local-date "2019-11-12")]))))
       (mt/test-driver :bigquery-cloud-sdk
-        (mt/with-everything-store
+        (qp.store/with-metadata-provider (mt/id)
           (let [expected [(with-test-db-name "WHERE `v3_test_data.checkins`.`date` BETWEEN ? AND ?")
                           (t/local-date "2019-11-11")
                           (t/local-date "2019-11-12")]]
@@ -623,7 +631,7 @@
 
 (deftest current-datetime-honeysql-form-test
   (mt/test-driver :bigquery-cloud-sdk
-    (mt/with-everything-store
+    (qp.store/with-metadata-provider (mt/id)
       (testing (str "The object returned by `current-datetime-honeysql-form` should be a magic object that can take on "
                     "whatever temporal type we want.")
         (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
@@ -664,12 +672,12 @@
                          (hformat/format (#'bigquery.qp/->temporal-type temporal-type form)))
                       "Should specify the correct timezone in the SQL for non-timestamp functions"))))))))))
 
-(deftest add-interval-honeysql-form-test
+(deftest ^:parallel add-interval-honeysql-form-test
   ;; this doesn't test conversion to/from time because there's no unit we can use that works for all for. So we'll
   ;; just test the 3 that support `:day` and that should be proof the logic is working. (The code that actually uses
   ;; this is tested e2e by `filter-by-relative-date-ranges-test` anyway.)
   (mt/test-driver :bigquery-cloud-sdk
-    (mt/with-everything-store
+    (qp.store/with-metadata-provider (mt/id)
       (doseq [initial-type [:date :datetime :timestamp]
               :let         [form (sql.qp/add-interval-honeysql-form
                                   :bigquery-cloud-sdk
@@ -705,7 +713,7 @@
 (deftest filter-by-relative-date-ranges-test
   (mt/with-driver :bigquery-cloud-sdk
     (testing "Make sure the SQL we generate for filters against relative-datetimes is typed correctly"
-      (mt/with-everything-store
+      (qp.store/with-metadata-provider (mt/id)
         (doseq [[field-type [unit expected-sql]]
                 {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
                                                        " = time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)")]
@@ -726,12 +734,14 @@
                                            [:=
                                             [:field (:id f) {:temporal-unit     unit
                                                              ::add/source-table "ABC"}]
-                                            [:relative-datetime -1 unit]])}))))))))
+                                            [:relative-datetime -1 unit]])}))))))))))
 
+(deftest filter-by-relative-date-ranges-test-2
+  (mt/with-driver :bigquery-cloud-sdk
     (testing "Make sure the SQL we generate for filters against relative-datetimes uses the reporting timezone when set"
       (doseq [timezone ["UTC" "US/Pacific"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
-          (mt/with-everything-store
+          (qp.store/with-metadata-provider (mt/id)
             (doseq [[field-type [unit expected-sql]]
                     {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
                                                            " = time_trunc(time_add(current_time('" timezone "'), INTERVAL -1 hour), hour)")]
@@ -779,7 +789,7 @@
                                   (zipmap units vs)))))
                  (rest table)))))
 
-(deftest filter-by-relative-date-ranges-e2e-test
+(deftest ^:parallel filter-by-relative-date-ranges-e2e-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing (str "Make sure filtering against relative date ranges works correctly regardless of underlying column "
                   "type (#11725)")
@@ -804,13 +814,13 @@
     (catch Throwable _
       false)))
 
-(deftest breakout-by-bucketed-datetimes-e2e-test
+(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure datetime breakouts like :minute-of-hour work correctly for different temporal types"
       (mt/dataset attempted-murders
         (test-table-with-fn breakout-test-table can-breakout?)))))
 
-(deftest string-escape-test
+(deftest ^:parallel string-escape-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure single quotes in parameters are escaped properly to prevent SQL injection\n"
       (testing "MBQL query"
@@ -831,7 +841,7 @@
                                     "WHERE `v3_test_data.venues`.`name` = ?"))
                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
-(deftest escape-alias-test
+(deftest ^:parallel escape-alias-test
   (testing "`escape-alias` should generate valid field identifiers"
     (testing "no need to change anything"
       (is (= "abc"
@@ -855,7 +865,7 @@
       (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
              (driver/escape-alias :bigquery-cloud-sdk (str/join (repeat 300 "a"))))))))
 
-(deftest remove-diacriticals-from-field-aliases-test
+(deftest ^:parallel remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
       (mt/with-bigquery-fks!
@@ -872,7 +882,7 @@
                           :limit     [1]})
                       query))))))))
 
-(deftest multiple-template-parameters-test
+(deftest ^:parallel multiple-template-parameters-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure multiple template parameters can be used in a single query correctly (#15487)"
       (is (= ["foo" "bar"]
@@ -902,12 +912,12 @@
 
 (defn- project-id-prefix-if-set []
   (if-let [proj-id (mt/with-driver :bigquery-cloud-sdk
-                     (mt/with-everything-store
+                     (qp.store/with-metadata-provider (mt/id)
                        (#'bigquery.qp/project-id-for-current-query)))]
     (str proj-id \.)
     ""))
 
-(deftest multiple-counts-test
+(deftest ^:parallel multiple-counts-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Count of count grouping works (#15074)"
       (let [query (mt/mbql-query checkins
@@ -935,7 +945,7 @@
                  (mt/rows
                   (qp/process-query query)))))))))
 
-(deftest custom-expression-args-quoted
+(deftest ^:parallel custom-expression-args-quoted
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset sample-dataset
       (testing "Arguments to custom aggregation expression functions have backticks applied properly"
@@ -952,7 +962,7 @@
                                              {:name "CE", :display-name "CE"}]]
                               :limit       10}))))))))
 
-(deftest no-qualify-breakout-field-name-with-subquery-test
+(deftest ^:parallel no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure columns name `source` in source query work correctly (#18742)"
       (let [query (mt/mbql-query checkins
@@ -970,7 +980,7 @@
           (is (= [["2" 1]]
                  (mt/rows (qp/process-query query)))))))))
 
-(deftest cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
+(deftest ^:parallel cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
   (testing "cast timestamps to datetimes so we can use datetime_add() if needed for units like month (#21969)"
     (is (= ["datetime_add(CAST((`absolute-datetime`, ?) AS datetime), INTERVAL 3 month)"
             #t "2022-04-22T18:27-08:00"]
@@ -978,7 +988,7 @@
                  hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
              (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))
 
-(deftest custom-expression-with-space-in-having
+(deftest ^:parallel custom-expression-with-space-in-having
   (mt/test-driver :bigquery-cloud-sdk
     (mt/dataset avian-singles
       (testing "Custom expressions with spaces are matched properly (#22310)"

@@ -107,7 +107,7 @@
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
 
-(mu/defn ^:private db-id :- ::lib.schema.common/positive-int
+(mu/defn ^:private database-id :- ::lib.schema.common/positive-int
   []
   (or (miscellaneous-value [::database-id])
       (throw (ex-info "Cannot use metadata-provider before Database ID is set; initialize it with qp.store/with-metadata-provider"
@@ -116,7 +116,7 @@
 (mu/defn metadata-provider :- lib.metadata/MetadataProvider
   "Create a new MLv2 metadata provider that uses the QP store."
   ([]
-   (metadata-provider (db-id)))
+   (metadata-provider (database-id)))
 
   ([database-id :- ::lib.schema.id/database]
    (if-let [existing-database-id (miscellaneous-value [::database-id])]
@@ -219,7 +219,7 @@
     (doseq [table-id table-ids]
       (when-not (contains? fetched-table-ids table-id)
         (throw (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." table-id)
-                        {:table table-id, :database (db-id)})))))
+                        {:table table-id, :database (database-id)})))))
   nil)
 
 (mu/defn fetch-and-store-fields! :- :nil
@@ -231,15 +231,16 @@
     (doseq [field-id field-ids]
       (when-not (contains? fetched-field-ids field-id)
         (throw (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." field-id)
-                        {:field field-id, :database (db-id)})))))
+                        {:field field-id, :database (database-id)})))))
   nil)
 
 (mu/defn database :- DatabaseInstanceWithRequiredStoreKeys
   "Fetch the Database referenced by the current query from the QP Store. Throws an Exception if valid item is not
   returned."
   []
-  (-> (or (lib.metadata/database (metadata-provider))
-          (throw (Exception. (tru "Error: Database is not present in the Query Processor Store."))))
+  (-> (or (lib.metadata.protocols/database (metadata-provider))
+          (throw (ex-info (tru "Database {0} does not exist." (pr-str (database-id)))
+                          {:database-id (database-id)})))
       (dissoc :lib/type)
       (update-keys u/->snake_case_en)
       (vary-meta assoc :type :model/Database)))
@@ -247,8 +248,9 @@
 (defn- default-table
   "Default implementation of [[table]]."
   [table-id]
-  (-> (or (lib.metadata/table (metadata-provider) table-id)
-          (throw (Exception. (tru "Error: Table {0} is not present in the Query Processor Store." table-id))))
+  (-> (or (lib.metadata.protocols/table (metadata-provider) table-id)
+          (throw (ex-info (tru "Table {0} does not exist." (pr-str table-id))
+                          {:table-id table-id})))
       (dissoc :lib/type)
       (update-keys u/->snake_case_en)
       (vary-meta assoc :type :model/Table)))
@@ -265,9 +267,10 @@
 (defn- default-field
   "Default implementation of [[field]]."
   [field-id]
-  (-> (or (lib.metadata/field (metadata-provider) field-id)
-          (throw (Exception. (tru "Error: Field {0} is not present in the Query Processor Store." field-id))))
-      (dissoc :lib/type)
+  (-> (or (lib.metadata.protocols/field (metadata-provider) field-id)
+          (throw (ex-info (tru "Field {0} does not exist." (pr-str field-id))
+                          {:field-id field-id})))
+      (dissoc :lib/type :lib/external-remap :lib/internal-remap)
       (update-keys u/->snake_case_en)
       (vary-meta assoc :type :model/Field)))
 
