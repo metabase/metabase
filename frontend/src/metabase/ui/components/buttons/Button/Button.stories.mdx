@@ -85,18 +85,6 @@ Not to use:
 
 ## Examples
 
-export const ButtonTemplate = args => <Button {...args}>Button</Button>;
-
-export const ButtonGroupTemplate = args => (
-  <Button.Group>
-    <Button {...args}>Button</Button>
-    <Button {...args}>Button</Button>
-    <Button {...args}>Button</Button>
-    <Button {...args}>Button</Button>
-    <Button {...args}>Button</Button>
-  </Button.Group>
-);
-
 export const ButtonRowTemplate = args => (
   <Group noWrap>
     <Button {...args}>Save</Button>
@@ -153,6 +141,14 @@ export const LoadingButtonGridTemplate = args => (
     <LoadingButtonRowTemplate {...args} variant="subtle" />
   </Stack>
 );
+
+### Default
+
+export const Default = args => <Button {...args}>Button</Button>;
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
 
 ### Default size
 
