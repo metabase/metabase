@@ -70,9 +70,9 @@
    (thunk)
    (catch SQLException e
      (throw (ex-info (or (ex-message e) "Error executing action.")
-                     (or (some-> (parse-sql-error driver database action e) (assoc :status-code 400))
-                         (ex-data e)
-                         {}))))))
+                     (merge (or (parse-sql-error driver database action e)
+                                (assoc (ex-data e) :message (ex-message e)))
+                            {:status-code 400}))))))
 
 (defmacro ^:private with-auto-parse-sql-exception
   "Execute body and if there is an exception, try to parse the error message to search for known sql errors then throw a regular (and easier to understand/process) exception."

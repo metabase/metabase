@@ -35,7 +35,7 @@
 (def ^:private parse-sql-error-called? (atom false))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [::parse-sql-error-exception actions.error/incorrect-value-type]
-  [_driver _error-type _database message]
+  [_driver _error-type _database _action-type message]
   (reset! parse-sql-error-called? true)
   (throw (ex-info "OOPS I THREW AN EXCEPTION!" {:message message})))
 
