@@ -20,6 +20,7 @@
                             "/modules/drivers/bigquery-cloud-sdk/src"
                             "/modules/drivers/druid/src"
                             "/modules/drivers/google/src"
+                            "/modules/drivers/googleanalytics/src"
                             "/modules/drivers/mongo/src"
                             "/modules/drivers/oracle/src"
                             "/modules/drivers/presto-jdbc/src"
@@ -60,7 +61,7 @@
     'metabase.shared.util.i18n/trs})
 
 (def ^:private plural-translation-macro-names
-  #{"trsn" "trsu" "deferred-trsn" "deferred-trun"})
+  #{"trsn" "trun" "deferred-trsn" "deferred-trun"})
 
 (s/def ::translate (s/and
                      (complement vector?)

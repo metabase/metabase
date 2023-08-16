@@ -26,7 +26,7 @@ function createOptionsFromValuesWithoutOptions(
   return values.filter(value => !optionsMap[value]).map(value => [value]);
 }
 
-const ListField = ({
+export const ListField = ({
   onChange,
   value,
   options,
@@ -147,6 +147,3 @@ const ListField = ({
     </>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ListField;

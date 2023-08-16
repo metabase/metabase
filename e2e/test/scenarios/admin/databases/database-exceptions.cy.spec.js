@@ -1,4 +1,9 @@
-import { restore, typeAndBlurUsingLabel, isEE } from "e2e/support/helpers";
+import {
+  restore,
+  typeAndBlurUsingLabel,
+  isEE,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 
 describe("scenarios > admin > databases > exceptions", () => {
   beforeEach(() => {
@@ -61,6 +66,8 @@ describe("scenarios > admin > databases > exceptions", () => {
 
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
+
+    isEE && setTokenFeatures("all");
 
     cy.intercept(
       {

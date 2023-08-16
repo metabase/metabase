@@ -45,7 +45,8 @@
   [symb & args]
   (let [f (try
             (classloader/require (symbol (namespace symb)))
-            (resolve symb)
+            (or (resolve symb)
+                (throw (ex-info (trs "{0} does not exist" symb) {})))
             (catch Throwable e
               (throw (ex-info (trs "The ''{0}'' command is only available in Metabase Enterprise Edition." (name symb))
                               {:command symb}

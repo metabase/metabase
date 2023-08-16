@@ -10,6 +10,8 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
@@ -175,8 +177,10 @@
     (doseq [{:keys [action request-body]} (mock-requests)
             :when (row-action? action)]
       (testing (str action " without :query")
-        (is (thrown-with-msg? Exception #"Value does not match schema:.*"
-                              (actions/perform-action! action (dissoc request-body :query))))))))
+        (is (thrown-with-msg?
+             Exception
+             #"\QMBQL queries must specify `:query`.\E"
+             (actions/perform-action! action (dissoc request-body :query))))))))
 
 (deftest row-update-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)

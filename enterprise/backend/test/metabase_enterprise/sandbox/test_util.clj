@@ -48,7 +48,7 @@
                                                                 :table_id             (data/id table-kw)
                                                                 :card_id              card-id
                                                                 :attribute_remappings remappings}]
-           (perms/grant-permissions! group (perms/table-segmented-query-path (t2/select-one Table :id (data/id table-kw))))
+           (perms/grant-permissions! group (perms/table-sandboxed-query-path (t2/select-one Table :id (data/id table-kw))))
            (do-with-gtap-defs group more f)))))))
 
 (def ^:private WithGTAPsArgs
@@ -70,7 +70,7 @@
               (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]
                 ;; set user login_attributes
                 (with-user-attributes test-user-name-or-user-id attributes
-                  (premium-features-test/with-premium-features #{:sandboxes}
+                  (premium-features-test/with-additional-premium-features #{:sandboxes}
                     ;; create Cards/GTAPs from defs
                     (do-with-gtap-defs group gtaps
                       (fn []

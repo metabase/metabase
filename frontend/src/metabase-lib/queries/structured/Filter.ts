@@ -7,6 +7,8 @@ import type {
   FieldFilter,
   FieldReference,
 } from "metabase-types/api";
+import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
+import { parseTimestamp } from "metabase/lib/time";
 import { isExpression } from "metabase-lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
 import {
@@ -62,6 +64,28 @@ export default class Filter extends MBQLClause {
   }
 
   /**
+   * Returns the array of arguments as dates if they are specific dates, and returns their temporal unit.
+   */
+  specificDateArgsAndUnit() {
+    const field = this.dimension()?.field();
+    const isSpecific = ["=", "between", "<", ">"].includes(this.operatorName());
+    if ((field?.isDate() || field?.isTime()) && isSpecific) {
+      const args = this.arguments();
+      const dates = args.map(d => parseTimestamp(d));
+      if (dates.every(d => d.isValid())) {
+        const detectedUnit = dates.some(d => d.minutes())
+          ? "minute"
+          : dates.some(d => d.hours())
+          ? "hour"
+          : "day";
+        const unit = this.dimension()?.temporalUnit() ?? detectedUnit;
+        return [dates, unit];
+      }
+    }
+    return [undefined, undefined];
+  }
+
+  /**
    * Returns the display name for the filter
    */
   displayName({
@@ -72,17 +96,23 @@ export default class Filter extends MBQLClause {
       const segment = this.segment();
       return segment ? segment.displayName() : t`Unknown Segment`;
     } else if (this.isStandard()) {
-      const dimension = this.dimension();
-      const operator = this.operator();
-      const dimensionName =
-        dimension && includeDimension && dimension.displayName();
-      const operatorName =
-        operator &&
-        includeOperator &&
-        !isStartingFrom(this) &&
-        operator.moreVerboseName;
-      const argumentNames = this.formattedArguments().join(" ");
-      return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
+      if (isStartingFrom(this)) {
+        includeOperator = false;
+      }
+      const [dates, dateUnit] = this.specificDateArgsAndUnit();
+      const origOp = this.operatorName();
+      const dateRangeStr =
+        dates &&
+        ["=", "between"].includes(origOp) &&
+        formatDateTimeRangeWithUnit(dates, dateUnit, { type: "tooltip" });
+      const op = dateRangeStr ? "=" : origOp;
+      return [
+        includeDimension && this.dimension()?.displayName(),
+        includeOperator && this.operator(op)?.moreVerboseName,
+        dateRangeStr || this.formattedArguments().join(" "),
+      ]
+        .map(s => s || "")
+        .join(" ");
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
     } else {
@@ -203,9 +233,9 @@ export default class Filter extends MBQLClause {
     return this[0];
   }
 
-  operator(): FilterOperator | null | undefined {
+  operator(opName = this.operatorName()): FilterOperator | null | undefined {
     const dimension = this.dimension();
-    return dimension ? dimension.filterOperator(this.operatorName()) : null;
+    return dimension ? dimension.filterOperator(opName) : null;
   }
 
   setOperator(operatorName: string) {

@@ -47,7 +47,9 @@ export function LeftNavPane({ children, fullHeight = true }) {
         "full-height": fullHeight,
       })}
     >
-      <ul className="AdminList-items pt1">{children}</ul>
+      <ul className="AdminList-items pt1" aria-label="admin-list-items">
+        {children}
+      </ul>
     </div>
   );
 }

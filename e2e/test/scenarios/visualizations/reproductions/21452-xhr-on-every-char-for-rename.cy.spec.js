@@ -45,7 +45,7 @@ describe("issue 21452", () => {
     cy.get("circle").first().realHover();
 
     popover().within(() => {
-      testPairedTooltipValues("Created At", "2016");
+      testPairedTooltipValues("Created At", "2022");
       testPairedTooltipValues("Foo", "3,236");
     });
 

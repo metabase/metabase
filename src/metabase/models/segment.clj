@@ -73,7 +73,7 @@
   (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
                             (lib.metadata.protocols/store-metadatas! :metadata/segment segments))
         field-ids         (mbql.u/referenced-field-ids (map :definition segments))
-        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/field field-ids)
+        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
                                 (comp cat (map :table_id))
                                 [fields segments])]
@@ -108,8 +108,8 @@
                           (m/map-vals (fn [v] {:after v}) (:after base-diff))
                           (m/map-vals (fn [v] {:before v}) (:before base-diff)))
         (or (get-in base-diff [:after :definition])
-            (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
-                                                                          :after  (get-in segment2 [:definition])})))))
+            (get-in base-diff [:before :definition])) (assoc :definition {:before (get segment1 :definition)
+                                                                          :after  (get segment2 :definition)})))))
 
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------

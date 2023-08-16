@@ -183,7 +183,7 @@
 
 (defmethod lib-type :field
   [_object-type]
-  :metadata/field)
+  :metadata/column)
 
 (defmethod excluded-keys :field
   [_object-type]
@@ -253,6 +253,7 @@
       :fields          (parse-fields v)
       :visibility-type (keyword v)
       :dataset-query   (js->clj v :keywordize-keys true)
+      :dataset         v
       ;; this is not complete, add more stuff as needed.
       v)))
 
@@ -263,7 +264,7 @@
   (or (object-get obj "_card")
       obj))
 
-(defn- assamble-card
+(defn- assemble-card
   [metadata id]
   (let [parse-card-ignoring-plain-object (parse-object-fn :card {:use-plain-object? false})
         parse-card (parse-object-fn :card)]
@@ -288,9 +289,9 @@
   [_object-type metadata]
   (into {}
         (map (fn [id]
-               [id (delay (assamble-card metadata id))]))
+               [id (delay (assemble-card metadata id))]))
         (-> #{}
-            (into (keep lib.util/string-table-id->card-id)
+            (into (keep lib.util/legacy-string-table-id->card-id)
                   (gobject/getKeys (object-get metadata "tables")))
             (into (map parse-long)
                   (gobject/getKeys (object-get metadata "questions"))))))
@@ -364,16 +365,28 @@
   (some-> metadata :segments deref (get segment-id) deref))
 
 (defn- tables [metadata database-id]
-  (for [[_id table-delay]  (some-> metadata :tables deref)
-        :let               [a-table (some-> table-delay deref)]
-        :when              (and a-table (= (:db-id a-table) database-id))]
+  (for [[_id table-delay] (some-> metadata :tables deref)
+        :let              [a-table (some-> table-delay deref)]
+        :when             (and a-table (= (:db-id a-table) database-id))]
     a-table))
 
 (defn- fields [metadata table-id]
-  (for [[_id field-delay]  (some-> metadata :fields deref)
-        :let               [a-field (some-> field-delay deref)]
-        :when              (and a-field (= (:table-id a-field) table-id))]
+  (for [[_id field-delay] (some-> metadata :fields deref)
+        :let              [a-field (some-> field-delay deref)]
+        :when             (and a-field (= (:table-id a-field) table-id))]
     a-field))
+
+(defn- metrics [metadata table-id]
+  (for [[_id metric-delay] (some-> metadata :metrics deref)
+        :let               [a-metric (some-> metric-delay deref)]
+        :when              (and a-metric (= (:table-id a-metric) table-id))]
+    a-metric))
+
+(defn- segments [metadata table-id]
+  (for [[_id segment-delay] (some-> metadata :segments deref)
+        :let               [a-segment (some-> segment-delay deref)]
+        :when              (and a-segment (= (:table-id a-segment) table-id))]
+    a-segment))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
@@ -389,6 +402,8 @@
       (card     [_this card-id]    (card     metadata card-id))
       (tables   [_this]            (tables   metadata database-id))
       (fields   [_this table-id]   (fields   metadata table-id))
+      (metrics  [_this table-id]   (metrics  metadata table-id))
+      (segments [_this table-id]   (segments metadata table-id))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.

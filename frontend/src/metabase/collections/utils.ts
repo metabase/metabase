@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Collection, CollectionId, CollectionItem } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
@@ -16,7 +17,10 @@ export function isPersonalCollection(collection: Partial<Collection>): boolean {
 export function isInstanceAnalyticsCollection(
   collection: Partial<Collection>,
 ): boolean {
-  return collection.type === "instance-analytics";
+  return (
+    PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
+    "instance-analytics"
+  );
 }
 
 // Replace the name for the current user's collection
@@ -45,7 +49,7 @@ function getNonRootParentId(collection: Collection) {
     return nonRootParent ? nonRootParent.id : undefined;
   }
   // location is a string like "/1/4" where numbers are parent collection IDs
-  const nonRootParentId = collection.location?.split("/")?.[0];
+  const nonRootParentId = collection.location?.split("/")?.[1];
   return canonicalCollectionId(nonRootParentId);
 }
 
@@ -59,6 +63,16 @@ export function isPersonalCollectionChild(
   }
   const parentCollection = collectionList.find(c => c.id === nonRootParentId);
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
+}
+
+export function isPersonalCollectionOrChild(
+  collection: Collection,
+  collectionList: Collection[],
+): boolean {
+  return (
+    isPersonalCollection(collection) ||
+    isPersonalCollectionChild(collection, collectionList)
+  );
 }
 
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {

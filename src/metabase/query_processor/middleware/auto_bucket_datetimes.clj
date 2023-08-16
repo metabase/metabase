@@ -10,26 +10,28 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private FieldTypeInfo
-  {:base-type                      (s/maybe su/FieldType)
-   (s/optional-key :semantic-type) (s/maybe su/FieldSemanticOrRelationType)
-   s/Keyword                       s/Any})
+  [:map
+   [:base-type [:maybe ms/FieldType]]
+   [:semantic-type {:optional true} [:maybe ms/FieldSemanticOrRelationType]]])
 
 (def ^:private FieldIDOrName->TypeInfo
-  {(s/cond-pre su/NonBlankString su/IntGreaterThanZero) (s/maybe FieldTypeInfo)})
+  [:map-of
+   [:or ms/NonBlankString ms/PositiveInt]
+   [:maybe FieldTypeInfo]])
 
 ;; Unfortunately these Fields won't be in the store yet since Field resolution can't happen before we add the implicit
 ;; `:fields` clause, which happens after this
 ;;
 ;; TODO - What we could do tho is fetch all the stuff we need for the Store and then save these Fields in the store,
 ;; which would save a bit of time when we do resolve them
-(s/defn ^:private unbucketed-fields->field-id->type-info :- FieldIDOrName->TypeInfo
+(mu/defn ^:private unbucketed-fields->field-id->type-info :- FieldIDOrName->TypeInfo
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`."
-  [unbucketed-fields :- (su/non-empty [mbql.s/field])]
+  [unbucketed-fields :- [:sequential {:min 1} mbql.s/field]]
   (merge
    ;; build map of field-literal-name -> {:base-type base-type}
    (into {} (for [[_ id-or-name {:keys [base-type]}] unbucketed-fields
@@ -84,7 +86,7 @@
                 [:type/Date :type/DateTime]))
         [base-type effective-type]))
 
-(s/defn ^:private wrap-unbucketed-fields
+(mu/defn ^:private wrap-unbucketed-fields
   "Add `:temporal-unit` to `:field`s in breakouts and filters if appropriate; look at corresponing type information in
   `field-id->type-info` to see if we should do so."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
@@ -108,7 +110,7 @@
                  [:field id-or-name (assoc opts :temporal-unit :day)]))]
        (m/update-existing inner-query clause-to-rewrite wrap-fields)))))
 
-(s/defn ^:private auto-bucket-datetimes-this-level
+(mu/defn ^:private auto-bucket-datetimes-this-level
   [{breakouts :breakout, filter-clause :filter, :as inner-query}]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)

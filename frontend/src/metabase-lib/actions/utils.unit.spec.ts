@@ -45,7 +45,7 @@ describe("canRunAction", () => {
   it("should be able to run an action if the database has actions enabled", () => {
     const { database, action } = setup({
       database: createMockDatabase({
-        native_permissions: "read",
+        native_permissions: "write",
         settings: { "database-enable-actions": true },
       }),
     });

@@ -96,11 +96,11 @@ describe("scenarios > visualizations > bar chart", () => {
           type: "native",
           native: {
             query:
-              "select '2021-01-01' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n" +
+              "select '2027-01-01' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n" +
               "union all\n" +
-              "select '2021-01-02' as x_axis_1, 'A' as x_axis_2, 19 as y_axis\n" +
+              "select '2027-01-02' as x_axis_1, 'A' as x_axis_2, 19 as y_axis\n" +
               "union all\n" +
-              "select '2021-01-03' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n",
+              "select '2027-01-03' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n",
           },
           database: SAMPLE_DB_ID,
         },
@@ -180,6 +180,12 @@ describe("scenarios > visualizations > bar chart", () => {
           cy.findAllByTestId("legend-item").should("have.length", 4);
           cy.get(".enable-dots").should("have.length", 4);
         });
+
+      cy.findAllByTestId("legend-item").contains("Gadget").click();
+      popover().findByText("See these Orders").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Category is Gadget")
+        .should("exist");
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {

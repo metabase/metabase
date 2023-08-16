@@ -7,16 +7,16 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   getGroupTableAccessPolicy,
   getPolicyRequestState,
-  getAttributes,
 } from "metabase-enterprise/sandboxes/selectors";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
+import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
+import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import EditSandboxingModal from "../components/EditSandboxingModal";
 
 import {
   updatePolicy,
   fetchPolicy,
-  fetchAttributes,
   updateTableSandboxingPermission,
 } from "../actions";
 import { GroupTableAccessPolicyParams, SandboxesState } from "../types";
@@ -29,7 +29,7 @@ interface EditSandboxingModalContainerProps {
   route: any;
   policyRequestState: any;
   fetchPolicy: (params: GroupTableAccessPolicyParams) => void;
-  fetchAttributes: () => void;
+  fetchUserAttributes: () => void;
   updatePolicy: (policy: GroupTableAccessPolicy) => void;
   updateTableSandboxingPermission: (
     params: GroupTableAccessPolicyParams,
@@ -43,15 +43,15 @@ const EditSandboxingModalContainer = ({
   params,
   route,
   fetchPolicy,
-  fetchAttributes,
+  fetchUserAttributes,
   policyRequestState,
   updatePolicy,
   updateTableSandboxingPermission,
 }: EditSandboxingModalContainerProps) => {
   useEffect(() => {
     fetchPolicy(params);
-    fetchAttributes();
-  }, [fetchPolicy, params, fetchAttributes]);
+    fetchUserAttributes();
+  }, [fetchPolicy, params, fetchUserAttributes]);
 
   const isLoading = policyRequestState?.loading || !attributes;
 
@@ -91,14 +91,14 @@ const mapStateToProps = (
 ) => ({
   policy: getGroupTableAccessPolicy(state, props),
   policyRequestState: getPolicyRequestState(state, props),
-  attributes: getAttributes(state),
+  attributes: getUserAttributes(state),
 });
 
 const mapDispatchToProps = {
   push,
   fetchPolicy,
   updatePolicy,
-  fetchAttributes,
+  fetchUserAttributes,
   updateTableSandboxingPermission,
 };
 

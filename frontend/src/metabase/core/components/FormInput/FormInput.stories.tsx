@@ -1,11 +1,31 @@
+import { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
 import Form from "../Form";
 import FormProvider from "../FormProvider";
+import CheckBox from "../CheckBox";
 import FormInput from "./FormInput";
+
+const TitleActions = () => {
+  const [checked, setChecked] = useState(true);
+  return (
+    <CheckBox
+      onChange={() => setChecked(checked => !checked)}
+      checked={checked}
+      label="Show field"
+    />
+  );
+};
 
 export default {
   title: "Core/FormInput",
   component: FormInput,
+  argTypes: {
+    actions: {
+      mapping: {
+        Default: <TitleActions />,
+      },
+    },
+  },
 };
 
 const Template: ComponentStory<typeof FormInput> = args => {
@@ -30,4 +50,12 @@ export const WithDescription = Template.bind({});
 WithDescription.args = {
   title: "Title",
   description: "Description",
+};
+
+export const WithTitleAndActions = Template.bind({});
+WithTitleAndActions.args = {
+  title: "Title",
+  description: "Description",
+  optional: true,
+  actions: "Default",
 };

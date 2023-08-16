@@ -10,6 +10,7 @@ import {
   enterCustomColumnDetails,
   openProductsTable,
   selectSavedQuestionsToJoin,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -37,6 +38,7 @@ describe("scenarios > question > joined questions", () => {
 
     // join to Reviews on orders.product_id = reviews.product_id
     cy.icon("join_left_outer").click();
+    getNotebookStep("join").findByText("Pick data…").should("exist");
 
     popover().contains("Reviews").click();
     popover().contains("Product ID").click();
@@ -284,7 +286,7 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
 
-    cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2020");
+    cy.log("Reported failing in v1.35.4.1 and `master` on July, 16 2026");
 
     cy.findByTestId("question-table-badges").within(() => {
       cy.findByText("12928_Q1");

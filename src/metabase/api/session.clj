@@ -13,6 +13,7 @@
    [metabase.integrations.ldap :as ldap]
    [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
+   [metabase.models.pulse :as pulse]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user :refer [User]]
@@ -24,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
@@ -54,7 +56,7 @@
 
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
-  (let [session-uuid (UUID/randomUUID)
+  (let [session-uuid (random-uuid)
         session      (first (t2/insert-returning-instances! Session
                                                             :id      (str session-uuid)
                                                             :user_id (u/the-id user)))]
@@ -341,7 +343,7 @@
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
-    {:status :success}))
+    {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
@@ -358,6 +360,6 @@
                         {:type        type
                          :status-code 400}))
         (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
-    {:status :success}))
+    {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 
 (api/define-routes +log-all-request-failures)

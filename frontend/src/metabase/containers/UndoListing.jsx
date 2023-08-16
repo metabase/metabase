@@ -91,7 +91,7 @@ function UndoListingInner() {
   const undos = useSelector(state => state.undo);
 
   return (
-    <UndoList data-testid="undo-list">
+    <UndoList data-testid="undo-list" aria-label="undo-list">
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}

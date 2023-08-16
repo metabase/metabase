@@ -13,7 +13,7 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -25,6 +25,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -107,6 +108,7 @@
                   :dashboard_id nil
                   :error        nil
                   :id           true
+                  :action_id    nil
                   :cache_hit    false
                   :database_id  (mt/id)
                   :started_at   true
@@ -197,7 +199,7 @@
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/generate-string
-                                                           {:database mbql.s/saved-questions-virtual-database-id
+                                                           {:database lib.schema.id/saved-questions-virtual-database-id
                                                             :type     :query
                                                             :query    {:source-table (str "card__" (u/the-id card))}}))]
                   (is (some? result))
@@ -330,7 +332,22 @@
                            "  1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues {:fields [$id $name]})))))))
+                                   (mt/mbql-query venues {:fields [$id $name]})))))
+    (testing "`:now` is usable inside `:case` with mongo (#32216)"
+      (mt/test-driver :mongo
+        (is (= {:$switch
+                {:branches
+                 [{:case {:$eq [{:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}
+                                {:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}]},
+                   :then "a"}]
+                 :default "b"}}
+               (-> (mt/user-http-request
+                    :rasta :post 200 "dataset/native"
+                    (mt/mbql-query venues
+                      {:expressions
+                       {:E [:case [[[:= [:get-day [:now]] [:get-day [:now]]] "a"]]
+                            {:default "b"}]}}))
+                   :query first :$project :E)))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres
@@ -440,12 +457,12 @@
                        :type :string/=,
                        :sectionId "string"}]
         (testing "values"
-          (is (partial= {:values ["foo1" "foo2" "bar"]}
+          (is (partial= {:values [["foo1"] ["foo2"] ["bar"]]}
                         (mt/user-http-request :rasta :post 200
                                               "dataset/parameter/values"
                                               {:parameter parameter}))))
         (testing "search"
-          (is (partial= {:values ["foo1" "foo2"]}
+          (is (partial= {:values [["foo1"] ["foo2"]]}
                         (mt/user-http-request :rasta :post 200
                                               "dataset/parameter/search/fo"
                                               {:parameter parameter}))))))
@@ -467,13 +484,13 @@
                                                    "dataset/parameter/values"
                                                    {:parameter parameter})
                              :values set)]
-              (is (= #{"Gizmo" "Widget" "Gadget" "Doohickey"} values))))
+              (is (= #{["Gizmo"] ["Widget"] ["Gadget"] ["Doohickey"]} values))))
           (testing "search"
             (let [values (-> (mt/user-http-request :rasta :post 200
                                                    "dataset/parameter/search/g"
                                                    {:parameter parameter})
                              :values set)]
-              (is (= #{"Gizmo" "Widget" "Gadget"} values)))))))
+              (is (= #{["Gizmo"] ["Widget"] ["Gadget"]} values)))))))
 
     (testing "nil value (current behavior of field values)"
       (let [parameter {:values_query_type "list",
@@ -514,25 +531,27 @@
             (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values))))))
 
     (testing "fallback to field-values"
-      (with-redefs [api.dataset/parameter-field-values (constantly "field-values")]
-        (testing "if value-field not found in source card"
-          (t2.with-temp/with-temp [Card {source-card-id :id}]
-            (is (= "field-values"
-                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
-                                         {:parameter  {:values_source_type   "card"
-                                                       :values_source_config {:card_id     source-card-id
-                                                                              :value_field (mt/$ids $people.source)}
-                                                       :type                 :string/=,
-                                                       :name                 "Text"
-                                                       :id                   "abc"}})))))
+      (let [mock-default-result {:values          [["field-values"]]
+                                 :has_more_values false}]
+        (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
+          (testing "if value-field not found in source card"
+            (t2.with-temp/with-temp [Card {source-card-id :id}]
+              (is (= mock-default-result
+                     (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                           {:parameter  {:values_source_type   "card"
+                                                         :values_source_config {:card_id     source-card-id
+                                                                                :value_field (mt/$ids $people.source)}
+                                                         :type                 :string/=,
+                                                         :name                 "Text"
+                                                         :id                   "abc"}})))))
 
-        (testing "if value-field not found in source card"
-          (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
-            (is (= "field-values"
-                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
-                                         {:parameter  {:values_source_type   "card"
-                                                       :values_source_config {:card_id     source-card-id
-                                                                              :value_field (mt/$ids $people.source)}
-                                                       :type                 :string/=,
-                                                       :name                 "Text"
-                                                       :id                   "abc"}})))))))))
+          (testing "if value-field not found in source card"
+            (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
+              (is (= mock-default-result
+                     (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                           {:parameter  {:values_source_type   "card"
+                                                         :values_source_config {:card_id     source-card-id
+                                                                                :value_field (mt/$ids $people.source)}
+                                                         :type                 :string/=,
+                                                         :name                 "Text"
+                                                         :id                   "abc"}}))))))))))

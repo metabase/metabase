@@ -1,4 +1,9 @@
-import { restore, visitQuestion, describeEE } from "e2e/support/helpers";
+import {
+  restore,
+  visitQuestion,
+  describeEE,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -15,6 +20,7 @@ describeEE("issue 30535", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
 
     cy.sandboxTable({
       table_id: PRODUCTS_ID,

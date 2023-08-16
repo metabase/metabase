@@ -3,16 +3,16 @@
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
-(s/defn normalize :- s/Str
+(mu/defn normalize :- :string
   "Normalize a `query` to lower-case."
-  [query :- s/Str]
+  [query :- :string]
   (u/lower-case-en (str/trim query)))
 
-(s/defn tokenize :- [s/Str]
+(mu/defn tokenize :- [:sequential :string]
   "Break a search `query` into its constituent tokens"
-  [query :- s/Str]
+  [query :- :string]
   (filter seq
           (str/split query #"\s+")))
 

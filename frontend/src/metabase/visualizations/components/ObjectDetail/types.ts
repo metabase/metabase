@@ -40,7 +40,7 @@ export interface ObjectDetailProps {
   canZoomPreviousRow?: boolean;
   canZoomNextRow?: boolean;
   isDataApp?: boolean;
-  showActions?: boolean;
+  showControls?: boolean;
   showRelations?: boolean;
   showHeader?: boolean;
   onVisualizationClick: OnVisualizationClickType;

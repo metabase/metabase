@@ -37,6 +37,6 @@ describe("scenarios > visualizations > combo", () => {
       },
     });
     // First value label on the chart
-    cy.findAllByText("136.83");
+    cy.findAllByText("440.52");
   });
 });

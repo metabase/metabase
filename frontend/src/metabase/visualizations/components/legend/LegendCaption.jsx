@@ -42,7 +42,7 @@ const LegendCaption = ({
         {description && (
           <Tooltip
             tooltip={
-              <Markdown disallowHeading unstyleLinks>
+              <Markdown dark disallowHeading unstyleLinks>
                 {description}
               </Markdown>
             }

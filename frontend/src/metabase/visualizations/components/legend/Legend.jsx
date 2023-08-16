@@ -28,7 +28,10 @@ const propTypes = {
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
   isReversed: PropTypes.bool,
+  canRemoveSeries: PropTypes.func,
 };
+
+const alwaysTrue = () => true;
 
 const Legend = ({
   className,
@@ -42,6 +45,7 @@ const Legend = ({
   onSelectSeries,
   onRemoveSeries,
   isReversed,
+  canRemoveSeries = alwaysTrue,
 }) => {
   const targetRef = useRef();
   const [isOpened, setIsOpened] = useState(null);
@@ -87,7 +91,9 @@ const Legend = ({
             isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
-            onRemoveSeries={onRemoveSeries}
+            onRemoveSeries={
+              canRemoveSeries(itemIndex) ? onRemoveSeries : undefined
+            }
           />
         );
       })}

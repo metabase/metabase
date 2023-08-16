@@ -101,8 +101,11 @@
       (log/info "Unzipping analytics to plugins...")
       (u.files/unzip-file analytics-root-dir-resource "plugins")
       (log/info "Unzipping done.")
-      (log/info "Loading files...")
-      (let [report (log/with-no-logs (serialization.cmd/v2-load "plugins/instance_analytics" {}))]
+      (log/info (str "Loading Analytics Content from: " analytics-root-dir-resource))
+      ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+      (let [report (log/with-no-logs (serialization.cmd/v2-load-internal analytics-root-dir-resource
+                                                                         {}
+                                                                         :token-check? false))]
         (if (not-empty (:errors report))
           (log/info (str "Error Loading Analytics Content: " (pr-str report)))
           (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized.")))))))

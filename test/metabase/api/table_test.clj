@@ -46,7 +46,6 @@
     :features                    (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
     :cache_field_values_schedule "0 50 0 * * ? *"
     :metadata_sync_schedule      "0 50 * * * ? *"
-    :options                     nil
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil
@@ -745,7 +744,7 @@
           (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint temp-fingerprint}
             (is (= []
                    (-> (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))
-                       (get-in [:fields])
+                       (get :fields)
                        first
                        :dimension_options)))))))))
 

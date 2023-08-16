@@ -14,7 +14,7 @@ Instead of creating duplicate dashboards, you can add [filter widgets](#filter-w
 
 ## Adding a new filter
 
-To add a filter to a dashboard, first click the **pencil icon** to enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right.
+To add a filter to a dashboard, first click the **pencil icon** to enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right. Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though you'll need to connect filters to each card you want to filter.
 
 ![Add a Filter](./images/add-filter.png)
 
@@ -111,7 +111,7 @@ From this filter editing view, you can wire up individual dashboard cards to the
 
 ### Remove a filter
 
-1. In dashboard edit mode, click your filter's **gear** icon. 
+1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, click **Remove**.
 
 If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard edit mode without saving your changes.
@@ -122,21 +122,21 @@ In dashboard edit mode, click on the grabber handle (six dots) on the left side 
 
 ### Set a default filter value
 
-1. In dashboard edit mode, click your filter's **gear** icon. 
+1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, choose a value from the **Default value** input field.
 
 For example, you might want to set a default filter value like "Active", so that when people load your dashboard, they only see data for "Active" records (not "Inactive", "Cancelled", etc).
 
 ### Make a multi-select filter
 
-1. In dashboard edit mode, click your filter's **gear** icon. 
+1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, find **Users can pick** and select "Multiple values".
 
 A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [Search box](#search-box) will display a list of values with checkboxes.
 
 ### Change a filter's selectable values
 
-1. In dashboard edit mode, click your filter's **gear** icon. 
+1. In dashboard edit mode, click your filter's **gear** icon.
 2. From the sidebar, find **How should users filter on this column?**.
 3. Select "Dropdown list".\*
 4. Click **Edit** (to the right of "Dropdown list") to specify where the values should come from:
@@ -205,6 +205,16 @@ To link filters, you'll need to set up this parent-child relationship. And you s
 Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
 
 To learn more, check out [Linking filters in dashboards](https://www.metabase.com/learn/dashboards/linking-filters).
+
+## Auto-apply filters
+
+By default, each time you change the value in a filter on a dashboard, the dashboard will refresh to get the results of each card with that new filter value applied.
+
+If a dashboard is particularly large or slow, or you have multiple filters that you want to adjust, you may want to tell Metabase when to refresh the dashboard.
+
+To turn off the automatic application of filters, click on the info **i** icon, and toggle the **Auto-apply filters** option. With auto-apply turned off, each time you change a value in a filter, you'll need to click the apply button to refresh the dashboard with the new filter value.
+
+![Click Apply to apply the filters and refresh the dashboard](./images/apply-button.png)
 
 ## Best practices
 

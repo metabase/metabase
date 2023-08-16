@@ -55,12 +55,13 @@
   lib.metadata.protocols/MetadataProvider
   (database [_this]            (get-in-cache-or-fetch cache [:metadata/database]            #(lib.metadata.protocols/database metadata-provider)))
   (table    [_this table-id]   (get-in-cache-or-fetch cache [:metadata/table table-id]      #(lib.metadata.protocols/table    metadata-provider table-id)))
-  (field    [_this field-id]   (get-in-cache-or-fetch cache [:metadata/field field-id]      #(lib.metadata.protocols/field    metadata-provider field-id)))
+  (field    [_this field-id]   (get-in-cache-or-fetch cache [:metadata/column field-id]     #(lib.metadata.protocols/field    metadata-provider field-id)))
   (card     [_this card-id]    (get-in-cache-or-fetch cache [:metadata/card card-id]        #(lib.metadata.protocols/card     metadata-provider card-id)))
   (metric   [_this metric-id]  (get-in-cache-or-fetch cache [:metadata/metric metric-id]    #(lib.metadata.protocols/metric   metadata-provider metric-id)))
   (segment  [_this segment-id] (get-in-cache-or-fetch cache [:metadata/segment segment-id]  #(lib.metadata.protocols/segment  metadata-provider segment-id)))
   (tables   [_this]            (get-in-cache-or-fetch cache [::database-tables]             #(lib.metadata.protocols/tables   metadata-provider)))
   (fields   [_this table-id]   (get-in-cache-or-fetch cache [::table-fields table-id]       #(lib.metadata.protocols/fields   metadata-provider table-id)))
+  (metrics  [_this table-id]   (get-in-cache-or-fetch cache [::table-metrics table-id]      #(lib.metadata.protocols/metrics  metadata-provider table-id)))
 
   lib.metadata.protocols/CachedMetadataProvider
   (cached-database [_this]                           (get-in-cache    cache [:metadata/database]))
@@ -74,7 +75,7 @@
     (bulk-metadata cache metadata-provider metadata-type ids))
 
   #?@(:clj
-      [pretty.core/PrettyPrintable
+      [pretty/PrettyPrintable
        (pretty [_this]
                (list `cached-metadata-provider metadata-provider))]))
 

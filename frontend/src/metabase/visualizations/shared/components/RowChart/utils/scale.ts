@@ -7,7 +7,7 @@ import {
 } from "@visx/scale";
 import type { ScaleContinuousNumeric } from "d3-scale";
 import { ValueFormatter } from "metabase/visualizations/shared/types/format";
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import {
   ContinuousScaleType,
   Range,
@@ -100,7 +100,7 @@ const getTickInfo = (
   tickX: number,
   tickFormatter: ValueFormatter,
   tickFont: ChartFont,
-  measureText: TextMeasurer,
+  measureTextWidth: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
 ) => {
   const value = xScale.invert(tickX);
@@ -109,7 +109,7 @@ const getTickInfo = (
     value,
     tickX,
     formatted: tickFormatter(value),
-    tickWidth: measureText(tickFormatter(value), tickFont),
+    tickWidth: measureTextWidth(tickFormatter(value), tickFont),
   };
 };
 
@@ -117,7 +117,7 @@ const Y_AXIS_LEFT_PADDING = 16;
 
 export const addSideSpacingForTicksAndLabels = (
   xScale: ScaleContinuousNumeric<number, number, never>,
-  measureText: TextMeasurer,
+  measureTextWidth: TextWidthMeasurer,
   tickFont: ChartFont,
   tickFormatter: ValueFormatter,
   labelFont: ChartFont,
@@ -132,7 +132,7 @@ export const addSideSpacingForTicksAndLabels = (
     rangeMin,
     tickFormatter,
     tickFont,
-    measureText,
+    measureTextWidth,
     xScale,
   );
 
@@ -141,7 +141,7 @@ export const addSideSpacingForTicksAndLabels = (
     const leftLabelOverflow = shouldShowLabels
       ? rangeMin -
         (xScale(domainMin) -
-          measureText(labelFormatter(domainMin), labelFont) -
+          measureTextWidth(labelFormatter(domainMin), labelFont) -
           DATA_LABEL_OFFSET * 2 -
           Y_AXIS_LEFT_PADDING)
       : 0;
@@ -153,13 +153,13 @@ export const addSideSpacingForTicksAndLabels = (
     rangeMax,
     tickFormatter,
     tickFont,
-    measureText,
+    measureTextWidth,
     xScale,
   );
   const maxTickOverflow = maxTick.tickX + maxTick.tickWidth / 2 - rangeMax;
   const rightLabelOverflow = shouldShowLabels
     ? xScale(domainMax) +
-      measureText(labelFormatter(domainMax), labelFont) +
+      measureTextWidth(labelFormatter(domainMax), labelFont) +
       DATA_LABEL_OFFSET -
       rangeMax
     : 0;

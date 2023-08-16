@@ -12,7 +12,11 @@ import {
 interface DashboardSelectorProps {
   onChange: (value?: DashboardId) => void;
   value?: DashboardId;
-  collectionFilter?: (collection: Collection) => boolean;
+  collectionFilter?: (
+    collection: Collection,
+    index: number,
+    allCollections: Collection[],
+  ) => boolean;
 }
 
 export const DashboardSelector = ({

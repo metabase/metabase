@@ -14,6 +14,7 @@ const ChartSettingSelect = ({
   className,
   placeholder,
   placeholderNoOptions,
+  id,
   ...props
 }) => (
   <SelectWithHighlightingIcon
@@ -26,6 +27,7 @@ const ChartSettingSelect = ({
     onChange={e => onChange(e.target.value)}
     placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
     isInitiallyOpen={isInitiallyOpen}
+    buttonProps={{ id }}
     {...props}
   >
     {options.map(option => (

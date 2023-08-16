@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-database-and-driver
   (:require
    [metabase.driver :as driver]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -10,7 +10,7 @@
 
 (defn- resolve-database* [{database-id :database, :as query}]
   (u/prog1 query
-    (when-not (= database-id mbql.s/saved-questions-virtual-database-id)
+    (when-not (= database-id lib.schema.id/saved-questions-virtual-database-id)
       (qp.store/fetch-and-store-database! database-id))))
 
 (defn resolve-database-and-driver

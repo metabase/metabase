@@ -10,6 +10,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -42,7 +43,7 @@
 (def ^:private stage-keys
   #{:aggregation :breakout :expressions :fields :filters :order-by :joins})
 
-(defn- clean-stage [almost-stage]
+(defn- clean-stage-schema-errors [almost-stage]
   (loop [almost-stage almost-stage
          removals []]
     (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
@@ -62,6 +63,17 @@
           almost-stage
           (recur new-stage (conj removals [error-type error-location]))))
       almost-stage)))
+
+(defn- clean-stage-ref-errors [almost-stage]
+  (reduce (fn [almost-stage [loc _]]
+              (clean-location almost-stage ::lib.schema/invalid-ref loc))
+          almost-stage
+          (lib.schema/ref-errors-for-stage almost-stage)))
+
+(defn- clean-stage [almost-stage]
+  (-> almost-stage
+      clean-stage-schema-errors
+      clean-stage-ref-errors))
 
 (defn- clean [almost-query]
   (loop [almost-query almost-query
@@ -124,29 +136,45 @@
               (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
           joins)))
 
+(defn- stage-source-card-id->pMBQL
+  "If a query `stage` has a legacy `card__<id>` `:source-table`, convert it to a pMBQL-style `:source-card`."
+  [stage]
+  (if (string? (:source-table stage))
+    (-> stage
+        (assoc :source-card (lib.util/legacy-string-table-id->card-id (:source-table stage)))
+        (dissoc :source-table))
+    stage))
+
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
   (let [aggregations (->pMBQL (:aggregation stage))
-        expressions (->> stage
-                         :expressions
-                         (mapv (fn [[k v]]
-                                 (-> v
-                                     ->pMBQL
-                                     (lib.util/named-expression-clause k))))
-                         not-empty)]
+        expressions  (->> stage
+                          :expressions
+                          (mapv (fn [[k v]]
+                                  (-> v
+                                      ->pMBQL
+                                      (lib.util/named-expression-clause k))))
+                          not-empty)]
     (binding [*legacy-index->pMBQL-uuid* (into {}
                                                (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                                               [idx ag-uuid]))
                                                aggregations)]
-      (let [stage (reduce
+      (let [stage (-> stage
+                      stage-source-card-id->pMBQL
+                      (m/assoc-some :aggregation aggregations :expressions expressions))
+            stage (reduce
                    (fn [stage k]
                      (if-not (get stage k)
                        stage
                        (update stage k ->pMBQL)))
-                   (m/assoc-some stage :aggregation aggregations :expressions expressions)
+                   stage
                    (disj stage-keys :aggregation :expressions))]
         (cond-> stage
           (:joins stage) (update :joins deduplicate-join-aliases))))))
+
+(defmethod ->pMBQL :mbql.stage/native
+  [stage]
+  (m/update-existing stage :template-tags update-vals (fn [tag] (m/update-existing tag :dimension ->pMBQL))))
 
 (defmethod ->pMBQL :mbql/join
   [join]
@@ -189,10 +217,10 @@
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
         ;; in pMBQL, `:effective-type` is a required key for `:value`. `:value` SHOULD have always had `:base-type`,
-        ;; but on the off chance it did not give this `:type/*` so the schema doesn't fail entirely.
+        ;; but on the off chance it did not, get the type from value so the schema doesn't fail entirely.
         opts (assoc opts :effective-type (or (:effective-type opts)
                                              (:base-type opts)
-                                             :type/*))]
+                                             (lib.schema.expression/type-of value)))]
     (lib.options/ensure-uuid [:value opts value])))
 
 (defmethod ->pMBQL :case
@@ -396,7 +424,17 @@
                (update-list->legacy-boolean-expression :conditions :condition))
            (chain-stages base))))
 
-(defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
+(defn- source-card->legacy-source-table
+  "If a pMBQL query stage has `:source-card` convert it to legacy-style `:source-table \"card__<id>\"`."
+  [stage]
+  (if-let [source-card-id (:source-card stage)]
+    (-> stage
+        (dissoc :source-card)
+        (assoc :source-table (str "card__" source-card-id)))
+    stage))
+
+(defmethod ->legacy-MBQL :mbql.stage/mbql
+  [stage]
   (binding [*pMBQL-uuid->legacy-index* (into {}
                                              (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
                                                             [ag-uuid idx]))
@@ -404,6 +442,7 @@
     (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
             (-> stage
                 disqualify
+                source-card->legacy-source-table
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
                 (m/update-existing :expressions (fn [expressions]
                                                   (into {}

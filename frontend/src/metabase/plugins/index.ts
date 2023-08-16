@@ -6,6 +6,7 @@ import type { IconName, IconProps } from "metabase/core/components/Icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {
+  DataPermission,
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
@@ -14,16 +15,20 @@ import type {
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
   Dataset,
   Group,
+  GroupPermissions,
   GroupsPermissions,
   Revision,
   User,
   UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
+import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type Question from "metabase-lib/Question";
 
+import type Database from "metabase-lib/metadata/Database";
 import { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
@@ -51,9 +56,20 @@ export const PLUGIN_ADMIN_TOOLS = {
 };
 
 // functions that update the sections
-export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
+export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
+  sections: typeof ADMIN_SETTINGS_SECTIONS,
+) => void)[] = [];
 
 // admin permissions
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES = [];
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS = {
+  impersonated: null,
+};
+export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
+  impersonated: [],
+};
+
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
@@ -67,9 +83,25 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
   controlled: null,
 };
 
-export const PLUGIN_DATA_PERMISSIONS = {
-  getPermissionsPayloadExtraData: (_state: State) => ({}),
-  hasChanges: (_state: State) => false,
+export const PLUGIN_DATA_PERMISSIONS: {
+  permissionsPayloadExtraSelectors: ((
+    state: State,
+  ) => Record<string, unknown>)[];
+  hasChanges: ((state: State) => boolean)[];
+  updateNativePermission:
+    | ((
+        permissions: GroupsPermissions,
+        groupId: number,
+        { databaseId }: DatabaseEntityId,
+        value: any,
+        database: Database,
+        permission: DataPermission,
+      ) => GroupPermissions)
+    | null;
+} = {
+  permissionsPayloadExtraSelectors: [],
+  hasChanges: [],
+  updateNativePermission: null,
 };
 
 // user form fields, e.x. login attributes
@@ -121,8 +153,15 @@ export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
+  COLLECTION_TYPES: {
+    [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
+  },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  isRegularCollection: (_: Collection | Bookmark) => true,
+  isRegularCollection: (_: Partial<Collection> | Bookmark) => true,
+  getCollectionType: (
+    _: Partial<Collection>,
+  ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
+    AUTHORITY_LEVEL_REGULAR,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
@@ -131,6 +170,13 @@ export const PLUGIN_COLLECTIONS = {
 
 type CollectionAuthorityLevelIcon = React.ComponentType<
   Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+>;
+
+type CollectionInstanceAnalyticsIcon = React.ComponentType<
+  Omit<IconProps, "name"> & {
+    collection: Collection;
+    entity: "collection" | "question" | "model" | "dashboard";
+  }
 >;
 
 type FormCollectionAuthorityLevelPicker = React.ComponentType<
@@ -142,6 +188,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as CollectionAuthorityLevelIcon,
   FormCollectionAuthorityLevelPicker:
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
+  CollectionInstanceAnalyticsIcon:
+    PluginPlaceholder as CollectionInstanceAnalyticsIcon,
 };
 
 export type RevisionOrModerationEvent = {
@@ -170,35 +218,42 @@ export const PLUGIN_MODERATION = {
     question?: Question,
     isModerator?: boolean,
     reload?: () => void,
-  ) => ({}),
+  ) => [],
 };
 
 export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
-  databaseCacheTTLFormField: null,
   questionCacheTTLFormField: null,
   getQuestionsImplicitCacheTTL: (question?: any) => null,
   QuestionCacheSection: PluginPlaceholder,
   DashboardCacheSection: PluginPlaceholder,
   DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
+  hasQuestionCacheSection: (question: Question) => false,
 };
 
 export const PLUGIN_REDUCERS: {
   applicationPermissionsPlugin: any;
   sandboxingPlugin: any;
+  shared: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
+  shared: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
-  addDatabasePermissionOptions: (permissions: any[]) => permissions,
+  addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
+    permissions,
   addSchemaPermissionOptions: (permissions: any[], _value: string) =>
     permissions,
   addTablePermissionOptions: (permissions: any[], _value: string) =>
     permissions,
-  isBlockPermission: (_value: string) => false,
+  getDatabaseLimitedAccessPermission: (_value: string) => null,
+  isAccessPermissionDisabled: (
+    _value: string,
+    _subject: "schemas" | "tables" | "fields",
+  ) => false,
 };
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
@@ -244,4 +299,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
   ModelCacheControl: PluginPlaceholder as any,
   getMenuItems: (question?: any, onChange?: any) => ({}),
+};
+
+export const PLUGIN_EMBEDDING = {
+  isEnabled: () => false,
 };

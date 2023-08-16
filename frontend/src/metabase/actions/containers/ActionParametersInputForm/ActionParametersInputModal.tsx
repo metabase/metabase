@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import EmptyState from "metabase/components/EmptyState";
 import Modal from "metabase/components/Modal";
 import ModalContent, {
   ModalContentActionIcon,
@@ -10,6 +11,7 @@ import ActionParametersInputForm, {
 interface ModalProps {
   title: string;
   showConfirmMessage?: boolean;
+  showEmptyState: boolean;
   confirmMessage?: string;
   onEdit?: () => void;
   onClose: () => void;
@@ -19,8 +21,9 @@ export type ActionParametersInputModalProps = ModalProps &
   ActionParametersInputFormProps;
 
 function ActionParametersInputModal({
-  title,
   showConfirmMessage,
+  showEmptyState,
+  title,
   confirmMessage,
   onEdit,
   onClose,
@@ -42,8 +45,18 @@ function ActionParametersInputModal({
         onClose={onClose}
       >
         <>
-          {showConfirmMessage && <ConfirmMessage message={confirmMessage} />}
-          <ActionParametersInputForm {...formProps} />
+          {showEmptyState && (
+            <EmptyState message={t`Choose a record to update`} />
+          )}
+
+          {!showEmptyState && (
+            <>
+              {showConfirmMessage && (
+                <ConfirmMessage message={confirmMessage} />
+              )}
+              <ActionParametersInputForm {...formProps} />
+            </>
+          )}
         </>
       </ModalContent>
     </Modal>

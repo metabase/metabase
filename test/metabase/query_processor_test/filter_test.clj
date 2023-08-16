@@ -267,10 +267,28 @@
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:starts-with $name "CHE" {:case-sensitive false}]
-                    :order-by [[:asc $id]]}))))))))
+                    :order-by [[:asc $id]]})))))))
 
+      (mt/test-drivers (mt/normal-drivers)
+        (testing "expression argument"
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+                 (mt/formatted-rows :venues
+                                    (mt/run-mbql-query venues
+                                      {:filter   [:starts-with $name [:lower [:substring $name 1 3]] {:case-sensitive false}]
+                                       :order-by [[:asc $id]]
+                                       :limit 3})))))
 
-
+        (testing "field argument"
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+                 (mt/formatted-rows :venues
+                                    (mt/run-mbql-query venues
+                                      {:filter   [:starts-with $name $name]
+                                       :order-by [[:asc $id]]
+                                       :limit 3})))))))
 
 ;;; --------------------------------------------------- ends-with ----------------------------------------------------
 
@@ -311,8 +329,28 @@
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:ends-with $name "RESTAURANT" {:case-sensitive false}]
-                    :order-by [[:asc $id]]}))))))))
+                    :order-by [[:asc $id]]})))))))
 
+      (mt/test-drivers (mt/normal-drivers)
+        (testing "expression argument"
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+                 (mt/formatted-rows :venues
+                                    (mt/run-mbql-query venues
+                                      {:filter   [:ends-with $name [:upper $name] {:case-sensitive false}]
+                                       :order-by [[:asc $id]]
+                                       :limit 3})))))
+
+        (testing "field argument"
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+                 (mt/formatted-rows :venues
+                                    (mt/run-mbql-query venues
+                                      {:filter   [:ends-with $name $name]
+                                       :order-by [[:asc $id]]
+                                       :limit 3})))))))
 
 ;;; ---------------------------------------------------- contains ----------------------------------------------------
 
@@ -349,8 +387,28 @@
                (mt/formatted-rows :venues
                  (mt/run-mbql-query venues
                    {:filter   [:contains $name "bbq" {:case-sensitive false}]
-                    :order-by [[:asc $id]]}))))))))
+                    :order-by [[:asc $id]]})))))))
 
+      (mt/test-drivers (mt/normal-drivers)
+        (testing "expression argument"
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+                 (mt/formatted-rows :venues
+                                    (mt/run-mbql-query venues
+                                      {:filter   [:contains $name [:lower [:substring $name 1 3]] {:case-sensitive false}]
+                                       :order-by [[:asc $id]]
+                                       :limit 3})))))
+
+        (testing "field argument"
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
+                  [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]
+                  [3 "The Apple Pan" 11 34.0406 -118.428 2]]
+                 (mt/formatted-rows :venues
+                                    (mt/run-mbql-query venues
+                                      {:filter   [:contains $name $name]
+                                       :order-by [[:asc $id]]
+                                       :limit 3})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             NESTED AND/OR CLAUSES                                              |

@@ -1,4 +1,10 @@
-import { restore, isEE } from "e2e/support/helpers";
+import {
+  restore,
+  isEE,
+  setTokenFeatures,
+  appBar,
+  main,
+} from "e2e/support/helpers";
 
 const TOOLS_ERRORS_URL = "/admin/tools/errors";
 
@@ -26,16 +32,15 @@ const brokenQuestionDetails = {
 // UDATE:
 // We need to skip this completely! CI on `master` is almost constantly red.
 // TODO:
-// Once the underlying problem with H2 is solved, replace `describe.skip` with `describeEE`.
-describe.skip(
-  "admin > tools > erroring questions ",
-  { tags: "@quarantine" },
-  () => {
+// Once the underlying problem with H2 is solved, replace `describe.skip` with `describePremium`.
+describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
+  describe.skip("when feature enabled", () => {
     beforeEach(() => {
       cy.onlyOn(isEE);
 
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
@@ -115,8 +120,32 @@ describe.skip(
         cy.findByText("No results");
       });
     });
-  },
-);
+  });
+
+  describe("when feature disabled", () => {
+    beforeEach(() => {
+      cy.onlyOn(isEE);
+
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should not show tools -> errors", () => {
+      cy.visit("/admin");
+
+      appBar().findByText("Tools").should("not.exist");
+
+      cy.visit("/admin/tools/errors");
+
+      main().within(() => {
+        cy.findByText("Questions that errored when last run").should(
+          "not.exist",
+        );
+        cy.findByText("We're a little lost...");
+      });
+    });
+  });
+});
 
 function fixQuestion(name) {
   cy.visit("/collection/root");

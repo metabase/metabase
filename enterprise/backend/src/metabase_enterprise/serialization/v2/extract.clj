@@ -86,8 +86,8 @@
         collection-set (into collection-ids (mapcat collection/descendant-ids) (t2/select Collection :id [:in collection-ids]))
         dashboards     (t2/select Dashboard :collection_id [:in collection-set])
         ;; All cards that are in this collection set.
-        cards          (reduce set/union (for [coll-id collection-set]
-                                           (t2/select-pks-set Card :collection_id coll-id)))
+        cards          (reduce set/union #{} (for [coll-id collection-set]
+                                               (t2/select-pks-set Card :collection_id coll-id)))
 
         ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards OR parameter-bound cards are outside the
         ;; transitive collection set.

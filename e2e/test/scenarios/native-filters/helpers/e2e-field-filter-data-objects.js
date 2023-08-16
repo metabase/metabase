@@ -58,36 +58,32 @@ export const DATE_FILTER_SUBTYPES = {
   "Month and Year": {
     value: {
       month: "September",
-      year: "2017",
+      year: "2022",
     },
-    representativeResult: "Durable Steel Toucan",
+    representativeResult: "Aerodynamic Paper Computer",
   },
   "Quarter and Year": {
     value: {
       quarter: "Q2",
-      year: "2017",
+      year: "2022",
     },
-    representativeResult: "Aerodynamic Linen Coat",
+    representativeResult: "Synergistic Steel Chair",
   },
   "Single Date": {
-    value: "15",
-    representativeResult: "No results!",
+    value: "05/24/2022",
+    representativeResult: "Synergistic Steel Chair",
   },
   "Date Range": {
     value: {
-      startDate: "13",
-      endDate: "15",
+      startDate: "05/25/2022",
+      endDate: "06/01/2022",
     },
-    representativeResult: "No results!",
-  },
-  "Relative Date": {
-    value: "Past 7 days",
-    representativeResult: "No results!",
+    representativeResult: "Gorgeous Wooden Car",
   },
   "Date Filter": {
     value: {
       timeBucket: "years",
     },
-    representativeResult: "Small Marble Shoes",
+    representativeResult: "Synergistic Steel Chair",
   },
 };

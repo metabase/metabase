@@ -14,7 +14,7 @@ import {
   ActionButtonsWrapper,
   Container,
   ExpressionFieldWrapper,
-  FieldTitle,
+  FieldLabel,
   FieldWrapper,
   Footer,
   InfoLink,
@@ -83,7 +83,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     <Container>
       {header}
       <ExpressionFieldWrapper>
-        <FieldTitle>
+        <FieldLabel htmlFor="expression-content">
           {t`Expression`}
           <Tooltip
             tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
@@ -98,7 +98,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
               <StyledFieldTitleIcon name="info" />
             </InfoLink>
           </Tooltip>
-        </FieldTitle>
+        </FieldLabel>
         <div ref={helpTextTargetRef}>
           <ExpressionEditorTextfield
             helpTextTarget={helpTextTargetRef.current}
@@ -107,6 +107,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             name={name}
             query={query}
             reportTimezone={reportTimezone}
+            textAreaId="expression-content"
             onChange={handleExpressionChange}
             onCommit={handleCommit}
             onError={(errorMessage: string) => setError(errorMessage)}
@@ -115,8 +116,9 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
       </ExpressionFieldWrapper>
       {withName && (
         <FieldWrapper>
-          <FieldTitle>{t`Name`}</FieldTitle>
+          <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
           <Input
+            id="expression-name"
             type="text"
             value={name}
             placeholder={t`Something nice and descriptive`}

@@ -8,7 +8,7 @@
 (def +public-exceptions
   "Wrap `routes` so any Exception except 404 thrown is just returned as a generic 400, to prevent details from leaking in public
   endpoints."
-  #'mw.exceptions/public-execptions)
+  #'mw.exceptions/public-exceptions)
 
 (def +message-only-exceptions
   "Wrap `routes` so any Exception thrown is just returned as a 400 with only the message from the original

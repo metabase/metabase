@@ -129,7 +129,7 @@ export function BaseTableItem({
                 name="info"
                 size={16}
                 tooltip={
-                  <Markdown disallowHeading unstyleLinks>
+                  <Markdown dark disallowHeading unstyleLinks>
                     {item.description}
                   </Markdown>
                 }
