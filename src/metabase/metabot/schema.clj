@@ -37,9 +37,9 @@
   (mc/schema
     [:map
      [:name :string]
-     [:id :int]
+     [:id {:optional true} :int]
      [:display_name :string]
-     [:description :string]
+     [:description {:optional true} [:maybe :string]]
      [:field_ref field-ref-schema]
      [:base_type {:optional true} [:or :string :keyword]]
      [:effective_type {:optional true} [:or :string :keyword]]]))
@@ -48,8 +48,8 @@
   (mc/schema
     [:map {:closed false}
      [:name :string]
-     [:id :int]
-     [:description [:maybe :string]]
+     [:id {:optional true} :int]
+     [:description {:optional true} [:maybe :string]]
      [:database_id :int]
      [:result_metadata
       [:vector rsmd-schema]]]))
