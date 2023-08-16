@@ -544,8 +544,7 @@
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
-  (deduplicate-cols-names
-   (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
+  (deduplicate-cols-names (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 
 (defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.

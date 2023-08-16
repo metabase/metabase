@@ -908,6 +908,9 @@
                                                      result)))
                                       (get-in result [:data :results_metadata :columns]))
               expected-cols         (qp/query->expected-cols (mt/mbql-query orders))]
+          (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
+                         expected-cols))
+              "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
           ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
           (doseq [[description result-metadata] {"NONE"                   nil
                                                  "from running the query" card-results-metadata

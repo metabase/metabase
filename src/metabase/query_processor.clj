@@ -322,10 +322,15 @@
                     {:type qp.error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
-  (qp.store/with-store
+  (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
     (let [preprocessed (-> query preprocess restore-join-aliases)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
+        (->> (annotate/merged-column-info preprocessed nil)
+             ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
+             ;; directly we can stop stripping these out
+             (mapv (fn [col]
+                     (dissoc col :lib/external_remap :lib/internal_remap)))
+             not-empty)))))
 
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled

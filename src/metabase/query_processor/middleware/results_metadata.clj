@@ -68,7 +68,8 @@
        (record! metadata)
        (rf (cond-> result
              (map? result)
-             (update :data             assoc
+             (update :data
+                     assoc
                      :results_metadata {:columns metadata}
                      :insights         insights)))))))
 
