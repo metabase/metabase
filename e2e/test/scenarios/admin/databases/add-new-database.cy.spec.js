@@ -150,7 +150,7 @@ describe("admin > database > add", () => {
 
       cy.findByRole("dialog").within(() => {
         cy.findByText("We're taking a look at your database!");
-        cy.findByLabelText("close icon").click();
+        cy.icon("close").click();
       });
 
       cy.findByRole("status").within(() => {
