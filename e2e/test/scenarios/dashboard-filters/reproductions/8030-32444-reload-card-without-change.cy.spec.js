@@ -82,7 +82,7 @@ describe("issue 32444", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not reload dashboard cards with filter not connected to a filter (metabase#32444)", () => {
+  it("should not reload dashboard cards not connected to a filter (metabase#32444)", () => {
     cy.createDashboardWithQuestions({
       dashboardName: "Dashboard with a card and filter",
       questions: [questionWithFilter],
