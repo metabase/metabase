@@ -566,6 +566,27 @@ Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
 
+### weekday
+
+Takes a datetime and returns an integer (1-7) with the number of the day of the week.
+
+Syntax: `weekday(column)`
+
+- column: The datetime column.
+
+Example:
+
+```
+case(
+  weekday([Created At]) = 1, "Sunday", 
+  weekday([Created At]) = 2, "Monday", 
+  weekday([Created At]) = 3, "Tuesday", 
+  weekday([Created At]) = 4, "Wednesday", 
+  weekday([Created At]) = 5, "Thursday", 
+  weekday([Created At]) = 6, "Friday", 
+  weekday([Created At]) = 7, "Saturday")
+```
+
 ### year
 
 Takes a datetime and returns the year as an integer.
