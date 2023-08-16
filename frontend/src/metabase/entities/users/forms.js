@@ -24,7 +24,7 @@ export default {
       {
         name: "email",
         title: t`Email`,
-        placeholder: t`nicetoseeyou@email.com`,
+        placeholder: "nicetoseeyou@email.com",
         validate: validate.required().email(),
       },
       {
