@@ -102,6 +102,6 @@ function saveQuestion(name) {
 
 function getJoinedTableColumnHeader() {
   cy.get("@q1Id").then(id => {
-    cy.findByText(`Question ${id} → ID`);
+    cy.findByText(`Question ${id} - Product → ID`);
   });
 }
