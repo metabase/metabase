@@ -41,8 +41,7 @@ interface TagEditorSidebarState {
   section: "settings" | "help";
 }
 
-// eslint-disable-next-line import/no-default-export
-export default class TagEditorSidebar extends Component<TagEditorSidebarProps> {
+export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
   state: TagEditorSidebarState = {
     section: "settings",
   };
