@@ -473,11 +473,11 @@
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key
       (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true
-                                     :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
-                                     :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
-                                                        {:id "_b", :slug "b", :name "b", :type "date"}
-                                                        {:id "_c", :slug "c", :name "c", :type "date"}
-                                                        {:id "_d", :slug "d", :name "d", :type "date"}]}]
+                                               :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
+                                               :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
+                                                                  {:id "_b", :slug "b", :name "b", :type "date"}
+                                                                  {:id "_c", :slug "c", :name "c", :type "date"}
+                                                                  {:id "_d", :slug "d", :name "d", :type "date"}]}]
         (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
                 (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
 
@@ -625,12 +625,12 @@
   (testing "make sure that multiline series word as expected (#4768)"
     (with-embedding-enabled-and-new-secret-key
       (t2.with-temp/with-temp [Card series-card {:dataset_query {:database (mt/id)
-                                                       :type     :query
-                                                       :query    {:source-table (mt/id :venues)}}}]
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
           (t2.with-temp/with-temp [DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
-                                                :card_id          (u/the-id series-card)
-                                                :position         0}]
+                                                          :card_id          (u/the-id series-card)
+                                                          :position         0}]
             (is (= "completed"
                    (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
 
@@ -649,7 +649,7 @@
 (defn- do-with-embedding-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
     (t2.with-temp/with-temp [Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                               :enable_embedding true)]
+                                        :enable_embedding true)]
       (f card))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing
@@ -1262,17 +1262,17 @@
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
         (t2.with-temp/with-temp [Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                         {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                          :template-tags {"NAME"
-                                                                                          {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
-                                                                                           :name         "NAME"
-                                                                                           :display-name "Name"
-                                                                                           :type         :dimension
-                                                                                           :dimension    [:field (mt/id :people :name) nil]
-                                                                                           :widget-type  :string/=
-                                                                                           :default      nil}}})
-                                                     :enable_embedding true
-                                                     :embedding_params {:NAME "enabled"}}]
+                                                                                  {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                   :template-tags {"NAME"
+                                                                                                   {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
+                                                                                                    :name         "NAME"
+                                                                                                    :display-name "Name"
+                                                                                                    :type         :dimension
+                                                                                                    :dimension    [:field (mt/id :people :name) nil]
+                                                                                                    :widget-type  :string/=
+                                                                                                    :default      nil}}})
+                                                               :enable_embedding true
+                                                               :embedding_params {:NAME "enabled"}}]
           (testing "Card"
             (is (= [[1]]
                    (mt/rows (client/client :get 202 (str (card-query-url card "") "?NAME=Hudson%20Borer")))
@@ -1300,11 +1300,11 @@
     (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
         (t2.with-temp/with-temp [Card card {:dataset_query    (mt/native-query
-                                                      {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
-                                                       :template-tags {"qty_locked" {:name         "qty_locked"
-                                                                                     :display-name "Quantity (Locked)"
-                                                                                     :type         :number}}})
-                                  :enable_embedding true
-                                  :embedding_params {:qty_locked "locked"}}]
+                                                               {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
+                                                                :template-tags {"qty_locked" {:name         "qty_locked"
+                                                                                              :display-name "Quantity (Locked)"
+                                                                                              :type         :number}}})
+                                            :enable_embedding true
+                                            :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))

@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.server.handler :as handler]
    [metabase.server.middleware.session :as mw.session]
@@ -25,7 +26,7 @@
    [schema.core :as schema])
   (:import
    (metabase.async.streaming_response StreamingResponse)
-   (java.io PipedInputStream)))
+   (java.io InputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -283,7 +284,7 @@
 
 (schema/defn ^:private -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them
-  [{:keys [credentials method expected-status url http-body query-parameters _request-options]} :- ClientParamsMap]
+  [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
   (let [http-body   (test-runner.assert-exprs/derecordize http-body)
         method-name (u/upper-case-en (name method))
@@ -315,7 +316,13 @@
                             :server-port (config/config-int :mb-jetty-port)
                             :uri (str "/api/" (if (= (first url) \/) (subs url 1) url))}
                            (when (seq http-body)
-                             {:body (java.io.ByteArrayInputStream. (.getBytes (json/generate-string http-body)))}))
+                             {:body (java.io.ByteArrayInputStream. (.getBytes (if (string? http-body)
+                                                                                  http-body
+                                                                                  (json/generate-string http-body))))})
+                           (m/update-existing request-options
+                                              :body (fn [http-body] (java.io.ByteArrayInputStream. (.getBytes (if (string? http-body)
+                                                                                                                http-body
+                                                                                                                (json/generate-string http-body)))))))
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
@@ -324,7 +331,7 @@
                                  (fn [body]
                                    (cond
                                     ;; read the text respone
-                                    (instance? PipedInputStream body)
+                                    (instance? InputStream body)
                                     (with-open [r (io/reader body)]
                                       (slurp r))
 
@@ -397,7 +404,6 @@
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
-    (def parsed parsed)
     (log/trace parsed)
     (u/with-timeout response-timeout-ms
       (-mock-client parsed))))
