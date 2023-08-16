@@ -339,14 +339,10 @@ class QuestionInner {
     return question._maybeSwitchToScalar(data);
   }
 
-  // Switches display based on data shape. For 1x1 data, we show a scalar. If
-  // our display was a 1x1 type, but the data isn't 1x1, we show a table.
+  // Switches display to scalar if the data is 1 row x 1 column
   private _maybeSwitchToScalar({ rows, cols }): Question {
-    // For 1x1 data, we show a scalar. If our display was a 1x1 type, but the data
-    // isn't 1x1, we show a table.
     const isScalar = ["scalar", "progress", "gauge"].includes(this.display());
     const isOneByOne = rows.length === 1 && cols.length === 1;
-    // if we have a 1x1 data result then this should always be viewed as a scalar
     if (!isScalar && isOneByOne && !this.displayIsLocked()) {
       return this.setDisplay("scalar");
     }
