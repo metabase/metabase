@@ -76,6 +76,31 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     getSamlCard().findByText("Set up").should("exist");
   });
 
+  it("should display a message when using env variable values", () => {
+    cy.intercept("GET", "/api/setting", req => {
+      req.continue(res => {
+        const { body } = res;
+
+        Object.assign(
+          body.find(setting => setting.key === "saml-identity-provider-uri"),
+          {
+            is_env_setting: true,
+            default: "Using value of env var $MB_SAML_IDENTITY_PROVIDER_URI",
+          },
+        );
+
+        res.send(body);
+      });
+    });
+
+    cy.visit("/admin/settings/authentication/saml");
+
+    cy.findByLabelText("SAML Identity Provider URL").should(
+      "have.value",
+      "Using value of env var $MB_SAML_IDENTITY_PROVIDER_URI",
+    );
+  });
+
   describe("Group Mappings Widget", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/setting").as("getSettings");
