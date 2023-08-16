@@ -272,6 +272,16 @@ export function saveQuestion(
   });
 }
 
+export function saveSavedQuestion() {
+  cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+  cy.findByText("Save").click();
+
+  modal().within(() => {
+    cy.button("Save").click();
+  });
+  cy.wait("@updateQuestion");
+}
+
 export function visitPublicQuestion(id) {
   cy.request("POST", `/api/card/${id}/public_link`).then(
     ({ body: { uuid } }) => {

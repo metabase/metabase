@@ -1,11 +1,7 @@
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
 import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
-export function getParameterValueFromQueryParams(
-  parameter,
-  queryParams,
-  metadata,
-) {
+export function getParameterValueFromQueryParams(parameter, queryParams) {
   queryParams = queryParams || {};
 
   const maybeParameterValue = queryParams[parameter.slug || parameter.id];
@@ -111,12 +107,11 @@ function removeUndefaultedEmptyStringParameters(pairs) {
 export function getParameterValuesByIdFromQueryParams(
   parameters,
   queryParams,
-  metadata,
   { forcefullyUnsetDefaultedParametersWithEmptyStringValue } = {},
 ) {
   const parameterValuePairs = parameters.map(parameter => [
     parameter,
-    getParameterValueFromQueryParams(parameter, queryParams, metadata),
+    getParameterValueFromQueryParams(parameter, queryParams),
   ]);
 
   const transformedPairs =
