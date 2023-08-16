@@ -3,12 +3,30 @@ import {
   restore,
   visitDashboard,
   getDashboardCard,
+  editDashboard,
+  showDashboardCardActions,
 } from "e2e/support/helpers";
 
-describe("scenarios > dashboard > visualization options", () => {
+describe("scenarios > dashboard cards > visualization options", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("should allow empty card title (metabase#12013)", () => {
+    visitDashboard(1);
+
+    cy.findByTextEnsureVisible("Orders");
+    cy.findByTestId("legend-caption").should("exist");
+
+    editDashboard();
+    showDashboardCardActions();
+    cy.icon("palette").click();
+
+    cy.findByDisplayValue("Orders").click().clear();
+    cy.get("[data-metabase-event='Chart Settings;Done']").click();
+
+    cy.findByTestId("legend-caption").should("not.exist");
   });
 
   it("column reordering should work (metabase#16229)", () => {

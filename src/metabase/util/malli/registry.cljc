@@ -15,17 +15,6 @@
         (swap! cache assoc-in [k schema] v)
         v)))
 
-(defn explainer
-  "Fetch a cached [[mc/explainer]] for `schema`, creating one if needed. The cache is flushed whenever the registry
-  changes."
-  [schema]
-  (cached :explainer schema #_{:clj-kondo/ignore [:discouraged-var]} #(mc/explainer schema)))
-
-(defn explain
-  "[[mc/explain]], but uses a cached explainer from [[explainer]]."
-  [schema value]
-  ((explainer schema) value))
-
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
@@ -36,6 +25,26 @@
   "[[mc/validate]], but uses a cached validator from [[validator]]."
   [schema value]
   ((validator schema) value))
+
+(defn explainer
+  "Fetch a cached [[mc/explainer]] for `schema`, creating one if needed. The cache is flushed whenever the registry
+  changes."
+  [schema]
+  (letfn [(make-explainer []
+            #_{:clj-kondo/ignore [:discouraged-var]}
+            (let [validator* (mc/validator schema)
+                  explainer* (mc/explainer schema)]
+              ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
+              ;; of calls whose values are valid.
+              (fn schema-explainer [value]
+                (when-not (validator* value)
+                  (explainer* value)))))]
+    (cached :explainer schema make-explainer)))
+
+(defn explain
+  "[[mc/explain]], but uses a cached explainer from [[explainer]]."
+  [schema value]
+  ((explainer schema) value))
 
 (defonce ^:private registry*
   (atom (merge (mc/default-schemas)

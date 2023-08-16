@@ -61,5 +61,11 @@ describe("visualization.lib.apply_axis", () => {
 
       expect(value).toBe(0.0000000000018);
     });
+
+    it("should work on single-value charts (where minExtent === maxExtent)", () => {
+      const value = maybeRoundValueToZero(0.0000000000018, [0.00001, 0.00001]);
+
+      expect(value).toBe(0);
+    });
   });
 });
