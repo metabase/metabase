@@ -57,6 +57,7 @@ export const SearchFilterDisplay = ({
     }
     return (
       <FilterComponent
+        data-testid={`${key}-search-filter`}
         value={value[key]}
         onChange={val => onOutputChange(key, val)}
       />

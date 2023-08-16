@@ -11,10 +11,19 @@ import DatePicker, {
   DATE_OPERATORS,
 } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
 import { CreatedAtButton } from "metabase/search/components/SearchFilterModal/filters/CreatedAtFilter/CreatedAtFilter.styled";
+import { DATE_SHORTCUT_OPTIONS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
-const CREATED_AT_FILTERS = DATE_OPERATORS.filter(({name}) => name !== 'exclude');
-console.log(CREATED_AT_FILTERS);
+const CREATED_AT_FILTERS = DATE_OPERATORS.filter(
+  ({ name }) => name !== "exclude",
+);
+
+const CREATED_AT_DATE_SHORTCUT_OPTIONS = {
+  ...DATE_SHORTCUT_OPTIONS,
+  MISC_OPTIONS: DATE_SHORTCUT_OPTIONS.MISC_OPTIONS.filter(
+    ({ displayName }) => displayName !== "Exclude...",
+  ),
+};
 
 export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
   value = [],
@@ -56,6 +65,7 @@ export const CreatedAtFilter: SearchFilterComponent<"created_at"> = ({
           onCommit={onCommit}
           onFilterChange={onFilterChange}
           operators={CREATED_AT_FILTERS}
+          dateShortcutOptions={CREATED_AT_DATE_SHORTCUT_OPTIONS}
         />
       </Popover>
     </div>
