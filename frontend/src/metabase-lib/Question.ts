@@ -316,8 +316,8 @@ class QuestionInner {
 
   maybeResetDisplay(
     data: DatasetData,
-    sensibleDisplays: [string],
-    previousSensibleDisplays: [string] | null,
+    sensibleDisplays: string[],
+    previousSensibleDisplays: string[] | undefined,
   ): Question {
     const wasSensible =
       previousSensibleDisplays == null ||
