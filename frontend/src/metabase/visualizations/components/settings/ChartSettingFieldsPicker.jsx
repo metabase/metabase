@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { Droppable, Draggable } from "react-beautiful-dnd";
 
+import { DragDropContext } from "metabase/core/components/DragDropContext";
 import { moveElement } from "metabase/core/utils/arrays";
 
 import ChartSettingFieldPicker from "./ChartSettingFieldPicker";

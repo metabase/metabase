@@ -110,10 +110,6 @@ export const queryBuilderMain = () => {
   return cy.findByTestId("query-builder-main");
 };
 
-export const dashboardHeader = () => {
-  return cy.get("main header");
-};
-
 export const dashboardParametersContainer = () => {
   return cy.findByTestId("dashboard-parameters-widget-container");
 };

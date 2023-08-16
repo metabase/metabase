@@ -4,6 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
@@ -79,3 +80,16 @@
                {:lib/type :metadata/column
                 :name     "count"}]
               (lib.metadata.calculation/returned-columns query))))))
+
+(deftest ^:parallel visible-columns-use-result--metadata-test
+  (testing "visible-columns should use the Card's `:result-metadata` (regardless of what's actually in the Card)"
+    (let [venues-query (lib/query
+                        (lib.metadata.composed-provider/composed-metadata-provider
+                         (lib.tu/mock-metadata-provider
+                          {:cards [(assoc (:orders lib.tu/mock-cards) :dataset-query lib.tu/venues-query)]})
+                         meta/metadata-provider)
+                        (:orders lib.tu/mock-cards))]
+      (is (= ["ID" "SUBTOTAL" "TOTAL" "TAX" "DISCOUNT" "QUANTITY" "CREATED_AT" "PRODUCT_ID" "USER_ID"]
+             (mapv :name (get-in lib.tu/mock-cards [:orders :result-metadata]))))
+      (is (= ["ID" "SUBTOTAL" "TOTAL" "TAX" "DISCOUNT" "QUANTITY" "CREATED_AT" "PRODUCT_ID" "USER_ID"]
+             (mapv :name (lib.metadata.calculation/visible-columns venues-query)))))))

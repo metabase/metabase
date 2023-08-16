@@ -9,7 +9,6 @@ import cx from "classnames";
 import "./LineAreaBarChart.css";
 
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
-import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -30,46 +29,6 @@ import {
 } from "./LineAreaBarChart.styled";
 import LegendLayout from "./legend/LegendLayout";
 import CardRenderer from "./CardRenderer";
-
-const MUTE_STYLE = "opacity: 0.25;";
-for (let i = 0; i < MAX_SERIES; i++) {
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .area`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .line`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .bar`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg.stacked .dc-tooltip._${i} .dot`,
-    MUTE_STYLE,
-  );
-
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bar`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .line`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .dot`,
-    MUTE_STYLE,
-  );
-  addCSSRule(
-    `.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bubble`,
-    MUTE_STYLE,
-  );
-
-  // row charts don't support multiseries
-  addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
-}
 
 export default class LineAreaBarChart extends Component {
   static noHeader = true;
