@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { VerifiedSearchFilter } from "./VerifiedSearchFilter";
 
-const setup = ({ value }: { value?: boolean } = {}) => {
+const setup = ({ value }: { value?: true } = {}) => {
   const onChange = jest.fn();
   renderWithProviders(
     <VerifiedSearchFilter
