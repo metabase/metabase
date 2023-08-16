@@ -306,6 +306,12 @@ export const getOriginalQuestion = createSelector(
   (metadata, card) => metadata && card && new Question(card, metadata),
 );
 
+export const getOriginalQuestionWithParameterValues = createSelector(
+  [getMetadata, getOriginalCard, getParameterValues],
+  (metadata, card, parameterValues) =>
+    metadata && card && new Question(card, metadata, parameterValues),
+);
+
 export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
   (metadata, card, parameterValues) =>
