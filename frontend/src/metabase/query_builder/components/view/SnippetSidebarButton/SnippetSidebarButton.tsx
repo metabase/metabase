@@ -4,9 +4,9 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { ButtonRoot } from "./SnippetSidebarButton.styled";
 
 interface SnippetSidebarButtonProps {
-  isShowingSnippetSidebar: boolean;
   className?: string;
-  size?: number;
+  isShowingSnippetSidebar: boolean;
+  size: number;
   toggleSnippetSidebar: () => void;
 }
 

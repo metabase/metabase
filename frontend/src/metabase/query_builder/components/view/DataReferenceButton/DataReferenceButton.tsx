@@ -7,7 +7,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 interface DataReferenceButtonProps {
   className?: string;
   isShowingDataReference: boolean;
-  size?: number;
+  size: number;
   toggleDataReference: () => void;
 }
 

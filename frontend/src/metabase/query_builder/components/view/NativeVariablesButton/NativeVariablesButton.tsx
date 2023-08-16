@@ -5,9 +5,9 @@ import type Question from "metabase-lib/Question";
 import { ButtonRoot } from "./NativeVariablesButton.styled";
 
 interface NativeVariablesButtonProps {
-  isShowingTemplateTagsEditor: boolean;
   className?: string;
-  size?: number;
+  isShowingTemplateTagsEditor: boolean;
+  size: number;
   toggleTemplateTagsEditor: () => void;
 }
 
