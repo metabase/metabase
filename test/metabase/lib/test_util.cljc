@@ -264,7 +264,7 @@
   (lib/composed-metadata-provider
     meta/metadata-provider
     (mock-metadata-provider
-     {:cards (vals mock-cards)})))
+      {:cards (vals mock-cards)})))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column

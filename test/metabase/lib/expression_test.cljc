@@ -287,3 +287,14 @@
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
            (lib/expressionable-columns query nil)))))
+
+(deftest ^:parallel infix-display-name-with-expressions-test
+  (testing "#32063"
+    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards (:orders lib.tu/mock-cards))
+          query (-> query
+                    (lib/expression "Unit price" (lib//
+                                                  (lib.tu/field-literal-ref query "SUBTOTAL")
+                                                  (lib.tu/field-literal-ref query "QUANTITY"))))]
+      (is (= ["ID" "Subtotal" "Total" "Tax" "Discount" "Quantity" "Created At" "Product ID" "User ID" "Unit price"]
+             (map (partial lib/display-name query)
+                  (lib.metadata.calculation/returned-columns query)))))))
