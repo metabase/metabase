@@ -49,6 +49,7 @@ const STRING_OPERATORS = [
 const NUMBER_OPERATORS = [
   "is null",
   "is not null",
+  "is equal to",
   "is not equal to",
   "is less than",
   "is greater than",
@@ -152,7 +153,7 @@ describe("ChartSettingsTableFormatting", () => {
         ).toBeInTheDocument();
       });
 
-      //Quick check for color range option on numberic rules
+      // Quick check for color range option on numeric rules
       expect(screen.getByText("Formatting style")).toBeInTheDocument();
       expect(
         screen.getByRole("radio", { name: /single color/i }),
