@@ -1,9 +1,12 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
 
 import { Icon } from "metabase/core/components/Icon";
-import { Container, Span } from "./VisibilityToggler.styled";
+import {
+  ToggleContent,
+  ToggleRoot,
+  ToggleText,
+} from "./VisibilityToggler.styled";
 
 const propTypes = {
   isOpen: PropTypes.bool.isRequired,
@@ -12,7 +15,7 @@ const propTypes = {
   className: PropTypes.string,
 };
 
-const VisibilityToggler = ({
+export const VisibilityToggler = ({
   isOpen,
   readOnly,
   toggleEditor,
@@ -21,26 +24,20 @@ const VisibilityToggler = ({
   const text = isOpen ? null : t`Open Editor`;
   const icon = isOpen ? "contract" : "expand";
 
-  const classNames = cx(
-    className,
-    "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
-    { hide: readOnly },
-  );
-
   return (
-    <Container>
-      <a
-        className={classNames}
+    <ToggleRoot>
+      <ToggleContent
+        className={className}
+        isReadOnly={readOnly}
         onClick={toggleEditor}
         data-testid="visibility-toggler"
+        aria-hidden={readOnly}
       >
-        <Span>{text}</Span>
+        <ToggleText>{text}</ToggleText>
         <Icon name={icon} />
-      </a>
-    </Container>
+      </ToggleContent>
+    </ToggleRoot>
   );
 };
 
 VisibilityToggler.propTypes = propTypes;
-
-export default VisibilityToggler;

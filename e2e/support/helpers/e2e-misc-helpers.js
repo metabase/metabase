@@ -45,7 +45,7 @@ export function openNativeEditor({
  */
 export function runNativeQuery({ wait = true } = {}) {
   cy.intercept("POST", "api/dataset").as("dataset");
-  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.findByTestId("native-query-editor-container").icon("play").click();
 
   if (wait) {
     cy.wait("@dataset");

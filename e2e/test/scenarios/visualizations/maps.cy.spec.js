@@ -22,7 +22,7 @@ describe("scenarios > visualizations > maps", () => {
     openNativeEditor().type(
       "select -80 as lng, 40 as lat union all select -120 as lng, 40 as lat",
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     // switch to a pin map visualization
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
