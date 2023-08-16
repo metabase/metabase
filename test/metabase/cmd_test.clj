@@ -3,7 +3,7 @@
    [clojure.test :as t :refer [are deftest is testing]]
    [metabase.cmd :as cmd]))
 
-(defn- do-with-captured-call-enterprise-calls [thunk]
+(defn- do-with-captured-call-enterprise-calls! [thunk]
   (with-redefs [cmd/call-enterprise list]
     (thunk)))
 
@@ -16,7 +16,7 @@
   (is (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg]))))
 
 (deftest load-command-test
-  (do-with-captured-call-enterprise-calls
+  (do-with-captured-call-enterprise-calls!
    (fn []
      (testing "with no options"
        (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :continue})
@@ -26,7 +26,7 @@
               (cmd/load "/path/" "--on-error" "abort")))))))
 
 (deftest import-command-test
-  (do-with-captured-call-enterprise-calls
+  (do-with-captured-call-enterprise-calls!
    (fn []
      (testing "with no options"
        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {})
@@ -36,7 +36,7 @@
               (cmd/import "/path/" "--abort-on-error")))))))
 
 (deftest dump-command-test
-  (do-with-captured-call-enterprise-calls
+  (do-with-captured-call-enterprise-calls!
    (fn []
      (testing "with no options"
        (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:state :all})
@@ -46,7 +46,7 @@
               (cmd/dump "/path/" "--state" "active")))))))
 
 (deftest export-command-arg-parsing-test
-  (do-with-captured-call-enterprise-calls
+  (do-with-captured-call-enterprise-calls!
    (fn []
      (are [cmd-args v2-dump-args] (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" v2-dump-args)
                                      (apply cmd/export "/path/" cmd-args))
@@ -54,10 +54,13 @@
        {}
 
        ["--collection" "123"]
-       {:collections [123]}
+       {:collection-ids [123]}
 
-       ["-c" "123" "-c" "456"]
-       {:collections [123 456]}
+       ["-c" "123, 456"]
+       {:collection-ids [123 456]}
+
+       ["-c" "123,456,789"]
+       {:collection-ids [123 456 789]}
 
        ["--include-field-values"]
        {:include-field-values true}

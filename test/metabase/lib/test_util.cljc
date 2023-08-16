@@ -8,10 +8,13 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
@@ -263,7 +266,22 @@
   (lib.metadata.composed-provider/composed-metadata-provider
     meta/metadata-provider
     (mock-metadata-provider
-     {:cards (vals mock-cards)})))
+      {:cards (vals mock-cards)})))
+
+(mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
+  "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column
+  with `column-name` returned by a `query`. This only makes sense for queries with multiple stages, or ones with a
+  source Card."
+  [query       :- ::lib.schema/query
+   column-name :- ::lib.schema.common/non-blank-string]
+  (let [cols     (lib.metadata.calculation/visible-columns query)
+        metadata (or (m/find-first #(= (:name %) column-name)
+                                   cols)
+                     (let [col-names (vec (sort (map :name cols)))]
+                       (throw (ex-info (str "No column named " (pr-str column-name) "; found: " (pr-str col-names))
+                                       {:column column-name
+                                        :found  col-names}))))]
+    (lib/ref metadata)))
 
 (mu/defn query-with-mock-card-as-source-card :- [:and
                                                  ::lib.schema/query
