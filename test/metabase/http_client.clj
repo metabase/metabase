@@ -263,7 +263,7 @@
         _           (log/debug method-name (pr-str url) (pr-str request-map))
         thunk       (fn []
                       (try
-                        (request-fn url #p request-map)
+                        (request-fn url request-map)
                         (catch clojure.lang.ExceptionInfo e
                           (log/debug e method-name url)
                           (ex-data e))
