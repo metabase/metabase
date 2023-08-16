@@ -97,10 +97,16 @@
                                                       [:< [:cast :card.created_at :date]  #t "2023-04-01"]]
            "2016-04-18~2016-04-23"                   [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
                                                       [:< [:cast :card.created_at :date]  #t "2016-04-24"]]
+           "2016-04-18"                              [[:>= [:cast :card.created_at :date] #t "2016-04-18"]
+                                                      [:< [:cast :card.created_at :date]  #t "2016-04-19"]]
+           "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
+           "~2023-05-04"                             [[:< [:cast :card.created_at :date]  #t "2023-05-05"]]
            "2016-04-18T10:30:00~2016-04-23T11:30:00" [[:>= :card.created_at #t "2016-04-18T10:30"]
                                                       [:< :card.created_at #t "2016-04-23T11:31:00"]]
-           "~2023-05-04"                             [[:< [:cast :card.created_at :date]  #t "2023-05-05"]]
-           "2023-05-04~"                             [[:> [:cast :card.created_at :date]  #t "2023-05-04"]]
+           "2016-04-23T10:00:00"                     [[:>= :card.created_at #t "2016-04-23T10:00"]
+                                                      [:< :card.created_at  #t "2016-04-23T10:01"]]
+           "2016-04-18T10:30:00~"                    [[:> :card.created_at #t "2016-04-18T10:30"]]
+           "~2016-04-18T10:30:00"                    [[:< :card.created_at #t "2016-04-18T10:31"]]
            ;; relative datetime
            "past3days"                               [[:>= [:cast :card.created_at :date] #t "2023-05-01"]
                                                       [:< [:cast :card.created_at :date]  #t "2023-05-04"]]
@@ -117,7 +123,9 @@
            "past1months-from-36months"               [[:>= [:cast :card.created_at :date] #t "2020-04-01"]
                                                       [:< [:cast :card.created_at :date]  #t "2020-05-01"]]
            "today"                                   [[:>= [:cast :card.created_at :date] #t "2023-05-04"]
-                                                      [:< [:cast :card.created_at :date] #t "2023-05-05"]]))))
+                                                      [:< [:cast :card.created_at :date] #t "2023-05-05"]]
+           "yesterday"                               [[:>= [:cast :card.created_at :date] #t "2023-05-03"]
+                                                      [:< [:cast :card.created_at :date] #t "2023-05-04"]]))))
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"

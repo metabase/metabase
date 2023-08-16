@@ -356,7 +356,7 @@
         decoders))
 
 (def ^:private TemporalUnit
-  [:enum :second :minute :hour :day :week :month :quarter :year])
+  (into [:enum] u.date/add-units))
 
 (def ^:private TemporalRange
   [:map
@@ -383,10 +383,9 @@
 
 (def ^:private DateStringRange
   "Schema for a valid date range returned by `date-string->range`."
-  [:and [:map
+  [:and [:map {:closed true}
          [:start {:optional true} ms/NonBlankString]
-         [:end   {:optional true} ms/NonBlankString]
-         [:unit                   TemporalUnit]]
+         [:end   {:optional true} ms/NonBlankString]]
    [:fn {:error/message "must have either :start or :end"}
     (fn [{:keys [start end]}]
       (or start end))]
@@ -400,7 +399,8 @@
   [date-range]
   (-> date-range
       (m/update-existing :start u.date/format)
-      (m/update-existing :end u.date/format)))
+      (m/update-existing :end u.date/format)
+      (dissoc :unit)))
 
 (mu/defn date-string->range :- DateStringRange
   "Takes a string description of a date range such as `lastmonth` or `2016-07-15~2016-08-6` and returns a map with
