@@ -35,6 +35,29 @@ const COLUMNS = [
   NUMBER_COLUMN,
 ];
 
+const STRING_OPERATORS = [
+  "is null",
+  "is not null",
+  "is equal to",
+  "is not equal to",
+  "contains",
+  "does not contain",
+  "starts with",
+  "ends with",
+];
+
+const NUMBER_OPERATORS = [
+  "is null",
+  "is not null",
+  "is not equal to",
+  "is less than",
+  "is greater than",
+  "is less than or equal to",
+  "is greater than or equal to",
+];
+
+const BOOLEAN_OPERATORS = ["is null", "is not null", "is true", "is false"];
+
 const Wrapper = props => {
   const [value, setValue] = useState([]);
 
@@ -53,7 +76,7 @@ const setup = props => {
 };
 
 describe("ChartSettingsTableFormatting", () => {
-  it("Should allow you to add a rule", () => {
+  it("should allow you to add a rule", () => {
     setup();
     expect(screen.getByText("Conditional formatting")).toBeInTheDocument();
     userEvent.click(screen.getByText("Add a rule"));
@@ -92,7 +115,7 @@ describe("ChartSettingsTableFormatting", () => {
     ).toHaveAttribute("aria-disabled", "false");
   });
 
-  describe("should show propriate operators based on column selection", () => {
+  describe("should show appropriate operators based on column selection", () => {
     beforeEach(() => {
       setup();
       userEvent.click(screen.getByText("Add a rule"));
@@ -107,13 +130,11 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      expect(
-        screen.getByRole("option", { name: "starts with" }),
-      ).toBeInTheDocument();
-
-      expect(
-        screen.getByRole("option", { name: "ends with" }),
-      ).toBeInTheDocument();
+      STRING_OPERATORS.forEach(operator => {
+        expect(
+          screen.getByRole("option", { name: operator }),
+        ).toBeInTheDocument();
+      });
     });
 
     it("number", () => {
@@ -125,13 +146,11 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      expect(
-        screen.getByRole("option", { name: "is less than" }),
-      ).toBeInTheDocument();
-
-      expect(
-        screen.getByRole("option", { name: "is greater than" }),
-      ).toBeInTheDocument();
+      NUMBER_OPERATORS.forEach(operator => {
+        expect(
+          screen.getByRole("option", { name: operator }),
+        ).toBeInTheDocument();
+      });
 
       //Quick check for color range option on numberic rules
       expect(screen.getByText("Formatting style")).toBeInTheDocument();
@@ -152,13 +171,11 @@ describe("ChartSettingsTableFormatting", () => {
         screen.getByTestId("conditional-formatting-value-operator-button"),
       );
 
-      expect(
-        screen.getByRole("option", { name: "is true" }),
-      ).toBeInTheDocument();
-
-      expect(
-        screen.getByRole("option", { name: "is false" }),
-      ).toBeInTheDocument();
+      BOOLEAN_OPERATORS.forEach(operator => {
+        expect(
+          screen.getByRole("option", { name: operator }),
+        ).toBeInTheDocument();
+      });
     });
   });
 });
