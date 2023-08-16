@@ -209,40 +209,6 @@
    (schema/optional-key :query-parameters) (schema/maybe su/Map)
    (schema/optional-key :request-options)  (schema/maybe su/Map)})
 
-(defn- build-header
-  [req headers]
-  (reduce (fn [acc [k v]]
-              (ring.mock.request/header acc k v))
-          req
-          headers))
-
-(defn- build-mock-request
-  [method url params credentials http-body]
-  (let [headers {@#'mw.session/metabase-session-header
-                 (when credentials
-                   (if (map? credentials)
-                     (authenticate credentials)
-                     credentials))}]
-    (merge (cond-> (ring.mock/request method url params)
-             (some? headers)
-             (build-header headers)
-
-             (some? http-body)
-             (ring.mock/json-body http-body))
-           {:content-type  :json
-            :cookie-policy :standard
-            :accept        :json})))
-
-(reduce (fn [acc query]
-          (let [[k v] (str/split query #"=")]
-            (assoc acc k v)))
-        {}
-        (-> (java.net.URI. "/api?abc=1&a=1")
-         .getRawQuery
-         (str/split #"&")))
-
-(.getRawQuery (java.net.URI. "/api?abc=1&a=1"))
-
 (defn- read-streaming-response [streaming-response]
   (with-open [os (java.io.ByteArrayOutputStream.)]
     (let [f             (.f streaming-response)
@@ -279,8 +245,6 @@
     (log/debug method-name url status)
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
-
-#_(-mock-client parsed)
 
 (schema/defn ^:private -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them
@@ -355,20 +319,6 @@
     (check-status-code method-name url body expected-status status)
     (update response :body parse-response)))
 
-#_(metabase.test/user-http-request :crowberto :get 200 "user" :group_id 2)
-
-
-#_(try
-   #_(metabase.test/user-http-request :crowberto :post 202 "card/328/query")
-   (metabase.test/user-http-request :rasta :post 200 "card/328/query/json")
-   nil
-   (catch Throwable e
-     e))
-; (metabase.async.streaming-response/->StreamingResponse
-;  #function[clojure.core/bound-fn*/fn--5818]
-;  {:content-type "application/json; charset=utf-8"}
-;  #object[clojure.core.async.impl.channels.ManyToManyChannel 0x328d7b37 "clojure.core.async.impl.channels.ManyToManyChannel@328d7b37"])
-
 (s/def ::http-client-args
   (s/cat
    :credentials      (s/? (some-fn map? string?))
@@ -406,6 +356,16 @@
   (let [parsed (parse-http-client-args args)]
     (log/trace parsed)
     (u/with-timeout response-timeout-ms
+      (-client parsed))))
+
+
+(defn mock-client-full-response
+  "Identical to `client` except returns the full HTTP response map, not just the body of the response"
+  {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
+  [& args]
+  (let [parsed (parse-http-client-args args)]
+    (log/trace parsed)
+    (u/with-timeout response-timeout-ms
       (-mock-client parsed))))
 
 (defn client
@@ -433,3 +393,9 @@
   {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
   [& args]
   (:body (apply client-full-response args)))
+
+(defn mock-client
+  "Like client but it's mocked"
+  {:arglists '([credentials? method expected-status-code? endpoint request-options? http-body-map? & {:as query-params}])}
+  [& args]
+  (:body (apply mock-client-full-response args)))

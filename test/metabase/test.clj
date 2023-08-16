@@ -197,6 +197,7 @@
   user->id
   user-descriptor
   user-http-request
+  user-real-request
   with-group
   with-group-for-user
   with-test-user]
